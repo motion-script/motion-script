@@ -26,7 +26,7 @@ export default function EditorSection() {
           <span className="inline-block mb-4 px-2.5 py-0.5 text-xs font-medium rounded-full bg-[var(--foreground)]/5 border border-[var(--border)] text-[var(--muted-foreground)]">
             Editor
           </span>
-          <h2 className="font-serif text-4xl sm:text-5xl md:text-6xl tracking-tight leading-[1.1] text-[var(--foreground)] mb-6">
+          <h2 className="font-serif text-3xl  md:text-4xl tracking-tight leading-[1.1] text-[var(--foreground)] mb-6">
             Best of <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">Both</span> Worlds
           </h2>
           <p className="text-base sm:text-lg text-[var(--muted-foreground)] leading-relaxed mb-4 max-w-xl">

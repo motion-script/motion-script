@@ -21,12 +21,15 @@ export default function HeroSection() {
             Motion graphics
           </span>
           <br />
-          <span className="text-4xl  lg:text-5xl ">
-
-
-            with <span className="font-pixelify">code</span>
-          </span>
+          
         </h1>
+        <h2>
+          <span className="text-4xl font-serif  lg:text-5xl ">
+
+
+            with <span className="font-pixelify font-bold">CODE</span>
+          </span>
+        </h2>
 
         <div
           className="hero-fade-up  flex justify-center mb-4"

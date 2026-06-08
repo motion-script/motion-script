@@ -100,7 +100,7 @@ export function ContributeSection() {
               <HeartIcon className="w-8 h-8 text-white" />
             </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-[var(--foreground)] mb-4">
+            <h2 className="text-3xl md:text-4xl  font-serif font-bold text-[var(--foreground)] mb-4">
               Support the project today
             </h2>
             <p className="text-[var(--muted-foreground)] w-full  mx-auto text-base sm:text-lg mb-8 leading-relaxed">
