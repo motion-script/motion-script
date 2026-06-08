@@ -16,7 +16,7 @@ export default function Home(): ReactNode {
       wrapperClassName="home-page"
       noFooter
     >
-      <div className="relative min-h-screen  overflow-x-hidden">
+      <div className="relative min-h-screen  overflow-x-hidden font-sans">
         <Navbar />
 
         <main>
