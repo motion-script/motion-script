@@ -18,14 +18,14 @@ export default function Footer() {
 
           {/* Links */}
           <div className="flex items-center gap-6 pr-32 text-sm text-[var(--muted-foreground)]">
-            <Link href="#features" className="hover:text-[var(--foreground)] transition-colors no-underline hover:no-underline">
-              Features
+            <Link href="/api/core" className="hover:text-[var(--foreground)] transition-colors no-underline hover:no-underline">
+              API
             </Link>
             <Link href="/docs/intro" className="hover:text-[var(--foreground)] transition-colors no-underline hover:no-underline">
               Docs
             </Link>
-            <Link href="#contribute" className="hover:text-[var(--foreground)] transition-colors no-underline hover:no-underline">
-              Contribute
+            <Link href="/blog" className="hover:text-[var(--foreground)] transition-colors no-underline hover:no-underline">
+              Blog
             </Link>
           </div>
 

@@ -581,7 +581,7 @@ export default function GradientBackground() {
   return (
     <>
       <div className="dark:bg-black/20 z-10 absolute inset-0 -bottom-20 -top-10" />
-      <div className="absolute inset-0 -bottom-20 -top-10">
+      <div className="absolute inset-0 -bottom-20 md:-top-30 ">
         <GradientCanvas />
         <GrainOverlay />
         <div className="absolute inset-0" />

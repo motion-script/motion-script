@@ -2,6 +2,7 @@ import React from 'react';
 import { useInView } from './useInView';
 import LayoutCanvas from './LayoutCanvas';
 import NumberCanvas from './NumberCanvas';
+import EffectsCanvas from './EffectsCanvas';
 
 const features = [
   {
@@ -89,6 +90,8 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
             <LayoutCanvas />
           ) : feature.id === 'text' ? (
             <NumberCanvas />
+          ) : feature.id === 'effects' ? (
+            <EffectsCanvas />
           ) : (
             <video
               className="absolute inset-0 h-full w-full object-cover"
