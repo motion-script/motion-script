@@ -158,6 +158,90 @@ html[data-theme='dark'] {
   animation: scroll-bounce 2s ease-in-out infinite;
 }
 
+/* Scroll-reveal animations (framer-motion-free).
+   Add a `reveal-*` class for the hidden state, then toggle `is-visible`
+   when the element enters the viewport. `--reveal-delay` staggers items. */
+.reveal-up,
+.reveal-left {
+  opacity: 0;
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+  transition-delay: var(--reveal-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translateY(40px);
+}
+
+.reveal-left {
+  transform: translateX(-20px);
+}
+
+.reveal-up.is-visible,
+.reveal-left.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .reveal-up,
+  .reveal-left {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Navbar slide-down on mount */
+@keyframes navbar-slide-down {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.navbar-slide-down {
+  animation: navbar-slide-down 0.6s ease-out;
+}
+
+/* Mobile menu expand/collapse via grid-rows (animatable in both directions
+   while the element stays mounted, so no AnimatePresence is needed). */
+.mobile-menu {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.mobile-menu.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.mobile-menu>div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .navbar-slide-down {
+    animation: none;
+  }
+
+  .mobile-menu {
+    transition: none;
+  }
+}
+
 @keyframes cursor-blink {
   to {
     opacity: 1;

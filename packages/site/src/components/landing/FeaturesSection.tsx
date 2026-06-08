@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React from 'react';
+import { useInView } from './useInView';
 import LayoutCanvas from './LayoutCanvas';
 import NumberCanvas from './NumberCanvas';
 
@@ -72,17 +72,14 @@ const features = [
 ];
 
 function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index: number }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [ref, isInView] = useInView<HTMLDivElement>({ once: true, margin: '-100px' });
   const isReversed = index % 2 === 1;
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 60 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay: 0.1 }}
-      className={`grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center`}
+      style={{ '--reveal-delay': '0.1s' } as React.CSSProperties}
+      className={`reveal-up${isInView ? ' is-visible' : ''} grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center`}
     >
       {/* Demo — the layout feature renders live on a canvas (no video to load);
           the rest still play their recorded clips. */}
@@ -122,12 +119,10 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
 
         <div className="space-y-5">
           {feature.bullets.map((bullet, i) => (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-              className="flex items-start gap-3.5"
+              style={{ '--reveal-delay': `${0.3 + i * 0.1}s` } as React.CSSProperties}
+              className={`reveal-left${isInView ? ' is-visible' : ''} flex items-start gap-3.5`}
             >
               <div className="relative mt-0.5 shrink-0 w-6 h-6 rounded-full flex items-center justify-center ring-1 ring-inset ring-(--foreground)/5 overflow-hidden">
                 <span
@@ -153,27 +148,23 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
                   {bullet.text}
                 </span>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export default function FeaturesSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [ref, isInView] = useInView<HTMLDivElement>({ once: true, margin: '-100px' });
 
   return (
     <section id="features" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <motion.div
+        <div
           ref={ref}
-          initial={{ opacity: 0, y: 40 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-20"
+          className={`reveal-up${isInView ? ' is-visible' : ''} text-center mb-20`}
         >
           <span className="inline-block mb-4 px-2.5 py-0.5 text-xs font-medium rounded-full bg-[var(--foreground)]/5 border border-[var(--border)] text-[var(--muted-foreground)]">
             Features
@@ -188,7 +179,7 @@ export default function FeaturesSection() {
             A complete toolkit for motion designers and creative developers. From vector shapes to
             3D scenes, all driven by code.
           </p>
-        </motion.div>
+        </div>
 
         <div className="space-y-24 sm:space-y-32">
           {features.map((feature, index) => (

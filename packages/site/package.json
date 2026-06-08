@@ -28,7 +28,6 @@
     "@mdx-js/react": "^3.0.0",
     "@tailwindcss/postcss": "^4.2.4",
     "clsx": "^2.0.0",
-    "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "postcss": "^8.5.12",
     "prism-react-renderer": "^2.3.0",

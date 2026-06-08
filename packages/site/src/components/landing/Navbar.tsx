@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Link from '@docusaurus/Link';
 import { useColorMode } from '@docusaurus/theme-common';
 import { Logo } from './Logo';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -27,11 +26,8 @@ export default function Navbar() {
   }, []);
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 backdrop-blur-xl border-b ${
+    <header
+      className={`navbar-slide-down fixed top-0 left-0 right-0 z-50 transition-all duration-500 backdrop-blur-xl border-b ${
         scrolled
           ? 'bg-(--background)/75 border-border shadow-sm'
           : 'bg-(--background)/0 border-transparent'
@@ -94,16 +90,13 @@ export default function Navbar() {
         </nav>
 
         {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="md:hidden bg-[var(--background)]/90 backdrop-blur-xl border-t border-[var(--border)] overflow-hidden"
-            >
-              <div className="px-4 py-4 flex flex-col gap-2">
+        <div
+          className={`mobile-menu md:hidden bg-[var(--background)]/90 backdrop-blur-xl ${
+            mobileOpen ? 'is-open border-t border-[var(--border)]' : ''
+          }`}
+        >
+          <div>
+            <div className="px-4 py-4 flex flex-col gap-2">
                 {navLinks.map((link) => (
                   <Link
                     key={link.label}
@@ -140,11 +133,10 @@ export default function Navbar() {
                   Get Started
                 </Link>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.header>
+            </div>
+          </div>
+        </div>
+    </header>
   );
 }
 
