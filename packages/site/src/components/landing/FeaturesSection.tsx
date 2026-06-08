@@ -170,7 +170,7 @@ export default function FeaturesSection() {
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-[var(--foreground)] mb-4">
             Everything you need to{' '}
-            <span className="bg-gradient-to-r from-indigo-500 to-blue-400 bg-clip-text text-transparent  font-pixelify">
+            <span className="bg-gradient-to-r from-indigo-500 to-blue-400 bg-clip-text text-transparent  font-code">
               CREATE
             </span>
           </h2>

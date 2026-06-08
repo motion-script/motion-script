@@ -27,7 +27,7 @@ export default function HeroSection() {
           <span className="text-4xl font-serif  lg:text-5xl ">
 
 
-            with <span className="font-pixelify font-bold">CODE</span>
+            with <span className="font-code font-bold">CODE</span>
           </span>
         </h2>
 

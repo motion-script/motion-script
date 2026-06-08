@@ -44,7 +44,7 @@ export default function Navbar() {
             <Logo className="text-[var(--foreground)]" />
             <span className="font-serif text-lg text-[var(--foreground)] mt-0.5 flex items-center">
               <span className="font-thin scale-90 inline-block">Motion</span>
-              <span className="font-pixelify font-medium">Script</span>
+              <span className="font-code font-medium">Script</span>
             </span>
           </Link>
 
