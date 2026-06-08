@@ -241,9 +241,8 @@ body:has(.home-page) footer.footer {
 
 /* Docusaurus navbar: blurred glass effect */
 .navbar {
-  background: color-mix(in oklch, var(--background) 75%, transparent) !important;
+  background: color-mix(in srgb, var(--background) 75%, transparent) !important;
   backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
   border-bottom: 1px solid var(--border) !important;
   box-shadow: none !important;
 }
