@@ -51,7 +51,7 @@ export default function HeroSection() {
           style={{ animationDelay: '0.9s' }}
         >
           <a
-            href="/docs/getting-started"
+            href="/docs/intro"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-medium text-sm transition-colors"
           >
             Get Started
