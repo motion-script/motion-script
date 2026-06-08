@@ -1,0 +1,86 @@
+---
+slug: motion-script-1-0-0
+title: Motion Script 1.0.0
+authors: [motionscript]
+tags: [release, motion-script]
+---
+
+Today we're thrilled to announce **Motion Script 1.0.0** — the first stable
+release of our open-source motion design tool. Motion graphics with code, right
+in your browser.
+
+{/* truncate */}
+
+## What is Motion Script?
+
+Motion Script lets you describe animations as TypeScript/JSX scenes and render
+them in real time in the browser. You write declarative scene code; the engine
+turns it into frames using a Skia (CanvasKit) rendering backend, and the bundled
+player gives you a timeline-based editor to preview, scrub, and export.
+
+```tsx
+import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
+
+export class ShapeScene extends Scene {
+  *build() {
+    const lens = createRef<Ellipse>();
+
+    this.add(
+      <Rect width={400} height={400} fill="white" borderRadius={20}>
+        <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
+      </Rect>,
+    );
+
+    // Animate: tween the ellipse to x=700 over 3 seconds.
+    yield* lens().to({ x: 700 }, 3);
+  }
+}
+```
+
+Animations are driven by generators — `yield*` a tween and the engine advances
+time, interpolating attributes frame by frame.
+
+## What's in 1.0.0
+
+This release marks the point where the core API is stable and ready for real
+projects:
+
+- **Declarative scenes** — describe animations as TypeScript/JSX and let the
+  engine render them frame by frame.
+- **Reactive signals** — derive values that update automatically as time and
+  state change.
+- **Skia/CanvasKit rendering** — a WASM-powered backend for crisp, high-quality
+  frames, plus a built-in video exporter.
+- **Rich primitives** — flex layout, fills, gradients, filters, SkSL shader
+  effects, paths, text, and audio are all supported.
+- **Timeline editor** — the bundled player lets you preview, scrub, and export
+  your animations with hot reload.
+
+## Getting started
+
+Scaffold a new project with the `create` CLI:
+
+```bash
+npm create motion-script@latest
+```
+
+Then:
+
+```bash
+cd my-video
+npm install
+npm run dev
+```
+
+This launches a Vite dev server with the Motion Script player. Edit the scenes
+in `src/`, and the preview updates with hot reload.
+
+For a full walkthrough, see the [Getting Started guide](https://motionscript.dev/docs/getting-started).
+
+## Thank you
+
+A huge thank you to everyone who tested early builds, filed issues, and helped
+shape the API along the way. This is just the beginning — we can't wait to see
+what you create.
+
+Happy animating! 🎬

@@ -18,17 +18,10 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://motionscript.dev',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
-
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
-
-  onBrokenLinks: 'throw',
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -112,8 +105,8 @@ const config: Config = {
         ],
         tsconfig: '../core/tsconfig.json',
       },
-      {id: 'code', entryPoints: ['../components/code/src/index.ts'], tsconfig: '../components/code/tsconfig.json'},
-      {id: 'latex', entryPoints: ['../components/latex/src/index.ts'], tsconfig: '../components/latex/tsconfig.json'},
+      { id: 'code', entryPoints: ['../components/code/src/index.ts'], tsconfig: '../components/code/tsconfig.json' },
+      { id: 'latex', entryPoints: ['../components/latex/src/index.ts'], tsconfig: '../components/latex/tsconfig.json' },
     ].map((pkg) => [
       'docusaurus-plugin-typedoc',
       {

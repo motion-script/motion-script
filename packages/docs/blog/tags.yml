@@ -17,3 +17,13 @@ hola:
   label: Hola
   permalink: /hola
   description: Hola tag description
+
+release:
+  label: Release
+  permalink: /release
+  description: Motion Script release announcements
+
+motion-script:
+  label: Motion Script
+  permalink: /motion-script
+  description: Motion Script news and updates

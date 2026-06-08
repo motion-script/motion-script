@@ -10,6 +10,15 @@ yangshun:
     github: yangshun
     newsletter: https://www.greatfrontend.com
 
+motionscript:
+  name: The Motion Script Team
+  title: Motion graphics with code
+  url: https://motionscript.dev
+  image_url: /author.jpg
+  page: true
+  socials:
+    github: motion-script
+
 slorber:
   name: Sébastien Lorber
   title: Docusaurus maintainer
