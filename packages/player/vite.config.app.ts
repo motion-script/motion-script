@@ -17,7 +17,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 const packageRoot = __dirname;
 const playerRoot = path.resolve(packageRoot, 'examples');
-const docsStaticPlayer = path.resolve(packageRoot, '..', 'docs', 'static', 'player');
+const docsStaticPlayer = path.resolve(packageRoot, '..', 'site', 'static', 'player');
 
 // Locate canvaskit.wasm inside the installed @motion-script/canvaskit package
 // so the production bundle ships its own copy (the docs dev server has no wasm
