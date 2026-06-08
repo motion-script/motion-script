@@ -12,24 +12,21 @@ export default function HeroSection() {
         <div className="absolute inset-0 " />
       </div>
 
-      <div className="relative z-30 mx-auto max-w-5xl text-center">
+      <div className="relative  z-30 mx-auto max-w-5xl text-center" >
         <h1
-          className="hero-fade-up mt-12 font-serif  leading-[1.1] text-[var(--foreground)]"
-          style={{ animationDelay: '0.3s' }}
+          className="hero-fade-up mt-12 font-serif text-[var(--foreground)]"
+          style={{ animationDelay: '0.3s', lineHeight: 3 }}
         >
-          <span className="bg-gradient-to-r  text-4xl sm:text-5xl  lg:text-6xl  from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r text-4xl sm:text-5xl lg:text-6xl from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
             Motion graphics
           </span>
           <br />
-          
-        </h1>
-        <h2>
-          <span className="text-4xl font-serif  lg:text-5xl ">
-
-
+          <span className="text-4xl font-serif lg:text-5xl" style={{ animationDelay: '0.6s' }}>
             with <span className="font-code font-bold">CODE</span>
           </span>
-        </h2>
+        </h1>
+
+
 
         <div
           className="hero-fade-up  flex justify-center mb-4"
