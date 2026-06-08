@@ -10,7 +10,9 @@
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
-
+@import '@fontsource-variable/dm-sans/wght.css';
+@import '@fontsource/young-serif';
+@import '@fontsource-variable/pixelify-sans/wght.css';
 @custom-variant dark (&:is([data-theme='dark'] *));
 
 @theme inline {
@@ -25,15 +27,16 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Young Serif", ui-serif, Georgia, serif;
-  --font-pixelify: "Pixelify Sans", monospace;
+  --font-code: "Pixelify Sans Variable", monospace;
 }
 
 /* utility class for Pixelify Sans */
-.font-pixelify {
-  font-family: var(--font-pixelify);
+.font-code {
+  font-family: var(--font-code);
 }
+
 
 :root {
   --background: oklch(1 0 0);
@@ -50,6 +53,7 @@
   --radius: 0.625rem;
 
   /* Docusaurus Infima overrides */
+  --ifm-font-family-base: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --ifm-background-color: var(--background);
   --ifm-background-surface-color: var(--background);
   --ifm-color-primary: oklch(0.5 0.2 264);
@@ -270,7 +274,7 @@ body:has(.home-page) footer.footer {
 
 .navbar__brand .navbar__title::after {
   content: 'Script';
-  font-family: var(--font-pixelify);
+  font-family: var(--font-code);
   font-weight: 500;
   font-size: 1.125rem;
 }
@@ -449,6 +453,9 @@ html[data-theme='dark'] .footer {
    via the class rule below. */
 .home-page :is(h1, h2, h3, h4, h5, h6) {
   font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .home-page .font-serif {
@@ -457,6 +464,73 @@ html[data-theme='dark'] .footer {
 
 .home-page .font-sans {
   font-family: var(--font-sans);
+}
+
+/* Font-weight: same unlayered promotion pattern. */
+.home-page .font-thin      { font-weight: 100; }
+.home-page .font-extralight { font-weight: 200; }
+.home-page .font-light     { font-weight: 300; }
+.home-page .font-normal    { font-weight: 400; }
+.home-page .font-medium    { font-weight: 500; }
+.home-page .font-semibold  { font-weight: 600; }
+.home-page .font-bold      { font-weight: 700; }
+.home-page .font-extrabold { font-weight: 800; }
+.home-page .font-black     { font-weight: 900; }
+
+/* Font-size: Infima's h1-h6 { font-size } is unlayered — same fix as font-family.
+   The @layer base reset and Tailwind utilities both lose to it. Re-declare the
+   text-size scale as unlayered rules scoped to .home-page: two classes beat
+   one class + element on specificity, so these win over the inherit reset above. */
+.home-page .text-xs   { font-size: var(--text-xs); }
+.home-page .text-sm   { font-size: var(--text-sm); }
+.home-page .text-base { font-size: var(--text-base); }
+.home-page .text-lg   { font-size: var(--text-lg); }
+.home-page .text-xl   { font-size: var(--text-xl); }
+.home-page .text-2xl  { font-size: var(--text-2xl); }
+.home-page .text-3xl  { font-size: var(--text-3xl); }
+.home-page .text-4xl  { font-size: var(--text-4xl); }
+.home-page .text-5xl  { font-size: var(--text-5xl); }
+.home-page .text-6xl  { font-size: var(--text-6xl); }
+.home-page .text-7xl  { font-size: var(--text-7xl); }
+.home-page .text-8xl  { font-size: var(--text-8xl); }
+.home-page .text-9xl  { font-size: var(--text-9xl); }
+
+@media (min-width: 640px) {
+  .home-page .sm\:text-xs   { font-size: var(--text-xs); }
+  .home-page .sm\:text-sm   { font-size: var(--text-sm); }
+  .home-page .sm\:text-base { font-size: var(--text-base); }
+  .home-page .sm\:text-lg   { font-size: var(--text-lg); }
+  .home-page .sm\:text-xl   { font-size: var(--text-xl); }
+  .home-page .sm\:text-2xl  { font-size: var(--text-2xl); }
+  .home-page .sm\:text-3xl  { font-size: var(--text-3xl); }
+  .home-page .sm\:text-4xl  { font-size: var(--text-4xl); }
+  .home-page .sm\:text-5xl  { font-size: var(--text-5xl); }
+  .home-page .sm\:text-6xl  { font-size: var(--text-6xl); }
+}
+
+@media (min-width: 768px) {
+  .home-page .md\:text-sm   { font-size: var(--text-sm); }
+  .home-page .md\:text-base { font-size: var(--text-base); }
+  .home-page .md\:text-lg   { font-size: var(--text-lg); }
+  .home-page .md\:text-xl   { font-size: var(--text-xl); }
+  .home-page .md\:text-2xl  { font-size: var(--text-2xl); }
+  .home-page .md\:text-3xl  { font-size: var(--text-3xl); }
+  .home-page .md\:text-4xl  { font-size: var(--text-4xl); }
+  .home-page .md\:text-5xl  { font-size: var(--text-5xl); }
+  .home-page .md\:text-6xl  { font-size: var(--text-6xl); }
+}
+
+@media (min-width: 1024px) {
+  .home-page .lg\:text-sm   { font-size: var(--text-sm); }
+  .home-page .lg\:text-base { font-size: var(--text-base); }
+  .home-page .lg\:text-lg   { font-size: var(--text-lg); }
+  .home-page .lg\:text-xl   { font-size: var(--text-xl); }
+  .home-page .lg\:text-2xl  { font-size: var(--text-2xl); }
+  .home-page .lg\:text-3xl  { font-size: var(--text-3xl); }
+  .home-page .lg\:text-4xl  { font-size: var(--text-4xl); }
+  .home-page .lg\:text-5xl  { font-size: var(--text-5xl); }
+  .home-page .lg\:text-6xl  { font-size: var(--text-6xl); }
+  .home-page .lg\:text-7xl  { font-size: var(--text-7xl); }
 }
 
 /* Static film grain over the hero's Three.js wave. The texture is an inline

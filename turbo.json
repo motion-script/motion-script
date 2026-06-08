@@ -13,7 +13,7 @@
                 "public/**"
             ]
         },
-        "@motion-script/docs#build": {
+        "@motion-script/site#build": {
             "dependsOn": [
                 "@motion-script/player#build",
                 "^build"

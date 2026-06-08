@@ -6,7 +6,7 @@ packages:
   - "packages/react"
   - "packages/vite-plugin"
   - "packages/web"
-  - "packages/docs"
+  - "packages/site"
   - "packages/template"
   - "packages/components/code"
   - "packages/components/latex"

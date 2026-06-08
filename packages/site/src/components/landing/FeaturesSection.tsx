@@ -102,11 +102,11 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
           {feature.badge}
         </span>
 
-        <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--foreground)] mb-2">
+        <h3 className="text-4xl font-serif sm:text-3xl font-bold text-foreground mb-2">
           {feature.title}
         </h3>
-        <p className="text-[var(--muted-foreground)] text-sm font-medium mb-4">{feature.subtitle}</p>
-        <p className="text-[var(--muted-foreground)] leading-relaxed mb-8 text-sm sm:text-base">
+        {/* <p className="text-[var(--muted-foreground)] text-sm font-medium mb-4">{feature.subtitle}</p> */}
+        <p className="text-muted-foreground leading-relaxed mb-8 text-sm sm:text-base">
           {feature.description}
         </p>
 
@@ -170,8 +170,8 @@ export default function FeaturesSection() {
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-[var(--foreground)] mb-4">
             Everything you need to{' '}
-            <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-              create
+            <span className="bg-gradient-to-r from-indigo-500 to-blue-400 bg-clip-text text-transparent  font-code">
+              CREATE
             </span>
           </h2>
           <p className="text-[var(--muted-foreground)]  mx-auto text-base sm:text-lg">
