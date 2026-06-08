@@ -33,9 +33,10 @@
 }
 
 /* utility class for Pixelify Sans */
-.font-pixelify {
-  font-family: var(--font-pixelify);
+.font-code {
+  font-family: var(--font-code);
 }
+
 
 :root {
   --background: oklch(1 0 0);
@@ -273,7 +274,7 @@ body:has(.home-page) footer.footer {
 
 .navbar__brand .navbar__title::after {
   content: 'Script';
-  font-family: var(--font-pixelify);
+  font-family: var(--font-code);
   font-weight: 500;
   font-size: 1.125rem;
 }
