@@ -26,19 +26,14 @@
     "@fontsource-variable/pixelify-sans": "^5.2.7",
     "@fontsource/young-serif": "^5.2.7",
     "@mdx-js/react": "^3.0.0",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
     "@tailwindcss/postcss": "^4.2.4",
-    "@types/three": "^0.184.0",
     "clsx": "^2.0.0",
-    "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "postcss": "^8.5.12",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.2.4",
-    "three": "^0.184.0"
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.0",

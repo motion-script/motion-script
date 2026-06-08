@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import Link from '@docusaurus/Link';
-import { motion, useInView } from 'framer-motion';
+import { useInView } from './useInView';
 
 const docLinks = [
   {
@@ -21,18 +21,14 @@ const docLinks = [
 ];
 
 export default function DocsSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [ref, isInView] = useInView<HTMLDivElement>({ once: true, margin: '-100px' });
 
   return (
     <section id="docs" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <motion.div
+        <div
           ref={ref}
-          initial={{ opacity: 0, y: 40 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-16"
+          className={`reveal-up${isInView ? ' is-visible' : ''} text-center mb-16`}
         >
           <span className="inline-block mb-4 px-2.5 py-0.5 text-xs font-medium rounded-full bg-[var(--foreground)]/5 border border-[var(--border)] text-[var(--muted-foreground)]">
             Documentation
@@ -44,15 +40,14 @@ export default function DocsSection() {
             Comprehensive docs, interactive examples, and a welcoming community to help you build
             amazing things.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {docLinks.map((doc, i) => (
-            <motion.div
+            <div
               key={doc.title}
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
+              style={{ '--reveal-delay': `${i * 0.1}s` } as React.CSSProperties}
+              className={`reveal-up${isInView ? ' is-visible' : ''}`}
             >
               <Link
                 href={doc.href}
@@ -69,7 +64,7 @@ export default function DocsSection() {
                   {doc.description}
                 </p>
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
@@ -78,18 +73,14 @@ export default function DocsSection() {
 }
 
 export function ContributeSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [ref, isInView] = useInView<HTMLDivElement>({ once: true, margin: '-100px' });
 
   return (
     <section id="contribute" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
-        <motion.div
+        <div
           ref={ref}
-          initial={{ opacity: 0, y: 40 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7 }}
-          className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] p-8 sm:p-12 lg:p-16 text-center"
+          className={`reveal-up${isInView ? ' is-visible' : ''} relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] p-8 sm:p-12 lg:p-16 text-center`}
         >
           {/* Background gradient orbs */}
           <div className="absolute top-0 left-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -130,7 +121,7 @@ export function ContributeSection() {
               </a>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

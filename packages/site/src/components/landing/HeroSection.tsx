@@ -5,7 +5,7 @@ import CreateTerminal from './CreateTerminal';
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16">
+    <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 md:pt-16">
       {/* Three.js animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <GradientBackground />
@@ -14,14 +14,14 @@ export default function HeroSection() {
 
       <div className="relative  z-30 mx-auto max-w-5xl text-center" >
         <h1
-          className="hero-fade-up mt-12 font-serif text-[var(--foreground)]"
+          className="hero-fade-up sm:mt-12 font-serif text-[var(--foreground)]"
           style={{ animationDelay: '0.3s', lineHeight: 3 }}
         >
           <span className="bg-gradient-to-r text-4xl sm:text-5xl lg:text-6xl from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
             Motion graphics
           </span>
           <br />
-          <span className="text-4xl font-serif lg:text-5xl" style={{ animationDelay: '0.6s' }}>
+          <span className="text-3xl font-serif lg:text-5xl" style={{ animationDelay: '0.6s' }}>
             with <span className="font-code font-bold">CODE</span>
           </span>
         </h1>

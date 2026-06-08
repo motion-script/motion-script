@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Link from '@docusaurus/Link';
 import { useColorMode } from '@docusaurus/theme-common';
 import { Logo } from './Logo';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
   { label: 'Docs', href: '/docs/intro' },
   { label: 'API', href: '/api/core/' },
-  { label: 'Contribute', href: '#contribute' },
+  { label: 'Blog', href: '/blog' },
 ];
 
 export default function Navbar() {
@@ -27,15 +26,11 @@ export default function Navbar() {
   }, []);
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 backdrop-blur-xl border-b ${
-        scrolled
+    <header
+      className={`navbar-slide-down fixed top-0 left-0 right-0 z-50 transition-all duration-500 backdrop-blur-xl border-b ${scrolled
           ? 'bg-(--background)/75 border-border shadow-sm'
           : 'bg-(--background)/0 border-transparent'
-      }`}
+        }`}
     >
       <div className="w-full">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 h-14">
@@ -94,57 +89,52 @@ export default function Navbar() {
         </nav>
 
         {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="md:hidden bg-[var(--background)]/90 backdrop-blur-xl border-t border-[var(--border)] overflow-hidden"
-            >
-              <div className="px-4 py-4 flex flex-col gap-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="px-4 py-3 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 rounded-lg transition-colors text-sm no-underline hover:no-underline"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                <hr className="border-[var(--border)] my-2" />
-                <a
-                  href="https://github.com/motion-script/motion-script"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-3 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-lg transition-colors no-underline"
-                >
-                  <GithubIcon className="h-4 w-4" />
-                  GitHub
-                </a>
-                <a
-                  href="https://discord.gg/EedNxs4WUZ"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-3 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-lg transition-colors no-underline"
-                >
-                  <DiscordIcon className="h-4 w-4" />
-                  Discord
-                </a>
+        <div
+          className={`mobile-menu md:hidden bg-[var(--background)]/90 backdrop-blur-xl ${mobileOpen ? 'is-open border-t border-[var(--border)]' : ''
+            }`}
+        >
+          <div>
+            <div className="px-4 py-4 flex flex-col gap-2">
+              {navLinks.map((link) => (
                 <Link
-                  href="/docs/intro"
-                  className="flex items-center justify-center px-4 py-3 text-sm font-medium bg-[var(--foreground)] text-[var(--background)] rounded-lg no-underline hover:no-underline hover:opacity-90"
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-4 py-3 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 rounded-lg transition-colors text-sm no-underline hover:no-underline"
                 >
-                  Get Started
+                  {link.label}
                 </Link>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ))}
+              <hr className="border-[var(--border)] my-2" />
+              <a
+                href="https://github.com/motion-script/motion-script"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-3 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-lg transition-colors no-underline"
+              >
+                <GithubIcon className="h-4 w-4" />
+                GitHub
+              </a>
+              <a
+                href="https://discord.gg/EedNxs4WUZ"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-3 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-lg transition-colors no-underline"
+              >
+                <DiscordIcon className="h-4 w-4" />
+                Discord
+              </a>
+              <Link
+                href="/docs/intro"
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium bg-[var(--foreground)] text-[var(--background)] rounded-lg no-underline hover:no-underline hover:opacity-90"
+              >
+                Get Started
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
-    </motion.header>
+    </header>
   );
 }
 
