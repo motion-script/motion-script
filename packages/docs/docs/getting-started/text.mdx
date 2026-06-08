@@ -1,0 +1,236 @@
+---
+sidebar_position: 3
+---
+
+# Text
+
+MotionScript provides two text nodes: `Text` for single-style strings and `RichText` for multi-style spans. Both support fills, strokes, shadows, and all standard node animations.
+
+## Text
+
+`Text` renders a string with a single consistent style.
+
+```tsx
+import { Scene, Text, createRef, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Text
+        text="Hello, MotionScript!"
+        fontSize={48}
+        fontFamily="Inter"
+        fontWeight={700}
+        fill="white"
+      />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | `''` | Text content |
+| `fontSize` | `number \| 'autofit'` | `16` | Font size in pixels, or `'autofit'` to scale to bounds |
+| `fontFamily` | `string` | `'Roboto'` | Font family name |
+| `fontWeight` | `number` | `400` | Weight: 100 (thin) to 900 (black) |
+| `letterSpacing` | `number` | `0` | Extra spacing between characters |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `align` | `number` | `0` | Alignment: `-1` left, `0` center, `1` right |
+| `wrap` | `boolean` | `false` | Enable text wrapping |
+| `minFontSize` | `number` | `12` | Minimum font size when `fontSize: 'autofit'` |
+
+:::info Size defaults
+When `fontSize` is `'autofit'` or `wrap` is `true`, the node defaults to `width: 'fill'` and `height: 'fill'` so it expands to fit its container.
+:::
+
+### Alignment
+
+`align` is a number, not a string:
+
+```tsx
+<Text text="Left"   align={-1} fontSize={32} fill="white" />
+<Text text="Center" align={0}  fontSize={32} fill="white" />
+<Text text="Right"  align={1}  fontSize={32} fill="white" />
+```
+
+### Autofit
+
+Set `fontSize="autofit"` and give the node a fixed size — the text will scale down to fit, never going below `minFontSize`:
+
+```tsx
+<Rect width={400} height={200} borderRadius={12} fill="#1e293b" padding={20}>
+  <Text
+    text="This text fits itself!"
+    fontSize="autofit"
+    minFontSize={12}
+    fill="white"
+    wrap={true}
+  />
+</Rect>
+```
+
+### Word wrap
+
+Enable `wrap` and give the node an explicit `width` (or put it inside a layout that provides one):
+
+```tsx
+<Text
+  text="MotionScript lets you write animations as TypeScript generator functions."
+  fontSize={24}
+  wrap={true}
+  width={500}
+  lineHeight={1.5}
+  fill="#cbd5e1"
+/>
+```
+
+### Animating text
+
+`text` animates by character interpolation — letters appear or disappear smoothly:
+
+```tsx
+import { Scene, Text, createRef, parallel, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const title = createRef<Text>();
+
+    this.add(
+      <Text ref={title} text="Motion Script" fontSize={80} fontWeight={800} fill="white" opacity={0} />
+    );
+
+    yield* parallel(
+      title().to({ opacity: 1 }, 0.8, easeOut),
+      title().to({ y: 20 }, 0.8, easeOut),
+    );
+
+    yield* title().to({ opacity: 0 }, 0.4);
+  }
+}
+```
+
+### Append and prepend
+
+Use `append` and `prepend` to animate text growing character by character:
+
+```tsx
+const label = createRef<Text>();
+this.add(<Text ref={label} text="Hello" fontSize={48} fill="white" />);
+
+yield* label().append(' world!', 1.5);
+yield* label().prepend('>>> ', 1);
+```
+
+### Gradient fill on text
+
+Apply any fill type — including gradients — to a `Text` node:
+
+```tsx
+<Text
+  text="Gradient"
+  fontSize={96}
+  fontWeight={900}
+  fill={{ type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] }}
+/>
+```
+
+---
+
+## RichText
+
+`RichText` renders mixed-style text using a tree of **spans**. Each span can override the font family, size, weight, letter spacing, fill, and stroke of its parent.
+
+```tsx
+import { Scene, RichText, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <RichText
+        fontSize={40}
+        fill="white"
+        spans={[
+          { text: 'Hello ' },
+          { text: 'world', fill: 'royalblue', fontWeight: 700 },
+          { text: '!', fill: '#e84393', fontSize: 60 },
+        ]}
+      />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `spans` | `TextSpan \| TextSpan[]` | `[]` | Span tree |
+| `fontSize` | `number` | `16` | Default font size (inherited by spans) |
+| `fontFamily` | `string` | `'Roboto'` | Default font family |
+| `fontWeight` | `number` | `400` | Default font weight |
+| `letterSpacing` | `number` | `0` | Default letter spacing |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `align` | `number` | `0` | Horizontal alignment (-1, 0, 1) |
+
+### TextSpan interface
+
+```ts
+interface TextSpan {
+  text?: string;           // Text content of this span
+  fontFamily?: string;     // Override font family
+  fontSize?: number;       // Override font size
+  fontWeight?: number;     // Override font weight
+  letterSpacing?: number;  // Override letter spacing
+  fill?: FillProp | FillProp[];   // Override fill
+  stroke?: StrokeProp | StrokeProp[]; // Override stroke
+  children?: TextSpan[];  // Nested spans (inherit this span's styles)
+}
+```
+
+Children inherit all style values from their parent span, overriding only what they explicitly set.
+
+### Nested spans
+
+```tsx
+<RichText
+  fontSize={32}
+  fill="white"
+  spans={[
+    {
+      text: 'The ',
+    },
+    {
+      // This span sets a color; its children inherit it
+      fill: 'royalblue',
+      children: [
+        { text: 'quick ' },
+        { text: 'brown', fontWeight: 900 }, // bold + royalblue
+        { text: ' fox' },
+      ],
+    },
+    { text: ' jumps.' },
+  ]}
+/>
+```
+
+### Multi-line rich text
+
+Use `\n` inside a span's `text` to break lines:
+
+```tsx
+<RichText
+  fontSize={28}
+  fill="white"
+  spans={[
+    { text: 'Line one\n' },
+    { text: 'Line two', fill: '#94a3b8' },
+  ]}
+/>
+```

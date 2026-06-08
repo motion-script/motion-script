@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // Co-locate buildinfo in dist/ so turbo caches it with the emitted
+        // output (avoids stale-declaration bugs on cache restore).
+        "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+    },
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/*.fixtures.ts",
+        "tests"
+    ]
+}

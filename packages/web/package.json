@@ -1,0 +1,53 @@
+{
+  "name": "@motion-script/web",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Browser rendering backend for Motion Script, powered by Skia/CanvasKit.",
+  "sideEffects": false,
+  "keywords": [],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@motion-script/canvaskit": "workspace:*",
+    "@motion-script/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@motion-script/canvaskit": "workspace:*",
+    "@motion-script/core": "workspace:*",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "mediabunny": "catalog:"
+  }
+}

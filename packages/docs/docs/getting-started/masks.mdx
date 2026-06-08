@@ -1,0 +1,147 @@
+---
+sidebar_position: 6
+---
+
+# Masks
+
+`MaskGroup` clips a set of nodes using a shape as a mask. The **first child** is always the mask shape; all subsequent children are the clipped content.
+
+## Basic mask
+
+```tsx
+import { Scene, MaskGroup, Ellipse, Rect, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <MaskGroup mode="vector">
+        {/* First child = mask (circle) */}
+        <Ellipse width={300} height={300} fill="white" />
+
+        {/* Remaining children = clipped content */}
+        <Rect
+          width={400} height={400}
+          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+        />
+      </MaskGroup>
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+---
+
+## Mask modes
+
+| Mode | Description |
+|---|---|
+| `'vector'` | Clips based on the mask shape's outline — fill color is ignored |
+| `'alpha'` | Clips based on the mask shape's alpha channel (transparency) |
+| `'luminance'` | Clips based on the mask shape's brightness |
+
+`'vector'` is the most common: any filled shape works regardless of its color.
+
+`'alpha'` is useful for gradient masks — areas with lower opacity reveal less content.
+
+### Alpha mask with gradient
+
+```tsx
+<MaskGroup mode="alpha">
+  {/* Gradient mask: fully visible on left, fades out on right */}
+  <Rect
+    width={600} height={400}
+    fill={{
+      type: 'linear-gradient',
+      colors: ['black', 'transparent'],
+      stops: [0.5, 1],
+    }}
+  />
+  <Rect
+    width={600} height={400}
+    fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+  />
+</MaskGroup>
+```
+
+---
+
+## Inverted mask
+
+Set `inverted: true` to flip the mask — content shows **outside** the mask shape:
+
+```tsx
+<MaskGroup mode="vector" inverted={true}>
+  <Ellipse width={200} height={200} fill="white" />
+  <Rect width="fill" height="fill" fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} />
+</MaskGroup>
+```
+
+---
+
+## Animating the mask shape
+
+The mask is a regular node. Animate it with `.to()` to create wipe or reveal effects:
+
+```tsx
+import { Scene, MaskGroup, Ellipse, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const maskCircle = createRef<Ellipse>();
+
+    this.add(
+      <MaskGroup mode="vector">
+        <Ellipse ref={maskCircle} width={0} height={0} fill="white" />
+        <Rect
+          width={1280} height={720}
+          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+        />
+      </MaskGroup>
+    );
+
+    // Iris wipe reveal
+    yield* maskCircle().to({ width: 1500, height: 1500 }, 1.2, easeInOut);
+  }
+}
+```
+
+---
+
+## Text as a mask
+
+Any node type — including `Text` — works as the mask shape:
+
+```tsx
+import { Scene, MaskGroup, Text, Rect } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <MaskGroup mode="alpha">
+        <Text
+          text="MOTION"
+          fontSize={140}
+          fontWeight={900}
+          fill="white"
+          align={0}
+        />
+        <Rect
+          width="fill" height="fill"
+          fill={{ type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] }}
+        />
+      </MaskGroup>
+    );
+  }
+}
+```
+
+---
+
+## MaskGroup props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `'vector' \| 'alpha' \| 'luminance'` | — | How the mask shape is interpreted |
+| `inverted` | `boolean` | `false` | Invert the mask (show content outside the shape) |

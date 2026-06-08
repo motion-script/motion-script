@@ -1,0 +1,44 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Generated CanvasKit wasm — copied from the @motion-script/canvaskit package
+# by scripts/copy-wasm.js at install/dev time. Never commit it.
+**/public/canvaskit.wasm
+# TypeScript incremental build info
+*.tsbuildinfo
+*.tsbuildinfo
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --------------------
+# Turborepo
+# --------------------
+.turbo/
+**/.turbo/
+.turbo
+# Turbo daemon / cookies / state
+.turbo-cookie
+.turbo-cookies
+.turbo-daemon
+.turbo-state.json
+.turbo/
+

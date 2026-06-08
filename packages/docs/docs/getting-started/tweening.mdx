@@ -1,0 +1,213 @@
+---
+sidebar_position: 1
+---
+
+# Scene & Tweening
+
+This page covers the scene lifecycle, how animations work frame by frame, and all the tools for composing timing.
+
+## The Scene class
+
+Extend `Scene` and implement `build()` as a generator method:
+
+```tsx
+import { Scene, Rect, createRef } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" borderRadius={12} />);
+
+    yield* box().to({ x: 400, rotate: 180 }, 1);
+  }
+}
+```
+
+- `this.add(node)` — add a node to the scene
+- `yield*` — hand control to an animation and wait for it to finish
+- Every `yield` represents one frame; `yield*` delegates to a sub-generator
+
+### createRef
+
+`createRef<T>()` returns a callable reference. Assign it as `ref={myRef}` in JSX, then call `myRef()` to get the node:
+
+```tsx
+const rect = createRef<Rect>();
+this.add(<Rect ref={rect} width={100} height={100} fill="tomato" />);
+
+yield* rect().to({ x: 300 }, 1);
+```
+
+---
+
+## `.to()` — animate properties
+
+Call `.to(props, duration, easing?)` on any node to tween its properties:
+
+```tsx
+// Slide right over 1 second
+yield* box().to({ x: 400 }, 1);
+
+// Multiple props at once, with easing
+yield* box().to({ x: 400, rotate: 45, opacity: 0.5 }, 0.8, easeOutBack);
+
+// Fill and stroke are animatable too
+yield* box().to({ fill: '#e84393' }, 0.5);
+```
+
+The `duration` is in seconds. Easing is optional and defaults to linear.
+
+---
+
+## `.set()` — instant updates
+
+Use `.set()` to change properties immediately without any animation:
+
+```tsx
+box.set({ x: 0, opacity: 1, fill: 'royalblue' });
+```
+
+---
+
+## `wait` — pause
+
+```tsx
+import { wait } from '@motion-script/core';
+
+yield* wait(1.5); // pause 1.5 seconds
+```
+
+---
+
+## `parallel` — run at the same time
+
+```tsx
+import { parallel } from '@motion-script/core';
+
+yield* parallel(
+  box().to({ x: 400 }, 1),
+  box().to({ opacity: 0 }, 1),
+);
+```
+
+All animations inside `parallel` start simultaneously; `parallel` completes when the longest one finishes.
+
+---
+
+## `sequence` — run one after another
+
+```tsx
+import { sequence } from '@motion-script/core';
+
+yield* sequence(
+  a.to({ y: 100 }, 0.6, easeOutBack),
+  b.to({ y: 100 }, 0.6, easeOutBack),
+  c.to({ y: 100 }, 0.6, easeOutBack),
+);
+```
+
+---
+
+## Easing
+
+Pass an easing function as the third argument to `.to()`:
+
+```tsx
+import { easeOutBack, easeOutElastic, easeInOut } from '@motion-script/core';
+
+yield* box().to({ x: 400 }, 1, easeOutBack);
+yield* box().to({ y: 200 }, 0.8, easeOutElastic);
+yield* box().to({ scale: 1.5 }, 0.6, easeInOut);
+```
+
+### Available easings
+
+| Name | Description |
+|---|---|
+| `linear` | Constant speed |
+| `easeIn` / `easeOut` / `easeInOut` | Standard cubic |
+| `easeInQuad` / `easeOutQuad` / `easeInOutQuad` | Quadratic |
+| `easeInQuart` / `easeOutQuart` / `easeInOutQuart` | Quartic |
+| `easeInBack` / `easeOutBack` / `easeInOutBack` | Overshoots target |
+| `easeInElastic` / `easeOutElastic` / `easeInOutElastic` | Spring-like bounce |
+
+---
+
+## Low-level `tween`
+
+When you need full control over each frame, use `tween` directly. The callback receives `t` from `0` to `1`:
+
+```tsx
+import { tween, lerpNumber } from '@motion-script/core';
+
+yield* tween(1.5, (t) => {
+  box.set({ x: lerpNumber(0, 400, t) });
+});
+
+// With easing applied manually
+yield* tween(1, (t) => {
+  box.set({ x: lerpNumber(0, 400, easeOutBack(t)) });
+});
+```
+
+---
+
+## Stagger
+
+Stagger multiple animations by `yield*`-ing them in a loop:
+
+```tsx
+import { Scene, Rect, Text, easeOutBack } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const items = ['Alpha', 'Beta', 'Gamma'].map((label, i) => {
+      const item = new Rect({ width: 300, height: 60, fill: '#1e293b', borderRadius: 8, opacity: 0 });
+      this.add(item);
+      return item;
+    });
+
+    for (const item of items) {
+      yield* item.to({ opacity: 1, x: 0 }, 0.4, easeOutBack);
+    }
+  }
+}
+```
+
+---
+
+## Audio
+
+Play a sound file and block until it finishes:
+
+```tsx
+yield* this.playSound('./music.mp3');
+
+// With volume control
+yield* this.playSound('./sfx.wav', { volume: 0.5 });
+```
+
+`playSound` returns a `FrameGenerator` so it participates in the normal animation timeline.
+
+---
+
+## Composing scenes
+
+A parent scene can run child scenes sequentially with `buildAll`:
+
+```tsx
+import { Scene, BuildStage } from '@motion-script/core';
+import { IntroScene } from './intro';
+import { MainScene } from './main';
+
+export class RootScene extends Scene {
+  readonly scenes = [new IntroScene(), new MainScene()];
+
+  *build(stage: BuildStage) {
+    yield* this.buildAll(stage);
+  }
+}
+```
+
+Each child scene is mounted, its `build()` is run to completion, then it's unmounted. Nodes added by the parent before `buildAll` are preserved throughout.

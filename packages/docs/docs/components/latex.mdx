@@ -1,0 +1,112 @@
+---
+sidebar_position: 1
+---
+
+# LaTeX
+
+The `Latex` node renders mathematical equations using MathJax. Install the separate package:
+
+```bash
+npm install @motion-script/latex
+```
+
+## Basic equation
+
+```tsx
+import { Scene, createRef } from '@motion-script/core';
+import { Latex } from '@motion-script/latex';
+
+export class MyScene extends Scene {
+  *build() {
+    const eq = createRef<Latex>();
+
+    this.add(
+      <Latex ref={eq} latex="E = mc^2" fontSize={96} fill="white" />
+    );
+
+    yield* eq().to({ opacity: 1 }, 0.6);
+  }
+}
+```
+
+## LaTeX syntax
+
+Pass any valid LaTeX math expression. Wrap display-mode equations in `$$...$$` delimiters:
+
+```tsx
+// Inline
+latex="x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"
+
+// Display math (centered, larger)
+latex="$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$"
+
+// Matrix
+latex="\begin{pmatrix} a & b \\ c & d \end{pmatrix}"
+
+// Summation
+latex="\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}"
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `latex` | `string` | LaTeX math expression |
+| `fontSize` | `number` | Font size — node bounds adjust automatically |
+| `fill` | `FillProp \| FillProp[]` | Fill color(s) |
+
+The node auto-sizes to fit the rendered equation.
+
+## Animating
+
+Animate standard node properties like `opacity`, `x`, `y`, `scale`:
+
+```tsx
+export class MyScene extends Scene {
+  *build() {
+    const formula = createRef<Latex>();
+
+    this.add(
+      <Latex
+        ref={formula}
+        latex="\nabla \cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}"
+        fontSize={60}
+        fill="white"
+        opacity={0}
+        x={-100}
+      />
+    );
+
+    yield* formula().to({ opacity: 1, x: 0 }, 0.6);
+    // Animate to a different equation
+    yield* formula().to({ latex: "F = ma", fontSize: 80 }, 0.5);
+  }
+}
+```
+
+## Morphing between equations
+
+```tsx
+export class MyScene extends Scene {
+  *build() {
+    const eq = createRef<Latex>();
+    this.add(<Latex ref={eq} latex="a^2 + b^2" fontSize={64} fill="#4f80ff" />);
+
+    yield* eq().to({ latex: 'c^2', fontSize: 64 }, 0.5);
+  }
+}
+```
+
+## Combining with other nodes
+
+`Latex` is a full scene node — place it in layouts, masks, or alongside shapes:
+
+```tsx
+this.add(
+  <Rect group="column" gap={20} padding={32} fill="#1e293b" borderRadius={16}>
+    <Latex latex="F = ma" fontSize={72} fill="white" />
+    <Rect width="fill" height={3} fill="#4f80ff" />
+    <Latex latex="E = mc^2" fontSize={72} fill="#4f80ff" />
+  </Rect>
+);
+```

@@ -1,0 +1,137 @@
+---
+sidebar_position: 7
+---
+
+# Boolean Operators
+
+`BooleanGroup` combines child paths using set operations — union, subtract, intersect, and exclude. Fills and strokes are applied to the **group**, not to individual children. Children can still be animated individually.
+
+## Operations
+
+| Operation | Result |
+|---|---|
+| `'union'` | Merged outline of all children |
+| `'subtract'` | First child minus the area of subsequent children |
+| `'intersect'` | Only the overlapping area |
+| `'exclude'` | Union minus the intersection (XOR) |
+
+## Union
+
+Merge two overlapping shapes into a single outline:
+
+```tsx
+import { Scene, BooleanGroup, Ellipse, Rect, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <BooleanGroup op="union" fill="#4f80ff">
+        <Ellipse width={200} height={200} />
+        <Rect width={200} height={200} x={80} />
+      </BooleanGroup>
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+:::note
+Fills and strokes are on the `BooleanGroup`, not the children. The children's own fills are used only when the children are displayed outside the group.
+:::
+
+## Subtract
+
+Cut a hole in the first shape using subsequent children:
+
+```tsx
+<BooleanGroup op="subtract" fill="#e84393">
+  {/* Base */}
+  <Rect width={300} height={300} />
+  {/* Cutout */}
+  <Ellipse width={160} height={160} />
+</BooleanGroup>
+```
+
+## Intersect
+
+Show only where shapes overlap:
+
+```tsx
+<BooleanGroup op="intersect" fill="#f59e0b">
+  <Ellipse width={250} height={250} x={-60} />
+  <Ellipse width={250} height={250} x={60} />
+</BooleanGroup>
+```
+
+## Exclude
+
+Show everything except the overlap (XOR):
+
+```tsx
+<BooleanGroup op="exclude" fill="#34d399">
+  <Ellipse width={250} height={250} x={-60} />
+  <Ellipse width={250} height={250} x={60} />
+</BooleanGroup>
+```
+
+---
+
+## Animating children
+
+Children inside a `BooleanGroup` are ordinary nodes. Animate them to morph the combined shape:
+
+```tsx
+import { Scene, BooleanGroup, Rect, Ellipse, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const hole = createRef<Ellipse>();
+
+    this.add(
+      <BooleanGroup op="subtract" fill="#4f80ff">
+        <Rect width={400} height={400} />
+        <Ellipse ref={hole} width={40} height={40} />
+      </BooleanGroup>
+    );
+
+    // Grow the hole
+    yield* hole().to({ width: 320, height: 320 }, 1.5, easeInOut);
+
+    // Shrink it back
+    yield* hole().to({ width: 40, height={40} }, 1, easeInOut);
+  }
+}
+```
+
+---
+
+## Combining with other groups
+
+`BooleanGroup` is a regular node — nest it inside a `MaskGroup`, another `BooleanGroup`, or a layout:
+
+```tsx
+const shape = (
+  <BooleanGroup op="union" fill="white">
+    <Ellipse width={200} height={200} x={-50} />
+    <Rect width={200} height={200} x={50} />
+  </BooleanGroup>
+);
+
+this.add(
+  <MaskGroup mode="vector">
+    {shape}
+    <Rect width="fill" height="fill" fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} />
+  </MaskGroup>
+);
+```
+
+---
+
+## BooleanGroup props
+
+| Prop | Type | Description |
+|---|---|---|
+| `op` | `'union' \| 'subtract' \| 'intersect' \| 'exclude'` | Boolean operation |
+| `fill` | `FillProp \| FillProp[]` | Fill for the combined shape |
+| `stroke` | `StrokeProp \| StrokeProp[]` | Stroke for the combined shape |

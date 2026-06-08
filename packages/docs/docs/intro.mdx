@@ -1,0 +1,118 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Introduction
+
+MotionScript is a TypeScript-first animation library for creating programmatic 2D (and 3D) animations. You describe scenes as generator methods on a `Scene` class, compose animations with `yield*`, and render to video.
+
+## Quick start
+
+The fastest way to get going is to scaffold a new project:
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm">
+
+```bash
+npm create @motion-script@latest
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn create @motion-script
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm create @motion-script@latest
+```
+
+  </TabItem>
+</Tabs>
+
+
+
+### Optional component packages
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @motion-script/latex   # LaTeX equations
+npm install @motion-script/code    # Syntax-highlighted code blocks
+npm install @motion-script/three   # Three.js 3D scenes
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @motion-script/latex   # LaTeX equations
+yarn add @motion-script/code    # Syntax-highlighted code blocks
+yarn add @motion-script/three   # Three.js 3D scenes
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @motion-script/latex   # LaTeX equations
+pnpm add @motion-script/code    # Syntax-highlighted code blocks
+pnpm add @motion-script/three   # Three.js 3D scenes
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## How scenes work
+
+Every animation is a **Scene** — a class that extends `Scene` and implements a `build()` generator method. Inside `build()` you add nodes to the scene and use `yield*` to drive animations frame by frame.
+
+```tsx
+import { Scene, Rect, createRef, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(
+      <Rect ref={box} width={200} height={200} fill="royalblue" borderRadius={16} />
+    );
+
+    // Slide right over 1 second, then wait
+    yield* box().to({ x: 400 }, 1);
+    yield* wait(0.5);
+  }
+}
+```
+
+Key concepts:
+
+- `this.add(node)` — attach a node to the scene
+- `createRef<T>()` — get a typed reference to a JSX node
+- `yield* node.to(props, duration)` — animate properties over time
+- `yield* wait(seconds)` — pause for a duration
+
+---
+
+## Next steps
+
+- [Shapes](./getting-started/shapes) — Rect, Ellipse, Line, Path, Polygon, Polygram, Image
+- [Text](./getting-started/text) — Text and RichText nodes
+- [Tweening](./getting-started/tweening) — animate properties with easing, `parallel`, `sequence`
+- [Layouts](./getting-started/layouts) — arrange children with flex and stack layout
+- [Effects](./getting-started/effects) — blur, grayscale, and pixelate
+- [Masks](./getting-started/masks) — clip content with shape masks
+- [Boolean Operators](./getting-started/boolean-operators) — combine paths
+- [Components → LaTeX](./components/latex) — render math equations
+- [Components → Code](./components/code) — syntax-highlighted code blocks
+- [Components → Three.js](./components/threejs) — embed 3D scenes

@@ -1,0 +1,71 @@
+---
+sidebar_position: 7
+---
+
+# Color Matrix Filter
+
+Applies a raw 4×5 row-major color matrix (Skia format) to each pixel. This gives you complete control over any linear color transformation.
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+// Invert colors
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.colorMatrix([
+    -1, 0, 0, 0, 255,
+     0,-1, 0, 0, 255,
+     0, 0,-1, 0, 255,
+     0, 0, 0, 1, 0,
+  ])}
+/>
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'colorMatrix'` | Filter identifier |
+| `matrix` | `number[]` | 20-element row-major 4×5 matrix |
+
+## Matrix format
+
+The matrix is applied as:
+
+```
+R' = m[0]*R  + m[1]*G  + m[2]*B  + m[3]*A  + m[4]
+G' = m[5]*R  + m[6]*G  + m[7]*B  + m[8]*A  + m[9]
+B' = m[10]*R + m[11]*G + m[12]*B + m[13]*A + m[14]
+A' = m[15]*R + m[16]*G + m[17]*B + m[18]*A + m[19]
+```
+
+Input channels are in the 0–255 range; the last column (`m[4]`, `m[9]`, `m[14]`, `m[19]`) is an additive offset also in 0–255.
+
+## Common matrices
+
+### Identity (no-op)
+
+```ts
+[1,0,0,0,0, 0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0]
+```
+
+### Invert
+
+```ts
+[-1,0,0,0,255, 0,-1,0,0,255, 0,0,-1,0,255, 0,0,0,1,0]
+```
+
+### Sepia
+
+```ts
+[0.393, 0.769, 0.189, 0, 0,
+ 0.349, 0.686, 0.168, 0, 0,
+ 0.272, 0.534, 0.131, 0, 0,
+ 0,     0,     0,     1, 0]
+```
+
+## Notes
+
+- For simpler photographic adjustments, prefer [`colorAdjustment`](./color-adjustment).
+- The matrix values use the 0–255 channel range, not 0–1.

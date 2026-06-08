@@ -1,0 +1,137 @@
+.app-shell {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body {
+  margin: 0;
+  background-color: #151617;
+
+}
+
+.script-player-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 800px;
+  /* Adjust to match your resolution max */
+  margin: 0 auto;
+  font-family: system-ui, -apple-system, sans-serif;
+
+  overflow: hidden;
+  background-color: #111;
+}
+
+.player-icon {
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 0.8s linear infinite;
+  opacity: 0.7;
+}
+
+.scene-wrapper {
+  width: 100%;
+  background-color: #000;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background-color: #1e1e1e;
+  color: #fff;
+}
+
+.play-toggle-btn:hover {
+  background-color: #ffffff10;
+}
+
+.play-toggle-btn {
+  background-color: transparent;
+  display: flex;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  height: 32px;
+  cursor: pointer;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  padding: 0 12px;
+  transition: background-color 0.2s ease;
+}
+
+
+
+.time-slider {
+  flex-grow: 1;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 20px;
+}
+
+.time-slider::-webkit-slider-container {
+  height: 20px;
+}
+
+.time-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right,
+      #3b82f6 var(--progress, 0%),
+      rgba(255, 255, 255, 0.1) var(--progress, 0%));
+  border-radius: 4px;
+  height: 4px;
+}
+
+.time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -5px;
+  cursor: pointer;
+}
+
+.time-slider::-moz-range-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  height: 4px;
+}
+
+.time-slider::-moz-range-progress {
+  background: #3b82f6;
+  border-radius: 4px;
+  height: 4px;
+}
+
+.time-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.time-display {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  /* Keeps text width from jumping as numbers change */
+  min-width: 75px;
+  text-align: right;
+  color: #ccc;
+}

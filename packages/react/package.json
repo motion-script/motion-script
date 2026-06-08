@@ -1,0 +1,56 @@
+{
+  "name": "@motion-script/react",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "React bindings for Motion Script.",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "eslint . && tsc -p tsconfig.build.json && vite build",
+    "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "preview": "vite preview"
+  },
+  "files": [
+    "dist"
+  ],
+  "module": "./dist/motion-script-react.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/motion-script-react.js"
+    }
+  },
+  "peerDependencies": {
+    "@motion-script/core": "workspace:*",
+    "@motion-script/web": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@motion-script/core": "workspace:*",
+    "@motion-script/web": "workspace:*",
+    "@motion-script/canvaskit": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "react": "catalog:",
+    "globals": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  }
+}

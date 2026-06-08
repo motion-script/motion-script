@@ -1,0 +1,161 @@
+---
+sidebar_position: 3
+---
+
+# Three.js
+
+The `Three` node embeds a Three.js scene inside your MotionScript animation. Install the package:
+
+```bash
+npm install @motion-script/three
+```
+
+## Creating a stage
+
+Extend `ThreeStage` and implement two methods:
+
+- `setupScene()` — called once to build the Three.js scene graph (geometry, materials, lights, camera)
+- `update(deltaTime)` — called every frame to animate the 3D content
+
+```tsx
+import * as THREE from 'three';
+import { ThreeStage } from '@motion-script/three';
+
+class RotatingCubeStage extends ThreeStage {
+  private cube!: THREE.Mesh;
+
+  protected setupScene(): void {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0x4f80ff });
+    this.cube = new THREE.Mesh(geometry, material);
+    this.scene.add(this.cube);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    const directional = new THREE.DirectionalLight(0xffffff, 1);
+    directional.position.set(5, 5, 5);
+    this.scene.add(ambient, directional);
+
+    this.camera.position.set(0, 0, 3);
+    this.camera.lookAt(0, 0, 0);
+  }
+
+  public update(deltaTime: number): void {
+    this.cube.rotation.x += deltaTime * 0.5;
+    this.cube.rotation.y += deltaTime * 0.8;
+  }
+}
+```
+
+## Using the stage in a scene
+
+```tsx
+import { Scene, wait } from '@motion-script/core';
+import { ThreeJS } from '@motion-script/three';
+
+export class MyScene extends Scene {
+  *build() {
+    const stage = new RotatingCubeStage();
+
+    this.add(
+      <ThreeJS
+        stage={stage}
+        width={600}
+        height={600}
+      />
+    );
+
+    yield* wait(4);
+  }
+}
+```
+
+`ThreeJS` behaves like a `Rect` — animate its `x`, `y`, `width`, `height`, `opacity`, and `scale` with `.to()`.
+
+## ThreeStage API
+
+### Properties available in `setupScene` and `update`
+
+| Property | Type | Description |
+|---|---|---|
+| `this.scene` | `THREE.Scene` | The Three.js scene to populate |
+| `this.camera` | `THREE.PerspectiveCamera` | Default perspective camera |
+| `this.viewport` | `Size2D` | Current width/height of the stage in pixels |
+
+### Methods
+
+| Method | Description |
+|---|---|
+| `render()` | Manually trigger a render (called automatically each frame) |
+| `resize(viewport)` | Resize the renderer and update camera aspect ratio |
+| `toImageURL()` | Returns a base64 PNG of the current frame |
+| `getCanvas()` | Returns the underlying `HTMLCanvasElement` |
+| `dispose()` | Release WebGL resources |
+
+## Controlling 3D animation from the generator
+
+Expose setters on your `ThreeStage` subclass and drive them from the generator via `tween`:
+
+```tsx
+import * as THREE from 'three';
+import { ThreeStage } from '@motion-script/three';
+
+class OrbitStage extends ThreeStage {
+  public orbitAngle = 0;
+  private sphere!: THREE.Mesh;
+
+  protected setupScene(): void {
+    const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const material = new THREE.MeshStandardMaterial({ color: 0x34d399 });
+    this.sphere = new THREE.Mesh(geometry, material);
+    this.scene.add(this.sphere);
+
+    const light = new THREE.PointLight(0xffffff, 1);
+    light.position.set(3, 3, 3);
+    this.scene.add(light);
+
+    this.camera.position.set(0, 0, 4);
+    this.camera.lookAt(0, 0, 0);
+  }
+
+  public update(_deltaTime: number): void {
+    this.sphere.position.x = Math.cos(this.orbitAngle) * 1.5;
+    this.sphere.position.z = Math.sin(this.orbitAngle) * 1.5;
+  }
+}
+
+export class MyScene extends Scene {
+  *build() {
+    const stage = new OrbitStage();
+    this.add(<ThreeJS stage={stage} width={960} height={540} />);
+
+    yield* tween(3, (t) => {
+      stage.orbitAngle = t * Math.PI * 2;
+    });
+  }
+}
+```
+
+## Combining with 2D overlays
+
+`ThreeJS` is a regular 2D node. Layer 2D shapes, text, or LaTeX on top:
+
+```tsx
+this.add(
+  <Rect group="stack" width="fill" height="fill">
+    <ThreeJS stage={stage} width="fill" height="fill" />
+    <Text
+      text="Rotating Cube"
+      fontSize={40}
+      fontWeight={700}
+      fill="white"
+      y={-200}
+    />
+  </Rect>
+);
+```
+
+## Tips
+
+- Call `this.camera.aspect = viewport.width / viewport.height` inside a custom `resize()` when your stage needs to respond to viewport changes.
+- Use `dispose()` to release WebGL resources (geometries, materials, textures) when the stage is done.
+- Replace the default `PerspectiveCamera` with an `OrthographicCamera` for isometric or 2.5D scenes.

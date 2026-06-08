@@ -1,0 +1,32 @@
+---
+sidebar_position: 3
+---
+
+# Blur Filter
+
+Applies a Gaussian blur directly to the image texture. `value` is the blur radius in pixels.
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.blur(8)}
+/>
+
+// Raw object
+filters={[{ type: 'blur', value: 8 }]}
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'blur'` | Filter identifier |
+| `value` | `number` | Blur radius in pixels |
+
+## Notes
+
+- Applied at the image texture level, before compositing.
+- For blur on an entire node (including its children), use the [Blur Node Effect](../node-effects/blur) instead.

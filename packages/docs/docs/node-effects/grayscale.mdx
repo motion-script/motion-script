@@ -1,0 +1,62 @@
+---
+sidebar_position: 2
+---
+
+# Grayscale
+
+Desaturates any node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
+
+## Usage
+
+```tsx
+import { FX } from '@motion-script/core';
+
+// Fully grayscale
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.grayscale(1)} />
+
+// Partial desaturation
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.grayscale(0.5)} />
+
+// Raw object
+<Rect effects={[{ type: 'grayscale', amount: 0.8 }]} />
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'grayscale'` | Effect identifier |
+| `amount` | `number` | Desaturation amount: 0 = color, 1 = grayscale |
+
+## Animating
+
+Use a `tween` with `lerpNumber` to animate between color and grayscale:
+
+```tsx
+import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const photo = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    photo.set({ effects: FX.grayscale(1) });
+    this.add(photo);
+
+    // Colorize over 1.5 seconds
+    yield* tween(1.5, (t) => {
+      photo.set({ effects: FX.grayscale(lerpNumber(1, 0, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking
+
+Chain with blur or pixelate:
+
+```tsx
+<Rect effects={FX.grayscale(1).blur(4)} />
+```

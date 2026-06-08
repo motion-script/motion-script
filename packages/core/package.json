@@ -1,0 +1,55 @@
+{
+  "name": "@motion-script/core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Engine-agnostic animation library for Motion Script: scenes, nodes, signals, tweens, layout, and the JSX runtime.",
+  "keywords": [
+    "motion-script",
+    "motion script",
+    "animation"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./jsx/jsx-runtime": {
+      "types": "./dist/jsx/jsx-runtime.d.ts",
+      "default": "./dist/jsx/jsx-runtime.js"
+    },
+    "./jsx/jsx-dev-runtime": {
+      "types": "./dist/jsx/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx/jsx-dev-runtime.js"
+    }
+  },
+  "scripts": {
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

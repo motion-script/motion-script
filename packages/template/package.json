@@ -1,0 +1,19 @@
+{
+  "name": "@motion-script/template",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@motion-script/core": "workspace:*",
+    "@motion-script/latex": "workspace:*",
+    "@motion-script/code": "workspace:*"
+  },
+  "devDependencies": {
+    "@motion-script/vite-plugin": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

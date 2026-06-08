@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": false,
+  "commit": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/motion-script/motion-script/"
+  },
+  "fixed": [
+    [
+      "@motion-script/core",
+      "@motion-script/canvaskit",
+      "@motion-script/web",
+      "@motion-script/react",
+      "@motion-script/player",
+      "@motion-script/vite-plugin",
+      "@motion-script/latex",
+      "@motion-script/code",
+      "@motion-script/create"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@motion-script/template"
+  ]
+}

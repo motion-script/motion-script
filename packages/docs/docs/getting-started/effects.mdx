@@ -1,0 +1,174 @@
+---
+sidebar_position: 5
+---
+
+# Effects
+
+Effects are post-process filters applied to any node via the `effects` prop. They are applied after the node is rendered, so they affect the entire node including its children.
+
+MotionScript provides three built-in effects: **blur**, **grayscale**, and **pixelate**.
+
+## Using effects
+
+Pass an `effects` prop to any node with either an array of effect objects or the `FX` builder:
+
+```tsx
+import { Scene, Rect, FX } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Using the FX builder (chainable)
+    this.add(<Rect width={300} height={300} fill="royalblue" effects={FX.blur(8)} />);
+
+    // Using a raw array
+    this.add(<Rect width={300} height={300} fill="royalblue" effects={[{ type: 'blur', radius: 8 }]} />);
+  }
+}
+```
+
+---
+
+## Blur
+
+Applies a Gaussian blur. `radius` is in pixels.
+
+```tsx
+import { Scene, Rect, Image, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const bg = new Rect({
+      width: 800,
+      height: 450,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    bg.set({ effects: FX.blur(20) });
+    this.add(bg);
+  }
+}
+```
+
+### Animating blur
+
+Animate the `radius` inside a `tween` to create focus-in or defocus effects:
+
+```tsx
+import { Scene, Rect, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const card = new Rect({ width: 400, height={300}, fill: '#1e293b' });
+    card.set({ effects: FX.blur(30) });
+    this.add(card);
+
+    // Focus in
+    yield* tween(1, (t) => {
+      card.set({ effects: FX.blur(lerpNumber(30, 0, easeOut(t))) });
+    });
+  }
+}
+```
+
+---
+
+## Grayscale
+
+Desaturates the node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
+
+```tsx
+<Rect
+  width={500} height={350}
+  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+  effects={FX.grayscale(1)}
+/>
+```
+
+### Colorize animation
+
+Animate from grayscale to full color:
+
+```tsx
+yield* tween(1.5, (t) => {
+  photo.set({ effects: FX.grayscale(lerpNumber(1, 0, easeInOut(t))) });
+});
+```
+
+---
+
+## Pixelate
+
+Chunks the node into rectangular blocks. `size` is a value from `0` (no pixelation) to `1` (entire node collapsed to one block). The value is resolution-independent.
+
+```tsx
+<Rect
+  width={300} height={300}
+  fill={{ type: 'image', src: './logo.png', mode: 'fit' }}
+  effects={FX.pixelate(0.4)}
+/>
+```
+
+### Pixel-reveal animation
+
+```tsx
+import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const logo = new Rect({
+      width: 300,
+      height: 300,
+      fill: { type: 'image', src: './logo.png', mode: 'fit' },
+    });
+    logo.set({ effects: FX.pixelate(0.8) });
+    this.add(logo);
+
+    yield* tween(1.5, (t) => {
+      logo.set({ effects: FX.pixelate(lerpNumber(0.8, 0, easeInOut(t))) });
+    });
+  }
+}
+```
+
+---
+
+## Chaining effects with FX
+
+The `FX` builder lets you chain multiple effects fluently:
+
+```tsx
+import { FX } from '@motion-script/core';
+
+// Grayscale then blur
+<Rect effects={FX.grayscale(0.8).blur(4)} />
+
+// All three
+<Rect effects={FX.pixelate(0.3).grayscale(0.5).blur(2)} />
+```
+
+Each `FX` method returns a new immutable chain, so chains are safe to reuse:
+
+```tsx
+const base = FX.grayscale(1);
+const blurry = base.blur(8);  // 'base' is unchanged
+```
+
+---
+
+## Raw effect objects
+
+You can also pass plain objects — useful when constructing effects programmatically:
+
+```tsx
+effects={[
+  { type: 'grayscale', amount: 0.8 },
+  { type: 'blur', radius: 4 },
+]}
+```
+
+### Effect object types
+
+| Type | Props |
+|---|---|
+| `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
+| `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
+| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number }` | Block sizes 0–1 per axis |

@@ -1,0 +1,32 @@
+---
+sidebar_position: 2
+---
+
+# Grayscale Filter
+
+Desaturates the image. `value` ranges from `0` (original colors) to `1` (fully grayscale).
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.grayscale(1)}
+/>
+
+// Raw object
+filters={[{ type: 'grayscale', value: 0.7 }]}
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'grayscale'` | Filter identifier |
+| `value` | `number` | 0 = original, 1 = fully grayscale |
+
+## Notes
+
+- This filter operates on the image texture. For grayscale applied to an entire node (including children), use the [Grayscale Node Effect](../node-effects/grayscale) instead.
+- Animatable via `tween` with `lerpNumber`.

@@ -1,0 +1,150 @@
+---
+sidebar_position: 2
+---
+
+# Code
+
+The `Code` node renders syntax-highlighted code using [Shiki](https://shiki.matsu.io/). It supports any Shiki language and theme, and provides animation methods for highlighting, replacing, inserting, and removing code.
+
+Install the package:
+
+```bash
+npm install @motion-script/code
+```
+
+## Basic usage
+
+```tsx
+import { Scene, createRef } from '@motion-script/core';
+import { Code, lines, word } from '@motion-script/code';
+
+export class MyScene extends Scene {
+  *build() {
+    const ref = createRef<Code>();
+
+    this.add(
+      <Code
+        ref={ref}
+        code={`function greet(name: string) {
+  return \`Hello, \${name}!\`;
+}`}
+        fontSize={28}
+        showLineNumbers={true}
+      />
+    );
+
+    yield* ref().highlight(lines(2), 0.5);
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `code` | `string` | Source code to display |
+| `fontSize` | `number` | Font size in pixels |
+| `showLineNumbers` | `boolean` | Show line number gutter |
+
+The highlighted language and color theme are configured via the `@motion-script/code` package settings.
+
+## Animation methods
+
+All methods return a `FrameGenerator` and must be `yield*`-ed.
+
+### `highlight(range, duration, easing?)`
+
+Visually highlight a range of code:
+
+```tsx
+yield* ref().highlight(lines(2), 0.5);
+yield* ref().highlight(word(3, 10, 9), 0.4);  // line 3, col 10, length 9
+```
+
+### `resetHighlight(duration, easing?)`
+
+Remove all highlights:
+
+```tsx
+yield* ref().resetHighlight(0.3);
+```
+
+### `replace(range, text, duration, easing?)`
+
+Replace a range of code with new text:
+
+```tsx
+yield* ref().replace(word(1, 22, 6), 'string', 0.3);
+```
+
+### `remove(range, duration, easing?)`
+
+Remove a range of code with an animated transition:
+
+```tsx
+yield* ref().remove(lines(2), 0.4);
+```
+
+## Range helpers
+
+Import range helpers from `@motion-script/code`:
+
+```tsx
+import { lines, word } from '@motion-script/code';
+
+// Select line 2 (1-indexed)
+lines(2)
+
+// Select lines 2 through 5
+lines(2, 5)
+
+// Select a word: line 3, starting at column 10, length 9
+word(3, 10, 9)
+```
+
+## Full example
+
+```tsx
+import { Scene, createRef, wait, parallel, easeOutQuad } from '@motion-script/core';
+import { Code, lines, word } from '@motion-script/code';
+
+export class CodeScene extends Scene {
+  *build() {
+    const ref = createRef<Code>();
+
+    this.add(
+      <Code
+        ref={ref}
+        code={`function getUser(id: number) {
+  const user = db.find(id);
+  return user.name;
+}`}
+        fontSize={32}
+        showLineNumbers={true}
+      />
+    );
+
+    yield* wait(0.5);
+
+    // Highlight line 2
+    yield* ref().highlight(lines(2), 0.5);
+    yield* wait(0.6);
+
+    // Highlight a specific word
+    yield* ref().highlight(word(3, 10, 9), 0.4);
+    yield* wait(0.6);
+
+    // Clear highlight
+    yield* ref().resetHighlight(0.4);
+    yield* wait(0.3);
+
+    // Replace a token
+    yield* ref().replace(word(1, 22, 6), 'string', 0.3, easeOutQuad);
+    yield* wait(0.5);
+
+    // Remove a line
+    yield* ref().remove(lines(2), 0.4);
+    yield* wait(1);
+  }
+}
+```

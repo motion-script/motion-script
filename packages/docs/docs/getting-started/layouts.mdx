@@ -1,0 +1,187 @@
+---
+sidebar_position: 4
+---
+
+# Layouts
+
+`Rect` is both a shape node and a flex/stack layout container. Set the `group` prop to arrange children automatically.
+
+## Layout modes
+
+| `group` | Behaviour |
+|---|---|
+| `'row'` | Children side by side (left → right) |
+| `'column'` | Children stacked (top → bottom) |
+| `'stack'` | Children overlapping (z-stacked) |
+
+## Row
+
+```tsx
+import { Scene, Rect, Text, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Rect group="row" gap={24} padding={32} fill="#1e293b" borderRadius={16}>
+        <Rect width={80} height={80} fill="tomato"   borderRadius={8} />
+        <Rect width={80} height={80} fill="royalblue" borderRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  borderRadius={8} />
+      </Rect>
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+## Column
+
+```tsx
+this.add(
+  <Rect group="column" gap={16} padding={24} fill="#1e293b" borderRadius={12}>
+    <Text text="First"  fontSize={28} fill="white" />
+    <Text text="Second" fontSize={28} fill="white" />
+    <Text text="Third"  fontSize={28} fill="white" />
+  </Rect>
+);
+```
+
+## Stack
+
+Children are layered on top of each other, centered by default:
+
+```tsx
+this.add(
+  <Rect group="stack" width={300} height={300}>
+    <Rect width={300} height={300} fill="royalblue" borderRadius={16} />
+    <Text text="Stacked" fontSize={32} fontWeight={700} fill="white" />
+  </Rect>
+);
+```
+
+---
+
+## Sizing: `fill` and `hug`
+
+`width` and `height` accept three value kinds:
+
+| Value | Meaning |
+|---|---|
+| `number` | Fixed size in pixels |
+| `'fill'` | Expand to fill the parent container's dimension |
+| `'hug'` | Shrink to wrap tightly around children |
+
+```tsx
+// Row that hugs its content, with fill children
+<Rect group="row" gap={16} width="hug" height="hug" padding={20} fill="#0f1117">
+  <Rect width="fill" height={60} fill="#4f80ff" />  {/* fills remaining width */}
+  <Rect width={60}   height={60} fill="#e84393" />  {/* fixed */}
+</Rect>
+```
+
+:::info Default sizing
+A `Rect` with no children defaults to `width: 'fill'`, `height: 'fill'`. A `Rect` with children defaults to `width: 'hug'`, `height: 'hug'`.
+:::
+
+---
+
+## Gap
+
+`gap` is the space between children along the layout axis:
+
+```tsx
+<Rect group="row" gap={32}>...</Rect>
+<Rect group="column" gap={8}>...</Rect>
+```
+
+Pass `gap="auto"` to distribute children evenly (space-between behaviour).
+
+---
+
+## Alignment
+
+`alignment` is a `{ x, y }` vector — each axis is `-1` (start), `0` (center), or `1` (end). It controls how children are positioned on the **cross axis**.
+
+```tsx
+// Row: cross axis is vertical — alignment.y aligns children top/center/bottom
+<Rect group="row" gap={20} alignment={{ x: 0, y: -1 }}>  {/* top-aligned */}
+  <Rect width={60} height={120} fill="tomato" />
+  <Rect width={60} height={60}  fill="royalblue" />
+</Rect>
+```
+
+---
+
+## Padding
+
+Inset the layout's content area from the node's edges:
+
+```tsx
+// Uniform padding
+<Rect group="column" gap={12} padding={24}>...</Rect>
+
+// Per-side padding
+<Rect group="column" gap={12} padding={{ top: 32, bottom: 32, left: 16, right: 16 }}>...</Rect>
+```
+
+---
+
+## Nesting layouts
+
+Layouts can be nested arbitrarily deep:
+
+```tsx
+this.add(
+  <Rect group="column" gap={16} padding={32} fill="#0f1117" width="fill" height="fill">
+    <Rect group="row" gap={16} width="fill">
+      <Rect width="fill" height={200} fill="#1e293b" borderRadius={12} />
+      <Rect width="fill" height={200} fill="#1e293b" borderRadius={12} />
+    </Rect>
+    <Rect width="fill" height={120} fill="#1e293b" borderRadius={12} />
+  </Rect>
+);
+```
+
+---
+
+## Animating layout properties
+
+All layout props are animatable with `.to()`. Animate `gap` to collapse or expand spacing, `group` to cross-fade between row and column, or `width`/`height` for expanding cards:
+
+```tsx
+import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const container = createRef<Rect>();
+
+    this.add(
+      <Rect ref={container} group="row" gap={8} padding={24} fill="#1e293b" borderRadius={16}>
+        <Rect width={80} height={80} fill="tomato"    borderRadius={8} />
+        <Rect width={80} height={80} fill="royalblue" borderRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  borderRadius={8} />
+      </Rect>
+    );
+
+    // Expand the gap
+    yield* container().to({ gap: 40 }, 0.8, easeOut);
+
+    // Switch to column (blended transition)
+    yield* container().to({ group: 'column' }, 0.6, easeOut);
+  }
+}
+```
+
+### Animated child insertion and removal
+
+Children can be added or removed with animated transitions using `addChildAt` and `removeChildAt`:
+
+```tsx
+const card = new Rect({ width: 200, height: 80, fill: '#4f80ff', borderRadius: 8 });
+
+// Insert at index 1 with a 0.4-second fade/grow transition
+yield* container().addChildAt(card, 1, 0.4, easeOut);
+
+// Remove at index 0 with a 0.3-second fade/shrink
+yield* container().removeChildAt(0, 0.3);
+```

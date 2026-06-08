@@ -1,0 +1,8 @@
+{
+  "label": "Node Effects",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Post-process effects applied to any node via the effects prop."
+  }
+}

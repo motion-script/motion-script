@@ -1,0 +1,8 @@
+{
+  "label": "Available Nodes",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "All built-in nodes available in @motion-script/core."
+  }
+}

@@ -1,0 +1,339 @@
+---
+sidebar_position: 2
+---
+
+# Shapes
+
+MotionScript provides seven shape nodes: `Rect`, `Ellipse`, `Line`, `Path`, `Polygon`, `Polygram`, and `Image`. All shapes support `fill`, `stroke`, `shadow`, `opacity`, position, size, and effects.
+
+## Common props
+
+Every shape inherits these from `Node` and `ShapeNode`:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `x` | `number` | `0` | Horizontal offset from layout position |
+| `y` | `number` | `0` | Vertical offset from layout position |
+| `width` | `number \| 'fill' \| 'hug'` | `'fill'` | Width: fixed pixels, expand to parent, or shrink to content |
+| `height` | `number \| 'fill' \| 'hug'` | `'fill'` | Height |
+| `scale` | `number` | `1` | Uniform scale multiplier |
+| `rotate` | `number` | `0` | Rotation in degrees |
+| `opacity` | `number` | `1` | Transparency (0–1) |
+| `fill` | `FillProp \| FillProp[]` | `[]` | Fill color(s) or gradient(s) |
+| `stroke` | `StrokeProp \| StrokeProp[]` | `[]` | Stroke(s) |
+| `shadow` | `ShadowProp \| ShadowProp[]` | `[]` | Drop shadow(s) |
+| `effects` | `EffectChain \| SceneEffect[]` | `[]` | Post-process effects (blur, grayscale, pixelate) |
+| `padding` | `number \| PaddingProps` | `0` | Inner spacing |
+| `clip` | `boolean` | `false` | Clip children to this shape's outline |
+
+### `start` and `end`
+
+Every shape also accepts `start` and `end` (both `0`–`1`). They control what portion of the shape's outline is drawn — useful for draw-on animations:
+
+```tsx
+// Draw a circle from 0% to 100% over 1.5 seconds
+yield* circle().to({ end: 1 }, 1.5);
+```
+
+---
+
+## Rect
+
+The primary building block. `Rect` draws a rounded rectangle and can also act as a **flex layout container** for its children.
+
+```tsx
+import { Scene, Rect, createRef, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(
+      <Rect
+        ref={box}
+        width={300}
+        height={200}
+        fill="royalblue"
+        borderRadius={16}
+      />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Rect-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `group` | `'row' \| 'column' \| 'stack'` | `'row'` | Layout mode for children |
+| `gap` | `number \| 'auto'` | `0` | Spacing between children |
+| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Child alignment (-1 to 1 per axis) |
+
+### Per-corner border radius
+
+```tsx
+<Rect
+  width={200}
+  height={200}
+  fill="hotpink"
+  borderRadius={{ topLeft: 0, topRight: 40, bottomLeft: 40, bottomRight: 0 }}
+/>
+```
+
+---
+
+## Ellipse
+
+Draws circles, ellipses, and arcs. Use `startAngle` and `sweep` to create pie slices or progress rings.
+
+```tsx
+import { Scene, Ellipse, createRef, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const arc = createRef<Ellipse>();
+
+    this.add(
+      <Ellipse ref={arc} width={200} height={200} fill="tomato" sweep={0} />
+    );
+
+    // Animate from 0° to 360° (draw the full circle)
+    yield* arc().to({ sweep: 360 }, 1.5);
+  }
+}
+```
+
+### Ellipse-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `startAngle` | `number` | `0` | Starting angle in degrees |
+| `sweep` | `number` | `360` | Arc sweep in degrees (360 = full circle) |
+| `ratio` | `number` | `1` | Width/height ratio (stretch the ellipse) |
+
+---
+
+## Line
+
+A polyline connecting an array of `{ x, y }` points. Set `closed: true` to close the path back to the first point.
+
+```tsx
+import { Scene, Line, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Line
+        points={[{ x: -150, y: 0 }, { x: 0, y: -100 }, { x: 150, y: 0 }]}
+        stroke={{ fill: 'white', weight: 4 }}
+        radius={20}
+      />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Line-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `{ x: number, y: number }[]` | `[]` | Vertices of the line |
+| `radius` | `number` | `0` | Corner rounding at each vertex |
+| `closed` | `boolean` | `false` | Connect the last point back to the first |
+
+---
+
+## Path
+
+Renders any SVG-style path string. The node auto-measures its bounds and defaults to `'hug'` sizing.
+
+```tsx
+import { Scene, Path, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Path
+        d="M 0 0 L 100 0 L 100 40 L 140 20 L 100 0 L 100 40"
+        fill="mediumpurple"
+        stroke={{ weight: 2, fill: 'white' }}
+      />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Path-specific props
+
+| Prop | Type | Description |
+|---|---|---|
+| `d` | `string \| PathCommand[]` | SVG path data string or command array |
+
+---
+
+## Polygon
+
+A regular polygon with any number of sides. `sides: 3` is a triangle, `sides: 6` is a hexagon.
+
+```tsx
+import { Scene, Polygon, createRef, easeOutElastic } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const hex = createRef<Polygon>();
+
+    this.add(
+      <Polygon ref={hex} sides={6} width={200} height={200} fill="teal" />
+    );
+
+    yield* hex().to({ rotate: 60 }, 1, easeOutElastic);
+  }
+}
+```
+
+### Polygon-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of sides |
+| `borderRadius` | `number` | `0` | Corner rounding |
+
+---
+
+## Polygram
+
+A star polygon. `ratio` controls the depth of the points — lower values produce sharper stars.
+
+```tsx
+import { Scene, Polygram, createRef } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const star = createRef<Polygram>();
+
+    this.add(
+      <Polygram ref={star} sides={5} ratio={0.4} width={300} height={300} fill="gold" borderRadius={10} />
+    );
+
+    yield* star().to({ rotate: 360 }, 2);
+  }
+}
+```
+
+### Polygram-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of points on the star |
+| `ratio` | `number` | `0.5` | Inner/outer radius ratio (lower = sharper points) |
+| `borderRadius` | `number` | `0` | Corner rounding |
+
+---
+
+## Image
+
+Renders an image file with configurable fit mode and optional media filters.
+
+```tsx
+import { Scene, Image, createRef, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Image src="./photo.jpg" fit="fill" width={800} height={450} borderRadius={20} />
+    );
+
+    yield* wait(2);
+  }
+}
+```
+
+### Image-specific props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | — | Path to the image file |
+| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How the image fills the node |
+| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (see Image Filters) |
+| `scaling` | `number` | — | Scale multiplier applied to the image |
+| `transform` | `number[][]` | — | Raw matrix transformation |
+
+---
+
+## Fills
+
+Every shape accepts a `fill` prop. Pass a CSS color string for quick use, or a fill object for gradients and images.
+
+```tsx
+// CSS color string (shorthand)
+<Rect fill="royalblue" />
+
+// Solid color object
+<Rect fill={{ type: 'color', color: '#4f80ff' }} />
+
+// Linear gradient
+<Rect fill={{ type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] }} />
+
+// Radial gradient
+<Rect fill={{ type: 'radial-gradient', colors: ['white', 'transparent'], radius: 200 }} />
+
+// Multiple fills (layered bottom to top)
+<Rect fill={[
+  { type: 'color', color: '#0f1117' },
+  { type: 'linear-gradient', colors: ['#4f80ff33', 'transparent'] }
+]} />
+```
+
+### Fill types
+
+| Type | Key props |
+|---|---|
+| `'color'` | `color` (CSS string or RGBA array), `opacity`, `blend` |
+| `'linear-gradient'` | `colors`, `stops`, `start` `{x,y}`, `end` `{x,y}` |
+| `'radial-gradient'` | `colors`, `stops`, `center` `{x,y}`, `radius` |
+| `'conic-gradient'` | `colors`, `stops`, `center` `{x,y}`, `startAngle` |
+| `'image'` | `src`, `mode` (`fill/fit/crop/tile`), `filters`, `blend` |
+
+---
+
+## Stroke
+
+```tsx
+// Simple white stroke
+<Rect stroke={{ weight: 3, fill: 'white' }} />
+
+// Dashed stroke
+<Rect stroke={{ weight: 2, fill: '#aaa', dash: [10, 6] }} />
+
+// Animated dash offset (draw-on effect)
+yield* rect().to({ stroke: { dashOffset: 100 } }, 1);
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `weight` | `number` | `1` | Stroke width in pixels |
+| `fill` | `FillProp` | — | Stroke color or gradient |
+| `dash` | `number \| number[]` | — | Dash pattern (e.g. `[10, 5]`) |
+| `dashOffset` | `number` | `0` | Offset into the dash pattern |
+
+---
+
+## Shadow
+
+```tsx
+<Rect shadow={{ blur: 20, fill: 'black', opacity: 0.4, dx: 0, dy: 8 }} />
+
+// Multiple shadows
+<Rect shadow={[
+  { blur: 10, fill: 'black', opacity: 0.3, dx: 5, dy: 5 },
+  { blur: 30, fill: '#4f80ff', opacity: 0.2, dx: 0, dy: 0 },
+]} />
+```

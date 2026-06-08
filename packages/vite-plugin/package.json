@@ -1,0 +1,46 @@
+{
+  "name": "@motion-script/vite-plugin",
+  "description": "Vite plugin that bootstraps a Motion Script project: it serves a preview app, resolves the user's scene as the entry point, and ships CanvasKit assets with the build.",
+  "license": "Apache-2.0",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "clean": "rimraf dist .turbo && tsc -b --clean"
+  },
+  "dependencies": {
+    "@motion-script/canvaskit": "workspace:*",
+    "@motion-script/player": "workspace:*",
+    "@vitejs/plugin-react": "^6.0.0",
+    "fontkit": "^2.0.4",
+    "image-size": "^2.0.2",
+    "music-metadata": "^11.8.3",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  }
+}

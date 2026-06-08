@@ -1,0 +1,62 @@
+---
+sidebar_position: 1
+---
+
+# Image Filters Overview
+
+Image filters are pixel-level operations applied to `Image` nodes and `image` fill types via the `filters` prop. Unlike [Node Effects](../node-effects/blur) (which apply after the entire node is composited), image filters operate directly on the image texture before it is drawn.
+
+## Where filters apply
+
+```tsx
+// On an Image node
+<Image src="./photo.jpg" fit="fill" width={600} height={400} filters={[{ type: 'grayscale', value: 1 }]} />
+
+// On an image fill
+<Rect fill={{ type: 'image', src: './photo.jpg', filters: [{ type: 'blur', value: 5 }] }} />
+```
+
+## Using the MX builder
+
+The `MX` builder provides a chainable API — each method returns a new immutable `FilterChain`:
+
+```tsx
+import { MX } from '@motion-script/core';
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.grayscale(1).blur(3).colorAdjustment({ brightness: 0.1 })}
+/>
+```
+
+## Available filters
+
+| Filter | Key props | Description |
+|---|---|---|
+| [`blur`](./blur) | `value` | Gaussian blur |
+| [`grayscale`](./grayscale) | `value` | Desaturate |
+| [`alpha`](./alpha) | `value` | Adjust opacity |
+| [`exposure`](./exposure) | `value` | Brighten/darken |
+| [`colorAdjustment`](./color-adjustment) | Many | Photographic adjustments |
+| [`colorMatrix`](./color-matrix) | `matrix` | Raw 4×5 color matrix |
+| [`curves`](./curves) | `points`, `channel` | Tone curve adjustment |
+
+## Chaining
+
+All filters can be chained with `MX`:
+
+```tsx
+const look = MX
+  .grayscale(0.6)
+  .colorAdjustment({ contrast: 1.2, highlights: -0.1 });
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400} filters={look} />
+```
+
+Or passed as a plain array:
+
+```tsx
+filters={[
+  { type: 'grayscale', value: 0.6 },
+  { type: 'colorAdjustment', contrast: 1.2 },
+]}
+```

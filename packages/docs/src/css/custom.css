@@ -1,0 +1,474 @@
+/* Fonts (Geist, Young Serif, Pixelify Sans) are self-hosted via src/css/fonts.css,
+   loaded ahead of this file through `customCss` in docusaurus.config.ts. The old
+   Google Fonts @import lived here but was dropped by the Tailwind/PostCSS pipeline. */
+
+/* Tailwind v4, imported as explicit layers so Preflight (Tailwind's reset)
+   can be scoped to the landing/editor pages only. Importing "tailwindcss"
+   wholesale would either reset the entire Docusaurus docs/blog UI or — as
+   before — force us to hand-roll Infima neutralizers under .home-page.
+   Instead: theme + utilities load globally; preflight is scoped below. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@custom-variant dark (&:is([data-theme='dark'] *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Young Serif", ui-serif, Georgia, serif;
+  --font-pixelify: "Pixelify Sans", monospace;
+}
+
+/* utility class for Pixelify Sans */
+.font-pixelify {
+  font-family: var(--font-pixelify);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: oklch(0.922 0 0);
+  --radius: 0.625rem;
+
+  /* Docusaurus Infima overrides */
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--background);
+  --ifm-color-primary: oklch(0.5 0.2 264);
+  --ifm-color-primary-dark: oklch(0.45 0.2 264);
+  --ifm-color-primary-darker: oklch(0.42 0.2 264);
+  --ifm-color-primary-darkest: oklch(0.36 0.2 264);
+  --ifm-color-primary-light: oklch(0.55 0.2 264);
+  --ifm-color-primary-lighter: oklch(0.58 0.2 264);
+  --ifm-color-primary-lightest: oklch(0.63 0.2 264);
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* Mirror Infima's own dark selector (`html[data-theme='dark']`, specificity
+   0,1,1) — a bare `[data-theme='dark']` (0,1,0) loses to it, so the `--ifm-*`
+   overrides below would silently fall back to Infima's defaults without it. */
+html[data-theme='dark'] {
+  --background: #111116;
+  --foreground: oklch(0.985 0 0);
+  --primary: oklch(0.95 0.00 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.40 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.40 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--background);
+  --ifm-color-primary: oklch(0.7 0.18 264);
+  --ifm-color-primary-dark: oklch(0.65 0.18 264);
+  --ifm-color-primary-darker: oklch(0.62 0.18 264);
+  --ifm-color-primary-darkest: oklch(0.56 0.18 264);
+  --ifm-color-primary-light: oklch(0.75 0.18 264);
+  --ifm-color-primary-lighter: oklch(0.78 0.18 264);
+  --ifm-color-primary-lightest: oklch(0.83 0.18 264);
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    color: var(--foreground);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Hero entrance animations */
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+.hero-fade-up {
+  opacity: 0;
+  animation: hero-fade-up 0.8s ease forwards;
+}
+
+.hero-fade-in {
+  opacity: 0;
+  animation: hero-fade-in 0.8s ease forwards;
+}
+
+.scroll-bounce {
+  animation: scroll-bounce 2s ease-in-out infinite;
+}
+
+@keyframes cursor-blink {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cursor-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Code blocks: always show line numbers, dark background matching the image */
+.prism-code {
+  counter-reset: line-number;
+}
+
+div[class*='language-'] {
+  --prism-background-color: #18181a !important;
+  border: 1px solid #212124;
+}
+
+.token-line::before {
+  counter-increment: line-number;
+  content: counter(line-number);
+  display: inline-block;
+  width: 2ch;
+  margin-right: 1.5em;
+  text-align: right;
+  color: #4a4a5a;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.token-line {
+  display: flex;
+}
+
+div[class*='language-'] pre {
+  background-color: #18181a !important;
+}
+
+div[class*='language-'] .prism-code {
+  background-color: #18181a !important;
+}
+
+/* Landing page: hide default Docusaurus navbar/footer.
+   The navbar/footer sit outside .main-wrapper so target via body class. */
+body:has(.home-page) .navbar--fixed-top,
+body:has(.home-page) footer.footer {
+  display: none;
+}
+
+/* Docusaurus navbar: blurred glass effect */
+.navbar {
+  background: color-mix(in oklch, var(--background) 75%, transparent) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* Brand wordmark: two-tone "Motion Script" matching the landing-page Navbar
+   (thin serif "Motion" + pixelify medium "Script"). The real title text is
+   kept in the DOM for accessibility/SSR but hidden visually; the wordmark is
+   drawn with pseudo-elements so each word can use a different font. */
+.navbar__brand .navbar__title {
+  font-size: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  color: var(--foreground);
+}
+
+.navbar__brand .navbar__title::before {
+  content: 'Motion';
+  font-family: var(--font-serif);
+  font-weight: 100;
+  font-size: 1.125rem;
+  transform: scale(0.9);
+  display: inline-block;
+}
+
+.navbar__brand .navbar__title::after {
+  content: 'Script';
+  font-family: var(--font-pixelify);
+  font-weight: 500;
+  font-size: 1.125rem;
+}
+
+/* Keep the logo the right color */
+.navbar__logo img {
+  filter: none;
+}
+
+[data-theme='dark'] .navbar__logo img {
+  filter: invert(1);
+}
+
+/* GitHub action: octocat icon + "GitHub" label inside a rounded pill, matching
+   the landing-page Navbar. Docusaurus renders the item as a plain text link, so
+   the icon is added as a background image and the pill styling via the class. */
+.navbar__github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.navbar__github-link:hover {
+  color: var(--foreground);
+  background-color: color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+/* Drop Docusaurus's external-link indicator after the label to match the
+   landing-page Navbar (which renders a plain icon + "GitHub"). */
+.navbar__github-link svg {
+  display: none;
+}
+
+.navbar__github-link::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  /* GitHub octocat mark, matching the SVG in the landing-page Navbar */
+  -webkit-mask: var(--github-icon) center / contain no-repeat;
+  mask: var(--github-icon) center / contain no-repeat;
+}
+
+:root {
+  --github-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z'/%3E%3C/svg%3E");
+}
+
+/* Footer follows the theme surface. With `style: 'dark'` dropped from the
+   config, Infima would otherwise paint the footer in its light-mode greys;
+   pin it to `--footer-bg` so it matches in both themes. Light mode uses a very
+   light gray (Tailwind's gray-100) to set the footer off from the white page;
+   dark mode falls back to the page background (see the dark override below). */
+.footer {
+  background-color: var(--footer-bg);
+  border-top: 1px solid var(--border);
+  --footer-bg: #f3f4f6;
+  --ifm-footer-color: var(--muted-foreground);
+  --ifm-footer-link-color: var(--muted-foreground);
+  --ifm-footer-title-color: var(--foreground);
+}
+
+html[data-theme='dark'] .footer {
+  --footer-bg: var(--background);
+}
+
+.footer .footer__link-item:hover {
+  color: var(--foreground);
+}
+
+/* Color mode toggle: shrink the sun/moon icon in the navbar and mute it until
+   hover, matching the GitHub pill. Docusaurus renders it as a `clean-btn` with
+   an inner SVG; the class hash is unstable, so target via class substrings. */
+.navbar [class*='colorModeToggle'] svg,
+.navbar [class*='toggleButton'] svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.navbar [class*='toggleButton'] {
+  color: var(--muted-foreground);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.navbar [class*='toggleButton']:hover {
+  color: var(--foreground);
+}
+
+/* Scoped Tailwind reset for the landing/editor pages (.home-page).
+   This is a Preflight-equivalent confined to .home-page so Tailwind utility
+   classes are fully authoritative there, while Docusaurus docs/blog keep
+   Infima's base styles untouched. It both neutralizes Infima's element
+   styling (links, headings, buttons) and supplies the box-model/typographic
+   normalization Tailwind utilities assume. */
+@layer base {
+
+  .home-page,
+  .home-page *,
+  .home-page ::before,
+  .home-page ::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--border);
+  }
+
+  /* Headings: drop Infima's font-size/weight/margins so text utilities win. */
+  .home-page :is(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    margin: 0;
+  }
+
+  .home-page :is(p, blockquote, figure, dl, dd) {
+    margin: 0;
+  }
+
+  /* Form controls: reset to inherit fonts/colors so utilities apply cleanly. */
+  .home-page :is(button, input, optgroup, select, textarea) {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+  }
+
+  .home-page :is(button, [type='button'], [type='reset'], [type='submit']) {
+    appearance: button;
+    cursor: pointer;
+    border: none;
+  }
+
+  /* Replaced elements: block-level + responsive by default. */
+  .home-page :is(img, svg, video, canvas, audio, iframe, embed, object) {
+    display: block;
+    vertical-align: middle;
+  }
+
+  .home-page :is(img, video) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Lists used decoratively in the landing page shouldn't show markers. */
+  .home-page :is(ol, ul) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Links: inherit color, no underline — utilities control appearance.
+   Kept UNLAYERED (outside @layer base) on purpose: Infima styles `a` with its
+   blue link color and hover underline as unlayered rules, and unlayered CSS
+   always beats layered CSS regardless of specificity. Inside @layer base this
+   reset would lose to Infima and every landing-page link would render blue +
+   underlined on hover. Utilities (also unlayered-equivalent) still win. */
+.home-page :is(a, a:any-link, a:hover) {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/* Headings: Infima's `h1-h6 { font-family }` is UNLAYERED, so it beats the
+   `font-serif` Tailwind utility (which lives in @layer utilities — layered CSS
+   always loses to unlayered). We can't fix this with `inherit` (headings would
+   then inherit the sans body font). Instead re-declare the serif font as an
+   unlayered rule on `.font-serif`, so it competes with Infima on the same
+   (unlayered) plane and wins on specificity. Default landing headings to serif
+   inheriting from the body; explicit utilities like `font-sans` still override
+   via the class rule below. */
+.home-page :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
+}
+
+.home-page .font-serif {
+  font-family: var(--font-serif);
+}
+
+.home-page .font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Static film grain over the hero's Three.js wave. The texture is an inline
+   SVG feTurbulence (no extra asset). Sits flat on top as a translucent noise
+   layer so it's visible regardless of what's painted underneath. */
+.grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.18;
+}
+
+[data-theme='dark'] .grain-overlay {
+  opacity: 0.12;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "my-video",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@motion-script/core": "*",
+    "@motion-script/code": "*",
+    "@motion-script/latex": "*"
+  },
+  "devDependencies": {
+    "@motion-script/vite-plugin": "*",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11"
+  }
+}

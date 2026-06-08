@@ -1,0 +1,30 @@
+{
+  "name": "@motion-script/canvaskit",
+  "version": "1.0.0",
+  "description": "Custom CanvasKit WASM build for Motion Script with variable font support and WebCodecs-based image I/O.",
+  "license": "Apache-2.0",
+  "homepage": "https://motionscript.dev/",
+  "bugs": "https://github.com/motion-script/motion-script/issues",
+  "main": "canvaskit.js",
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "keywords": [
+    "canvaskit"
+  ],
+  "files": [
+    "canvaskit.js",
+    "canvaskit.wasm",
+    "index.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./canvaskit.js"
+    },
+    "./canvaskit.wasm": "./canvaskit.wasm",
+    "./package.json": "./package.json"
+  }
+}

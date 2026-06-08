@@ -1,0 +1,59 @@
+---
+sidebar_position: 3
+---
+
+# Pixelate
+
+Chunks the node into rectangular blocks. Values are resolution-independent — the same number produces the same visual result regardless of node size.
+
+## Usage
+
+```tsx
+import { FX } from '@motion-script/core';
+
+// Uniform pixelation on both axes (0–1)
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.pixelate(0.3)} />
+
+// Raw object with separate axes
+<Rect effects={[{ type: 'pixelate', horizontalBlocks: 0.4, verticalBlocks: 0.2 }]} />
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'pixelate'` | Effect identifier |
+| `horizontalBlocks` | `number` | Horizontal pixelation: 0 = none, 1 = single block |
+| `verticalBlocks` | `number` | Vertical pixelation: 0 = none, 1 = single block |
+
+The `FX.pixelate(size)` helper sets both axes to the same value.
+
+## Animating — pixel reveal
+
+Start highly pixelated and animate down to 0 to reveal the image:
+
+```tsx
+import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const img = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    img.set({ effects: FX.pixelate(0.9) });
+    this.add(img);
+
+    yield* tween(1.5, (t) => {
+      img.set({ effects: FX.pixelate(lerpNumber(0.9, 0, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking
+
+```tsx
+<Rect effects={FX.pixelate(0.3).grayscale(0.5)} />
+```

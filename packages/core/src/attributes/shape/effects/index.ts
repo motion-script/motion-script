@@ -1,0 +1,21 @@
+/** Effect data types for each built-in effect. */
+export type { BlurEffect } from "./implementations/blur";
+export type { BackgroundBlurEffect } from "./implementations/background-blur";
+export type { GrayScaleEffect } from "./implementations/grayscale";
+export type { PixelateEffect } from "./implementations/pixelate";
+export type { TextureEffect } from "./implementations/texture";
+export type { BulgePinchEffect } from "./implementations/bulge-pinch";
+export type { ZoomEffect } from "./implementations/zoom";
+export type { BloomEffect } from "./implementations/bloom";
+export type { VintageEffect } from "./implementations/vintage";
+export type { ChromaticAberrationEffect } from "./implementations/chromatic-aberration";
+export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
+
+/** Chainable effect builder API, chain class, and union input type. */
+export { FX, ChainableFx, EffectChain } from './chain';
+
+export type { EffectData } from './effect-data';
+export { lerpEffect, lerpEffectArray } from './registry';
+
+/** Union of all concrete effect types accepted by scene nodes. */
+export { SceneEffect } from './union';

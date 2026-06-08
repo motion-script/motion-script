@@ -1,0 +1,26 @@
+{
+  // Declaration-only build for the publishable library surface. Scoped strictly
+  // to src/ so nothing under examples/ ever leaks into dist/*.d.ts.
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    // The published .d.ts must not carry vite/client ambient types.
+    "types": []
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "examples",
+    "vite.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "node_modules",
+    "dist"
+  ]
+}

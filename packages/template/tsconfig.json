@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "experimentalDecorators": true,
+    "jsxImportSource": "@motion-script/core/jsx",
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  },
+  "lib": [
+    "ES2022"
+  ],
+  "include": [
+    "src"
+  ]
+}

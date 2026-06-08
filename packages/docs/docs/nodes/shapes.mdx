@@ -1,0 +1,167 @@
+---
+sidebar_position: 1
+---
+
+# Shape Nodes
+
+All shape nodes extend `ShapeNode` which extends `Node`. They share the common props documented in [Shapes](../getting-started/shapes) and each adds its own specific properties.
+
+## Rect
+
+The primary building block — a rounded rectangle that also acts as a flex/stack layout container.
+
+```tsx
+<Rect
+  width={300}
+  height={200}
+  fill="royalblue"
+  borderRadius={16}
+  group="column"
+  gap={12}
+  padding={20}
+/>
+```
+
+| Prop | Type | Default |
+|---|---|---|
+| `borderRadius` | `number \| { topLeft, topRight, bottomLeft, bottomRight }` | `0` |
+| `group` | `'row' \| 'column' \| 'stack'` | `'row'` |
+| `gap` | `number \| 'auto'` | `0` |
+| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` |
+
+---
+
+## Ellipse
+
+Circles, ovals, and arcs.
+
+```tsx
+<Ellipse width={200} height={200} fill="tomato" />
+
+{/* Arc */}
+<Ellipse width={200} height={200} startAngle={-90} sweep={270} stroke={{ fill: 'white', weight: 6 }} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `startAngle` | `number` | `0` | Starting angle in degrees |
+| `sweep` | `number` | `360` | Arc sweep in degrees |
+| `ratio` | `number` | `1` | Width/height ratio |
+
+---
+
+## Line
+
+A polyline through an array of `{ x, y }` points.
+
+```tsx
+<Line
+  points={[{ x: -100, y: 50 }, { x: 0, y: -50 }, { x: 100, y: 50 }]}
+  stroke={{ fill: 'white', weight: 3 }}
+  radius={12}
+  closed={false}
+/>
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `{ x: number, y: number }[]` | `[]` | Vertices |
+| `radius` | `number` | `0` | Corner rounding at each vertex |
+| `closed` | `boolean` | `false` | Connect last point back to first |
+
+---
+
+## Path
+
+SVG path data — any `d` string from Illustrator, Figma, or hand-written.
+
+```tsx
+<Path
+  d="M 0 -60 L 52 40 L -52 40 Z"
+  fill="mediumpurple"
+/>
+```
+
+| Prop | Type | Description |
+|---|---|---|
+| `d` | `string \| PathCommand[]` | SVG path data |
+
+The node auto-measures its bounding box and defaults to `width: 'hug'`, `height: 'hug'`.
+
+---
+
+## Polygon
+
+A regular convex polygon.
+
+```tsx
+<Polygon sides={6} width={200} height={200} fill="teal" borderRadius={8} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of sides |
+| `borderRadius` | `number` | `0` | Corner rounding |
+
+---
+
+## Polygram
+
+A star polygon. Lower `ratio` values produce sharper points.
+
+```tsx
+<Polygram sides={5} ratio={0.4} width={240} height={240} fill="gold" borderRadius={10} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of star points |
+| `ratio` | `number` | `0.5` | Inner/outer radius ratio |
+| `borderRadius` | `number` | `0` | Corner rounding |
+
+---
+
+## Image
+
+Renders an image file with fit modes and optional media filters.
+
+```tsx
+<Image src="./photo.jpg" fit="fill" width={800} height={450} borderRadius={12} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | — | Image file path |
+| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How image fills the node |
+| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters |
+| `scaling` | `number` | — | Scale multiplier |
+
+---
+
+## Common shape props
+
+All shape nodes inherit from `ShapeNode` and accept:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fill` | `FillProp \| FillProp[]` | `[]` | Fill(s) |
+| `stroke` | `StrokeProp \| StrokeProp[]` | `[]` | Stroke(s) |
+| `shadow` | `ShadowProp \| ShadowProp[]` | `[]` | Shadow(s) |
+| `start` | `number` | `0` | Draw start (0–1) |
+| `end` | `number` | `1` | Draw end (0–1) |
+| `clip` | `boolean` | `false` | Clip children to this shape |
+
+And from `Node`:
+
+| Prop | Type | Default |
+|---|---|---|
+| `x` | `number` | `0` |
+| `y` | `number` | `0` |
+| `width` | `number \| 'fill' \| 'hug'` | `'fill'` |
+| `height` | `number \| 'fill' \| 'hug'` | `'fill'` |
+| `scale` | `number` | `1` |
+| `rotate` | `number` | `0` |
+| `opacity` | `number` | `1` |
+| `effects` | `EffectChain \| SceneEffect[]` | `[]` |
+| `padding` | `number \| PaddingProps` | `0` |

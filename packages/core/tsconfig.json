@@ -1,0 +1,28 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "rootDir": "src",
+        "outDir": "dist",
+        "jsx": "react-jsx",
+        "resolveJsonModule": true,
+        "jsxImportSource": "@motion-script/core/jsx",
+        // ES2022 only — DOM/DOM.Iterable are intentionally excluded so web
+        // globals (Node, Element, AudioNode, HTMLElement, ...) never leak into
+        // this package's intellisense or public API. The few web handles we do
+        // reference are declared opaquely in src/platform/web-types.d.ts.
+        "lib": ["ES2022"],
+        // Only Node ambient types — prevents stray @types packages from
+        // re-introducing DOM globals.
+        "types": ["node"],
+        "paths": {
+            "@/*": [
+                "./src/*" // 2. Add "./" to make the path relative
+            ]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "src/**/*.json"
+    ]
+}
