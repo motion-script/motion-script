@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import LayoutCanvas from './LayoutCanvas';
+import NumberCanvas from './NumberCanvas';
 
 const features = [
   {
@@ -37,14 +39,15 @@ const features = [
   {
     id: 'text',
     badge: 'Text',
-    title: 'Texture & Type Animation',
-    subtitle: 'Bring text and surfaces to life',
+    title: 'Text Animation',
+    subtitle: 'Typography that comes alive',
     description:
-      'Animate text and apply rich textures with per-character control. Fill type and shapes with gradients, images, and patterns, then animate them for striking typographic motion.',
+      'A complete text engine built for motion. Animate variable-font weight axes, compose rich multi-span text, paint type with gradient and image fills, stroke and dash your letterforms, and let text autosize and wrap to fit any layout.',
     bullets: [
-      { title: 'Per-character', text: 'Animate type by character or word' },
-      { title: 'Rich fills', text: 'Texture, gradient, and image fills' },
-      { title: 'Variable fonts', text: 'Custom font loading and weight axes' },
+      { title: 'Variable fonts', text: 'Animate weight and other axes over time' },
+      { title: 'Rich text & fills', text: 'Multi-span runs with gradient and image fills' },
+      { title: 'Dashed strokes', text: 'Outline and dash any glyph' },
+      { title: 'Autosize & wrap', text: 'Text reflows and fits its container automatically' },
     ],
     video: '/text.mp4',
     gradient: 'from-pink-500 to-rose-600',
@@ -81,18 +84,25 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
       transition={{ duration: 0.7, delay: 0.1 }}
       className={`grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center`}
     >
-      {/* Demo video */}
+      {/* Demo — the layout feature renders live on a canvas (no video to load);
+          the rest still play their recorded clips. */}
       <div className={isReversed ? 'lg:order-2' : ''}>
         <div className="relative aspect-video rounded-xl bg-[var(--background)] border border-[var(--border)] overflow-hidden">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src={feature.video}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-          />
+          {feature.id === 'layout' ? (
+            <LayoutCanvas />
+          ) : feature.id === 'text' ? (
+            <NumberCanvas />
+          ) : (
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              src={feature.video}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+          )}
         </div>
       </div>
 
