@@ -1,4 +1,4 @@
-import { AudioDevice, Scene, AssetManager, MeasureScope, Size2D, AudioRequest,  AssetManifest, AssetCatalog, Precomp, StateEvaluator } from "@motion-script/core"
+import { AudioDevice, Scene, AssetManager, MeasureScope, Size2D, AudioRequest, AssetManifest, AssetCatalog, Precomp, StateEvaluator } from "@motion-script/core"
 import {
     AudioBufferSource,
     BufferTarget,
@@ -129,7 +129,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<void> {
         scale = 1,
         filename = 'export.mp4',
         manifest = EMPTY_MANIFEST,
-      
+
         onProgress,
         signal,
         wasmUrl,
@@ -208,7 +208,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<void> {
             await assetManager.loadAt(f);
             stateEvaluator.stateAt(f);
             stateEvaluator.layout(renderContext as unknown as MeasureScope);
-            await renderContext.render(() => {
+            await renderContext.execute(() => {
                 stateEvaluator.render(renderContext);
             });
 

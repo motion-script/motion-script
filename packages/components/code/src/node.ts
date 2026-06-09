@@ -18,7 +18,7 @@ import {
     resolveLineHeightScales,
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
-import { RenderContext, EaseFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
+import { RenderContext, Graphics, EaseFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -867,16 +867,17 @@ export class Code extends Node<CodeProps> {
                 // any dimmed token drags the number down. This also tweens for
                 // free during highlight()/resetHighlight() transitions.
                 const lineHighlightOpacity = this.lineHighlightOpacity(line, stateById);
-                draw.text({
-                    text: label,
-                    fontSize: this.fontSize,
-                    fontFamily: this.fontFamily,
-                    lineHeight: this.lineHeight,
-                    x: gx + labelW / 2,
-                    y: centerY,
-                    align: 'left',
-                })
-                    .fill([{ type: "color", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]);
+                draw.draw(new Graphics()
+                    .text({
+                        text: label,
+                        fontSize: this.fontSize,
+                        fontFamily: this.fontFamily,
+                        lineHeight: this.lineHeight,
+                        x: gx + labelW / 2,
+                        y: centerY,
+                        align: 'left',
+                    })
+                    .fill([{ type: "color", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]));
             }
 
             let x = startX;
@@ -893,20 +894,21 @@ export class Code extends Node<CodeProps> {
                 const tokWidth = this.tokenAdvance(draw, token.content);
 
                 if (opacity > 0 && widthScale > 0) {
-                    draw.text({
-                        text: token.content,
-                        fontSize: this.fontSize,
-                        fontFamily: this.fontFamily,
-                        lineHeight: this.lineHeight,
-                        letterSpacing: this.letterSpacing,
-                        // Token is drawn at its natural width regardless of
-                        // widthScale (widthScale only shrinks the advance), so
-                        // its visual center is always x + tokWidth/2.
-                        x: x + tokWidth / 2,
-                        y: centerY + offsetY,
-                        align: 'left',
-                    })
-                        .fill([{ type: "color", color, opacity }]);
+                    draw.draw(new Graphics()
+                        .text({
+                            text: token.content,
+                            fontSize: this.fontSize,
+                            fontFamily: this.fontFamily,
+                            lineHeight: this.lineHeight,
+                            letterSpacing: this.letterSpacing,
+                            // Token is drawn at its natural width regardless of
+                            // widthScale (widthScale only shrinks the advance), so
+                            // its visual center is always x + tokWidth/2.
+                            x: x + tokWidth / 2,
+                            y: centerY + offsetY,
+                            align: 'left',
+                        })
+                        .fill([{ type: "color", color, opacity }]));
                 }
 
                 x += tokWidth * widthScale;

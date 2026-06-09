@@ -1,5 +1,6 @@
 
 import { ClipShape, RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
@@ -60,13 +61,15 @@ export class Grid extends ShapeNode<GridProps> {
     // ---- Drawing -------------------------------------------------------------
 
     protected renderSelf(draw: RenderContext): void {
-        draw.rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
-            start: this.start,
-            end: this.end,
-        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke);
+        draw.draw(new Graphics()
+            .rect({
+                width: this.layoutRect.width,
+                height: this.layoutRect.height,
+                borderRadius: this.borderRadius,
+                start: this.start,
+                end: this.end,
+            })
+            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
     protected override applyClip(ctx: RenderContext): void {

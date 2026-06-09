@@ -36,6 +36,14 @@ export abstract class BaseShape<S, G = unknown> {
     hasTrim(): boolean { return this.needsTrim(); }
     trimRange(): { start: number; end: number } { return this.getTrimRange(); }
 
+    // True when the shape has a non-identity rotation/scale baked into its path,
+    // so subclasses with native fast-draw paths (RectShape) must fall back to the
+    // transformed ckPath instead of drawRect/drawRRect.
+    protected hasShapeTransform(): boolean {
+        const s = this.fullState as unknown as { rotation?: number; scale?: number };
+        return (s.rotation ?? 0) !== 0 || (s.scale ?? 1) !== 1;
+    }
+
     protected get geometry(): G {
         return (this._geo ??= this.computeGeometry());
     }
@@ -49,6 +57,7 @@ export abstract class BaseShape<S, G = unknown> {
             console.warn(`${this.constructor.name}: failed to create path`);
             return;
         }
+        this.applyShapeTransform(path);
         if (this.needsTrim()) {
             this._basePath = path;
             const { start, end } = this.getTrimRange();
@@ -56,6 +65,45 @@ export abstract class BaseShape<S, G = unknown> {
         } else {
             this.ckPath = path;
         }
+    }
+
+    // Bake the shape's own rotation/scale (about its centre, honouring pivot)
+    // into the path geometry. The shape's x/y are already baked into the SVG by
+    // computeGeometry, so a shape rotates about its own (x,y) centre. Pivot is in
+    // normalised shape space (0,0 = centre, ±1 = edges), matching the node-level
+    // transform in WebRenderContext. No-op for the common untransformed case so
+    // axis-aligned rects/ellipses keep their fast native draw/clip paths.
+    private applyShapeTransform(path: CKPath): void {
+        const s = this.fullState as unknown as {
+            x?: number; y?: number; rotation?: number; scale?: number;
+            width?: number; height?: number;
+            pivot?: { x: number; y: number };
+        };
+        const rotation = s.rotation ?? 0;
+        const scale = s.scale ?? 1;
+        if (rotation === 0 && scale === 1) return;
+
+        const cx = s.x ?? 0;
+        const cy = s.y ?? 0;
+        const pivot = s.pivot ?? { x: 0, y: 0 };
+        const px = cx + pivot.x * ((s.width ?? 0) / 2);
+        const py = cy - pivot.y * ((s.height ?? 0) / 2);
+
+        const rad = (rotation * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        // Affine that translates the pivot to the origin, scales, rotates, then
+        // translates back — composed into a single 3x3 (row-major) matrix.
+        const a = cos * scale;
+        const b = -sin * scale;
+        const c = sin * scale;
+        const d = cos * scale;
+        const e = px - a * px - b * py;
+        const f = py - c * px - d * py;
+        // CanvasKit's Path.transform takes a 3x3 row-major matrix as 9 params and
+        // mutates in place (not in the bundled .d.ts Path interface).
+        (path as unknown as { transform(...m: number[]): void })
+            .transform(a, b, e, c, d, f, 0, 0, 1);
     }
 
     protected _setBasePath(path: CKPath): void {

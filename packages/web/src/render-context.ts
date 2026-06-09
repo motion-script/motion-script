@@ -19,11 +19,11 @@ import {
     type LineState,
     type MaskOptions,
     type PathState,
-    PathBuilder,
     type PolygonState,
     type PolygramState,
     type RectState,
-    type Render2DPaintContext,
+    Graphics,
+    type GraphicsOp,
     RenderContext,
     type RichTextState,
     type SpaceRect,
@@ -187,7 +187,7 @@ export class WebRenderContext extends RenderContext {
 
     pixelRatio: number = 1;
 
-    private renderPass(callback: () => void): void {
+    private executePass(callback: () => void): void {
         // The surface is freed on dispose()/unmount(). A late async render (e.g. a
         // seek resolving after a StrictMode/HMR remount disposed this context)
         // would otherwise call getCanvas() on a deleted Surface and throw.
@@ -261,8 +261,8 @@ export class WebRenderContext extends RenderContext {
     }
 
     /** Runs one synchronous draw pass (`callback`) against the mounted surface. */
-    async render(callback: () => void): Promise<void> {
-        await this.renderPass(callback);
+    async execute(callback: () => void): Promise<void> {
+        await this.executePass(callback);
     }
 
     /** Attaches a WebGL CanvasKit surface to `canvas`, remounting if already mounted (HMR/StrictMode). */
@@ -336,6 +336,77 @@ export class WebRenderContext extends RenderContext {
 
     // ─── Draw commands ───────────────────────────────────────────────────────
 
+    /**
+     * Replay a built {@link Graphics} command list against this context. Shape
+     * ops accumulate into the shape handler; paint ops (fill/stroke/shadow) paint
+     * the accumulated shapes as one combined surface; cut/mask ops composite.
+     *
+     * A paint-only Graphics (no shape ops — e.g. the fill/stroke applied to a
+     * boolean result after `endBoolean()`) does NOT reset the shape handler, so
+     * it styles whatever surface is currently active.
+     */
+    draw(graphics: Graphics): void {
+        if (!this.isRendering) {
+            console.warn("draw() must be called within the draw() method.");
+            return;
+        }
+        // Graphics-level opacity/effects composite the whole drawn group into one
+        // layer (so overlapping shapes don't double their alpha), mirroring the
+        // node-level transform layer.
+        const needsLayer = graphics.needsGroupLayer();
+        let groupFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
+        if (needsLayer) {
+            const opacity = graphics.groupOpacity();
+            const effects = graphics.groupEffects();
+            if (effects.length > 0) {
+                const w = this.surface.width();
+                const h = this.surface.height();
+                groupFilter = CanvasKitEffectRegistry.composeFilters([...effects], this.canvasKit, w, h);
+            }
+            this.layerPaint.setAlphaf(opacity < 1 ? opacity : 1);
+            this.layerPaint.setImageFilter(groupFilter ?? null);
+            this.currentCanvas.saveLayer(this.layerPaint);
+            this.layerPaint.setAlphaf(1);
+            this.layerPaint.setImageFilter(null);
+        }
+
+        // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
+        // the fill/stroke for a boolean result left active by endBoolean) is
+        // applied to the currently-active surface without resetting it.
+        for (const op of graphics.ops()) {
+            this.applyOp(op);
+        }
+        // Flush any pending image declared by the last image op without a trailing
+        // paint call (mirrors end()'s flush; harmless if nothing is pending).
+        this.flushPendingImage();
+
+        if (needsLayer) {
+            this.currentCanvas.restore();
+            groupFilter?.delete?.();
+        }
+    }
+
+    private applyOp(op: GraphicsOp): void {
+        switch (op.kind) {
+            case "rect": this._rect(op.state); break;
+            case "ellipse": this._ellipse(op.state); break;
+            case "path": this._path(op.state); break;
+            case "line": this._line(op.state); break;
+            case "polygon": this._polygon(op.state); break;
+            case "polygram": this._polygram(op.state); break;
+            case "text": this._text(op.state); break;
+            case "richText": this._richText(op.state); break;
+            case "image": this._image(op.state); break;
+            case "fill": this._fill(op.fills); break;
+            case "stroke": this._stroke(op.strokes); break;
+            case "shadow": this._shadow(op.shadows); break;
+            case "cut": this._cut(); break;
+            case "mask": this._maskOp(op.options); break;
+            case "applyMask": this._applyMask(); break;
+            case "endMask": this._endMaskOp(); break;
+        }
+    }
+
     /** Applies the node's transform to the canvas and, when opacity < 1 or effects are present, pushes a `saveLayer` tracked in {@link effectLayerStack} for `end()` to unwind. */
     transform(state: Partial<TransformState>): RenderContext {
         if (!this.isRendering) {
@@ -408,90 +479,51 @@ export class WebRenderContext extends RenderContext {
         return null;
     }
 
-    rect(state: Partial<RectState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("fillRect must be called within the draw() method.");
-            return this;
-        }
+    private _rect(state: Partial<RectState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.rect(state);
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
-        return this;
     }
 
-    ellipse(state: Partial<EllipseState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("ellipse must be called within the draw() method.");
-            return this;
-        }
+    private _ellipse(state: Partial<EllipseState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.ellipse(state);
-        return this;
     }
 
-    path(state: Partial<PathState> | PathBuilder): Render2DPaintContext {
-        if (!this.currentCanvas) {
-            console.warn("path() must be called within the draw() method.");
-            return this;
-        }
+    private _path(state: Partial<PathState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
-        this.shapeHandler.path(state instanceof PathBuilder ? state.toPathState() : state);
-        return this;
+        this.shapeHandler.path(state);
     }
 
-    line(state: Partial<LineState>): Render2DPaintContext {
-        if (!this.currentCanvas) {
-            console.warn("line() must be called within the draw() method.");
-            return this;
-        }
+    private _line(state: Partial<LineState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.line(state);
-        return this;
     }
 
-    polygon(state: Partial<PolygonState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("polygon() must be called within the draw() method.");
-            return this;
-        }
+    private _polygon(state: Partial<PolygonState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.polygon(state);
-        return this;
     }
 
-    polygram(state: Partial<PolygramState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("polygram() must be called within the draw() method.");
-            return this;
-        }
+    private _polygram(state: Partial<PolygramState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.polygram(state);
-        return this;
     }
 
-    text(state: Partial<TextState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("text() must be called within the draw() method.");
-            return this;
-        }
+    private _text(state: Partial<TextState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.text(state);
-        return this;
     }
 
-    /** Lays out spans/runs and paints each run's fill/stroke immediately (rich text carries per-span paint, bypassing the usual `.fill()/.stroke()` chain). */
-    richText(state: Partial<RichTextState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("richText() must be called within the draw() method.");
-            return this;
-        }
+    /** Lays out spans/runs and paints each run's fill/stroke immediately (rich text carries per-span paint, bypassing the usual fill/stroke ops). */
+    private _richText(state: Partial<RichTextState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
 
@@ -503,9 +535,9 @@ export class WebRenderContext extends RenderContext {
         );
 
         // Spans carry their own resolved fills/strokes, so we draw eagerly
-        // here rather than going through the .fill()/.stroke() chain. Push
-        // the overall bounds so any per-run gradient resolves against the
-        // whole rich-text box, not just the run.
+        // here rather than going through the fill/stroke ops. Push the overall
+        // bounds so any per-run gradient resolves against the whole rich-text
+        // box, not just the run.
         this.shapeHandler.pushBounds(layout.bounds);
         try {
             for (const run of layout.runs) {
@@ -527,47 +559,30 @@ export class WebRenderContext extends RenderContext {
             this.shapeHandler.popBounds();
             for (const font of layout.fonts) font.delete();
         }
-
-        return this;
     }
 
-    /** Defers drawing until a chained `.fill()/.stroke()/.shadow()` or the next shape call flushes via {@link flushPendingImage} — lets images join the same paint-context chaining as other shapes. */
-    image(state: Partial<ImageState>): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("image() must be called within the draw() method.");
-            return this.imagePaintCtx;
-        }
+    /** Defers drawing until a following fill/stroke/shadow op or the next shape op flushes via {@link flushPendingImage} — lets images share the same accumulation as other shapes. */
+    private _image(state: Partial<ImageState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.pendingImage = state;
         this.pendingImageShadows = [];
         this.pendingImageFills = [];
         this.pendingImageStrokes = [];
-        return this.imagePaintCtx;
     }
 
-    /** @internal */ _appendImageShadows(s: ShadowResolved[]): void {
-        if (this.pendingImage && s.length > 0) this.pendingImageShadows.push(...s);
-    }
-    /** @internal */ _appendImageFills(f: FillResolved[]): void {
-        if (this.pendingImage && f.length > 0) this.pendingImageFills.push(...f);
-    }
-    /** @internal */ _appendImageStrokes(s: StrokeResolved[]): void {
-        if (this.pendingImage && s.length > 0) this.pendingImageStrokes.push(...s);
-    }
-
-    private imagePaintCtx: Render2DPaintContext = new WebImagePaintContext(this);
-
-    fill(fills: FillProp | FillProp[]): Render2DPaintContext {
+    private _fill(fills: FillProp | FillProp[]): void {
         const resolved = resolveFillArray(fills);
-        if (resolved.length === 0) return this;
-        if (!this.isRendering) {
-            console.warn("fill() must be called within the draw() method.");
-            return this;
+        if (resolved.length === 0) return;
+        // A fill following an image op styles that pending image, mirroring the
+        // old image paint-context routing.
+        if (this.pendingImage) {
+            if (resolved.length > 0) this.pendingImageFills.push(...resolved);
+            return;
         }
         if (this.shapeHandler.isCollectingPaths()) {
             this.shapeHandler.paintApplied = true;
-            return this;
+            return;
         }
         const maskApply = this.shapeHandler.getMaskApply();
         if (maskApply !== null && !maskApply.has('fill')) {
@@ -575,7 +590,7 @@ export class WebRenderContext extends RenderContext {
             if (top) {
                 top.push({ kind: 'fill', shapes: [...this.shapeHandler.shapes], fills: resolved, shadows: this.shapeHandler.takePendingShadows() });
                 this.shapeHandler.paintApplied = true;
-                return this;
+                return;
             }
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
@@ -587,7 +602,6 @@ export class WebRenderContext extends RenderContext {
         }
         this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
         this.shapeHandler.paintApplied = true;
-        return this;
     }
 
     // Set the fill handler's bounds for a fill, honouring its `space`. Used as
@@ -617,16 +631,17 @@ export class WebRenderContext extends RenderContext {
         return { shapes: this.shapeHandler.shapes, dispose: () => { } };
     }
 
-    stroke(strokes: StrokeProp | StrokeProp[]): Render2DPaintContext {
+    private _stroke(strokes: StrokeProp | StrokeProp[]): void {
         const resolved = resolveStrokeArray(strokes);
-        if (resolved.length === 0) return this;
-        if (!this.currentCanvas) {
-            console.warn("stroke() must be called within the draw() method.");
-            return this;
+        if (resolved.length === 0) return;
+        // A stroke following an image op styles that pending image.
+        if (this.pendingImage) {
+            if (resolved.length > 0) this.pendingImageStrokes.push(...resolved);
+            return;
         }
         if (this.shapeHandler.isCollectingPaths()) {
             this.shapeHandler.paintApplied = true;
-            return this;
+            return;
         }
         const maskApply = this.shapeHandler.getMaskApply();
         if (maskApply !== null && !maskApply.has('stroke')) {
@@ -634,7 +649,7 @@ export class WebRenderContext extends RenderContext {
             if (top) {
                 top.push({ kind: 'stroke', shapes: [...this.shapeHandler.shapes], strokes: resolved, shadows: this.shapeHandler.takePendingShadows() });
                 this.shapeHandler.paintApplied = true;
-                return this;
+                return;
             }
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
@@ -652,28 +667,22 @@ export class WebRenderContext extends RenderContext {
         this.strokeHandler.applyStrokes(resolved, shapes, this.applyFillSpaceBounds);
         dispose();
         this.shapeHandler.paintApplied = true;
-        return this;
     }
 
-    shadow(shadows: ShadowProp | ShadowProp[]): Render2DPaintContext {
+    private _shadow(shadows: ShadowProp | ShadowProp[]): void {
         const resolved = resolveShadowArray(shadows);
-        if (resolved.length === 0) return this;
-        if (!this.isRendering) {
-            console.warn("shadow() must be called within the draw() method.");
-            return this;
+        if (resolved.length === 0) return;
+        // A shadow following an image op styles that pending image.
+        if (this.pendingImage) {
+            if (resolved.length > 0) this.pendingImageShadows.push(...resolved);
+            return;
         }
-        if (this.shapeHandler.isCollectingPaths()) return this;
+        if (this.shapeHandler.isCollectingPaths()) return;
         this.shapeHandler.storePendingShadows(resolved);
-        return this;
     }
 
-    cut(): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("cut() must be called within the draw() method.");
-            return this;
-        }
+    private _cut(): void {
         this.shapeHandler.cut();
-        return this;
     }
 
     // ─── Camera viewport ─────────────────────────────────────────────────────
@@ -1009,26 +1018,15 @@ export class WebRenderContext extends RenderContext {
         this.shapeHandler.beginBoolean(op);
     }
 
-    endBoolean(): Render2DPaintContext {
+    endBoolean(): void {
         if (!this.isRendering) {
             console.warn("endBoolean() must be called within the draw() method.");
-            return this;
+            return;
         }
         this.shapeHandler.endBoolean();
-        return this;
     }
 
     // ─── Mask group ──────────────────────────────────────────────────────────
-
-    mask(options?: MaskOptions): Render2DPaintContext {
-        if (!this.isRendering) {
-            console.warn("mask() must be called within the draw() method.");
-            return this;
-        }
-        this.shapeHandler.beginMask(options);
-        this.deferredPaintsStack.push([]);
-        return this;
-    }
 
     beginMask(options?: MaskOptions): void {
         if (!this.isRendering) {
@@ -1039,13 +1037,12 @@ export class WebRenderContext extends RenderContext {
         this.deferredPaintsStack.push([]);
     }
 
-    applyMask(): Render2DPaintContext {
+    applyMask(): void {
         if (!this.isRendering) {
             console.warn("applyMask() must be called within the draw() method.");
-            return this;
+            return;
         }
         this.shapeHandler.applyMask();
-        return this;
     }
 
     endMask(): void {
@@ -1058,7 +1055,20 @@ export class WebRenderContext extends RenderContext {
         this.flushDeferredPaints(deferred);
     }
 
-    /** Replays fill/stroke calls that were postponed by an active mask scope (see `mask`/`fill`/`stroke`), in original order, once the mask resolves at `endMask`. */
+    // Graphics-op variants of the mask scope, used when a Graphics command list
+    // opens an inline mask within a single draw(). They share the imperative
+    // scope implementation above.
+    private _maskOp(options?: MaskOptions): void {
+        this.beginMask(options);
+    }
+    private _applyMask(): void {
+        this.applyMask();
+    }
+    private _endMaskOp(): void {
+        this.endMask();
+    }
+
+    /** Replays fill/stroke calls that were postponed by an active mask scope (see `beginMask`/`_fill`/`_stroke`), in original order, once the mask resolves at `endMask`. */
     private flushDeferredPaints(deferred: DeferredPaintCall[]): void {
         for (const d of deferred) {
             if (d.kind === 'stroke') {
@@ -1074,36 +1084,4 @@ export class WebRenderContext extends RenderContext {
             }
         }
     }
-}
-
-/** Paint-context returned by `image()`; routes `.fill/.stroke/.shadow` into the pending image's buffers and forwards shape calls back to the render context (which flushes the pending image first). */
-class WebImagePaintContext implements Render2DPaintContext {
-    constructor(private ctx: WebRenderContext) { }
-    fill(fills: FillProp | FillProp[]): Render2DPaintContext {
-        this.ctx._appendImageFills(resolveFillArray(fills));
-        return this;
-    }
-    stroke(strokes: StrokeProp | StrokeProp[]): Render2DPaintContext {
-        this.ctx._appendImageStrokes(resolveStrokeArray(strokes));
-        return this;
-    }
-    shadow(shadows: ShadowProp | ShadowProp[]): Render2DPaintContext {
-        this.ctx._appendImageShadows(resolveShadowArray(shadows));
-        return this;
-    }
-
-    // Chaining a new shape after an image flushes the pending image (the shape
-    // methods on the context do this) and starts the next shape on the context.
-    rect(state: Partial<RectState>): Render2DPaintContext { return this.ctx.rect(state); }
-    ellipse(state: Partial<EllipseState>): Render2DPaintContext { return this.ctx.ellipse(state); }
-    text(state: Partial<TextState>): Render2DPaintContext { return this.ctx.text(state); }
-    richText(state: Partial<RichTextState>): Render2DPaintContext { return this.ctx.richText(state); }
-    path(state: Partial<PathState> | PathBuilder): Render2DPaintContext { return this.ctx.path(state); }
-    line(state: Partial<LineState>): Render2DPaintContext { return this.ctx.line(state); }
-    image(state: Partial<ImageState>): Render2DPaintContext { return this.ctx.image(state); }
-    polygon(state: Partial<PolygonState>): Render2DPaintContext { return this.ctx.polygon(state); }
-    polygram(state: Partial<PolygramState>): Render2DPaintContext { return this.ctx.polygram(state); }
-    cut(): Render2DPaintContext { return this.ctx.cut(); }
-    applyMask(): Render2DPaintContext { return this.ctx.applyMask(); }
-    endMask(): void { this.ctx.endMask(); }
 }

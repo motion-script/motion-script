@@ -1,5 +1,6 @@
 import { TextAlign } from "@/attributes/text/align";
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveFillArray } from "@/attributes/shape/fill/registry";
@@ -157,12 +158,12 @@ export class RichText extends ShapeNode<RichTextProps> {
     }
 
     protected override renderSelf(ctx: RenderContext): void {
-        ctx.richText({
+        ctx.draw(new Graphics().richText({
             spans: this.runs(),
             lineHeight: this.lineHeight,
             align: this.align,
             width: this.layoutRect?.width ?? 0,
             height: this.layoutRect?.height ?? 0,
-        });
+        }));
     }
 }

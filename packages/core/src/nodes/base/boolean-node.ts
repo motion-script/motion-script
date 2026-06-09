@@ -1,4 +1,5 @@
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 
 import { NodeConfig } from "./node";
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
@@ -36,11 +37,12 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
 
         ctx.beginBoolean(this.op);
         for (const child of this._children) child.render(ctx);
-        // endBoolean leaves the combined path as the active shape so the
-        // chained shadow / fill / stroke calls below paint it.
-        ctx.endBoolean()
+        // endBoolean leaves the combined path as the active surface; a paint-only
+        // Graphics (no shape ops) then paints it with this node's shadow/fill/stroke.
+        ctx.endBoolean();
+        ctx.draw(new Graphics()
             .shadow(this.shadow)
             .fill(this.fill)
-            .stroke(this.stroke);
+            .stroke(this.stroke));
     }
 }

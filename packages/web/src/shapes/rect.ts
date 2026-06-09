@@ -102,7 +102,7 @@ export class RectShape extends BaseShape<RectState, RectGeo> {
 
     override draw(paint: Paint, isolated: boolean): void {
         const geo = this.geometry;
-        if (isolated && !this.needsTrim()) {
+        if (isolated && !this.needsTrim() && !this.hasShapeTransform()) {
             const ck = this.canvasKit;
             const ltrb = ck.LTRBRect(geo.left, geo.top, geo.right, geo.bottom);
             if (geo.isZero) {
@@ -120,7 +120,7 @@ export class RectShape extends BaseShape<RectState, RectGeo> {
     override clip(isolated: boolean): void {
         const geo = this.geometry;
         const ck = this.canvasKit;
-        if (isolated && !this.needsTrim()) {
+        if (isolated && !this.needsTrim() && !this.hasShapeTransform()) {
             const ltrb = ck.LTRBRect(geo.left, geo.top, geo.right, geo.bottom);
             if (geo.isZero) {
                 this.canvas.clipRect(ltrb, ck.ClipOp.Intersect, true);
