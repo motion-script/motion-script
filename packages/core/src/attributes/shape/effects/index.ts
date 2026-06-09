@@ -4,7 +4,7 @@ export type { BackgroundBlurEffect } from "./implementations/background-blur";
 export type { GrayScaleEffect } from "./implementations/grayscale";
 export type { PixelateEffect } from "./implementations/pixelate";
 export type { TextureEffect } from "./implementations/texture";
-export type { BulgePinchEffect } from "./implementations/bulge-pinch";
+export type { BulgeEffect } from "./implementations/bulge";
 export type { ZoomEffect } from "./implementations/zoom";
 export type { BloomEffect } from "./implementations/bloom";
 export type { VintageEffect } from "./implementations/vintage";

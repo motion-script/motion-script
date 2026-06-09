@@ -50,15 +50,13 @@ export class EffectChain {
   }
 
   /**
-   * Append a bulge/pinch lens that warps the backdrop within the node's shape.
-   * The lens fills the node's bounding box and is clipped to its silhouette, so a
-   * rect bulges as a rect, a rounded rect rounds, an ellipse domes, etc.
-   * @param strength positive bulges (magnifies), negative pinches (compresses) (≈ −1…1).
-   * @param radius   reach in 0–1: how far across the node box the warp spans (default 1).
-   * @param center   distortion centre in 0–1 layer coords (default middle).
+   * Append a bulge/pinch lens applied to the node's *own* content (like blur),
+   * not the backdrop. A barrel distortion magnifies the centre and pins the
+   * edges; a negative strength pinches the centre inward instead.
+   * @param strength positive bulges (barrel), negative pinches (pincushion) (≈ −1…1).
    */
-  bulgePinch(strength: number, radius = 1, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
-    return new EffectChain([...this.list, { type: 'bulgePinch', strength, radius, center }]);
+  bulge(strength: number) {
+    return new EffectChain([...this.list, { type: 'bulge', strength }]);
   }
 
   /**
@@ -161,8 +159,8 @@ export const FX = {
     const s = typeof size === 'number' ? { x: size, y: size } : size;
     return createChain([{ type: 'texture', radius, size: s }]);
   },
-  bulgePinch: (strength: number, radius = 1, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
-    createChain([{ type: 'bulgePinch', strength, radius, center }]),
+  bulge: (strength: number) =>
+    createChain([{ type: 'bulge', strength }]),
   zoom: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
     createChain([{ type: 'zoom', scale, center }]),
   bloom: (threshold = 0.7, radius = 12, intensity = 1) =>

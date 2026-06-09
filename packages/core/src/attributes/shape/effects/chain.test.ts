@@ -20,15 +20,15 @@ describe('FX builders', () => {
         expect([...FX.grayscale(0.5)]).toEqual([{ type: 'grayscale', amount: 0.5 }]);
     });
 
-    it('bulgePinch defaults radius and center', () => {
-        expect([...FX.bulgePinch(0.6)]).toEqual([
-            { type: 'bulgePinch', strength: 0.6, radius: 1, center: { x: 0.5, y: 0.5 } },
+    it('bulge produces a strength-only effect', () => {
+        expect([...FX.bulge(0.6)]).toEqual([
+            { type: 'bulge', strength: 0.6 },
         ]);
     });
 
-    it('bulgePinch accepts explicit radius and center', () => {
-        expect([...FX.bulgePinch(-0.4, 0.3, { x: 0.25, y: 0.75 })]).toEqual([
-            { type: 'bulgePinch', strength: -0.4, radius: 0.3, center: { x: 0.25, y: 0.75 } },
+    it('bulge accepts negative strength (pinch)', () => {
+        expect([...FX.bulge(-0.4)]).toEqual([
+            { type: 'bulge', strength: -0.4 },
         ]);
     });
 });

@@ -13,7 +13,7 @@ import { Graphics } from "./graphics";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
-import type { BulgePinchEffect } from "@/attributes/shape/effects/implementations/bulge-pinch";
+import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
 import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 
@@ -187,12 +187,22 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     endBackgroundBlur(): void { }
 
     /**
-     * Open a backdrop-distortion (bulge/pinch or zoom) layer. The backdrop is
-     * warped by a lens centred on the node (`width` × `height`), clipped to
-     * the active silhouette clip. No-op by default.
+     * Open a backdrop-distortion (zoom) layer. The backdrop is warped by a lens
+     * centred on the node (`width` × `height`), clipped to the active
+     * silhouette clip. No-op by default.
      */
-    beginBackgroundDistortion(_effect: BulgePinchEffect | ZoomEffect, _width: number, _height: number): void { }
+    beginBackgroundDistortion(_effect: ZoomEffect, _width: number, _height: number): void { }
     endBackgroundDistortion(): void { }
+
+    /**
+     * Begin a foreground (node-content) distortion. Unlike the backdrop
+     * distortion, this warps the node's *own* drawing — every paint call between
+     * `begin` and `end` is captured, then redrawn through the bulge lens centred
+     * on the node (`width` × `height`). Behaves like blur: the effect applies to
+     * the node itself, not the content beneath it. No-op by default.
+     */
+    beginForegroundDistortion(_effect: BulgeEffect, _width: number, _height: number): void { }
+    endForegroundDistortion(): void { }
 
     /**
      * Open a custom SkSL backdrop layer. The shader receives

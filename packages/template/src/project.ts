@@ -11,23 +11,25 @@ import { CodeScene } from './scenes/code-scene';
 
 import { LogoScene } from './scenes/logo-scene';
 import { DrawScene } from './scenes/draw-scene';
+import { ImageGrid, ImageGridScene } from './scenes/image-grid-scene';
 
 export default createProject({
   name: 'My Video',
-  fps: 30,
+  fps: 60,
   viewport: {
     width: 1920,
     height: 1080
   },
   scenes: [
-    new DrawScene(),
+    new ImageGridScene(),
+    //new DrawScene(),
     new LogoScene(),
-    new LayoutScene(),
-    new NumberScene(),
-    new BloomScene(),
-    new ChromaticAberrationScene(),
-    new ShapeScene(),
-    new CodeScene(),
+    // new LayoutScene(),
+    // new NumberScene(),
+    // new BloomScene(),
+    // new ChromaticAberrationScene(),
+    // new ShapeScene(),
+    // new CodeScene(),
   ],
   theme: {
     'bg': '#0D0F15',

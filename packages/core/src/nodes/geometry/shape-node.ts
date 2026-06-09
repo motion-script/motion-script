@@ -11,7 +11,7 @@ import { ClipShape, RenderContext } from "@/render/render-context";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
-import type { BulgePinchEffect } from "@/attributes/shape/effects/implementations/bulge-pinch";
+import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
 import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 
@@ -131,11 +131,11 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      */
     private applyBackdropEffects(ctx: RenderContext): void {
         let blurRadius = 0;
-        const distortions: (BulgePinchEffect | ZoomEffect)[] = [];
+        const distortions: ZoomEffect[] = [];
         const skslBackdrops: SkSLEffect[] = [];
         for (const effect of this.effects) {
             if (effect.type === "backgroundBlur") blurRadius += effect.radius;
-            else if (effect.type === "bulgePinch" || effect.type === "zoom") distortions.push(effect);
+            else if (effect.type === "zoom") distortions.push(effect);
             else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
         }
         if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
@@ -164,12 +164,29 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         ctx.endClip();
     }
 
+    /** The bulge effect, if any — applied to this node's own content (self + children). */
+    private bulgeEffect(): BulgeEffect | undefined {
+        return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
+    }
+
     onRender(ctx: RenderContext): void {
         this.applyTransform(ctx);
         this.applyBackdropEffects(ctx);
+
+        // Bulge warps the node's own content (like blur), so capture everything
+        // this node paints — its fill/stroke and its children — and warp the lot.
+        const bulge = this.bulgeEffect();
+        if (bulge) {
+            const w = this.layoutRect?.width ?? 0;
+            const h = this.layoutRect?.height ?? 0;
+            ctx.beginForegroundDistortion(bulge, w, h);
+        }
+
         this.renderSelf(ctx);
         if (this.clip) this.applyClip(ctx);
         this.renderChildren(ctx);
         if (this.clip) ctx.endClip();
+
+        if (bulge) ctx.endForegroundDistortion();
     }
 }

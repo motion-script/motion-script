@@ -5,7 +5,7 @@ import { backgroundBlurEffect } from "./implementations/background-blur";
 import { grayscaleEffect } from "./implementations/grayscale";
 import { pixelateEffect } from "./implementations/pixelate";
 import { textureEffect } from "./implementations/texture";
-import { bulgePinchEffect } from "./implementations/bulge-pinch";
+import { bulgeEffect } from "./implementations/bulge";
 import { zoomEffect } from "./implementations/zoom";
 import { bloomEffect } from "./implementations/bloom";
 import { vintageEffect } from "./implementations/vintage";
@@ -20,7 +20,7 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["grayscale", grayscaleEffect as EffectData<SceneEffect>],
     ["pixelate", pixelateEffect as EffectData<SceneEffect>],
     ["texture", textureEffect as EffectData<SceneEffect>],
-    ["bulgePinch", bulgePinchEffect as EffectData<SceneEffect>],
+    ["bulge", bulgeEffect as EffectData<SceneEffect>],
     ["zoom", zoomEffect as EffectData<SceneEffect>],
     ["bloom", bloomEffect as EffectData<SceneEffect>],
     ["vintage", vintageEffect as EffectData<SceneEffect>],

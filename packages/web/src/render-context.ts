@@ -31,7 +31,7 @@ import {
     type TextState,
     type TransformState,
     type Vector2,
-    type BulgePinchEffect,
+    type BulgeEffect,
     type ZoomEffect,
     type FontStyle,
     type SkSLEffect,
@@ -56,7 +56,7 @@ import { PathShape } from "./shapes/path";
 import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
-import { makeBulgePinchShader, disposeBulgePinch } from "./effects/bulge-pinch";
+import { makeBulgeShader, disposeBulge } from "./effects/bulge";
 import { makeZoomShader, disposeZoom } from "./effects/zoom";
 import { getOrCompileSkSL, disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
@@ -253,8 +253,9 @@ export class WebRenderContext extends RenderContext {
         this.backgroundBlurStack.length = 0;
         this.backgroundDistortionStack.length = 0;
         this.backdropSkSLStack.length = 0;
-        disposeBulgePinch();
+        disposeBulge();
         disposeZoom();
+        this.foregroundDistortionStack.length = 0;
         disposeSkSLCache();
 
         super.dispose();
@@ -838,11 +839,11 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    // ─── Background distortion (bulge/pinch) ─────────────────────────────────────
+    // ─── Background distortion (zoom) ────────────────────────────────────────────
 
     private backgroundDistortionStack: number[] = [];
 
-    beginBackgroundDistortion(effect: BulgePinchEffect | ZoomEffect, width: number, height: number): void {
+    beginBackgroundDistortion(effect: ZoomEffect, width: number, height: number): void {
         if (!this.isRendering) {
             console.warn("beginBackgroundDistortion() must be called within the draw() method.");
             return;
@@ -858,19 +859,15 @@ export class WebRenderContext extends RenderContext {
         const sy = Math.hypot(m[1], m[4]);
 
         // Snapshot the content painted so far (the backdrop) and wrap it as a child
-        // shader. The lens shader resamples this snapshot at bulge/pinch-remapped
-        // device coordinates — a real magnifier, not a nudge.
+        // shader. The lens shader resamples this snapshot at zoom-remapped device
+        // coordinates — a real magnifier, not a nudge.
         const snapshot = this.surface.makeImageSnapshot();
         const backdropShader = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Linear, ck.MipmapMode.None,
         );
-        const lens = effect.type === "zoom"
-            ? makeZoomShader(
-                effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
-            )
-            : makeBulgePinchShader(
-                effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
-            );
+        const lens = makeZoomShader(
+            effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
+        );
         if (lens == null) {
             backdropShader.delete();
             snapshot.delete();
@@ -909,6 +906,110 @@ export class WebRenderContext extends RenderContext {
         // The distortion is painted entirely within begin(); the stack entry is kept
         // only for API symmetry with the other backdrop scopes.
         this.backgroundDistortionStack.pop();
+    }
+
+    // ─── Foreground distortion (bulge) ───────────────────────────────────────────
+
+    // One entry per active begin/end pair. `null` marks a no-op scope (effect was
+    // a no-op or the offscreen surface couldn't be created), so end() can unwind
+    // symmetrically without touching the canvas.
+    private foregroundDistortionStack: Array<{
+        effect: BulgeEffect;
+        width: number;
+        height: number;
+        savedCanvas: Canvas;
+        offscreen: Surface;
+        matrix: number[];
+    } | null> = [];
+
+    beginForegroundDistortion(effect: BulgeEffect, width: number, height: number): void {
+        if (!this.isRendering) {
+            console.warn("beginForegroundDistortion() must be called within the draw() method.");
+            return;
+        }
+        const ck = this.canvasKit;
+        if (effect.strength === 0 || width <= 0 || height <= 0) {
+            this.foregroundDistortionStack.push(null);
+            return;
+        }
+
+        // Render the node's own content into a fresh offscreen surface sharing the
+        // main surface's dimensions/format, so we can later resample just that
+        // content through the lens (the backdrop is left untouched on the main
+        // surface). A per-scope surface keeps nested bulges independent.
+        const offscreen = this.surface.makeSurface(this.surface.imageInfo());
+        if (!offscreen) {
+            this.foregroundDistortionStack.push(null);
+            return;
+        }
+
+        const m = this.currentCanvas.getTotalMatrix();
+        const offCanvas = offscreen.getCanvas();
+        offCanvas.save();
+        offCanvas.clear(ck.TRANSPARENT);
+        offCanvas.concat(m); // replicate the full CTM so the node draws at the same device coords
+
+        const savedCanvas = this.currentCanvas;
+        this.currentCanvas = offCanvas;
+        this.foregroundDistortionStack.push({ effect, width, height, savedCanvas, offscreen, matrix: m });
+    }
+
+    endForegroundDistortion(): void {
+        if (!this.isRendering) {
+            console.warn("endForegroundDistortion() must be called within the draw() method.");
+            return;
+        }
+        const entry = this.foregroundDistortionStack.pop();
+        if (!entry) return;
+
+        const ck = this.canvasKit;
+        const { effect, width, height, savedCanvas, offscreen, matrix: m } = entry;
+
+        // Stop capturing: balance the save() from begin and restore drawing to the
+        // main canvas.
+        this.currentCanvas.restore();
+        this.currentCanvas = savedCanvas;
+
+        const centerX = m[2];
+        const centerY = m[5];
+        const sx = Math.hypot(m[0], m[3]);
+        const sy = Math.hypot(m[1], m[4]);
+
+        // Snapshot the captured node content and wrap it as a child shader. Decal
+        // tiling makes samples outside the content read transparent, so the warp
+        // never drags in stray pixels — only the node itself is distorted.
+        const snapshot = offscreen.makeImageSnapshot();
+        const contentShader = snapshot.makeShaderOptions(
+            ck.TileMode.Decal, ck.TileMode.Decal, ck.FilterMode.Linear, ck.MipmapMode.None,
+        );
+        const lens = makeBulgeShader(
+            effect, ck, contentShader, centerX, centerY, width * sx, height * sy,
+        );
+        if (lens == null) {
+            contentShader.delete();
+            snapshot.delete();
+            offscreen.delete();
+            return;
+        }
+
+        // Draw the warped content in device space (identity CTM, so fragCoord ==
+        // snapshot px). CanvasKit has no resetMatrix, so concat the inverse CTM.
+        this.currentCanvas.save();
+        const inverse = ck.Matrix.invert(m);
+        if (inverse) this.currentCanvas.concat(inverse);
+        const paint = new ck.Paint();
+        paint.setShader(lens);
+        paint.setAntiAlias(true);
+        this.currentCanvas.drawRect(
+            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
+            paint,
+        );
+        paint.delete();
+        lens.delete();
+        contentShader.delete();
+        snapshot.delete();
+        this.currentCanvas.restore();
+        offscreen.delete();
     }
 
     // ─── Custom SkSL backdrop ─────────────────────────────────────────────────
