@@ -1,4 +1,4 @@
-import { RenderContext, EaseFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, PaddingResolved, property, resolvePadding, lerpEdgeInset, FillResolved, AnimationBuilder } from "@motion-script/core";
+import { RenderContext, Graphics, EaseFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, PaddingResolved, property, resolvePadding, lerpEdgeInset, FillResolved, AnimationBuilder } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
 import { AnimatedToken, tweenLatex } from "./tween";
@@ -166,17 +166,18 @@ export class Latex extends ShapeNode<LatexProps> {
                 ? toPathString(offsetPath(token.path, token.x, token.y))
                 : toPathString(token.path);
 
-            ctx.path({
-                d: pathStr,
-                start: this.start,
-                end: this.end,
-                // All tokens share one center frame so they keep their relative
-                // layout — without this each glyph centers on its own bbox and
-                // they all stack on the origin.
-                centerBounds: this._bounds,
-            })
+            ctx.draw(new Graphics()
+                .path({
+                    d: pathStr,
+                    start: this.start,
+                    end: this.end,
+                    // All tokens share one center frame so they keep their relative
+                    // layout — without this each glyph centers on its own bbox and
+                    // they all stack on the origin.
+                    centerBounds: this._bounds,
+                })
                 .fill(scaledFill)
-                .stroke(this.stroke).shadow(this.shadow);
+                .stroke(this.stroke).shadow(this.shadow));
         }
     }
 }

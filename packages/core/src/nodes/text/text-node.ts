@@ -11,6 +11,7 @@ import { Size2D } from "@/attributes/layout/size";
 import { EaseFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 
 
 export interface TextProps extends ShapeProps {
@@ -94,22 +95,23 @@ export class Text extends ShapeNode<TextProps> {
     }
 
     protected override renderSelf(ctx: RenderContext): void {
-        ctx.text({
-            text: this.text,
-            fontSize: this.fontSize,
-            fontFamily: this.fontFamily,
-            fontWeight: this.fontWeight,
-            fontStyle: this.fontStyle,
-            letterSpacing: this.letterSpacing,
-            lineHeight: this.lineHeight,
-            align: this.align,
-            wrap: this.wrap,
-            minFontSize: this.minFontSize,
-            width: this.layoutRect?.width ?? 0,
-            height: this.layoutRect?.height ?? 0,
-        })
+        ctx.draw(new Graphics()
+            .text({
+                text: this.text,
+                fontSize: this.fontSize,
+                fontFamily: this.fontFamily,
+                fontWeight: this.fontWeight,
+                fontStyle: this.fontStyle,
+                letterSpacing: this.letterSpacing,
+                lineHeight: this.lineHeight,
+                align: this.align,
+                wrap: this.wrap,
+                minFontSize: this.minFontSize,
+                width: this.layoutRect?.width ?? 0,
+                height: this.layoutRect?.height ?? 0,
+            })
             .fill(this.fill)
-            .stroke(this.stroke).shadow(this.shadow);
+            .stroke(this.stroke).shadow(this.shadow));
     }
 }
 

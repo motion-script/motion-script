@@ -2,6 +2,7 @@ import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { NodeConfig } from "../base/node";
 import { ClipShape, RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 
 export interface PolygramProps extends ShapeProps {
     /** Number of outer points. Must be ≥ 3. */
@@ -30,15 +31,17 @@ export class Polygram extends ShapeNode<PolygramProps> {
     }
 
     protected renderSelf(draw: RenderContext): void {
-        draw.polygram({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
-            sides: this.sides,
-            ratio: this.ratio,
-            borderRadius: this.borderRadius,
-            start: this.start,
-            end: this.end,
-        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke);
+        draw.draw(new Graphics()
+            .polygram({
+                width: this.layoutRect.width,
+                height: this.layoutRect.height,
+                sides: this.sides,
+                ratio: this.ratio,
+                borderRadius: this.borderRadius,
+                start: this.start,
+                end: this.end,
+            })
+            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
     protected override silhouette(): ClipShape {

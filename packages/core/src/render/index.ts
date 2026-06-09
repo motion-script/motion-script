@@ -16,7 +16,10 @@ export * from './descriptors/polygon';
 export * from './descriptors/polygram';
 export { BuildStage } from './build-stage';
 
-export { RenderContext, Render2DContext, Render2DPaintContext } from './render-context';
+export { Graphics } from './graphics';
+export type { GraphicsOp, GraphicsShapeOp } from './graphics';
+
+export { RenderContext, Render2DContext } from './render-context';
 export type { ClipShape, SpaceRect, SpaceRects } from './render-context';
 export { MeasureScope } from './measure-scope';
 

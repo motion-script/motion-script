@@ -1,5 +1,6 @@
 
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import type { PathData, PathCommand } from "@/render/descriptors/path";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
@@ -135,10 +136,12 @@ export class Path extends ShapeNode<PathProps> {
     }
 
     protected renderSelf(draw: RenderContext): void {
-        draw.path({
-            d: this.d,
-            start: this.start,
-            end: this.end,
-        }).fill(this.fill).stroke(this.stroke);
+        draw.draw(new Graphics()
+            .path({
+                d: this.d,
+                start: this.start,
+                end: this.end,
+            })
+            .fill(this.fill).stroke(this.stroke));
     }
 }

@@ -10,6 +10,7 @@ import { LayoutScene } from './scenes/layout-scene';
 import { CodeScene } from './scenes/code-scene';
 
 import { LogoScene } from './scenes/logo-scene';
+import { DrawScene } from './scenes/draw-scene';
 
 export default createProject({
   name: 'My Video',
@@ -19,6 +20,7 @@ export default createProject({
     height: 1080
   },
   scenes: [
+    new DrawScene(),
     new LogoScene(),
     new LayoutScene(),
     new NumberScene(),

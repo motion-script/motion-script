@@ -171,7 +171,7 @@ export class PlaybackController {
         if (this.disposed) return;
         this.stateEvaluator.stateAt(frame);
         this.stateEvaluator.layout(this.measureScope);
-        this.renderContext.render(() => {
+        this.renderContext.execute(() => {
             this.stateEvaluator.render(this.renderContext);
         });
     }

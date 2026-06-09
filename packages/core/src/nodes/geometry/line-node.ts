@@ -1,4 +1,5 @@
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 
 import { Vector2 } from "@/attributes/layout/vector2";
 import { ShapeNode, ShapeProps } from "./shape-node";
@@ -23,14 +24,16 @@ export class Line extends ShapeNode<LineProps> {
     }
 
     protected renderSelf(draw: RenderContext): void {
-        draw.line({
-            points: this.points,
-            radius: this.radius,
-            closed: this.closed,
-            start: this.start,
-            end: this.end,
-        }).shadow(this.shadow)
+        draw.draw(new Graphics()
+            .line({
+                points: this.points,
+                radius: this.radius,
+                closed: this.closed,
+                start: this.start,
+                end: this.end,
+            })
+            .shadow(this.shadow)
             .fill(this.fill)
-            .stroke(this.stroke);
+            .stroke(this.stroke));
     }
 }

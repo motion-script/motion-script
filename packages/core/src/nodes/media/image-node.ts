@@ -1,4 +1,5 @@
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { FilterRegistry } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
@@ -40,17 +41,19 @@ export class Image extends ShapeNode<ImageProps> {
     }
 
     protected renderSelf(draw: RenderContext): void {
-        draw.image({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
-            start: this.start,
-            end: this.end,
-            src: this.src,
-            mode: this.fit,
-            transform: this.transform,
-            scaling: this.scaling,
-            filters: this.filters,
-        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke);
+        draw.draw(new Graphics()
+            .image({
+                width: this.layoutRect.width,
+                height: this.layoutRect.height,
+                borderRadius: this.borderRadius,
+                start: this.start,
+                end: this.end,
+                src: this.src,
+                mode: this.fit,
+                transform: this.transform,
+                scaling: this.scaling,
+                filters: this.filters,
+            })
+            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 }

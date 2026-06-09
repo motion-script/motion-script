@@ -1,22 +1,16 @@
 
 import { FontStyle } from "@/attributes/text/span";
 import { type RectState } from "./descriptors/rect";
-import { TextState } from "./descriptors/text";
-import { RichTextState } from "./descriptors/richtext";
 import { TransformState } from "./descriptors/transform";
 
 import { PathState } from "./descriptors/path";
-import type { PathBuilder } from "./descriptors/path-builder";
 import { EllipseState } from "./descriptors/ellipse";
 import { LineState } from "./descriptors/line";
-import { ImageState } from "./descriptors/image";
 import { PolygonState } from "./descriptors/polygon";
 import { PolygramState } from "./descriptors/polygram";
 import { MeasureScope } from "./measure-scope";
-import { FillProp } from "@/attributes/shape/fill/union";
+import { Graphics } from "./graphics";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { ShadowProp } from "@/attributes/shape/shadow/resolver";
-import { StrokeProp } from "@/attributes/shape/stroke/mapper";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import type { BulgePinchEffect } from "@/attributes/shape/effects/implementations/bulge-pinch";
@@ -68,70 +62,16 @@ export interface SpaceRects {
 }
 
 /**
- * Low-level shape-drawing API. Each method declares a shape and returns a
- * `Render2DPaintContext` that lets you chain further shapes and apply paint
- * (fill / stroke / shadow). Multiple shapes chained before a paint call are
- * combined into a single surface and painted together.
+ * Low-level shape-drawing API. Shapes are no longer declared directly on the
+ * context — they are built with a {@link Graphics} command list and submitted
+ * via {@link draw}. Multiple shapes chained on a `Graphics` before a paint call
+ * are combined into a single surface and painted together.
+ *
+ *   ctx.draw(new Graphics().ellipse(...).rect(...).fill(...));  // shared surface
  */
 export abstract class Render2DContext {
-    /** Declare an axis-aligned rectangle. */
-    abstract rect(state: Partial<RectState>): Render2DPaintContext;
-    /** Declare an ellipse (circle when width === height). */
-    abstract ellipse(state: Partial<EllipseState>): Render2DPaintContext;
-    /** Declare a single-style text run. */
-    abstract text(state: Partial<TextState>): Render2DPaintContext;
-    /** Declare a multi-span rich-text block. */
-    abstract richText(state: Partial<RichTextState>): Render2DPaintContext;
-    /** Declare a vector path, either from a `PathState` or a `PathBuilder`. */
-    abstract path(state: Partial<PathState> | PathBuilder): Render2DPaintContext;
-    /** Declare a straight line segment. */
-    abstract line(state: Partial<LineState>): Render2DPaintContext;
-    /** Declare a raster image. */
-    abstract image(state: Partial<ImageState>): Render2DPaintContext;
-    /** Declare a regular polygon (triangle, pentagon, …). */
-    abstract polygon(state: Partial<PolygonState>): Render2DPaintContext;
-    /** Declare a star / polygram. */
-    abstract polygram(state: Partial<PolygramState>): Render2DPaintContext;
-}
-
-/**
- * The context returned after a shape is declared. It extends `Render2DContext`
- * so further shapes can be chained — multiple shapes drawn before a paint call
- * accumulate and are painted together:
- *
- *   draw.ellipse(...).rect(...).fill(...)   // both shapes share one fill
- *
- * `cut()` uses the most-recently drawn shape as a cutter: it unions the shapes
- * before it and subtracts that last shape, so only it punches a hole. Shapes
- * drawn after `cut()` are added back, and the whole result paints as one
- * surface — a single gradient maps across all of it:
- *
- *   draw.rect(...).ellipse(...).cut().rect(...).fill(gradient)
- *   // rect ∪ (previous) − ellipse, then ∪ the trailing rect
- */
-export interface Render2DPaintContext extends Render2DContext {
-    fill(fills: FillProp | FillProp[]): Render2DPaintContext;
-    stroke(strokes: StrokeProp | StrokeProp[]): Render2DPaintContext;
-    shadow(shadows: ShadowProp | ShadowProp[]): Render2DPaintContext;
-    /**
-     * Use the last-drawn shape as a cutter: union the shapes before it and
-     * subtract that last shape, leaving the result as the current shape so
-     * subsequent shapes and paint calls treat everything as a single surface.
-     */
-    cut(): Render2DPaintContext;
-    /**
-     * Switch a mask scope from mask-collection phase to content phase. Call
-     * after drawing the mask shape(s) following `RenderContext.mask()`:
-     *
-     *   draw.mask({ mode: 'alpha' })
-     *       .ellipse({...}).fill(maskFill)
-     *       .applyMask()
-     *       .rect({...}).fill(this.fill).stroke(this.stroke)
-     *       .endMask();
-     */
-    applyMask(): Render2DPaintContext;
-    /** Close the mask scope opened by `RenderContext.mask()`. */
-    endMask(): void;
+    /** Paint a built `Graphics` command list against this context. */
+    abstract draw(graphics: Graphics): void;
 }
 
 
@@ -179,7 +119,7 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      * Execute `callback`, which issues shape/paint calls, and flush the result
      * to the underlying render target (canvas, SVG document, etc.).
      */
-    abstract render(callback: () => void): void;
+    abstract execute(callback: () => void): void;
     /** Capture the current frame as a base-64 PNG data URL, or `undefined` if unsupported. */
     abstract screenshot(): string | undefined;
 
@@ -192,41 +132,32 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
 
     /**
      * Open a boolean-path collection scope. Shapes drawn until `endBoolean()`
-     * are gathered (fills/strokes suppressed) and combined with `op`. The
-     * merged path is returned as a `Render2DPaintContext` so callers can
-     * style the combined result with `.fill()` / `.stroke()` / `.shadow()`.
+     * are gathered (fills/strokes suppressed) and combined with `op`. After
+     * `endBoolean()` the merged path is left as the active surface, so a
+     * paint-only `Graphics` (`new Graphics().fill(...).stroke(...)`) submitted via
+     * `draw()` styles the combined result.
      */
     abstract beginBoolean(op: BooleanOperation): void;
-    abstract endBoolean(): Render2DPaintContext;
+    abstract endBoolean(): void;
 
-    // Mask scope — two entry points:
+    // Mask scope (imperative) — used by MaskGroup and other node-level callers
+    // that manage the scope with explicit begin/apply/end:
     //
-    //   1. mask(options) — chain-friendly; opens the mask scope and returns
-    //      Render2DPaintContext so shape/paint calls follow immediately:
-    //
-    //        draw.mask({ mode: 'alpha' })
-    //            .ellipse({...}).fill(maskFill)
-    //            .applyMask()
-    //            .rect({...}).fill(this.fill)
-    //            .endMask();
-    //
-    //   2. beginMask(options) — imperative; used by MaskGroup and other node-
-    //      level callers that manage the scope with explicit begin/apply/end.
-    //
-    // Sequence (both entry points share the same apply/end):
-    //   mask() / beginMask({ mode, inverted })
-    //   <render mask child>
+    //   beginMask({ mode, inverted })
+    //   <render mask child>          // child draws its own Graphics
     //   applyMask()
-    //   <render content children>
+    //   <render content children>    // children draw their own Graphics
     //   endMask()
+    //
+    // The chain-friendly form lives on `Graphics` (`.mask().applyMask().endMask()`)
+    // for inline use within a single `draw()`.
     //
     // For `vector` mode the mask child's path is collected and used as a
     // clipPath; fills/strokes are suppressed. For `alpha` and `luminance`
     // the mask is rendered into an offscreen layer and combined with content
     // via blend modes.
-    abstract mask(options?: MaskOptions): Render2DPaintContext;
     abstract beginMask(options?: MaskOptions): void;
-    abstract applyMask(): Render2DPaintContext;
+    abstract applyMask(): void;
     abstract endMask(): void;
 
     /**

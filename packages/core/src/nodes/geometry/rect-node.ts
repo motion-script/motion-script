@@ -1,4 +1,5 @@
 import { ClipShape, RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import { lerpNumber } from "@/tween/lerp";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -121,13 +122,15 @@ export class Rect extends ShapeNode<RectProps> {
     // ---- Drawing ----------------------------------------------------------
 
     protected renderSelf(draw: RenderContext): void {
-        draw.rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
-            start: this.start,
-            end: this.end,
-        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke);
+        draw.draw(new Graphics()
+            .rect({
+                width: this.layoutRect.width,
+                height: this.layoutRect.height,
+                borderRadius: this.borderRadius,
+                start: this.start,
+                end: this.end,
+            })
+            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
     protected override applyClip(ctx: RenderContext): void {
