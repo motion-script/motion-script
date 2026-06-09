@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/create",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Scaffold a new Motion Script project with a single command",
   "main": "index.js",
   "license": "Apache-2.0",

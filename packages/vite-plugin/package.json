@@ -2,7 +2,7 @@
   "name": "@motion-script/vite-plugin",
   "description": "Vite plugin that bootstraps a Motion Script project: it serves a preview app, resolves the user's scene as the entry point, and ships CanvasKit assets with the build.",
   "license": "Apache-2.0",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
