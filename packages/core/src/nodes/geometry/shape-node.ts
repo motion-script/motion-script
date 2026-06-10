@@ -13,6 +13,7 @@ import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
 import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
+import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
@@ -173,18 +174,28 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
     }
 
+    /** The posterize effect, if any — quantizes this node's own content (self + children). */
+    private posterizeEffect(): PosterizeEffect | undefined {
+        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize");
+    }
+
     onRender(ctx: RenderContext): void {
         this.applyTransform(ctx);
         this.applyBackdropEffects(ctx);
 
+        const w = this.layoutRect?.width ?? 0;
+        const h = this.layoutRect?.height ?? 0;
+
+        // Posterize quantizes the node's own pixels. It wraps the bulge scope so
+        // it bands the final (possibly warped) content, mirroring how blur-style
+        // content effects compose.
+        const posterize = this.posterizeEffect();
+        if (posterize) ctx.beginPosterize(posterize, w, h);
+
         // Bulge warps the node's own content (like blur), so capture everything
         // this node paints — its fill/stroke and its children — and warp the lot.
         const bulge = this.bulgeEffect();
-        if (bulge) {
-            const w = this.layoutRect?.width ?? 0;
-            const h = this.layoutRect?.height ?? 0;
-            ctx.beginForegroundDistortion(bulge, w, h);
-        }
+        if (bulge) ctx.beginForegroundDistortion(bulge, w, h);
 
         this.renderSelf(ctx);
         if (this.clip) this.applyClip(ctx);
@@ -192,6 +203,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         if (this.clip) ctx.endClip();
 
         if (bulge) ctx.endForegroundDistortion();
+        if (posterize) ctx.endPosterize();
     }
 
     *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {

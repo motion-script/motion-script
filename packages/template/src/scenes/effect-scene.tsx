@@ -48,6 +48,7 @@ export class EffectScene extends Scene {
             {cell('Vintage', FX.vintage(0, 0))}
             {cell('Chromatic aberration', FX.chromaticAberration(0, 0))}
             {cell('Scatter', FX.scatter(0))}
+            {cell('Posterize', FX.posterize(32))}
             {cell('Frosted', FX.grayscale(0).blur(0))}
             {cell('Retro VHS', FX.vintage(0, 0).chromaticAberration(0, 0))}
             {cell('Invert', FX.invert('rgba', 0))}
@@ -65,6 +66,7 @@ export class EffectScene extends Scene {
             FX.vintage(1, 0.4),
             FX.chromaticAberration(8, 0),
             FX.scatter(12),
+            FX.posterize(4),
             FX.grayscale(1).blur(6),
             FX.vintage(0.9, -0.2).chromaticAberration(6, 90),
             FX.invert('rgba', 1)

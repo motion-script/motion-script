@@ -123,6 +123,15 @@ export class EffectChain {
   }
 
   /**
+   * Append an After Effects-style posterize effect — quantizes each colour
+   * channel into `level` evenly-spaced bands, flattening gradients into steps.
+   * @param level number of brightness levels per channel (≥ 2, default 4).
+   */
+  posterize(level = 4) {
+    return new EffectChain([...this.list, { type: 'posterize', level }]);
+  }
+
+  /**
    * Append a custom SkSL overlay shader applied as a layer effect.
    * The shader generates colour from position/uniforms and is blended onto the
    * node's layer using `blendMode` (default `'screen'`).
@@ -194,6 +203,9 @@ export const FX = {
     createChain([{ type: 'invert', channel, strength }]),
   scatter: (strength = 10, direction: ScatterDirection = 'both') =>
     createChain([{ type: 'scatter', strength, direction }]),
+  /** After Effects-style posterize. `level` = brightness bands per channel (≥ 2). */
+  posterize: (level = 4) =>
+    createChain([{ type: 'posterize', level }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>

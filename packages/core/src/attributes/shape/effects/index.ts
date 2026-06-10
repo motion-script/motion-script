@@ -11,6 +11,7 @@ export type { VintageEffect } from "./implementations/vintage";
 export type { ChromaticAberrationEffect } from "./implementations/chromatic-aberration";
 export type { InvertEffect, InvertChannel } from "./implementations/invert";
 export type { ScatterEffect, ScatterDirection } from "./implementations/scatter";
+export type { PosterizeEffect } from "./implementations/posterize";
 export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
 
 /** Chainable effect builder API, chain class, and union input type. */

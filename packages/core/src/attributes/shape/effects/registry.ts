@@ -12,6 +12,7 @@ import { vintageEffect } from "./implementations/vintage";
 import { chromaticAberrationEffect } from "./implementations/chromatic-aberration";
 import { invertEffect } from "./implementations/invert";
 import { scatterEffect } from "./implementations/scatter";
+import { posterizeEffect } from "./implementations/posterize";
 import { skslEffect } from "./implementations/sksl";
 import { EffectData } from "./effect-data";
 
@@ -29,6 +30,7 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["chromaticAberration", chromaticAberrationEffect as EffectData<SceneEffect>],
     ["invert", invertEffect as EffectData<SceneEffect>],
     ["scatter", scatterEffect as EffectData<SceneEffect>],
+    ["posterize", posterizeEffect as EffectData<SceneEffect>],
     ["sksl", skslEffect as EffectData<SceneEffect>],
 ]);
 

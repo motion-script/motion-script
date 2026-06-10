@@ -61,6 +61,14 @@ describe('FX builders', () => {
             { type: 'scatter', strength: 5, direction: 'horizontal' },
         ]);
     });
+
+    it('posterize defaults to 4 levels', () => {
+        expect([...FX.posterize()]).toEqual([{ type: 'posterize', level: 4 }]);
+    });
+
+    it('posterize accepts an explicit level', () => {
+        expect([...FX.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
+    });
 });
 
 describe('EffectChain', () => {
