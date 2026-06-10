@@ -14,7 +14,7 @@ export interface SkSLUniform {
  *
  * - `'backdrop'`: The shader receives `uniform shader u_backdrop` (a snapshot of the
  *   canvas content beneath the node). Use this for magnification, distortion, ripple, etc.
- *   Works identically to the built-in zoom/bulge effects — the result replaces the backdrop
+ *   Works identically to the built-in magnify/bulge effects — the result replaces the backdrop
  *   within the node's silhouette clip.
  *
  * - `'layer'`: The shader is applied as an overlay/modifier on the node's own layer via

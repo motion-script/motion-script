@@ -2,11 +2,13 @@
 export { CanvasKitEffect } from "./effect";
 export { CanvasKitEffectRegistry } from "./registry";
 export { BlurCanvasKitEffect } from "./blur";
+export { DirectionalBlurCanvasKitEffect } from "./directional-blur";
 export { GrayscaleCanvasKitEffect } from "./grayscale";
 export { PixelateCanvasKitEffect } from "./pixelate";
-export { TextureCanvasKitEffect } from "./texture";
 export { BloomCanvasKitEffect } from "./bloom";
 export { VintageCanvasKitEffect } from "./vintage";
 export { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
+export { InvertCanvasKitEffect } from "./invert";
+export { ScatterCanvasKitEffect } from "./scatter";
 export { SkSLLayerEffect } from "./sksl-layer";
 export { getOrCompileSkSL, disposeSkSLCache } from "./sksl-cache";

@@ -14,7 +14,8 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
+import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
+import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 
 
@@ -187,11 +188,11 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     endBackgroundBlur(): void { }
 
     /**
-     * Open a backdrop-distortion (zoom) layer. The backdrop is warped by a lens
+     * Open a backdrop-distortion (magnify) layer. The backdrop is warped by a lens
      * centred on the node (`width` × `height`), clipped to the active
      * silhouette clip. No-op by default.
      */
-    beginBackgroundDistortion(_effect: ZoomEffect, _width: number, _height: number): void { }
+    beginBackgroundDistortion(_effect: MagnifyEffect, _width: number, _height: number): void { }
     endBackgroundDistortion(): void { }
 
     /**
@@ -203,6 +204,15 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      */
     beginForegroundDistortion(_effect: BulgeEffect, _width: number, _height: number): void { }
     endForegroundDistortion(): void { }
+
+    /**
+     * Begin a posterize scope over the node's *own* content. Like the foreground
+     * distortion, every paint call between `begin` and `end` is captured into an
+     * offscreen snapshot, then redrawn with each colour channel quantized into
+     * `effect.level` bands (After Effects' Posterize). No-op by default.
+     */
+    beginPosterize(_effect: PosterizeEffect, _width: number, _height: number): void { }
+    endPosterize(): void { }
 
     /**
      * Open a custom SkSL backdrop layer. The shader receives

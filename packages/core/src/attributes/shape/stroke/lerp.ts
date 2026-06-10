@@ -1,10 +1,10 @@
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { lerpFill } from "../fill/registry";
+import { lerpFillArray } from "../fill/registry";
 
 function lerpStroke(from: StrokeResolved, to: StrokeResolved, t: number): StrokeResolved {
     return {
         weight: (from.weight) + ((to.weight) - (from.weight)) * t,
-        fill: lerpFill(from.fill, to.fill, t),
+        fill: lerpFillArray(from.fill, to.fill, t),
         dash: t < 0.5 ? from.dash : to.dash,
         dashOffset: (from.dashOffset) + ((to.dashOffset) - (from.dashOffset)) * t,
         align: (from.align) + ((to.align) - (from.align)) * t,

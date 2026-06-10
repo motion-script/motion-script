@@ -97,13 +97,13 @@ yield* tween(1.5, (t) => {
 
 ## Pixelate
 
-Chunks the node into rectangular blocks. `size` is a value from `0` (no pixelation) to `1` (entire node collapsed to one block). The value is resolution-independent.
+Chunks the node into rectangular blocks. `size` is the block size in pixels (`1` = no pixelation; larger values produce chunkier blocks).
 
 ```tsx
 <Rect
   width={300} height={300}
   fill={{ type: 'image', src: './logo.png', mode: 'fit' }}
-  effects={FX.pixelate(0.4)}
+  effects={FX.pixelate(16)}
 />
 ```
 
@@ -119,14 +119,36 @@ export class MyScene extends Scene {
       height: 300,
       fill: { type: 'image', src: './logo.png', mode: 'fit' },
     });
-    logo.set({ effects: FX.pixelate(0.8) });
+    logo.set({ effects: FX.pixelate(40) });
     this.add(logo);
 
     yield* tween(1.5, (t) => {
-      logo.set({ effects: FX.pixelate(lerpNumber(0.8, 0, easeInOut(t))) });
+      logo.set({ effects: FX.pixelate(lerpNumber(40, 1, easeInOut(t))) });
     });
   }
 }
+```
+
+---
+
+## Invert
+
+Inverts a colour channel. `channel` selects which component is inverted (`'red'`, `'green'`, `'blue'`, `'rgba'`, `'alpha'`, `'hue'`, or `'luminance'`); `strength` ranges from `0` (original) to `1` (fully inverted).
+
+```tsx
+<Rect
+  width={500} height={350}
+  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+  effects={FX.invert('rgba', 1)}
+/>
+```
+
+### Animating an invert
+
+```tsx
+yield* tween(1, (t) => {
+  photo.set({ effects: FX.invert('hue', easeInOut(t)) });
+});
 ```
 
 ---
@@ -142,7 +164,7 @@ import { FX } from '@motion-script/core';
 <Rect effects={FX.grayscale(0.8).blur(4)} />
 
 // All three
-<Rect effects={FX.pixelate(0.3).grayscale(0.5).blur(2)} />
+<Rect effects={FX.pixelate(8).grayscale(0.5).blur(2)} />
 ```
 
 Each `FX` method returns a new immutable chain, so chains are safe to reuse:
@@ -170,5 +192,7 @@ effects={[
 | Type | Props |
 |---|---|
 | `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
+| `{ type: 'directionalBlur', direction: number, blurLength: number }` | `direction` — smear angle in degrees (0 = horizontal, 90 = vertical); `blurLength` — smear length in pixels |
 | `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
-| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number }` | Block sizes 0–1 per axis |
+| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number }` | Block sizes in pixels per axis |
+| `{ type: 'invert', channel: InvertChannel, strength: number }` | `channel` — `'red' \| 'green' \| 'blue' \| 'rgba' \| 'alpha' \| 'hue' \| 'luminance'`; `strength` — 0 (original) to 1 (fully inverted) |

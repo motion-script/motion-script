@@ -32,7 +32,8 @@ import {
     type TransformState,
     type Vector2,
     type BulgeEffect,
-    type ZoomEffect,
+    type MagnifyEffect,
+    type PosterizeEffect,
     type FontStyle,
     type SkSLEffect,
 
@@ -57,7 +58,8 @@ import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
 import { makeBulgeShader, disposeBulge } from "./effects/bulge";
-import { makeZoomShader, disposeZoom } from "./effects/zoom";
+import { makeMagnifyShader, disposeMagnify } from "./effects/magnify";
+import { makePosterizeShader, disposePosterize } from "./effects/posterize";
 import { getOrCompileSkSL, disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
@@ -254,8 +256,10 @@ export class WebRenderContext extends RenderContext {
         this.backgroundDistortionStack.length = 0;
         this.backdropSkSLStack.length = 0;
         disposeBulge();
-        disposeZoom();
+        disposeMagnify();
+        disposePosterize();
         this.foregroundDistortionStack.length = 0;
+        this.posterizeStack.length = 0;
         disposeSkSLCache();
 
         super.dispose();
@@ -596,7 +600,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const space = pendingShadows[0].fill.space ?? "global";
+            const space = pendingShadows[0].fill[0]?.space ?? "global";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
             dispose();
@@ -655,7 +659,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const shadowSpace = pendingShadows[0].fill.space ?? "global";
+            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "global";
             const { shapes: shadowShapes, dispose: shadowDispose } = this.strokeShapesForSpace(shadowSpace);
             this.strokeHandler.applyShadows(pendingShadows, shadowShapes, [], resolved, this.applyFillSpaceBounds);
             shadowDispose();
@@ -663,7 +667,7 @@ export class WebRenderContext extends RenderContext {
         // The first stroke's space decides geometry grouping (local = per shape,
         // else union outline). Bounds for each stroke's shader are resolved per
         // shape from that stroke's own fill space.
-        const space = resolved[0].fill.space ?? "global";
+        const space = resolved[0].fill[0]?.space ?? "global";
         const { shapes, dispose } = this.strokeShapesForSpace(space);
         this.strokeHandler.applyStrokes(resolved, shapes, this.applyFillSpaceBounds);
         dispose();
@@ -839,11 +843,11 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    // ─── Background distortion (zoom) ────────────────────────────────────────────
+    // ─── Background distortion (magnify) ────────────────────────────────────────────
 
     private backgroundDistortionStack: number[] = [];
 
-    beginBackgroundDistortion(effect: ZoomEffect, width: number, height: number): void {
+    beginBackgroundDistortion(effect: MagnifyEffect, width: number, height: number): void {
         if (!this.isRendering) {
             console.warn("beginBackgroundDistortion() must be called within the draw() method.");
             return;
@@ -859,13 +863,13 @@ export class WebRenderContext extends RenderContext {
         const sy = Math.hypot(m[1], m[4]);
 
         // Snapshot the content painted so far (the backdrop) and wrap it as a child
-        // shader. The lens shader resamples this snapshot at zoom-remapped device
+        // shader. The lens shader resamples this snapshot at magnify-remapped device
         // coordinates — a real magnifier, not a nudge.
         const snapshot = this.surface.makeImageSnapshot();
         const backdropShader = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Linear, ck.MipmapMode.None,
         );
-        const lens = makeZoomShader(
+        const lens = makeMagnifyShader(
             effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
         );
         if (lens == null) {
@@ -1006,6 +1010,100 @@ export class WebRenderContext extends RenderContext {
         );
         paint.delete();
         lens.delete();
+        contentShader.delete();
+        snapshot.delete();
+        this.currentCanvas.restore();
+        offscreen.delete();
+    }
+
+    // ─── Posterize (node-content colour quantization) ────────────────────────────
+
+    // One entry per active begin/end pair. `null` marks a no-op scope, so end()
+    // can unwind symmetrically without touching the canvas.
+    private posterizeStack: Array<{
+        effect: PosterizeEffect;
+        savedCanvas: Canvas;
+        offscreen: Surface;
+        matrix: number[];
+    } | null> = [];
+
+    beginPosterize(effect: PosterizeEffect, width: number, height: number): void {
+        if (!this.isRendering) {
+            console.warn("beginPosterize() must be called within the draw() method.");
+            return;
+        }
+        const ck = this.canvasKit;
+        if (effect.level < 2 || width <= 0 || height <= 0) {
+            this.posterizeStack.push(null);
+            return;
+        }
+
+        // Capture the node's own content into a fresh offscreen surface so we can
+        // later re-band just that content through the posterize shader, leaving the
+        // backdrop on the main surface untouched. A per-scope surface keeps nested
+        // posterize scopes independent.
+        const offscreen = this.surface.makeSurface(this.surface.imageInfo());
+        if (!offscreen) {
+            this.posterizeStack.push(null);
+            return;
+        }
+
+        const m = this.currentCanvas.getTotalMatrix();
+        const offCanvas = offscreen.getCanvas();
+        offCanvas.save();
+        offCanvas.clear(ck.TRANSPARENT);
+        offCanvas.concat(m); // replicate the full CTM so the node draws at the same device coords
+
+        const savedCanvas = this.currentCanvas;
+        this.currentCanvas = offCanvas;
+        this.posterizeStack.push({ effect, savedCanvas, offscreen, matrix: m });
+    }
+
+    endPosterize(): void {
+        if (!this.isRendering) {
+            console.warn("endPosterize() must be called within the draw() method.");
+            return;
+        }
+        const entry = this.posterizeStack.pop();
+        if (!entry) return;
+
+        const ck = this.canvasKit;
+        const { effect, savedCanvas, offscreen, matrix: m } = entry;
+
+        // Stop capturing: balance the save() from begin and restore drawing to the
+        // main canvas.
+        this.currentCanvas.restore();
+        this.currentCanvas = savedCanvas;
+
+        // Snapshot the captured node content and wrap it as a child shader. Decal
+        // tiling makes samples outside the content read transparent, so the empty
+        // surround stays transparent rather than banding to a solid colour.
+        const snapshot = offscreen.makeImageSnapshot();
+        const contentShader = snapshot.makeShaderOptions(
+            ck.TileMode.Decal, ck.TileMode.Decal, ck.FilterMode.Nearest, ck.MipmapMode.None,
+        );
+        const banded = makePosterizeShader(effect, ck, contentShader);
+        if (banded == null) {
+            contentShader.delete();
+            snapshot.delete();
+            offscreen.delete();
+            return;
+        }
+
+        // Draw the banded content in device space (identity CTM, so fragCoord ==
+        // snapshot px). CanvasKit has no resetMatrix, so concat the inverse CTM.
+        this.currentCanvas.save();
+        const inverse = ck.Matrix.invert(m);
+        if (inverse) this.currentCanvas.concat(inverse);
+        const paint = new ck.Paint();
+        paint.setShader(banded);
+        paint.setAntiAlias(true);
+        this.currentCanvas.drawRect(
+            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
+            paint,
+        );
+        paint.delete();
+        banded.delete();
         contentShader.delete();
         snapshot.delete();
         this.currentCanvas.restore();

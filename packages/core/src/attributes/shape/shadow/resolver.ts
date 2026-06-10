@@ -1,5 +1,6 @@
-import { resolveFill } from '../fill/registry';
-import { FillProp, FillResolved } from '../fill/union';
+import { resolveFillArray } from '../fill/registry';
+import { FillResolved } from '../fill/union';
+import { ChainableFill } from '../fill/chain';
 
 // ── Prop (loose) ─────────────────────────────────────────────────────────────
 
@@ -7,8 +8,8 @@ export interface ShadowProp {
     blur?: number;
     dx?: number;
     dy?: number;
-    /** Any loose fill: a CSS color string, fill prop object, or resolved fill. */
-    fill?: FillProp;
+    /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
+    fill?: ChainableFill;
 }
 /**
  * Fully resolved shadow — all fields normalised with defaults applied.
@@ -19,7 +20,8 @@ export interface ShadowResolved {
     blur: number;
     dx?: number;
     dy?: number;
-    fill: FillResolved;
+    /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
+    fill: FillResolved[];
 }
 
 // ── Mapper ───────────────────────────────────────────────────────────────────
@@ -29,7 +31,7 @@ export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): Shad
         blur: prop.blur ?? previous?.blur ?? 0,
         dx: prop.dx ?? previous?.dx,
         dy: prop.dy ?? previous?.dy,
-        fill: prop.fill != null ? resolveFill(prop.fill) : (previous?.fill ?? resolveFill('transparent')),
+        fill: prop.fill != null ? resolveFillArray(prop.fill) : (previous?.fill ?? resolveFillArray('transparent')),
     };
 }
 

@@ -12,6 +12,8 @@ import { CodeScene } from './scenes/code-scene';
 import { LogoScene } from './scenes/logo-scene';
 import { DrawScene } from './scenes/draw-scene';
 import { ImageGrid, ImageGridScene } from './scenes/image-grid-scene';
+import { EffectScene } from './scenes/effect-scene';
+import { FillScene } from './scenes/fill-scene';
 
 export default createProject({
   name: 'My Video',
@@ -21,6 +23,8 @@ export default createProject({
     height: 1080
   },
   scenes: [
+    new FillScene(),
+    new EffectScene(),
     new ImageGridScene(),
     //new DrawScene(),
     new LogoScene(),

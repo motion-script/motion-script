@@ -12,8 +12,13 @@ import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
+import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
+import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import { TweenOptions } from "@/tween/lerp";
+import { wait } from "@/tween/wait";
+import { FrameGenerator } from "@/tween/generator";
+import { tween } from "@/tween/tween";
 
 
 export interface ShapeProps extends NodeProps {
@@ -101,8 +106,8 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         super.prepare(tracker);
         [
             ...this.fill,
-            ...this.stroke.map(s => s.fill),
-            ...this.shadow.map(s => s.fill),
+            ...this.stroke.flatMap(s => s.fill),
+            ...this.shadow.flatMap(s => s.fill),
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
@@ -131,11 +136,11 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      */
     private applyBackdropEffects(ctx: RenderContext): void {
         let blurRadius = 0;
-        const distortions: ZoomEffect[] = [];
+        const distortions: MagnifyEffect[] = [];
         const skslBackdrops: SkSLEffect[] = [];
         for (const effect of this.effects) {
             if (effect.type === "backgroundBlur") blurRadius += effect.radius;
-            else if (effect.type === "zoom") distortions.push(effect);
+            else if (effect.type === "magnify") distortions.push(effect);
             else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
         }
         if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
@@ -169,18 +174,28 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
     }
 
+    /** The posterize effect, if any — quantizes this node's own content (self + children). */
+    private posterizeEffect(): PosterizeEffect | undefined {
+        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize");
+    }
+
     onRender(ctx: RenderContext): void {
         this.applyTransform(ctx);
         this.applyBackdropEffects(ctx);
 
+        const w = this.layoutRect?.width ?? 0;
+        const h = this.layoutRect?.height ?? 0;
+
+        // Posterize quantizes the node's own pixels. It wraps the bulge scope so
+        // it bands the final (possibly warped) content, mirroring how blur-style
+        // content effects compose.
+        const posterize = this.posterizeEffect();
+        if (posterize) ctx.beginPosterize(posterize, w, h);
+
         // Bulge warps the node's own content (like blur), so capture everything
         // this node paints — its fill/stroke and its children — and warp the lot.
         const bulge = this.bulgeEffect();
-        if (bulge) {
-            const w = this.layoutRect?.width ?? 0;
-            const h = this.layoutRect?.height ?? 0;
-            ctx.beginForegroundDistortion(bulge, w, h);
-        }
+        if (bulge) ctx.beginForegroundDistortion(bulge, w, h);
 
         this.renderSelf(ctx);
         if (this.clip) this.applyClip(ctx);
@@ -188,5 +203,39 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         if (this.clip) ctx.endClip();
 
         if (bulge) ctx.endForegroundDistortion();
+        if (posterize) ctx.endPosterize();
+    }
+
+    *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.fill;
+        const target = resolveFillArray(to);
+        const lerp = options?.lerp ?? lerpFillArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ fill: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
+    }
+
+    *strokeTo(to: StrokeProp | StrokeProp[], duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.stroke;
+        const target = resolveStrokeArray(to, from);
+        const lerp = options?.lerp ?? lerpStrokeArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ stroke: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
+    }
+
+    *shadowTo(to: ShadowProp | ShadowProp[], duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.shadow;
+        const target = resolveShadowArray(to, from);
+        const lerp = options?.lerp ?? lerpShadowArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ shadow: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
     }
 }

@@ -215,10 +215,8 @@ export class ImageNodeRenderer {
         const ck = this.canvasKit;
         const dx = shadow.dx ?? 0;
         const dy = shadow.dy ?? 0;
-        const opacity = shadow.fill.opacity !== undefined ? shadow.fill.opacity : 1;
 
         const layerPaint = new ck.Paint();
-        layerPaint.setAlphaf(opacity);
         if (shadow.blur > 0) {
             const sigma = shadow.blur / 2;
             layerPaint.setImageFilter(
@@ -236,7 +234,7 @@ export class ImageNodeRenderer {
             ? { draw: (p) => canvas.drawPath(alphaPath, p), ckPath: alphaPath }
             : { draw: (p) => canvas.drawRect(boundsRect, p) };
 
-        this.fills.applyFills([{ ...shadow.fill, opacity: 1 }], [shape]);
+        this.fills.applyFills(shadow.fill, [shape]);
 
         canvas.restore();
         canvas.restore();

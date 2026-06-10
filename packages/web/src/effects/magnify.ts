@@ -1,5 +1,5 @@
 import type { CanvasKit, RuntimeEffect, Shader } from "@motion-script/canvaskit";
-import { type ZoomEffect } from "@motion-script/core";
+import { type MagnifyEffect } from "@motion-script/core";
 
 /**
  * Magnifier lens that *resamples the backdrop* — it reads the content beneath
@@ -13,12 +13,12 @@ import { type ZoomEffect } from "@motion-script/core";
  * as a rounded rect, etc.
  *
  * To magnify by `s`, the backdrop is sampled at a point pulled `1/s` of the way
- * from the centre — so a 2× zoom reads from half the distance, doubling apparent
- * size:
+ * from the centre — so a 2× magnification reads from half the distance, doubling
+ * apparent size:
  *
  *   sample = centre + (fragCoord − centre) / scale
  */
-const ZOOM_SKSL = `
+const MAGNIFY_SKSL = `
 uniform shader u_backdrop;
 uniform vec2  u_center; // lens centre, device px
 uniform float u_scale;  // magnification factor (1 = none, 2 = 2x)
@@ -32,12 +32,12 @@ vec4 main(vec2 fragCoord) {
 let cachedEffect: RuntimeEffect | null = null;
 
 function getRuntimeEffect(ck: CanvasKit): RuntimeEffect | null {
-    if (!cachedEffect) cachedEffect = ck.RuntimeEffect.Make(ZOOM_SKSL);
+    if (!cachedEffect) cachedEffect = ck.RuntimeEffect.Make(MAGNIFY_SKSL);
     return cachedEffect;
 }
 
 /** Drop the cached RuntimeEffect (called when the draw context is disposed). */
-export function disposeZoom(): void {
+export function disposeMagnify(): void {
     cachedEffect?.delete();
     cachedEffect = null;
 }
@@ -46,9 +46,9 @@ export function disposeZoom(): void {
  * Build a paint shader that draws the backdrop magnified within the lens box and
  * passes it through untouched elsewhere. The caller draws it over the surface
  * (clipped to the node silhouette), replacing the backdrop region with the
- * zoomed version. Returns null when the effect is a no-op.
+ * magnified version. Returns null when the effect is a no-op.
  *
- * @param effect    zoom params (scale, centre).
+ * @param effect    magnify params (scale, centre).
  * @param ck        live CanvasKit instance.
  * @param backdrop  child shader wrapping the snapshot of the content beneath.
  * @param centerX   lens centre X in device px (node centre).
@@ -56,8 +56,8 @@ export function disposeZoom(): void {
  * @param width     node width in device px (the lens box width).
  * @param height    node height in device px (the lens box height).
  */
-export function makeZoomShader(
-    effect: ZoomEffect,
+export function makeMagnifyShader(
+    effect: MagnifyEffect,
     ck: CanvasKit,
     backdrop: Shader,
     centerX: number,

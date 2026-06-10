@@ -3,7 +3,9 @@ import type { EffectData } from "../effect-data";
 
 export interface PixelateEffect {
     type: "pixelate";
+    /** Horizontal block size in pixels. */
     horizontalBlocks: number;
+    /** Vertical block size in pixels. */
     verticalBlocks: number;
 }
 

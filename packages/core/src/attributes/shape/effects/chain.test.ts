@@ -10,9 +10,15 @@ describe('FX builders', () => {
         expect([...FX.backgroundBlur(12)]).toEqual([{ type: 'backgroundBlur', radius: 12 }]);
     });
 
+    it('directionalBlur produces a direction and blurLength effect', () => {
+        expect([...FX.directionalBlur(45, 20)]).toEqual([
+            { type: 'directionalBlur', direction: 45, blurLength: 20 },
+        ]);
+    });
+
     it('pixelate uses the same size on both axes', () => {
-        expect([...FX.pixelate(0.25)]).toEqual([
-            { type: 'pixelate', horizontalBlocks: 0.25, verticalBlocks: 0.25 },
+        expect([...FX.pixelate(20)]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20 },
         ]);
     });
 
@@ -31,6 +37,38 @@ describe('FX builders', () => {
             { type: 'bulge', strength: -0.4 },
         ]);
     });
+
+    it('invert defaults to rgba at full strength', () => {
+        expect([...FX.invert()]).toEqual([
+            { type: 'invert', channel: 'rgba', strength: 1 },
+        ]);
+    });
+
+    it('invert accepts a channel and strength', () => {
+        expect([...FX.invert('hue', 0.5)]).toEqual([
+            { type: 'invert', channel: 'hue', strength: 0.5 },
+        ]);
+    });
+
+    it('scatter defaults to both axes', () => {
+        expect([...FX.scatter(10)]).toEqual([
+            { type: 'scatter', strength: 10, direction: 'both' },
+        ]);
+    });
+
+    it('scatter accepts a constrained direction', () => {
+        expect([...FX.scatter(5, 'horizontal')]).toEqual([
+            { type: 'scatter', strength: 5, direction: 'horizontal' },
+        ]);
+    });
+
+    it('posterize defaults to 4 levels', () => {
+        expect([...FX.posterize()]).toEqual([{ type: 'posterize', level: 4 }]);
+    });
+
+    it('posterize accepts an explicit level', () => {
+        expect([...FX.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
+    });
 });
 
 describe('EffectChain', () => {
@@ -43,7 +81,7 @@ describe('EffectChain', () => {
     });
 
     it('is iterable for spreading into an array', () => {
-        const arr = [...FX.blur(2).pixelate(0.1)];
+        const arr = [...FX.blur(2).pixelate(10)];
         expect(arr).toHaveLength(2);
         expect(arr[0]).toEqual({ type: 'blur', radius: 2 });
     });

@@ -236,12 +236,12 @@ export class StrokeHandler {
     // should resolve against for a given shape (driven by the fill's `space`).
     // The shader is rebuilt per shape so each can resolve against its own rect;
     // when omitted, bounds come from whatever the fill handler last set.
-    /** Paints each resolved stroke over every shape: resolves device-px stroke width (with thin-stroke snapping), builds the fill shader per shape via the registry, then draws through {@link drawStroke}. */
+    /** Paints each resolved stroke over every shape: resolves device-px stroke width (with thin-stroke snapping), builds the fill shader per shape via the registry, then draws through {@link drawStroke}. Each fill layer in `stroke.fill` is drawn as its own pass, bottom-to-top. */
     applyStrokes(
         strokes: StrokeResolved[],
         shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
         resolveBounds?: (
-            fill: StrokeResolved["fill"],
+            fill: FillResolved,
             shape: { ckPath?: CKPath },
         ) => void,
     ): boolean {
@@ -259,21 +259,23 @@ export class StrokeHandler {
             const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
             paint.setStrokeWidth(logical);
 
-            const opacity = stroke.fill.opacity !== undefined ? stroke.fill.opacity : 1.0;
-            paint.setAlphaf(opacity);
+            for (const fill of stroke.fill) {
+                const opacity = fill.opacity !== undefined ? fill.opacity : 1.0;
+                paint.setAlphaf(opacity);
 
-            if (stroke.fill.blend) {
-                paint.setBlendMode(this.fills.getCanvasKitBlendMode(stroke.fill.blend));
-            } else {
-                paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
-            }
+                if (fill.blend) {
+                    paint.setBlendMode(this.fills.getCanvasKitBlendMode(fill.blend));
+                } else {
+                    paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
+                }
 
-            for (const shape of shapes) {
-                if (resolveBounds) resolveBounds(stroke.fill, shape);
-                if (!FillRenderRegistry.applyPaint(stroke.fill, rendererCtx)) continue;
-                const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
-                this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
-                if (snapped) canvas.restore();
+                for (const shape of shapes) {
+                    if (resolveBounds) resolveBounds(fill, shape);
+                    if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
+                    const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
+                    this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
+                    if (snapped) canvas.restore();
+                }
             }
         }
 
@@ -495,7 +497,7 @@ export class StrokeHandler {
         }
     }
 
-    /** Paints drop shadows: for each shadow, offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to the shadow's fill/opacity), composited beneath the real paint via `saveLayer`. */
+    /** Paints drop shadows: for each shadow (and each fill layer within it), offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
     applyShadows(
         shadows: ShadowResolved[],
         shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
@@ -517,55 +519,58 @@ export class StrokeHandler {
         for (const shadow of shadows) {
             const dx = shadow.dx ?? 0;
             const dy = shadow.dy ?? 0;
-            const opacity = shadow.fill.opacity !== undefined ? shadow.fill.opacity : 1.0;
 
-            const layerPaint = new this.canvasKit.Paint();
-            layerPaint.setAlphaf(opacity);
-            if (shadow.blur > 0) {
-                const sigma = shadow.blur / 2;
-                const filter = this.canvasKit.ImageFilter.MakeBlur(
-                    sigma, sigma, this.canvasKit.TileMode.Decal, null,
-                );
-                layerPaint.setImageFilter(filter);
-            }
+            for (const fill of shadow.fill) {
+                const opacity = fill.opacity !== undefined ? fill.opacity : 1.0;
 
-            canvas.save();
-            // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
-            // a positive dy nudging the shadow upward.
-            canvas.translate(dx, -dy);
-            canvas.saveLayer(layerPaint);
+                const layerPaint = new this.canvasKit.Paint();
+                layerPaint.setAlphaf(opacity);
+                if (shadow.blur > 0) {
+                    const sigma = shadow.blur / 2;
+                    const filter = this.canvasKit.ImageFilter.MakeBlur(
+                        sigma, sigma, this.canvasKit.TileMode.Decal, null,
+                    );
+                    layerPaint.setImageFilter(filter);
+                }
 
-            paint.setAlphaf(1.0);
-            if (resolveBounds) resolveBounds(shadow.fill, null);
-            FillRenderRegistry.applyPaint(shadow.fill, this.fills.buildRendererCtx(paint));
+                canvas.save();
+                // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
+                // a positive dy nudging the shadow upward.
+                canvas.translate(dx, -dy);
+                canvas.saveLayer(layerPaint);
 
-            if (hasFill) {
-                paint.setStyle(this.canvasKit.PaintStyle.Fill);
-                paint.setPathEffect(null);
-                for (const shape of shapes) shape.draw(paint);
-            }
+                paint.setAlphaf(1.0);
+                if (resolveBounds) resolveBounds(fill, null);
+                FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint));
 
-            if (hasStrokes) {
-                paint.setStyle(this.canvasKit.PaintStyle.Stroke);
-                for (const stroke of strokes) {
-                    const weight = stroke.weight ?? 1;
-                    const { sx, sy } = this.deviceMetrics(canvas);
-                    const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
-                    paint.setStrokeWidth(logical);
+                if (hasFill) {
+                    paint.setStyle(this.canvasKit.PaintStyle.Fill);
                     paint.setPathEffect(null);
-                    // Shadow strokes inherit the shadow's silhouette colour set
-                    // above — they are not painted with the real stroke fill.
-                    for (const shape of shapes) {
-                        const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
-                        this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
-                        if (snapped) canvas.restore();
+                    for (const shape of shapes) shape.draw(paint);
+                }
+
+                if (hasStrokes) {
+                    paint.setStyle(this.canvasKit.PaintStyle.Stroke);
+                    for (const stroke of strokes) {
+                        const weight = stroke.weight ?? 1;
+                        const { sx, sy } = this.deviceMetrics(canvas);
+                        const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
+                        paint.setStrokeWidth(logical);
+                        paint.setPathEffect(null);
+                        // Shadow strokes inherit the shadow's silhouette colour set
+                        // above — they are not painted with the real stroke fill.
+                        for (const shape of shapes) {
+                            const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
+                            this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
+                            if (snapped) canvas.restore();
+                        }
                     }
                 }
-            }
 
-            canvas.restore();
-            canvas.restore();
-            layerPaint.delete();
+                canvas.restore();
+                canvas.restore();
+                layerPaint.delete();
+            }
         }
 
         paint.setStyle(this.canvasKit.PaintStyle.Fill);

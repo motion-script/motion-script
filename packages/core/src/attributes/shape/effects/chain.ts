@@ -1,4 +1,6 @@
 import { SceneEffect } from "./union";
+import type { InvertChannel } from "./implementations/invert";
+import type { ScatterDirection } from "./implementations/scatter";
 import type { SkSLUniform } from "./implementations/sksl";
 
 /**
@@ -21,6 +23,16 @@ export class EffectChain {
   }
 
   /**
+   * Append a motion-blur-style directional (linear) blur, smearing the node's
+   * own content along a single axis.
+   * @param direction  angle in degrees of the smear axis (0 = horizontal, 90 = vertical).
+   * @param blurLength smear length in pixels along `direction`.
+   */
+  directionalBlur(direction: number, blurLength: number) {
+    return new EffectChain([...this.list, { type: 'directionalBlur', direction, blurLength }]);
+  }
+
+  /**
    * Append a Figma-style background blur with the given pixel `radius`. Blurs
    * whatever is painted beneath the node and clips that blur to the node's
    * silhouette, leaving the node's own edges sharp.
@@ -29,7 +41,7 @@ export class EffectChain {
     return new EffectChain([...this.list, { type: 'backgroundBlur', radius }]);
   }
 
-  /** Append a pixelate effect where both axes use the same block `size` (0–1). */
+  /** Append a pixelate effect where both axes use the same block `size` in pixels. */
   pixelate(size: number) {
     return new EffectChain([...this.list, { type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]);
   }
@@ -37,16 +49,6 @@ export class EffectChain {
   /** Append a grayscale effect with `amount` in the 0–1 range. */
   grayscale(amount: number) {
     return new EffectChain([...this.list, { type: 'grayscale', amount }]);
-  }
-
-  /**
-   * Append a texture (spatter dissolve) effect.
-   * @param radius spread distance — how far the grain dissolve reaches inward.
-   * @param size   grain cell size in px; a number sets both axes, or pass `{x, y}`.
-   */
-  texture(radius: number, size: number | { x: number; y: number } = 8) {
-    const s = typeof size === 'number' ? { x: size, y: size } : size;
-    return new EffectChain([...this.list, { type: 'texture', radius, size: s }]);
   }
 
   /**
@@ -60,15 +62,15 @@ export class EffectChain {
   }
 
   /**
-   * Append a zoom lens that magnifies the backdrop beneath the node. The lens
+   * Append a magnify lens that magnifies the backdrop beneath the node. The lens
    * fills the node's bounding box and is clipped to its silhouette, so whatever
    * is painted underneath shows through scaled about `center` — like a
    * magnifying glass shaped to the node.
    * @param scale  magnification factor (1 = none, 2 = 2×, 0.5 = zoomed out) (default 2).
-   * @param center zoom centre in 0–1 layer coords (default middle).
+   * @param center magnify centre in 0–1 layer coords (default middle).
    */
-  zoom(scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
-    return new EffectChain([...this.list, { type: 'zoom', scale, center }]);
+  magnify(scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
+    return new EffectChain([...this.list, { type: 'magnify', scale, center }]);
   }
 
   /**
@@ -99,6 +101,34 @@ export class EffectChain {
    */
   chromaticAberration(amount = 4, angle = 0) {
     return new EffectChain([...this.list, { type: 'chromaticAberration', amount, angle }]);
+  }
+
+  /**
+   * Append a colour-invert effect.
+   * @param channel  which channel / colour component to invert (default `'rgba'`).
+   * @param strength 0–1: blend from original (0) to fully inverted (1) (default 1).
+   */
+  invert(channel: InvertChannel = 'rgba', strength = 1) {
+    return new EffectChain([...this.list, { type: 'invert', channel, strength }]);
+  }
+
+  /**
+   * Append a scatter effect — randomly jitters the node's own pixels, smearing
+   * its content like After Effects' Scatter.
+   * @param strength   maximum random pixel displacement (default 10).
+   * @param direction  axis pixels are scattered along (default `'both'`).
+   */
+  scatter(strength = 10, direction: ScatterDirection = 'both') {
+    return new EffectChain([...this.list, { type: 'scatter', strength, direction }]);
+  }
+
+  /**
+   * Append an After Effects-style posterize effect — quantizes each colour
+   * channel into `level` evenly-spaced bands, flattening gradients into steps.
+   * @param level number of brightness levels per channel (≥ 2, default 4).
+   */
+  posterize(level = 4) {
+    return new EffectChain([...this.list, { type: 'posterize', level }]);
   }
 
   /**
@@ -152,23 +182,30 @@ const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(l
  */
 export const FX = {
   blur: (radius: number) => createChain([{ type: 'blur', radius }]),
+  /** Motion-blur-style directional (linear) blur. `direction` in degrees, `blurLength` in pixels. */
+  directionalBlur: (direction: number, blurLength: number) =>
+    createChain([{ type: 'directionalBlur', direction, blurLength }]),
   backgroundBlur: (radius: number) => createChain([{ type: 'backgroundBlur', radius }]),
+  /** Pixel block size, applied to both axes. */
   pixelate: (size: number) => createChain([{ type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]),
   grayscale: (amount: number) => createChain([{ type: 'grayscale', amount }]),
-  texture: (radius: number, size: number | { x: number; y: number } = 8) => {
-    const s = typeof size === 'number' ? { x: size, y: size } : size;
-    return createChain([{ type: 'texture', radius, size: s }]);
-  },
   bulge: (strength: number) =>
     createChain([{ type: 'bulge', strength }]),
-  zoom: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
-    createChain([{ type: 'zoom', scale, center }]),
+  magnify: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
+    createChain([{ type: 'magnify', scale, center }]),
   bloom: (threshold = 0.7, radius = 12, intensity = 1) =>
     createChain([{ type: 'bloom', threshold, radius, intensity }]),
   vintage: (amount = 1, warmth = 0.2) =>
     createChain([{ type: 'vintage', amount, warmth }]),
   chromaticAberration: (amount = 4, angle = 0) =>
     createChain([{ type: 'chromaticAberration', amount, angle }]),
+  invert: (channel: InvertChannel = 'rgba', strength = 1) =>
+    createChain([{ type: 'invert', channel, strength }]),
+  scatter: (strength = 10, direction: ScatterDirection = 'both') =>
+    createChain([{ type: 'scatter', strength, direction }]),
+  /** After Effects-style posterize. `level` = brightness bands per channel (≥ 2). */
+  posterize: (level = 4) =>
+    createChain([{ type: 'posterize', level }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>

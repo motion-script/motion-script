@@ -17,3 +17,4 @@ export function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number)
         from[3] + (to[3] - from[3]) * t,
     ];
 }
+
