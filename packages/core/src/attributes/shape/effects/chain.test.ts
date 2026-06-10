@@ -49,6 +49,18 @@ describe('FX builders', () => {
             { type: 'invert', channel: 'hue', strength: 0.5 },
         ]);
     });
+
+    it('scatter defaults to both axes', () => {
+        expect([...FX.scatter(10)]).toEqual([
+            { type: 'scatter', strength: 10, direction: 'both' },
+        ]);
+    });
+
+    it('scatter accepts a constrained direction', () => {
+        expect([...FX.scatter(5, 'horizontal')]).toEqual([
+            { type: 'scatter', strength: 5, direction: 'horizontal' },
+        ]);
+    });
 });
 
 describe('EffectChain', () => {

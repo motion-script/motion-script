@@ -14,7 +14,10 @@ import { Node, NodeConfig, NodeProps } from "../base/node";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
 import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
-import { EaseFunction, FrameGenerator, LerpFunction, TweenOptions, tween, wait } from "@/tween";
+import { TweenOptions } from "@/tween/lerp";
+import { wait } from "@/tween/wait";
+import { FrameGenerator } from "@/tween/generator";
+import { tween } from "@/tween/tween";
 
 
 export interface ShapeProps extends NodeProps {

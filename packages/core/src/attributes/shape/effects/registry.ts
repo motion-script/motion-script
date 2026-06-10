@@ -5,13 +5,13 @@ import { directionalBlurEffect } from "./implementations/directional-blur";
 import { backgroundBlurEffect } from "./implementations/background-blur";
 import { grayscaleEffect } from "./implementations/grayscale";
 import { pixelateEffect } from "./implementations/pixelate";
-import { textureEffect } from "./implementations/texture";
 import { bulgeEffect } from "./implementations/bulge";
 import { magnifyEffect } from "./implementations/magnify";
 import { bloomEffect } from "./implementations/bloom";
 import { vintageEffect } from "./implementations/vintage";
 import { chromaticAberrationEffect } from "./implementations/chromatic-aberration";
 import { invertEffect } from "./implementations/invert";
+import { scatterEffect } from "./implementations/scatter";
 import { skslEffect } from "./implementations/sksl";
 import { EffectData } from "./effect-data";
 
@@ -22,13 +22,13 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["backgroundBlur", backgroundBlurEffect as EffectData<SceneEffect>],
     ["grayscale", grayscaleEffect as EffectData<SceneEffect>],
     ["pixelate", pixelateEffect as EffectData<SceneEffect>],
-    ["texture", textureEffect as EffectData<SceneEffect>],
     ["bulge", bulgeEffect as EffectData<SceneEffect>],
     ["magnify", magnifyEffect as EffectData<SceneEffect>],
     ["bloom", bloomEffect as EffectData<SceneEffect>],
     ["vintage", vintageEffect as EffectData<SceneEffect>],
     ["chromaticAberration", chromaticAberrationEffect as EffectData<SceneEffect>],
     ["invert", invertEffect as EffectData<SceneEffect>],
+    ["scatter", scatterEffect as EffectData<SceneEffect>],
     ["sksl", skslEffect as EffectData<SceneEffect>],
 ]);
 

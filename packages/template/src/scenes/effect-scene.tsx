@@ -42,12 +42,12 @@ export class EffectScene extends Scene {
             {cell('Background blur', FX.backgroundBlur(0), true)}
             {cell('Grayscale', FX.grayscale(0))}
             {cell('Pixelate', FX.pixelate(64))}
-            {cell('Texture', FX.texture(0, 6))}
             {cell('Bulge', FX.bulge(0))}
             {cell('Magnify', FX.magnify(1), true)}
             {cell('Bloom', FX.bloom(0.6, 12, 0))}
             {cell('Vintage', FX.vintage(0, 0))}
             {cell('Chromatic aberration', FX.chromaticAberration(0, 0))}
+            {cell('Scatter', FX.scatter(0))}
             {cell('Frosted', FX.grayscale(0).blur(0))}
             {cell('Retro VHS', FX.vintage(0, 0).chromaticAberration(0, 0))}
             {cell('Invert', FX.invert('rgba', 0))}
@@ -59,12 +59,12 @@ export class EffectScene extends Scene {
             FX.backgroundBlur(16),
             FX.grayscale(1),
             FX.pixelate(24),
-            FX.texture(2, 6),
             FX.bulge(0.6),
             FX.magnify(1.8),
             FX.bloom(0.6, 24, 1.5),
             FX.vintage(1, 0.4),
             FX.chromaticAberration(8, 0),
+            FX.scatter(12),
             FX.grayscale(1).blur(6),
             FX.vintage(0.9, -0.2).chromaticAberration(6, 90),
             FX.invert('rgba', 1)

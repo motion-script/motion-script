@@ -1,5 +1,6 @@
 import { SceneEffect } from "./union";
 import type { InvertChannel } from "./implementations/invert";
+import type { ScatterDirection } from "./implementations/scatter";
 import type { SkSLUniform } from "./implementations/sksl";
 
 /**
@@ -48,16 +49,6 @@ export class EffectChain {
   /** Append a grayscale effect with `amount` in the 0–1 range. */
   grayscale(amount: number) {
     return new EffectChain([...this.list, { type: 'grayscale', amount }]);
-  }
-
-  /**
-   * Append a texture (spatter dissolve) effect.
-   * @param radius spread distance — how far the grain dissolve reaches inward.
-   * @param size   grain cell size in px; a number sets both axes, or pass `{x, y}`.
-   */
-  texture(radius: number, size: number | { x: number; y: number } = 8) {
-    const s = typeof size === 'number' ? { x: size, y: size } : size;
-    return new EffectChain([...this.list, { type: 'texture', radius, size: s }]);
   }
 
   /**
@@ -122,6 +113,16 @@ export class EffectChain {
   }
 
   /**
+   * Append a scatter effect — randomly jitters the node's own pixels, smearing
+   * its content like After Effects' Scatter.
+   * @param strength   maximum random pixel displacement (default 10).
+   * @param direction  axis pixels are scattered along (default `'both'`).
+   */
+  scatter(strength = 10, direction: ScatterDirection = 'both') {
+    return new EffectChain([...this.list, { type: 'scatter', strength, direction }]);
+  }
+
+  /**
    * Append a custom SkSL overlay shader applied as a layer effect.
    * The shader generates colour from position/uniforms and is blended onto the
    * node's layer using `blendMode` (default `'screen'`).
@@ -179,10 +180,6 @@ export const FX = {
   /** Pixel block size, applied to both axes. */
   pixelate: (size: number) => createChain([{ type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]),
   grayscale: (amount: number) => createChain([{ type: 'grayscale', amount }]),
-  texture: (radius: number, size: number | { x: number; y: number } = 8) => {
-    const s = typeof size === 'number' ? { x: size, y: size } : size;
-    return createChain([{ type: 'texture', radius, size: s }]);
-  },
   bulge: (strength: number) =>
     createChain([{ type: 'bulge', strength }]),
   magnify: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
@@ -195,6 +192,8 @@ export const FX = {
     createChain([{ type: 'chromaticAberration', amount, angle }]),
   invert: (channel: InvertChannel = 'rgba', strength = 1) =>
     createChain([{ type: 'invert', channel, strength }]),
+  scatter: (strength = 10, direction: ScatterDirection = 'both') =>
+    createChain([{ type: 'scatter', strength, direction }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>
