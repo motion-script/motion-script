@@ -14,6 +14,7 @@ import { Node, NodeConfig, NodeProps } from "../base/node";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
 import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import { EaseFunction, FrameGenerator, LerpFunction, TweenOptions, tween, wait } from "@/tween";
 
 
 export interface ShapeProps extends NodeProps {
@@ -101,8 +102,8 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         super.prepare(tracker);
         [
             ...this.fill,
-            ...this.stroke.map(s => s.fill),
-            ...this.shadow.map(s => s.fill),
+            ...this.stroke.flatMap(s => s.fill),
+            ...this.shadow.flatMap(s => s.fill),
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
@@ -188,5 +189,38 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         if (this.clip) ctx.endClip();
 
         if (bulge) ctx.endForegroundDistortion();
+    }
+
+    *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.fill;
+        const target = resolveFillArray(to);
+        const lerp = options?.lerp ?? lerpFillArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ fill: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
+    }
+
+    *strokeTo(to: StrokeProp | StrokeProp[], duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.stroke;
+        const target = resolveStrokeArray(to, from);
+        const lerp = options?.lerp ?? lerpStrokeArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ stroke: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
+    }
+
+    *shadowTo(to: ShadowProp | ShadowProp[], duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.shadow;
+        const target = resolveShadowArray(to, from);
+        const lerp = options?.lerp ?? lerpShadowArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ shadow: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
     }
 }

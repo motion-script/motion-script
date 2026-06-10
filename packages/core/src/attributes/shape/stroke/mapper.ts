@@ -1,5 +1,6 @@
-import { resolveFill } from '@/attributes/shape/fill/registry';
-import { FillProp, FillResolved } from '../fill/union';
+import { resolveFillArray } from '@/attributes/shape/fill/registry';
+import { FillResolved } from '../fill/union';
+import { ChainableFill } from '../fill/chain';
 
 // ── Align ──────────────────────────────────────────────────────────────────
 
@@ -28,8 +29,8 @@ export function resolveStrokeAlign(align: StrokeAlign | undefined, fallback: num
 export interface StrokeProp {
     /** Stroke width in pixels. Defaults to 1. */
     weight?: number;
-    /** Any loose fill: a CSS color string, fill prop object, or resolved fill. */
-    fill?: FillProp;
+    /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
+    fill?: ChainableFill;
     /** Dash pattern. A single number `n` becomes `[n, n]`. */
     dash?: number | number[];
     dashOffset?: number;
@@ -49,7 +50,8 @@ export interface StrokeProp {
  */
 export interface StrokeResolved {
     weight: number;
-    fill: FillResolved;
+    /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
+    fill: FillResolved[];
     dash?: number[];
     dashOffset: number;
     /** Stroke placement in [-1, 1]: -1 inside, 0 center, +1 outside. */
@@ -69,7 +71,7 @@ export function resolveStroke(prop: StrokeProp, previous?: StrokeResolved): Stro
     }
     return {
         weight: prop.weight ?? previous?.weight ?? 1,
-        fill: prop.fill != null ? resolveFill(prop.fill) : (previous?.fill ?? resolveFill('transparent')),
+        fill: prop.fill != null ? resolveFillArray(prop.fill) : (previous?.fill ?? resolveFillArray('transparent')),
         dash,
         dashOffset: prop.dashOffset ?? previous?.dashOffset ?? 0,
         align: resolveStrokeAlign(prop.align, previous?.align ?? -1),

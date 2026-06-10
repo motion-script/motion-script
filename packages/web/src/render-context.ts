@@ -596,7 +596,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const space = pendingShadows[0].fill.space ?? "global";
+            const space = pendingShadows[0].fill[0]?.space ?? "global";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
             dispose();
@@ -655,7 +655,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const shadowSpace = pendingShadows[0].fill.space ?? "global";
+            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "global";
             const { shapes: shadowShapes, dispose: shadowDispose } = this.strokeShapesForSpace(shadowSpace);
             this.strokeHandler.applyShadows(pendingShadows, shadowShapes, [], resolved, this.applyFillSpaceBounds);
             shadowDispose();
@@ -663,7 +663,7 @@ export class WebRenderContext extends RenderContext {
         // The first stroke's space decides geometry grouping (local = per shape,
         // else union outline). Bounds for each stroke's shader are resolved per
         // shape from that stroke's own fill space.
-        const space = resolved[0].fill.space ?? "global";
+        const space = resolved[0].fill[0]?.space ?? "global";
         const { shapes, dispose } = this.strokeShapesForSpace(space);
         this.strokeHandler.applyStrokes(resolved, shapes, this.applyFillSpaceBounds);
         dispose();
