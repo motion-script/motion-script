@@ -74,7 +74,7 @@ export class Rect extends ShapeNode<RectProps> {
 
     constructor(props: NodeConfig<Rect, RectProps>) {
         super(props);
-        this.applyGroupProp(props.group ?? "row");
+        this.applyGroupProp(props.group ?? "stack");
         // Override width/height default based on whether children are present.
         // An explicit `flex` means "fill the parent's main axis", so it takes
         // precedence over the hug-when-has-children default (the base Node

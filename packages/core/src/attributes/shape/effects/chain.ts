@@ -29,7 +29,7 @@ export class EffectChain {
     return new EffectChain([...this.list, { type: 'backgroundBlur', radius }]);
   }
 
-  /** Append a pixelate effect where both axes use the same block `size` (0–1). */
+  /** Append a pixelate effect where both axes use the same block `size` in pixels. */
   pixelate(size: number) {
     return new EffectChain([...this.list, { type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]);
   }
@@ -153,6 +153,7 @@ const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(l
 export const FX = {
   blur: (radius: number) => createChain([{ type: 'blur', radius }]),
   backgroundBlur: (radius: number) => createChain([{ type: 'backgroundBlur', radius }]),
+  /** Pixel block size, applied to both axes. */
   pixelate: (size: number) => createChain([{ type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]),
   grayscale: (amount: number) => createChain([{ type: 'grayscale', amount }]),
   texture: (radius: number, size: number | { x: number; y: number } = 8) => {

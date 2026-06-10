@@ -11,8 +11,8 @@ describe('FX builders', () => {
     });
 
     it('pixelate uses the same size on both axes', () => {
-        expect([...FX.pixelate(0.25)]).toEqual([
-            { type: 'pixelate', horizontalBlocks: 0.25, verticalBlocks: 0.25 },
+        expect([...FX.pixelate(20)]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20 },
         ]);
     });
 
@@ -43,7 +43,7 @@ describe('EffectChain', () => {
     });
 
     it('is iterable for spreading into an array', () => {
-        const arr = [...FX.blur(2).pixelate(0.1)];
+        const arr = [...FX.blur(2).pixelate(10)];
         expect(arr).toHaveLength(2);
         expect(arr[0]).toEqual({ type: 'blur', radius: 2 });
     });

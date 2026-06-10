@@ -4,18 +4,18 @@ sidebar_position: 3
 
 # Pixelate
 
-Chunks the node into rectangular blocks. Values are resolution-independent — the same number produces the same visual result regardless of node size.
+Chunks the node into rectangular blocks.
 
 ## Usage
 
 ```tsx
 import { FX } from '@motion-script/core';
 
-// Uniform pixelation on both axes (0–1)
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.pixelate(0.3)} />
+// Uniform pixelation on both axes — block size in pixels
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.pixelate(16)} />
 
 // Raw object with separate axes
-<Rect effects={[{ type: 'pixelate', horizontalBlocks: 0.4, verticalBlocks: 0.2 }]} />
+<Rect effects={[{ type: 'pixelate', horizontalBlocks: 24, verticalBlocks: 8 }]} />
 ```
 
 ## Props
@@ -23,14 +23,14 @@ import { FX } from '@motion-script/core';
 | Prop | Type | Description |
 |---|---|---|
 | `type` | `'pixelate'` | Effect identifier |
-| `horizontalBlocks` | `number` | Horizontal pixelation: 0 = none, 1 = single block |
-| `verticalBlocks` | `number` | Vertical pixelation: 0 = none, 1 = single block |
+| `horizontalBlocks` | `number` | Horizontal block size in pixels: 1 = no pixelation |
+| `verticalBlocks` | `number` | Vertical block size in pixels: 1 = no pixelation |
 
 The `FX.pixelate(size)` helper sets both axes to the same value.
 
 ## Animating — pixel reveal
 
-Start highly pixelated and animate down to 0 to reveal the image:
+Start highly pixelated and animate down to 1 to reveal the image:
 
 ```tsx
 import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
@@ -42,11 +42,11 @@ export class MyScene extends Scene {
       height: 400,
       fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
     });
-    img.set({ effects: FX.pixelate(0.9) });
+    img.set({ effects: FX.pixelate(40) });
     this.add(img);
 
     yield* tween(1.5, (t) => {
-      img.set({ effects: FX.pixelate(lerpNumber(0.9, 0, easeInOut(t))) });
+      img.set({ effects: FX.pixelate(lerpNumber(40, 1, easeInOut(t))) });
     });
   }
 }
@@ -55,5 +55,5 @@ export class MyScene extends Scene {
 ## Stacking
 
 ```tsx
-<Rect effects={FX.pixelate(0.3).grayscale(0.5)} />
+<Rect effects={FX.pixelate(12).grayscale(0.5)} />
 ```
