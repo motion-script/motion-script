@@ -2,12 +2,14 @@ import type { CanvasKit } from "@motion-script/canvaskit";
 import { CanvasKitEffect } from "./effect";
 import { type SceneEffect as IEffect } from "@motion-script/core";
 import { BlurCanvasKitEffect } from "./blur";
+import { DirectionalBlurCanvasKitEffect } from "./directional-blur";
 import { GrayscaleCanvasKitEffect } from "./grayscale";
 import { PixelateCanvasKitEffect } from "./pixelate";
 import { TextureCanvasKitEffect } from "./texture";
 import { BloomCanvasKitEffect } from "./bloom";
 import { VintageCanvasKitEffect } from "./vintage";
 import { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
+import { InvertCanvasKitEffect } from "./invert";
 import { SkSLLayerEffect } from "./sksl-layer";
 export class CanvasKitEffectRegistry {
     private static registry = new Map<string, CanvasKitEffect>();
@@ -53,10 +55,12 @@ export class CanvasKitEffectRegistry {
     }
 }
 CanvasKitEffectRegistry.register(new BlurCanvasKitEffect());
+CanvasKitEffectRegistry.register(new DirectionalBlurCanvasKitEffect());
 CanvasKitEffectRegistry.register(new GrayscaleCanvasKitEffect());
 CanvasKitEffectRegistry.register(new PixelateCanvasKitEffect());
 CanvasKitEffectRegistry.register(new TextureCanvasKitEffect());
 CanvasKitEffectRegistry.register(new BloomCanvasKitEffect());
 CanvasKitEffectRegistry.register(new VintageCanvasKitEffect());
 CanvasKitEffectRegistry.register(new ChromaticAberrationCanvasKitEffect());
+CanvasKitEffectRegistry.register(new InvertCanvasKitEffect());
 CanvasKitEffectRegistry.register(new SkSLLayerEffect());

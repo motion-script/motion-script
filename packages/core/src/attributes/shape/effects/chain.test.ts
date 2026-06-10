@@ -10,6 +10,12 @@ describe('FX builders', () => {
         expect([...FX.backgroundBlur(12)]).toEqual([{ type: 'backgroundBlur', radius: 12 }]);
     });
 
+    it('directionalBlur produces a direction and blurLength effect', () => {
+        expect([...FX.directionalBlur(45, 20)]).toEqual([
+            { type: 'directionalBlur', direction: 45, blurLength: 20 },
+        ]);
+    });
+
     it('pixelate uses the same size on both axes', () => {
         expect([...FX.pixelate(20)]).toEqual([
             { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20 },
@@ -29,6 +35,18 @@ describe('FX builders', () => {
     it('bulge accepts negative strength (pinch)', () => {
         expect([...FX.bulge(-0.4)]).toEqual([
             { type: 'bulge', strength: -0.4 },
+        ]);
+    });
+
+    it('invert defaults to rgba at full strength', () => {
+        expect([...FX.invert()]).toEqual([
+            { type: 'invert', channel: 'rgba', strength: 1 },
+        ]);
+    });
+
+    it('invert accepts a channel and strength', () => {
+        expect([...FX.invert('hue', 0.5)]).toEqual([
+            { type: 'invert', channel: 'hue', strength: 0.5 },
         ]);
     });
 });

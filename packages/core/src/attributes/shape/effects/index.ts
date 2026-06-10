@@ -1,14 +1,16 @@
 /** Effect data types for each built-in effect. */
 export type { BlurEffect } from "./implementations/blur";
+export type { DirectionalBlurEffect } from "./implementations/directional-blur";
 export type { BackgroundBlurEffect } from "./implementations/background-blur";
 export type { GrayScaleEffect } from "./implementations/grayscale";
 export type { PixelateEffect } from "./implementations/pixelate";
 export type { TextureEffect } from "./implementations/texture";
 export type { BulgeEffect } from "./implementations/bulge";
-export type { ZoomEffect } from "./implementations/zoom";
+export type { MagnifyEffect } from "./implementations/magnify";
 export type { BloomEffect } from "./implementations/bloom";
 export type { VintageEffect } from "./implementations/vintage";
 export type { ChromaticAberrationEffect } from "./implementations/chromatic-aberration";
+export type { InvertEffect, InvertChannel } from "./implementations/invert";
 export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
 
 /** Chainable effect builder API, chain class, and union input type. */

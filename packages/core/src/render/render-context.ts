@@ -14,7 +14,7 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
+import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 
 
@@ -187,11 +187,11 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     endBackgroundBlur(): void { }
 
     /**
-     * Open a backdrop-distortion (zoom) layer. The backdrop is warped by a lens
+     * Open a backdrop-distortion (magnify) layer. The backdrop is warped by a lens
      * centred on the node (`width` × `height`), clipped to the active
      * silhouette clip. No-op by default.
      */
-    beginBackgroundDistortion(_effect: ZoomEffect, _width: number, _height: number): void { }
+    beginBackgroundDistortion(_effect: MagnifyEffect, _width: number, _height: number): void { }
     endBackgroundDistortion(): void { }
 
     /**

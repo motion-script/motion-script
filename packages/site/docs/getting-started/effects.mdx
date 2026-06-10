@@ -131,6 +131,28 @@ export class MyScene extends Scene {
 
 ---
 
+## Invert
+
+Inverts a colour channel. `channel` selects which component is inverted (`'red'`, `'green'`, `'blue'`, `'rgba'`, `'alpha'`, `'hue'`, or `'luminance'`); `strength` ranges from `0` (original) to `1` (fully inverted).
+
+```tsx
+<Rect
+  width={500} height={350}
+  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+  effects={FX.invert('rgba', 1)}
+/>
+```
+
+### Animating an invert
+
+```tsx
+yield* tween(1, (t) => {
+  photo.set({ effects: FX.invert('hue', easeInOut(t)) });
+});
+```
+
+---
+
 ## Chaining effects with FX
 
 The `FX` builder lets you chain multiple effects fluently:
@@ -170,5 +192,7 @@ effects={[
 | Type | Props |
 |---|---|
 | `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
+| `{ type: 'directionalBlur', direction: number, blurLength: number }` | `direction` — smear angle in degrees (0 = horizontal, 90 = vertical); `blurLength` — smear length in pixels |
 | `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
 | `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number }` | Block sizes in pixels per axis |
+| `{ type: 'invert', channel: InvertChannel, strength: number }` | `channel` — `'red' \| 'green' \| 'blue' \| 'rgba' \| 'alpha' \| 'hue' \| 'luminance'`; `strength` — 0 (original) to 1 (fully inverted) |

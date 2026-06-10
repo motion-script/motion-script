@@ -1,4 +1,5 @@
 import { SceneEffect } from "./union";
+import type { InvertChannel } from "./implementations/invert";
 import type { SkSLUniform } from "./implementations/sksl";
 
 /**
@@ -18,6 +19,16 @@ export class EffectChain {
   /** Append a Gaussian blur with the given pixel `radius`. */
   blur(radius: number) {
     return new EffectChain([...this.list, { type: 'blur', radius }]);
+  }
+
+  /**
+   * Append a motion-blur-style directional (linear) blur, smearing the node's
+   * own content along a single axis.
+   * @param direction  angle in degrees of the smear axis (0 = horizontal, 90 = vertical).
+   * @param blurLength smear length in pixels along `direction`.
+   */
+  directionalBlur(direction: number, blurLength: number) {
+    return new EffectChain([...this.list, { type: 'directionalBlur', direction, blurLength }]);
   }
 
   /**
@@ -60,15 +71,15 @@ export class EffectChain {
   }
 
   /**
-   * Append a zoom lens that magnifies the backdrop beneath the node. The lens
+   * Append a magnify lens that magnifies the backdrop beneath the node. The lens
    * fills the node's bounding box and is clipped to its silhouette, so whatever
    * is painted underneath shows through scaled about `center` — like a
    * magnifying glass shaped to the node.
    * @param scale  magnification factor (1 = none, 2 = 2×, 0.5 = zoomed out) (default 2).
-   * @param center zoom centre in 0–1 layer coords (default middle).
+   * @param center magnify centre in 0–1 layer coords (default middle).
    */
-  zoom(scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
-    return new EffectChain([...this.list, { type: 'zoom', scale, center }]);
+  magnify(scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
+    return new EffectChain([...this.list, { type: 'magnify', scale, center }]);
   }
 
   /**
@@ -99,6 +110,15 @@ export class EffectChain {
    */
   chromaticAberration(amount = 4, angle = 0) {
     return new EffectChain([...this.list, { type: 'chromaticAberration', amount, angle }]);
+  }
+
+  /**
+   * Append a colour-invert effect.
+   * @param channel  which channel / colour component to invert (default `'rgba'`).
+   * @param strength 0–1: blend from original (0) to fully inverted (1) (default 1).
+   */
+  invert(channel: InvertChannel = 'rgba', strength = 1) {
+    return new EffectChain([...this.list, { type: 'invert', channel, strength }]);
   }
 
   /**
@@ -152,6 +172,9 @@ const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(l
  */
 export const FX = {
   blur: (radius: number) => createChain([{ type: 'blur', radius }]),
+  /** Motion-blur-style directional (linear) blur. `direction` in degrees, `blurLength` in pixels. */
+  directionalBlur: (direction: number, blurLength: number) =>
+    createChain([{ type: 'directionalBlur', direction, blurLength }]),
   backgroundBlur: (radius: number) => createChain([{ type: 'backgroundBlur', radius }]),
   /** Pixel block size, applied to both axes. */
   pixelate: (size: number) => createChain([{ type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]),
@@ -162,14 +185,16 @@ export const FX = {
   },
   bulge: (strength: number) =>
     createChain([{ type: 'bulge', strength }]),
-  zoom: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
-    createChain([{ type: 'zoom', scale, center }]),
+  magnify: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
+    createChain([{ type: 'magnify', scale, center }]),
   bloom: (threshold = 0.7, radius = 12, intensity = 1) =>
     createChain([{ type: 'bloom', threshold, radius, intensity }]),
   vintage: (amount = 1, warmth = 0.2) =>
     createChain([{ type: 'vintage', amount, warmth }]),
   chromaticAberration: (amount = 4, angle = 0) =>
     createChain([{ type: 'chromaticAberration', amount, angle }]),
+  invert: (channel: InvertChannel = 'rgba', strength = 1) =>
+    createChain([{ type: 'invert', channel, strength }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>
