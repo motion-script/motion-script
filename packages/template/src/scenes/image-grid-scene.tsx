@@ -51,7 +51,27 @@ class GridCell extends ShapeNode<ShapeProps> {
         // The slice: draw the whole image covering the grid (mode 'crop' = cover,
         // computed from the decoded image), clipped to this cell's window. The
         // grid's centre sits at (-r.x, -r.y) in the cell's local space.
-        ctx.beginClipRect({ width: r.width, height: r.height });
+        //
+        // Bleed the clip toward abutting neighbours so the anti-aliased clip edges
+        // overlap instead of leaving a ~50%-coverage hairline (which a magnifying
+        // effect like bulge readily reveals). Every cell draws the *same* cover
+        // image at the same world position, so the overlap is pixel-identical —
+        // invisible — while backing each tile's AA fringe with the neighbour's
+        // solid fill. Only interior edges bleed (keeps the outer border crisp),
+        // and the bleed tapers to 0 as the gap opens so real gaps stay intact.
+        const BLEED = 1; // scene px — enough to cover the ~1px AA clip fringe
+        const bx = Math.max(0, BLEED - (this.grid.columnGap ?? 0));
+        const by = Math.max(0, BLEED - (this.grid.rowGap ?? 0));
+        const left = this.col > 1 ? bx : 0;
+        const right = this.col < this.grid.columns ? bx : 0;
+        const top = this.row > 1 ? by : 0;
+        const bottom = this.row < this.grid.rows ? by : 0;
+        ctx.beginClipRect({
+            x: (right - left) / 2,
+            y: (bottom - top) / 2,
+            width: r.width + left + right,
+            height: r.height + top + bottom,
+        });
         ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "crop" }));
         ctx.endClip();
 
