@@ -1,5 +1,6 @@
 packages:
   - "packages/canvaskit"
+  - "packages/cli"
   - "packages/core"
   - "packages/create"
   - "packages/player"

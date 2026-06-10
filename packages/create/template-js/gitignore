@@ -1,6 +1,7 @@
 # Generated files
 node_modules
 output
+out
 dist
 
 # Editor directories and files

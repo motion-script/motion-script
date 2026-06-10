@@ -24,7 +24,9 @@
   },
   "dependencies": {
     "@motion-script/canvaskit": "workspace:*",
+    "@motion-script/core": "workspace:*",
     "@motion-script/player": "workspace:*",
+    "@motion-script/web": "workspace:*",
     "@vitejs/plugin-react": "^6.0.0",
     "fontkit": "^2.0.4",
     "image-size": "^2.0.2",

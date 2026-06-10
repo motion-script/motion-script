@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "list": "ms list",
+    "export": "ms export"
   },
   "dependencies": {
     "@motion-script/core": "*",
@@ -12,6 +14,7 @@
     "@motion-script/latex": "*"
   },
   "devDependencies": {
+    "@motion-script/cli": "*",
     "@motion-script/vite-plugin": "*",
     "typescript": "^6.0.3",
     "vite": "^8.0.11"

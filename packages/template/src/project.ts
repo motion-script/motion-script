@@ -32,7 +32,7 @@ export default createProject({
     // new CodeScene(),
   ],
   theme: {
-    'bg': '#0D0F15',
-    'card': '#161a21'
+    'bg': '#8b8f99ff',
+    'card': '#2d5394ff'
   }
 })

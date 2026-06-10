@@ -23,6 +23,13 @@ export type ExportParams = {
     onProgress?: ExportProgressCallback;
     signal?: AbortSignal;
     wasmUrl?: string;
+    /**
+     * When true, the encoded MP4 bytes are returned instead of triggering a
+     * browser download. Used by headless drivers (e.g. the CLI) that capture
+     * the output themselves and write it to disk; leave unset for the
+     * interactive player, which downloads via an `<a>` element.
+     */
+    returnBytes?: boolean;
 }
 
 const EMPTY_MANIFEST: AssetManifest = {
@@ -118,10 +125,10 @@ class NoopAudioDevice extends AudioDevice {
  * into an MP4 via mediabunny: drives the same {@link WebRenderContext}/
  * {@link StateEvaluator} pipeline as live playback, captures each frame to the
  * video track, mixes all audio offline at the end (see {@link mixAudio}), then
- * finalizes and triggers a browser download. Honors `signal` for cancellation
- * between frames.
+ * finalizes and either triggers a browser download or returns the MP4 bytes
+ * (see `returnBytes`). Honors `signal` for cancellation between frames.
  */
-export async function exportScenesAsVideo(params: ExportParams): Promise<void> {
+export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Array | void> {
     const {
         scenes,
         viewport = { width: 1920, height: 1080 },
@@ -133,6 +140,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<void> {
         onProgress,
         signal,
         wasmUrl,
+        returnBytes = false,
     } = params;
 
     if (scenes.length === 0) return;
@@ -239,6 +247,12 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<void> {
 
     const buffer = target.buffer;
     if (!buffer) throw new Error('Export produced no data');
+
+    // Headless callers capture the bytes and write them to disk themselves,
+    // so skip the DOM-based download path entirely.
+    if (returnBytes) {
+        return new Uint8Array(buffer);
+    }
 
     const blob = new Blob([buffer], { type: 'video/mp4' });
     const url = URL.createObjectURL(blob);
