@@ -32,7 +32,7 @@ import {
     type TransformState,
     type Vector2,
     type BulgeEffect,
-    type ZoomEffect,
+    type MagnifyEffect,
     type FontStyle,
     type SkSLEffect,
 
@@ -57,7 +57,7 @@ import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
 import { makeBulgeShader, disposeBulge } from "./effects/bulge";
-import { makeZoomShader, disposeZoom } from "./effects/zoom";
+import { makeMagnifyShader, disposeMagnify } from "./effects/magnify";
 import { getOrCompileSkSL, disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
@@ -254,7 +254,7 @@ export class WebRenderContext extends RenderContext {
         this.backgroundDistortionStack.length = 0;
         this.backdropSkSLStack.length = 0;
         disposeBulge();
-        disposeZoom();
+        disposeMagnify();
         this.foregroundDistortionStack.length = 0;
         disposeSkSLCache();
 
@@ -839,11 +839,11 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    // ─── Background distortion (zoom) ────────────────────────────────────────────
+    // ─── Background distortion (magnify) ────────────────────────────────────────────
 
     private backgroundDistortionStack: number[] = [];
 
-    beginBackgroundDistortion(effect: ZoomEffect, width: number, height: number): void {
+    beginBackgroundDistortion(effect: MagnifyEffect, width: number, height: number): void {
         if (!this.isRendering) {
             console.warn("beginBackgroundDistortion() must be called within the draw() method.");
             return;
@@ -859,13 +859,13 @@ export class WebRenderContext extends RenderContext {
         const sy = Math.hypot(m[1], m[4]);
 
         // Snapshot the content painted so far (the backdrop) and wrap it as a child
-        // shader. The lens shader resamples this snapshot at zoom-remapped device
+        // shader. The lens shader resamples this snapshot at magnify-remapped device
         // coordinates — a real magnifier, not a nudge.
         const snapshot = this.surface.makeImageSnapshot();
         const backdropShader = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Linear, ck.MipmapMode.None,
         );
-        const lens = makeZoomShader(
+        const lens = makeMagnifyShader(
             effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
         );
         if (lens == null) {

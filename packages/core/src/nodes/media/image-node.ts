@@ -7,8 +7,10 @@ import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implement
 import { BorderRadiusProps, BorderRadiusResolved, resolveBorderRadius, lerpBorderRadius } from "@/attributes/shape/corners/border-radius";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { Node, NodeConfig } from "../base/node";
 import { AssetTracker } from "@/assets/tracker";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { MeasureScope } from "@/render/measure-scope";
 
 export interface ImageProps extends ShapeProps {
     borderRadius?: BorderRadiusProps;
@@ -38,6 +40,24 @@ export class Image extends ShapeNode<ImageProps> {
 
     prepare(assetManager: AssetTracker): void {
         if (this.src) assetManager.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
+    }
+
+    override layout(rect: BoxBounds, scope: MeasureScope): void {
+        super.layout(rect, scope);
+
+        const constraints = { maxWidth: rect.width, maxHeight: rect.height };
+        for (const child of this.children) {
+            if (!(child instanceof Node)) continue;
+            const size = child.measure(constraints, scope);
+            const w = size.width ?? 0;
+            const h = size.height ?? 0;
+            child.layout({
+                x: (rect.width - w) / 2,
+                y: (rect.height - h) / 2,
+                width: w,
+                height: h,
+            }, scope);
+        }
     }
 
     protected renderSelf(draw: RenderContext): void {

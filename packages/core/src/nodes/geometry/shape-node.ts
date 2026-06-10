@@ -12,7 +12,7 @@ import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { ZoomEffect } from "@/attributes/shape/effects/implementations/zoom";
+import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 
 
@@ -131,11 +131,11 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      */
     private applyBackdropEffects(ctx: RenderContext): void {
         let blurRadius = 0;
-        const distortions: ZoomEffect[] = [];
+        const distortions: MagnifyEffect[] = [];
         const skslBackdrops: SkSLEffect[] = [];
         for (const effect of this.effects) {
             if (effect.type === "backgroundBlur") blurRadius += effect.radius;
-            else if (effect.type === "zoom") distortions.push(effect);
+            else if (effect.type === "magnify") distortions.push(effect);
             else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
         }
         if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
