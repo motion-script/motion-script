@@ -27,6 +27,28 @@ export type DriverExportOptions = {
     onFile?: (file: ExportFile) => void;
 };
 
+/** Which frame a screenshot addresses: a global index, or the first/last frame. */
+export type FrameSpec =
+    | { kind: 'frame'; frame: number }
+    | { kind: 'first' }
+    | { kind: 'last' };
+
+export type DriverScreenshotOptions = {
+    sceneNames?: string[];
+    frame: FrameSpec;
+    scale?: number;
+    format?: 'png' | 'jpeg';
+};
+
+export type ScreenshotResult = {
+    /** The actual global frame captured (after clamping to the valid range). */
+    frame: number;
+    /** Total frames in the timeline. */
+    totalFrames: number;
+    /** Decoded image bytes. */
+    bytes: Uint8Array;
+};
+
 /**
  * Drives a Motion Script project headlessly: starts the project's *own* Vite
  * dev server (so the `@motion-script/vite-plugin` resolves the user's scenes,
@@ -112,8 +134,10 @@ export class HeadlessDriver {
             if (!b) return 'bridge not installed';
             const required: string[] = [];
             if (typeof b.export !== 'function') required.push('export()');
+            if (typeof b.screenshot !== 'function') required.push('screenshot()');
             if (typeof b.listScenes !== 'function') required.push('listScenes()');
             if (typeof b.projectName !== 'string') required.push('projectName');
+            if (typeof b.fps !== 'number') required.push('fps');
             return required.length > 0 ? required.join(', ') : null;
         });
         if (missing) {
@@ -191,6 +215,12 @@ export class HeadlessDriver {
         return page.evaluate(() => window.__motionScript!.projectName);
     }
 
+    /** The project frame rate, used to convert a `<time>` screenshot spec to a frame. */
+    async fps(): Promise<number> {
+        const page = this.requirePage();
+        return page.evaluate(() => window.__motionScript!.fps);
+    }
+
     /**
      * Render the selected scenes. Each finished clip is delivered to
      * `options.onFile` as soon as its encode completes (so split exports stream
@@ -220,6 +250,31 @@ export class HeadlessDriver {
             this.onProgress = null;
             this.onFile = null;
         }
+    }
+
+    /**
+     * Render a single frame to an image and return its bytes, the frame that
+     * was actually captured (the requested spec clamped into range), and the
+     * timeline's total frame count. Bytes cross the bridge base64-encoded
+     * (Playwright can't round-trip a `Uint8Array`) and are decoded here.
+     */
+    async screenshot(options: DriverScreenshotOptions): Promise<ScreenshotResult> {
+        const page = this.requirePage();
+        const result = await page.evaluate(
+            ({ sceneNames, frame, scale, format }) =>
+                window.__motionScript!.screenshot({ sceneNames, frame, scale, format }),
+            {
+                sceneNames: options.sceneNames,
+                frame: options.frame,
+                scale: options.scale ?? 1,
+                format: options.format ?? 'png',
+            },
+        );
+        return {
+            frame: result.frame,
+            totalFrames: result.totalFrames,
+            bytes: Buffer.from(result.base64, 'base64'),
+        };
     }
 
     async close(): Promise<void> {

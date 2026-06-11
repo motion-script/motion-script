@@ -290,8 +290,12 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    /** Snapshots the current surface and encodes it as a PNG data URL via the browser's canvas (CanvasKit ships no wasm encoders). */
-    screenshot(): string | undefined {
+    /**
+     * Snapshots the current surface and encodes it as an image data URL via the
+     * browser's canvas (CanvasKit ships no wasm encoders). Defaults to PNG;
+     * pass `mime`/`quality` (e.g. `"image/jpeg", 0.9`) for other formats.
+     */
+    screenshot(mime: string = "image/png", quality?: number): string | undefined {
         if (!this.mounted) {
             console.warn("screenshot() must be called after mount().");
             return undefined;
@@ -323,8 +327,9 @@ export class WebRenderContext extends RenderContext {
         const imageData = new ImageData(new Uint8ClampedArray(pixels), w, h);
         ctx.putImageData(imageData, 0, 0);
         // Returns a data: URL (was a blob: URL before); both work as an <img> src
-        // and a data URL needs no revoke.
-        return canvas.toDataURL("image/png");
+        // and a data URL needs no revoke. `quality` is honored only by lossy
+        // formats (e.g. image/jpeg); the browser ignores it for image/png.
+        return canvas.toDataURL(mime, quality);
     }
 
     /** Wraps the just-flushed canvas as a `VideoFrame` for the export pipeline (mediabunny's `CanvasSource`). */

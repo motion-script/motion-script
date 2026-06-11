@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import minimist from 'minimist';
 import kleur from 'kleur';
 import cliProgress from 'cli-progress';
-import { HeadlessDriver, resolveProjectRoot, type ExportFile } from './driver.js';
+import { HeadlessDriver, resolveProjectRoot, type ExportFile, type FrameSpec } from './driver.js';
 
 const USAGE = `
 ${kleur.bold('ms')} — headless exporter for Motion Script projects
@@ -12,6 +12,7 @@ ${kleur.bold('ms')} — headless exporter for Motion Script projects
 ${kleur.bold('Usage')}
   ms list                       List the scenes in the current project
   ms export [options]           Render scenes to MP4 in ./out
+  ms screenshot <when> [opts]   Capture a single frame to ./out/screenshots
   ms clear                      Delete exported videos from ./out
 
 ${kleur.bold('Export options')}
@@ -20,14 +21,32 @@ ${kleur.bold('Export options')}
   --scale <n>                   Resolution multiplier, e.g. 2 for 2x (default: 1)
   --out <dir>                   Output directory (default: out)
 
+${kleur.bold('Screenshot')}
+  ms screenshot <when>          <when> is a frame number, a time, first, or last.
+                                A bare integer is a frame (e.g. 42); a decimal or
+                                a value with an 's' suffix is a time in seconds
+                                (e.g. 2.5 or 2.5s). Output goes to ./out/screenshots.
+  --split                       Capture <when> for each scene separately (e.g.
+                                'first --split' = frame 0 of every scene). Without
+                                it, <when> resolves against the combined timeline.
+  --scenes <a,b,c>              Scenes whose timeline the frame is taken from (default: all)
+  --scale <n>                   Resolution multiplier (default: 1)
+  --format <png|jpg>            Image format (default: png)
+  --out <dir>                   Output directory (default: out)
+
 ${kleur.bold('Examples')}
   ms list
   ms export --scenes intro,outro --split
   ms export --scenes intro --scale 2
+  ms screenshot last
+  ms screenshot first --split
+  ms screenshot 42 --format jpg
+  ms screenshot 2.5s --scenes intro --scale 2
   ms clear
 `.trimStart();
 
 const DEFAULT_OUT_DIR = 'out';
+const DEFAULT_SCREENSHOT_SUBDIR = 'screenshots';
 
 /** Parse `--scenes intro,outro` (or repeated) into a clean name list. */
 function parseScenes(raw: unknown): string[] | undefined {
@@ -38,6 +57,71 @@ function parseScenes(raw: unknown): string[] | undefined {
         .map(s => s.trim())
         .filter(Boolean);
     return names.length > 0 ? names : undefined;
+}
+
+/**
+ * Validate the screenshot `<when>` positional and parse it into a frame spec.
+ *
+ * - `first` / `last` → that end of the timeline.
+ * - A bare integer (e.g. `42`) → that global frame.
+ * - A decimal (e.g. `2.5`) or a value with an `s` suffix (e.g. `2.5s`, `3s`)
+ *   → a time in seconds (resolved to a frame later, once fps is known).
+ *
+ * The integer-vs-decimal/`s` split is what disambiguates "frame" from "time":
+ * frame indices are whole numbers, times are written with a decimal or `s`.
+ *
+ * Returns a {@link FrameSpec} directly for frame/first/last, or `{ seconds }`
+ * for a time — kept separate so the shape can be validated *before* launching
+ * the browser, with only the seconds→frame conversion deferred until fps is
+ * read from the project.
+ */
+function parseWhen(raw: unknown): FrameSpec | { seconds: number } {
+    if (raw === undefined || raw === '') {
+        throw new Error('Missing frame for screenshot — pass a frame number, a time, first, or last.');
+    }
+    const value = String(raw).trim().toLowerCase();
+
+    if (value === 'first') return { kind: 'first' };
+    if (value === 'last') return { kind: 'last' };
+
+    // Explicit time: a trailing 's' (e.g. "2.5s", "3s").
+    if (value.endsWith('s')) {
+        const seconds = Number(value.slice(0, -1));
+        if (!Number.isFinite(seconds) || seconds < 0) {
+            throw new Error(`Invalid time for screenshot: ${raw}`);
+        }
+        return { seconds };
+    }
+
+    const num = Number(value);
+    if (!Number.isFinite(num) || num < 0) {
+        throw new Error(`Invalid frame/time for screenshot: ${raw} (expected a frame number, a time, first, or last).`);
+    }
+    // A whole number is a frame index; a fractional one is a time in seconds.
+    if (Number.isInteger(num)) return { kind: 'frame', frame: num };
+    return { seconds: num };
+}
+
+/** Resolve a parsed `<when>` to a concrete {@link FrameSpec}, converting any time to a frame via `fps`. */
+function resolveFrameSpec(when: FrameSpec | { seconds: number }, fps: number): FrameSpec {
+    if ('seconds' in when) return { kind: 'frame', frame: Math.round(when.seconds * fps) };
+    return when;
+}
+
+/** Normalize a `--format` value to a supported image format (png is the default). */
+function parseFormat(raw: unknown): { format: 'png' | 'jpeg'; ext: string } {
+    if (raw === undefined) return { format: 'png', ext: 'png' };
+    const value = String(raw).trim().toLowerCase().replace(/^\./, '');
+    switch (value) {
+        case 'png':
+            return { format: 'png', ext: 'png' };
+        case 'jpg':
+            return { format: 'jpeg', ext: 'jpg' };
+        case 'jpeg':
+            return { format: 'jpeg', ext: 'jpeg' };
+        default:
+            throw new Error(`Unsupported --format: ${raw} (supported: png, jpg, jpeg).`);
+    }
 }
 
 /**
@@ -191,6 +275,109 @@ async function runExport(projectRoot: string, args: minimist.ParsedArgs): Promis
 }
 
 /**
+ * `ms screenshot <when>` — render a single frame to ./out/screenshots.
+ *
+ * `<when>` (the first positional after the command) is a frame number, a time
+ * in seconds, or `first`/`last` (see {@link parseWhen}).
+ *
+ * Without `--split`, the spec is resolved against the *combined* timeline of
+ * the selected scenes (e.g. `last` = the project's final frame), producing one
+ * file. With `--split`, the spec is resolved *per scene* against each scene's
+ * own timeline (e.g. `first` = each scene's frame 0), producing one file per
+ * scene — mirroring `export --split`.
+ *
+ * Files are named with the same base-name workflow as `export` (scene name for
+ * a per-scene/single capture, project name for a combined multi-scene one),
+ * suffixed with `_<frame>` and the format extension — e.g. `intro_42.png`.
+ */
+async function runScreenshot(projectRoot: string, args: minimist.ParsedArgs): Promise<void> {
+    const sceneNames = parseScenes(args.scenes);
+    const split = Boolean(args.split);
+    const scale = args.scale !== undefined ? Number(args.scale) : 1;
+    if (!Number.isFinite(scale) || scale <= 0) {
+        throw new Error(`Invalid --scale value: ${args.scale}`);
+    }
+    const { format, ext } = parseFormat(args.format);
+
+    // Validate the frame/time positional (argv._[0] is the command) up front, so
+    // a bad spec fails immediately rather than after a browser spin-up. A `<time>`
+    // can't be resolved to a frame yet (needs fps), so it's resolved post-start.
+    const when = parseWhen(args._[1]);
+
+    const outDir = path.resolve(
+        projectRoot,
+        typeof args.out === 'string' ? args.out : DEFAULT_OUT_DIR,
+        DEFAULT_SCREENSHOT_SUBDIR,
+    );
+
+    const driver = new HeadlessDriver(projectRoot);
+    try {
+        await driver.start();
+        const projectName = await driver.projectName();
+
+        // fps lives in the project config; the CLI needs it to convert a
+        // `<time>` spec into a frame (frame/first/last resolve without it).
+        const fps = await driver.fps();
+        const frame = resolveFrameSpec(when, fps);
+
+        const selected = sceneNames ? sceneNames.join(', ') : 'all scenes';
+        console.log(
+            kleur.bold('Screenshot ') + kleur.dim(`of ${selected}`) +
+            (split ? kleur.dim(' (split — per scene)') : '') +
+            (scale !== 1 ? kleur.dim(` @ ${scale}x`) : ''),
+        );
+
+        fs.mkdirSync(outDir, { recursive: true });
+
+        // Capture one frame and write it. For split this runs once per scene
+        // (sceneName set); otherwise once for the combined timeline (sceneName
+        // null → the multi-scene capture is named after the project).
+        const captureOne = async (sceneName: string | null) => {
+            const result = await driver.screenshot({
+                // A per-scene capture targets just that scene; the combined
+                // capture passes the (possibly filtered) selection through.
+                sceneNames: sceneName ? [sceneName] : sceneNames,
+                frame,
+                scale,
+                format,
+            });
+            const base = buildBaseName(projectName, sceneName);
+            const dest = path.join(outDir, `${base}_${result.frame}.${ext}`);
+            fs.writeFileSync(dest, result.bytes);
+
+            const sizeKb = (result.bytes.length / 1024).toFixed(1);
+            const timeAtFrame = (result.frame / fps).toFixed(2);
+            console.log(
+                `  ${kleur.green('✓')} ${path.relative(projectRoot, dest)} ` +
+                kleur.dim(`(frame ${result.frame} / ${result.totalFrames}, ${timeAtFrame}s, ${sizeKb} KB)`),
+            );
+        };
+
+        if (split) {
+            // One file per scene: the selected scenes (in project order), or all
+            // scenes when no --scenes filter is given.
+            const all = await driver.listScenes();
+            const targets = sceneNames ?? all;
+            if (targets.length === 0) {
+                console.log(kleur.yellow('No scenes to screenshot.'));
+                return;
+            }
+            for (const name of targets) {
+                await captureOne(name);
+            }
+        } else {
+            // Combined: a single selected scene is still "one scene", so name it
+            // after that scene (matches export); a genuine multi-scene capture
+            // falls back to the project name (null).
+            const single = sceneNames && sceneNames.length === 1 ? sceneNames[0] : null;
+            await captureOne(single);
+        }
+    } finally {
+        await driver.close();
+    }
+}
+
+/**
  * `ms clear` — remove exported videos from the output directory. Deletes only
  * video files (never the directory or unrelated files), so it's safe to run in
  * a project that keeps other things in `out/`. No browser/Vite needed.
@@ -224,6 +411,10 @@ function runClear(projectRoot: string, args: minimist.ParsedArgs): void {
 async function main(): Promise<void> {
     const argv = minimist(process.argv.slice(2), {
         boolean: ['split', 'help', 'version'],
+        // Keep these as strings so values aren't number-coerced (e.g. an `--out`
+        // dir that's all digits, or `--format jpg`). `--scale` stays unlisted so
+        // it parses as a number.
+        string: ['scenes', 'out', 'format'],
         alias: { h: 'help', v: 'version' },
     });
 
@@ -251,6 +442,9 @@ async function main(): Promise<void> {
             break;
         case 'export':
             await runExport(projectRoot, argv);
+            break;
+        case 'screenshot':
+            await runScreenshot(projectRoot, argv);
             break;
         case 'clear':
             runClear(projectRoot, argv);

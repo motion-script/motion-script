@@ -5,14 +5,27 @@
 // as a published type — these globals are referenced inside Playwright
 // `page.evaluate` callbacks, which TypeScript checks in this Node project.
 
+/** Which frame a screenshot addresses: a global index, or the first/last frame. */
+type MotionScriptFrameSpec =
+    | { kind: 'frame'; frame: number }
+    | { kind: 'first' }
+    | { kind: 'last' };
+
 interface MotionScriptHeadlessBridge {
     readonly projectName: string;
+    readonly fps: number;
     listScenes(): string[];
     export(options: {
         sceneNames?: string[];
         split?: boolean;
         scale?: number;
     }): Promise<void>;
+    screenshot(options: {
+        sceneNames?: string[];
+        frame: MotionScriptFrameSpec;
+        scale?: number;
+        format?: 'png' | 'jpeg';
+    }): Promise<{ frame: number; totalFrames: number; base64: string }>;
 }
 
 interface Window {
