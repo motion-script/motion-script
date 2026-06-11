@@ -69,6 +69,18 @@ describe('FX builders', () => {
     it('posterize accepts an explicit level', () => {
         expect([...FX.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
     });
+
+    it('motionBlur defaults to a centered both-axis smear', () => {
+        expect([...FX.motionBlur()]).toEqual([
+            { type: 'motionBlur', length: 50, alignment: 'centered', samples: 16, strength: 1, axis: 'both' },
+        ]);
+    });
+
+    it('motionBlur accepts explicit params', () => {
+        expect([...FX.motionBlur(80, 'ahead', 32, 2, 'x')]).toEqual([
+            { type: 'motionBlur', length: 80, alignment: 'ahead', samples: 32, strength: 2, axis: 'x' },
+        ]);
+    });
 });
 
 describe('EffectChain', () => {

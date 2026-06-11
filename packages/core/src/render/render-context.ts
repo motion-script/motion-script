@@ -63,6 +63,39 @@ export interface SpaceRects {
 }
 
 /**
+ * Per-node state supplied to {@link RenderContext.begin} for the duration of a
+ * node's draw scope. Carries the node identity and gradient-space `rects` (what
+ * `begin` used to take as separate arguments) plus the node's per-frame motion,
+ * sampled at render time. Motion-driven effects (e.g. motion blur) read the
+ * current node's `velocity` from this state instead of being authored with a
+ * fixed direction.
+ *
+ * Velocity fields are `0`/`{0,0}` when the motion is unknown — the first frame a
+ * node renders, or after a time discontinuity (scrub/seek) where no trustworthy
+ * delta exists.
+ */
+export interface NodeRenderState {
+    /** Stable node identifier (was `begin`'s first argument). */
+    id: string;
+    /** Parent / viewport rects in this node's local space (was `begin`'s second argument). */
+    rects: SpaceRects;
+    /** How long this node has existed, in seconds (NodeClock.elapsed). */
+    elapsed: number;
+    /** The frame delta, in seconds, used to derive displacement from velocity. */
+    dt: number;
+    /** Translational velocity in px/sec, world space (y-down). `{0,0}` when unknown. */
+    velocity: Vector2;
+    /** Heading of `velocity` in degrees (`atan2(vy, vx)`). `0` when unknown. */
+    direction: number;
+    /** Magnitude of `velocity` in px/sec. `0` when unknown. */
+    speed: number;
+    /** Rotational velocity in degrees/sec. `0` when unknown. Reserved for radial motion blur. */
+    angularVelocity: number;
+    /** Scale velocity in scale-units/sec. `0` when unknown. Reserved for zoom motion blur. */
+    scaleVelocity: number;
+}
+
+/**
  * Low-level shape-drawing API. Shapes are no longer declared directly on the
  * context — they are built with a {@link Graphics} command list and submitted
  * via {@link draw}. Multiple shapes chained on a `Graphics` before a paint call
@@ -240,34 +273,39 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
 
 
     /**
-     * Reference rects (parent frame / viewport) for each node on the draw
-     * stack, in the node's local space. Kept parallel to `currentNodeStack`
-     * so fills with `space: 'parent' | 'view'` can resolve against them.
+     * Per-node render state for each node on the draw stack, in push order
+     * (innermost last). Kept parallel to `currentNodeStack` so fills with
+     * `space: 'parent' | 'view'` can resolve their reference rects and so
+     * motion-driven effects can read the current node's velocity.
      */
-    protected spaceRectsStack: SpaceRects[] = [];
+    protected renderStateStack: NodeRenderState[] = [];
 
     /**
-     * Open a node draw scope. Must be paired with `end()`. Pushes `id` onto
-     * the node stack and records the optional `rects` for gradient-space
-     * resolution.
+     * Open a node draw scope. Must be paired with `end()`. Pushes the node's
+     * id and {@link NodeRenderState} (gradient-space rects + per-frame motion)
+     * for the duration of the scope.
      *
-     * @param id    Stable node identifier (used for layer caching, etc.).
-     * @param rects Parent / viewport rects in this node's local space.
+     * @param state Identity, reference rects, and sampled motion for this node.
      */
-    begin(id: string, rects?: SpaceRects): void {
-        this.currentNodeStack.push(id);
-        this.spaceRectsStack.push(rects ?? {});
+    begin(state: NodeRenderState): void {
+        this.currentNodeStack.push(state.id);
+        this.renderStateStack.push(state);
     }
 
     /** Close the innermost node draw scope opened by `begin()`. */
     end(): void {
         this.currentNodeStack.pop();
-        this.spaceRectsStack.pop();
+        this.renderStateStack.pop();
     }
 
     /** Reference rects for the node currently being drawn (parent / viewport). */
     protected currentSpaceRects(): SpaceRects {
-        return this.spaceRectsStack[this.spaceRectsStack.length - 1] ?? {};
+        return this.renderStateStack[this.renderStateStack.length - 1]?.rects ?? {};
+    }
+
+    /** Full render state (incl. velocity) for the node currently being drawn, if any. */
+    protected currentRenderState(): NodeRenderState | undefined {
+        return this.renderStateStack[this.renderStateStack.length - 1];
     }
 
 

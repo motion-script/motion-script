@@ -27,15 +27,17 @@ import {
     RenderContext,
     type RichTextState,
     type SpaceRect,
-    type SpaceRects,
+    type NodeRenderState,
     type TextState,
     type TransformState,
     type Vector2,
     type BulgeEffect,
     type MagnifyEffect,
+    type MotionBlurEffect,
     type PosterizeEffect,
     type FontStyle,
     type SkSLEffect,
+    type SceneEffect,
 
     withImageDescriptor,
     withRichTextDescriptor,
@@ -57,6 +59,7 @@ import { PathShape } from "./shapes/path";
 import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
+import { resolveMotionBlur } from "./effects/motion-blur";
 import { makeBulgeShader, disposeBulge } from "./effects/bulge";
 import { makeMagnifyShader, disposeMagnify } from "./effects/magnify";
 import { makePosterizeShader, disposePosterize } from "./effects/posterize";
@@ -208,9 +211,9 @@ export class WebRenderContext extends RenderContext {
         this.surface.flush();
     }
 
-    begin(id: string, rects?: SpaceRects): void {
-        super.begin(id, rects);
-        this.shapeHandler.beginNode(id);
+    begin(state: NodeRenderState): void {
+        super.begin(state);
+        this.shapeHandler.beginNode(state.id);
         this.shapeHandler.reset();
         if (!this.currentCanvas) {
             throw new Error("begin() must be called within the draw() method.");
@@ -441,7 +444,12 @@ export class WebRenderContext extends RenderContext {
         if (effects.length > 0) {
             const w = this.surface.width();
             const h = this.surface.height();
-            effectFilter = CanvasKitEffectRegistry.composeFilters(effects, this.canvasKit, w, h);
+            // Motion blur needs the node's live velocity, which static effect data
+            // can't carry — resolve each `motionBlur` against the current node's
+            // render state here, then hand the renderer a concrete directional
+            // smear. Effects without motion blur skip the copy entirely.
+            const resolved = this.resolveMotionBlurEffects(effects);
+            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
         }
 
         const needsLayer = opacity < 1 || effectFilter != null;
@@ -455,6 +463,36 @@ export class WebRenderContext extends RenderContext {
         }
 
         return this;
+    }
+
+    /**
+     * Replace any `motionBlur` effect with a `motionBlurResolved` smear computed
+     * from the current node's sampled velocity (from {@link currentRenderState}).
+     * Returns the input array unchanged when there is no motion blur (the common
+     * case) so non-motion-blur transforms keep their zero-copy fast path. A
+     * motion blur that resolves to nothing (static node / unknown velocity) is
+     * dropped from the array.
+     */
+    private resolveMotionBlurEffects(effects: SceneEffect[]): SceneEffect[] {
+        let hasMotionBlur = false;
+        for (const e of effects) {
+            if (e.type === "motionBlur") { hasMotionBlur = true; break; }
+        }
+        if (!hasMotionBlur) return effects;
+
+        const rs = this.currentRenderState();
+        const out: SceneEffect[] = [];
+        for (const e of effects) {
+            if (e.type !== "motionBlur") {
+                out.push(e);
+                continue;
+            }
+            const resolved = rs
+                ? resolveMotionBlur(e as MotionBlurEffect, rs.velocity, rs.dt)
+                : null;
+            if (resolved) out.push(resolved as unknown as SceneEffect);
+        }
+        return out;
     }
 
     // Resolve the reference rect for a fill `space`, in the current node's local

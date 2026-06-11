@@ -14,7 +14,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { RenderContext, SpaceRects } from "@/render/render-context";
+import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
@@ -758,6 +758,81 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         effects: [], pivot: { x: 0, y: 0 },
     };
 
+    // ---- Motion sampling --------------------------------------------------
+    // Per-node motion, sampled at render time (not in tick()): ellapse()/tick()
+    // run *before* the frame's generator advances, so x/y still hold the
+    // previous frame's value during tick(). Sampling in beforeRender() reads the
+    // already-advanced values and avoids a one-frame velocity lag.
+
+    /** Largest frame delta we trust for a velocity estimate (seconds). Larger gaps (scrub/seek) read as "unknown". */
+    private static readonly MAX_MOTION_DT = 0.2;
+
+    private _prevRenderPos: Vector2 | null = null;
+    private _prevRenderTime = 0;
+    private _prevRotation = 0;
+    private _prevScale = 1;
+
+    /** Reused per-node state handed to `ctx.begin()` (mirrors `_transformScratch`). */
+    private readonly _renderState: NodeRenderState = {
+        id: this.id,
+        rects: {},
+        elapsed: 0,
+        dt: 0,
+        velocity: { x: 0, y: 0 },
+        direction: 0,
+        speed: 0,
+        angularVelocity: 0,
+        scaleVelocity: 0,
+    };
+
+    /**
+     * Populate {@link _renderState} from this frame's transform vs. the previous
+     * render. Velocity is `0`/`{0,0}` when no trustworthy delta exists — the
+     * first render, or after a non-monotonic time jump (only `0 < dt <= MAX`
+     * is trusted). The resolved world position matches {@link applyTransform}
+     * (`layoutRect + x`, `layoutRect - y`, y-down).
+     */
+    protected _sampleMotion(): void {
+        const r = this.layoutRect;
+        const x = (r?.x ?? 0) + this.x;
+        const y = (r?.y ?? 0) - this.y;
+        const rotation = this.rotation;
+        const scale = this.scale;
+
+        const now = this._clock.time;
+        const dt = now - this._prevRenderTime;
+        const s = this._renderState;
+        s.rects = this._spaceRects();
+        s.elapsed = this._clock.elapsed;
+
+        const prev = this._prevRenderPos;
+        if (prev && dt > 0 && dt <= Node.MAX_MOTION_DT) {
+            const vx = (x - prev.x) / dt;
+            const vy = (y - prev.y) / dt;
+            s.dt = dt;
+            s.velocity.x = vx;
+            s.velocity.y = vy;
+            s.speed = Math.hypot(vx, vy);
+            s.direction = (Math.atan2(vy, vx) * 180) / Math.PI;
+            s.angularVelocity = (rotation - this._prevRotation) / dt;
+            s.scaleVelocity = (scale - this._prevScale) / dt;
+        } else {
+            s.dt = 0;
+            s.velocity.x = 0;
+            s.velocity.y = 0;
+            s.speed = 0;
+            s.direction = 0;
+            s.angularVelocity = 0;
+            s.scaleVelocity = 0;
+        }
+
+        if (!prev) this._prevRenderPos = { x, y };
+        else { prev.x = x; prev.y = y; }
+        this._prevRenderTime = now;
+        this._prevRotation = rotation;
+        this._prevScale = scale;
+    }
+
     /** Push this node's transform (position, scale, rotate, opacity, effects). */
     protected applyTransform(ctx: RenderContext): void {
         const r = this.layoutRect;
@@ -784,7 +859,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     beforeRender(ctx: RenderContext): void {
-        ctx.begin(this.id, this._spaceRects());
+        this._sampleMotion();
+        ctx.begin(this._renderState);
     }
 
     /**

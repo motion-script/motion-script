@@ -10,15 +10,20 @@ import { VintageCanvasKitEffect } from "./vintage";
 import { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
 import { InvertCanvasKitEffect } from "./invert";
 import { ScatterCanvasKitEffect } from "./scatter";
+import { MotionBlurCanvasKitEffect } from "./motion-blur";
 import { SkSLLayerEffect } from "./sksl-layer";
 export class CanvasKitEffectRegistry {
-    private static registry = new Map<string, CanvasKitEffect>();
+    // Handlers are heterogeneous — each accepts its own effect subtype and is
+    // dispatched by `type` string — so the store is typed loosely. Effects
+    // include both authored `SceneEffect`s and internal resolved-only effects
+    // (e.g. motion blur resolved against a node's velocity).
+    private static registry = new Map<string, CanvasKitEffect<any>>();
 
-    static register(effect: CanvasKitEffect): void {
+    static register(effect: CanvasKitEffect<any>): void {
         this.registry.set(effect.type, effect);
     }
 
-    static get(type: string): CanvasKitEffect | undefined {
+    static get(type: string): CanvasKitEffect<any> | undefined {
         return this.registry.get(type);
     }
 
@@ -63,4 +68,5 @@ CanvasKitEffectRegistry.register(new VintageCanvasKitEffect());
 CanvasKitEffectRegistry.register(new ChromaticAberrationCanvasKitEffect());
 CanvasKitEffectRegistry.register(new InvertCanvasKitEffect());
 CanvasKitEffectRegistry.register(new ScatterCanvasKitEffect());
+CanvasKitEffectRegistry.register(new MotionBlurCanvasKitEffect());
 CanvasKitEffectRegistry.register(new SkSLLayerEffect());
