@@ -232,27 +232,27 @@ export class ShapeHandler {
     }
 
     rect(state: Partial<RectState>): void {
-        this.addShape(new RectShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new RectShape(this.canvasKit, this.getCanvas, state));
     }
 
     ellipse(state: Partial<EllipseState>): void {
-        this.addShape(new EllipseShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new EllipseShape(this.canvasKit, this.getCanvas, state));
     }
 
     path(state: Partial<PathState>): void {
-        this.addShape(new PathShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PathShape(this.canvasKit, this.getCanvas, state));
     }
 
     line(state: Partial<LineState>): void {
-        this.addShape(new LineShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new LineShape(this.canvasKit, this.getCanvas, state));
     }
 
     polygon(state: Partial<PolygonState>): void {
-        this.addShape(new PolygonShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PolygonShape(this.canvasKit, this.getCanvas, state));
     }
 
     polygram(state: Partial<PolygramState>): void {
-        this.addShape(new PolygramShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PolygramShape(this.canvasKit, this.getCanvas, state));
     }
 
     text(state: Partial<TextState>): void {

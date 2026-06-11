@@ -579,8 +579,35 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         this._clock.elapsed = totalTime - this._clock.creation;
 
         this.tick(this._clock.time);
+        // Sample motion here, not at render: ellapse() runs on every advanced
+        // frame in every playback path (forward, scrub, precomp), whereas
+        // render() runs only for displayed frames. Sampling per-frame is what
+        // makes velocity correct on the first frame after a scrub/rewind, where
+        // sampling only at render time read zero velocity. The advance loop runs
+        // ellapse() before generator.next() (so audio scheduling in generator
+        // bodies reads the right clock time), which means x/y here still hold the
+        // previous frame's value — velocity therefore trails the rendered
+        // position by one frame. That lag is constant and identical forward vs.
+        // scrub, and imperceptible for motion blur.
+        this._sample();
 
         for (const child of this._children) child.ellapse(totalTime);
+    }
+
+    /**
+     * Per-frame sampling of derived render state (currently motion). Recurses to
+     * children so the whole subtree is sampled in one pass. Called from
+     * {@link ellapse} every frame; kept as a named seam so the priming path can
+     * seed the same state without a full ellapse (see StateEvaluator.resetSlot).
+     */
+    public sample(): void {
+        this._sample();
+        for (const child of this._children) child.sample();
+    }
+
+    /** Sample this node's own derived render state for the current frame. */
+    private _sample(): void {
+        this._sampleMotion();
     }
 
     // ---- Asset lifecycle --------------------------------------------------
@@ -759,10 +786,17 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     };
 
     // ---- Motion sampling --------------------------------------------------
-    // Per-node motion, sampled at render time (not in tick()): ellapse()/tick()
-    // run *before* the frame's generator advances, so x/y still hold the
-    // previous frame's value during tick(). Sampling in beforeRender() reads the
-    // already-advanced values and avoids a one-frame velocity lag.
+    // Per-node motion (velocity/direction/speed/angular/scale) is sampled once
+    // per frame from ellapse() (see its call site) as a backward difference
+    // against the previous frame. Sampling every advanced frame — not just
+    // rendered ones — is what keeps velocity correct through a scrub/rewind,
+    // which advances through frames without rendering them. Because ellapse()
+    // runs before the frame's generator.next(), x/y here hold the *previous*
+    // frame's value, so the velocity trails the rendered position by one frame;
+    // the lag is constant and identical forward vs. scrub. Layout-dependent
+    // fields (rects) can't be resolved here — layout hasn't run for advanced-
+    // but-unrendered frames — so beforeRender() fills those in at draw time,
+    // leaving the motion fields untouched.
 
     /** Largest frame delta we trust for a velocity estimate (seconds). Larger gaps (scrub/seek) read as "unknown". */
     private static readonly MAX_MOTION_DT = 0.2;
@@ -786,11 +820,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     };
 
     /**
-     * Populate {@link _renderState} from this frame's transform vs. the previous
-     * render. Velocity is `0`/`{0,0}` when no trustworthy delta exists — the
-     * first render, or after a non-monotonic time jump (only `0 < dt <= MAX`
-     * is trusted). The resolved world position matches {@link applyTransform}
-     * (`layoutRect + x`, `layoutRect - y`, y-down).
+     * Compute this frame's motion (velocity/direction/speed/angular/scale) into
+     * {@link _renderState} as a backward difference against the previous frame,
+     * and roll the history forward. Velocity is `0`/`{0,0}` when no trustworthy
+     * delta exists — the first frame, or after a non-monotonic time jump (only
+     * `0 < dt <= MAX` is trusted, so a scrub that resets the clock reads as
+     * "unknown" rather than a spurious huge velocity). The world position
+     * matches {@link applyTransform} (`layoutRect + x`, `layoutRect - y`,
+     * y-down). Called via {@link sample} every frame; layout-dependent fields
+     * (`rects`/`elapsed`) are filled in by {@link beforeRender} at draw time.
      */
     protected _sampleMotion(): void {
         const r = this.layoutRect;
@@ -802,8 +840,6 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         const now = this._clock.time;
         const dt = now - this._prevRenderTime;
         const s = this._renderState;
-        s.rects = this._spaceRects();
-        s.elapsed = this._clock.elapsed;
 
         const prev = this._prevRenderPos;
         if (prev && dt > 0 && dt <= Node.MAX_MOTION_DT) {
@@ -859,8 +895,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     beforeRender(ctx: RenderContext): void {
-        this._sampleMotion();
-        ctx.begin(this._renderState);
+        // Motion fields were already sampled in ellapse() this frame. Only the
+        // layout-dependent fields are resolved here, where layout is current.
+        const s = this._renderState;
+        s.rects = this._spaceRects();
+        s.elapsed = this._clock.elapsed;
+        ctx.begin(s);
     }
 
     /**

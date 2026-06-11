@@ -135,6 +135,10 @@ export class StateEvaluator {
         const gen = slot.scene.build(this.stage);
         // Prime: advance to the first yield so frame-0 nodes are registered.
         gen.next(this.dt);
+        // ellapse(0) above ran before build() created the frame-0 nodes, so seed
+        // their sampling history now (zero velocity) — a forward step from here
+        // then differentiates against a real previous frame.
+        slot.scene.sample();
         slot.generator = gen;
         slot.localFrame = 0;
     }
@@ -182,6 +186,9 @@ export class StateEvaluator {
         const dt = this.dt;
 
         // Advance this slot's generator from its current local frame to localTarget.
+        // ellapse() both ticks and samples motion for the frame (see Node.ellapse),
+        // so running it on every advanced frame — not just rendered ones — keeps
+        // velocity-derived effects (motion blur) correct after a scrub/rewind.
         while (targetSlot.localFrame < localTarget) {
             targetSlot.localFrame++;
             const globalTime = (targetSlot.startFrame + targetSlot.localFrame) * dt;

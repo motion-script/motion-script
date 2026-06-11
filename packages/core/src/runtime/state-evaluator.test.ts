@@ -81,6 +81,17 @@ describe('StateEvaluator – backward seek', () => {
         expect(scene.buildCount).toBe(2);
         expect(evaluator.currentFrame).toBe(1);
     });
+
+    it('seeds the sampling history when priming a slot', () => {
+        // Per-frame motion sampling lives in Node.ellapse(); the evaluator only
+        // has to seed the freshly-built frame-0 nodes (ellapse(0) runs before
+        // build()), so a forward step differentiates against a real prior frame.
+        const { scene, evaluator } = single();
+        evaluator.stateAt(3); // one prime (resetSlot) → one seed sample()
+        expect(scene.sampleCount).toBe(1);
+        evaluator.stateAt(1); // backward seek re-primes → seeds again
+        expect(scene.sampleCount).toBe(2);
+    });
 });
 
 describe('StateEvaluator – multi-scene timeline', () => {

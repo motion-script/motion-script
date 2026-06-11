@@ -58,8 +58,7 @@ export abstract class EffectDemoScene extends Scene {
                             <Rect ref={ref} effects={from} width={500} height={500} stroke={{ weight: 1, fill: 'white' }} />
                         </Image>
                     ) : (
-                        <Polygon ref={ref} fill={'primary'} width={'fill'} height={'fill'} effects={from} />
-                        // <Image ref={ref} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
+                        <Image ref={ref} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
                     )}
                 </Rect>
             </Rect>

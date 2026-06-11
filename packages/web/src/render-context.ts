@@ -776,7 +776,7 @@ export class WebRenderContext extends RenderContext {
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new RectShape(this.canvasKit, canvas, state);
+        const shape = new RectShape(this.canvasKit, () => this.currentCanvas, state);
         shape.clip(/* isolated= */ true);
         if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
@@ -789,7 +789,7 @@ export class WebRenderContext extends RenderContext {
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new EllipseShape(this.canvasKit, canvas, state);
+        const shape = new EllipseShape(this.canvasKit, () => this.currentCanvas, state);
         shape.clip(/* isolated= */ true);
         if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
@@ -808,7 +808,7 @@ export class WebRenderContext extends RenderContext {
 
     private buildClipShape(shape: ClipShape): CurrentShape | null {
         const ck = this.canvasKit;
-        const canvas = this.currentCanvas;
+        const canvas = () => this.currentCanvas;
         // Call clip(true) to apply the clip (uses native clipRect/clipRRect when possible),
         // then return a stub CurrentShape only if a ckPath was built so beginClipShape
         // can delete it. Returns null when the clip was applied without a path.
