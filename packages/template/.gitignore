@@ -1,8 +1,7 @@
 # Generated files
 node_modules
-output
 dist
-
+out/
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
