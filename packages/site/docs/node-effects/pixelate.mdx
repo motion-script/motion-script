@@ -4,33 +4,50 @@ sidebar_position: 3
 
 # Pixelate
 
-Chunks the node into rectangular blocks.
+Chunks the node into rectangular blocks, like After Effects' **Mosaic** effect.
+
+The block values are a **block count** — how many blocks span the node — *not* a
+pixel size. A count equal to the node's pixel dimension on that axis is pristine
+(one block per pixel); lower counts give larger, coarser blocks. For a 1920×1080
+image, `1920 × 1080` is untouched and `200 × 180` is heavily pixelated.
 
 ## Usage
 
 ```tsx
 import { FX } from '@motion-script/core';
 
-// Uniform pixelation on both axes — block size in pixels
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.pixelate(16)} />
+// Uniform block count on both axes
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.pixelate(120)} />
 
-// Raw object with separate axes
-<Rect effects={[{ type: 'pixelate', horizontalBlocks: 24, verticalBlocks: 8 }]} />
+// Per-axis block counts + sharp colours
+<Rect effects={FX.pixelate({ horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true })} />
+
+// Uniform count via an options object
+<Rect effects={FX.pixelate({ blocks: 80, sharpColors: false })} />
+
+// Raw effect object
+<Rect effects={[{ type: 'pixelate', horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true }]} />
 ```
+
+`FX.pixelate(options)` accepts:
+
+- `number` — same block count on both axes (`sharpColors` defaults to `true`).
+- `{ blocks, sharpColors? }` — uniform block count.
+- `{ horizontalBlocks, verticalBlocks, sharpColors? }` — per-axis block counts.
 
 ## Props
 
 | Prop | Type | Description |
 |---|---|---|
 | `type` | `'pixelate'` | Effect identifier |
-| `horizontalBlocks` | `number` | Horizontal block size in pixels: 1 = no pixelation |
-| `verticalBlocks` | `number` | Vertical block size in pixels: 1 = no pixelation |
-
-The `FX.pixelate(size)` helper sets both axes to the same value.
+| `horizontalBlocks` | `number` | Number of blocks across the node (AE "Horizontal Blocks") |
+| `verticalBlocks` | `number` | Number of blocks down the node (AE "Vertical Blocks") |
+| `sharpColors` | `boolean` | AE "Sharp Colors": solid blocks (`true`) vs. smoothly blended (`false`) |
 
 ## Animating — pixel reveal
 
-Start highly pixelated and animate down to 1 to reveal the image:
+Start with a low block count (coarse) and animate up to the node's resolution to
+resolve the image:
 
 ```tsx
 import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
@@ -46,7 +63,7 @@ export class MyScene extends Scene {
     this.add(img);
 
     yield* tween(1.5, (t) => {
-      img.set({ effects: FX.pixelate(lerpNumber(40, 1, easeInOut(t))) });
+      img.set({ effects: FX.pixelate(lerpNumber(40, 600, easeInOut(t))) });
     });
   }
 }
@@ -55,5 +72,5 @@ export class MyScene extends Scene {
 ## Stacking
 
 ```tsx
-<Rect effects={FX.pixelate(12).grayscale(0.5)} />
+<Rect effects={FX.pixelate(120).grayscale(0.5)} />
 ```

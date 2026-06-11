@@ -4,16 +4,12 @@ import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/cha
 import { FilterRegistry } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
 import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implementations/image";
-import { BorderRadiusProps, BorderRadiusResolved, resolveBorderRadius, lerpBorderRadius } from "@/attributes/shape/corners/border-radius";
-import { ShapeNode, ShapeProps } from "../geometry/shape-node";
+import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
-import { Node, NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node";
 import { AssetTracker } from "@/assets/tracker";
-import { BoxBounds } from "@/attributes/layout/bounds";
-import { MeasureScope } from "@/render/measure-scope";
 
-export interface ImageProps extends ShapeProps {
-    borderRadius?: BorderRadiusProps;
+export interface ImageProps extends RectProps {
     src?: string;
     fit?: ImageFillMode;
     transform?: ImageTransform;
@@ -21,11 +17,13 @@ export interface ImageProps extends ShapeProps {
     filters?: ChainableMx;
 }
 
-export class Image extends ShapeNode<ImageProps> {
-
-
-    @property({ default: 0, mapper: (v: BorderRadiusProps) => resolveBorderRadius(v), tween: lerpBorderRadius })
-    declare readonly borderRadius: BorderRadiusResolved;
+/**
+ * An image. Layout, padding, and child positioning are inherited wholesale from
+ * {@link Rect} — an Image lays out its children exactly like a Rect does, just
+ * with a decoded image painted in place of the rect's fill. Only the image
+ * source / fit / filters and the `renderSelf` draw call differ.
+ */
+export class Image extends Rect {
 
     @property() declare src?: string;
     @property() declare fit?: ImageFillMode;
@@ -35,32 +33,15 @@ export class Image extends ShapeNode<ImageProps> {
     declare filters?: MediaFilter[];
 
     constructor(props: NodeConfig<Image, ImageProps>) {
-        super(props);
+        super(props as NodeConfig<Rect, RectProps>);
     }
 
-    prepare(assetManager: AssetTracker): void {
-        if (this.src) assetManager.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
+    override prepare(tracker: AssetTracker): void {
+        super.prepare(tracker);
+        if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
     }
 
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
-
-        const constraints = { maxWidth: rect.width, maxHeight: rect.height };
-        for (const child of this.children) {
-            if (!(child instanceof Node)) continue;
-            const size = child.measure(constraints, scope);
-            const w = size.width ?? 0;
-            const h = size.height ?? 0;
-            child.layout({
-                x: (rect.width - w) / 2,
-                y: (rect.height - h) / 2,
-                width: w,
-                height: h,
-            }, scope);
-        }
-    }
-
-    protected renderSelf(draw: RenderContext): void {
+    protected override renderSelf(draw: RenderContext): void {
         draw.draw(new Graphics()
             .image({
                 width: this.layoutRect.width,

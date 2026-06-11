@@ -18,6 +18,7 @@ export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementation
 
 /** Chainable effect builder API, chain class, and union input type. */
 export { FX, ChainableFx, EffectChain } from './chain';
+export type { PixelateOptions } from './chain';
 
 export type { EffectData } from './effect-data';
 export { lerpEffect, lerpEffectArray } from './registry';

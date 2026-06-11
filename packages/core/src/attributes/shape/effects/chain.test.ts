@@ -16,9 +16,21 @@ describe('FX builders', () => {
         ]);
     });
 
-    it('pixelate uses the same size on both axes', () => {
+    it('pixelate maps a bare number to equal block counts and sharp colours', () => {
         expect([...FX.pixelate(20)]).toEqual([
-            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20 },
+            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20, sharpColors: true },
+        ]);
+    });
+
+    it('pixelate accepts a uniform { blocks } object', () => {
+        expect([...FX.pixelate({ blocks: 32, sharpColors: false })]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 32, verticalBlocks: 32, sharpColors: false },
+        ]);
+    });
+
+    it('pixelate accepts per-axis block counts', () => {
+        expect([...FX.pixelate({ horizontalBlocks: 200, verticalBlocks: 180 })]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true },
         ]);
     });
 
