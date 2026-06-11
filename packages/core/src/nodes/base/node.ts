@@ -14,7 +14,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { RenderContext, SpaceRects } from "@/render/render-context";
+import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
@@ -579,8 +579,35 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         this._clock.elapsed = totalTime - this._clock.creation;
 
         this.tick(this._clock.time);
+        // Sample motion here, not at render: ellapse() runs on every advanced
+        // frame in every playback path (forward, scrub, precomp), whereas
+        // render() runs only for displayed frames. Sampling per-frame is what
+        // makes velocity correct on the first frame after a scrub/rewind, where
+        // sampling only at render time read zero velocity. The advance loop runs
+        // ellapse() before generator.next() (so audio scheduling in generator
+        // bodies reads the right clock time), which means x/y here still hold the
+        // previous frame's value — velocity therefore trails the rendered
+        // position by one frame. That lag is constant and identical forward vs.
+        // scrub, and imperceptible for motion blur.
+        this._sample();
 
         for (const child of this._children) child.ellapse(totalTime);
+    }
+
+    /**
+     * Per-frame sampling of derived render state (currently motion). Recurses to
+     * children so the whole subtree is sampled in one pass. Called from
+     * {@link ellapse} every frame; kept as a named seam so the priming path can
+     * seed the same state without a full ellapse (see StateEvaluator.resetSlot).
+     */
+    public sample(): void {
+        this._sample();
+        for (const child of this._children) child.sample();
+    }
+
+    /** Sample this node's own derived render state for the current frame. */
+    private _sample(): void {
+        this._sampleMotion();
     }
 
     // ---- Asset lifecycle --------------------------------------------------
@@ -758,6 +785,90 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         effects: [], pivot: { x: 0, y: 0 },
     };
 
+    // ---- Motion sampling --------------------------------------------------
+    // Per-node motion (velocity/direction/speed/angular/scale) is sampled once
+    // per frame from ellapse() (see its call site) as a backward difference
+    // against the previous frame. Sampling every advanced frame — not just
+    // rendered ones — is what keeps velocity correct through a scrub/rewind,
+    // which advances through frames without rendering them. Because ellapse()
+    // runs before the frame's generator.next(), x/y here hold the *previous*
+    // frame's value, so the velocity trails the rendered position by one frame;
+    // the lag is constant and identical forward vs. scrub. Layout-dependent
+    // fields (rects) can't be resolved here — layout hasn't run for advanced-
+    // but-unrendered frames — so beforeRender() fills those in at draw time,
+    // leaving the motion fields untouched.
+
+    /** Largest frame delta we trust for a velocity estimate (seconds). Larger gaps (scrub/seek) read as "unknown". */
+    private static readonly MAX_MOTION_DT = 0.2;
+
+    private _prevRenderPos: Vector2 | null = null;
+    private _prevRenderTime = 0;
+    private _prevRotation = 0;
+    private _prevScale = 1;
+
+    /** Reused per-node state handed to `ctx.begin()` (mirrors `_transformScratch`). */
+    private readonly _renderState: NodeRenderState = {
+        id: this.id,
+        rects: {},
+        elapsed: 0,
+        dt: 0,
+        velocity: { x: 0, y: 0 },
+        direction: 0,
+        speed: 0,
+        angularVelocity: 0,
+        scaleVelocity: 0,
+    };
+
+    /**
+     * Compute this frame's motion (velocity/direction/speed/angular/scale) into
+     * {@link _renderState} as a backward difference against the previous frame,
+     * and roll the history forward. Velocity is `0`/`{0,0}` when no trustworthy
+     * delta exists — the first frame, or after a non-monotonic time jump (only
+     * `0 < dt <= MAX` is trusted, so a scrub that resets the clock reads as
+     * "unknown" rather than a spurious huge velocity). The world position
+     * matches {@link applyTransform} (`layoutRect + x`, `layoutRect - y`,
+     * y-down). Called via {@link sample} every frame; layout-dependent fields
+     * (`rects`/`elapsed`) are filled in by {@link beforeRender} at draw time.
+     */
+    protected _sampleMotion(): void {
+        const r = this.layoutRect;
+        const x = (r?.x ?? 0) + this.x;
+        const y = (r?.y ?? 0) - this.y;
+        const rotation = this.rotation;
+        const scale = this.scale;
+
+        const now = this._clock.time;
+        const dt = now - this._prevRenderTime;
+        const s = this._renderState;
+
+        const prev = this._prevRenderPos;
+        if (prev && dt > 0 && dt <= Node.MAX_MOTION_DT) {
+            const vx = (x - prev.x) / dt;
+            const vy = (y - prev.y) / dt;
+            s.dt = dt;
+            s.velocity.x = vx;
+            s.velocity.y = vy;
+            s.speed = Math.hypot(vx, vy);
+            s.direction = (Math.atan2(vy, vx) * 180) / Math.PI;
+            s.angularVelocity = (rotation - this._prevRotation) / dt;
+            s.scaleVelocity = (scale - this._prevScale) / dt;
+        } else {
+            s.dt = 0;
+            s.velocity.x = 0;
+            s.velocity.y = 0;
+            s.speed = 0;
+            s.direction = 0;
+            s.angularVelocity = 0;
+            s.scaleVelocity = 0;
+        }
+
+        if (!prev) this._prevRenderPos = { x, y };
+        else { prev.x = x; prev.y = y; }
+        this._prevRenderTime = now;
+        this._prevRotation = rotation;
+        this._prevScale = scale;
+    }
+
     /** Push this node's transform (position, scale, rotate, opacity, effects). */
     protected applyTransform(ctx: RenderContext): void {
         const r = this.layoutRect;
@@ -784,7 +895,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     beforeRender(ctx: RenderContext): void {
-        ctx.begin(this.id, this._spaceRects());
+        // Motion fields were already sampled in ellapse() this frame. Only the
+        // layout-dependent fields are resolved here, where layout is current.
+        const s = this._renderState;
+        s.rects = this._spaceRects();
+        s.elapsed = this._clock.elapsed;
+        ctx.begin(s);
     }
 
     /**

@@ -20,6 +20,6 @@ export { Graphics } from './graphics';
 export type { GraphicsOp, GraphicsShapeOp } from './graphics';
 
 export { RenderContext, Render2DContext } from './render-context';
-export type { ClipShape, SpaceRect, SpaceRects } from './render-context';
+export type { ClipShape, SpaceRect, SpaceRects, NodeRenderState } from './render-context';
 export { MeasureScope } from './measure-scope';
 

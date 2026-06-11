@@ -16,9 +16,21 @@ describe('FX builders', () => {
         ]);
     });
 
-    it('pixelate uses the same size on both axes', () => {
+    it('pixelate maps a bare number to equal block counts and sharp colours', () => {
         expect([...FX.pixelate(20)]).toEqual([
-            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20 },
+            { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20, sharpColors: true },
+        ]);
+    });
+
+    it('pixelate accepts a uniform { blocks } object', () => {
+        expect([...FX.pixelate({ blocks: 32, sharpColors: false })]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 32, verticalBlocks: 32, sharpColors: false },
+        ]);
+    });
+
+    it('pixelate accepts per-axis block counts', () => {
+        expect([...FX.pixelate({ horizontalBlocks: 200, verticalBlocks: 180 })]).toEqual([
+            { type: 'pixelate', horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true },
         ]);
     });
 
@@ -68,6 +80,18 @@ describe('FX builders', () => {
 
     it('posterize accepts an explicit level', () => {
         expect([...FX.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
+    });
+
+    it('motionBlur defaults to a centered both-axis smear', () => {
+        expect([...FX.motionBlur()]).toEqual([
+            { type: 'motionBlur', length: 50, alignment: 'centered', samples: 16, strength: 1, axis: 'both' },
+        ]);
+    });
+
+    it('motionBlur accepts explicit params', () => {
+        expect([...FX.motionBlur(80, 'ahead', 32, 2, 'x')]).toEqual([
+            { type: 'motionBlur', length: 80, alignment: 'ahead', samples: 32, strength: 2, axis: 'x' },
+        ]);
     });
 });
 

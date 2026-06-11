@@ -10,5 +10,7 @@ export { VintageCanvasKitEffect } from "./vintage";
 export { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
 export { InvertCanvasKitEffect } from "./invert";
 export { ScatterCanvasKitEffect } from "./scatter";
+export { MotionBlurCanvasKitEffect, resolveMotionBlur } from "./motion-blur";
+export type { MotionBlurResolved } from "./motion-blur";
 export { SkSLLayerEffect } from "./sksl-layer";
 export { getOrCompileSkSL, disposeSkSLCache } from "./sksl-cache";

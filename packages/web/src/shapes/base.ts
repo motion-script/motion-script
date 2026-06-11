@@ -17,11 +17,21 @@ export abstract class BaseShape<S, G = unknown> {
     private _basePath: CKPath | undefined;
     private _geo: G | undefined;
 
+    // Resolves the canvas to draw into at draw time, not construction time.
+    // Shapes are cached across frames by ShapeHandler, but the active canvas can
+    // change between frames (e.g. an effect scope like posterize swaps in a
+    // per-frame offscreen surface and deletes it on scope exit). Capturing the
+    // canvas at construction would leave a cached shape drawing into a freed
+    // surface — a WASM "table index is out of bounds" trap — so we read it live.
+    private readonly getCanvas: () => Canvas;
+    protected get canvas(): Canvas { return this.getCanvas(); }
+
     constructor(
         protected readonly canvasKit: CanvasKit,
-        protected readonly canvas: Canvas,
+        getCanvas: () => Canvas,
         state: Partial<S>,
     ) {
+        this.getCanvas = getCanvas;
         this.inputState = state;
         this.fullState = this.resolveState(state);
     }
