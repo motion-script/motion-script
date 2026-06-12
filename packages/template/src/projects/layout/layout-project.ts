@@ -9,6 +9,7 @@ import {
     RectWithoutChildrenScene,
     NestedScene,
     GridScene,
+    FlexNodesScene,
 } from './scenes';
 
 /**
@@ -37,6 +38,7 @@ export default createProject({
         new RectWithoutChildrenScene(),
         new NestedScene(),
         new GridScene(),
+        new FlexNodesScene(),
     ],
     theme: {
         'bg': '#0D0F15',

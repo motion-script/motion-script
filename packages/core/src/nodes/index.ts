@@ -20,6 +20,11 @@ export * from "./text/text-node";
 
 export * from "./geometry/grid-node";
 
+// Layout
+export * from "./layout/flex-node";
+export * from "./layout/row-node";
+export * from "./layout/column-node";
+
 // Media
 export * from "./media/image-node";
 export * from "./media/video-node";

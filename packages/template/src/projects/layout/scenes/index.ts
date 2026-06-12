@@ -8,3 +8,4 @@ export { RectWithChildrenScene } from "./rect-with-children";
 export { RectWithoutChildrenScene } from "./rect-without-children";
 export { NestedScene } from "./nested";
 export { GridScene } from "./grid";
+export { FlexNodesScene } from "./flex-nodes";
