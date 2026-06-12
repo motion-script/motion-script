@@ -10,6 +10,7 @@ import {
 import type { WebStorageAdapter } from "../storage-adapter";
 import type { FillRendererContext } from "./renderer";
 import { FillRenderRegistry } from "./registry";
+import { getCanvasKitBlendMode } from "../blend";
 
 export type { FillRenderer } from "./renderer";
 export type { FillRendererContext } from "./renderer";
@@ -41,6 +42,9 @@ export class FillHandler {
     private getUnionBounds: () => ShapeBounds | null;
     private getSpaceRect: (space: FillSpace) => ShapeBounds | null;
     private assets: WebStorageAdapter;
+    // Accumulated pass-through alpha to fold into every fill (set by the owning
+    // RenderContext as pass-through nodes fade). Defaults to 1.
+    private getWorldAlpha: () => number;
 
     // The bounds the next gradient/image shader should resolve against. Set per
     // fill/shape by applyFills before each applyPaint, so the no-arg
@@ -54,6 +58,7 @@ export class FillHandler {
         getUnionBounds: () => ShapeBounds | null,
         getSpaceRect: (space: FillSpace) => ShapeBounds | null,
         assets: WebStorageAdapter,
+        getWorldAlpha: () => number = () => 1,
     ) {
         this.canvasKit = canvasKit;
         this.getPaint = getPaint;
@@ -61,7 +66,13 @@ export class FillHandler {
         this.getUnionBounds = getUnionBounds;
         this.getSpaceRect = getSpaceRect;
         this.assets = assets;
+        this.getWorldAlpha = getWorldAlpha;
         this.currentBounds = null;
+    }
+
+    /** Pass-through alpha to multiply into a paint's own opacity. */
+    worldAlpha(): number {
+        return this.getWorldAlpha();
     }
 
     // Union the shapes' paths into one, so a single fill (and its opacity)
@@ -118,33 +129,19 @@ export class FillHandler {
     }
 
     getCanvasKitBlendMode(blend: BlendMode): any {
-        const mode = blend as unknown as string;
-        switch (mode) {
-            case "multiply": return this.canvasKit.BlendMode.Multiply;
-            case "screen": return this.canvasKit.BlendMode.Screen;
-            case "overlay": return this.canvasKit.BlendMode.Overlay;
-            case "darken": return this.canvasKit.BlendMode.Darken;
-            case "lighten": return this.canvasKit.BlendMode.Lighten;
-            case "color-dodge": return this.canvasKit.BlendMode.ColorDodge;
-            case "color-burn": return this.canvasKit.BlendMode.ColorBurn;
-            case "hard-light": return this.canvasKit.BlendMode.HardLight;
-            case "soft-light": return this.canvasKit.BlendMode.SoftLight;
-            case "difference": return this.canvasKit.BlendMode.Difference;
-            case "exclusion": return this.canvasKit.BlendMode.Exclusion;
-            case "hue": return this.canvasKit.BlendMode.Hue;
-            case "saturation": return this.canvasKit.BlendMode.Saturation;
-            case "color": return this.canvasKit.BlendMode.Color;
-            case "luminosity": return this.canvasKit.BlendMode.Luminosity;
-            case "normal":
-            default: return this.canvasKit.BlendMode.SrcOver;
-        }
+        return getCanvasKitBlendMode(this.canvasKit, blend);
     }
 
-    buildRendererCtx(paint: Paint): FillRendererContext {
+    // `worldAlpha` defaults to the accumulated pass-through alpha so solid fills
+    // fold it into their color. Callers that realise opacity another way (e.g.
+    // the shadow path composites its silhouette through an alpha'd saveLayer)
+    // pass 1 to avoid double-applying it.
+    buildRendererCtx(paint: Paint, worldAlpha: number = this.getWorldAlpha()): FillRendererContext {
         return {
             canvasKit: this.canvasKit,
             paint,
             assets: this.assets,
+            worldAlpha,
             // Renderers read this once per applyPaint; applyFills sets
             // currentBounds to the right space's rect just before each call.
             getShapeBounds: () => this.currentBounds,
@@ -161,9 +158,10 @@ export class FillHandler {
         paint.setStyle(this.canvasKit.PaintStyle.Fill);
 
         const rendererCtx = this.buildRendererCtx(paint);
+        const worldAlpha = this.getWorldAlpha();
 
         for (const fill of fills) {
-            const opacity = fill.opacity !== undefined ? fill.opacity : 1.0;
+            const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
             const space: FillSpace = fill.space ?? "global";
 
             // For 'local', each shape gets its own shader resolved against its

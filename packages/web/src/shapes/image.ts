@@ -181,7 +181,7 @@ export class ImageNodeRenderer {
         const ck = this.canvasKit;
         const paint = this.getPaint();
         paint.setStyle(ck.PaintStyle.Fill);
-        paint.setAlphaf(imageFill.opacity ?? 1);
+        paint.setAlphaf((imageFill.opacity ?? 1) * this.fills.worldAlpha());
         paint.setBlendMode(ck.BlendMode.SrcOver);
         paint.setShader(makeImageShader(img, imageFill, ck, bounds));
         this.applyFilters(paint, imageFill);

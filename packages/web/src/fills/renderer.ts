@@ -7,6 +7,14 @@ export interface FillRendererContext {
     canvasKit: CanvasKit;
     paint: Paint;
     assets: WebStorageAdapter;
+    /**
+     * Accumulated pass-through (node/group) alpha to fold into the fill. The
+     * handler sets it on the paint via `setAlphaf` for shader-based fills, but a
+     * solid fill writes the whole RGBA via `setColorComponents` and would
+     * otherwise clobber that alpha — so the solid renderer multiplies it back in
+     * here. Defaults to 1.
+     */
+    worldAlpha: number;
     getShapeBounds: () => ShapeBounds | null;
     offscreenCanvas: HTMLCanvasElement | null;
     offscreenCtx: CanvasRenderingContext2D | null;

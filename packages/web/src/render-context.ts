@@ -38,6 +38,7 @@ import {
     type FontStyle,
     type SkSLEffect,
     type SceneEffect,
+    type NodeBlendMode,
 
     withImageDescriptor,
     withRichTextDescriptor,
@@ -68,6 +69,7 @@ import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
 import { FillHandler } from "./fills/handler";
 import { WebStorageAdapter } from "./storage-adapter";
+import { getCanvasKitBlendMode } from "./blend";
 
 type DeferredPaintCall =
     | { kind: 'fill'; shapes: CurrentShape[]; fills: FillResolved[]; shadows: ShadowResolved[] | null }
@@ -93,6 +95,16 @@ export class WebRenderContext extends RenderContext {
 
     // Tracks extra saveLayer() calls pushed by transform() for each begin()/end() pair.
     private effectLayerStack: number[] = [];
+
+    // Accumulated "world" alpha for pass-through nodes. A pass-through node does
+    // not isolate, so its opacity is folded into every paint it draws (and into
+    // its descendants') instead of being realised through a group saveLayer —
+    // this is what lets a fill's blend mode keep mixing against the backdrop
+    // while the node fades. begin() snapshots the inherited alpha, transform()
+    // multiplies in the node's own opacity (pass-through) or resets to 1 inside
+    // an isolating blend layer, and end() restores the snapshot.
+    private worldAlpha = 1;
+    private worldAlphaStack: number[] = [];
 
     private clipRestoreStack: number[] = [];
 
@@ -148,6 +160,8 @@ export class WebRenderContext extends RenderContext {
             this.storageAdapter.getFontMgr(),
         );
 
+        const getWorldAlpha = () => this.worldAlpha;
+
         this.fillHandler = new FillHandler(
             this.canvasKit,
             getPaint,
@@ -155,6 +169,7 @@ export class WebRenderContext extends RenderContext {
             () => this.shapeHandler.getShapeBounds(),
             (space) => this.spaceRect(space),
             this.storageAdapter,
+            getWorldAlpha,
         );
 
         this.strokeHandler = new StrokeHandler(
@@ -219,6 +234,7 @@ export class WebRenderContext extends RenderContext {
             throw new Error("begin() must be called within the draw() method.");
         }
         this.effectLayerStack.push(0);
+        this.worldAlphaStack.push(this.worldAlpha);
         this.currentCanvas.save();
     }
 
@@ -231,8 +247,14 @@ export class WebRenderContext extends RenderContext {
         for (let i = 0; i < extraLayers; i++) {
             this.currentCanvas.restore();
         }
+        this.worldAlpha = this.worldAlphaStack.pop() ?? 1;
         this.currentCanvas.restore();
         super.end();
+    }
+
+    /** Accumulated pass-through alpha to fold into every paint this node draws. */
+    currentWorldAlpha(): number {
+        return this.worldAlpha;
     }
 
     dispose(): void {
@@ -363,11 +385,14 @@ export class WebRenderContext extends RenderContext {
             console.warn("draw() must be called within the draw() method.");
             return;
         }
-        // Graphics-level opacity/effects composite the whole drawn group into one
-        // layer (so overlapping shapes don't double their alpha), mirroring the
-        // node-level transform layer.
+        // Graphics-level opacity is pass-through: it folds into worldAlpha (so
+        // the group's paints fade while their blend modes keep mixing against the
+        // backdrop), mirroring a pass-through node transform. Effects still need
+        // their own isolated buffer.
         const needsLayer = graphics.needsGroupLayer();
+        const prevWorldAlpha = this.worldAlpha;
         let groupFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
+        let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
             const effects = graphics.groupEffects();
@@ -376,11 +401,14 @@ export class WebRenderContext extends RenderContext {
                 const h = this.surface.height();
                 groupFilter = CanvasKitEffectRegistry.composeFilters([...effects], this.canvasKit, w, h);
             }
-            this.layerPaint.setAlphaf(opacity < 1 ? opacity : 1);
-            this.layerPaint.setImageFilter(groupFilter ?? null);
-            this.currentCanvas.saveLayer(this.layerPaint);
-            this.layerPaint.setAlphaf(1);
-            this.layerPaint.setImageFilter(null);
+            if (groupFilter != null) {
+                this.layerPaint.setAlphaf(1);
+                this.layerPaint.setImageFilter(groupFilter);
+                this.currentCanvas.saveLayer(this.layerPaint);
+                this.layerPaint.setImageFilter(null);
+                pushedLayer = true;
+            }
+            if (opacity < 1) this.worldAlpha *= opacity;
         }
 
         // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
@@ -393,7 +421,8 @@ export class WebRenderContext extends RenderContext {
         // paint call (mirrors end()'s flush; harmless if nothing is pending).
         this.flushPendingImage();
 
-        if (needsLayer) {
+        this.worldAlpha = prevWorldAlpha;
+        if (pushedLayer) {
             this.currentCanvas.restore();
             groupFilter?.delete?.();
         }
@@ -420,7 +449,17 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    /** Applies the node's transform to the canvas and, when opacity < 1 or effects are present, pushes a `saveLayer` tracked in {@link effectLayerStack} for `end()` to unwind. */
+    /**
+     * Applies the node's transform to the canvas, then realises its opacity and
+     * blend. A `pass-through` node (the default) is *not* isolated: its opacity
+     * folds into {@link worldAlpha} (so the node's fills/strokes and its
+     * descendants paint at the faded alpha while their blend modes still mix
+     * against the backdrop). A non-pass-through `blend` *is* isolated: a
+     * `saveLayer` carrying that blend mode and the node's opacity flattens the
+     * node into a group that then blends against the backdrop as a unit.
+     * Effects always need their own isolated buffer. Any pushed `saveLayer` is
+     * tracked in {@link effectLayerStack} for `end()` to unwind.
+     */
     transform(state: Partial<TransformState>): RenderContext {
         if (!this.isRendering) {
             console.warn("transform() must be called within the draw() method.");
@@ -432,6 +471,7 @@ export class WebRenderContext extends RenderContext {
         const width = state.width ?? 0;
         const height = state.height ?? 0;
         const opacity = state.opacity ?? 1;
+        const blend: NodeBlendMode = state.blend ?? 'pass-through';
         const rotate = state.rotation ?? 0;
         const scale = state.scale ?? 1;
         const effects = state.effects ?? [];
@@ -457,14 +497,36 @@ export class WebRenderContext extends RenderContext {
             effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
         }
 
-        const needsLayer = opacity < 1 || effectFilter != null;
-        if (needsLayer) {
-            this.layerPaint.setAlphaf(opacity < 1 ? opacity : 1);
+        const isolating = blend !== 'pass-through';
+        if (isolating) {
+            // Isolating blend: flatten this node (its own paint + descendants)
+            // into a group, then composite back with the node's blend mode and
+            // opacity (scaled by the inherited pass-through alpha). An effect
+            // filter, when present, rides on the same layer. Descendants paint at
+            // full alpha inside the group — the group's contribution is scaled on
+            // composite-back — so reset worldAlpha to 1 for the layer's lifetime.
+            this.layerPaint.setAlphaf(this.worldAlpha * (opacity < 1 ? opacity : 1));
+            this.layerPaint.setBlendMode(getCanvasKitBlendMode(this.canvasKit, blend as any));
             this.layerPaint.setImageFilter(effectFilter ?? null);
             this.currentCanvas.saveLayer(this.layerPaint);
             this.layerPaint.setAlphaf(1);
+            this.layerPaint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
             this.layerPaint.setImageFilter(null);
             this.effectLayerStack[this.effectLayerStack.length - 1]++;
+            this.worldAlpha = 1;
+        } else {
+            // Pass-through: fold opacity into the accumulated alpha (carried into
+            // every paint) instead of isolating. Effects still need their own
+            // buffer — push an effect-only layer (no opacity, that's in the
+            // paints) when one is present.
+            if (effectFilter != null) {
+                this.layerPaint.setAlphaf(1);
+                this.layerPaint.setImageFilter(effectFilter);
+                this.currentCanvas.saveLayer(this.layerPaint);
+                this.layerPaint.setImageFilter(null);
+                this.effectLayerStack[this.effectLayerStack.length - 1]++;
+            }
+            if (opacity < 1) this.worldAlpha *= opacity;
         }
 
         return this;
