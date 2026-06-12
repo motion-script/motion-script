@@ -15,8 +15,9 @@ import shapesProject from './projects/shapes/shapes-project';
 import blendsProject from './projects/blends/blends-project';
 import drawProject from './projects/draw/draw-project';
 import layoutProject from './projects/layout/layout-project';
+import audioProject from './projects/audio/audio-project';
 
-export default drawProject;
+export default audioProject;
 // createProject({
 //   name: 'My Video',
 //   fps: 60,

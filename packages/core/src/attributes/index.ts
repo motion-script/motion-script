@@ -9,6 +9,7 @@ export * from './shape/shadow';
 export * from './shape/stroke';
 export { Sound, SoundProps } from './audio/sound';
 export type { AudioRequest } from './audio/request';
+export * from './audio/filters';
 export * from './layout';
 export * from './mask/boolean';
 export * from './mask/mask';
