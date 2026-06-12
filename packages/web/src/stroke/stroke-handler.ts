@@ -253,6 +253,7 @@ export class StrokeHandler {
 
         const rendererCtx = this.fills.buildRendererCtx(paint);
 
+        const worldAlpha = this.fills.worldAlpha();
         for (const stroke of strokes) {
             const weight = stroke.weight ?? 1;
             const { sx, sy } = this.deviceMetrics(canvas);
@@ -260,7 +261,7 @@ export class StrokeHandler {
             paint.setStrokeWidth(logical);
 
             for (const fill of stroke.fill) {
-                const opacity = fill.opacity !== undefined ? fill.opacity : 1.0;
+                const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
                 paint.setAlphaf(opacity);
 
                 if (fill.blend) {
@@ -515,13 +516,14 @@ export class StrokeHandler {
 
         const hasFill = fills.length > 0 && fills.some(f => (f.opacity ?? 1) > 0);
         const hasStrokes = strokes.length > 0;
+        const worldAlpha = this.fills.worldAlpha();
 
         for (const shadow of shadows) {
             const dx = shadow.dx ?? 0;
             const dy = shadow.dy ?? 0;
 
             for (const fill of shadow.fill) {
-                const opacity = fill.opacity !== undefined ? fill.opacity : 1.0;
+                const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
 
                 const layerPaint = new this.canvasKit.Paint();
                 layerPaint.setAlphaf(opacity);
@@ -541,7 +543,9 @@ export class StrokeHandler {
 
                 paint.setAlphaf(1.0);
                 if (resolveBounds) resolveBounds(fill, null);
-                FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint));
+                // worldAlpha is already realised by the alpha'd saveLayer above;
+                // pass 1 so a solid silhouette colour isn't dimmed by it twice.
+                FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint, 1));
 
                 if (hasFill) {
                     paint.setStyle(this.canvasKit.PaintStyle.Fill);

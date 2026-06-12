@@ -97,17 +97,19 @@ yield* tween(1.5, (t) => {
 
 ## Pixelate
 
-Chunks the node into rectangular blocks. `size` is the block size in pixels (`1` = no pixelation; larger values produce chunkier blocks).
+Chunks the node into rectangular blocks, like After Effects' Mosaic. The value is a **block count** — how many blocks span the node — so a count equal to the node's pixel size is pristine and lower counts are chunkier. Pass a `number` (uniform), `{ blocks, sharpColors? }`, or `{ horizontalBlocks, verticalBlocks, sharpColors? }`.
 
 ```tsx
 <Rect
   width={300} height={300}
   fill={{ type: 'image', src: './logo.png', mode: 'fit' }}
-  effects={FX.pixelate(16)}
+  effects={FX.pixelate(60)}
 />
 ```
 
 ### Pixel-reveal animation
+
+Start with a low block count (coarse) and animate up toward the node's resolution:
 
 ```tsx
 import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
@@ -123,7 +125,7 @@ export class MyScene extends Scene {
     this.add(logo);
 
     yield* tween(1.5, (t) => {
-      logo.set({ effects: FX.pixelate(lerpNumber(40, 1, easeInOut(t))) });
+      logo.set({ effects: FX.pixelate(lerpNumber(40, 300, easeInOut(t))) });
     });
   }
 }
@@ -194,5 +196,5 @@ effects={[
 | `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
 | `{ type: 'directionalBlur', direction: number, blurLength: number }` | `direction` — smear angle in degrees (0 = horizontal, 90 = vertical); `blurLength` — smear length in pixels |
 | `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
-| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number }` | Block sizes in pixels per axis |
+| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number, sharpColors: boolean }` | Number of blocks per axis (AE Mosaic); `sharpColors` — solid blocks vs. blended |
 | `{ type: 'invert', channel: InvertChannel, strength: number }` | `channel` — `'red' \| 'green' \| 'blue' \| 'rgba' \| 'alpha' \| 'hue' \| 'luminance'`; `strength` — 0 (original) to 1 (fully inverted) |

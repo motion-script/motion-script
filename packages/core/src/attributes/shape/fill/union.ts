@@ -9,18 +9,19 @@
  */
 
 /**
- * Reference frame a fill (and the stroke/shadow that wrap one) is applied
- * against, and whether stacked shapes paint individually or as one unit:
+ * Reference frame a fill (and the stroke/shadow that wrap one) resolves
+ * against. The drawn shapes are always treated as one unit (their union); the
+ * space only changes which rect the gradient/image is mapped onto:
  *
- *  - `local`  — each shape is painted on its own; gradients/images resolve
- *               against that single shape's bounds.
- *  - `global` — all shapes drawn together (e.g. `ellipse(...).rect(...)`) are
- *               treated as one unit; gradients/images span their union bounds.
- *               This is the default.
- *  - `parent` — resolve against the parent node's layout rect.
- *  - `view`   — resolve against the render viewport.
+ *  - `local`  — the shape's own (union) bounds. The fill is pinned to the
+ *               figure, so moving the node around does not change its
+ *               appearance. This is the default.
+ *  - `parent` — the parent node's layout rect; moving the node *within* its
+ *               parent slides it across the fill, so the appearance changes.
+ *  - `global` — the render viewport; the fill is anchored to the frame, so
+ *               moving the node anywhere on screen changes which slice it shows.
  */
-export type FillSpace = "local" | "global" | "parent" | "view";
+export type FillSpace = "local" | "parent" | "global";
 
 import { SolidFillProp, SolidFillResolved } from "./implementations/color";
 import { ConicGradientFillProp, ConicGradientFillResolved } from "./implementations/conic-gradient";
@@ -39,7 +40,7 @@ import { StripeFillProp, StripeFillResolved } from "./implementations/stripe";
 /** Fields shared by every fill variant, regardless of type. */
 export interface FillCommon {
     /**
-     * Reference frame / grouping for this fill. Defaults to `global`.
+     * Reference frame this fill resolves against. Defaults to `local`.
      * See {@link FillSpace}.
      */
     space?: FillSpace;

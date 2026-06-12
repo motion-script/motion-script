@@ -27,15 +27,18 @@ import {
     RenderContext,
     type RichTextState,
     type SpaceRect,
-    type SpaceRects,
+    type NodeRenderState,
     type TextState,
     type TransformState,
     type Vector2,
     type BulgeEffect,
     type MagnifyEffect,
+    type MotionBlurEffect,
     type PosterizeEffect,
     type FontStyle,
     type SkSLEffect,
+    type SceneEffect,
+    type NodeBlendMode,
 
     withImageDescriptor,
     withRichTextDescriptor,
@@ -57,6 +60,7 @@ import { PathShape } from "./shapes/path";
 import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
+import { resolveMotionBlur } from "./effects/motion-blur";
 import { makeBulgeShader, disposeBulge } from "./effects/bulge";
 import { makeMagnifyShader, disposeMagnify } from "./effects/magnify";
 import { makePosterizeShader, disposePosterize } from "./effects/posterize";
@@ -65,6 +69,7 @@ import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
 import { FillHandler } from "./fills/handler";
 import { WebStorageAdapter } from "./storage-adapter";
+import { getCanvasKitBlendMode } from "./blend";
 
 type DeferredPaintCall =
     | { kind: 'fill'; shapes: CurrentShape[]; fills: FillResolved[]; shadows: ShadowResolved[] | null }
@@ -90,6 +95,16 @@ export class WebRenderContext extends RenderContext {
 
     // Tracks extra saveLayer() calls pushed by transform() for each begin()/end() pair.
     private effectLayerStack: number[] = [];
+
+    // Accumulated "world" alpha for pass-through nodes. A pass-through node does
+    // not isolate, so its opacity is folded into every paint it draws (and into
+    // its descendants') instead of being realised through a group saveLayer —
+    // this is what lets a fill's blend mode keep mixing against the backdrop
+    // while the node fades. begin() snapshots the inherited alpha, transform()
+    // multiplies in the node's own opacity (pass-through) or resets to 1 inside
+    // an isolating blend layer, and end() restores the snapshot.
+    private worldAlpha = 1;
+    private worldAlphaStack: number[] = [];
 
     private clipRestoreStack: number[] = [];
 
@@ -145,6 +160,8 @@ export class WebRenderContext extends RenderContext {
             this.storageAdapter.getFontMgr(),
         );
 
+        const getWorldAlpha = () => this.worldAlpha;
+
         this.fillHandler = new FillHandler(
             this.canvasKit,
             getPaint,
@@ -152,6 +169,7 @@ export class WebRenderContext extends RenderContext {
             () => this.shapeHandler.getShapeBounds(),
             (space) => this.spaceRect(space),
             this.storageAdapter,
+            getWorldAlpha,
         );
 
         this.strokeHandler = new StrokeHandler(
@@ -208,14 +226,15 @@ export class WebRenderContext extends RenderContext {
         this.surface.flush();
     }
 
-    begin(id: string, rects?: SpaceRects): void {
-        super.begin(id, rects);
-        this.shapeHandler.beginNode(id);
+    begin(state: NodeRenderState): void {
+        super.begin(state);
+        this.shapeHandler.beginNode(state.id);
         this.shapeHandler.reset();
         if (!this.currentCanvas) {
             throw new Error("begin() must be called within the draw() method.");
         }
         this.effectLayerStack.push(0);
+        this.worldAlphaStack.push(this.worldAlpha);
         this.currentCanvas.save();
     }
 
@@ -228,8 +247,14 @@ export class WebRenderContext extends RenderContext {
         for (let i = 0; i < extraLayers; i++) {
             this.currentCanvas.restore();
         }
+        this.worldAlpha = this.worldAlphaStack.pop() ?? 1;
         this.currentCanvas.restore();
         super.end();
+    }
+
+    /** Accumulated pass-through alpha to fold into every paint this node draws. */
+    currentWorldAlpha(): number {
+        return this.worldAlpha;
     }
 
     dispose(): void {
@@ -287,8 +312,12 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    /** Snapshots the current surface and encodes it as a PNG data URL via the browser's canvas (CanvasKit ships no wasm encoders). */
-    screenshot(): string | undefined {
+    /**
+     * Snapshots the current surface and encodes it as an image data URL via the
+     * browser's canvas (CanvasKit ships no wasm encoders). Defaults to PNG;
+     * pass `mime`/`quality` (e.g. `"image/jpeg", 0.9`) for other formats.
+     */
+    screenshot(mime: string = "image/png", quality?: number): string | undefined {
         if (!this.mounted) {
             console.warn("screenshot() must be called after mount().");
             return undefined;
@@ -320,8 +349,9 @@ export class WebRenderContext extends RenderContext {
         const imageData = new ImageData(new Uint8ClampedArray(pixels), w, h);
         ctx.putImageData(imageData, 0, 0);
         // Returns a data: URL (was a blob: URL before); both work as an <img> src
-        // and a data URL needs no revoke.
-        return canvas.toDataURL("image/png");
+        // and a data URL needs no revoke. `quality` is honored only by lossy
+        // formats (e.g. image/jpeg); the browser ignores it for image/png.
+        return canvas.toDataURL(mime, quality);
     }
 
     /** Wraps the just-flushed canvas as a `VideoFrame` for the export pipeline (mediabunny's `CanvasSource`). */
@@ -355,11 +385,14 @@ export class WebRenderContext extends RenderContext {
             console.warn("draw() must be called within the draw() method.");
             return;
         }
-        // Graphics-level opacity/effects composite the whole drawn group into one
-        // layer (so overlapping shapes don't double their alpha), mirroring the
-        // node-level transform layer.
+        // Graphics-level opacity is pass-through: it folds into worldAlpha (so
+        // the group's paints fade while their blend modes keep mixing against the
+        // backdrop), mirroring a pass-through node transform. Effects still need
+        // their own isolated buffer.
         const needsLayer = graphics.needsGroupLayer();
+        const prevWorldAlpha = this.worldAlpha;
         let groupFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
+        let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
             const effects = graphics.groupEffects();
@@ -368,11 +401,14 @@ export class WebRenderContext extends RenderContext {
                 const h = this.surface.height();
                 groupFilter = CanvasKitEffectRegistry.composeFilters([...effects], this.canvasKit, w, h);
             }
-            this.layerPaint.setAlphaf(opacity < 1 ? opacity : 1);
-            this.layerPaint.setImageFilter(groupFilter ?? null);
-            this.currentCanvas.saveLayer(this.layerPaint);
-            this.layerPaint.setAlphaf(1);
-            this.layerPaint.setImageFilter(null);
+            if (groupFilter != null) {
+                this.layerPaint.setAlphaf(1);
+                this.layerPaint.setImageFilter(groupFilter);
+                this.currentCanvas.saveLayer(this.layerPaint);
+                this.layerPaint.setImageFilter(null);
+                pushedLayer = true;
+            }
+            if (opacity < 1) this.worldAlpha *= opacity;
         }
 
         // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
@@ -385,7 +421,8 @@ export class WebRenderContext extends RenderContext {
         // paint call (mirrors end()'s flush; harmless if nothing is pending).
         this.flushPendingImage();
 
-        if (needsLayer) {
+        this.worldAlpha = prevWorldAlpha;
+        if (pushedLayer) {
             this.currentCanvas.restore();
             groupFilter?.delete?.();
         }
@@ -412,7 +449,17 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    /** Applies the node's transform to the canvas and, when opacity < 1 or effects are present, pushes a `saveLayer` tracked in {@link effectLayerStack} for `end()` to unwind. */
+    /**
+     * Applies the node's transform to the canvas, then realises its opacity and
+     * blend. A `pass-through` node (the default) is *not* isolated: its opacity
+     * folds into {@link worldAlpha} (so the node's fills/strokes and its
+     * descendants paint at the faded alpha while their blend modes still mix
+     * against the backdrop). A non-pass-through `blend` *is* isolated: a
+     * `saveLayer` carrying that blend mode and the node's opacity flattens the
+     * node into a group that then blends against the backdrop as a unit.
+     * Effects always need their own isolated buffer. Any pushed `saveLayer` is
+     * tracked in {@link effectLayerStack} for `end()` to unwind.
+     */
     transform(state: Partial<TransformState>): RenderContext {
         if (!this.isRendering) {
             console.warn("transform() must be called within the draw() method.");
@@ -424,6 +471,7 @@ export class WebRenderContext extends RenderContext {
         const width = state.width ?? 0;
         const height = state.height ?? 0;
         const opacity = state.opacity ?? 1;
+        const blend: NodeBlendMode = state.blend ?? 'pass-through';
         const rotate = state.rotation ?? 0;
         const scale = state.scale ?? 1;
         const effects = state.effects ?? [];
@@ -441,30 +489,87 @@ export class WebRenderContext extends RenderContext {
         if (effects.length > 0) {
             const w = this.surface.width();
             const h = this.surface.height();
-            effectFilter = CanvasKitEffectRegistry.composeFilters(effects, this.canvasKit, w, h);
+            // Motion blur needs the node's live velocity, which static effect data
+            // can't carry — resolve each `motionBlur` against the current node's
+            // render state here, then hand the renderer a concrete directional
+            // smear. Effects without motion blur skip the copy entirely.
+            const resolved = this.resolveMotionBlurEffects(effects);
+            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
         }
 
-        const needsLayer = opacity < 1 || effectFilter != null;
-        if (needsLayer) {
-            this.layerPaint.setAlphaf(opacity < 1 ? opacity : 1);
+        const isolating = blend !== 'pass-through';
+        if (isolating) {
+            // Isolating blend: flatten this node (its own paint + descendants)
+            // into a group, then composite back with the node's blend mode and
+            // opacity (scaled by the inherited pass-through alpha). An effect
+            // filter, when present, rides on the same layer. Descendants paint at
+            // full alpha inside the group — the group's contribution is scaled on
+            // composite-back — so reset worldAlpha to 1 for the layer's lifetime.
+            this.layerPaint.setAlphaf(this.worldAlpha * (opacity < 1 ? opacity : 1));
+            this.layerPaint.setBlendMode(getCanvasKitBlendMode(this.canvasKit, blend as any));
             this.layerPaint.setImageFilter(effectFilter ?? null);
             this.currentCanvas.saveLayer(this.layerPaint);
             this.layerPaint.setAlphaf(1);
+            this.layerPaint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
             this.layerPaint.setImageFilter(null);
             this.effectLayerStack[this.effectLayerStack.length - 1]++;
+            this.worldAlpha = 1;
+        } else {
+            // Pass-through: fold opacity into the accumulated alpha (carried into
+            // every paint) instead of isolating. Effects still need their own
+            // buffer — push an effect-only layer (no opacity, that's in the
+            // paints) when one is present.
+            if (effectFilter != null) {
+                this.layerPaint.setAlphaf(1);
+                this.layerPaint.setImageFilter(effectFilter);
+                this.currentCanvas.saveLayer(this.layerPaint);
+                this.layerPaint.setImageFilter(null);
+                this.effectLayerStack[this.effectLayerStack.length - 1]++;
+            }
+            if (opacity < 1) this.worldAlpha *= opacity;
         }
 
         return this;
     }
 
+    /**
+     * Replace any `motionBlur` effect with a `motionBlurResolved` smear computed
+     * from the current node's sampled velocity (from {@link currentRenderState}).
+     * Returns the input array unchanged when there is no motion blur (the common
+     * case) so non-motion-blur transforms keep their zero-copy fast path. A
+     * motion blur that resolves to nothing (static node / unknown velocity) is
+     * dropped from the array.
+     */
+    private resolveMotionBlurEffects(effects: SceneEffect[]): SceneEffect[] {
+        let hasMotionBlur = false;
+        for (const e of effects) {
+            if (e.type === "motionBlur") { hasMotionBlur = true; break; }
+        }
+        if (!hasMotionBlur) return effects;
+
+        const rs = this.currentRenderState();
+        const out: SceneEffect[] = [];
+        for (const e of effects) {
+            if (e.type !== "motionBlur") {
+                out.push(e);
+                continue;
+            }
+            const resolved = rs
+                ? resolveMotionBlur(e as MotionBlurEffect, rs.velocity, rs.dt)
+                : null;
+            if (resolved) out.push(resolved as unknown as SceneEffect);
+        }
+        return out;
+    }
+
     // Resolve the reference rect for a fill `space`, in the current node's local
-    // space. `parent` is supplied by the node via begin(); `view` is the render
+    // space. `parent` is supplied by the node via begin(); `global` is the render
     // viewport mapped from device space through the inverse current matrix.
     private spaceRect(space: FillSpace): SpaceRect | null {
         if (space === "parent") {
             return this.currentSpaceRects().parent ?? null;
         }
-        if (space === "view") {
+        if (space === "global") {
             const m = this.currentCanvas?.getTotalMatrix();
             if (!m) return null;
             const inv = this.canvasKit.Matrix.invert(m);
@@ -600,7 +705,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const space = pendingShadows[0].fill[0]?.space ?? "global";
+            const space = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
             dispose();
@@ -610,25 +715,23 @@ export class WebRenderContext extends RenderContext {
     }
 
     // Set the fill handler's bounds for a fill, honouring its `space`. Used as
-    // the per-shape resolveBounds hook for stroke/shadow shaders.
+    // the resolveBounds hook for stroke/shadow shaders.
     private applyFillSpaceBounds = (
         fill: FillResolved,
         shape: { ckPath?: any } | null,
     ): void => {
-        this.fillHandler.setCurrentBounds(this.fillHandler.boundsForSpace(fill.space ?? "global", shape));
+        this.fillHandler.setCurrentBounds(this.fillHandler.boundsForSpace(fill.space ?? "local", shape));
     };
 
-    // Pick the shapes a stroke/shadow should be drawn over for the given space.
-    // `local` strokes each shape individually; every other space strokes the
-    // union outline so overlapping shapes show no internal seams. Returns the
-    // shape list plus a disposer for any transient union path.
-    private strokeShapesForSpace(space: FillSpace): {
+    // Pick the shapes a stroke/shadow should be drawn over. The drawn shapes are
+    // always treated as one unit, so stroke the union outline (overlapping shapes
+    // then show no internal seams). Returns the shape list plus a disposer for
+    // any transient union path. `space` is accepted for call-site symmetry with
+    // the fill path but no longer changes the grouping.
+    private strokeShapesForSpace(_space: FillSpace): {
         shapes: Array<{ draw: (p: any) => void; ckPath?: any }>;
         dispose: () => void;
     } {
-        if (space === "local") {
-            return { shapes: this.shapeHandler.shapes, dispose: () => { } };
-        }
         const union = this.shapeHandler.unionStrokeShape();
         if (union) {
             return { shapes: [union], dispose: () => union.ckPath?.delete() };
@@ -659,15 +762,14 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "global";
+            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes: shadowShapes, dispose: shadowDispose } = this.strokeShapesForSpace(shadowSpace);
             this.strokeHandler.applyShadows(pendingShadows, shadowShapes, [], resolved, this.applyFillSpaceBounds);
             shadowDispose();
         }
-        // The first stroke's space decides geometry grouping (local = per shape,
-        // else union outline). Bounds for each stroke's shader are resolved per
-        // shape from that stroke's own fill space.
-        const space = resolved[0].fill[0]?.space ?? "global";
+        // Strokes are always drawn over the union outline; each stroke's shader
+        // bounds are resolved from its own fill space via applyFillSpaceBounds.
+        const space = resolved[0].fill[0]?.space ?? "local";
         const { shapes, dispose } = this.strokeShapesForSpace(space);
         this.strokeHandler.applyStrokes(resolved, shapes, this.applyFillSpaceBounds);
         dispose();
@@ -738,7 +840,7 @@ export class WebRenderContext extends RenderContext {
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new RectShape(this.canvasKit, canvas, state);
+        const shape = new RectShape(this.canvasKit, () => this.currentCanvas, state);
         shape.clip(/* isolated= */ true);
         if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
@@ -751,7 +853,7 @@ export class WebRenderContext extends RenderContext {
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new EllipseShape(this.canvasKit, canvas, state);
+        const shape = new EllipseShape(this.canvasKit, () => this.currentCanvas, state);
         shape.clip(/* isolated= */ true);
         if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
@@ -770,7 +872,7 @@ export class WebRenderContext extends RenderContext {
 
     private buildClipShape(shape: ClipShape): CurrentShape | null {
         const ck = this.canvasKit;
-        const canvas = this.currentCanvas;
+        const canvas = () => this.currentCanvas;
         // Call clip(true) to apply the clip (uses native clipRect/clipRRect when possible),
         // then return a stub CurrentShape only if a ckPath was built so beginClipShape
         // can delete it. Returns null when the clip was applied without a path.

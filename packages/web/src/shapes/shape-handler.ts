@@ -94,6 +94,10 @@ export class ShapeHandler {
     // Cached union bounds for the current shape set, cleared when shapes change.
     private _cachedBounds: { left: number; top: number; right: number; bottom: number } | null = null;
     private _boundsDirty: boolean = true;
+    // Paths this handler synthesised itself (e.g. cut() results) rather than
+    // cache-owned shape paths. These are ours to free at reset()/cut() — cached
+    // shape paths must not be deleted here or the cross-frame cache would dangle.
+    private transientPaths: Set<CKPath> = new Set();
 
     constructor(
         private canvasKit: CanvasKit,
@@ -111,6 +115,10 @@ export class ShapeHandler {
     }
 
     reset(): void {
+        // Free any synthesised paths still around (e.g. a cut() result that was
+        // painted this frame). Cache-owned shape paths are left for the cache.
+        for (const path of this.transientPaths) path.delete();
+        this.transientPaths.clear();
         this.shapes = [];
         this.paintApplied = false;
         this.pendingShadows = null;
@@ -130,6 +138,8 @@ export class ShapeHandler {
 
     dispose(): void {
         this.shapes = [];
+        for (const path of this.transientPaths) path.delete();
+        this.transientPaths.clear();
         for (const entry of this.shapeCache.values()) {
             entry.shape.deletePaths();
         }
@@ -232,27 +242,27 @@ export class ShapeHandler {
     }
 
     rect(state: Partial<RectState>): void {
-        this.addShape(new RectShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new RectShape(this.canvasKit, this.getCanvas, state));
     }
 
     ellipse(state: Partial<EllipseState>): void {
-        this.addShape(new EllipseShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new EllipseShape(this.canvasKit, this.getCanvas, state));
     }
 
     path(state: Partial<PathState>): void {
-        this.addShape(new PathShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PathShape(this.canvasKit, this.getCanvas, state));
     }
 
     line(state: Partial<LineState>): void {
-        this.addShape(new LineShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new LineShape(this.canvasKit, this.getCanvas, state));
     }
 
     polygon(state: Partial<PolygonState>): void {
-        this.addShape(new PolygonShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PolygonShape(this.canvasKit, this.getCanvas, state));
     }
 
     polygram(state: Partial<PolygramState>): void {
-        this.addShape(new PolygramShape(this.canvasKit, this.getCanvas(), state));
+        this.addShape(new PolygramShape(this.canvasKit, this.getCanvas, state));
     }
 
     text(state: Partial<TextState>): void {
@@ -294,12 +304,22 @@ export class ShapeHandler {
             }
         }
 
-        // combinePaths consumed/deleted the copies; now drop the originals.
-        for (const shape of this.shapes) shape.ckPath?.delete();
+        // The base/cutter we passed in were copies, which combinePaths already
+        // consumed. The originals in `this.shapes` are mostly cache-owned (built
+        // via addShape and reused across frames), so deleting them here would
+        // dangle the cache. Only paths *this handler* synthesised — e.g. a
+        // previous cut()'s result — are ours to free; drop just those.
+        for (const shape of this.shapes) {
+            if (shape.ckPath && this.transientPaths.has(shape.ckPath)) {
+                shape.ckPath.delete();
+                this.transientPaths.delete(shape.ckPath);
+            }
+        }
         this.shapes = [];
         this.paintApplied = false;
         if (!combined) return;
 
+        this.transientPaths.add(combined);
         const canvas = this.getCanvas();
         this.shapes.push({
             draw: (paint: Paint) => { canvas.drawPath(combined, paint); },

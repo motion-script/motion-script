@@ -1,7 +1,43 @@
 import { SceneEffect } from "./union";
 import type { InvertChannel } from "./implementations/invert";
 import type { ScatterDirection } from "./implementations/scatter";
+import type { MotionBlurAxis, MotionBlurEffect } from "./implementations/motion-blur";
+import type { PixelateEffect } from "./implementations/pixelate";
 import type { SkSLUniform } from "./implementations/sksl";
+
+/**
+ * Accepted shapes for {@link FX.pixelate} / {@link EffectChain.pixelate}.
+ *
+ * Block counts follow AE's Mosaic: they are the *number* of blocks across the
+ * node, so a count equal to the node's pixel size on that axis is pristine and
+ * lower counts are coarser. `sharpColors` mirrors AE's "Sharp Colors" checkbox
+ * (default `true` — solid blocks).
+ *
+ * - `number` — same block count on both axes.
+ * - `{ blocks, sharpColors? }` — uniform block count, optional sharpness.
+ * - `{ horizontalBlocks, verticalBlocks, sharpColors? }` — per-axis block count.
+ */
+export type PixelateOptions =
+    | number
+    | { blocks: number; sharpColors?: boolean }
+    | { horizontalBlocks: number; verticalBlocks: number; sharpColors?: boolean };
+
+/** Normalises any {@link PixelateOptions} to a concrete {@link PixelateEffect}. */
+function toPixelateEffect(options: PixelateOptions): PixelateEffect {
+    if (typeof options === "number") {
+        return { type: "pixelate", horizontalBlocks: options, verticalBlocks: options, sharpColors: true };
+    }
+    const sharpColors = options.sharpColors ?? true;
+    if ("blocks" in options) {
+        return { type: "pixelate", horizontalBlocks: options.blocks, verticalBlocks: options.blocks, sharpColors };
+    }
+    return {
+        type: "pixelate",
+        horizontalBlocks: options.horizontalBlocks,
+        verticalBlocks: options.verticalBlocks,
+        sharpColors,
+    };
+}
 
 /**
  * Immutable, chainable list of scene effects.
@@ -41,9 +77,15 @@ export class EffectChain {
     return new EffectChain([...this.list, { type: 'backgroundBlur', radius }]);
   }
 
-  /** Append a pixelate effect where both axes use the same block `size` in pixels. */
-  pixelate(size: number) {
-    return new EffectChain([...this.list, { type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]);
+  /**
+   * Append an After Effects-style Mosaic / pixelate. The argument is the *number
+   * of blocks* across the node (a count equal to the node's pixel size on that
+   * axis is pristine; lower is coarser), not a pixel block size.
+   * @param options block count: `number` (uniform), `{ blocks, sharpColors? }`,
+   *                or `{ horizontalBlocks, verticalBlocks, sharpColors? }`.
+   */
+  pixelate(options: PixelateOptions) {
+    return new EffectChain([...this.list, toPixelateEffect(options)]);
   }
 
   /** Append a grayscale effect with `amount` in the 0–1 range. */
@@ -132,6 +174,26 @@ export class EffectChain {
   }
 
   /**
+   * Append velocity-driven motion blur — smears the node's own content along its
+   * actual per-frame motion (a static node stays sharp). Modelled on After
+   * Effects' shutter angle (`length`) and shutter phase (`alignment`).
+   * @param length     shutter "openness" as a percent; 100 ≈ 360° (default 50).
+   * @param alignment  shutter phase: `'behind'` | `'centered'` | `'ahead'` | −1…1 (default `'centered'`).
+   * @param samples    renderer quality hint — higher switches to multi-tap accumulation (default 16).
+   * @param strength   blur-length multiplier (default 1).
+   * @param axis       per-axis velocity scale: `'x'` | `'y'` | `'both'` | `{x,y}` (default `'both'`).
+   */
+  motionBlur(
+    length = 50,
+    alignment: MotionBlurEffect['alignment'] = 'centered',
+    samples = 16,
+    strength = 1,
+    axis: MotionBlurAxis = 'both',
+  ) {
+    return new EffectChain([...this.list, { type: 'motionBlur', length, alignment, samples, strength, axis }]);
+  }
+
+  /**
    * Append a custom SkSL overlay shader applied as a layer effect.
    * The shader generates colour from position/uniforms and is blended onto the
    * node's layer using `blendMode` (default `'screen'`).
@@ -186,8 +248,13 @@ export const FX = {
   directionalBlur: (direction: number, blurLength: number) =>
     createChain([{ type: 'directionalBlur', direction, blurLength }]),
   backgroundBlur: (radius: number) => createChain([{ type: 'backgroundBlur', radius }]),
-  /** Pixel block size, applied to both axes. */
-  pixelate: (size: number) => createChain([{ type: 'pixelate', horizontalBlocks: size, verticalBlocks: size }]),
+  /**
+   * After Effects-style Mosaic / pixelate. The argument is the *number of blocks*
+   * across the node (a count equal to the node's pixel size is pristine; lower is
+   * coarser), accepting a uniform `number`, `{ blocks, sharpColors? }`, or
+   * `{ horizontalBlocks, verticalBlocks, sharpColors? }`.
+   */
+  pixelate: (options: PixelateOptions) => createChain([toPixelateEffect(options)]),
   grayscale: (amount: number) => createChain([{ type: 'grayscale', amount }]),
   bulge: (strength: number) =>
     createChain([{ type: 'bulge', strength }]),
@@ -206,6 +273,14 @@ export const FX = {
   /** After Effects-style posterize. `level` = brightness bands per channel (≥ 2). */
   posterize: (level = 4) =>
     createChain([{ type: 'posterize', level }]),
+  /** Velocity-driven motion blur. `length` percent (≈ shutter angle), `alignment` shutter phase, `samples` quality hint. */
+  motionBlur: (
+    length = 50,
+    alignment: MotionBlurEffect['alignment'] = 'centered',
+    samples = 16,
+    strength = 1,
+    axis: MotionBlurAxis = 'both',
+  ) => createChain([{ type: 'motionBlur', length, alignment, samples, strength, axis }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>

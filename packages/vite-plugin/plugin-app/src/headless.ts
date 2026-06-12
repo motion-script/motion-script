@@ -1,6 +1,6 @@
 import config from '~user-project'
 import assets from '~asset-manifest'
-import { exportScenesAsVideo } from '@motion-script/web'
+import { exportScenesAsVideo, exportScreenshot, type FrameSpec, type ScreenshotFormat } from '@motion-script/web'
 import { setTheme, type Scene } from '@motion-script/core'
 
 /**
@@ -29,9 +29,31 @@ export type HeadlessExportOptions = {
     scale?: number;
 };
 
+export type HeadlessScreenshotOptions = {
+    /** Scene names whose concatenated timeline the frame is taken from. Empty/omitted → all scenes. */
+    sceneNames?: string[];
+    /** Which frame to capture: a global frame index, or the first/last frame. */
+    frame: FrameSpec;
+    /** Resolution multiplier applied to the project viewport (default 1). */
+    scale?: number;
+    /** Image format (default "png"). */
+    format?: ScreenshotFormat;
+};
+
+export type HeadlessScreenshotResult = {
+    /** The actual global frame captured (after clamping to the valid range). */
+    frame: number;
+    /** Total frames in the timeline, so the CLI can validate/report. */
+    totalFrames: number;
+    /** Encoded image bytes, base64-encoded for the Playwright bridge. */
+    base64: string;
+};
+
 export type HeadlessBridge = {
     /** The project name from `createProject({ name })`, used for output filenames. */
     readonly projectName: string;
+    /** The project frame rate from the config, used to convert a `<time>` spec to a frame. */
+    readonly fps: number;
     listScenes(): string[];
     /**
      * Render the selected scenes. Each finished clip is streamed out via the
@@ -41,6 +63,13 @@ export type HeadlessBridge = {
      * once all clips are done.
      */
     export(options: HeadlessExportOptions): Promise<void>;
+    /**
+     * Render a single frame of the selected scenes' timeline to an image and
+     * return its bytes (base64-encoded for the bridge), along with the actual
+     * frame captured and the timeline's total frame count. Reuses the same
+     * render pipeline as `export`, so the still matches the video frame-for-frame.
+     */
+    screenshot(options: HeadlessScreenshotOptions): Promise<HeadlessScreenshotResult>;
 };
 
 declare global {
@@ -113,6 +142,7 @@ async function emitFile(scene: string | null, bytes: Uint8Array): Promise<void> 
 export function installHeadlessBridge(): void {
     const bridge: HeadlessBridge = {
         projectName: config.name,
+        fps: config.fps,
 
         listScenes() {
             return config.scenes.map(s => s.name);
@@ -167,6 +197,35 @@ export function installHeadlessBridge(): void {
                 onProgress: p => reportProgress(label, p),
             });
             await emitFile(single, bytes as Uint8Array);
+        },
+
+        async screenshot(options) {
+            const { frame, scale = 1, format = 'png' } = options;
+            const scenes = selectScenes(options.sceneNames);
+            if (scenes.length === 0) {
+                throw new Error('No scenes to screenshot.');
+            }
+
+            // Same theme setup as export() — without it, theme color tokens
+            // resolve to nothing and the still renders with wrong fills.
+            setTheme(config.theme);
+
+            const result = await exportScreenshot({
+                scenes,
+                viewport: config.viewport,
+                fps: config.fps,
+                scale,
+                manifest: assets,
+                wasmUrl: '/canvaskit.wasm',
+                frame,
+                format,
+            });
+
+            return {
+                frame: result.frame,
+                totalFrames: result.totalFrames,
+                base64: toBase64(result.bytes),
+            };
         },
     };
 

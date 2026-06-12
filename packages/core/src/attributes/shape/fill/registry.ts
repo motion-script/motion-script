@@ -2,6 +2,7 @@ import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { FillProp, FillResolved, FillSpace } from "./union";
 import { ChainableFill, resolveChainFill } from "./chain";
+import { canCoerce, coercePair } from "./coerce";
 
 import { colorFill } from "./implementations/color";
 import { linearGradientFill } from "./implementations/linear-gradient";
@@ -59,7 +60,20 @@ export function resolveFillArray(prop: ChainableFill | undefined): FillResolved[
 
 export function lerpFill(a: FillResolved, b: FillResolved, t: number): FillResolved {
     const clamped = Math.min(1, Math.max(0, t));
-    if (a.type !== b.type || a.blend !== b.blend) {
+
+    // Cross-type tween (color↔gradient, or gradient↔gradient of different
+    // kinds): promote both endpoints to a common type, then lerp with that
+    // type's lerp. blend cannot interpolate, so it snaps with the rest of the
+    // coerced shape.
+    if (a.type !== b.type) {
+        if (!canCoerce(a, b)) {
+            throw new Error(`No registered lerp for fills of type "${a.type}" and "${b.type}"`);
+        }
+        const [ca, cb] = coercePair(a, b);
+        return { ...ca, ...get(ca.type).lerp(ca, cb, clamped) };
+    }
+
+    if (a.blend !== b.blend) {
         throw new Error(`No registered lerp for fills of type "${a.type}" and "${b.type}"`);
     }
     return { ...a, ...get(a.type).lerp(a, b, clamped) };

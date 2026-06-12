@@ -4,6 +4,9 @@ import { Graphics } from "@/render/graphics";
 import { NodeConfig } from "./node";
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
 import { BooleanOperation } from "@/attributes/mask/boolean";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { MeasureScope } from "@/render/measure-scope";
+import { layoutGroupChildren } from "@/layout/group-layout";
 export interface BooleanGroupProps extends ShapeProps {
     op: BooleanOperation;
 }
@@ -27,6 +30,14 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
 
     // Required by ShapeNode but unused here — onRender is fully overridden.
     protected renderSelf(_ctx: RenderContext): void { }
+
+    // ShapeNode.layout only lays out this node; the children whose geometry we
+    // combine need a layout pass too, or they contribute zero-size paths. Lay
+    // them out stack-style (centered), so child x/y/width behave as authored.
+    override layout(rect: BoxBounds, scope: MeasureScope): void {
+        super.layout(rect, scope);
+        layoutGroupChildren(this._children, rect, scope);
+    }
 
     onRender(ctx: RenderContext): void {
         // Apply only this node's own transform. We deliberately bypass

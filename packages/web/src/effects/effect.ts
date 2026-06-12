@@ -2,6 +2,14 @@ import { type SceneEffect as IEffect } from "@motion-script/core";
 import type { CanvasKit } from "@motion-script/canvaskit";
 
 /**
+ * What a CanvasKit effect renderer can be keyed on: either a public authored
+ * {@link IEffect}, or an internal renderer-only effect (e.g. a motion blur
+ * resolved against a node's velocity) that is produced during render and never
+ * authored on a node. Both are discriminated by a `type` string.
+ */
+export type RenderEffect = IEffect | { type: string };
+
+/**
  * Abstract base for CanvasKit effect renderers.
  *
  * Subclasses implement `makeImageFilter` using either built-in CanvasKit filters
@@ -11,7 +19,7 @@ import type { CanvasKit } from "@motion-script/canvaskit";
  * The returned ImageFilter is applied as a saveLayer paint wrapping the node's
  * draw calls, so it composites the entire node before applying the filter.
  */
-export abstract class CanvasKitEffect<T extends IEffect = IEffect> {
+export abstract class CanvasKitEffect<T extends RenderEffect = IEffect> {
     readonly type: string;
 
     constructor(type: string) {

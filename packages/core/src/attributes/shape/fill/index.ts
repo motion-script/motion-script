@@ -1,5 +1,5 @@
-export { BlendModes as BLEND_MODES_LIST, getBlendModeHash } from './blend';
-export type { BlendMode } from './blend';
+export { BlendModes as BLEND_MODES_LIST, NodeBlendModes, getBlendModeHash } from './blend';
+export type { BlendMode, NodeBlendMode } from './blend';
 
 export { setTheme, parseColor } from './color/parser';
 export type { NormalizedColor, Color } from './color/parser';

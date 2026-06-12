@@ -71,6 +71,7 @@ export class FakeScene {
     ellapseCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
     prepareCount = 0;
+    sampleCount = 0;
 
     constructor(opts: FakeSceneOptions = {}) {
         this.id = opts.id ?? "scene";
@@ -98,6 +99,9 @@ export class FakeScene {
     }
     render(): void {
         this.renderCount++;
+    }
+    sample(): void {
+        this.sampleCount++;
     }
     prepareAssets(tracker: AssetTracker): void {
         this.onPrepare?.(tracker, this.prepareCount);

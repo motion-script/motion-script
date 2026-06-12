@@ -11,6 +11,7 @@ import type { ChromaticAberrationEffect } from "./implementations/chromatic-aber
 import type { InvertEffect } from "./implementations/invert";
 import type { ScatterEffect } from "./implementations/scatter";
 import type { PosterizeEffect } from "./implementations/posterize";
+import type { MotionBlurEffect } from "./implementations/motion-blur";
 import type { SkSLEffect } from "./implementations/sksl";
 
 /** Discriminated union of every effect type a scene node can carry. */
@@ -28,4 +29,5 @@ export type SceneEffect =
     | InvertEffect
     | ScatterEffect
     | PosterizeEffect
+    | MotionBlurEffect
     | SkSLEffect;
