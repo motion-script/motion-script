@@ -1,5 +1,6 @@
 import type { FillResolved } from "@motion-script/core";
 import { ImageFillRenderer } from "./image";
+import { VideoFillRenderer } from "./video";
 import { LinearGradientFillRenderer } from "./linear-gradient";
 import { RadialGradientFillRenderer } from "./radial-gradient";
 import { ConicGradientFillRenderer } from "./conic-gradient";
@@ -21,6 +22,7 @@ export class FillRenderRegistry {
         { name: "radial-gradient", renderer: new RadialGradientFillRenderer() },
         { name: "conic-gradient", renderer: new ConicGradientFillRenderer() },
         { name: "image", renderer: new ImageFillRenderer() },
+        { name: "video", renderer: new VideoFillRenderer() },
         { name: "noise", renderer: new NoiseFillRenderer() },
         { name: "stripe", renderer: new StripeFillRenderer() },
     ];

@@ -11,6 +11,7 @@ import { conicGradientFill } from "./implementations/conic-gradient";
 import { noiseFill } from "./implementations/noise";
 import { stripeFill } from "./implementations/stripe";
 import { imageFill } from "./implementations/image";
+import { videoFill } from "./implementations/video";
 
 type FillResult<T extends FillResolved> = Omit<Omit<T, "type">, "blend">;
 
@@ -36,7 +37,7 @@ const FILLS = new Map<string, FillData<FillResolved>>([
     ["noise", noiseFill as FillData<FillResolved>],
     ["stripe", stripeFill as FillData<FillResolved>],
     ["image", imageFill as FillData<FillResolved>],
-
+    ["video", videoFill as FillData<FillResolved>],
 ]);
 
 function get(name: string): FillData<FillResolved> {

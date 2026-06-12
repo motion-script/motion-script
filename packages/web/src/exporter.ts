@@ -227,9 +227,15 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
             await assetManager.loadAt(f);
             stateEvaluator.stateAt(f);
             stateEvaluator.layout(renderContext as unknown as MeasureScope);
-            await renderContext.execute(() => {
-                stateEvaluator.render(renderContext);
-            });
+            // Render, then warm any exact video frames the render needed but the
+            // window didn't have yet and re-render, so every exported frame is
+            // frame-accurate. Bounded — the second pass renders from the warm cache.
+            for (let pass = 0; pass < 3; pass++) {
+                await renderContext.execute(() => {
+                    stateEvaluator.render(renderContext);
+                });
+                if (!(await storageAdapter.warmPendingVideo())) break;
+            }
 
             await videoSource.add(globalTime, frameDuration);
             globalTime += frameDuration;

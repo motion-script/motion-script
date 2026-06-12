@@ -96,6 +96,29 @@ export abstract class StorageAdapter {
     abstract fetchAudioData(src: string): Promise<ArrayBuffer>;
     abstract loadFont(src: string, fontFamily: string, fontWeight: number): Promise<void>;
 
+    // ─── Frame warming ────────────────────────────────────────────────────────
+
+    /**
+     * Decode any exact media frames the most recent render asked for but couldn't
+     * satisfy synchronously (e.g. a video frame at a freshly-seeked timestamp),
+     * and report whether there were any. A blocking caller (seek / screenshot /
+     * export) renders once, awaits this, and re-renders while it returns true so
+     * the frame is accurate even on a cold jump. Defaults to a no-op for adapters
+     * with no time-varying media.
+     */
+    async warmPendingVideo(): Promise<boolean> {
+        return false;
+    }
+
+    /**
+     * Notify the adapter whether playback is live. Time-varying media (video) uses
+     * this to prefetch ahead only while playing and to quiesce on pause, so a
+     * paused timeline doesn't drain a backlog of stale decodes. No-op by default.
+     */
+    setPlaying(_playing: boolean): void {
+        // no-op for adapters with no time-varying media
+    }
+
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     dispose(): void {

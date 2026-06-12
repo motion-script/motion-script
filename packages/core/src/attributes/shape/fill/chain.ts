@@ -5,6 +5,23 @@ import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillSpace } from "./union";
 import type { ImageFillMode, ImageTransform } from "./implementations/image";
 
+/** Author-facing options for a {@link FillChain.video} layer. */
+export interface VideoFillOptions extends FillOptions {
+    mode?: ImageFillMode;
+    transform?: ImageTransform;
+    scaling?: number;
+    filters?: MediaFilter[];
+    /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
+    timestamp?: number;
+    /** Whether playback advances each frame. Defaults to `true`. */
+    playing?: boolean;
+    trimStart?: number;
+    trimEnd?: number;
+    speed?: number;
+    loop?: 'forward' | 'reverse' | 'none';
+    duration?: number;
+}
+
 /**
  * Cross-cutting options shared by every fill layer. These map onto the
  * `opacity` / `blend` fields each fill prop already accepts, plus the
@@ -49,6 +66,19 @@ export class FillChain {
     image(src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) {
         const { mode, transform, scaling, filters, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'image' as const, src, mode, transform, scaling, filters }, common)]);
+    }
+
+    /** Append a video fill from `src`. Plays by default, advancing its timestamp each frame. */
+    video(src: string, options?: VideoFillOptions) {
+        const { mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
+        return new FillChain([...this.list, withOptions({
+            type: 'video' as const,
+            src,
+            mode, transform, scaling, filters,
+            timestamp: timestamp ?? trimStart ?? 0,
+            playing: playing ?? true,
+            trimStart, trimEnd, speed, loop, duration,
+        }, common)]);
     }
 
 
@@ -115,6 +145,8 @@ export const Fill = {
         new FillChain().color(color, options),
     image: (src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) =>
         new FillChain().image(src, options),
+    video: (src: string, options?: VideoFillOptions) =>
+        new FillChain().video(src, options),
 
     linearGradient: (colors: Color[], options?: Parameters<FillChain['linearGradient']>[1]) =>
         new FillChain().linearGradient(colors, options),

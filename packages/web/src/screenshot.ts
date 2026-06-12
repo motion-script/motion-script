@@ -141,9 +141,15 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
         await assetManager.loadAt(targetFrame);
         stateEvaluator.stateAt(targetFrame);
         stateEvaluator.layout(renderContext as unknown as MeasureScope);
-        await renderContext.execute(() => {
-            stateEvaluator.render(renderContext);
-        });
+        // Render once, then warm any exact video frames the render asked for but
+        // the window didn't have yet and re-render — so a mid-clip still is
+        // frame-accurate. Bounded (decoding is monotonic; the second pass is warm).
+        for (let pass = 0; pass < 3; pass++) {
+            await renderContext.execute(() => {
+                stateEvaluator.render(renderContext);
+            });
+            if (!(await storageAdapter.warmPendingVideo())) break;
+        }
 
         const mime = format === "jpeg" ? "image/jpeg" : "image/png";
         const dataUrl = renderContext.screenshot(mime, quality);

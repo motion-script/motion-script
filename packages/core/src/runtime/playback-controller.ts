@@ -112,9 +112,11 @@ export class PlaybackController {
 
         this.masterClock.onPlay((t, speed, reverse) => {
             this.audioDevice.play(t, speed, reverse);
+            this.storageAdapter.setPlaying(true);
         });
         this.masterClock.onPause(() => {
             this.audioDevice.stop();
+            this.storageAdapter.setPlaying(false);
         });
         this.masterClock.onTick(async (currentTime: number) => {
             const frame = this.fps * currentTime;
@@ -189,6 +191,14 @@ export class PlaybackController {
         // loadAt is async — the controller may have been disposed while awaiting.
         if (this.disposed) return;
         this.renderAt(clamped);
+        // A cold seek can land on a video timestamp the window hadn't decoded yet;
+        // warm the exact frame(s) the render requested and re-render so the still
+        // is frame-accurate. Bounded — decoding is monotonic, so this settles fast.
+        for (let pass = 0; pass < 3; pass++) {
+            if (!(await this.storageAdapter.warmPendingVideo())) break;
+            if (this.disposed) return;
+            this.renderAt(clamped);
+        }
         this.assetManager.prefetch(clamped);
     }
 
