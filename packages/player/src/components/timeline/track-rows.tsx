@@ -101,6 +101,10 @@ export function TrackRows({
             return (
               <div key={node.id} className="border-b border-border/40"
                 style={{ position: "absolute", top: rowTop, left: 0, width: fullContentWidth, height: NODE_ROW_HEIGHT, zIndex: 2 }}>
+                {/* One bar per clip, positioned over its own time range and
+                    styled like every other track bar (rounded `bg-card`), with the
+                    waveform drawn inside it. Multiple clips share this one row, so
+                    overlapping ranges overlay in place (no label, no stacking). */}
                 {node.waveform.map((clip, ci) => {
                   const startFrame = sceneOffset + clip.startTime * fps;
                   const endFrame = clip.endTime != null ? sceneOffset + clip.endTime * fps : totalFrameCount;
@@ -111,9 +115,8 @@ export function TrackRows({
                       key={ci}
                       className="absolute rounded-xs overflow-hidden bg-card"
                       style={{ left: startPx, top: BAR_PADDING_Y, width: barWidth, height: barHeight }}
-                      title={clip.name}
                     >
-                      <AudioWaveformBar url={clip.src} width={barWidth} height={barHeight} name={clip.name} />
+                      <AudioWaveformBar url={clip.src} width={barWidth} height={barHeight} />
                     </div>
                   );
                 })}

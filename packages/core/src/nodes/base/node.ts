@@ -24,7 +24,7 @@ import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
 import { lerpEffectArray } from "@/attributes/shape/effects/registry";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
 import { MeasureScope } from "@/render/measure-scope";
-import { WaveformInfo } from "@/project/tree";
+import { nodePath } from "@/project/tree";
 
 export interface NodeClock {
     time: number;       // Absolute time since the scene started
@@ -626,18 +626,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     }
 
-    /**
-     * Audio clips this node owns, surfaced to the timeline as waveforms. The
-     * base node has no audio; nodes that do (e.g. {@link Scene}) override this.
-     * Returns undefined when there is nothing to show.
-     */
-    waveform(): WaveformInfo[] | undefined {
-        return undefined;
-    }
-
-    prepareAssets(storage: AssetTracker): void {
-        this.prepare(storage);
-        for (const child of this._children) child.prepareAssets(storage);
+    prepareAssets(storage: AssetTracker, path: string = ""): void {
+        // Stamp the owning node's structural path onto any audio requests this
+        // node emits, so the timeline can draw each clip on its own bar. Purely
+        // for display — playback ignores ownerPath.
+        storage.withOwnerPath(path, () => this.prepare(storage));
+        const children = this._children;
+        for (let i = 0; i < children.length; i++) {
+            children[i].prepareAssets(storage, nodePath(path, i));
+        }
     }
 
     // ---- Layout queries ---------------------------------------------------

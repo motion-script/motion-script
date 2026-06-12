@@ -236,13 +236,13 @@ export class PlaybackController {
         // land within the scene's slot on the full timeline.
         const lifespans = scenePrecomp?.lifespans;
         const sceneStart = scenePrecomp?.startFrame ?? 0;
-        const tree = nodeToTreeState(scene, "", lifespans, sceneStart);
-        // Attach the scene's full audio timeline to its root node so the timeline
-        // can render waveforms covering each clip's start→end span. The precomp
-        // requests are the complete picture (the per-frame node hook only sees
-        // sounds active on the current frame), so they take precedence here.
-        const waveform = waveformFromRequests(audioRequests);
-        if (waveform.length > 0) tree.waveform = waveform;
+        // The precomp requests are the complete audio picture (the per-frame node
+        // hook only sees sounds active on the current frame), so they drive the
+        // waveforms — grouped by the emitting node's path so each clip lands on
+        // its own bar (a Video's clip on the Video row, a scene's playSound on
+        // the scene row). Requests with no owner fall back to the scene root.
+        const waveformsByPath = waveformsByOwner(audioRequests);
+        const tree = nodeToTreeState(scene, "", lifespans, sceneStart, waveformsByPath);
         return tree;
     }
 
@@ -290,15 +290,17 @@ function nodeToTreeState(
     path: string,
     lifespans?: ReadonlyMap<string, NodeLifespan>,
     sceneStart = 0,
+    waveformsByPath?: ReadonlyMap<string, WaveformInfo[]>,
 ): TreeState {
     const state: TreeState = {
         id: node.id,
         type: node.name,
         children: node.children.map((c, i) =>
-            nodeToTreeState(c, nodePath(path, i), lifespans, sceneStart)),
+            nodeToTreeState(c, nodePath(path, i), lifespans, sceneStart, waveformsByPath)),
     };
-    // Let any node contribute its own audio clips (the base node has none).
-    const waveform = node.waveform();
+    // Waveforms come from the precomp requests (authoritative full timeline),
+    // attributed to this node by its structural path.
+    const waveform = waveformsByPath?.get(path);
     if (waveform && waveform.length > 0) state.waveform = waveform;
     // Look the lifespan up by structural path (ids are not stable across the
     // precomp/playback rebuilds) and shift it into absolute timeline frames.
@@ -310,21 +312,26 @@ function nodeToTreeState(
     return state;
 }
 
-/** Derive timeline waveform entries (one per clip) from a scene's audio requests. */
-function waveformFromRequests(requests: readonly AudioRequest[]): WaveformInfo[] {
-    return requests.map((req) => ({
-        src: req.src,
-        name: fileName(req.src),
-        startTime: req.startAt,
-        endTime: Number.isFinite(req.endAt) ? req.endAt : null,
-    }));
-}
-
-/** Last path segment of a src, used as the clip's display name. */
-function fileName(src: string): string {
-    const cleaned = src.split(/[?#]/)[0];
-    const segs = cleaned.split(/[/\\]/);
-    return segs[segs.length - 1] || src;
+/**
+ * Group a scene's audio requests into per-node waveform entries, keyed by the
+ * emitting node's structural path (see {@link AudioRequest.ownerPath}). A request
+ * with no owner is attributed to the scene root (""), so anything emitted outside
+ * a node walk still shows on the scene's bar.
+ */
+function waveformsByOwner(requests: readonly AudioRequest[]): Map<string, WaveformInfo[]> {
+    const byPath = new Map<string, WaveformInfo[]>();
+    for (const req of requests) {
+        const path = req.ownerPath ?? "";
+        const info: WaveformInfo = {
+            src: req.src,
+            startTime: req.startAt,
+            endTime: Number.isFinite(req.endAt) ? req.endAt : null,
+        };
+        const list = byPath.get(path);
+        if (list) list.push(info);
+        else byPath.set(path, [info]);
+    }
+    return byPath;
 }
 
 function findNode(root: Node, id: string): Node | null {

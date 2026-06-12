@@ -158,7 +158,7 @@ export class Sound {
                 req.endAt = req.startAt + Math.max(0,
                     (this.trimEnd !== Infinity
                         ? this.trimEnd
-                        : tracker.catalog.getAudioDuration(this.src)
+                        : tracker.catalog.getMediaDuration(this.src)
                     ) - this.trimStart,
                 ) / speed;
             }

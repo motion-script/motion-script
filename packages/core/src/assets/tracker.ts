@@ -40,19 +40,55 @@ export class AssetTracker {
     get assets(): ReadonlyMap<string, AssetRecord> { return this.requestedAssets; }
     get audioRequests(): readonly AudioRequest[] { return this._audioRequests; }
 
+    /** Structural path of the node currently being prepared (see withOwnerPath). */
+    private _ownerPath: string | undefined;
+
+    /**
+     * Run `fn` with `path` recorded as the owner of any audio requests added
+     * during it, so the timeline can attribute each clip to its node. Restores
+     * the previous owner afterward (prepare walks are not nested today, but this
+     * keeps it correct if they ever are).
+     */
+    withOwnerPath(path: string, fn: () => void): void {
+        const prev = this._ownerPath;
+        this._ownerPath = path;
+        try {
+            fn();
+        } finally {
+            this._ownerPath = prev;
+        }
+    }
+
     /**
      * Add an audio playback request. Stored by reference so mutations from stop()
      * are reflected when audioRequests is read after the build. Deduplicated by id.
-     * Called from {@link Sound.prepare}.
+     * Called from {@link Sound.prepare}. The owning node's path (from the active
+     * {@link withOwnerPath} scope) is stamped on first add for timeline display.
      */
     addAudioRequest(req: AudioRequest): void {
         if (this._audioIds.has(req.id)) return;
         this._audioIds.add(req.id);
+        if (req.ownerPath === undefined) req.ownerPath = this._ownerPath;
         this._audioRequests.push(req);
     }
 
-    /** Register an audio file for loading at the current frame (frame-range caching, like requestImage). */
+    /**
+     * Register an audio file for loading at the current frame (frame-range
+     * caching, like requestImage).
+     *
+     * When `src` is already tracked as a *video* (the audio is the video's own
+     * track — a {@link Video} node playing its clip's sound), leave that record
+     * in place rather than clobbering it with an `audio` entry under the same
+     * key. Audio data is fetched on demand via `fetchAudioData`/`syncAudio`, so
+     * the record type is irrelevant for audio playback, and the video fill needs
+     * its `video` record to decode frames.
+     */
     requestAudio(src: string): void {
+        const existing = this.requestedAssets.get(src);
+        if (existing && existing.type === 'video') {
+            this.requestVideo(src, existing.width, existing.height, existing.trimStart, existing.trimEnd);
+            return;
+        }
         this.upsertAsset(src, (frame) => ({
             type: 'audio',
             src,

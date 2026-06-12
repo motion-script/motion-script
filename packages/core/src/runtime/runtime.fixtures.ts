@@ -30,8 +30,6 @@ export class FakeNode {
         public children: FakeNode[] = [],
         public properties: Record<string, unknown> = {},
     ) {}
-
-    waveform(): undefined { return undefined; }
 }
 
 export interface FakeSceneOptions {
@@ -110,7 +108,6 @@ export class FakeScene {
     dispose(): void {
         this.disposeCount++;
     }
-    waveform(): undefined { return undefined; }
 
     build(): Generator<void, void, number> {
         this.buildCount++;

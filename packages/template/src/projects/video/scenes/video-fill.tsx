@@ -20,7 +20,7 @@ export interface VideoFillSpec {
     duration?: number;
 }
 
-export const SAMPLE_VIDEO = 'band.mp4';
+export const SAMPLE_VIDEO = 'video.mp4';
 
 export abstract class VideoFillScene extends Scene {
     abstract readonly spec: VideoFillSpec;

@@ -26,8 +26,6 @@ export interface NodeState {
 export interface WaveformInfo {
     /** Fetchable audio source path / URL. */
     src: string;
-    /** Display name for the clip (defaults to the file name of `src`). */
-    name: string;
     /** Scene timestamp (seconds) when the clip starts. */
     startTime: number;
     /** Scene timestamp (seconds) when the clip ends, or null if open-ended. */

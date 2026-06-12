@@ -6,6 +6,7 @@ import {
     VideoCropScene,
     VideoFilteredScene,
     VideoBlendedScene,
+    VideoNodeScene,
 } from './scenes';
 
 /**
@@ -25,6 +26,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new VideoNodeScene(),
         new VideoBasicScene(),
         new VideoFitScene(),
         new VideoCropScene(),

@@ -22,3 +22,4 @@ export * from "./geometry/grid-node";
 
 // Media
 export * from "./media/image-node";
+export * from "./media/video-node";

@@ -36,4 +36,15 @@ export interface AudioRequest {
 
     /** Audio filters applied in array order (index 0 closest to the source). */
     filters?: AudioFilter[];
+
+    // --- Timeline attribution (display only) ---
+
+    /**
+     * Structural path (see `nodePath`) of the node that emitted this request,
+     * stamped during the precomp prepare walk. Lets the timeline draw the clip's
+     * waveform on its owning node's bar — a `Video`'s clip on the Video row, a
+     * scene's `playSound` on the scene row. Undefined for requests added outside
+     * a node walk; those fall back to the scene root. Never affects playback.
+     */
+    ownerPath?: string;
 }

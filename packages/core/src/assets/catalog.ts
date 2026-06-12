@@ -100,6 +100,23 @@ export class AssetCatalog {
     }
 
     /**
+     * Playback duration for a *playable* media source — an audio file or a video
+     * whose audio track is being played. Resolves against the audio manifest
+     * first, falling back to the video manifest so a video `src` (e.g. `clip.mp4`)
+     * can drive a {@link Sound} without a duplicate audio-only manifest entry.
+     * @param src - The audio or video source path.
+     * @returns The source's duration in seconds.
+     * @throws {Error} If `src` is in neither the audio nor the video manifest.
+     */
+    getMediaDuration(src: string): number {
+        const audio = this.manifest.audio[src];
+        if (audio) return audio.duration;
+        const video = this.manifest.video[src];
+        if (video) return video.duration;
+        throw new Error(`No audio or video metadata for src: ${src}`);
+    }
+
+    /**
      * Convenient shortcut to isolate the structural layout dimensions of an image asset.
      * * @param src - The unique source path or identifier of the image asset.
      * @returns An object containing the `width` and `height` dimensions of the asset.
