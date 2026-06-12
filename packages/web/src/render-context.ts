@@ -303,10 +303,16 @@ export class WebRenderContext extends RenderContext {
         if (!surface) throw new Error("Failed to create CanvasKit surface");
         this.surface = surface;
         this.mounted = true;
+        // Hand the live surface to the adapter so video frames upload straight to
+        // GPU texture (Surface.makeImageFromTextureSource) — no CPU readback.
+        this.storageAdapter.setSurface(surface);
     }
 
     unmount(): void {
         if (this.mounted) {
+            // Drop adapter-held GPU images tied to this surface before it dies, or
+            // they become dangling texture handles on the next mount.
+            this.storageAdapter.setSurface(null);
             this.surface.dispose();
             this.mounted = false;
         }

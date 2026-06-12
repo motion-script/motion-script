@@ -1,9 +1,14 @@
 import { AudioDevice, AudioRequest } from "@motion-script/core";
+import { buildAudioFilterGraph, effectiveSpeed } from "./filter-graph";
 
 type ActiveSource = {
     source: AudioBufferSourceNode;
     gainNode: GainNode;
     request: AudioRequest;
+    /** Filter-graph nodes to disconnect on teardown. */
+    filterNodes: AudioNode[];
+    /** Tremolo LFOs to stop on teardown. */
+    oscillators: OscillatorNode[];
 };
 
 /**
@@ -127,7 +132,7 @@ export class WebAudioDevice extends AudioDevice {
         this.masterGain.gain.value = muted ? 0 : 1;
     }
 
-    /** Starts a buffer source mid-clip if `sceneTime` lands after the request's start — `audioOffset` accounts for both the request's trim and the elapsed time since `startAt`. */
+    /** Starts a buffer source mid-clip if `sceneTime` lands after the request's start — `audioOffset` accounts for the request's trim, the elapsed time since `startAt`, and any speed (playbackRate) change. */
     private playBuffer(buffer: AudioBuffer, req: AudioRequest, sceneTime: number): void {
         const gainNode = this.context.createGain();
         gainNode.gain.value = req.volume;
@@ -136,12 +141,22 @@ export class WebAudioDevice extends AudioDevice {
         const source = this.context.createBufferSource();
         source.buffer = buffer;
         source.loop = req.loop;
-        source.connect(gainNode);
 
+        const rate = effectiveSpeed(req.filters);
+        if (rate !== 1) source.playbackRate.value = rate;
+
+        // Insert the filter chain between the source and the per-request gain.
+        const graph = buildAudioFilterGraph(this.context, source, req.filters ?? []);
+        graph.output.connect(gainNode);
+
+        // A faster clip consumes its buffer proportionally faster, so the
+        // source-time offset for a mid-clip seek scales by the playback rate.
         const elapsed = sceneTime - req.startAt;
-        const audioOffset = req.trimStart + Math.max(0, elapsed);
+        const audioOffset = req.trimStart + Math.max(0, elapsed) * rate;
 
-        source.start(0, audioOffset);
+        const startTime = this.context.currentTime;
+        source.start(startTime, audioOffset);
+        for (const osc of graph.oscillators) osc.start(startTime);
 
         source.onended = () => {
             if (this.active.get(req.id)?.source === source) {
@@ -149,14 +164,22 @@ export class WebAudioDevice extends AudioDevice {
             }
         };
 
-        this.active.set(req.id, { source, gainNode, request: req });
+        this.active.set(req.id, {
+            source,
+            gainNode,
+            request: req,
+            filterNodes: graph.nodes,
+            oscillators: graph.oscillators,
+        });
     }
 
     private stopSource(id: string, active: ActiveSource): void {
         try {
             active.source.onended = null;
             active.source.stop();
+            for (const osc of active.oscillators) osc.stop();
             active.source.disconnect();
+            for (const node of active.filterNodes) node.disconnect();
             active.gainNode.disconnect();
         } catch {
             // already stopped

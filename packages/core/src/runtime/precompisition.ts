@@ -197,7 +197,17 @@ export class Precomp {
                 });
             }
 
-            const audioRequests = registry.audioRequests.slice();
+            // Scene-boundary blockade: a scene's audio is confined to that
+            // scene's own span. Composite scenes (a parent that runs child
+            // builds inside its own loop) collect their children's audio into
+            // this same request set with parent-relative timing, so they share a
+            // timeline as intended — but two sibling top-level scenes are wholly
+            // separate, and a clip whose source outlasts the scene (e.g. a long
+            // video on a short scene) must not bleed past the cut. Clamp every
+            // request's [startAt, endAt) to [0, sceneDuration); drop any that
+            // begins at or after the scene ends.
+            const sceneDuration = localFrame / this.fps;
+            const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
             registry.clearAudio();
 
             sceneResults.push({
@@ -243,6 +253,31 @@ function recordLifespans(node: Node, path: string, frame: number, out: Map<strin
     for (let i = 0; i < children.length; i++) {
         recordLifespans(children[i], nodePath(path, i), frame, out);
     }
+}
+
+/**
+ * Confine a scene's audio requests to its own `[0, sceneDuration)` span.
+ *
+ * Audio is collected per top-level scene (see {@link Precomp.run}), so this is
+ * the cut between two sibling scenes: a clip whose source outlasts the scene —
+ * e.g. a long video on a short scene, or a `startSound` left running — must not
+ * sound or draw past the scene boundary. Composite scenes are unaffected: a
+ * parent runs its children's builds inside its *own* loop, so their requests are
+ * already parent-relative and bounded by the parent's (longer) duration.
+ *
+ * Each request is clipped to the span: a `startAt` at or after the end drops the
+ * request entirely; an `endAt` past the end (including an unbounded `Infinity`
+ * loop) is pulled back to the boundary.
+ */
+function clampAudioToScene(requests: readonly AudioRequest[], sceneDuration: number): AudioRequest[] {
+    const out: AudioRequest[] = [];
+    for (const req of requests) {
+        if (req.startAt >= sceneDuration) continue;
+        const endAt = Math.min(req.endAt, sceneDuration);
+        if (endAt <= req.startAt) continue;
+        out.push(endAt === req.endAt ? { ...req } : { ...req, endAt });
+    }
+    return out;
 }
 
 /**

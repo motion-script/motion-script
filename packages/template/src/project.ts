@@ -15,8 +15,12 @@ import shapesProject from './projects/shapes/shapes-project';
 import blendsProject from './projects/blends/blends-project';
 import drawProject from './projects/draw/draw-project';
 import layoutProject from './projects/layout/layout-project';
+import audioProject from './projects/audio/audio-project';
+import videoProject from './projects/video/video-project';
 
-export default drawProject;
+// Swap the default to preview a specific showcase project. `videoProject` walks
+// through the video fill (playback, fit/crop modes, MediaFilters, opacity/blend).
+export default videoProject;
 // createProject({
 //   name: 'My Video',
 //   fps: 60,

@@ -80,6 +80,52 @@ describe('Precomp – audio capture', () => {
         expect(result.scenes[0].audioRequests.map((r) => r.id)).toEqual(['a1']);
         expect(result.scenes[1].audioRequests.map((r) => r.id)).toEqual(['b1']);
     });
+
+    it('clamps a clip that outlasts the scene to the scene boundary', () => {
+        // Scene is 4 frames @ 10fps = 0.4s, but the clip claims to run to 5s.
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({ id: 'long', src: 'a.mp3', startAt: 0, endAt: 5 }));
+            },
+        });
+        const result = run([a]);
+        expect(result.scenes[0].audioRequests).toHaveLength(1);
+        expect(result.scenes[0].audioRequests[0].endAt).toBeCloseTo(0.4);
+    });
+
+    it('clamps an unbounded (looping) clip to the scene boundary', () => {
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({ id: 'loop', src: 'a.mp3', startAt: 0, endAt: Infinity, loop: true }));
+            },
+        });
+        const result = run([a]);
+        expect(result.scenes[0].audioRequests[0].endAt).toBeCloseTo(0.4);
+    });
+
+    it('drops a clip that starts at or after the scene ends', () => {
+        const a = new FakeScene({
+            yieldCount: 4, // 0.4s scene
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({ id: 'late', src: 'a.mp3', startAt: 1, endAt: 2 }));
+            },
+        });
+        const result = run([a]);
+        expect(result.scenes[0].audioRequests).toHaveLength(0);
+    });
+
+    it('leaves a clip that fits within the scene untouched', () => {
+        const a = new FakeScene({
+            yieldCount: 10, // 1.0s scene
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({ id: 'fits', src: 'a.mp3', startAt: 0.1, endAt: 0.5 }));
+            },
+        });
+        const result = run([a]);
+        expect(result.scenes[0].audioRequests[0].endAt).toBeCloseTo(0.5);
+    });
 });
 
 describe('Precomp – asset map (image)', () => {

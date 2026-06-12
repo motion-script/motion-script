@@ -30,6 +30,7 @@ import { LinearGradientFillProp, LinearGradientFillResolved } from "./implementa
 import { NoiseFillProp, NoiseFillResolved } from "./implementations/noise";
 import { RadialGradientFillProp, RadialGradientFillResolved } from "./implementations/radial-gradient";
 import { StripeFillProp, StripeFillResolved } from "./implementations/stripe";
+import { VideoFillProp, VideoFillResolved } from "./implementations/video";
 
 /**
  * Loose fill value accepted by node `fill` props.
@@ -56,7 +57,8 @@ export type FillProp =
     | WithCommon<LinearGradientFillProp>
     | WithCommon<RadialGradientFillProp>
     | WithCommon<ConicGradientFillProp>
-    | WithCommon<ImageFillProp>;
+    | WithCommon<ImageFillProp>
+    | WithCommon<VideoFillProp>;
 
 /** Fully resolved fill ready for the renderer. */
 export type FillResolved =
@@ -66,4 +68,5 @@ export type FillResolved =
     | WithCommon<LinearGradientFillResolved>
     | WithCommon<RadialGradientFillResolved>
     | WithCommon<ConicGradientFillResolved>
-    | WithCommon<ImageFillResolved>;
+    | WithCommon<ImageFillResolved>
+    | WithCommon<VideoFillResolved>;

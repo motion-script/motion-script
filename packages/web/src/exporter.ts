@@ -9,6 +9,7 @@ import {
 import { WebRenderContext } from "./render-context";
 import { WebStorageAdapter } from "./storage-adapter";
 import { getCanvasKit } from "./getter";
+import { buildAudioFilterGraph, effectiveSpeed } from "./audio/filter-graph";
 
 /** Reports export progress in [0, 1]; video encoding occupies most of the range, audio mixing/finalize the tail. */
 export type ExportProgressCallback = (progress: number) => void;
@@ -87,12 +88,22 @@ async function mixAudio(
         source.buffer = srcBuffer;
         source.loop = req.loop;
 
+        const rate = effectiveSpeed(req.filters);
+        if (rate !== 1) source.playbackRate.value = rate;
+
         const gain = mixCtx.createGain();
         gain.gain.value = req.volume;
-        source.connect(gain);
+
+        // Filter chain sits between the source and the per-request gain, matching
+        // the live WebAudioDevice graph so exports sound identical to preview.
+        const graph = buildAudioFilterGraph(mixCtx, source, req.filters ?? []);
+        graph.output.connect(gain);
         gain.connect(mixCtx.destination);
 
-        source.start(globalStart, req.trimStart, clipDuration);
+        // start()'s 3rd arg is a source-buffer duration, so a sped-up clip consumes
+        // proportionally more buffer over the same span of scene time.
+        source.start(globalStart, req.trimStart, clipDuration * rate);
+        for (const osc of graph.oscillators) osc.start(globalStart);
     }
 
     return mixCtx.startRendering();
@@ -216,9 +227,15 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
             await assetManager.loadAt(f);
             stateEvaluator.stateAt(f);
             stateEvaluator.layout(renderContext as unknown as MeasureScope);
-            await renderContext.execute(() => {
-                stateEvaluator.render(renderContext);
-            });
+            // Render, then warm any exact video frames the render needed but the
+            // window didn't have yet and re-render, so every exported frame is
+            // frame-accurate. Bounded — the second pass renders from the warm cache.
+            for (let pass = 0; pass < 3; pass++) {
+                await renderContext.execute(() => {
+                    stateEvaluator.render(renderContext);
+                });
+                if (!(await storageAdapter.warmPendingVideo())) break;
+            }
 
             await videoSource.add(globalTime, frameDuration);
             globalTime += frameDuration;

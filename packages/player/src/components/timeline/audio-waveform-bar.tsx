@@ -63,19 +63,17 @@ async function loadPeaks(url: string): Promise<DecodedPeaks> {
   return promise;
 }
 
-// Renders an audio file's waveform into a fixed-size box using WaveSurfer, with
-// the clip's name shown above it. Peaks are decoded once per URL and cached, so
-// the waveform appears instantly on remount/resize without refetching.
+// Renders an audio file's waveform into a fixed-size box using WaveSurfer. Peaks
+// are decoded once per URL and cached, so the waveform appears instantly on
+// remount/resize without refetching.
 export function AudioWaveformBar({
   url,
   width,
   height,
-  name,
 }: {
   url: string;
   width: number;
   height: number;
-  name?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
@@ -83,10 +81,8 @@ export function AudioWaveformBar({
     () => peaksCacheValue(url),
   );
 
-  // Reserve a fixed strip for the label and give the rest to the waveform so the
-  // two stack vertically instead of overlapping.
-  const labelHeight = name ? 11 : 0;
-  const waveHeight = Math.max(1, height - labelHeight);
+  // The whole box is the waveform now — no label strip.
+  const waveHeight = Math.max(1, height);
 
   // Kick off (or reuse) the decode for this URL and adopt its peaks when ready.
   useEffect(() => {
@@ -125,28 +121,7 @@ export function AudioWaveformBar({
   }, [decoded, width, waveHeight]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width, height, overflow: "hidden" }}>
-      {name && (
-        <span
-          className="text-card-foreground"
-          style={{
-            height: labelHeight,
-            paddingLeft: 4,
-            paddingRight: 4,
-            fontSize: 9,
-            fontWeight: 600,
-            lineHeight: `${labelHeight}px`,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            pointerEvents: "none",
-            opacity: 0.85,
-          }}
-          title={name}
-        >
-          {name}
-        </span>
-      )}
+    <div style={{ width, height, overflow: "hidden" }}>
       <div ref={containerRef} style={{ width, height: waveHeight }} />
     </div>
   );

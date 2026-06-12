@@ -4,14 +4,6 @@ import { BuildStage } from "@/render/build-stage";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
 import { AssetTracker } from "@/assets/tracker";
-import { WaveformInfo } from "@/project/tree";
-
-/** Last path segment of a src, used as a clip's display name. */
-function soundFileName(src: string): string {
-    const cleaned = src.split(/[?#]/)[0];
-    const segs = cleaned.split(/[/\\]/);
-    return segs[segs.length - 1] || src;
-}
 
 
 export type BaseSceneConfig = NodeConfig<any, RectProps> & {
@@ -80,7 +72,7 @@ export abstract class Scene extends Rect {
         // The asset catalog is bound on the node, so the full-length default for
         // trimEnd can only be resolved here, not at Sound construction time.
         if (s.trimEnd === Infinity && !s.loop) {
-            s.trimEnd = this.assets.getAudioDuration(s.src);
+            s.trimEnd = this.assets.getMediaDuration(s.src);
         }
         s.tick(this.clock.time);
         if (this._managedSounds.indexOf(s) < 0) this._managedSounds.push(s);
@@ -103,7 +95,7 @@ export abstract class Scene extends Rect {
         // The asset catalog is bound on the node, so the full-length default for
         // trimEnd can only be resolved here, not at Sound construction time.
         if (s.trimEnd === Infinity && !s.loop) {
-            s.trimEnd = this.assets.getAudioDuration(s.src);
+            s.trimEnd = this.assets.getMediaDuration(s.src);
         }
         s.tick(this.clock.time);
         this._managedSounds.push(s);
@@ -120,25 +112,6 @@ export abstract class Scene extends Rect {
     override prepare(tracker: AssetTracker): void {
         super.prepare(tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
-    }
-
-    /**
-     * Audio clips owned by this scene, surfaced to the timeline as waveforms.
-     * Derived from the scene's managed sounds and their scheduled play ranges.
-     */
-    override waveform(): WaveformInfo[] | undefined {
-        const out: WaveformInfo[] = [];
-        for (const s of this._managedSounds) {
-            for (const range of s.playRanges) {
-                out.push({
-                    src: s.src,
-                    name: soundFileName(s.src),
-                    startTime: range.startAt,
-                    endTime: range.endAt,
-                });
-            }
-        }
-        return out.length > 0 ? out : undefined;
     }
 
     /**
