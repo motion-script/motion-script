@@ -110,8 +110,9 @@ export class Text extends ShapeNode<TextProps> {
                 width: this.layoutRect?.width ?? 0,
                 height: this.layoutRect?.height ?? 0,
             })
+            .shadow(this.shadow)
             .fill(this.fill)
-            .stroke(this.stroke).shadow(this.shadow));
+            .stroke(this.stroke));
     }
 }
 

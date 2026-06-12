@@ -11,8 +11,12 @@ import { DrawScene } from './scenes/draw-scene';
 import { ImageGrid, ImageGridScene } from './scenes/image-grid-scene';
 import { FillScene } from './scenes/fill-scene';
 import effectsProject from './projects/effects/effects-project';
+import shapesProject from './projects/shapes/shapes-project';
+import blendsProject from './projects/blends/blends-project';
+import drawProject from './projects/draw/draw-project';
+import layoutProject from './projects/layout/layout-project';
 
-export default effectsProject;
+export default layoutProject;
 // createProject({
 //   name: 'My Video',
 //   fps: 60,

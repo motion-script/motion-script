@@ -11,6 +11,7 @@ import { AssetTracker } from "@/assets/tracker";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
 
 import type { SceneEffect } from "@/attributes/shape/effects/union";
+import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
@@ -90,6 +91,8 @@ export interface NodeProps {
     scale: number;
     rotation: number;
     opacity: number;
+    /** Layer blend mode. `'pass-through'` (default) does not isolate the node — its opacity scales each child/fill while they blend against the backdrop. Any other mode isolates the node and blends its flattened result against the backdrop. */
+    blend: NodeBlendMode;
     effects: ChainableFx;
     /** Inner spacing between this node's edges and its content/children. */
     padding: PaddingProps;
@@ -167,6 +170,7 @@ export interface NodeProps {
  * | `scale`   | 1        | uniform scale factor                  |
  * | `rotate`  | 0        | degrees, clockwise                    |
  * | `opacity` | 1        | 0–1                                   |
+ * | `blend`   | `'pass-through'` | layer blend mode (`NodeBlendMode`) |
  * | `effects` | []       | post-process / blend effects          |
  * | `padding` | 0        | inner spacing, all four edges         |
  */
@@ -205,6 +209,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: 1 }) declare readonly scale: number;
     @property({ default: 0 }) declare readonly rotation: number;
     @property({ default: 1 }) declare readonly opacity: number;
+    @property({ default: 'pass-through' }) declare readonly blend: NodeBlendMode;
     @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare readonly effects: SceneEffect[];
     @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare readonly padding: PaddingResolved;
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly pivot: Vector2;
@@ -781,7 +786,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // it, so a single mutated instance is safe.
     private readonly _transformScratch: TransformState = {
         x: 0, y: 0, width: 0, height: 0,
-        scale: 1, rotation: 0, opacity: 1,
+        scale: 1, rotation: 0, opacity: 1, blend: 'pass-through',
         effects: [], pivot: { x: 0, y: 0 },
     };
 
@@ -880,6 +885,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         s.scale = this.scale;
         s.rotation = this.rotation;
         s.opacity = this.opacity;
+        s.blend = this.blend;
         s.effects = this.effects;
         s.pivot = this.pivot;
         ctx.transform(s);

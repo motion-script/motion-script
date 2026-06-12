@@ -1,4 +1,5 @@
 import { SceneEffect } from "@/attributes/shape/effects/union";
+import { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { Vector2 } from "@/attributes/layout/vector2";
 
 export interface TransformState {
@@ -7,6 +8,8 @@ export interface TransformState {
     width: number;
     height: number;
     opacity: number;
+    /** Layer blend mode. `'pass-through'` (the default) does not isolate the node; any other mode isolates it and blends its flattened result against the backdrop. Optional so per-shape descriptors that extend this state needn't carry it. */
+    blend?: NodeBlendMode;
     rotation: number;
     scale: number;
     effects: SceneEffect[];
@@ -22,6 +25,7 @@ export function withTransformDescriptor(descriptor: Partial<TransformState>): Tr
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
         opacity: descriptor.opacity ?? 1,
+        blend: descriptor.blend ?? 'pass-through',
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
         effects: descriptor.effects ?? [],
