@@ -7,7 +7,7 @@ export interface DrawnShapeProps extends ShapeProps {
     /**
      * Reference frame the shape's fill resolves against. Forwarded onto every
      * fill layer the node paints, so the same drawn silhouette can be shown
-     * under `local` / `global` / `parent` / `view` spaces side by side.
+     * under `local` / `parent` / `global` spaces side by side.
      */
     space: FillSpace;
     /** Half-width of the design box the commands are authored in. */
@@ -24,8 +24,8 @@ export interface DrawnShapeProps extends ShapeProps {
  * punched with `.cut()` (an ellipse eye and a rect slot). Because the shapes
  * are drawn together before a single `.fill()`, the fill resolves across the
  * whole union — making the fill `space` directly observable: one gradient maps
- * over the entire figure (`global`), per sub-shape (`local`), or against the
- * parent / viewport.
+ * over the figure's own bounds (`local`), or against the parent rect (`parent`)
+ * or the viewport (`global`).
  *
  * All coordinates are authored in a box centred on the node's local origin,
  * spanning `[-extent, -extent] … [+extent, +extent]`. Paths are given that same
@@ -34,7 +34,7 @@ export interface DrawnShapeProps extends ShapeProps {
  */
 export class DrawnShape extends ShapeNode<DrawnShapeProps> {
 
-    @property({ default: 'global' }) declare readonly space: FillSpace;
+    @property({ default: 'local' }) declare readonly space: FillSpace;
     @property({ default: 320 }) declare readonly extent: number;
 
     constructor(props: NodeConfig<DrawnShape, DrawnShapeProps>) {

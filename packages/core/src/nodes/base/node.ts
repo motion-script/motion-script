@@ -912,7 +912,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     /**
      * Reference rects for fills with `space:'parent'`, expressed in this node's
      * local space (origin = this node's positioned centre, y-down to match the
-     * canvas). The viewport (`space:'view'`) is resolved by the renderer, which
+     * canvas). The viewport (`space:'global'`) is resolved by the renderer, which
      * knows the surface size. Rotation/scale of this node are not folded in —
      * the rect is the axis-aligned parent box, which is what gradients expect.
      */

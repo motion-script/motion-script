@@ -101,23 +101,21 @@ export class FillHandler {
         this.currentBounds = bounds;
     }
 
-    // Bounds for a fill, given its space and (for 'local') the shape being
-    // painted. local → that shape; global → union of all shapes; parent/view →
-    // the reference rect supplied by the render context.
+    // Bounds for a fill, given its space. The drawn shapes are always painted as
+    // one unit, so every space resolves against a single rect:
+    //   local  → the shape's own (union) bounds — pinned to the figure.
+    //   parent → the parent node's layout rect.
+    //   global → the render viewport.
+    // parent/global fall back to the union bounds when no reference rect exists.
     boundsForSpace(
         space: FillSpace,
-        shape: { ckPath?: { getBounds(): Float32Array } } | null,
+        _shape: { ckPath?: { getBounds(): Float32Array } } | null,
     ): ShapeBounds | null {
         switch (space) {
-            case "local": {
-                const b = shape?.ckPath?.getBounds();
-                if (!b) return this.getUnionBounds();
-                return { left: b[0], top: b[1], right: b[2], bottom: b[3] };
-            }
             case "parent":
-            case "view":
-                return this.getSpaceRect(space) ?? this.getUnionBounds();
             case "global":
+                return this.getSpaceRect(space) ?? this.getUnionBounds();
+            case "local":
             default:
                 return this.getUnionBounds();
         }
@@ -162,56 +160,46 @@ export class FillHandler {
 
         for (const fill of fills) {
             const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
-            const space: FillSpace = fill.space ?? "global";
+            const space: FillSpace = fill.space ?? "local";
 
-            // For 'local', each shape gets its own shader resolved against its
-            // own bounds. For every other space the shader is built once against
-            // a shared rect and all shapes paint through it as one unit.
-            const groups: Array<{
-                bounds: ShapeBounds | null;
-                shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>;
-            }> = space === "local"
-                ? shapes.map(s => ({ bounds: this.boundsForSpace("local", s), shapes: [s] }))
-                : [{ bounds: this.boundsForSpace(space, null), shapes }];
+            // The shapes are always painted as one unit; the space only picks the
+            // rect the shader resolves against (the figure's own bounds, the
+            // parent rect, or the viewport).
+            const bounds = this.boundsForSpace(space, null);
 
-            for (const group of groups) {
-                paint.setAlphaf(opacity);
-                if (fill.blend) {
-                    paint.setBlendMode(this.getCanvasKitBlendMode(fill.blend));
-                } else {
-                    paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
-                }
-                paint.setImageFilter(null);
-
-                this.currentBounds = group.bounds;
-                if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
-
-                // Sync back mutable fields written by renderers
-                this.offscreenCanvas = rendererCtx.offscreenCanvas;
-                this.offscreenCtx = rendererCtx.offscreenCtx;
-
-                // For a unified space (global/parent/view) with multiple shapes,
-                // draw their union as one path so opacity < 1 composites once —
-                // drawing each shape separately would double the alpha where they
-                // overlap and show a seam. 'local' keeps shapes independent.
-                const unionPath = space !== "local"
-                    ? this.unionPath(group.shapes)
-                    : null;
-                if (unionPath) {
-                    this.getCanvas().drawPath(unionPath, paint);
-                    unionPath.delete();
-                } else {
-                    for (const shape of group.shapes) {
-                        shape.draw(paint);
-                    }
-                }
-
-                // Clear shader before deleting backing images so the paint stops
-                // referencing them.
-                paint.setShader(null);
-                for (const img of rendererCtx.transientImages) img.delete();
-                rendererCtx.transientImages.length = 0;
+            paint.setAlphaf(opacity);
+            if (fill.blend) {
+                paint.setBlendMode(this.getCanvasKitBlendMode(fill.blend));
+            } else {
+                paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
             }
+            paint.setImageFilter(null);
+
+            this.currentBounds = bounds;
+            if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
+
+            // Sync back mutable fields written by renderers
+            this.offscreenCanvas = rendererCtx.offscreenCanvas;
+            this.offscreenCtx = rendererCtx.offscreenCtx;
+
+            // Draw the shapes' union as one path so opacity < 1 composites once —
+            // drawing each shape separately would double the alpha where they
+            // overlap and show a seam.
+            const unionPath = this.unionPath(shapes);
+            if (unionPath) {
+                this.getCanvas().drawPath(unionPath, paint);
+                unionPath.delete();
+            } else {
+                for (const shape of shapes) {
+                    shape.draw(paint);
+                }
+            }
+
+            // Clear shader before deleting backing images so the paint stops
+            // referencing them.
+            paint.setShader(null);
+            for (const img of rendererCtx.transientImages) img.delete();
+            rendererCtx.transientImages.length = 0;
         }
 
         this.currentBounds = null;

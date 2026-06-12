@@ -16,7 +16,7 @@ import blendsProject from './projects/blends/blends-project';
 import drawProject from './projects/draw/draw-project';
 import layoutProject from './projects/layout/layout-project';
 
-export default layoutProject;
+export default drawProject;
 // createProject({
 //   name: 'My Video',
 //   fps: 60,

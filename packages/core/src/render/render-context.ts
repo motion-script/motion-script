@@ -52,14 +52,13 @@ export interface SpaceRect {
 
 /**
  * Reference rects a fill can resolve against, supplied per-node at `begin()`.
- * `local`/`global` are derived from the drawn shapes themselves, so only the
- * outer frames are passed here.
+ * `local` is derived from the drawn shapes themselves and `global` (the
+ * viewport) is computed by the renderer from the surface size, so only the
+ * parent frame is passed here.
  */
 export interface SpaceRects {
     /** The parent node's content rect, in this node's local space. */
     parent?: SpaceRect;
-    /** The render viewport, in this node's local space. */
-    view?: SpaceRect;
 }
 
 /**
@@ -275,7 +274,7 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     /**
      * Per-node render state for each node on the draw stack, in push order
      * (innermost last). Kept parallel to `currentNodeStack` so fills with
-     * `space: 'parent' | 'view'` can resolve their reference rects and so
+     * `space: 'parent'` can resolve their reference rect and so
      * motion-driven effects can read the current node's velocity.
      */
     protected renderStateStack: NodeRenderState[] = [];

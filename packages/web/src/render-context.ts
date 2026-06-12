@@ -563,13 +563,13 @@ export class WebRenderContext extends RenderContext {
     }
 
     // Resolve the reference rect for a fill `space`, in the current node's local
-    // space. `parent` is supplied by the node via begin(); `view` is the render
+    // space. `parent` is supplied by the node via begin(); `global` is the render
     // viewport mapped from device space through the inverse current matrix.
     private spaceRect(space: FillSpace): SpaceRect | null {
         if (space === "parent") {
             return this.currentSpaceRects().parent ?? null;
         }
-        if (space === "view") {
+        if (space === "global") {
             const m = this.currentCanvas?.getTotalMatrix();
             if (!m) return null;
             const inv = this.canvasKit.Matrix.invert(m);
@@ -705,7 +705,7 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const space = pendingShadows[0].fill[0]?.space ?? "global";
+            const space = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
             dispose();
@@ -715,25 +715,23 @@ export class WebRenderContext extends RenderContext {
     }
 
     // Set the fill handler's bounds for a fill, honouring its `space`. Used as
-    // the per-shape resolveBounds hook for stroke/shadow shaders.
+    // the resolveBounds hook for stroke/shadow shaders.
     private applyFillSpaceBounds = (
         fill: FillResolved,
         shape: { ckPath?: any } | null,
     ): void => {
-        this.fillHandler.setCurrentBounds(this.fillHandler.boundsForSpace(fill.space ?? "global", shape));
+        this.fillHandler.setCurrentBounds(this.fillHandler.boundsForSpace(fill.space ?? "local", shape));
     };
 
-    // Pick the shapes a stroke/shadow should be drawn over for the given space.
-    // `local` strokes each shape individually; every other space strokes the
-    // union outline so overlapping shapes show no internal seams. Returns the
-    // shape list plus a disposer for any transient union path.
-    private strokeShapesForSpace(space: FillSpace): {
+    // Pick the shapes a stroke/shadow should be drawn over. The drawn shapes are
+    // always treated as one unit, so stroke the union outline (overlapping shapes
+    // then show no internal seams). Returns the shape list plus a disposer for
+    // any transient union path. `space` is accepted for call-site symmetry with
+    // the fill path but no longer changes the grouping.
+    private strokeShapesForSpace(_space: FillSpace): {
         shapes: Array<{ draw: (p: any) => void; ckPath?: any }>;
         dispose: () => void;
     } {
-        if (space === "local") {
-            return { shapes: this.shapeHandler.shapes, dispose: () => { } };
-        }
         const union = this.shapeHandler.unionStrokeShape();
         if (union) {
             return { shapes: [union], dispose: () => union.ckPath?.delete() };
@@ -764,15 +762,14 @@ export class WebRenderContext extends RenderContext {
         }
         const pendingShadows = this.shapeHandler.takePendingShadows();
         if (pendingShadows) {
-            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "global";
+            const shadowSpace = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes: shadowShapes, dispose: shadowDispose } = this.strokeShapesForSpace(shadowSpace);
             this.strokeHandler.applyShadows(pendingShadows, shadowShapes, [], resolved, this.applyFillSpaceBounds);
             shadowDispose();
         }
-        // The first stroke's space decides geometry grouping (local = per shape,
-        // else union outline). Bounds for each stroke's shader are resolved per
-        // shape from that stroke's own fill space.
-        const space = resolved[0].fill[0]?.space ?? "global";
+        // Strokes are always drawn over the union outline; each stroke's shader
+        // bounds are resolved from its own fill space via applyFillSpaceBounds.
+        const space = resolved[0].fill[0]?.space ?? "local";
         const { shapes, dispose } = this.strokeShapesForSpace(space);
         this.strokeHandler.applyStrokes(resolved, shapes, this.applyFillSpaceBounds);
         dispose();

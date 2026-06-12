@@ -1,10 +1,9 @@
 import { createProject } from '@motion-script/core';
 
 import {
-    GlobalSpaceScene,
     LocalSpaceScene,
     ParentSpaceScene,
-    ViewSpaceScene,
+    GlobalSpaceScene,
     DrawMaskScene,
 } from './scenes';
 
@@ -13,9 +12,9 @@ import {
  * silhouette assembled entirely from `Graphics` ops inside a custom node —
  * `rect` + `ellipse` + bezier `path`, with holes punched via `.cut()`.
  *
- * One scene per fill {@link FillSpace} (`global` / `local` / `parent` / `view`)
- * shows the same figure under each reference frame, plus a final scene that
- * builds an inline `.mask()/.applyMask()/.endMask()` scope from draw commands.
+ * One scene per fill {@link FillSpace} (`local` / `parent` / `global`) shows the
+ * same figure under each reference frame, plus a final scene that builds an
+ * inline `.mask()/.applyMask()/.endMask()` scope from draw commands.
  *
  * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
  * preview it, point the `@motion-script/vite-plugin` `entry` option at this
@@ -29,10 +28,9 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new GlobalSpaceScene(),
         new LocalSpaceScene(),
         new ParentSpaceScene(),
-        new ViewSpaceScene(),
+        new GlobalSpaceScene(),
         new DrawMaskScene(),
     ],
     theme: {

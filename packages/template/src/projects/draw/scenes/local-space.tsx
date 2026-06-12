@@ -2,10 +2,9 @@ import { FillSpace } from "@motion-script/core";
 import { DrawDemoScene } from "./draw-demo";
 
 /**
- * `local`: each draw-command sub-shape is painted on its own, so the gradient
- * resolves against every piece's individual bounds — the rect, the ellipse and
- * the path each get their own full sweep rather than one shared across the
- * figure.
+ * `local` (the default): the gradient resolves against the figure's own bounds,
+ * so the fill is pinned to the shape. As the figure drifts across the card the
+ * gradient travels with it — its appearance never changes, only its position.
  */
 export class LocalSpaceScene extends DrawDemoScene {
     readonly space: FillSpace = 'local';
