@@ -11,9 +11,9 @@ ${kleur.bold('ms')} — headless exporter for Motion Script projects
 
 ${kleur.bold('Usage')}
   ms list                       List the scenes in the current project
-  ms export [options]           Render scenes to MP4 in ./out
+  ms export [options]           Render scenes to MP4 in ./out/videos
   ms screenshot <when> [opts]   Capture a single frame to ./out/screenshots
-  ms clear                      Delete exported videos from ./out
+  ms clear                      Delete exported videos and screenshots from ./out
 
 ${kleur.bold('Export options')}
   --scenes <a,b,c>              Comma-separated scene names to export (default: all)
@@ -46,7 +46,8 @@ ${kleur.bold('Examples')}
 `.trimStart();
 
 const DEFAULT_OUT_DIR = 'out';
-const DEFAULT_SCREENSHOT_SUBDIR = 'screenshots';
+const VIDEO_SUBDIR = 'videos';
+const SCREENSHOT_SUBDIR = 'screenshots';
 
 /** Parse `--scenes intro,outro` (or repeated) into a clean name list. */
 function parseScenes(raw: unknown): string[] | undefined {
@@ -169,7 +170,11 @@ async function runExport(projectRoot: string, args: minimist.ParsedArgs): Promis
         throw new Error(`Invalid --scale value: ${args.scale}`);
     }
 
-    const outDir = path.resolve(projectRoot, typeof args.out === 'string' ? args.out : DEFAULT_OUT_DIR);
+    const outDir = path.resolve(
+        projectRoot,
+        typeof args.out === 'string' ? args.out : DEFAULT_OUT_DIR,
+        VIDEO_SUBDIR,
+    );
 
     const driver = new HeadlessDriver(projectRoot);
     try {
@@ -307,7 +312,7 @@ async function runScreenshot(projectRoot: string, args: minimist.ParsedArgs): Pr
     const outDir = path.resolve(
         projectRoot,
         typeof args.out === 'string' ? args.out : DEFAULT_OUT_DIR,
-        DEFAULT_SCREENSHOT_SUBDIR,
+        SCREENSHOT_SUBDIR,
     );
 
     const driver = new HeadlessDriver(projectRoot);
@@ -378,9 +383,28 @@ async function runScreenshot(projectRoot: string, args: minimist.ParsedArgs): Pr
 }
 
 /**
- * `ms clear` — remove exported videos from the output directory. Deletes only
- * video files (never the directory or unrelated files), so it's safe to run in
- * a project that keeps other things in `out/`. No browser/Vite needed.
+ * Delete every file in `dir` whose extension is in `exts`, returning the names
+ * removed. Touches only matching files (never the directory or unrelated files,
+ * and never recurses), so it's safe to run in a dir that keeps other things.
+ * A missing directory yields an empty list.
+ */
+function clearByExt(dir: string, exts: ReadonlySet<string>): string[] {
+    if (!fs.existsSync(dir)) return [];
+    const removed: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        if (!exts.has(path.extname(entry.name).toLowerCase())) continue;
+        fs.rmSync(path.join(dir, entry.name));
+        removed.push(entry.name);
+    }
+    return removed;
+}
+
+/**
+ * `ms clear` — remove exported videos and screenshots from the output
+ * directory. Deletes only video files from `out/videos` and image files from
+ * `out/screenshots` (never the directories or unrelated files), so it's safe to
+ * run in a project that keeps other things in `out/`. No browser/Vite needed.
  */
 function runClear(projectRoot: string, args: minimist.ParsedArgs): void {
     const outDir = path.resolve(projectRoot, typeof args.out === 'string' ? args.out : DEFAULT_OUT_DIR);
@@ -390,22 +414,30 @@ function runClear(projectRoot: string, args: minimist.ParsedArgs): void {
     }
 
     const videoExts = new Set(['.mp4', '.webm', '.mov', '.mkv']);
-    const removed: string[] = [];
-    for (const entry of fs.readdirSync(outDir, { withFileTypes: true })) {
-        if (!entry.isFile()) continue;
-        if (!videoExts.has(path.extname(entry.name).toLowerCase())) continue;
-        fs.rmSync(path.join(outDir, entry.name));
-        removed.push(entry.name);
-    }
+    const imageExts = new Set(['.png', '.jpg', '.jpeg']);
 
-    if (removed.length === 0) {
-        console.log(kleur.dim(`No videos to clear in ${path.relative(projectRoot, outDir)}/.`));
+    const videoDir = path.join(outDir, VIDEO_SUBDIR);
+    const screenshotDir = path.join(outDir, SCREENSHOT_SUBDIR);
+    const videos = clearByExt(videoDir, videoExts);
+    const screenshots = clearByExt(screenshotDir, imageExts);
+
+    const total = videos.length + screenshots.length;
+    if (total === 0) {
+        console.log(kleur.dim(`Nothing to clear in ${path.relative(projectRoot, outDir)}/.`));
         return;
     }
-    for (const name of removed) {
-        console.log(`  ${kleur.red('✗')} ${name}`);
+    for (const name of videos) {
+        console.log(`  ${kleur.red('✗')} ${path.join(VIDEO_SUBDIR, name)}`);
     }
-    console.log(kleur.green(`Cleared ${removed.length} video(s) from ${path.relative(projectRoot, outDir)}/.`));
+    for (const name of screenshots) {
+        console.log(`  ${kleur.red('✗')} ${path.join(SCREENSHOT_SUBDIR, name)}`);
+    }
+    console.log(
+        kleur.green(
+            `Cleared ${videos.length} video(s) and ${screenshots.length} screenshot(s) ` +
+            `from ${path.relative(projectRoot, outDir)}/.`,
+        ),
+    );
 }
 
 async function main(): Promise<void> {
