@@ -17,7 +17,7 @@ export * from './descriptors/polygram';
 export { BuildStage } from './build-stage';
 
 export { Graphics } from './graphics';
-export type { GraphicsOp, GraphicsShapeOp } from './graphics';
+export type { GraphicsOp, GraphicsShapeOp, GraphicsTransform } from './graphics';
 
 export { RenderContext, Render2DContext } from './render-context';
 export type { ClipShape, SpaceRect, SpaceRects, NodeRenderState } from './render-context';

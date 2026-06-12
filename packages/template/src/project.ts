@@ -18,30 +18,5 @@ import layoutProject from './projects/layout/layout-project';
 import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
 
-// Swap the default to preview a specific showcase project. `videoProject` walks
-// through the video fill (playback, fit/crop modes, MediaFilters, opacity/blend).
-export default videoProject;
-// createProject({
-//   name: 'My Video',
-//   fps: 60,
-//   viewport: {
-//     width: 1920,
-//     height: 1080
-//   },
-//   scenes: [
-//     new FillScene(),
-//     new ImageGridScene(),
-//     //new DrawScene(),
-//     new LogoScene(),
-//     // new LayoutScene(),
-//     // new NumberScene(),
-//     // new ShapeScene(),
-//     // new CodeScene(),
-//     // For a per-effect walkthrough of every built-in effect, see the standalone
-//     // `./effects-project.ts` (one scene per effect).
-//   ],
-//   theme: {
-//     'bg': '#0D0F15',
-//     'card': '#161a21'
-//   }
-// })
+export default drawProject;
+

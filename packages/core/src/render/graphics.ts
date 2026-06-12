@@ -7,13 +7,25 @@ import type { PolygramState } from "./descriptors/polygram";
 import type { TextState } from "./descriptors/text";
 import type { RichTextState } from "./descriptors/richtext";
 import type { ImageState } from "./descriptors/image";
-import type { ShapeState } from "./descriptors/shape";
 import { PathBuilder } from "./descriptors/path-builder";
 import type { FillProp } from "@/attributes/shape/fill/union";
 import type { StrokeProp } from "@/attributes/shape/stroke/mapper";
 import type { ShadowProp } from "@/attributes/shape/shadow/resolver";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
+import { type ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
+import type { Vector2 } from "@/attributes/layout/vector2";
 import type { MaskOptions } from "@/attributes/mask/mask";
+
+/**
+ * A union-level rotate/scale applied to the whole drawn silhouette. `center` is
+ * the pivot in the graphics' local coordinate space; when omitted the renderer
+ * pivots about the centre of the union's bounding box.
+ */
+export interface GraphicsTransform {
+    rotation: number;
+    scale: number;
+    center?: Vector2;
+}
 
 /**
  * The kinds of shape ops a {@link Graphics} can record. Each carries the partial
@@ -61,9 +73,11 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  *
  *   const g = new Graphics()
  *       .ellipse({ width: 100, height: 100 })
- *       .rect({ width: 40, height: 40 }).rotation(30)
+ *       .rect({ width: 40, height: 40, rotation: 30 }) // per-shape: tilts this rect only
  *       .fill(Fill.color("red"))
- *       .stroke({ weight: 2, fill: "black" });
+ *       .stroke({ weight: 2, fill: "black" })
+ *       .rotation(15)          // graphics-level: turns the whole union
+ *       .effects(FX.blur(6));  // graphics-level: blurs the whole drawn union
  *   ctx.draw(g);
  *
  * Multiple shapes chained before a paint call are combined into a single surface
@@ -72,17 +86,27 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  * `mask()/applyMask()/endMask()` ops support an inline mask scope within a single
  * `draw()`.
  *
- * `rotation()` is a per-shape modifier: it attaches to the most-recently declared
- * shape by merging into its descriptor state (every shape state extends
- * `TransformState`). `opacity()` and `effects()` are *graphics-level*: they
- * composite the entire drawn result (all shapes together) into one layer with the
- * given alpha and image filter, exactly like a node-level transform — so a
- * trailing `.opacity(0.4)` dims the whole group, not just the last shape.
+ * Transforms come in two flavours. A per-shape `rotation`/`scale` is passed
+ * *inside* a shape's params (e.g. `.rect({ ..., rotation: 30, scale: 1.2 })`):
+ * it's baked into that shape's geometry before it joins the union. The
+ * graphics-level `.rotation(value, center?)` / `.scale(value, center?)`
+ * modifiers instead transform the *whole union* of shapes about a pivot
+ * (default: the union's bounding-box centre) — turning or growing the entire
+ * drawn silhouette as one.
+ *
+ * `opacity()` and `effects()` are also graphics-level: they composite the entire
+ * drawn result (all shapes together) into one layer with the given alpha and
+ * image filter, exactly like a node-level transform — so a trailing
+ * `.opacity(0.4)` dims the whole union, and `.effects(FX.blur(8))` blurs the
+ * whole drawn union, not just the last shape.
  */
 export class Graphics {
     private _ops: GraphicsOp[] = [];
     private _opacity: number = 1;
     private _effects: SceneEffect[] = [];
+    private _rotation: number = 0;
+    private _scale: number = 1;
+    private _transformCenter?: Vector2;
 
     // ─── Shapes ──────────────────────────────────────────────────────────────
 
@@ -195,29 +219,37 @@ export class Graphics {
     }
 
     /**
-     * Set image effects (blur, etc.) applied to the whole graphics group. The
-     * entire drawn result is composited through the composed filter as one layer.
+     * Set image effects applied to the whole drawn union. The entire drawn result
+     * is composited through the composed filter as one layer, so the effect reads
+     * the union silhouette (a blur bleeds across the combined shape's edges, not
+     * each shape's). Accepts a `ChainableFx` — a single effect, an array, or an
+     * `FX`/`EffectChain` builder result — normalised to a `SceneEffect[]`.
      */
-    effects(effects: SceneEffect[]): this {
-        this._effects = effects;
+    effects(effects: ChainableFx): this {
+        this._effects = resolveChainEffects(effects);
         return this;
     }
 
-    /** Set the most-recently declared shape's rotation (degrees). Per-shape. */
-    rotation(rotation: number): this {
-        return this._mergeIntoLastShape({ rotation });
+    /**
+     * Rotate the whole union of shapes (degrees) about `center` (default: the
+     * union's bounding-box centre). Unlike a per-shape `rotation` passed inside a
+     * shape's params, this mutates the combined silhouette — every shape turns
+     * together as one figure.
+     */
+    rotation(rotation: number, center?: Vector2): this {
+        this._rotation = rotation;
+        if (center !== undefined) this._transformCenter = center;
+        return this;
     }
 
-    private _mergeIntoLastShape(patch: Partial<ShapeState>): this {
-        for (let i = this._ops.length - 1; i >= 0; i--) {
-            const op = this._ops[i];
-            if (SHAPE_KINDS.has(op.kind)) {
-                const shapeOp = op as GraphicsShapeOp;
-                shapeOp.state = { ...shapeOp.state, ...patch } as GraphicsShapeOp["state"];
-                return this;
-            }
-        }
-        // No shape recorded yet — no-op, matching the renderer's defensive style.
+    /**
+     * Scale the whole union of shapes about `center` (default: the union's
+     * bounding-box centre). Like {@link rotation}, this transforms the combined
+     * silhouette rather than a single shape.
+     */
+    scale(scale: number, center?: Vector2): this {
+        this._scale = scale;
+        if (center !== undefined) this._transformCenter = center;
         return this;
     }
 
@@ -233,7 +265,7 @@ export class Graphics {
         return this._opacity;
     }
 
-    /** Graphics-level effects applied to the whole group. Default empty. */
+    /** Effects applied to the whole drawn union. Default empty. */
     groupEffects(): readonly SceneEffect[] {
         return this._effects;
     }
@@ -241,6 +273,17 @@ export class Graphics {
     /** True when the group needs a composited layer (opacity < 1 or any effect). */
     needsGroupLayer(): boolean {
         return this._opacity < 1 || this._effects.length > 0;
+    }
+
+    /**
+     * The union-level rotate/scale set by {@link rotation} / {@link scale}, or
+     * `null` when both are identity. The renderer applies this as a canvas
+     * transform about `center` (default: the union's bbox centre) wrapping the
+     * whole drawn union.
+     */
+    groupTransform(): GraphicsTransform | null {
+        if (this._rotation === 0 && this._scale === 1) return null;
+        return { rotation: this._rotation, scale: this._scale, center: this._transformCenter };
     }
 
     /** True when this Graphics has no shape ops (only paint/compositing) — used by

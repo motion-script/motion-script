@@ -67,12 +67,17 @@ export class PathShape extends BaseShape<PathState, PathGeo> {
         const centeredPath = builder.detachAndDelete();
         rawPath.delete();
 
+        // Bake per-shape rotation/scale about the now-centred origin (no-op when
+        // both are identity), so `.path({ rotation, scale })` works like the
+        // other shapes.
+        const transformed = this.applyShapeTransform(centeredPath, { x: 0, y: 0 });
+
         if (this.needsTrim()) {
-            this._setBasePath(centeredPath);
+            this._setBasePath(transformed);
             const { start, end } = this.getTrimRange();
-            this.ckPath = trimPath(this.canvasKit, centeredPath, start, end);
+            this.ckPath = trimPath(this.canvasKit, transformed, start, end);
         } else {
-            this.ckPath = centeredPath;
+            this.ckPath = transformed;
         }
     }
 

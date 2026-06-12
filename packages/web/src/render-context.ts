@@ -417,6 +417,25 @@ export class WebRenderContext extends RenderContext {
             if (opacity < 1) this.worldAlpha *= opacity;
         }
 
+        // Graphics-level rotation/scale transforms the whole union as one figure.
+        // It's realised as a canvas matrix about the pivot (default: the union's
+        // bbox centre, sized in a throwaway measurement pass) wrapping the entire
+        // op replay — so the combined silhouette turns/grows together and the CTM
+        // change flows into fill/stroke space resolution.
+        const groupTransform = graphics.groupTransform();
+        let pushedTransform = false;
+        if (groupTransform) {
+            const center = groupTransform.center ?? this.measureUnionCenter(graphics);
+            const cx = center.x;
+            const cy = center.y;
+            this.currentCanvas.save();
+            this.currentCanvas.translate(cx, cy);
+            this.currentCanvas.rotate(groupTransform.rotation, 0, 0);
+            this.currentCanvas.scale(groupTransform.scale, groupTransform.scale);
+            this.currentCanvas.translate(-cx, -cy);
+            pushedTransform = true;
+        }
+
         // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
         // the fill/stroke for a boolean result left active by endBoolean) is
         // applied to the currently-active surface without resetting it.
@@ -427,11 +446,40 @@ export class WebRenderContext extends RenderContext {
         // paint call (mirrors end()'s flush; harmless if nothing is pending).
         this.flushPendingImage();
 
+        if (pushedTransform) this.currentCanvas.restore();
         this.worldAlpha = prevWorldAlpha;
         if (pushedLayer) {
             this.currentCanvas.restore();
             groupFilter?.delete?.();
         }
+    }
+
+    /**
+     * Size the union of a Graphics' shapes in a throwaway measurement pass and
+     * return the centre of its bounding box — the default pivot for a
+     * graphics-level rotation/scale. Builds the shape ops (skipping paint and
+     * compositing ops) into a suspended-cache scope so the real paint pass that
+     * follows is unaffected. Falls back to the local origin when there are no
+     * path-backed shapes (e.g. text only).
+     */
+    private measureUnionCenter(graphics: Graphics): Vector2 {
+        this.shapeHandler.beginMeasure();
+        for (const op of graphics.ops()) {
+            switch (op.kind) {
+                case "rect": this.shapeHandler.rect(op.state); break;
+                case "ellipse": this.shapeHandler.ellipse(op.state); break;
+                case "path": this.shapeHandler.path(op.state); break;
+                case "line": this.shapeHandler.line(op.state); break;
+                case "polygon": this.shapeHandler.polygon(op.state); break;
+                case "polygram": this.shapeHandler.polygram(op.state); break;
+                // Paint/compositing/text/image ops don't change the union bbox used
+                // for the pivot, so they're skipped during measurement.
+            }
+        }
+        const bounds = this.shapeHandler.measureUnionBounds();
+        this.shapeHandler.endMeasure();
+        if (!bounds) return { x: 0, y: 0 };
+        return { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
     }
 
     private applyOp(op: GraphicsOp): void {

@@ -17,7 +17,6 @@ export function withPolygonDescriptor(descriptor: Partial<PolygonState>): Polygo
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
 
         width: descriptor.width ?? 0,

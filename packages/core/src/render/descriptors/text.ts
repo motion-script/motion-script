@@ -28,7 +28,6 @@ export function withTextDescriptor(descriptor: Partial<TextState>): TextState {
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
         text: descriptor.text ?? "",
         fontSize: descriptor.fontSize ?? 16,

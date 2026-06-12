@@ -99,6 +99,15 @@ export class ShapeHandler {
     // shape paths must not be deleted here or the cross-frame cache would dangle.
     private transientPaths: Set<CKPath> = new Set();
 
+    // Measurement scope: while active, addShape() bypasses the cross-frame cache
+    // and tracks every built shape so endMeasure() can free their paths without
+    // touching the real accumulation. Used to size the union for graphics-level
+    // rotation/scale before the actual paint pass runs.
+    private _measuring: boolean = false;
+    private _measureShapes: BaseShape<unknown>[] = [];
+    private _savedNodeId: string = "";
+    private _savedShapeIndex: number = 0;
+
     constructor(
         private canvasKit: CanvasKit,
         private getCanvas: () => Canvas,
@@ -235,6 +244,9 @@ export class ShapeHandler {
         // polygon/polygram), zooming the image fill for one frame after a state
         // reset. ensurePath() is idempotent and the path is built on draw anyway.
         shape.ensurePath();
+        // During a measurement scope the cache is bypassed (currentNodeId is
+        // cleared), so every built shape is ours to free at endMeasure().
+        if (this._measuring) this._measureShapes.push(shape);
         if (!isolated && shape.ckPath) {
             this.boolean.contributeToPathCollection(shape.ckPath);
         }
@@ -325,6 +337,57 @@ export class ShapeHandler {
             draw: (paint: Paint) => { canvas.drawPath(combined, paint); },
             ckPath: combined,
         });
+    }
+
+    // ─── Measurement scope ─────────────────────────────────────────────────────
+
+    // Open a throwaway accumulation that builds shapes purely to size them (e.g.
+    // the union bbox for a graphics-level rotate/scale pivot). The cross-frame
+    // cache is suspended for its duration so the subsequent real paint pass keys
+    // its shapes from index 0 exactly as if no measurement ran. Pair with
+    // endMeasure(), which frees the measured paths and restores the cache state.
+    beginMeasure(): void {
+        this._savedNodeId = this.currentNodeId;
+        this._savedShapeIndex = this.shapeIndex;
+        this.currentNodeId = "";
+        this._measuring = true;
+        this._measureShapes = [];
+        this.shapes = [];
+    }
+
+    endMeasure(): void {
+        for (const shape of this._measureShapes) shape.deletePaths();
+        this._measureShapes = [];
+        this._measuring = false;
+        this.currentNodeId = this._savedNodeId;
+        this.shapeIndex = this._savedShapeIndex;
+        this.shapes = [];
+        this._boundsDirty = true;
+        this._cachedBounds = null;
+    }
+
+    // Measure the union bounding box of the current accumulated path shapes,
+    // independent of the bounds-override stack getShapeBounds() consults. Returns
+    // null when no path-backed shape is present (e.g. only text). Used by the
+    // graphics-level rotation/scale to pick a default pivot (the union centre)
+    // without disturbing fill-space bounds overrides.
+    measureUnionBounds(): { left: number; top: number; right: number; bottom: number } | null {
+        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        for (const shape of this.shapes) {
+            if (shape.ckPath) {
+                const b = shape.ckPath.getBounds();
+                if (b[0] < left)   left   = b[0];
+                if (b[1] < top)    top    = b[1];
+                if (b[2] > right)  right  = b[2];
+                if (b[3] > bottom) bottom = b[3];
+            } else if (shape.bounds) {
+                if (shape.bounds.left   < left)   left   = shape.bounds.left;
+                if (shape.bounds.top    < top)    top    = shape.bounds.top;
+                if (shape.bounds.right  > right)  right  = shape.bounds.right;
+                if (shape.bounds.bottom > bottom) bottom = shape.bounds.bottom;
+            }
+        }
+        return isFinite(left) ? { left, top, right, bottom } : null;
     }
 
     // Build a single shape from the union of all accumulated path shapes, so a

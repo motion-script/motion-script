@@ -67,13 +67,15 @@ export abstract class BaseShape<S, G = unknown> {
             console.warn(`${this.constructor.name}: failed to create path`);
             return;
         }
-        this.applyShapeTransform(path);
+        // Bake the shape's own rotation/scale into the geometry (no-op for the
+        // common untransformed case), replacing `path` with the transformed copy.
+        const transformed = this.applyShapeTransform(path);
         if (this.needsTrim()) {
-            this._basePath = path;
+            this._basePath = transformed;
             const { start, end } = this.getTrimRange();
-            this.ckPath = trimPath(this.canvasKit, path, start, end);
+            this.ckPath = trimPath(this.canvasKit, transformed, start, end);
         } else {
-            this.ckPath = path;
+            this.ckPath = transformed;
         }
     }
 
@@ -81,9 +83,12 @@ export abstract class BaseShape<S, G = unknown> {
     // into the path geometry. The shape's x/y are already baked into the SVG by
     // computeGeometry, so a shape rotates about its own (x,y) centre. Pivot is in
     // normalised shape space (0,0 = centre, ±1 = edges), matching the node-level
-    // transform in WebRenderContext. No-op for the common untransformed case so
-    // axis-aligned rects/ellipses keep their fast native draw/clip paths.
-    private applyShapeTransform(path: CKPath): void {
+    // transform in WebRenderContext. Returns `path` unchanged for the common
+    // untransformed case so axis-aligned rects/ellipses keep their fast native
+    // draw/clip paths; otherwise returns a new transformed path and deletes the
+    // input. Subclasses that override ensurePath (e.g. PathShape) call this on
+    // their built path so per-shape rotation/scale still bakes in.
+    protected applyShapeTransform(path: CKPath, centerOverride?: { x: number; y: number }): CKPath {
         const s = this.fullState as unknown as {
             x?: number; y?: number; rotation?: number; scale?: number;
             width?: number; height?: number;
@@ -91,10 +96,13 @@ export abstract class BaseShape<S, G = unknown> {
         };
         const rotation = s.rotation ?? 0;
         const scale = s.scale ?? 1;
-        if (rotation === 0 && scale === 1) return;
+        if (rotation === 0 && scale === 1) return path;
 
-        const cx = s.x ?? 0;
-        const cy = s.y ?? 0;
+        // Shapes bake x/y into their SVG, so they rotate/scale about their own
+        // (x,y) centre. Subclasses that re-centre their path to the origin first
+        // (PathShape) pass that origin as `centerOverride`.
+        const cx = centerOverride ? centerOverride.x : (s.x ?? 0);
+        const cy = centerOverride ? centerOverride.y : (s.y ?? 0);
         const pivot = s.pivot ?? { x: 0, y: 0 };
         const px = cx + pivot.x * ((s.width ?? 0) / 2);
         const py = cy - pivot.y * ((s.height ?? 0) / 2);
@@ -110,10 +118,15 @@ export abstract class BaseShape<S, G = unknown> {
         const d = cos * scale;
         const e = px - a * px - b * py;
         const f = py - c * px - d * py;
-        // CanvasKit's Path.transform takes a 3x3 row-major matrix as 9 params and
-        // mutates in place (not in the bundled .d.ts Path interface).
-        (path as unknown as { transform(...m: number[]): void })
+        // This CanvasKit build exposes Path as immutable — geometry edits go
+        // through a PathBuilder. Build from the path, apply the 3x3 row-major
+        // matrix, and detach the transformed result (mirrors PathShape's offset).
+        const builder = new this.canvasKit.PathBuilder(path);
+        (builder as unknown as { transform(...m: number[]): void })
             .transform(a, b, e, c, d, f, 0, 0, 1);
+        const out = builder.detachAndDelete();
+        path.delete();
+        return out;
     }
 
     protected _setBasePath(path: CKPath): void {

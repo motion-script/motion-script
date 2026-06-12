@@ -35,7 +35,6 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
             y: -this.layoutRect.height / 2,
             width: this.layoutRect.width / 2,
             height: this.layoutRect.height / 2,
-            effects: FX.blur(50).toJSON(),
 
         }).ellipse({
             x: this.layoutRect.width / 4,
@@ -43,7 +42,9 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
             width: this.layoutRect.width / 2,
             height: this.layoutRect.height / 2,
 
-        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke);
+        }).shadow(this.shadow).fill(this.fill).stroke(this.stroke)
+            // Effects apply to the whole drawn union now, not a single shape.
+            .effects(FX.blur(50));
         ctx.draw(graphics);
     }
 

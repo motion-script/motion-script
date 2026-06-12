@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Graphics, GraphicsShapeOp } from '@/render/graphics';
 import { PathBuilder } from '@/render/descriptors/path-builder';
+import { FX } from '@/attributes/shape/effects/chain';
 
 describe('Graphics', () => {
     it('records shapes and paint ops in order', () => {
@@ -26,42 +27,52 @@ describe('Graphics', () => {
         expect((op.state as any).d).toEqual(builder.toCommands());
     });
 
-    it('rotation merges into the most-recent shape; opacity/effects are group-level', () => {
-        const effects: any[] = [{ type: 'blur', radius: 2 }];
+    it('rotation/scale/opacity/effects are graphics-level modifiers, not shape ops', () => {
         const g = new Graphics()
             .rect({ width: 1, height: 1 })
             .rotation(30)
+            .scale(2)
             .opacity(0.5)
-            .effects(effects);
+            .effects([{ type: 'blur', radius: 2 }]);
 
         const op = g.ops()[0] as GraphicsShapeOp;
-        expect(op.state.rotation).toBe(30);
-        // opacity/effects do NOT merge into the shape — they're group-level.
+        // None of the modifiers merge into the shape — they're graphics-level.
+        expect(op.state.rotation).toBeUndefined();
+        expect(op.state.scale).toBeUndefined();
         expect(op.state.opacity).toBeUndefined();
-        expect(op.state.effects).toBeUndefined();
         expect(g.groupOpacity()).toBe(0.5);
-        expect(g.groupEffects()).toBe(effects);
+        expect(g.groupEffects()).toEqual([{ type: 'blur', radius: 2 }]);
+        expect(g.groupTransform()).toEqual({ rotation: 30, scale: 2, center: undefined });
         expect(g.needsGroupLayer()).toBe(true);
         // Only the single shape op is recorded; modifiers don't add ops.
         expect(g.ops()).toHaveLength(1);
     });
 
-    it('rotation attaches to the LAST shape when several are chained', () => {
-        const g = new Graphics()
-            .rect({ width: 1, height: 1 })
-            .ellipse({ width: 2, height: 2 })
-            .rotation(45);
-
-        const rectOp = g.ops()[0] as GraphicsShapeOp;
-        const ellipseOp = g.ops()[1] as GraphicsShapeOp;
-        expect(rectOp.state.rotation).toBeUndefined();
-        expect(ellipseOp.state.rotation).toBe(45);
+    it('effects() accepts a ChainableFx (FX builder) and resolves to a SceneEffect[]', () => {
+        const g = new Graphics().rect({ width: 1, height: 1 }).effects(FX.blur(8).grayscale(1));
+        expect(g.groupEffects()).toEqual([
+            { type: 'blur', radius: 8 },
+            { type: 'grayscale', amount: 1 },
+        ]);
+        expect(g.needsGroupLayer()).toBe(true);
     });
 
-    it('rotation before any shape is a no-op; opacity/effects still record group state', () => {
-        const g = new Graphics().rotation(10).opacity(0.2);
+    it('rotation/scale accept an explicit center pivot', () => {
+        const g = new Graphics()
+            .rect({ width: 1, height: 1 })
+            .rotation(45, { x: 10, y: 20 });
+        expect(g.groupTransform()).toEqual({ rotation: 45, scale: 1, center: { x: 10, y: 20 } });
+    });
+
+    it('groupTransform is null when rotation/scale are identity', () => {
+        expect(new Graphics().rect({ width: 1, height: 1 }).opacity(0.2).groupTransform()).toBeNull();
+    });
+
+    it('rotation/scale before any shape still record group transform; ops stay empty', () => {
+        const g = new Graphics().rotation(10).scale(3).opacity(0.2);
         expect(g.ops()).toHaveLength(0);
         expect(g.groupOpacity()).toBe(0.2);
+        expect(g.groupTransform()).toEqual({ rotation: 10, scale: 3, center: undefined });
     });
 
     it('needsGroupLayer is false for a plain graphics', () => {

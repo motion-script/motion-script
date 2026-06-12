@@ -1,6 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
     FillSpace, property,
+    FX,
 } from "@motion-script/core";
 
 export interface DrawnShapeProps extends ShapeProps {
@@ -79,7 +80,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
             .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.3, height: e * 0.3 })
             .cut()
             // Slot hole: a rounded rect notch cut lower in the body.
-            .rect({ x: -e * 0.15, y: e * 0.45, width: e * 0.55, height: e * 0.18, borderRadius: e * 0.09 })
+            .rect({ x: -e * 0.15, y: e * 0.45, width: e * 0.55, height: e * 0.18, borderRadius: e * 0.09, scale: 1 })
             .cut()
             // ── Paint the whole union with the space-tagged fill ─────────────
             .shadow(this.shadow)
