@@ -1,6 +1,5 @@
 import type { BlurEffect } from "./implementations/blur";
 import type { DirectionalBlurEffect } from "./implementations/directional-blur";
-import type { BackgroundBlurEffect } from "./implementations/background-blur";
 import type { GrayScaleEffect } from "./implementations/grayscale";
 import type { PixelateEffect } from "./implementations/pixelate";
 import type { BulgeEffect } from "./implementations/bulge";
@@ -18,7 +17,6 @@ import type { SkSLEffect } from "./implementations/sksl";
 export type SceneEffect =
     | BlurEffect
     | DirectionalBlurEffect
-    | BackgroundBlurEffect
     | GrayScaleEffect
     | PixelateEffect
     | BulgeEffect

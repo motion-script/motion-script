@@ -6,5 +6,6 @@ export class PosterizeScene extends EffectDemoScene {
         label: 'Posterize',
         from: FX.posterize(32),
         to: FX.posterize(4),
+        compare: true,
     };
 }

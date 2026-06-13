@@ -6,5 +6,6 @@ export class VintageScene extends EffectDemoScene {
         label: 'Vintage',
         from: FX.vintage(0, 0),
         to: FX.vintage(1, 0.4),
+        compare: true,
     };
 }

@@ -6,8 +6,20 @@ describe('FX builders', () => {
         expect([...FX.blur(4)]).toEqual([{ type: 'blur', radius: 4 }]);
     });
 
-    it('backgroundBlur produces a single backgroundBlur effect', () => {
-        expect([...FX.backgroundBlur(12)]).toEqual([{ type: 'backgroundBlur', radius: 12 }]);
+    it('blur with { backdrop: true } flags the effect as a backdrop filter', () => {
+        expect([...FX.blur(12, { backdrop: true })]).toEqual([
+            { type: 'blur', radius: 12, backdrop: true },
+        ]);
+    });
+
+    it('grayscale carries the backdrop flag too', () => {
+        expect([...FX.grayscale(1, { backdrop: true })]).toEqual([
+            { type: 'grayscale', amount: 1, backdrop: true },
+        ]);
+    });
+
+    it('omitting opts leaves backdrop unset (foreground effect)', () => {
+        expect([...FX.blur(12)]).toEqual([{ type: 'blur', radius: 12 }]);
     });
 
     it('directionalBlur produces a direction and blurLength effect', () => {

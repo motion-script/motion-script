@@ -279,7 +279,7 @@ export class WebRenderContext extends RenderContext {
         this.effectLayerStack.length = 0;
         this.clipRestoreStack.length = 0;
         this.deferredPaintsStack.length = 0;
-        this.backgroundBlurStack.length = 0;
+        this.backdropFilterStack.length = 0;
         this.backgroundDistortionStack.length = 0;
         this.backdropSkSLStack.length = 0;
         disposeBulge();
@@ -287,6 +287,7 @@ export class WebRenderContext extends RenderContext {
         disposePosterize();
         this.foregroundDistortionStack.length = 0;
         this.posterizeStack.length = 0;
+        this.backdropPosterizeStack.length = 0;
         disposeSkSLCache();
 
         super.dispose();
@@ -403,7 +404,9 @@ export class WebRenderContext extends RenderContext {
         let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
-            const effects = graphics.groupEffects();
+            // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+            // not the node's own content — exclude them from the foreground filter chain.
+            const effects = graphics.groupEffects().filter((e) => !("backdrop" in e && e.backdrop));
             if (effects.length > 0) {
                 const w = this.surface.width();
                 const h = this.surface.height();
@@ -541,15 +544,18 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.scale(scale, scale);
         this.currentCanvas.translate(-pivotX, -pivotY);
 
+        // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+        // not the node's own content — exclude them from the foreground filter chain.
+        const foregroundEffects = effects.filter((e) => !("backdrop" in e && e.backdrop));
         let effectFilter: any = null;
-        if (effects.length > 0) {
+        if (foregroundEffects.length > 0) {
             const w = this.surface.width();
             const h = this.surface.height();
             // Motion blur needs the node's live velocity, which static effect data
             // can't carry — resolve each `motionBlur` against the current node's
             // render state here, then hand the renderer a concrete directional
             // smear. Effects without motion blur skip the copy entirely.
-            const resolved = this.resolveMotionBlurEffects(effects);
+            const resolved = this.resolveMotionBlurEffects(foregroundEffects);
             effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
         }
 
@@ -1000,42 +1006,62 @@ export class WebRenderContext extends RenderContext {
         return combined;
     }
 
-    // ─── Background blur ───────────────────────────────────────────────────────
+    // ─── Backdrop filter ───────────────────────────────────────────────────────
 
-    // Tracks the layer pushed by beginBackgroundBlur so endBackgroundBlur can
+    // Tracks the layer pushed by beginBackdropFilter so endBackdropFilter can
     // pop exactly that many — kept as a stack to allow nesting.
-    private backgroundBlurStack: number[] = [];
+    private backdropFilterStack: number[] = [];
 
-    beginBackgroundBlur(radius: number): void {
+    /**
+     * Compose the `backdrop`-flagged filter effects (blur, grayscale, …) into a
+     * single ImageFilter and run it over the canvas content beneath the node,
+     * clipped to the active silhouette clip.
+     *
+     * The per-effect handlers author their filters in *logical* px (kernel sizes,
+     * offsets) just like the foreground chain, which the canvas CTM scales to
+     * device px for free. A `saveLayer` backdrop filter, however, runs in *device*
+     * space (the CTM doesn't apply), so the composed logical-space filter `F` is
+     * sandwiched between a downscale-to-logical and an upscale-back-to-device —
+     * `scale(pr) ∘ F ∘ scale(1/pr)` — making it behave exactly as it would in the
+     * foreground. `width`/`height` are logical so size-relative effects (pixelate)
+     * match the foreground too.
+     */
+    beginBackdropFilter(effects: SceneEffect[], width: number, height: number): void {
         if (!this.isRendering) {
-            console.warn("beginBackgroundBlur() must be called within the draw() method.");
-            return;
-        }
-        if (radius <= 0) {
-            this.backgroundBlurStack.push(0);
+            console.warn("beginBackdropFilter() must be called within the draw() method.");
             return;
         }
         const ck = this.canvasKit;
-        // Blur radius is given in logical px; the surface is scaled by pixelRatio,
-        // and sigma ≈ radius/2 matches the node `blur` effect's mapping.
-        const sigma = (radius * this.pixelRatio) / 2;
-        const backdrop = ck.ImageFilter.MakeBlur(sigma, sigma, ck.TileMode.Clamp, null);
+        const composed = CanvasKitEffectRegistry.composeFilters(effects, ck, width, height);
+        if (composed == null) {
+            this.backdropFilterStack.push(0);
+            return;
+        }
+        // Lift the logical-space filter into device space (see method doc).
+        const pr = this.pixelRatio;
+        const linear = { filter: ck.FilterMode.Linear, mipmap: ck.MipmapMode.None };
+        const toLogical = ck.ImageFilter.MakeMatrixTransform(ck.Matrix.scaled(1 / pr, 1 / pr), linear, null);
+        const inLogical = ck.ImageFilter.MakeCompose(composed, toLogical);
+        const backdrop = ck.ImageFilter.MakeMatrixTransform(ck.Matrix.scaled(pr, pr), linear, inLogical);
         // saveLayer with a backdrop filter seeds the new layer with the current
         // canvas content run through `backdrop`. Clamp tiling samples beyond the
-        // active clip so the blur doesn't darken toward the silhouette edge. The
+        // active clip so the filter doesn't darken toward the silhouette edge. The
         // layer is bounded by the active clip, so only the silhouette composites
         // back on restore.
         this.currentCanvas.saveLayer(undefined, null, backdrop, undefined, ck.TileMode.Clamp);
         backdrop.delete();
-        this.backgroundBlurStack.push(1);
+        inLogical.delete();
+        toLogical.delete();
+        composed.delete();
+        this.backdropFilterStack.push(1);
     }
 
-    endBackgroundBlur(): void {
+    endBackdropFilter(): void {
         if (!this.isRendering) {
-            console.warn("endBackgroundBlur() must be called within the draw() method.");
+            console.warn("endBackdropFilter() must be called within the draw() method.");
             return;
         }
-        const layers = this.backgroundBlurStack.pop() ?? 0;
+        const layers = this.backdropFilterStack.pop() ?? 0;
         for (let i = 0; i < layers; i++) {
             this.currentCanvas.restore();
         }
@@ -1374,6 +1400,77 @@ export class WebRenderContext extends RenderContext {
             return;
         }
         this.backdropSkSLStack.pop();
+    }
+
+    // ─── Backdrop posterize ───────────────────────────────────────────────────
+
+    private backdropPosterizeStack: number[] = [];
+
+    /**
+     * Posterize the backdrop beneath the node. Posterize is a paint shader (not a
+     * composable ImageFilter in this CanvasKit build), so it can't ride
+     * `beginBackdropFilter` — instead it snapshots the backdrop, bands it through
+     * the same {@link makePosterizeShader} used for the foreground, and redraws it
+     * in device space confined to the active silhouette clip. Mirrors
+     * {@link beginBackdropSkSL}.
+     */
+    beginBackdropPosterize(effect: PosterizeEffect, width: number, height: number): void {
+        if (!this.isRendering) {
+            console.warn("beginBackdropPosterize() must be called within the draw() method.");
+            return;
+        }
+        const ck = this.canvasKit;
+        if (width <= 0 || height <= 0) {
+            this.backdropPosterizeStack.push(0);
+            return;
+        }
+
+        // Read the current CTM so we can reset to device space for the draw.
+        const m = this.currentCanvas.getTotalMatrix();
+
+        // Snapshot what's beneath the node (before any of the node's own draws).
+        // Clamp tiling so banding samples beyond the silhouette read the edge
+        // colour rather than transparent.
+        const snapshot = this.surface.makeImageSnapshot();
+        const backdropShader = snapshot.makeShaderOptions(
+            ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Nearest, ck.MipmapMode.None,
+        );
+        const banded = makePosterizeShader(effect, ck, backdropShader);
+        if (banded == null) {
+            backdropShader.delete();
+            snapshot.delete();
+            this.backdropPosterizeStack.push(0);
+            return;
+        }
+
+        // Draw the banded backdrop in device space (reset to identity via inverse
+        // CTM) so fragCoord matches snapshot pixel coordinates. The active
+        // silhouette clip (device space) confines the repaint to the node's shape.
+        this.currentCanvas.save();
+        const inverse = ck.Matrix.invert(m);
+        if (inverse) this.currentCanvas.concat(inverse);
+        const paint = new ck.Paint();
+        paint.setShader(banded);
+        paint.setAntiAlias(true);
+        this.currentCanvas.drawRect(
+            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
+            paint,
+        );
+        paint.delete();
+        banded.delete();
+        backdropShader.delete();
+        snapshot.delete();
+        this.currentCanvas.restore();
+
+        this.backdropPosterizeStack.push(0);
+    }
+
+    endBackdropPosterize(): void {
+        if (!this.isRendering) {
+            console.warn("endBackdropPosterize() must be called within the draw() method.");
+            return;
+        }
+        this.backdropPosterizeStack.pop();
     }
 
     drawWebGLCanvas(canvas: HTMLCanvasElement, x: number, y: number, w: number, h: number): boolean {

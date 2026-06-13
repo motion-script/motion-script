@@ -6,5 +6,6 @@ export class DirectionalBlurScene extends EffectDemoScene {
         label: 'Directional blur',
         from: FX.directionalBlur(0, 0),
         to: FX.directionalBlur(0, 40),
+        compare: true,
     };
 }

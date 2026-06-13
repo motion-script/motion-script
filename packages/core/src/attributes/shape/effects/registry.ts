@@ -2,7 +2,6 @@ import { SceneEffect } from "./union";
 
 import { blurEffect } from "./implementations/blur";
 import { directionalBlurEffect } from "./implementations/directional-blur";
-import { backgroundBlurEffect } from "./implementations/background-blur";
 import { grayscaleEffect } from "./implementations/grayscale";
 import { pixelateEffect } from "./implementations/pixelate";
 import { bulgeEffect } from "./implementations/bulge";
@@ -21,7 +20,6 @@ import { EffectData } from "./effect-data";
 const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["blur", blurEffect as EffectData<SceneEffect>],
     ["directionalBlur", directionalBlurEffect as EffectData<SceneEffect>],
-    ["backgroundBlur", backgroundBlurEffect as EffectData<SceneEffect>],
     ["grayscale", grayscaleEffect as EffectData<SceneEffect>],
     ["pixelate", pixelateEffect as EffectData<SceneEffect>],
     ["bulge", bulgeEffect as EffectData<SceneEffect>],

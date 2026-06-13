@@ -16,6 +16,7 @@ import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bul
 import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
 import { FrameGenerator } from "@/tween/generator";
@@ -117,8 +118,8 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     /**
      * This shape's outline as a {@link Clip} command list — the single source of
      * truth for every clip the node needs: its `clip` boundary (when `clip` is
-     * true) and the silhouette its backdrop effects (background blur, magnify)
-     * are confined to. Concrete shapes with a fillable outline override this to
+     * true) and the silhouette its backdrop effects (backdrop-flagged filters,
+     * magnify) are confined to. Concrete shapes with a fillable outline override this to
      * describe their geometry (and can compose multiple shapes / `cut()`s for a
      * compound clip); the default `null` means the shape has no clip outline, so
      * it renders unclipped and gets no backdrop effects.
@@ -140,22 +141,32 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     }
 
     /**
-     * Apply backdrop effects (background blur, bulge/pinch) beneath this shape,
-     * clipped to its silhouette, before the shape's own fill/stroke are drawn —
-     * so the content underneath is blurred/warped while the shape's own edges
-     * stay sharp. Each effect opens a backdrop layer within the silhouette clip
-     * and composites it straight back.
+     * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
+     * grayscale, …; plus magnify and backdrop SkSL) beneath this shape, clipped
+     * to its silhouette, before the shape's own fill/stroke are drawn — so the
+     * content underneath is filtered/warped while the shape's own edges stay
+     * sharp. Each opens a backdrop layer within the silhouette clip and
+     * composites it straight back.
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        let blurRadius = 0;
+        // Filter-expressible effects flagged backdrop are composed into one
+        // ImageFilter by the renderer. magnify, backdrop-mode sksl, and posterize
+        // are shader-based and carry their own dedicated backdrop paths; magnify
+        // and backdrop sksl aren't `backdrop`-flagged, posterize is.
+        const filters: SceneEffect[] = [];
         const distortions: MagnifyEffect[] = [];
         const skslBackdrops: SkSLEffect[] = [];
+        const posterizes: PosterizeEffect[] = [];
         for (const effect of this.effects) {
-            if (effect.type === "backgroundBlur") blurRadius += effect.radius;
-            else if (effect.type === "magnify") distortions.push(effect);
+            if (effect.type === "magnify") distortions.push(effect);
             else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
+            else if (effect.type === "posterize" && effect.backdrop === true) posterizes.push(effect);
+            else if ("backdrop" in effect && effect.backdrop === true) filters.push(effect);
         }
-        if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
+        if (
+            filters.length === 0 && distortions.length === 0 &&
+            skslBackdrops.length === 0 && posterizes.length === 0
+        ) return;
 
         const clip = this.clipSelf();
         if (!clip || clip.isEmpty()) return;
@@ -166,9 +177,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         // Clip to the silhouette first so each backdrop layer is confined to the
         // shape; the renderer opens the backdrop filter within that clip.
         ctx.beginClip(clip);
-        if (blurRadius > 0) {
-            ctx.beginBackgroundBlur(blurRadius);
-            ctx.endBackgroundBlur();
+        if (filters.length > 0) {
+            ctx.beginBackdropFilter(filters, w, h);
+            ctx.endBackdropFilter();
         }
         for (const effect of distortions) {
             ctx.beginBackgroundDistortion(effect, w, h);
@@ -178,6 +189,10 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
             ctx.beginBackdropSkSL(effect, w, h);
             ctx.endBackdropSkSL();
         }
+        for (const effect of posterizes) {
+            ctx.beginBackdropPosterize(effect, w, h);
+            ctx.endBackdropPosterize();
+        }
         ctx.endClip();
     }
 
@@ -186,9 +201,13 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
     }
 
-    /** The posterize effect, if any — quantizes this node's own content (self + children). */
+    /**
+     * The foreground posterize effect, if any — quantizes this node's own content
+     * (self + children). `backdrop`-flagged posterize bands the backdrop instead
+     * (see {@link applyBackdropEffects}), so it's excluded here.
+     */
     private posterizeEffect(): PosterizeEffect | undefined {
-        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize");
+        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize" && e.backdrop !== true);
     }
 
     onRender(ctx: RenderContext): void {

@@ -6,5 +6,6 @@ export class ScatterScene extends EffectDemoScene {
         label: 'Scatter',
         from: FX.scatter(0),
         to: FX.scatter(12),
+        compare: true,
     };
 }
