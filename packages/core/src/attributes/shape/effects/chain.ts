@@ -26,30 +26,30 @@ export type BackdropOptions = { backdrop?: boolean };
  * - `{ horizontalBlocks, verticalBlocks, sharpColors?, backdrop? }` — per-axis block count.
  */
 export type PixelateOptions =
-    | number
-    | ({ blocks: number; sharpColors?: boolean } & BackdropOptions)
-    | ({ horizontalBlocks: number; verticalBlocks: number; sharpColors?: boolean } & BackdropOptions);
+  | number
+  | ({ blocks: number; sharpColors?: boolean } & BackdropOptions)
+  | ({ horizontalBlocks: number; verticalBlocks: number; sharpColors?: boolean } & BackdropOptions);
 
 /**
  * Normalises any {@link PixelateOptions} to a concrete {@link PixelateEffect}.
  * For the `number` form, `opts` supplies the `backdrop` flag.
  */
 function toPixelateEffect(options: PixelateOptions, opts?: BackdropOptions): PixelateEffect {
-    if (typeof options === "number") {
-        return { type: "pixelate", horizontalBlocks: options, verticalBlocks: options, sharpColors: true, ...opts };
-    }
-    const sharpColors = options.sharpColors ?? true;
-    const backdrop = options.backdrop;
-    if ("blocks" in options) {
-        return { type: "pixelate", horizontalBlocks: options.blocks, verticalBlocks: options.blocks, sharpColors, backdrop };
-    }
-    return {
-        type: "pixelate",
-        horizontalBlocks: options.horizontalBlocks,
-        verticalBlocks: options.verticalBlocks,
-        sharpColors,
-        backdrop,
-    };
+  if (typeof options === "number") {
+    return { type: "pixelate", horizontalBlocks: options, verticalBlocks: options, sharpColors: true, ...opts };
+  }
+  const sharpColors = options.sharpColors ?? true;
+  const backdrop = options.backdrop;
+  if ("blocks" in options) {
+    return { type: "pixelate", horizontalBlocks: options.blocks, verticalBlocks: options.blocks, sharpColors, backdrop };
+  }
+  return {
+    type: "pixelate",
+    horizontalBlocks: options.horizontalBlocks,
+    verticalBlocks: options.verticalBlocks,
+    sharpColors,
+    backdrop,
+  };
 }
 
 /**
@@ -72,7 +72,7 @@ export class EffectChain {
    * silhouette, Figma-style) instead of the node's own content.
    */
   blur(radius: number, opts?: BackdropOptions) {
-    return new EffectChain([...this.list, { type: 'blur', radius, ...opts }]);
+    return new EffectChain([...this.list, { type: 'blur', blur: radius, ...opts }]);
   }
 
   /**
@@ -259,7 +259,7 @@ const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(l
  */
 export const FX = {
   /** Gaussian blur. `{ backdrop: true }` blurs the backdrop beneath the node, clipped to its silhouette. */
-  blur: (radius: number, opts?: BackdropOptions) => createChain([{ type: 'blur', radius, ...opts }]),
+  blur: (blur: number, opts?: BackdropOptions) => createChain([{ type: 'blur', blur: blur, ...opts }]),
   /** Motion-blur-style directional (linear) blur. `direction` in degrees, `blurLength` in pixels. `{ backdrop }` smears the backdrop. */
   directionalBlur: (direction: number, blurLength: number, opts?: BackdropOptions) =>
     createChain([{ type: 'directionalBlur', direction, blurLength, ...opts }]),
@@ -294,9 +294,9 @@ export const FX = {
     length = 50,
     alignment: MotionBlurEffect['alignment'] = 'centered',
     samples = 16,
-    strength = 1,
+    multiplier = 1,
     axis: MotionBlurAxis = 'both',
-  ) => createChain([{ type: 'motionBlur', length, alignment, samples, strength, axis }]),
+  ) => createChain([{ type: 'motionBlur', length, alignment, samples, strength: multiplier, axis }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'layer' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>

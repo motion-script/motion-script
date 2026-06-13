@@ -144,6 +144,6 @@ describe('resolveChainEffects', () => {
     });
 
     it('wraps a single effect into an array', () => {
-        expect(resolveChainEffects({ type: 'blur', radius: 5 })).toEqual([{ type: 'blur', radius: 5 }]);
+        expect(resolveChainEffects({ type: 'blur', blur: 5 })).toEqual([{ type: 'blur', radius: 5 }]);
     });
 });

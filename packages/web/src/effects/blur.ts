@@ -9,7 +9,7 @@ export class BlurCanvasKitEffect extends CanvasKitEffect<BlurEffect> {
 
     makeImageFilter(effect: BlurEffect, ck: CanvasKit): any {
         // Skia's blur sigma is roughly half the perceived "radius" of the blur.
-        const sigma = effect.radius / 2;
+        const sigma = effect.blur / 2;
         return ck.ImageFilter.MakeBlur(sigma, sigma, ck.TileMode.Decal, null);
     }
 }
