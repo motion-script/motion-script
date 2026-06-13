@@ -37,18 +37,8 @@ class ClipRecorderContext {
     draw(): void { }
     begin(): void { }
     end(): void { }
-    beginBackdropFilter(): void { }
-    endBackdropFilter(): void { }
-    beginBackgroundDistortion(): void { }
-    endBackgroundDistortion(): void { }
-    beginBackdropSkSL(): void { }
-    endBackdropSkSL(): void { }
-    beginForegroundDistortion(): void { }
-    endForegroundDistortion(): void { }
-    beginPosterize(): void { }
-    endPosterize(): void { }
-    beginBackdropPosterize(): void { }
-    endBackdropPosterize(): void { }
+    beginEffectScope(): void { }
+    endEffectScope(): void { }
 
     asCtx(): RenderContext {
         return this as unknown as RenderContext;

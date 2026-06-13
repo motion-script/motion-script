@@ -23,6 +23,6 @@ export { Clip } from './clip';
 export type { ClipOp, ClipShapeOp } from './clip';
 
 export { RenderContext, Render2DContext } from './render-context';
-export type { SpaceRect, SpaceRects, NodeRenderState } from './render-context';
+export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget } from './render-context';
 export { MeasureScope } from './measure-scope';
 

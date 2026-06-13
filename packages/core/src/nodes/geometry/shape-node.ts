@@ -12,10 +12,6 @@ import { Clip } from "@/render/clip";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
-import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
-import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
-import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
@@ -141,32 +137,29 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     }
 
     /**
+     * Does `effect` target the backdrop (the content painted beneath this node)
+     * rather than the node's own content? `magnify` and backdrop-mode `sksl`
+     * always do; everything else opts in via the `backdrop` flag (the filter
+     * effects and posterize). The renderer decides per effect whether to express
+     * it as an ImageFilter or a shader — callers only pick the target.
+     */
+    private static isBackdropEffect(effect: SceneEffect): boolean {
+        if (effect.type === "magnify") return true;
+        if (effect.type === "sksl") return effect.mode === "backdrop";
+        return "backdrop" in effect && effect.backdrop === true;
+    }
+
+    /**
      * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
      * grayscale, …; plus magnify and backdrop SkSL) beneath this shape, clipped
      * to its silhouette, before the shape's own fill/stroke are drawn — so the
      * content underneath is filtered/warped while the shape's own edges stay
-     * sharp. Each opens a backdrop layer within the silhouette clip and
-     * composites it straight back.
+     * sharp. One backdrop effect scope, confined to the silhouette clip, runs the
+     * lot; the renderer routes each effect to a filter or shader pass.
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        // Filter-expressible effects flagged backdrop are composed into one
-        // ImageFilter by the renderer. magnify, backdrop-mode sksl, and posterize
-        // are shader-based and carry their own dedicated backdrop paths; magnify
-        // and backdrop sksl aren't `backdrop`-flagged, posterize is.
-        const filters: SceneEffect[] = [];
-        const distortions: MagnifyEffect[] = [];
-        const skslBackdrops: SkSLEffect[] = [];
-        const posterizes: PosterizeEffect[] = [];
-        for (const effect of this.effects) {
-            if (effect.type === "magnify") distortions.push(effect);
-            else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
-            else if (effect.type === "posterize" && effect.backdrop === true) posterizes.push(effect);
-            else if ("backdrop" in effect && effect.backdrop === true) filters.push(effect);
-        }
-        if (
-            filters.length === 0 && distortions.length === 0 &&
-            skslBackdrops.length === 0 && posterizes.length === 0
-        ) return;
+        const backdropEffects = this.effects.filter(ShapeNode.isBackdropEffect);
+        if (backdropEffects.length === 0) return;
 
         const clip = this.clipSelf();
         if (!clip || clip.isEmpty()) return;
@@ -174,40 +167,28 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const w = this.layoutRect?.width ?? 0;
         const h = this.layoutRect?.height ?? 0;
 
-        // Clip to the silhouette first so each backdrop layer is confined to the
-        // shape; the renderer opens the backdrop filter within that clip.
+        // Clip to the silhouette first so the backdrop passes are confined to the
+        // shape; the renderer opens its backdrop layers within that clip.
         ctx.beginClip(clip);
-        if (filters.length > 0) {
-            ctx.beginBackdropFilter(filters, w, h);
-            ctx.endBackdropFilter();
-        }
-        for (const effect of distortions) {
-            ctx.beginBackgroundDistortion(effect, w, h);
-            ctx.endBackgroundDistortion();
-        }
-        for (const effect of skslBackdrops) {
-            ctx.beginBackdropSkSL(effect, w, h);
-            ctx.endBackdropSkSL();
-        }
-        for (const effect of posterizes) {
-            ctx.beginBackdropPosterize(effect, w, h);
-            ctx.endBackdropPosterize();
-        }
+        ctx.beginEffectScope(backdropEffects, "backdrop", w, h);
+        ctx.endEffectScope();
         ctx.endClip();
     }
 
-    /** The bulge effect, if any — applied to this node's own content (self + children). */
-    private bulgeEffect(): BulgeEffect | undefined {
-        return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
-    }
-
     /**
-     * The foreground posterize effect, if any — quantizes this node's own content
-     * (self + children). `backdrop`-flagged posterize bands the backdrop instead
-     * (see {@link applyBackdropEffects}), so it's excluded here.
+     * Effects that warp/band this node's *own* content (self + children), in the
+     * order they should compose: posterize wraps bulge, so it comes first and the
+     * renderer applies bulge inside it (mirroring how blur-style content effects
+     * nest). `backdrop`-flagged posterize bands the backdrop instead (see
+     * {@link applyBackdropEffects}), so it's excluded here.
      */
-    private posterizeEffect(): PosterizeEffect | undefined {
-        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize" && e.backdrop !== true);
+    private foregroundEffects(): SceneEffect[] {
+        const posterize = this.effects.find((e) => e.type === "posterize" && e.backdrop !== true);
+        const bulge = this.effects.find((e) => e.type === "bulge");
+        const out: SceneEffect[] = [];
+        if (posterize) out.push(posterize);
+        if (bulge) out.push(bulge);
+        return out;
     }
 
     onRender(ctx: RenderContext): void {
@@ -217,16 +198,12 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const w = this.layoutRect?.width ?? 0;
         const h = this.layoutRect?.height ?? 0;
 
-        // Posterize quantizes the node's own pixels. It wraps the bulge scope so
-        // it bands the final (possibly warped) content, mirroring how blur-style
-        // content effects compose.
-        const posterize = this.posterizeEffect();
-        if (posterize) ctx.beginPosterize(posterize, w, h);
-
-        // Bulge warps the node's own content (like blur), so capture everything
-        // this node paints — its fill/stroke and its children — and warp the lot.
-        const bulge = this.bulgeEffect();
-        if (bulge) ctx.beginForegroundDistortion(bulge, w, h);
+        // Capture everything this node paints — its fill/stroke and its children —
+        // so the foreground effects (posterize wrapping bulge) warp/band the lot,
+        // mirroring how blur-style content effects compose.
+        const foreground = this.foregroundEffects();
+        const hasForeground = foreground.length > 0;
+        if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
 
         this.renderSelf(ctx);
         // Confine children to this shape's outline. Built once from clipSelf();
@@ -236,8 +213,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         this.renderChildren(ctx);
         if (clipped) ctx.endClip();
 
-        if (bulge) ctx.endForegroundDistortion();
-        if (posterize) ctx.endPosterize();
+        if (hasForeground) ctx.endEffectScope();
     }
 
     *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
