@@ -498,7 +498,11 @@ export class StrokeHandler {
         }
     }
 
-    /** Paints drop shadows: for each shadow (and each fill layer within it), offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
+    /**
+     * Paints *outer* (drop) shadows: offsets/blurs a silhouette layer beneath the
+     * real paint. Inner shadows are skipped here — they must composite over the
+     * fill, so the caller paints them afterwards via {@link applyInnerShadows}.
+     */
     applyShadows(
         shadows: ShadowResolved[],
         shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
@@ -511,7 +515,6 @@ export class StrokeHandler {
     ): void {
         if (shadows.length === 0) return;
 
-        const canvas = this.getCanvas();
         const paint = this.getPaint();
 
         const hasFill = fills.length > 0 && fills.some(f => (f.opacity ?? 1) > 0);
@@ -519,8 +522,152 @@ export class StrokeHandler {
         const worldAlpha = this.fills.worldAlpha();
 
         for (const shadow of shadows) {
-            const dx = shadow.dx ?? 0;
-            const dy = shadow.dy ?? 0;
+            if (shadow.inner) continue; // drawn after the fill — see applyInnerShadows
+            this.applyDropShadow(shadow, shapes, hasFill, hasStrokes, strokes, worldAlpha, resolveBounds);
+        }
+
+        paint.setStyle(this.canvasKit.PaintStyle.Fill);
+        paint.setPathEffect(null);
+        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
+        paint.setAlphaf(1.0);
+        paint.setShader(null);
+    }
+
+    /**
+     * Paints *inner* (inset) shadows, which must run after the fill so they sit
+     * on top of it rather than being hidden beneath. Outer shadows are ignored
+     * here. Call once the shape's fill has been drawn.
+     */
+    applyInnerShadows(
+        shadows: ShadowResolved[],
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        fills: FillResolved[],
+        resolveBounds?: (
+            fill: FillResolved,
+            shape: { ckPath?: CKPath } | null,
+        ) => void,
+    ): void {
+        if (shadows.length === 0) return;
+
+        const paint = this.getPaint();
+        const hasFill = fills.length > 0 && fills.some(f => (f.opacity ?? 1) > 0);
+        const worldAlpha = this.fills.worldAlpha();
+
+        for (const shadow of shadows) {
+            if (!shadow.inner) continue;
+            this.applyInnerShadow(shadow, shapes, hasFill, worldAlpha, resolveBounds);
+        }
+
+        paint.setStyle(this.canvasKit.PaintStyle.Fill);
+        paint.setPathEffect(null);
+        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
+        paint.setAlphaf(1.0);
+        paint.setShader(null);
+    }
+
+    /** Outer drop shadow: for each fill layer, offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
+    private applyDropShadow(
+        shadow: ShadowResolved,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        hasFill: boolean,
+        hasStrokes: boolean,
+        strokes: StrokeResolved[],
+        worldAlpha: number,
+        resolveBounds?: (fill: FillResolved, shape: { ckPath?: CKPath } | null) => void,
+    ): void {
+        const canvas = this.getCanvas();
+        const paint = this.getPaint();
+        const dx = shadow.dx ?? 0;
+        const dy = shadow.dy ?? 0;
+
+        for (const fill of shadow.fill) {
+            const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
+
+            const layerPaint = new this.canvasKit.Paint();
+            layerPaint.setAlphaf(opacity);
+            if (shadow.blur > 0) {
+                const sigma = shadow.blur / 2;
+                const filter = this.canvasKit.ImageFilter.MakeBlur(
+                    sigma, sigma, this.canvasKit.TileMode.Decal, null,
+                );
+                layerPaint.setImageFilter(filter);
+            }
+
+            canvas.save();
+            // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
+            // a positive dy nudging the shadow upward.
+            canvas.translate(dx, -dy);
+            canvas.saveLayer(layerPaint);
+
+            paint.setAlphaf(1.0);
+            if (resolveBounds) resolveBounds(fill, null);
+            // worldAlpha is already realised by the alpha'd saveLayer above;
+            // pass 1 so a solid silhouette colour isn't dimmed by it twice.
+            FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint, 1));
+
+            if (hasFill) {
+                paint.setStyle(this.canvasKit.PaintStyle.Fill);
+                paint.setPathEffect(null);
+                for (const shape of shapes) shape.draw(paint);
+            }
+
+            if (hasStrokes) {
+                paint.setStyle(this.canvasKit.PaintStyle.Stroke);
+                for (const stroke of strokes) {
+                    const weight = stroke.weight ?? 1;
+                    const { sx, sy } = this.deviceMetrics(canvas);
+                    const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
+                    paint.setStrokeWidth(logical);
+                    paint.setPathEffect(null);
+                    // Shadow strokes inherit the shadow's silhouette colour set
+                    // above — they are not painted with the real stroke fill.
+                    for (const shape of shapes) {
+                        const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
+                        this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
+                        if (snapped) canvas.restore();
+                    }
+                }
+            }
+
+            canvas.restore();
+            canvas.restore();
+            layerPaint.delete();
+        }
+    }
+
+    /**
+     * Inner (inset) shadow: clip to the shape silhouette, then fill the region
+     * *outside* an offset copy of the contour. We build that region explicitly as
+     * (bounding rect − offset shape), since this CanvasKit build exposes no
+     * inverse fill type. Blurred and clipped back to the shape, it bleeds inward
+     * along the edges opposite the offset — the look of light cast into a recess.
+     * Needs each shape's `ckPath`; shapes without one (text) are skipped. Strokes
+     * aren't applicable to an inset shadow.
+     */
+    private applyInnerShadow(
+        shadow: ShadowResolved,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        hasFill: boolean,
+        worldAlpha: number,
+        resolveBounds?: (fill: FillResolved, shape: { ckPath?: CKPath } | null) => void,
+    ): void {
+        if (!hasFill) return;
+
+        const canvas = this.getCanvas();
+        const paint = this.getPaint();
+        const dx = shadow.dx ?? 0;
+        // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep a
+        // positive dy casting the inset shadow from the top edge downward.
+        const dy = -(shadow.dy ?? 0);
+
+        for (const shape of shapes) {
+            if (!shape.ckPath) continue;
+
+            // The blur reaches `blur` px past the contour, and the offset shifts
+            // it further; pad the bounding rect so its own edges never cast a
+            // shadow into the shape.
+            const region = this.buildInnerShadowRegion(shape.ckPath, dx, dy, shadow.blur);
+            if (!region) continue;
 
             for (const fill of shadow.fill) {
                 const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
@@ -536,51 +683,55 @@ export class StrokeHandler {
                 }
 
                 canvas.save();
-                // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
-                // a positive dy nudging the shadow upward.
-                canvas.translate(dx, -dy);
+                // Confine the painting to the shape so only the part of the region
+                // that intrudes past the contour shows as an inset shadow.
+                canvas.clipPath(shape.ckPath, this.canvasKit.ClipOp.Intersect, true);
                 canvas.saveLayer(layerPaint);
 
                 paint.setAlphaf(1.0);
                 if (resolveBounds) resolveBounds(fill, null);
-                // worldAlpha is already realised by the alpha'd saveLayer above;
-                // pass 1 so a solid silhouette colour isn't dimmed by it twice.
+                // worldAlpha is realised by the alpha'd saveLayer above; pass 1
+                // so a solid silhouette colour isn't dimmed by it twice.
                 FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint, 1));
 
-                if (hasFill) {
-                    paint.setStyle(this.canvasKit.PaintStyle.Fill);
-                    paint.setPathEffect(null);
-                    for (const shape of shapes) shape.draw(paint);
-                }
-
-                if (hasStrokes) {
-                    paint.setStyle(this.canvasKit.PaintStyle.Stroke);
-                    for (const stroke of strokes) {
-                        const weight = stroke.weight ?? 1;
-                        const { sx, sy } = this.deviceMetrics(canvas);
-                        const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
-                        paint.setStrokeWidth(logical);
-                        paint.setPathEffect(null);
-                        // Shadow strokes inherit the shadow's silhouette colour set
-                        // above — they are not painted with the real stroke fill.
-                        for (const shape of shapes) {
-                            const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
-                            this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
-                            if (snapped) canvas.restore();
-                        }
-                    }
-                }
+                paint.setStyle(this.canvasKit.PaintStyle.Fill);
+                paint.setPathEffect(null);
+                canvas.drawPath(region, paint);
 
                 canvas.restore();
                 canvas.restore();
                 layerPaint.delete();
             }
-        }
 
-        paint.setStyle(this.canvasKit.PaintStyle.Fill);
-        paint.setPathEffect(null);
-        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
-        paint.setAlphaf(1.0);
-        paint.setShader(null);
+            region.delete();
+        }
+    }
+
+    /**
+     * The fillable region for an inset shadow: a padded bounding rect with an
+     * offset copy of `path` subtracted, so filling it covers everything *outside*
+     * the shifted contour. Caller owns the result and must delete() it; returns
+     * null if the boolean op fails.
+     */
+    private buildInnerShadowRegion(path: CKPath, dx: number, dy: number, blur: number): CKPath | null {
+        // Offset copy of the contour (PathBuilder, since Path is immutable here).
+        const offsetBuilder = new this.canvasKit.PathBuilder(path);
+        offsetBuilder.offset(dx, dy);
+        const offset = offsetBuilder.detachAndDelete();
+
+        // Bounding rect padded past the blur + offset reach, so the rect's own
+        // edges sit far enough out to never bleed into the shape.
+        const b = path.getBounds();
+        const pad = blur * 2 + Math.abs(dx) + Math.abs(dy) + 1;
+        const rectBuilder = new this.canvasKit.PathBuilder();
+        rectBuilder.addRect([b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad]);
+        const rect = rectBuilder.detachAndDelete();
+
+        // rect − offsetShape = the area outside the shifted contour, as a normal
+        // (non-inverse) fillable path. MakeFromOp doesn't consume its inputs.
+        const region = this.canvasKit.Path.MakeFromOp(rect, offset, this.canvasKit.PathOp.Difference);
+        rect.delete();
+        offset.delete();
+        return region;
     }
 }

@@ -7,6 +7,8 @@ function lerpShadow(from: ShadowResolved, to: ShadowResolved, t: number): Shadow
         dx: (from.dx ?? 0) + ((to.dx ?? 0) - (from.dx ?? 0)) * t,
         dy: (from.dy ?? 0) + ((to.dy ?? 0) - (from.dy ?? 0)) * t,
         fill: lerpFillArray(from.fill, to.fill, t),
+        // inner/outer is a discrete kind — keep the start's until the tween completes.
+        inner: t < 1 ? from.inner : to.inner,
     };
 }
 

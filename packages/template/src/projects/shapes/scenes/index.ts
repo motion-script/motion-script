@@ -8,6 +8,7 @@ export { RadialGradientScene } from "./radial-gradient";
 export { ColorGradientMorphScene } from "./color-gradient-morph";
 export { ImageFillScene } from "./image-fill";
 export { ShadowScene } from "./shadow";
+export { InnerShadowScene } from "./inner-shadow";
 export { DashStrokeScene } from "./dash-stroke";
 export { AlignmentStrokeScene } from "./alignment-stroke";
 export { UnionShadowScene } from "./union-shadow";

@@ -763,10 +763,14 @@ export class WebRenderContext extends RenderContext {
         if (pendingShadows) {
             const space = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
+            // Outer shadows paint beneath the fill; inner shadows paint over it.
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
+            this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
+            this.strokeHandler.applyInnerShadows(pendingShadows, shapes, resolved, this.applyFillSpaceBounds);
             dispose();
+        } else {
+            this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
         }
-        this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
         this.shapeHandler.paintApplied = true;
     }
 
@@ -1474,6 +1478,9 @@ export class WebRenderContext extends RenderContext {
                     this.strokeHandler.applyShadows(d.shadows, d.shapes, d.fills, [], this.applyFillSpaceBounds);
                 }
                 this.fillHandler.applyFills(d.fills, d.shapes);
+                if (d.shadows) {
+                    this.strokeHandler.applyInnerShadows(d.shadows, d.shapes, d.fills, this.applyFillSpaceBounds);
+                }
             }
         }
     }

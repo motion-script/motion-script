@@ -10,6 +10,8 @@ export interface ShadowProp {
     dy?: number;
     /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
     fill?: ChainableFill;
+    /** When true, the shadow is cast inward (inset) instead of as a drop shadow. Defaults to false. */
+    inner?: boolean;
 }
 /**
  * Fully resolved shadow — all fields normalised with defaults applied.
@@ -22,6 +24,8 @@ export interface ShadowResolved {
     dy?: number;
     /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
     fill: FillResolved[];
+    /** When true, the shadow is cast inward (inset) instead of as a drop shadow. */
+    inner: boolean;
 }
 
 // ── Mapper ───────────────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): Shad
         dx: prop.dx ?? previous?.dx,
         dy: prop.dy ?? previous?.dy,
         fill: prop.fill != null ? resolveFillArray(prop.fill) : (previous?.fill ?? resolveFillArray('transparent')),
+        inner: prop.inner ?? previous?.inner ?? false,
     };
 }
 
