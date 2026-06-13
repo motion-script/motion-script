@@ -14,18 +14,18 @@ export class LayoutScene extends Scene {
     this.add(
       <>
         <Rect gap={20} group={'row'} padding={10} width={1000} height={600}>
-          <Rect ref={colA} width={'fill'} flex={1} fill={'#161a21'} borderRadius={8} />
+          <Rect ref={colA} width={'fill'} flex={1} fill={'#161a21'} cornerRadius={8} />
           <Rect group={'column'} gap={20} height={'fill'} width={'fill'} flex={2} >
-            <Rect ref={rowA} height={'fill'} width={'fill'} flex={2} borderRadius={4} stroke={{ fill: 'white', weight: 12 }} fill={'#FF6470'} >
+            <Rect ref={rowA} height={'fill'} width={'fill'} flex={2} cornerRadius={4} stroke={{ fill: 'white', weight: 12 }} fill={'#FF6470'} >
 
               <Ellipse width={32} height={32} fill={'white'} />
 
             </Rect>
-            <Rect ref={rowB} height={'fill'} flex={1} fill={'#161a21'} borderRadius={8} />
+            <Rect ref={rowB} height={'fill'} flex={1} fill={'#161a21'} cornerRadius={8} />
 
           </Rect>
           {/* flex implies width 'fill'; this column takes 1 share like the red one */}
-          <Rect ref={colB} flex={2} fill={'#161a21'} borderRadius={8} />
+          <Rect ref={colB} flex={2} fill={'#161a21'} cornerRadius={8} />
         </Rect>
       </>,
     );

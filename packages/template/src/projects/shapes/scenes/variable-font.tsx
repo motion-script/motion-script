@@ -17,7 +17,7 @@ export class VariableFontScene extends Scene {
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={'fill'} group={'stack'} borderRadius={32} fill={'card'} padding={80}>
+                <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={32} fill={'card'} padding={80}>
                     <Text ref={variableFontText} text={'MS'} fontSize={200} stroke={{ weight: 2, fill: 'white', dash: 5 }} />
                 </Rect>
             </Rect>

@@ -63,8 +63,8 @@ function setLayout(node: { layout: (r: BoxBounds, s: any) => void }, rect: BoxBo
 const RECT: BoxBounds = { x: 0, y: 0, width: 200, height: 120 };
 
 describe('ShapeNode.clipSelf — geometry nodes describe their outline', () => {
-    it('Rect clips to a rounded rect matching its layout + borderRadius', () => {
-        const rect = new Rect({ borderRadius: 16 });
+    it('Rect clips to a rounded rect matching its layout + cornerRadius', () => {
+        const rect = new Rect({ cornerRadius: 16 });
         setLayout(rect, RECT);
 
         const clip = (rect as any).clipSelf() as Clip;
@@ -72,7 +72,7 @@ describe('ShapeNode.clipSelf — geometry nodes describe their outline', () => {
         expect(ops).toHaveLength(1);
         expect(ops[0].kind).toBe('rect');
         expect((ops[0] as any).state).toMatchObject({ width: 200, height: 120 });
-        expect((ops[0] as any).state.borderRadius).toBeDefined();
+        expect((ops[0] as any).state.cornerRadius).toBeDefined();
     });
 
     it('Ellipse clips to an ellipse carrying its arc params', () => {
@@ -88,13 +88,13 @@ describe('ShapeNode.clipSelf — geometry nodes describe their outline', () => {
     });
 
     it('Polygon clips to a polygon with its side count', () => {
-        const poly = new Polygon({ sides: 6, borderRadius: 4 });
+        const poly = new Polygon({ sides: 6, cornerRadius: 4 });
         setLayout(poly, RECT);
 
         const ops = ((poly as any).clipSelf() as Clip).ops();
         expect(ops).toHaveLength(1);
         expect(ops[0].kind).toBe('polygon');
-        expect((ops[0] as any).state).toMatchObject({ sides: 6, borderRadius: 4 });
+        expect((ops[0] as any).state).toMatchObject({ sides: 6, cornerRadius: 4 });
     });
 
     it('Polygram clips to a star with its sides/ratio', () => {
@@ -108,7 +108,7 @@ describe('ShapeNode.clipSelf — geometry nodes describe their outline', () => {
     });
 
     it('Grid clips to a rounded rect like Rect', () => {
-        const grid = new Grid({ columns: 2, borderRadius: 8 });
+        const grid = new Grid({ columns: 2, cornerRadius: 8 });
         setLayout(grid, RECT);
 
         const ops = ((grid as any).clipSelf() as Clip).ops();

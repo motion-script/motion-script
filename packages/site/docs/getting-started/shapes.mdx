@@ -54,7 +54,7 @@ export class MyScene extends Scene {
         width={300}
         height={200}
         fill="royalblue"
-        borderRadius={16}
+        cornerRadius={16}
       />
     );
 
@@ -67,19 +67,37 @@ export class MyScene extends Scene {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner rounding |
+| `cornerStyle` | `'rounded' \| 'angled'` (+ shorthand) | `'rounded'` | Rounded (arc) or angled (chamfer) corners |
 | `group` | `'row' \| 'column' \| 'stack'` | `'row'` | Layout mode for children |
 | `gap` | `number \| 'auto'` | `0` | Spacing between children |
 | `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Child alignment (-1 to 1 per axis) |
 
-### Per-corner border radius
+### Corner radius and style
+
+`cornerRadius` and `cornerStyle` share one shorthand grammar: a single
+value applies to every corner, `{ topLeft, topRight, bottomLeft, bottomRight }` targets
+corners individually, and `{ top, bottom }` / `{ left, right }` target pairs.
 
 ```tsx
+{/* Per-corner radius */}
 <Rect
   width={200}
   height={200}
   fill="hotpink"
-  borderRadius={{ topLeft: 0, topRight: 40, bottomLeft: 40, bottomRight: 0 }}
+  cornerRadius={{ topLeft: 0, topRight: 40, bottomLeft: 40, bottomRight: 0 }}
+/>
+
+{/* Angled (chamfered) corners */}
+<Rect width={200} height={200} fill="tomato" cornerRadius={24} cornerStyle="angled" />
+
+{/* Mixed via the per-axis shorthand */}
+<Rect
+  width={240}
+  height={160}
+  fill="seagreen"
+  cornerRadius={28}
+  cornerStyle={{ top: 'rounded', bottom: 'angled' }}
 />
 ```
 
@@ -203,7 +221,8 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `sides` | `number` | `5` | Number of sides |
-| `borderRadius` | `number` | `0` | Corner rounding |
+| `cornerRadius` | `number` | `0` | Vertex rounding |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape (arc vs chamfer) |
 
 ---
 
@@ -219,7 +238,7 @@ export class MyScene extends Scene {
     const star = createRef<Polygram>();
 
     this.add(
-      <Polygram ref={star} sides={5} ratio={0.4} width={300} height={300} fill="gold" borderRadius={10} />
+      <Polygram ref={star} sides={5} ratio={0.4} width={300} height={300} fill="gold" cornerRadius={10} />
     );
 
     yield* star().to({ rotate: 360 }, 2);
@@ -233,7 +252,8 @@ export class MyScene extends Scene {
 |---|---|---|---|
 | `sides` | `number` | `5` | Number of points on the star |
 | `ratio` | `number` | `0.5` | Inner/outer radius ratio (lower = sharper points) |
-| `borderRadius` | `number` | `0` | Corner rounding |
+| `cornerRadius` | `number` | `0` | Vertex rounding (outer points) |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape (arc vs chamfer) |
 
 ---
 
@@ -247,7 +267,7 @@ import { Scene, Image, createRef, wait } from '@motion-script/core';
 export class MyScene extends Scene {
   *build() {
     this.add(
-      <Image src="./photo.jpg" fit="fill" width={800} height={450} borderRadius={20} />
+      <Image src="./photo.jpg" fit="fill" width={800} height={450} cornerRadius={20} />
     );
 
     yield* wait(2);
@@ -261,7 +281,7 @@ export class MyScene extends Scene {
 |---|---|---|---|
 | `src` | `string` | — | Path to the image file |
 | `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How the image fills the node |
-| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner rounding |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (see Image Filters) |
 | `scaling` | `number` | — | Scale multiplier applied to the image |
 | `transform` | `number[][]` | — | Raw matrix transformation |

@@ -25,7 +25,7 @@ export class RectWithChildrenScene extends Scene {
                     // No width/height: defaults to `hug`, so this wraps the row.
                     <Rect
                         group={'row'} gap={32} padding={48}
-                        fill={'#161a21'} stroke={{ weight: 4, fill: 'primary' }} borderRadius={32}
+                        fill={'#161a21'} stroke={{ weight: 4, fill: 'primary' }} cornerRadius={32}
                     >
                         {tile({ color: '#6990DD', width: 200, height: 200 })}
                         {tile({ ref: middle, color: '#E8617C', width: 200, height: 200 })}

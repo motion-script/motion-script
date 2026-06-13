@@ -226,7 +226,8 @@ export class Video extends Rect {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })

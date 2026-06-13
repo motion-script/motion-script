@@ -52,7 +52,7 @@ export class BooleanOperatorScene extends Scene {
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={16}>
                     <Rect
                         width={'fill'} height={'fill'}
-                        fill={'card'} borderRadius={32}
+                        fill={'card'} cornerRadius={32}
                         clip={true} group={'stack'}
                     >
                         <BooleanGroup op={spec.op} fill={Fill.color('#6990DD')}>

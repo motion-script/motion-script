@@ -16,7 +16,7 @@ export class GridScene extends Scene {
                 width={'fill'}
             >
                 {/* Full-width header row */}
-                <Rect colSpan={3} height={80} fill="#1e2430" borderRadius={12}>
+                <Rect colSpan={3} height={80} fill="#1e2430" cornerRadius={12}>
                     <Text
                         text="Grid Layout"
                         fontSize={28}
@@ -26,16 +26,16 @@ export class GridScene extends Scene {
                 </Rect>
 
                 {/* Three equal cells */}
-                <Rect height={160} fill={COLORS[0]} borderRadius={12} />
-                <Rect height={160} fill={COLORS[1]} borderRadius={12} />
-                <Rect height={160} fill={COLORS[2]} borderRadius={12} />
+                <Rect height={160} fill={COLORS[0]} cornerRadius={12} />
+                <Rect height={160} fill={COLORS[1]} cornerRadius={12} />
+                <Rect height={160} fill={COLORS[2]} cornerRadius={12} />
 
                 {/* Wide + narrow */}
-                <Rect colSpan={2} height={120} fill={COLORS[3]} borderRadius={12} />
-                <Rect height={120} fill={COLORS[4]} borderRadius={12} />
+                <Rect colSpan={2} height={120} fill={COLORS[3]} cornerRadius={12} />
+                <Rect height={120} fill={COLORS[4]} cornerRadius={12} />
 
                 {/* Full-width footer */}
-                <Rect colSpan={3} height={60} fill={COLORS[5]} borderRadius={12} />
+                <Rect colSpan={3} height={60} fill={COLORS[5]} cornerRadius={12} />
             </Grid>
         );
 

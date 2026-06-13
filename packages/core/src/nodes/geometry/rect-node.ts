@@ -12,7 +12,8 @@ import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpSizeInput } from "@/layout/tweens";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, GapSize, FlexDirection } from "@/layout/flex";
-import { BorderRadiusProps, BorderRadiusResolved, resolveBorderRadius, lerpBorderRadius } from "@/attributes/shape/corners/border-radius";
+import { CornerRadiusProps, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { CornerStyleProps, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -31,7 +32,10 @@ export interface RectProps extends ShapeProps {
     gap: GapSize;
     /** Per-axis alignment of children within the content box (-1…1). */
     alignment: Vector2;
-    borderRadius: BorderRadiusProps;
+    /** Corner radius in pixels — uniform, per-corner, or per-axis. */
+    cornerRadius: CornerRadiusProps;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: CornerStyleProps;
 }
 
 
@@ -64,8 +68,10 @@ export class Rect extends ShapeNode<RectProps> {
 
     @property({ default: 0 }) declare readonly gap: GapSize;
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly alignment: Vector2;
-    @property({ default: 0, mapper: (v: BorderRadiusProps) => resolveBorderRadius(v), tween: lerpBorderRadius })
-    declare readonly borderRadius: BorderRadiusResolved;
+    @property({ default: 0, mapper: (v: CornerRadiusProps, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare readonly cornerRadius: CornerRadiusResolved;
+    @property({ default: "rounded", mapper: (v: CornerStyleProps, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare readonly cornerStyle: CornerStyleResolved;
 
     declare group: LayoutMode;
 
@@ -127,7 +133,8 @@ export class Rect extends ShapeNode<RectProps> {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })
@@ -138,7 +145,8 @@ export class Rect extends ShapeNode<RectProps> {
         return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
         });
     }
 

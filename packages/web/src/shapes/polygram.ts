@@ -1,12 +1,14 @@
-import { PolygramState, withPolygramDescriptor } from "@motion-script/core";
+import { CornerStyle, PolygramState, withPolygramDescriptor } from "@motion-script/core";
 import { BaseShape } from "./base";
+import { cornerCommandsFromCut } from "./corner";
 
 type PolygramGeo = {
     cx: number; cy: number;
     rx: number; ry: number;
     sides: number;
     ratio: number;
-    borderRadius: number;
+    cornerRadius: number;
+    cornerStyle: CornerStyle;
 };
 
 function buildPolygramSvg(
@@ -14,7 +16,8 @@ function buildPolygramSvg(
     rx: number, ry: number,
     sides: number,
     ratio: number,
-    borderRadius: number,
+    cornerRadius: number,
+    cornerStyle: CornerStyle,
 ): string {
     const totalPoints = sides * 2;
     const angleStep = Math.PI / sides;
@@ -28,7 +31,7 @@ function buildPolygramSvg(
         verts.push([cx + rx * r * Math.cos(a), cy + ry * r * Math.sin(a)]);
     }
 
-    if (borderRadius <= 0) {
+    if (cornerRadius <= 0) {
         const parts = verts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x} ${y}`);
         parts.push("Z");
         return parts.join(" ");
@@ -64,17 +67,16 @@ function buildPolygramSvg(
         const tanHalf = Math.tan(halfAngle);
 
         const maxT = Math.min(len0, len1) / 2;
-        let t = borderRadius / tanHalf;
+        let t = cornerRadius / tanHalf;
         if (t > maxT) t = maxT;
         const r = t * tanHalf;
 
-        const arcStartX = curr[0] + u0x * t;
-        const arcStartY = curr[1] + u0y * t;
-        const arcEndX = curr[0] + u1x * t;
-        const arcEndY = curr[1] + u1y * t;
+        // The corner's curve begins where the straight edge ends: `t` from the apex.
+        const edgeX = curr[0] + u0x * t;
+        const edgeY = curr[1] + u0y * t;
 
-        parts.push(`${parts.length === 0 ? "M" : "L"} ${arcStartX} ${arcStartY}`);
-        parts.push(`A ${r} ${r} 0 0 1 ${arcEndX} ${arcEndY}`);
+        parts.push(`${parts.length === 0 ? "M" : "L"} ${edgeX} ${edgeY}`);
+        parts.push(cornerCommandsFromCut(curr[0], curr[1], u0x, u0y, u1x, u1y, t, r, cornerStyle));
     }
     parts.push("Z");
     return parts.join(" ");
@@ -82,8 +84,10 @@ function buildPolygramSvg(
 
 /**
  * Star polygon: alternates outer vertices (radius 1) and inner vertices
- * (radius `ratio`). Only outer (convex) vertices are rounded by `borderRadius`;
+ * (radius `ratio`). Only outer (convex) vertices are rounded by `cornerRadius`;
  * inner vertices stay sharp, matching typical star-shape conventions.
+ * `cornerStyle` switches the rounded vertices between a circular arc and a
+ * straight chamfer.
  */
 export class PolygramShape extends BaseShape<PolygramState, PolygramGeo> {
     protected resolveState(state: Partial<PolygramState>): PolygramState {
@@ -98,12 +102,13 @@ export class PolygramShape extends BaseShape<PolygramState, PolygramGeo> {
             ry: s.height / 2,
             sides: Math.max(3, Math.round(s.sides)),
             ratio: Math.max(0, Math.min(1, s.ratio)),
-            borderRadius: s.borderRadius,
+            cornerRadius: s.cornerRadius,
+            cornerStyle: s.cornerStyle,
         };
     }
 
     protected buildSVGPath(geo: PolygramGeo): string {
-        return buildPolygramSvg(geo.cx, geo.cy, geo.rx, geo.ry, geo.sides, geo.ratio, geo.borderRadius);
+        return buildPolygramSvg(geo.cx, geo.cy, geo.rx, geo.ry, geo.sides, geo.ratio, geo.cornerRadius, geo.cornerStyle);
     }
 
     protected needsTrim(): boolean {

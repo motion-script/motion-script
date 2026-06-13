@@ -32,7 +32,7 @@ export function layoutCard(opts: {
             <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
             <Rect
                 width={'fill'} height={'fill'}
-                fill={'card'} borderRadius={32} clip={true}
+                fill={'card'} cornerRadius={32} clip={true}
                 group={stage} gap={gap} padding={64}
             >
                 {children}
@@ -48,18 +48,18 @@ export function tile(opts: {
     width?: number | 'fill';
     height?: number | 'fill';
     flex?: number;
-    borderRadius?: number;
+    cornerRadius?: number;
     label?: string;
 }): Node {
     const {
         ref, color = 'primary', width = 240, height = 240,
-        flex, borderRadius = 24, label,
+        flex, cornerRadius = 24, label,
     } = opts;
     return (
         <Rect
             ref={ref}
             width={width} height={height} flex={flex}
-            fill={color} borderRadius={borderRadius}
+            fill={color} cornerRadius={cornerRadius}
             group={'stack'}
         >
             {label !== undefined

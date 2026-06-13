@@ -35,7 +35,7 @@ export type ClipOp = ClipShapeOp | { kind: "cut" };
  * clip can be any compound silhouette, not just a single rect or ellipse:
  *
  *   const c = new Clip()
- *       .rect({ width: 200, height: 120, borderRadius: 16 })
+ *       .rect({ width: 200, height: 120, cornerRadius: 16 })
  *       .ellipse({ x: 80, width: 60, height: 60 })   // unions with the rect
  *       .ellipse({ x: -80, width: 40, height: 40 })
  *       .cut();                                        // punches the last hole

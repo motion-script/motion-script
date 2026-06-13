@@ -18,11 +18,11 @@ export class MultipleSoundsScene extends Scene {
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
                 <Text fontFamily={'Pixelify Sans'} text={'Two sounds at once'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={24} alignment={{ x: 0, y: 0 }}>
-                    <Rect width={'fill'} height={100} fill={'card'} borderRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
-                        <Rect ref={bed} width={40} height={'fill'} fill={'primary'} borderRadius={8} />
+                    <Rect width={'fill'} height={100} fill={'card'} cornerRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
+                        <Rect ref={bed} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
                     </Rect>
-                    <Rect width={'fill'} height={100} fill={'card'} borderRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
-                        <Rect ref={shot} width={40} height={'fill'} fill={'#e0664a'} borderRadius={8} />
+                    <Rect width={'fill'} height={100} fill={'card'} cornerRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
+                        <Rect ref={shot} width={40} height={'fill'} fill={'#e0664a'} cornerRadius={8} />
                     </Rect>
                 </Rect>
             </Rect>

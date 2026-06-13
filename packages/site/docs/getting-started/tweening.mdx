@@ -17,7 +17,7 @@ export class MyScene extends Scene {
   *build() {
     const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" borderRadius={12} />);
+    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={12} />);
 
     yield* box().to({ x: 400, rotate: 180 }, 1);
   }
@@ -163,7 +163,7 @@ import { Scene, Rect, Text, easeOutBack } from '@motion-script/core';
 export class MyScene extends Scene {
   *build() {
     const items = ['Alpha', 'Beta', 'Gamma'].map((label, i) => {
-      const item = new Rect({ width: 300, height: 60, fill: '#1e293b', borderRadius: 8, opacity: 0 });
+      const item = new Rect({ width: 300, height: 60, fill: '#1e293b', cornerRadius: 8, opacity: 0 });
       this.add(item);
       return item;
     });

@@ -10,7 +10,7 @@ export class ShapeScene extends Scene {
     const poly = createRef<Polygram>();
 
     this.add(
-      <Polygram ref={poly} stroke={{ weight: 15, fill: 'white', dash: 20 }} borderRadius={20} sides={5} width={650} height={650} />
+      <Polygram ref={poly} stroke={{ weight: 15, fill: 'white', dash: 20 }} cornerRadius={20} sides={5} width={650} height={650} />
 
 
     );

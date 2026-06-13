@@ -34,7 +34,7 @@ export abstract class VideoFillScene extends Scene {
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={'fill'} borderRadius={32} fill={videoFill} />
+                <Rect width={'fill'} height={'fill'} cornerRadius={32} fill={videoFill} />
             </Rect>
         );
 

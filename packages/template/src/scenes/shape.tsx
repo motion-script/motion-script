@@ -57,7 +57,7 @@ export class ShapeScene extends Scene {
     );
 
     const cell = (label: string, children: any) => (
-      <Rect group="column" gap={12} fill={CARD} borderRadius={16} padding={24} alignment={{ x: 0, y: 0 }}>
+      <Rect group="column" gap={12} fill={CARD} cornerRadius={16} padding={24} alignment={{ x: 0, y: 0 }}>
         {row(children)}
         <Text text={label} fontSize={20} fill="white" fontFamily="Inter" />
       </Rect>
@@ -66,21 +66,21 @@ export class ShapeScene extends Scene {
     this.add(
       <Grid columns={3} gap={20} width={"fill"} height={"fill"}>
         {cell("Polygon", <>
-          <Polygon ref={polygonStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={3} borderRadius={0} />
-          <Polygon ref={polygonFill} width={SIZE} height={SIZE} fill={ACCENT} sides={3} borderRadius={0} />
-          <Polygon ref={polygonShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={3} borderRadius={0} />
+          <Polygon ref={polygonStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={3} cornerRadius={0} />
+          <Polygon ref={polygonFill} width={SIZE} height={SIZE} fill={ACCENT} sides={3} cornerRadius={0} />
+          <Polygon ref={polygonShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={3} cornerRadius={0} />
         </>)}
 
         {cell("Polygram", <>
-          <Polygram ref={polygramStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={5} ratio={0.5} borderRadius={0} />
-          <Polygram ref={polygramFill} width={SIZE} height={SIZE} fill={ACCENT} sides={5} ratio={0.5} borderRadius={0} />
-          <Polygram ref={polygramShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={5} ratio={0.5} borderRadius={0} />
+          <Polygram ref={polygramStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={5} ratio={0.5} cornerRadius={0} />
+          <Polygram ref={polygramFill} width={SIZE} height={SIZE} fill={ACCENT} sides={5} ratio={0.5} cornerRadius={0} />
+          <Polygram ref={polygramShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={5} ratio={0.5} cornerRadius={0} />
         </>)}
 
         {cell("Rect", <>
-          <Rect ref={rectStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} borderRadius={0} />
-          <Rect ref={rectFill} width={SIZE} height={SIZE} fill={ACCENT} borderRadius={0} />
-          <Rect ref={rectShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} borderRadius={0} />
+          <Rect ref={rectStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} cornerRadius={0} />
+          <Rect ref={rectFill} width={SIZE} height={SIZE} fill={ACCENT} cornerRadius={0} />
+          <Rect ref={rectShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} cornerRadius={0} />
         </>)}
 
         {cell("Ellipse", <>
@@ -109,7 +109,7 @@ export class ShapeScene extends Scene {
       // ---- Polygon ----
       sequence(
         polygonFill().to({ sides: 8 }, 0.8, easeInOutQuad),
-        polygonFill().to({ borderRadius: 24 }, 0.6, easeBack),
+        polygonFill().to({ cornerRadius: 24 }, 0.6, easeBack),
       ),
       sequence(
         polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
@@ -124,7 +124,7 @@ export class ShapeScene extends Scene {
       sequence(
         polygramFill().to({ sides: 8 }, 0.8, easeInOutQuad),
         polygramFill().to({ ratio: 0.25 }, 0.6, easeInOutQuad),
-        polygramFill().to({ borderRadius: 12 }, 0.6, easeBack),
+        polygramFill().to({ cornerRadius: 12 }, 0.6, easeBack),
       ),
       sequence(
         polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
@@ -137,7 +137,7 @@ export class ShapeScene extends Scene {
 
       // ---- Rect ----
       sequence(
-        rectFill().to({ borderRadius: 30 }, 0.8, easeBack),
+        rectFill().to({ cornerRadius: 30 }, 0.8, easeBack),
         rectFill().to({ rotation: 180 }, 0.8, easeInOutQuad),
       ),
       sequence(

@@ -33,7 +33,7 @@ export class GridScene extends Scene {
                         ref,
                         color: palette[(r + c) % palette.length],
                         width: 'fill', height: 'fill', flex: 1,
-                        borderRadius: 24,
+                        cornerRadius: 24,
                     });
                 })}
             </Rect>
@@ -55,10 +55,10 @@ export class GridScene extends Scene {
             ...cells.map(({ ref, diag }) =>
                 sequence(
                     wait(diag * 0.12),
-                    ref().to({ borderRadius: 160 }, 1.2, easeInOutQuad),
+                    ref().to({ cornerRadius: 160 }, 1.2, easeInOutQuad),
                 )
             ),
         );
-        yield* parallel(...cells.map(({ ref }) => ref().to({ borderRadius: 24 }, 1, easeInOutQuad)));
+        yield* parallel(...cells.map(({ ref }) => ref().to({ cornerRadius: 24 }, 1, easeInOutQuad)));
     }
 }

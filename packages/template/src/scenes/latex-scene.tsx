@@ -9,7 +9,7 @@ export class LatexScene extends Scene {
         const integral = createRef<Latex>();
 
         this.add(
-            <Rect group={'column'} gap={20} padding={32} fill={'card'} borderRadius={16}>
+            <Rect group={'column'} gap={20} padding={32} fill={'card'} cornerRadius={16}>
                 <Latex ref={intro} latex="F = ma" fontSize={72} fill={'white'} opacity={0} x={-100} />
                 <Rect width={'fill'} height={3} fill={'#4f80ff'} />
                 <Latex latex="E = mc^2" fontSize={72} fill={'#4f80ff'} />

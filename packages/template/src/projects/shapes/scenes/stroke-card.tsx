@@ -37,7 +37,7 @@ export abstract class StrokeCardScene extends Scene {
                 <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
                     <Rect
                         ref={sampleRef}
-                        width={520} height={520} borderRadius={32}
+                        width={520} height={520} cornerRadius={32}
                         fill={initial.fill ?? 'card'}
                         stroke={initial.stroke}
                         shadow={initial.shadow}

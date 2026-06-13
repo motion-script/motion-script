@@ -27,7 +27,7 @@ export class MaskScene extends Scene {
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={'fill'} clip={true} borderRadius={32} group={'stack'} fill={'card'}>
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
                     <MaskGroup mode={'alpha'}>
                         {/* First child = mask. The moving circle reveals the photo. */}
                         <Ellipse ref={maskRef} width={size} height={size} fill={'#ffffff'} />

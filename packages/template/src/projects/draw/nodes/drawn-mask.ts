@@ -45,7 +45,7 @@ export class DrawnMask extends ShapeNode<DrawnMaskProps> {
         const g = new Graphics().mask({ mode: 'alpha' });
 
         // ── Mask: the complex drawn silhouette (same figure as DrawnShape) ────
-        g.rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, borderRadius: e * 0.28 })
+        g.rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })
             .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.9, height: e * 0.9 })
             .path(wing.toPathState({ centerBounds: frame }))
             // Eye hole punched out of the mask, so content shows through it.

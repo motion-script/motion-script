@@ -16,8 +16,8 @@ export class StartStopSoundScene extends Scene {
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
                 <Text fontFamily={'Pixelify Sans'} text={'startSound / stopSound'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={300} fill={'card'} borderRadius={16} group={'row'} alignment={{ x: 0, y: 0 }}>
-                    <Rect ref={dot} width={120} height={120} fill={'primary'} borderRadius={60} />
+                <Rect width={'fill'} height={300} fill={'card'} cornerRadius={16} group={'row'} alignment={{ x: 0, y: 0 }}>
+                    <Rect ref={dot} width={120} height={120} fill={'primary'} cornerRadius={60} />
                 </Rect>
             </Rect>
         );

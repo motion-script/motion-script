@@ -11,7 +11,8 @@ import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
 import { lerpSizeInput } from "@/layout/tweens";
 import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/grid";
-import { BorderRadiusProps, BorderRadiusResolved, lerpBorderRadius, resolveBorderRadius } from "@/attributes/shape/corners/border-radius";
+import { CornerRadiusProps, CornerRadiusResolved, lerpCornerRadius, resolveCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { CornerStyleProps, CornerStyleResolved, lerpCornerStyle, resolveCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -26,7 +27,10 @@ export interface GridProps extends ShapeProps {
     rowGap: number;
     /** Shorthand: sets both columnGap and rowGap. */
     gap: number;
-    borderRadius: BorderRadiusProps;
+    /** Corner radius in pixels — uniform, per-corner, or per-axis. */
+    cornerRadius: CornerRadiusProps;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: CornerStyleProps;
 }
 
 /**
@@ -39,8 +43,10 @@ export class Grid extends ShapeNode<GridProps> {
     @property({ default: 1 }) declare readonly columns: number;
     @property({ default: 0 }) declare readonly columnGap: number;
     @property({ default: 0 }) declare readonly rowGap: number;
-    @property({ default: 0, mapper: (v: BorderRadiusProps) => resolveBorderRadius(v), tween: lerpBorderRadius })
-    declare readonly borderRadius: BorderRadiusResolved;
+    @property({ default: 0, mapper: (v: CornerRadiusProps, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare readonly cornerRadius: CornerRadiusResolved;
+    @property({ default: "rounded", mapper: (v: CornerStyleProps, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare readonly cornerStyle: CornerStyleResolved;
 
     private _cachedMeasure: GridMeasureResult | null = null;
 
@@ -66,7 +72,8 @@ export class Grid extends ShapeNode<GridProps> {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })
@@ -77,7 +84,8 @@ export class Grid extends ShapeNode<GridProps> {
         return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
         });
     }
 

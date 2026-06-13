@@ -60,13 +60,13 @@ export abstract class ShapeDemoScene extends Scene {
                 <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
                     <Rect
                         ref={fillRef}
-                        width={500} height={500} borderRadius={32}
+                        width={500} height={500} cornerRadius={32}
                         fill={fillFrom}
                         shadow={shadowFrom}
                     />
                     <Rect
                         ref={strokeRef}
-                        width={500} height={500} borderRadius={32}
+                        width={500} height={500} cornerRadius={32}
                         stroke={{ weight: strokeWeight, fill: strokeFrom }}
                         shadow={shadowFrom}
                     />

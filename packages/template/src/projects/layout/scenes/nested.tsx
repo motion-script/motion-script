@@ -29,9 +29,9 @@ export class NestedScene extends Scene {
                     // Outer column: header row on top, body row below.
                     <Rect width={'fill'} height={'fill'} group={'column'} gap={32}>
                         {/* Header row: title hugging-left, badge pinned right. */}
-                        <Rect width={'fill'} group={'row'} gap={24} fill={'#161a21'} borderRadius={24} padding={32}>
+                        <Rect width={'fill'} group={'row'} gap={24} fill={'#161a21'} cornerRadius={24} padding={32}>
                             <Text fontFamily={'Pixelify Sans'} text={'Dashboard'} fontSize={56} fill={'white'} width={'fill'} align={'start'} />
-                            <Rect group={'stack'} fill={'primary'} borderRadius={16} padding={24}>
+                            <Rect group={'stack'} fill={'primary'} cornerRadius={16} padding={24}>
                                 <Text fontFamily={'Pixelify Sans'} text={'PRO'} fontSize={40} fill={'bg'} />
                             </Rect>
                         </Rect>
@@ -39,7 +39,7 @@ export class NestedScene extends Scene {
                         <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
                             {tile({ ref: left, color: '#6990DD', width: 'fill', height: 'fill', flex: 1, label: 'A' })}
                             {/* Right panel is a nested column of stacked chips. */}
-                            <Rect ref={right} height={'fill'} width={'fill'} flex={1} group={'column'} gap={24} fill={'#E8617C'} borderRadius={24} padding={32}>
+                            <Rect ref={right} height={'fill'} width={'fill'} flex={1} group={'column'} gap={24} fill={'#E8617C'} cornerRadius={24} padding={32}>
                                 {tile({ color: '#161a21', width: 'fill', height: 'fill' })}
                                 {tile({ color: '#161a21', width: 'fill', height: 'fill' })}
                             </Rect>

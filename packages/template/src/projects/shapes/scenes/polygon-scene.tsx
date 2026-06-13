@@ -16,7 +16,7 @@ export class PolygonScene extends Scene {
         const ref = createRef<Rect>();
 
         this.add(
-            <Rect ref={ref} fill={'red'} width={400} height={400} borderRadius={20} shadow={{ fill: Fill.color('black', { opacity: 1 }), dx: 10, dy: 10, blur: 0, spread: 100, inner: true }} >
+            <Rect ref={ref} fill={'red'} width={400} height={400} cornerRadius={20} shadow={{ fill: Fill.color('black', { opacity: 1 }), dx: 10, dy: 10, blur: 0, spread: 100, inner: true }} >
             </Rect>
         );
 

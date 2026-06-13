@@ -15,7 +15,8 @@ The primary building block — a rounded rectangle that also acts as a flex/stac
   width={300}
   height={200}
   fill="royalblue"
-  borderRadius={16}
+  cornerRadius={16}
+  cornerStyle="rounded"
   group="column"
   gap={12}
   padding={20}
@@ -24,10 +25,33 @@ The primary building block — a rounded rectangle that also acts as a flex/stac
 
 | Prop | Type | Default |
 |---|---|---|
-| `borderRadius` | `number \| { topLeft, topRight, bottomLeft, bottomRight }` | `0` |
+| `cornerRadius` | `number \| { topLeft, topRight, bottomLeft, bottomRight } \| { top, bottom } \| { left, right }` | `0` |
+| `cornerStyle` | `'rounded' \| 'angled'` (or the same per-corner / per-axis shorthand) | `'rounded'` |
 | `group` | `'row' \| 'column' \| 'stack'` | `'row'` |
 | `gap` | `number \| 'auto'` | `0` |
 | `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` |
+
+### Corner styles
+
+Each corner can be a circular **rounded** arc or an **angled** chamfer (a straight diagonal cut). `cornerStyle` picks between them.
+
+```tsx
+{/* A chamfered (cut) corner */}
+<Rect width={200} height={200} fill="tomato" cornerRadius={24} cornerStyle="angled" />
+```
+
+`cornerRadius` and `cornerStyle` share the same shorthand grammar: a single value applies to every corner, `{ topLeft, topRight, bottomLeft, bottomRight }` targets corners individually, and `{ top, bottom }` / `{ left, right }` target pairs.
+
+```tsx
+{/* Mixed: rounded top corners, angled bottom corners */}
+<Rect
+  width={240}
+  height={160}
+  fill="seagreen"
+  cornerRadius={28}
+  cornerStyle={{ top: 'rounded', bottom: 'angled' }}
+/>
+```
 
 ---
 
@@ -95,13 +119,16 @@ The node auto-measures its bounding box and defaults to `width: 'hug'`, `height:
 A regular convex polygon.
 
 ```tsx
-<Polygon sides={6} width={200} height={200} fill="teal" borderRadius={8} />
+<Polygon sides={6} width={200} height={200} fill="teal" cornerRadius={8} />
 ```
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `sides` | `number` | `5` | Number of sides |
-| `borderRadius` | `number` | `0` | Corner rounding |
+| `cornerRadius` | `number` | `0` | Vertex rounding |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape (arc vs chamfer) |
+
+Polygons and polygrams apply a single `cornerStyle` to every vertex (their vertices don't map to named corners), so it takes a scalar rather than the per-corner shorthand.
 
 ---
 
@@ -110,14 +137,15 @@ A regular convex polygon.
 A star polygon. Lower `ratio` values produce sharper points.
 
 ```tsx
-<Polygram sides={5} ratio={0.4} width={240} height={240} fill="gold" borderRadius={10} />
+<Polygram sides={5} ratio={0.4} width={240} height={240} fill="gold" cornerRadius={10} />
 ```
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `sides` | `number` | `5` | Number of star points |
 | `ratio` | `number` | `0.5` | Inner/outer radius ratio |
-| `borderRadius` | `number` | `0` | Corner rounding |
+| `cornerRadius` | `number` | `0` | Vertex rounding (outer points only) |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape (arc vs chamfer) |
 
 ---
 
@@ -126,14 +154,14 @@ A star polygon. Lower `ratio` values produce sharper points.
 Renders an image file with fit modes and optional media filters.
 
 ```tsx
-<Image src="./photo.jpg" fit="fill" width={800} height={450} borderRadius={12} />
+<Image src="./photo.jpg" fit="fill" width={800} height={450} cornerRadius={12} />
 ```
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `src` | `string` | — | Image file path |
 | `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How image fills the node |
-| `borderRadius` | `number \| BorderRadiusProps` | `0` | Corner rounding |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner rounding |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters |
 | `scaling` | `number` | — | Scale multiplier |
 

@@ -18,10 +18,10 @@ describe('Clip', () => {
     });
 
     it('carries each shape op state through unchanged', () => {
-        const c = new Clip().rect({ width: 200, height: 120, borderRadius: 16 });
+        const c = new Clip().rect({ width: 200, height: 120, cornerRadius: 16 });
         const op = c.ops()[0] as ClipShapeOp;
         expect(op.kind).toBe('rect');
-        expect(op.state).toEqual({ width: 200, height: 120, borderRadius: 16 });
+        expect(op.state).toEqual({ width: 200, height: 120, cornerRadius: 16 });
     });
 
     it('normalizes a PathBuilder into a path op with a PathState', () => {
