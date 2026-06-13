@@ -1,15 +1,10 @@
 
 import { FontStyle } from "@/attributes/text/span";
-import { type RectState } from "./descriptors/rect";
 import { TransformState } from "./descriptors/transform";
 
-import { PathState } from "./descriptors/path";
-import { EllipseState } from "./descriptors/ellipse";
-import { LineState } from "./descriptors/line";
-import { PolygonState } from "./descriptors/polygon";
-import { PolygramState } from "./descriptors/polygram";
 import { MeasureScope } from "./measure-scope";
 import { Graphics } from "./graphics";
+import { Clip } from "./clip";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
@@ -24,19 +19,6 @@ import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl
 
 
 
-
-/**
- * A shape outline to clip against, tagged by kind so the renderer can build the
- * same path it would draw. Used by background blur to confine the backdrop blur
- * to any shape's silhouette.
- */
-export type ClipShape =
-    | { kind: "rect"; state: Partial<RectState> }
-    | { kind: "ellipse"; state: Partial<EllipseState> }
-    | { kind: "polygon"; state: Partial<PolygonState> }
-    | { kind: "polygram"; state: Partial<PolygramState> }
-    | { kind: "path"; state: Partial<PathState> }
-    | { kind: "line"; state: Partial<LineState> };
 
 /**
  * A bounding box in the current node's local space (origin = the node's
@@ -194,22 +176,16 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     abstract endMask(): void;
 
     /**
-     * Push a rectangular clip region so children are confined to the node's
-     * rect boundary. Paired with `endClip()`.
+     * Push a clip region built from a {@link Clip} command list. The clip's
+     * shapes are unioned (with `cut()`s subtracted) into a single path and
+     * intersected with the active clip, so children are confined to that
+     * compound outline — any silhouette, not just a rect or ellipse. Used both
+     * for a node's `clip` boundary and to confine backdrop effects (blur,
+     * magnify) to the node's exact shape. Paired with `endClip()`.
      */
-    abstract beginClipRect(state: Partial<RectState>): void;
-    /** Push an elliptical clip region. Paired with `endClip()`. */
-    abstract beginClipEllipse(state: Partial<EllipseState>): void;
+    abstract beginClip(clip: Clip): void;
     /** Pop the most-recently pushed clip region. */
     abstract endClip(): void;
-
-    /**
-     * Push a silhouette clip built from `shape`'s outline — used by backdrop
-     * effects to confine the effect to the node's exact boundary regardless of
-     * shape type. Paired with `endClip()`. No-op by default; renderers that
-     * don't support it can leave this unimplemented.
-     */
-    beginClipShape(_shape: ClipShape): void { }
 
     /**
      * Open a backdrop-blur layer. The already-painted canvas beneath the node

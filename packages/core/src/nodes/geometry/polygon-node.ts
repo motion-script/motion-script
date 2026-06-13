@@ -1,8 +1,9 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { NodeConfig } from "../base/node";
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
 
 export interface PolygonProps extends ShapeProps {
     /** Number of sides. Must be ≥ 3. */
@@ -36,15 +37,12 @@ export class Polygon extends ShapeNode<PolygonProps> {
             .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    protected override silhouette(): ClipShape {
-        return {
-            kind: "polygon",
-            state: {
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                sides: this.sides,
-                borderRadius: this.borderRadius,
-            },
-        };
+    protected override clipSelf(): Clip {
+        return new Clip().polygon({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            sides: this.sides,
+            borderRadius: this.borderRadius,
+        });
     }
 }

@@ -1,6 +1,7 @@
 
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
@@ -72,23 +73,12 @@ export class Grid extends ShapeNode<GridProps> {
             .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    protected override applyClip(ctx: RenderContext): void {
-        ctx.beginClipRect({
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             borderRadius: this.borderRadius,
         });
-    }
-
-    protected override silhouette(): ClipShape {
-        return {
-            kind: "rect",
-            state: {
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
-            },
-        };
     }
 
     // ---- Padding -------------------------------------------------------------

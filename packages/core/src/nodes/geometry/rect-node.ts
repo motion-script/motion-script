@@ -1,5 +1,6 @@
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -133,23 +134,12 @@ export class Rect extends ShapeNode<RectProps> {
             .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    protected override applyClip(ctx: RenderContext): void {
-        ctx.beginClipRect({
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             borderRadius: this.borderRadius,
         });
-    }
-
-    protected override silhouette(): ClipShape {
-        return {
-            kind: "rect",
-            state: {
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
-            },
-        };
     }
 
     // ---- Padding ----------------------------------------------------------

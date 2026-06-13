@@ -22,6 +22,7 @@ import {
     TextFillsScene,
     TextShadowScene,
 } from './scenes';
+import { PolygonScene } from './scenes/polygon-scene';
 
 /**
  * A project that walks through every fill, stroke, and shadow case, one
@@ -40,6 +41,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new PolygonScene(),
         new ColorFillScene(),
         new LinearGradientScene(),
         new ConicGradientScene(),

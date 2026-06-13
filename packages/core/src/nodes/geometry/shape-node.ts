@@ -7,7 +7,8 @@ import { resolveShadowArray, ShadowResolved, type ShadowProp } from "@/attribute
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { ChainableFill } from "@/attributes/shape/fill/chain";
 
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
+import { Clip } from "@/render/clip";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
@@ -114,18 +115,29 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     protected abstract renderSelf(ctx: RenderContext): void;
 
     /**
-     * Push a clip region matching this shape's outline. Subclasses with a
-     * concrete silhouette (rect, ellipse, …) override this; the default is a
-     * no-op so shapes without a clip outline simply render unclipped.
+     * This shape's outline as a {@link Clip} command list — the single source of
+     * truth for every clip the node needs: its `clip` boundary (when `clip` is
+     * true) and the silhouette its backdrop effects (background blur, magnify)
+     * are confined to. Concrete shapes with a fillable outline override this to
+     * describe their geometry (and can compose multiple shapes / `cut()`s for a
+     * compound clip); the default `null` means the shape has no clip outline, so
+     * it renders unclipped and gets no backdrop effects.
      */
-    protected applyClip(_ctx: RenderContext): void { }
+    protected clipSelf(): Clip | null { return null; }
 
     /**
-     * This shape's outline, used to clip the background blur to its silhouette.
-     * Concrete shapes with a fillable outline override this; the default `null`
-     * means the shape gets no background blur.
+     * Push this shape's `clipSelf()` outline as a clip scope, confining whatever
+     * is drawn until the matching `endClip()` to the shape. Returns `true` when a
+     * clip was actually opened (so the caller knows to close it) and `false` when
+     * the shape has no outline. Not overridable — the outline is defined once in
+     * `clipSelf()`.
      */
-    protected silhouette(): ClipShape | null { return null; }
+    private applyClip(ctx: RenderContext): boolean {
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return false;
+        ctx.beginClip(clip);
+        return true;
+    }
 
     /**
      * Apply backdrop effects (background blur, bulge/pinch) beneath this shape,
@@ -145,15 +157,15 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         }
         if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
 
-        const shape = this.silhouette();
-        if (!shape) return;
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return;
 
         const w = this.layoutRect?.width ?? 0;
         const h = this.layoutRect?.height ?? 0;
 
         // Clip to the silhouette first so each backdrop layer is confined to the
         // shape; the renderer opens the backdrop filter within that clip.
-        ctx.beginClipShape(shape);
+        ctx.beginClip(clip);
         if (blurRadius > 0) {
             ctx.beginBackgroundBlur(blurRadius);
             ctx.endBackgroundBlur();
@@ -198,9 +210,12 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         if (bulge) ctx.beginForegroundDistortion(bulge, w, h);
 
         this.renderSelf(ctx);
-        if (this.clip) this.applyClip(ctx);
+        // Confine children to this shape's outline. Built once from clipSelf();
+        // skipped when the shape has no outline (clipped === false) so the
+        // endClip() below stays balanced.
+        const clipped = this.clip && this.applyClip(ctx);
         this.renderChildren(ctx);
-        if (this.clip) ctx.endClip();
+        if (clipped) ctx.endClip();
 
         if (bulge) ctx.endForegroundDistortion();
         if (posterize) ctx.endPosterize();

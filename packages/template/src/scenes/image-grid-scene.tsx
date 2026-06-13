@@ -1,4 +1,4 @@
-import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait } from "@motion-script/core";
+import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait } from "@motion-script/core";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -66,12 +66,12 @@ class GridCell extends ShapeNode<ShapeProps> {
         const right = this.col < this.grid.columns ? bx : 0;
         const top = this.row > 1 ? by : 0;
         const bottom = this.row < this.grid.rows ? by : 0;
-        ctx.beginClipRect({
+        ctx.beginClip(new Clip().rect({
             x: (right - left) / 2,
             y: (bottom - top) / 2,
             width: r.width + left + right,
             height: r.height + top + bottom,
-        });
+        }));
         ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "crop" }));
         ctx.endClip();
 

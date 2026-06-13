@@ -3,10 +3,12 @@ import type {
     Canvas,
     Surface,
     Paint,
+    Path as CKPath,
 } from "@motion-script/canvaskit";
 import {
     type BooleanOperation,
-    type ClipShape,
+    Clip,
+    type ClipOp,
     type EllipseState,
     type FillProp,
     type FillResolved,
@@ -887,30 +889,34 @@ export class WebRenderContext extends RenderContext {
 
     // ─── Clip scope ──────────────────────────────────────────────────────────
 
-    beginClipRect(state: Partial<RectState>): void {
+    beginClip(clip: Clip): void {
         if (!this.isRendering) {
-            console.warn("beginClipRect() must be called within the draw() method.");
+            console.warn("beginClip() must be called within the draw() method.");
             return;
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new RectShape(this.canvasKit, () => this.currentCanvas, state);
-        shape.clip(/* isolated= */ true);
-        if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
-    }
 
-    beginClipEllipse(state: Partial<EllipseState>): void {
-        if (!this.isRendering) {
-            console.warn("beginClipEllipse() must be called within the draw() method.");
+        const ops = clip.ops();
+        // Fast path — a single shape with no cut clips natively (clipRect/clipRRect
+        // for axis-aligned rects/ellipses), no combined path needed.
+        if (ops.length === 1 && ops[0].kind !== "cut") {
+            const shape = this.buildClipShapeOp(ops[0]);
+            if (shape) {
+                shape.clip(/* isolated= */ true);
+                shape.deletePaths();
+            }
             return;
         }
-        const canvas = this.currentCanvas;
-        canvas.save();
-        const shape = new EllipseShape(this.canvasKit, () => this.currentCanvas, state);
-        shape.clip(/* isolated= */ true);
-        if (shape.ckPath) shape.ckPath.delete();
-        this.clipRestoreStack.push(1);
+
+        // Compound clip: union the shapes (subtracting cuts) into one path and
+        // clip to it. No-op when nothing built a path.
+        const combined = this.combineClipPath(clip);
+        if (combined) {
+            canvas.clipPath(combined, this.canvasKit.ClipOp.Intersect, true);
+            combined.delete();
+        }
     }
 
     endClip(): void {
@@ -924,38 +930,70 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    private buildClipShape(shape: ClipShape): CurrentShape | null {
+    /** Build the concrete shape instance for a single clip shape op. */
+    private buildClipShapeOp(op: ClipOp): RectShape | EllipseShape | PolygonShape | PolygramShape | PathShape | LineShape | null {
         const ck = this.canvasKit;
         const canvas = () => this.currentCanvas;
-        // Call clip(true) to apply the clip (uses native clipRect/clipRRect when possible),
-        // then return a stub CurrentShape only if a ckPath was built so beginClipShape
-        // can delete it. Returns null when the clip was applied without a path.
-        let s: RectShape | EllipseShape | PolygonShape | PolygramShape | PathShape | LineShape;
-        switch (shape.kind) {
-            case "rect": s = new RectShape(ck, canvas, shape.state); break;
-            case "ellipse": s = new EllipseShape(ck, canvas, shape.state); break;
-            case "polygon": s = new PolygonShape(ck, canvas, shape.state); break;
-            case "polygram": s = new PolygramShape(ck, canvas, shape.state); break;
-            case "path": s = new PathShape(ck, canvas, shape.state); break;
-            case "line": s = new LineShape(ck, canvas, shape.state); break;
+        switch (op.kind) {
+            case "rect": return new RectShape(ck, canvas, op.state);
+            case "ellipse": return new EllipseShape(ck, canvas, op.state);
+            case "polygon": return new PolygonShape(ck, canvas, op.state);
+            case "polygram": return new PolygramShape(ck, canvas, op.state);
+            case "path": return new PathShape(ck, canvas, op.state);
+            case "line": return new LineShape(ck, canvas, op.state);
+            case "cut": return null;
         }
-        s.clip(true);
-        return s.ckPath ? { draw: () => { }, ckPath: s.ckPath } : null;
     }
 
-    beginClipShape(shape: ClipShape): void {
-        if (!this.isRendering) {
-            console.warn("beginClipShape() must be called within the draw() method.");
-            return;
+    /**
+     * Replay a {@link Clip}'s ops into a single CanvasKit path: shapes union
+     * together, and a `cut` subtracts the most-recently declared shape from the
+     * shapes before it (mirroring `Graphics.cut()`). Returns a freshly-owned path
+     * the caller must `delete()`, or `null` when no shape produced a path.
+     */
+    private combineClipPath(clip: Clip): CKPath | null {
+        const ck = this.canvasKit;
+        // Each entry is a path the caller (this method) owns; we fold them into one.
+        const paths: CKPath[] = [];
+        for (const op of clip.ops()) {
+            if (op.kind === "cut") {
+                // Subtract the last path from the union of the ones before it.
+                const cutter = paths.pop();
+                if (!cutter) continue;
+                const base = this.unionPaths(paths.splice(0, paths.length));
+                if (!base) { cutter.delete(); continue; }
+                const diff = ck.Path.MakeFromOp(base, cutter, ck.PathOp.Difference);
+                base.delete();
+                cutter.delete();
+                if (diff) paths.push(diff);
+                continue;
+            }
+            const shape = this.buildClipShapeOp(op);
+            if (!shape) continue;
+            shape.ensurePath();
+            // Copy out the path so deletePaths() doesn't free what we keep.
+            if (shape.ckPath) paths.push(shape.ckPath.copy());
+            shape.deletePaths();
         }
-        const canvas = this.currentCanvas;
-        canvas.save();
-        const built = this.buildClipShape(shape);
-        if (built?.ckPath) {
-            canvas.clipPath(built.ckPath, this.canvasKit.ClipOp.Intersect, true);
-            built.ckPath.delete();
+        return this.unionPaths(paths);
+    }
+
+    /** Union a list of owned paths into one, consuming the inputs. */
+    private unionPaths(paths: CKPath[]): CKPath | null {
+        const ck = this.canvasKit;
+        if (paths.length === 0) return null;
+        let combined = paths[0];
+        for (let i = 1; i < paths.length; i++) {
+            const next = ck.Path.MakeFromOp(combined, paths[i], ck.PathOp.Union);
+            combined.delete();
+            paths[i].delete();
+            if (!next) {
+                for (let j = i + 1; j < paths.length; j++) paths[j].delete();
+                return null;
+            }
+            combined = next;
         }
-        this.clipRestoreStack.push(1);
+        return combined;
     }
 
     // ─── Background blur ───────────────────────────────────────────────────────
