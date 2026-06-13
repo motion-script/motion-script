@@ -684,17 +684,27 @@ export class StrokeHandler {
             // the shadow intrude further, which means shrinking the contour it is
             // cast from — so we ask for spreadPath(-spread). The clip still uses
             // the real silhouette below, so only the visible recess is painted.
-            // A null spread path (unsupported shape, or a collapse) falls back to
-            // the real contour.
-            const spreadContour = shadow.spread !== 0
-                ? (shape.spreadPath?.(-shadow.spread) ?? null)
+            const supportsSpread = shadow.spread !== 0 && !!shape.spreadPath;
+            const spreadContour = supportsSpread
+                ? shape.spreadPath!(-shadow.spread)
                 : null;
-            const contour = spreadContour ?? shape.ckPath;
+
+            // A positive spread that exceeds the shape's half-size collapses the
+            // contour to nothing (spreadPath returns null on a supported shape):
+            // the inset shadow then fills the whole interior, so there's no contour
+            // to subtract — pass null and the region becomes the full padded rect.
+            // For unsupported shapes we cast from the real silhouette (no spread).
+            const contour = spreadContour
+                ?? (supportsSpread ? null : shape.ckPath);
 
             // The blur reaches `blur` px past the contour, and the offset shifts
             // it further; pad the bounding rect so its own edges never cast a
-            // shadow into the shape.
-            const region = this.buildInnerShadowRegion(contour, dx, dy, shadow.blur);
+            // shadow into the shape. The enclosing rect is sized from the *real*
+            // silhouette (shape.ckPath), not the spread contour — a large positive
+            // spread shrinks the contour well inside the shape, so a rect sized to
+            // the contour would fall short of the real edges and leave an unpainted
+            // band there.
+            const region = this.buildInnerShadowRegion(contour, shape.ckPath, dx, dy, shadow.blur);
             if (!region) { spreadContour?.delete(); continue; }
 
             for (const fill of shadow.fill) {
@@ -738,23 +748,33 @@ export class StrokeHandler {
 
     /**
      * The fillable region for an inset shadow: a padded bounding rect with an
-     * offset copy of `path` subtracted, so filling it covers everything *outside*
-     * the shifted contour. Caller owns the result and must delete() it; returns
-     * null if the boolean op fails.
+     * offset copy of `contour` subtracted, so filling it covers everything
+     * *outside* the shifted contour. The enclosing rect is sized from `silhouette`
+     * — the real shape the result is clipped to — rather than `contour`, so a
+     * spread-shrunk contour can't pull the rect inside the shape and leave an
+     * unpainted band at the edges. A null `contour` (a positive spread that
+     * collapsed the contour to nothing) subtracts nothing, so the region is the
+     * whole padded rect and the shadow fills the entire interior. Caller owns the
+     * result and must delete() it; returns null if the boolean op fails.
      */
-    private buildInnerShadowRegion(path: CKPath, dx: number, dy: number, blur: number): CKPath | null {
-        // Offset copy of the contour (PathBuilder, since Path is immutable here).
-        const offsetBuilder = new this.canvasKit.PathBuilder(path);
-        offsetBuilder.offset(dx, dy);
-        const offset = offsetBuilder.detachAndDelete();
-
-        // Bounding rect padded past the blur + offset reach, so the rect's own
-        // edges sit far enough out to never bleed into the shape.
-        const b = path.getBounds();
+    private buildInnerShadowRegion(contour: CKPath | null, silhouette: CKPath, dx: number, dy: number, blur: number): CKPath | null {
+        // Bounding rect padded past the blur + offset reach, measured from the
+        // real silhouette so the rect always fully encloses the shape no matter
+        // how far a positive spread shrank the contour.
+        const b = silhouette.getBounds();
         const pad = blur * 2 + Math.abs(dx) + Math.abs(dy) + 1;
         const rectBuilder = new this.canvasKit.PathBuilder();
         rectBuilder.addRect([b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad]);
         const rect = rectBuilder.detachAndDelete();
+
+        // No contour to subtract — the whole padded rect is the region (clipped to
+        // the shape later, this fills the entire interior).
+        if (!contour) return rect;
+
+        // Offset copy of the contour (PathBuilder, since Path is immutable here).
+        const offsetBuilder = new this.canvasKit.PathBuilder(contour);
+        offsetBuilder.offset(dx, dy);
+        const offset = offsetBuilder.detachAndDelete();
 
         // rect − offsetShape = the area outside the shifted contour, as a normal
         // (non-inverse) fillable path. MakeFromOp doesn't consume its inputs.
