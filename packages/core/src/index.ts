@@ -9,6 +9,5 @@ export * from './util'
 export * from './tween';
 export * from './signals';
 export * from './layout';
-export * from './signals';
 export * from './jsx/jsx-runtime';
 

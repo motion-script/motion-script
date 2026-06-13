@@ -34,21 +34,21 @@ class ClipRecorderContext {
 
     // ── Everything else the ShapeNode render path calls: no-ops ──────────────
     transform(): this { return this; }
-    draw(): void {}
-    begin(): void {}
-    end(): void {}
-    beginBackdropFilter(): void {}
-    endBackdropFilter(): void {}
-    beginBackgroundDistortion(): void {}
-    endBackgroundDistortion(): void {}
-    beginBackdropSkSL(): void {}
-    endBackdropSkSL(): void {}
-    beginForegroundDistortion(): void {}
-    endForegroundDistortion(): void {}
-    beginPosterize(): void {}
-    endPosterize(): void {}
-    beginBackdropPosterize(): void {}
-    endBackdropPosterize(): void {}
+    draw(): void { }
+    begin(): void { }
+    end(): void { }
+    beginBackdropFilter(): void { }
+    endBackdropFilter(): void { }
+    beginBackgroundDistortion(): void { }
+    endBackgroundDistortion(): void { }
+    beginBackdropSkSL(): void { }
+    endBackdropSkSL(): void { }
+    beginForegroundDistortion(): void { }
+    endForegroundDistortion(): void { }
+    beginPosterize(): void { }
+    endPosterize(): void { }
+    beginBackdropPosterize(): void { }
+    endBackdropPosterize(): void { }
 
     asCtx(): RenderContext {
         return this as unknown as RenderContext;
@@ -121,7 +121,7 @@ describe('ShapeNode.clipSelf — geometry nodes describe their outline', () => {
 // A ShapeNode subclass with no clipSelf() override — the base behaviour.
 class OutlinelessShape extends ShapeNode<ShapeProps> {
     constructor(props: NodeConfig<OutlinelessShape, ShapeProps>) { super(props); }
-    protected renderSelf(): void {}
+    protected renderSelf(): void { }
 }
 
 describe('ShapeNode clip scope balance during onRender', () => {
@@ -199,7 +199,7 @@ describe('ShapeNode.applyClip (private) — pushes only a real outline', () => {
 
 describe('ShapeNode backdrop effects clip to clipSelf()', () => {
     it('a backdrop-blur shape clips its backdrop to its own outline', () => {
-        const rect = new Rect({ effects: [{ type: 'blur', radius: 8, backdrop: true }] });
+        const rect = new Rect({ effects: [{ type: 'blur', blur: 8, backdrop: true }] });
         setLayout(rect, RECT);
 
         const ctx = new ClipRecorderContext();

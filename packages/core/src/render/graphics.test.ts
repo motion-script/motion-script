@@ -33,7 +33,7 @@ describe('Graphics', () => {
             .rotation(30)
             .scale(2)
             .opacity(0.5)
-            .effects([{ type: 'blur', radius: 2 }]);
+            .effects([{ type: 'blur', blur: 2 }]);
 
         const op = g.ops()[0] as GraphicsShapeOp;
         // None of the modifiers merge into the shape — they're graphics-level.
