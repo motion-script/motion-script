@@ -11,13 +11,13 @@ export class PolygonScene extends Scene {
     readonly label = 'Autofit Text';
 
     *build() {
-        this.set({ fill: 'bg' });
+        this.set({ fill: 'white' });
 
-        const ref = createRef<Polygon>();
+        const ref = createRef<Rect>();
 
         this.add(
-            <Polygon ref={ref} fill={'red'} width={400} height={400} borderRadius={20} shadow={{ inner: true, fill: Fill.color('white', { opacity: 1 }), dx: 10, dy: 0, blur: 10 }} >
-            </Polygon>
+            <Rect ref={ref} fill={'red'} width={400} height={400} borderRadius={20} shadow={{ fill: Fill.color('black', { opacity: 1 }), dx: 10, dy: 10, blur: 0, spread: 40, inner: true }} >
+            </Rect>
         );
 
         yield* wait(2);

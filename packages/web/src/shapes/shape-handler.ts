@@ -36,6 +36,12 @@ export interface CurrentShape {
     // and want strokes that follow the union of glyph silhouettes — see
     // StrokeHandler.drawTextUnionStroke.
     isText?: boolean;
+    // A copy of the silhouette grown (positive) or shrunk (negative) by `spread`
+    // px, for shadow spread. Only ellipses and rectangles can resize their
+    // geometry cleanly, so this is absent for every other shape kind. Returns
+    // null when the shrink would collapse the shape. The caller owns the path
+    // and must delete() it.
+    spreadPath?: (spread: number) => CKPath | null;
 }
 
 // Shallow equality check for plain state objects. Handles the common case where

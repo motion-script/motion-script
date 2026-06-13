@@ -789,7 +789,7 @@ export class WebRenderContext extends RenderContext {
     // any transient union path. `space` is accepted for call-site symmetry with
     // the fill path but no longer changes the grouping.
     private strokeShapesForSpace(_space: FillSpace): {
-        shapes: Array<{ draw: (p: any) => void; ckPath?: any }>;
+        shapes: Array<{ draw: (p: any) => void; ckPath?: any; spreadPath?: (spread: number) => any }>;
         dispose: () => void;
     } {
         const union = this.shapeHandler.unionStrokeShape();

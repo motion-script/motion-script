@@ -48,6 +48,25 @@ export class EllipseShape extends BaseShape<EllipseState, EllipseGeo> {
         return `M ${sx} ${sy} A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}`;
     }
 
+    protected override supportsSpread(): boolean {
+        return true;
+    }
+
+    // Grow/shrink the ellipse by `spread` px on every side: each half-axis moves
+    // by `spread`. Spread only makes sense for the full ellipse — a partial arc
+    // bounds no region to inset — so arcs return null (no spread). A shrink that
+    // collapses either axis returns null too.
+    protected override buildSpreadSVGPath(geo: EllipseGeo, spread: number): string | null {
+        if (!geo.isFullShape) return null;
+        const halfWidth = geo.halfWidth + spread;
+        const halfHeight = geo.halfHeight + spread;
+        if (halfWidth <= 0 || halfHeight <= 0) return null;
+        const { cx, cy } = geo;
+        const left = cx - halfWidth;
+        const right = cx + halfWidth;
+        return `M ${left} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${right} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${left} ${cy} Z`;
+    }
+
     protected needsTrim(): boolean {
         return this.fullState.start !== 0 || this.fullState.end !== 1;
     }

@@ -88,6 +88,41 @@ export class RectShape extends BaseShape<RectState, RectGeo> {
         return roundedRectToSvg(left, top, right, bottom, tl, tr, br, bl);
     }
 
+    protected override supportsSpread(): boolean {
+        return true;
+    }
+
+    // Grow/shrink the rect by `spread` px on every side: each edge moves out by
+    // `spread` and each corner radius grows by `spread` (clamped at 0), matching
+    // CSS box-shadow spread. Radii are re-clamped against the new size so they
+    // never self-intersect. A shrink that collapses width or height returns null.
+    protected override buildSpreadSVGPath(geo: RectGeo, spread: number): string | null {
+        const left = geo.left - spread;
+        const top = geo.top - spread;
+        const right = geo.right + spread;
+        const bottom = geo.bottom + spread;
+        const w = right - left;
+        const h = bottom - top;
+        if (w <= 0 || h <= 0) return null;
+
+        let tl = Math.max(0, geo.tl + spread);
+        let tr = Math.max(0, geo.tr + spread);
+        let br = Math.max(0, geo.br + spread);
+        let bl = Math.max(0, geo.bl + spread);
+
+        const scaleTop    = tl + tr > 0 ? Math.min(1, w / (tl + tr)) : 1;
+        const scaleBottom = bl + br > 0 ? Math.min(1, w / (bl + br)) : 1;
+        const scaleLeft   = tl + bl > 0 ? Math.min(1, h / (tl + bl)) : 1;
+        const scaleRight  = tr + br > 0 ? Math.min(1, h / (tr + br)) : 1;
+        const scale = Math.min(scaleTop, scaleBottom, scaleLeft, scaleRight);
+        tl *= scale; tr *= scale; br *= scale; bl *= scale;
+
+        if (tl === 0 && tr === 0 && br === 0 && bl === 0) {
+            return `M ${left} ${top} L ${right} ${top} L ${right} ${bottom} L ${left} ${bottom} Z`;
+        }
+        return roundedRectToSvg(left, top, right, bottom, tl, tr, br, bl);
+    }
+
     protected needsTrim(): boolean {
         return this.fullState.start !== 0 || this.fullState.end !== 1;
     }

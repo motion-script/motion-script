@@ -336,4 +336,11 @@ yield* rect().to({ stroke: { dashOffset: 100 } }, 1);
   { blur: 10, fill: 'black', opacity: 0.3, dx: 5, dy: 5 },
   { blur: 30, fill: '#4f80ff', opacity: 0.2, dx: 0, dy: 0 },
 ]} />
+
+// Spread grows (or, when negative, shrinks) the shadow before it blurs,
+// like CSS box-shadow spread. Only ellipses and rectangles support it.
+<Rect shadow={{ blur: 20, fill: 'black', opacity: 0.4, spread: 12 }} />
+
+// Inner (inset) shadow
+<Rect shadow={{ blur: 12, fill: 'black', opacity: 0.5, dy: 4, inner: true }} />
 ```

@@ -505,7 +505,7 @@ export class StrokeHandler {
      */
     applyShadows(
         shadows: ShadowResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         fills: FillResolved[],
         strokes: StrokeResolved[],
         resolveBounds?: (
@@ -540,7 +540,7 @@ export class StrokeHandler {
      */
     applyInnerShadows(
         shadows: ShadowResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         fills: FillResolved[],
         resolveBounds?: (
             fill: FillResolved,
@@ -568,7 +568,7 @@ export class StrokeHandler {
     /** Outer drop shadow: for each fill layer, offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
     private applyDropShadow(
         shadow: ShadowResolved,
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         hasFill: boolean,
         hasStrokes: boolean,
         strokes: StrokeResolved[],
@@ -579,6 +579,17 @@ export class StrokeHandler {
         const paint = this.getPaint();
         const dx = shadow.dx ?? 0;
         const dy = shadow.dy ?? 0;
+
+        // A non-zero spread grows/shrinks the filled silhouette before blur, but
+        // only for shapes that can resize their geometry cleanly (ellipse, rect);
+        // every other shape ignores it. Spread applies to the box, not strokes, so
+        // only build them when there's a fill to recolour. Built once and reused
+        // across fill layers. A null entry means "this shape has no spread path"
+        // (unsupported kind, or the shrink collapsed it) — fall back to the real
+        // silhouette so the shadow still casts.
+        const spreadPaths = shadow.spread !== 0 && hasFill
+            ? shapes.map(s => s.spreadPath?.(shadow.spread) ?? null)
+            : null;
 
         for (const fill of shadow.fill) {
             const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
@@ -608,7 +619,11 @@ export class StrokeHandler {
             if (hasFill) {
                 paint.setStyle(this.canvasKit.PaintStyle.Fill);
                 paint.setPathEffect(null);
-                for (const shape of shapes) shape.draw(paint);
+                for (let i = 0; i < shapes.length; i++) {
+                    const spreadPath = spreadPaths?.[i];
+                    if (spreadPath) canvas.drawPath(spreadPath, paint);
+                    else shapes[i].draw(paint);
+                }
             }
 
             if (hasStrokes) {
@@ -633,6 +648,8 @@ export class StrokeHandler {
             canvas.restore();
             layerPaint.delete();
         }
+
+        if (spreadPaths) for (const p of spreadPaths) p?.delete();
     }
 
     /**
@@ -646,7 +663,7 @@ export class StrokeHandler {
      */
     private applyInnerShadow(
         shadow: ShadowResolved,
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         hasFill: boolean,
         worldAlpha: number,
         resolveBounds?: (fill: FillResolved, shape: { ckPath?: CKPath } | null) => void,
@@ -663,11 +680,22 @@ export class StrokeHandler {
         for (const shape of shapes) {
             if (!shape.ckPath) continue;
 
+            // Spread is the inverse for an inset shadow: a positive spread makes
+            // the shadow intrude further, which means shrinking the contour it is
+            // cast from — so we ask for spreadPath(-spread). The clip still uses
+            // the real silhouette below, so only the visible recess is painted.
+            // A null spread path (unsupported shape, or a collapse) falls back to
+            // the real contour.
+            const spreadContour = shadow.spread !== 0
+                ? (shape.spreadPath?.(-shadow.spread) ?? null)
+                : null;
+            const contour = spreadContour ?? shape.ckPath;
+
             // The blur reaches `blur` px past the contour, and the offset shifts
             // it further; pad the bounding rect so its own edges never cast a
             // shadow into the shape.
-            const region = this.buildInnerShadowRegion(shape.ckPath, dx, dy, shadow.blur);
-            if (!region) continue;
+            const region = this.buildInnerShadowRegion(contour, dx, dy, shadow.blur);
+            if (!region) { spreadContour?.delete(); continue; }
 
             for (const fill of shadow.fill) {
                 const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
@@ -704,6 +732,7 @@ export class StrokeHandler {
             }
 
             region.delete();
+            spreadContour?.delete();
         }
     }
 

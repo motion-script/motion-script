@@ -9,6 +9,7 @@ function lerpShadow(from: ShadowResolved, to: ShadowResolved, t: number): Shadow
         fill: lerpFillArray(from.fill, to.fill, t),
         // inner/outer is a discrete kind — keep the start's until the tween completes.
         inner: t < 1 ? from.inner : to.inner,
+        spread: from.spread + (to.spread - from.spread) * t,
     };
 }
 

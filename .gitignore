@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Vitest browser-mode artifacts (failure screenshots / attachments)
+**/.vitest-attachments/
+**/test/__screenshots__/
+
 # Generated CanvasKit wasm — copied from the @motion-script/canvaskit package
 # by scripts/copy-wasm.js at install/dev time. Never commit it.
 **/public/canvaskit.wasm

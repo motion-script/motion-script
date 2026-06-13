@@ -42,6 +42,15 @@ export abstract class BaseShape<S, G = unknown> {
     protected abstract needsTrim(): boolean;
     protected abstract getTrimRange(): { start: number; end: number };
 
+    // SVG for the silhouette grown (positive) or shrunk (negative) by `spread`
+    // px, used by shadow spread. Subclasses whose geometry resizes cleanly
+    // (ellipse, rect) override this; the default returns null so the shape kind
+    // is treated as not supporting spread. Returning null for a given `spread`
+    // (e.g. a shrink that collapses the shape) is also valid.
+    protected buildSpreadSVGPath(_geo: G, _spread: number): string | null {
+        return null;
+    }
+
     // Public accessors used by ShapeHandler for cache invalidation.
     hasTrim(): boolean { return this.needsTrim(); }
     trimRange(): { start: number; end: number } { return this.getTrimRange(); }
@@ -129,6 +138,20 @@ export abstract class BaseShape<S, G = unknown> {
         return out;
     }
 
+    // Build a fresh path for the silhouette grown/shrunk by `spread` px, with the
+    // shape's own rotation/scale baked in (so a spread shadow tracks a rotated
+    // shape). Returns null when the shape kind doesn't support spread or the
+    // shrink collapses it. Trim is intentionally ignored — a spread shadow is
+    // cast by the whole silhouette, not a trimmed arc. Caller owns the result and
+    // must delete() it.
+    spreadPath(spread: number): CKPath | null {
+        const svg = this.buildSpreadSVGPath(this.geometry, spread);
+        if (svg == null) return null;
+        const path = this.canvasKit.Path.MakeFromSVGString(svg);
+        if (!path) return null;
+        return this.applyShapeTransform(path);
+    }
+
     protected _setBasePath(path: CKPath): void {
         this._basePath = path;
     }
@@ -162,6 +185,14 @@ export abstract class BaseShape<S, G = unknown> {
         }
     }
 
+    // True when this shape kind can resize its geometry cleanly for shadow
+    // spread (ellipse, rect). Defaults to false; spread is silently ignored for
+    // every other shape kind. Subclasses that override buildSpreadSVGPath set
+    // this so the capability is advertised on the CurrentShape.
+    protected supportsSpread(): boolean {
+        return false;
+    }
+
     // Returns a CurrentShape whose ckPath is a live getter on this instance,
     // so ensurePath() called after toCurrentShape() is reflected immediately.
     toCurrentShape(isolated: boolean): CurrentShape {
@@ -170,6 +201,7 @@ export abstract class BaseShape<S, G = unknown> {
             draw: (paint: Paint) => shape.draw(paint, isolated),
             get ckPath() { return shape.ckPath; },
             bounds: this.computeBounds(this.geometry),
+            spreadPath: this.supportsSpread() ? (spread: number) => shape.spreadPath(spread) : undefined,
         };
     }
 
