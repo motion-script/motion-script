@@ -3,11 +3,11 @@ import type { BlendMode } from "./blend";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillSpace } from "./union";
-import type { ImageFillMode, ImageTransform } from "./implementations/image";
+import type { ImageFit, ImageTransform } from "./implementations/image";
 
 /** Author-facing options for a {@link FillChain.video} layer. */
 export interface VideoFillOptions extends FillOptions {
-    mode?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     filters?: MediaFilter[];
@@ -63,14 +63,14 @@ export class FillChain {
     }
 
     /** Append an image fill from `src`. */
-    image(src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) {
+    image(src: string, options?: FillOptions & { mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) {
         const { mode, transform, scaling, filters, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'image' as const, src, mode, transform, scaling, filters }, common)]);
     }
 
     /** Append a video fill from `src`. Plays by default, advancing its timestamp each frame. */
     video(src: string, options?: VideoFillOptions) {
-        const { mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
+        const { fit: mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
@@ -143,7 +143,7 @@ export type ChainableFill = FillProp | FillChain | (FillProp | FillChain)[];
 export const Fill = {
     color: (color: Color, options?: FillOptions) =>
         new FillChain().color(color, options),
-    image: (src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) =>
+    image: (src: string, options?: FillOptions & { fit?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) =>
         new FillChain().image(src, options),
     video: (src: string, options?: VideoFillOptions) =>
         new FillChain().video(src, options),

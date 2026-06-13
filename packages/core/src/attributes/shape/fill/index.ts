@@ -14,7 +14,7 @@ export { resolveFill, resolveFillArray, lerpFill, lerpFillArray, updateFill, pre
 
 export type { SolidFillProp, SolidFillResolved } from './implementations/color';
 export type { ConicGradientFillProp, ConicGradientFillResolved } from './implementations/conic-gradient';
-export type { ImageFillMode, ImageTransform, ImageFillProp, ImageFillResolved } from './implementations/image';
+export type { ImageFit as ImageFillMode, ImageTransform, ImageFillProp, ImageFillResolved } from './implementations/image';
 export type { LinearGradientFillProp, LinearGradientFillResolved } from './implementations/linear-gradient';
 export type { NoiseFillProp, NoiseFillResolved } from './implementations/noise';
 export type { RadialGradientFillProp, RadialGradientFillResolved } from './implementations/radial-gradient';

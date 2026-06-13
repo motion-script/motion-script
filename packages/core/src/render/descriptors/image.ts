@@ -1,10 +1,10 @@
 import { MediaFilter } from "@/attributes/shape/filters/union";
 import { RectState, withRectDescriptor } from "./rect";
-import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implementations/image";
+import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 
 export interface ImageState extends RectState {
     src?: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     filters?: MediaFilter[];

@@ -5,6 +5,6 @@ import { VideoFillScene, VideoFillSpec, SAMPLE_VIDEO } from "./video-fill";
 export class VideoCropScene extends VideoFillScene {
     readonly spec: VideoFillSpec = {
         label: 'Video — crop',
-        fill: Fill.video(SAMPLE_VIDEO, { mode: 'crop', loop: 'forward' }),
+        fill: Fill.video(SAMPLE_VIDEO, { fit: 'crop', loop: 'forward' }),
     };
 }

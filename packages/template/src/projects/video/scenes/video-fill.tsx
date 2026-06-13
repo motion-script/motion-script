@@ -29,7 +29,7 @@ export abstract class VideoFillScene extends Scene {
         this.set({ fill: 'bg' });
 
         const { label, mode = 'fill', fill, duration = 4 } = this.spec;
-        const videoFill = fill ?? Fill.video(SAMPLE_VIDEO, { mode, loop: 'forward' });
+        const videoFill = fill ?? Fill.video(SAMPLE_VIDEO, { fit: mode, loop: 'forward' });
 
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>

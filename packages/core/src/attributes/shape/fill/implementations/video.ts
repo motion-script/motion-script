@@ -1,14 +1,14 @@
 import type { BlendMode } from '../blend';
 import type { MediaFilter } from '../../filters/union';
 import type { FillData } from '../registry';
-import type { ImageFillMode, ImageTransform } from './image';
+import type { ImageFit, ImageTransform } from './image';
 import { lerpNumber } from '@/tween/lerp';
 
 
 export interface VideoFillProp {
     type: 'video';
     src: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     timestamp: number;
@@ -26,7 +26,7 @@ export interface VideoFillProp {
 export interface VideoFillResolved {
     type: 'video';
     src: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     timestamp: number;

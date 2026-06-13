@@ -2,13 +2,13 @@ import type { BlendMode } from '../blend';
 import type { MediaFilter } from '../../filters/union';
 import type { FillData } from '../registry';
 
-export type ImageFillMode = 'fill' | 'fit' | 'crop' | 'tile';
+export type ImageFit = 'fill' | 'fit' | 'crop' | 'tile';
 export type ImageTransform = Float32Array | number[][];
 
 export interface ImageFillProp {
     type: 'image';
     src: string;
-    mode?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     filters?: MediaFilter[];
@@ -19,7 +19,7 @@ export interface ImageFillProp {
 export interface ImageFillResolved {
     type: 'image';
     src: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     filters?: MediaFilter[];

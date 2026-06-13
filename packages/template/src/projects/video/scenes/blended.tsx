@@ -10,6 +10,6 @@ export class VideoBlendedScene extends VideoFillScene {
     readonly spec: VideoFillSpec = {
         label: 'Video — opacity + blend',
         fill: Fill.color('#1b6')
-            .video(SAMPLE_VIDEO, { mode: 'fill', loop: 'forward', opacity: 0.7, blend: 'overlay' }),
+            .video(SAMPLE_VIDEO, { fit: 'fill', loop: 'forward', opacity: 0.7, blend: 'overlay' }),
     };
 }

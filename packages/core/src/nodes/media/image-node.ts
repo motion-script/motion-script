@@ -3,7 +3,7 @@ import { Graphics } from "@/render/graphics";
 import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { FilterRegistry } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
-import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implementations/image";
+import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
@@ -11,7 +11,7 @@ import { AssetTracker } from "@/assets/tracker";
 
 export interface ImageProps extends RectProps {
     src?: string;
-    fit?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     filters?: ChainableMx;
@@ -26,7 +26,7 @@ export interface ImageProps extends RectProps {
 export class Image extends Rect {
 
     @property() declare src?: string;
-    @property() declare fit?: ImageFillMode;
+    @property() declare fit?: ImageFit;
     @property() declare transform?: ImageTransform;
     @property() declare scaling?: number;
     @property({ default: [], tween: FilterRegistry.lerpArray, mapper: resolveChainFilters })

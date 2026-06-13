@@ -3,7 +3,7 @@ import { Graphics } from "@/render/graphics";
 import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { FilterRegistry } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
-import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implementations/image";
+import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
@@ -18,7 +18,7 @@ import { ChainableAfx, resolveAudioFilters, AFX } from "@/attributes/audio/filte
 export interface VideoProps extends RectProps {
     src?: string;
     /** Fit mode for the painted frame (fill | fit | crop | tile). Default 'fill'. */
-    fit?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     /** Visual filters applied to the rendered frame (blur, color, etc.). */
@@ -57,7 +57,7 @@ export interface VideoProps extends RectProps {
 export class Video extends Rect {
 
     @property() declare src?: string;
-    @property() declare fit?: ImageFillMode;
+    @property() declare fit?: ImageFit;
     @property() declare transform?: ImageTransform;
     @property() declare scaling?: number;
     @property({ default: [], tween: FilterRegistry.lerpArray, mapper: resolveChainFilters })

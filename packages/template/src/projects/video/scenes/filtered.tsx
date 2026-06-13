@@ -10,7 +10,7 @@ export class VideoFilteredScene extends VideoFillScene {
     readonly spec: VideoFillSpec = {
         label: 'Video — grayscale + blur',
         fill: Fill.video(SAMPLE_VIDEO, {
-            mode: 'fill',
+            fit: 'fill',
             loop: 'forward',
             filters: [...MX.grayscale(1).blur(6)],
         }),
