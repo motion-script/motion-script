@@ -37,8 +37,8 @@ class ClipRecorderContext {
     draw(): void {}
     begin(): void {}
     end(): void {}
-    beginBackgroundBlur(): void {}
-    endBackgroundBlur(): void {}
+    beginBackdropFilter(): void {}
+    endBackdropFilter(): void {}
     beginBackgroundDistortion(): void {}
     endBackgroundDistortion(): void {}
     beginBackdropSkSL(): void {}
@@ -47,6 +47,8 @@ class ClipRecorderContext {
     endForegroundDistortion(): void {}
     beginPosterize(): void {}
     endPosterize(): void {}
+    beginBackdropPosterize(): void {}
+    endBackdropPosterize(): void {}
 
     asCtx(): RenderContext {
         return this as unknown as RenderContext;
@@ -196,8 +198,8 @@ describe('ShapeNode.applyClip (private) — pushes only a real outline', () => {
 });
 
 describe('ShapeNode backdrop effects clip to clipSelf()', () => {
-    it('a background-blur shape clips its backdrop to its own outline', () => {
-        const rect = new Rect({ effects: [{ type: 'backgroundBlur', radius: 8 }] });
+    it('a backdrop-blur shape clips its backdrop to its own outline', () => {
+        const rect = new Rect({ effects: [{ type: 'blur', radius: 8, backdrop: true }] });
         setLayout(rect, RECT);
 
         const ctx = new ClipRecorderContext();

@@ -12,6 +12,7 @@ import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bul
 import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
 import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
 import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import type { SceneEffect } from "@/attributes/shape/effects/union";
 
 
 
@@ -188,12 +189,15 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     abstract endClip(): void;
 
     /**
-     * Open a backdrop-blur layer. The already-painted canvas beneath the node
-     * is blurred by `radius` and composited back, clipped to the active
-     * silhouette clip. No-op by default.
+     * Open a backdrop-filter layer. Each effect in `effects` (an
+     * ImageFilter-capable effect flagged `backdrop: true` — blur, grayscale,
+     * pixelate, …) is composed into a single filter and run over the canvas
+     * content already painted beneath the node, then composited back clipped to
+     * the active silhouette clip. `width`/`height` are the node's logical size,
+     * needed by size-relative effects (e.g. pixelate). No-op by default.
      */
-    beginBackgroundBlur(_radius: number): void { }
-    endBackgroundBlur(): void { }
+    beginBackdropFilter(_effects: SceneEffect[], _width: number, _height: number): void { }
+    endBackdropFilter(): void { }
 
     /**
      * Open a backdrop-distortion (magnify) layer. The backdrop is warped by a lens
@@ -221,6 +225,15 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      */
     beginPosterize(_effect: PosterizeEffect, _width: number, _height: number): void { }
     endPosterize(): void { }
+
+    /**
+     * Posterize the *backdrop* — the canvas content already painted beneath the
+     * node — clipped to the active silhouette clip, instead of the node's own
+     * content. Posterize is shader-based (not an ImageFilter), so it has its own
+     * backdrop path rather than riding {@link beginBackdropFilter}. No-op by default.
+     */
+    beginBackdropPosterize(_effect: PosterizeEffect, _width: number, _height: number): void { }
+    endBackdropPosterize(): void { }
 
     /**
      * Open a custom SkSL backdrop layer. The shader receives

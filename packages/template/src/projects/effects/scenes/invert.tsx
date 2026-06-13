@@ -6,5 +6,6 @@ export class InvertScene extends EffectDemoScene {
         label: 'Invert',
         from: FX.invert('rgba', 0),
         to: FX.invert('rgba', 1),
+        compare: true,
     };
 }
