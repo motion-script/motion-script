@@ -1,4 +1,4 @@
-import { Fill, sequence, easeInOutQuad } from "@motion-script/core";
+import { Fill, sequence, easeInOutQuad, Rect } from "@motion-script/core";
 import { StrokeCardScene } from "./stroke-card";
 
 /**
@@ -17,19 +17,15 @@ export class AlignmentStrokeScene extends StrokeCardScene {
     readonly label = 'Stroke Alignment';
 
     *build() {
+        this.set({ group: 'row', gap: 40, padding: 120 })
         // A thick stroke painted inside the edge to start.
-        const sample = this.card({
-            fill: Fill.color('#161a21'),
-            stroke: { weight: 48, fill: Fill.color('#6990DD'), align: 'inside' },
-        });
-
-        yield* sequence(
-            // inside -> center: the band slides out to straddle the edge.
-            sample().strokeTo({ fill: Fill.color('#F5C26B'), align: 'center' }, 1.6, { ease: easeInOutQuad }),
-            // center -> outside: the band moves fully beyond the bounds.
-            sample().strokeTo({ fill: Fill.color('#E8617C'), align: 'outside' }, 1.6, { ease: easeInOutQuad }),
-            // back to inside for a clean loop.
-            sample().strokeTo({ fill: Fill.color('#6990DD'), align: 'inside' }, 1.6, { ease: easeInOutQuad }),
-        );
+        this.add(<>
+            <Rect fill={Fill.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'inside' }} />
+            <Rect fill={Fill.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'center' }} />
+            <Rect fill={Fill.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'outside' }} />
+        </>)
     }
 }

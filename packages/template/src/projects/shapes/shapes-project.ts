@@ -44,6 +44,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new AlignmentStrokeScene(),
         new CornerStylesScene(),
         new PolygonScene(),
         new ColorFillScene(),
