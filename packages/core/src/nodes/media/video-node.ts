@@ -79,7 +79,7 @@ export class Video extends Rect {
     /**
      * The live `video` fill state, advanced each tick by the fill's own dynamic
      * `update()` (loop / trim / clamp logic). `renderSelf` paints this — so the
-     * picture reuses the exact playback model authors get from `Fill.video(...)`,
+     * picture reuses the exact playback model authors get from `Fills.video(...)`,
      * rather than re-deriving timestamps here. Rebuilt from props when the source
      * or any playback knob changes (see {@link videoKey}).
      */

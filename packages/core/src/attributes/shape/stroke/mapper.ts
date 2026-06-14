@@ -1,6 +1,6 @@
 import { resolveFillArray } from '@/attributes/shape/fill/registry';
 import { FillResolved } from '../fill/union';
-import { ChainableFill } from '../fill/chain';
+import { Fill } from '../fill/chain';
 
 // ── Align ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ export interface StrokeProp {
     /** Stroke width in pixels. Defaults to 1. */
     weight?: number;
     /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
-    fill?: ChainableFill;
+    fill?: Fill;
     /** Dash pattern. A single number `n` becomes `[n, n]`. */
     dash?: number | number[];
     dashOffset?: number;

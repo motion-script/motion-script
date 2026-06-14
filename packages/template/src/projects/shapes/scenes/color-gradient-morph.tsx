@@ -1,4 +1,4 @@
-import { Fill } from "@motion-script/core";
+import { Fills } from "@motion-script/core";
 import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
 
 /**
@@ -9,11 +9,11 @@ import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
 export class ColorGradientMorphScene extends ShapeDemoScene {
     readonly spec: ShapeDemoSpec = {
         label: 'Color → Gradient',
-        // Fill sample: solid color → linear gradient.
-        fillFrom: Fill.color('#6990DD'),
-        fillTo: Fill.linearGradient(['#E8617C', '#F5C26B'], { start: { x: -1, y: 1 }, end: { x: 1, y: -1 } }),
+        // Fills sample: solid color → linear gradient.
+        fillFrom: Fills.color('#6990DD'),
+        fillTo: Fills.linearGradient(['#E8617C', '#F5C26B'], { start: { x: -1, y: 1 }, end: { x: 1, y: -1 } }),
         // Stroke sample: radial gradient → solid color (the reverse direction).
-        strokeFrom: Fill.radialGradient(['#E8617C', '#0D0F15']),
-        strokeTo: Fill.color('#6990DD'),
+        strokeFrom: Fills.radialGradient(['#E8617C', '#0D0F15']),
+        strokeTo: Fills.color('#6990DD'),
     };
 }

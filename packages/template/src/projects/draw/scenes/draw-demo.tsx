@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect, Fill, FillSpace, Node,
+    Scene, createRef, Text, Rect, Fills, FillSpace, Node,
     easeInOutQuad, sequence,
 } from "@motion-script/core";
 import { DrawnShape } from "../nodes/drawn-shape";
@@ -39,7 +39,7 @@ type Backdrop = 'none' | 'parent' | 'scene';
  * so that slice is easy to read against the field it samples.
  */
 export abstract class DrawDemoScene extends Scene {
-    /** Fill space this scene demonstrates. */
+    /** Fills space this scene demonstrates. */
     abstract readonly space: FillSpace;
     /** Card heading. */
     abstract readonly label: string;
@@ -57,7 +57,7 @@ export abstract class DrawDemoScene extends Scene {
         // `local` the fill is pinned to the figure (its look never changes), while
         // under `parent`/`global` the figure slides across a fill anchored to the
         // card/viewport and reveals different slices of it.
-        const figureFill = Fill.linearGradient(GRADIENT, {
+        const figureFill = Fills.linearGradient(GRADIENT, {
             space, start: { x: -1, y: -1 }, end: { x: 1, y: 1 },
         });
 
@@ -65,7 +65,7 @@ export abstract class DrawDemoScene extends Scene {
         // the backdrop rect's own bounds (`space: 'local'`) so it shows the full
         // field the figure samples a slice of. Because both are static and share
         // endpoints, the figure lines up exactly with the field behind it.
-        const backdropFill = Fill.linearGradient(GRADIENT, {
+        const backdropFill = Fills.linearGradient(GRADIENT, {
             space: 'local', opacity: 0.28, start: { x: -1, y: -1 }, end: { x: 1, y: 1 },
         });
 

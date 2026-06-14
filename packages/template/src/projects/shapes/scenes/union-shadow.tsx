@@ -1,4 +1,4 @@
-import { Fill, sequence, parallel, easeInOutQuad } from "@motion-script/core";
+import { Fills, sequence, parallel, easeInOutQuad } from "@motion-script/core";
 import { StrokeCardScene } from "./stroke-card";
 
 /**
@@ -16,16 +16,16 @@ export class UnionShadowScene extends StrokeCardScene {
 
     *build() {
         const sample = this.card({
-            fill: Fill.color('#161a21'),
+            fill: Fills.color('#161a21'),
             // Two stacked strokes: a wide outer band and a thin inner accent.
             stroke: [
-                { weight: 8, fill: Fill.color('#6990DD'), align: 'outside' },
-                { weight: 4, fill: Fill.color('#F5C26B'), align: 'inside' },
+                { weight: 8, fill: Fills.color('#6990DD'), align: 'outside' },
+                { weight: 4, fill: Fills.color('#F5C26B'), align: 'inside' },
             ],
             // Two shadows thrown in opposite directions.
             shadow: [
-                { fill: Fill.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
-                { fill: Fill.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
+                { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
+                { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
             ],
         });
 
@@ -33,23 +33,23 @@ export class UnionShadowScene extends StrokeCardScene {
             // Spread both stroke bands and bloom both shadows outward together.
             parallel(
                 sample().strokeTo([
-                    { weight: 28, fill: Fill.color('#6990DD'), align: 'outside' },
-                    { weight: 10, fill: Fill.color('#F5C26B'), align: 'inside' },
+                    { weight: 28, fill: Fills.color('#6990DD'), align: 'outside' },
+                    { weight: 10, fill: Fills.color('#F5C26B'), align: 'inside' },
                 ], 2, { ease: easeInOutQuad }),
                 sample().shadowTo([
-                    { fill: Fill.color('#6990DD', { opacity: 0.8 }), blur: 50, dx: -40, dy: -40 },
-                    { fill: Fill.color('#E8617C', { opacity: 0.8 }), blur: 50, dx: 40, dy: 40 },
+                    { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 50, dx: -40, dy: -40 },
+                    { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 50, dx: 40, dy: 40 },
                 ], 2, { ease: easeInOutQuad }),
             ),
             // Settle back so the scene can loop cleanly.
             parallel(
                 sample().strokeTo([
-                    { weight: 8, fill: Fill.color('#6990DD'), align: 'outside' },
-                    { weight: 4, fill: Fill.color('#F5C26B'), align: 'inside' },
+                    { weight: 8, fill: Fills.color('#6990DD'), align: 'outside' },
+                    { weight: 4, fill: Fills.color('#F5C26B'), align: 'inside' },
                 ], 1.6, { ease: easeInOutQuad }),
                 sample().shadowTo([
-                    { fill: Fill.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
-                    { fill: Fill.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
+                    { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
+                    { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
                 ], 1.6, { ease: easeInOutQuad }),
             ),
         );

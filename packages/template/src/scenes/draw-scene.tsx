@@ -1,4 +1,4 @@
-import { Scene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fill } from "@motion-script/core";
+import { Scene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "@motion-script/core";
 export interface CustomShapeProps extends ShapeProps {
     ratio: number;
     sweep: number;
@@ -91,7 +91,7 @@ export class DrawScene extends Scene {
                 width={350}
 
                 height={350}
-                fill={Fill.linearGradient(['red', 'blue'])}
+                fill={Fills.linearGradient(['red', 'blue'])}
             //  stroke={{ weight: 4, fill: 'red', }}
             // shadow={{ fill: 'green', blur: 40, dx: 40, dy: -40 }}
 

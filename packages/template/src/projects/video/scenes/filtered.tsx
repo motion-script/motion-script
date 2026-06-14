@@ -1,4 +1,4 @@
-import { Fill, MX } from "@motion-script/core";
+import { Fills, MX } from "@motion-script/core";
 import { VideoFillScene, VideoFillSpec, SAMPLE_VIDEO } from "./video-fill";
 
 /**
@@ -9,7 +9,7 @@ import { VideoFillScene, VideoFillSpec, SAMPLE_VIDEO } from "./video-fill";
 export class VideoFilteredScene extends VideoFillScene {
     readonly spec: VideoFillSpec = {
         label: 'Video — grayscale + blur',
-        fill: Fill.video(SAMPLE_VIDEO, {
+        fill: Fills.video(SAMPLE_VIDEO, {
             fit: 'fill',
             loop: 'forward',
             filters: [...MX.grayscale(1).blur(6)],

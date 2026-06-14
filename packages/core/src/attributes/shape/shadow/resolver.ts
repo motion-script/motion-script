@@ -1,6 +1,6 @@
 import { resolveFillArray } from '../fill/registry';
 import { FillResolved } from '../fill/union';
-import { ChainableFill } from '../fill/chain';
+import { Fill } from '../fill/chain';
 
 // ── Prop (loose) ─────────────────────────────────────────────────────────────
 
@@ -9,7 +9,7 @@ export interface ShadowProp {
     dx?: number;
     dy?: number;
     /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
-    fill?: ChainableFill;
+    fill?: Fill;
     /** When true, the shadow is cast inward (inset) instead of as a drop shadow. Defaults to false. */
     inner?: boolean;
     /**

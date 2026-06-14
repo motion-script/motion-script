@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel, Camera, LineGrid, Fill } from "@motion-script/core";
+import { Scene, createRef, Rect, easeInOutQuad, parallel, Camera, LineGrid, Fills } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -11,7 +11,7 @@ import { layoutCard, tile } from "./layout-card";
  */
 export class CameraScene extends Scene {
     *build() {
-        this.set({ fill: 'bg' });
+        this.fill = 'bg';
         const cameraRef = createRef<Camera>();
         const rectRef = createRef<Rect>();
         this.add(<Camera ref={cameraRef} fill={'card'} width={800} height={800} stroke={{ weight: 4, fill: 'white' }} >
@@ -21,7 +21,7 @@ export class CameraScene extends Scene {
                 height={2000}
                 divisions={8}
                 subdivisions={2}
-                fill={Fill.color('card')}
+                fill={Fills.color('card')}
                 stroke={{ weight: 4, fill: '#C77DFF' }}
                 subStroke={{ weight: 3, fill: '#C77DFF', dash: 12 }}
 

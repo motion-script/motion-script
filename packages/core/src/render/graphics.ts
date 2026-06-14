@@ -74,7 +74,7 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  *   const g = new Graphics()
  *       .ellipse({ width: 100, height: 100 })
  *       .rect({ width: 40, height: 40, rotation: 30 }) // per-shape: tilts this rect only
- *       .fill(Fill.color("red"))
+ *       .fill(Fills.color("red"))
  *       .stroke({ weight: 2, fill: "black" })
  *       .rotation(15)          // graphics-level: turns the whole union
  *       .effects(FX.blur(6));  // graphics-level: blurs the whole drawn union

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, LineGrid, Text, Fill, wait } from "@motion-script/core";
+import { Scene, createRef, Rect, LineGrid, Text, Fills, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link LineGrid} node. Two grids sit side by side. `stroke`
@@ -31,9 +31,9 @@ export class LineGridScene extends Scene {
                     height={520}
                     divisions={4}
                     subdivisions={3}
-                    fill={Fill.color('card')}
+                    fill={Fills.color('card')}
                     stroke={{ weight: 8, fill: '#6990DD' }}
-                    shadow={{ fill: Fill.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
+                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
                 />
                 {/* explicit subStroke distinct from the major stroke */}
                 <LineGrid
@@ -42,10 +42,10 @@ export class LineGridScene extends Scene {
                     height={520}
                     divisions={4}
                     subdivisions={1}
-                    fill={Fill.color('card')}
+                    fill={Fills.color('card')}
                     stroke={{ weight: 3, fill: '#C77DFF' }}
                     subStroke={{ weight: 1, fill: '#C77DFF', dash: 4 }}
-                    shadow={{ fill: Fill.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
+                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
                 >
                     {/* children stack centred over the grid, like other shapes */}
                     <Rect width={200} height={80} cornerRadius={12} fill={'#C77DFF'} alignment={{ x: 0, y: 0 }}>

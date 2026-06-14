@@ -5,7 +5,7 @@ import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
 import { resolveStrokeArray, StrokeResolved, type StrokeProp } from "@/attributes/shape/stroke/mapper";
 import { resolveShadowArray, ShadowResolved, type ShadowProp } from "@/attributes/shape/shadow/resolver";
 import { FillResolved } from "@/attributes/shape/fill/union";
-import { ChainableFill } from "@/attributes/shape/fill/chain";
+import { Fill } from "@/attributes/shape/fill/chain";
 
 import { RenderContext } from "@/render/render-context";
 import { Clip } from "@/render/clip";
@@ -25,9 +25,9 @@ export interface ShapeProps extends NodeProps {
      * - A plain CSS color string → treated as a solid fill
      * - A fill prop object (SolidFillProp, LinearGradientFillProp, …)
      * - An already-resolved fill object
-     * - A {@link FillChain} from the `Fill` builder (e.g. `Fill.color('red')`)
+     * - A {@link FillChain} from the `Fills` builder (e.g. `Fills.color('red')`)
      */
-    fill?: ChainableFill;
+    fill?: Fill;
     /**
      * Stroke layer(s). `fill` inside each stroke accepts the same loose
      * values as the top-level fill prop.
@@ -47,8 +47,15 @@ export interface ShapeProps extends NodeProps {
 
 export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
+    // Asymmetric accessor: reads yield the resolved internal value
+    // (`FillResolved[]`, what the renderer and `fillTo`/`tick`/`prepare` consume),
+    // while writes accept the loose author-facing `Fill` (strings, props, chains,
+    // or already-resolved fills) — `this.fill = 'red'`. The real runtime accessor
+    // is installed per-instance by @property's `Object.defineProperty`, which
+    // shadows this prototype pair, so these stub bodies never execute.
     @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
-    declare readonly fill: FillResolved[];
+    get fill(): FillResolved[] { return undefined!; }
+    set fill(_value: Fill) { /* installed by @property */ }
 
     // Stroke weight feeds Rect.effectivePadding(), which insets children.
     @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
@@ -216,7 +223,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         if (hasForeground) ctx.endEffectScope();
     }
 
-    *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+    *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
         const from = this.fill;
         const target = resolveFillArray(to);

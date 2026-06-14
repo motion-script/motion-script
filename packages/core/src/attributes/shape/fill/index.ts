@@ -6,8 +6,8 @@ export type { NormalizedColor, Color } from './color/parser';
 
 export type { FillProp, FillResolved, FillSpace, FillCommon } from './union';
 
-export { Fill, FillChain, resolveChainFill } from './chain';
-export type { ChainableFill, FillOptions } from './chain';
+export { Fills, FillChain, resolveChainFill } from './chain';
+export type { Fill, FillOptions } from './chain';
 
 export type { FillData } from './registry';
 export { resolveFill, resolveFillArray, lerpFill, lerpFillArray, updateFill, prepareFill } from './registry';

@@ -2,7 +2,7 @@
 
 import {
     Scene, createRef, Text, Rect,
-    ChainableFill, ShadowProp, easeInOutQuad, parallel,
+    Fill, ShadowProp, easeInOutQuad, parallel,
 } from "@motion-script/core";
 
 /**
@@ -18,13 +18,13 @@ export interface ShapeDemoSpec {
     /** Card heading shown above the samples. */
     label: string;
     /** Fill chain the fill-sample starts in. */
-    fillFrom: ChainableFill;
+    fillFrom: Fill;
     /** Fill chain the fill-sample animates to. */
-    fillTo: ChainableFill;
+    fillTo: Fill;
     /** Fill chain used for the stroke-sample's stroke at the start. */
-    strokeFrom?: ChainableFill;
+    strokeFrom?: Fill;
     /** Fill chain used for the stroke-sample's stroke at the end. */
-    strokeTo?: ChainableFill;
+    strokeTo?: Fill;
     /** Optional shadow the samples start with. */
     shadowFrom?: ShadowProp | ShadowProp[];
     /** Optional shadow the samples animate to. */

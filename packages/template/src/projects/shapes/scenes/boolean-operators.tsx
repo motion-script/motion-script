@@ -2,7 +2,7 @@
 
 import {
     Scene, createRef, Text, Rect, Ellipse, BooleanGroup,
-    Fill, BooleanOperation, easeInOutQuad, parallel,
+    Fills, BooleanOperation, easeInOutQuad, parallel,
 } from "@motion-script/core";
 
 /** One labelled cell: a named boolean op applied to two overlapping circles. */
@@ -55,7 +55,7 @@ export class BooleanOperatorScene extends Scene {
                         fill={'card'} cornerRadius={32}
                         clip={true} group={'stack'}
                     >
-                        <BooleanGroup op={spec.op} fill={Fill.color('#6990DD')}>
+                        <BooleanGroup op={spec.op} fill={Fills.color('#6990DD')}>
                             <Ellipse ref={left} x={-spread} width={radius} height={radius} />
                             <Ellipse ref={right} x={spread} width={radius} height={radius} />
                         </BooleanGroup>

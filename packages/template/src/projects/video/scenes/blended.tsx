@@ -1,4 +1,4 @@
-import { Fill } from "@motion-script/core";
+import { Fills } from "@motion-script/core";
 import { VideoFillScene, VideoFillSpec, SAMPLE_VIDEO } from "./video-fill";
 
 /**
@@ -9,7 +9,7 @@ import { VideoFillScene, VideoFillSpec, SAMPLE_VIDEO } from "./video-fill";
 export class VideoBlendedScene extends VideoFillScene {
     readonly spec: VideoFillSpec = {
         label: 'Video — opacity + blend',
-        fill: Fill.color('#1b6')
+        fill: Fills.color('#1b6')
             .video(SAMPLE_VIDEO, { fit: 'fill', loop: 'forward', opacity: 0.7, blend: 'overlay' }),
     };
 }

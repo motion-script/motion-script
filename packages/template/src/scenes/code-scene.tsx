@@ -1,9 +1,9 @@
-import { Scene, createRef, wait, easeOutQuad, Rect, Fill, Ellipse } from "@motion-script/core";
+import { Scene, createRef, wait, easeOutQuad, Rect, Fills, Ellipse } from "@motion-script/core";
 import { Code, lines, word } from "@motion-script/code";
 
 export class CodeScene extends Scene {
     *build() {
-        this.set({ fill: Fill.image('background.jpg', { mode: 'fill' }).color('#0f121a', { opacity: 0.24 }), padding: 120 });
+        this.set({ fill: Fills.image('background.jpg', { mode: 'fill' }).color('#0f121a', { opacity: 0.24 }), padding: 120 });
 
         const code = createRef<Code>();
 

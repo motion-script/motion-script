@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, Rect, Text, Fill, wait } from "@motion-script/core";
+import { Scene, Rect, Text, Fills, wait } from "@motion-script/core";
 import type { ImageFillMode } from "@motion-script/core";
 
 /**
@@ -12,10 +12,10 @@ import type { ImageFillMode } from "@motion-script/core";
  */
 export interface VideoFillSpec {
     label: string;
-    /** Fill mode passed to the video fill (fit/crop/tile/fill). Default 'fill'. */
+    /** Fills mode passed to the video fill (fit/crop/tile/fill). Default 'fill'. */
     mode?: ImageFillMode;
-    /** A fill chain to use directly; overrides the default `Fill.video(...)`. */
-    fill?: ReturnType<typeof Fill.video>;
+    /** A fill chain to use directly; overrides the default `Fills.video(...)`. */
+    fill?: ReturnType<typeof Fills.video>;
     /** Seconds to hold the scene (give the clip time to play). Default 4. */
     duration?: number;
 }
@@ -29,7 +29,7 @@ export abstract class VideoFillScene extends Scene {
         this.set({ fill: 'bg' });
 
         const { label, mode = 'fill', fill, duration = 4 } = this.spec;
-        const videoFill = fill ?? Fill.video(SAMPLE_VIDEO, { fit: mode, loop: 'forward' });
+        const videoFill = fill ?? Fills.video(SAMPLE_VIDEO, { fit: mode, loop: 'forward' });
 
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>

@@ -1,4 +1,4 @@
-import { Fill, sequence, easeInOutQuad, Rect } from "@motion-script/core";
+import { Fills, sequence, easeInOutQuad, Rect } from "@motion-script/core";
 import { StrokeCardScene } from "./stroke-card";
 
 /**
@@ -20,12 +20,12 @@ export class AlignmentStrokeScene extends StrokeCardScene {
         this.set({ group: 'row', gap: 40, padding: 120 })
         // A thick stroke painted inside the edge to start.
         this.add(<>
-            <Rect fill={Fill.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'inside' }} />
-            <Rect fill={Fill.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'center' }} />
-            <Rect fill={Fill.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fill.color('#6990DD', { opacity: 0.3 }), align: 'outside' }} />
+            <Rect fill={Fills.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'inside' }} />
+            <Rect fill={Fills.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'center' }} />
+            <Rect fill={Fills.color('#161a21')} height={320} width={320}
+                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'outside' }} />
         </>)
     }
 }

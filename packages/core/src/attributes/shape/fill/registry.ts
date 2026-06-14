@@ -1,7 +1,7 @@
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { FillProp, FillResolved, FillSpace } from "./union";
-import { ChainableFill, resolveChainFill } from "./chain";
+import { Fill, resolveChainFill } from "./chain";
 import { canCoerce, coercePair } from "./coerce";
 
 import { colorFill } from "./implementations/color";
@@ -55,7 +55,7 @@ export function resolveFill(prop: FillProp): FillResolved {
     return space !== undefined ? { ...resolved, space } : resolved;
 }
 
-export function resolveFillArray(prop: ChainableFill | undefined): FillResolved[] {
+export function resolveFillArray(prop: Fill | undefined): FillResolved[] {
     return resolveChainFill(prop).map(resolveFill);
 }
 
