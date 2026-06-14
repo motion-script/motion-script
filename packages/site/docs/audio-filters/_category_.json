@@ -1,0 +1,8 @@
+{
+  "label": "Audio Filters",
+  "position": 6,
+  "link": {
+    "type": "generated-index",
+    "description": "Signal processors applied to a `Sound` via its `filters` prop. Gain, high-pass, low-pass, tremolo, speed, and echo."
+  }
+}

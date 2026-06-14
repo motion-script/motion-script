@@ -1,0 +1,66 @@
+---
+sidebar_position: 6
+---
+
+# Echo
+
+Adds a delayed, fading repeat of the signal — a feedback echo (simple delay line). Each repeat is quieter than the previous by the `feedback` factor, producing a natural decay tail. The `mix` prop controls the wet/dry blend.
+
+## Usage
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+// Via AFX builder — 300 ms delay, 40% feedback, default 50% wet mix
+const clip = new Sound({ src: './voice.mp3', filters: AFX.echo(0.3, 0.4) });
+
+// With explicit mix — mostly dry, subtle echo
+const clip = new Sound({ src: './voice.mp3', filters: AFX.echo(0.5, 0.6, 0.25) });
+
+// Via raw object
+const clip = new Sound({
+  src: './voice.mp3',
+  filters: [{ type: 'echo', delay: 0.3, feedback: 0.4, mix: 0.5 }],
+});
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'echo'` | — | Filter identifier |
+| `delay` | `number` | — | Time before the first repeat, in seconds |
+| `feedback` | `number` | — | Repeat decay factor, `0`–`<1`. Each echo is this fraction of the previous |
+| `mix` | `number` | `0.5` | Wet/dry blend. `0` = dry signal only, `1` = fully wet (no original) |
+
+## Animating
+
+Fade the echo in to add spaciousness over time:
+
+```tsx
+import { Sound, AFX, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+const clip = new Sound({ src: './narration.mp3', filters: AFX.echo(0.4, 0.5, 0) });
+clip.start();
+
+// Crossfade to a wet echo over 3 seconds
+yield* tween(3, (t) => {
+  clip.set({ filters: AFX.echo(0.4, 0.5, lerpNumber(0, 0.6, easeOut(t))) });
+});
+```
+
+## Stacking with other filters
+
+```tsx
+// Muffle the echo tails with a low-pass
+AFX.echo(0.3, 0.5).lowpass(3000)
+
+// Quieter source into a long, washy reverb-like echo
+AFX.gain(0.7).echo(0.6, 0.75, 0.4)
+```
+
+## Notes
+
+- `feedback` must be strictly less than `1`. A value of `1` or above creates an infinite loop that never decays.
+- Long `delay` values (> 1s) with high `feedback` (> 0.7) can cause the tail to accumulate loudly — preview with low `mix` first.
+- All three props (`delay`, `feedback`, `mix`) are fully animatable.

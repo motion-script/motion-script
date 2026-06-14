@@ -1,0 +1,52 @@
+---
+sidebar_position: 3
+---
+
+# Low-Pass
+
+Attenuates frequencies above the cutoff, letting the lows through. Use it to muffle audio, simulate sound heard through a wall or underwater, or soften a harsh mix.
+
+## Usage
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+// Via AFX builder — muffle everything above 1000 Hz
+const clip = new Sound({ src: './music.mp3', filters: AFX.lowpass(1000) });
+
+// With resonance boost at the cutoff
+const clip = new Sound({ src: './music.mp3', filters: AFX.lowpass(800, 3) });
+
+// Via raw object
+const clip = new Sound({ src: './music.mp3', filters: [{ type: 'lowpass', frequency: 1000 }] });
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'lowpass'` | — | Filter identifier |
+| `frequency` | `number` | — | Cutoff frequency in Hz. Content above this is rolled off |
+| `q` | `number` | `1` | Resonance (Q factor) at the cutoff. Higher values add a peak just before the roll-off |
+
+## Animating
+
+Animate the cutoff to smoothly muffle audio over time — a common technique for scene transitions:
+
+```tsx
+import { Sound, AFX, tween, lerpNumber, easeIn } from '@motion-script/core';
+
+const clip = new Sound({ src: './ambient.mp3', filters: AFX.lowpass(20000) });
+clip.start();
+
+// Muffle the audio as the scene fades out
+yield* tween(2, (t) => {
+  clip.set({ filters: AFX.lowpass(lerpNumber(20000, 400, easeIn(t))) });
+});
+```
+
+## Notes
+
+- `20000` Hz is effectively unfiltered for most audio content — use it as a "pass-through" starting value when animating.
+- Pair with a high-pass filter to isolate a frequency band: `AFX.highpass(200).lowpass(3000)`.
+- Both `frequency` and `q` are fully animatable.
