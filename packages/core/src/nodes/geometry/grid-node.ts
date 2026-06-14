@@ -6,6 +6,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
@@ -93,8 +94,9 @@ export class Grid extends ShapeNode<GridProps> {
 
     private effectivePadding(): PaddingResolved {
         let extra = 0;
-        if (this.stroke && Symbol.iterator in Object(this.stroke)) {
-            for (const s of this.stroke) {
+        const strokes = this.stroke as StrokeResolved[];
+        if (strokes && Symbol.iterator in Object(strokes)) {
+            for (const s of strokes) {
                 if (s.weight > extra) extra = s.weight;
             }
         }

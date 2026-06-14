@@ -6,7 +6,7 @@ import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { PathBounds, PathCommand } from "@/render/descriptors/path";
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
-import { resolveStrokeArray, StrokeProp, StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { resolveStrokeArray, Stroke, StrokeProp, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -33,7 +33,7 @@ export interface LineGridProps extends ShapeProps {
      * `subdivisions > 1`, it defaults to the major `stroke` at half opacity so
      * the minor lines read as a lighter version of the grid.
      */
-    subStroke?: StrokeProp | StrokeProp[];
+    subStroke?: Stroke;
     /**
      * Pixel offset that pans the whole grid. Every line shifts by
      * `(origin.x, origin.y)`; lines wrap and tile so the rect always stays full,
@@ -61,8 +61,11 @@ export class LineGrid extends ShapeNode<LineGridProps> {
 
     @property({ default: 4 }) declare readonly divisions: number;
     @property({ default: 1 }) declare readonly subdivisions: number;
+    // Asymmetric accessor like `ShapeNode.stroke`: reads yield `StrokeResolved[]`,
+    // writes accept the loose `Stroke`. Runtime accessor installed by @property.
     @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
-    declare readonly subStroke: StrokeResolved[];
+    get subStroke(): StrokeResolved[] { return undefined!; }
+    set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
     declare readonly origin: Vector2;
 
@@ -75,7 +78,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         // derive from, subdivisions that actually draw minor lines, and no
         // explicit subStroke.
         if (props.subStroke === undefined && props.stroke !== undefined && this.subdivisions > 1) {
-            this.set({ subStroke: dimStroke(this.stroke, 0.5) });
+            this.set({ subStroke: dimStroke(this.stroke as StrokeResolved[], 0.5) });
         }
     }
 
@@ -134,8 +137,8 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         // so their ends can fall outside the rect — clip them to it and overscan
         // the tiling by half the thickest stroke, so a thick line slides out under
         // the clip instead of popping in and out at the boundary as the grid scrolls.
-        const major = centered(this.stroke);
-        const minorStroke = centered(this.subStroke);
+        const major = centered(this.stroke as StrokeResolved[]);
+        const minorStroke = centered(this.subStroke as StrokeResolved[]);
         const overscan = Math.max(maxWeight(major), maxWeight(minorStroke)) / 2;
         const { major: majorLines, minor: minorLines } = this.gridPaths(width, height, divisions, subdivisions, overscan);
 

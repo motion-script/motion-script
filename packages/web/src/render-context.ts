@@ -11,13 +11,13 @@ import {
     Clip,
     type ClipOp,
     type EllipseState,
-    type FillProp,
+    type Fill,
     type FillResolved,
     type FillSpace,
     type ImageState,
-    type ShadowProp,
+    type Shadow,
     type ShadowResolved,
-    type StrokeProp,
+    type Stroke,
     type StrokeResolved,
     type LineState,
     type MaskOptions,
@@ -763,7 +763,7 @@ export class WebRenderContext extends RenderContext {
         this.pendingImageStrokes = [];
     }
 
-    private _fill(fills: FillProp | FillProp[]): void {
+    private _fill(fills: Fill): void {
         const resolved = resolveFillArray(fills);
         if (resolved.length === 0) return;
         // A fill following an image op styles that pending image, mirroring the
@@ -825,7 +825,7 @@ export class WebRenderContext extends RenderContext {
         return { shapes: this.shapeHandler.shapes, dispose: () => { } };
     }
 
-    private _stroke(strokes: StrokeProp | StrokeProp[]): void {
+    private _stroke(strokes: Stroke): void {
         const resolved = resolveStrokeArray(strokes);
         if (resolved.length === 0) return;
         // A stroke following an image op styles that pending image.
@@ -862,7 +862,7 @@ export class WebRenderContext extends RenderContext {
         this.shapeHandler.paintApplied = true;
     }
 
-    private _shadow(shadows: ShadowProp | ShadowProp[]): void {
+    private _shadow(shadows: Shadow): void {
         const resolved = resolveShadowArray(shadows);
         if (resolved.length === 0) return;
         // A shadow following an image op styles that pending image.

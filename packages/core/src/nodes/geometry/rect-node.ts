@@ -6,6 +6,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
@@ -160,10 +161,11 @@ export class Rect extends ShapeNode<RectProps> {
     // weight·(1 - align)/2.
     private effectivePadding(): PaddingResolved {
         let extra = 0;
-        if (!this.stroke || !(Symbol.iterator in Object(this.stroke))) {
+        const strokes = this.stroke as StrokeResolved[];
+        if (!strokes || !(Symbol.iterator in Object(strokes))) {
             return this.padding;
         }
-        for (const s of this.stroke) {
+        for (const s of strokes) {
             const intrusion = s.weight * (1 - s.align) / 2;
             if (intrusion > extra) extra = intrusion;
         }

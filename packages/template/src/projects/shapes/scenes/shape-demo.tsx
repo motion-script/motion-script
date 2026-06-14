@@ -2,7 +2,7 @@
 
 import {
     Scene, createRef, Text, Rect,
-    Fill, ShadowProp, easeInOutQuad, parallel,
+    Fill, Shadow, easeInOutQuad, parallel,
 } from "@motion-script/core";
 
 /**
@@ -26,9 +26,9 @@ export interface ShapeDemoSpec {
     /** Fill chain used for the stroke-sample's stroke at the end. */
     strokeTo?: Fill;
     /** Optional shadow the samples start with. */
-    shadowFrom?: ShadowProp | ShadowProp[];
+    shadowFrom?: Shadow;
     /** Optional shadow the samples animate to. */
-    shadowTo?: ShadowProp | ShadowProp[];
+    shadowTo?: Shadow;
     /** Stroke weight for the stroke-sample. Defaults to 16. */
     strokeWeight?: number;
     /** Seconds for the from -> to transition (default 3). */

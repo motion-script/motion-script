@@ -58,6 +58,17 @@ export interface StrokeResolved {
     align: number;
 }
 
+/**
+ * Accepted shapes for a node's `stroke` prop: a single loose {@link StrokeProp},
+ * an array of them (stacked bottom-to-top), or an already-resolved
+ * {@link StrokeResolved}/array — resolved values pass through `resolveStroke`
+ * idempotently, so a node's read-back `stroke` can be assigned straight back.
+ */
+export type Stroke =
+    | StrokeProp
+    | StrokeResolved
+    | (StrokeProp | StrokeResolved)[];
+
 
 // ── Mapper ───────────────────────────────────────────────────────────────────
 
@@ -78,9 +89,9 @@ export function resolveStroke(prop: StrokeProp, previous?: StrokeResolved): Stro
     };
 }
 
-export function resolveStrokeArray(prop: StrokeProp | StrokeProp[] | undefined, previous?: StrokeResolved[]): StrokeResolved[] {
+export function resolveStrokeArray(prop: Stroke | undefined, previous?: StrokeResolved[]): StrokeResolved[] {
     if (prop == null) return [];
     const arr = Array.isArray(prop) ? prop : [prop];
-    return arr.map((p, i) => resolveStroke(p, previous?.[i]));
+    return arr.map((p, i) => resolveStroke(p as StrokeProp, previous?.[i]));
 }
 

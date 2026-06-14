@@ -8,9 +8,9 @@ import type { TextState } from "./descriptors/text";
 import type { RichTextState } from "./descriptors/richtext";
 import type { ImageState } from "./descriptors/image";
 import { PathBuilder } from "./descriptors/path-builder";
-import type { FillProp } from "@/attributes/shape/fill/union";
-import type { StrokeProp } from "@/attributes/shape/stroke/mapper";
-import type { ShadowProp } from "@/attributes/shape/shadow/resolver";
+import type { Fill } from "@/attributes/shape/fill/chain";
+import type { Stroke } from "@/attributes/shape/stroke/mapper";
+import type { Shadow } from "@/attributes/shape/shadow/resolver";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { type ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
 import type { Vector2 } from "@/attributes/layout/vector2";
@@ -51,9 +51,9 @@ export type GraphicsShapeOp =
  */
 export type GraphicsOp =
     | GraphicsShapeOp
-    | { kind: "fill"; fills: FillProp | FillProp[] }
-    | { kind: "stroke"; strokes: StrokeProp | StrokeProp[] }
-    | { kind: "shadow"; shadows: ShadowProp | ShadowProp[] }
+    | { kind: "fill"; fills: Fill }
+    | { kind: "stroke"; strokes: Stroke }
+    | { kind: "shadow"; shadows: Shadow }
     | { kind: "cut" }
     | { kind: "mask"; options?: MaskOptions }
     | { kind: "applyMask" }
@@ -159,17 +159,17 @@ export class Graphics {
 
     // ─── Paint ───────────────────────────────────────────────────────────────
 
-    fill(fills: FillProp | FillProp[]): this {
+    fill(fills: Fill): this {
         this._ops.push({ kind: "fill", fills });
         return this;
     }
 
-    stroke(strokes: StrokeProp | StrokeProp[]): this {
+    stroke(strokes: Stroke): this {
         this._ops.push({ kind: "stroke", strokes });
         return this;
     }
 
-    shadow(shadows: ShadowProp | ShadowProp[]): this {
+    shadow(shadows: Shadow): this {
         this._ops.push({ kind: "shadow", shadows });
         return this;
     }

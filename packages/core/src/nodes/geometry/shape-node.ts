@@ -2,8 +2,8 @@ import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFil
 
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
-import { resolveStrokeArray, StrokeResolved, type StrokeProp } from "@/attributes/shape/stroke/mapper";
-import { resolveShadowArray, ShadowResolved, type ShadowProp } from "@/attributes/shape/shadow/resolver";
+import { resolveStrokeArray, StrokeResolved, type Stroke } from "@/attributes/shape/stroke/mapper";
+import { resolveShadowArray, ShadowResolved, type Shadow } from "@/attributes/shape/shadow/resolver";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 
@@ -29,15 +29,17 @@ export interface ShapeProps extends NodeProps {
      */
     fill?: Fill;
     /**
-     * Stroke layer(s). `fill` inside each stroke accepts the same loose
+     * Stroke layer(s): a single {@link StrokeProp}, an array of them, or an
+     * already-resolved stroke. `fill` inside each stroke accepts the same loose
      * values as the top-level fill prop.
      */
-    stroke?: StrokeProp | StrokeProp[];
+    stroke?: Stroke;
     /**
-     * Shadow layer(s). `fill` inside each shadow accepts the same loose
+     * Shadow layer(s): a single {@link ShadowProp}, an array of them, or an
+     * already-resolved shadow. `fill` inside each shadow accepts the same loose
      * values as the top-level fill prop.
      */
-    shadow?: ShadowProp | ShadowProp[];
+    shadow?: Shadow;
     start?: number;
     end?: number;
     /** When true, content drawn outside this shape's outline is clipped away. */
@@ -47,22 +49,20 @@ export interface ShapeProps extends NodeProps {
 
 export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
-    // Asymmetric accessor: reads yield the resolved internal value
-    // (`FillResolved[]`, what the renderer and `fillTo`/`tick`/`prepare` consume),
-    // while writes accept the loose author-facing `Fill` (strings, props, chains,
-    // or already-resolved fills) — `this.fill = 'red'`. The real runtime accessor
-    // is installed per-instance by @property's `Object.defineProperty`, which
-    // shadows this prototype pair, so these stub bodies never execute.
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
-    get fill(): FillResolved[] { return undefined!; }
-    set fill(_value: Fill) { /* installed by @property */ }
-
+    // Author-facing paint props. The declared type is the loose `Fill`/`Stroke`/
+    // `Shadow` so assignment (`this.fill = 'red'`) and reads share one simple
+    // type. At runtime the @property accessor stores the *resolved* value (via
+    // the mapper), and consumers that need the resolved shape cast at the read
+    // site — see `tick`/`prepare`/`*To` and the `Graphics` paint calls.
     // Stroke weight feeds Rect.effectivePadding(), which insets children.
+    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    declare fill: Fill;
+
     @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
-    declare readonly stroke: StrokeResolved[];
+    declare stroke: Stroke;
 
     @property({ default: [], mapper: resolveShadowArray, tween: lerpShadowArray })
-    declare readonly shadow: ShadowResolved[];
+    declare shadow: Shadow;
 
     @property({ default: 0 })
     declare readonly start: number;
@@ -104,15 +104,16 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
     public tick(time: number): void {
         if (!this._hasDynamicFill) return;
-        this.set({ fill: this.fill.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
+        const fills = this.fill as FillResolved[];
+        this.set({ fill: fills.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
     }
 
     prepare(tracker: AssetTracker): void {
         super.prepare(tracker);
         [
-            ...this.fill,
-            ...this.stroke.flatMap(s => s.fill),
-            ...this.shadow.flatMap(s => s.fill),
+            ...(this.fill as FillResolved[]),
+            ...(this.stroke as StrokeResolved[]).flatMap(s => s.fill),
+            ...(this.shadow as ShadowResolved[]).flatMap(s => s.fill),
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
@@ -225,7 +226,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
     *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.fill;
+        const from = this.fill as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
         const ease = options?.ease;
@@ -234,9 +235,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         });
     }
 
-    *strokeTo(to: StrokeProp | StrokeProp[], duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
+    *strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.stroke;
+        const from = this.stroke as StrokeResolved[];
         const target = resolveStrokeArray(to, from);
         const lerp = options?.lerp ?? lerpStrokeArray;
         const ease = options?.ease;
@@ -245,9 +246,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         });
     }
 
-    *shadowTo(to: ShadowProp | ShadowProp[], duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
+    *shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.shadow;
+        const from = this.shadow as ShadowResolved[];
         const target = resolveShadowArray(to, from);
         const lerp = options?.lerp ?? lerpShadowArray;
         const ease = options?.ease;

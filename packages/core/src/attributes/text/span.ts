@@ -1,6 +1,6 @@
 import { FillResolved } from "../shape/fill/union";
 import { Fill } from "../shape/fill/chain";
-import { StrokeProp, StrokeResolved } from "../shape/stroke/mapper";
+import { Stroke, StrokeResolved } from "../shape/stroke/mapper";
 
 export type FontStyle = 'normal' | 'italic' | 'oblique';
 
@@ -18,7 +18,7 @@ export interface TextSpan {
     fontStyle?: FontStyle;
     letterSpacing?: number;
     fill?: Fill;
-    stroke?: StrokeProp | StrokeProp[];
+    stroke?: Stroke;
     children?: TextSpan[];
 }
 

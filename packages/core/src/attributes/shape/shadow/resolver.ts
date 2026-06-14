@@ -37,6 +37,17 @@ export interface ShadowResolved {
     spread: number;
 }
 
+/**
+ * Accepted shapes for a node's `shadow` prop: a single loose {@link ShadowProp},
+ * an array of them (stacked), or an already-resolved {@link ShadowResolved}/array
+ * — resolved values pass through `resolveShadow` idempotently, so a node's
+ * read-back `shadow` can be assigned straight back.
+ */
+export type Shadow =
+    | ShadowProp
+    | ShadowResolved
+    | (ShadowProp | ShadowResolved)[];
+
 // ── Mapper ───────────────────────────────────────────────────────────────────
 
 export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): ShadowResolved {
@@ -50,8 +61,8 @@ export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): Shad
     };
 }
 
-export function resolveShadowArray(prop: ShadowProp | ShadowProp[] | undefined, previous?: ShadowResolved[]): ShadowResolved[] {
+export function resolveShadowArray(prop: Shadow | undefined, previous?: ShadowResolved[]): ShadowResolved[] {
     if (prop == null) return [];
     const arr = Array.isArray(prop) ? prop : [prop];
-    return arr.map((p, i) => resolveShadow(p, previous?.[i]));
+    return arr.map((p, i) => resolveShadow(p as ShadowProp, previous?.[i]));
 }

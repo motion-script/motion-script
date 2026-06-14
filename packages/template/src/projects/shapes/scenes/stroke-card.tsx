@@ -1,12 +1,12 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Text, Rect, Fill, StrokeProp, ShadowProp } from "@motion-script/core";
+import { Scene, createRef, Text, Rect, Fill, Stroke, Shadow } from "@motion-script/core";
 
 /** Initial paint for the single sample rect a {@link StrokeCardScene} drives. */
 export interface SampleProps {
     fill?: Fill;
-    stroke?: StrokeProp | StrokeProp[];
-    shadow?: ShadowProp | ShadowProp[];
+    stroke?: Stroke;
+    shadow?: Shadow;
 }
 
 /**
