@@ -8,6 +8,11 @@ import { PathBounds, PathCommand } from "@/render/descriptors/path";
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { resolveStrokeArray, StrokeProp, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
+import { SizeConstraints } from "@/attributes/layout/constraints";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { Size2D } from "@/attributes/layout/size";
+import { MeasureScope } from "@/render/measure-scope";
+import { applyPadding } from "@/layout/padding";
 
 export interface LineGridProps extends ShapeProps {
     /**
@@ -71,6 +76,42 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         // explicit subStroke.
         if (props.subStroke === undefined && props.stroke !== undefined && this.subdivisions > 1) {
             this.set({ subStroke: dimStroke(this.stroke, 0.5) });
+        }
+    }
+
+    // ---- Child layout --------------------------------------------------------
+    //
+    // The grid sizes itself from its own width/height (it doesn't hug children),
+    // but children still need to be measured and placed. Like a stack, each child
+    // is measured against the padded content box and centred in the grid — the
+    // grid is the backdrop, children float over its centre.
+
+    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+        const size = super.measure(constraints, scope);
+        // Measure children so they have a resolved size for layout(); the result
+        // doesn't change the grid's own size (it never hugs its children).
+        const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding);
+        const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
+        for (const child of this.children) child.measure(childConstraints, scope);
+        return size;
+    }
+
+    override layout(rect: BoxBounds, scope: MeasureScope): void {
+        super.layout(rect, scope);
+
+        const pad = this.padding;
+        const inner = applyPadding(rect.width, rect.height, pad);
+        // Centre of the padded content box, in this node's local space (origin =
+        // grid centre, matching how shapes are drawn).
+        const cx = (pad.left - pad.right) / 2;
+        const cy = (pad.top - pad.bottom) / 2;
+
+        const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
+        for (const child of this.children) {
+            const size = child.measure(childConstraints, scope);
+            const w = size.width ?? 0;
+            const h = size.height ?? 0;
+            child.layout({ x: cx, y: cy, width: w, height: h }, scope);
         }
     }
 

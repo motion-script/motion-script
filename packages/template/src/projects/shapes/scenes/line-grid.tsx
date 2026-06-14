@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, LineGrid, Fill, wait } from "@motion-script/core";
+import { Scene, createRef, Rect, LineGrid, Text, Fill, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link LineGrid} node. Two grids sit side by side. `stroke`
@@ -46,7 +46,12 @@ export class LineGridScene extends Scene {
                     stroke={{ weight: 3, fill: '#C77DFF' }}
                     subStroke={{ weight: 1, fill: '#C77DFF', dash: 4 }}
                     shadow={{ fill: Fill.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
-                />
+                >
+                    {/* children stack centred over the grid, like other shapes */}
+                    <Rect width={200} height={80} cornerRadius={12} fill={'#C77DFF'} alignment={{ x: 0, y: 0 }}>
+                        <Text text={'Centered'} fontSize={28} fill={'white'} />
+                    </Rect>
+                </LineGrid>
             </Rect>
         );
 

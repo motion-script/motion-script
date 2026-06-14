@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel, Camera } from "@motion-script/core";
+import { Scene, createRef, Rect, easeInOutQuad, parallel, Camera, LineGrid, Fill } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -15,8 +15,20 @@ export class CameraScene extends Scene {
         const cameraRef = createRef<Camera>();
         const rectRef = createRef<Rect>();
         this.add(<Camera ref={cameraRef} fill={'card'} width={800} height={800} stroke={{ weight: 4, fill: 'white' }} >
+            <LineGrid
 
-            <Rect ref={rectRef} width={100} height={100} fill={'red'} />
+                width={2000}
+                height={2000}
+                divisions={8}
+                subdivisions={2}
+                fill={Fill.color('card')}
+                stroke={{ weight: 4, fill: '#C77DFF' }}
+                subStroke={{ weight: 3, fill: '#C77DFF', dash: 12 }}
+
+            >
+                <Rect ref={rectRef} width={100} height={100} fill={'red'} />
+            </LineGrid>
+
         </Camera>);
 
         yield* cameraRef().to({ centerOn: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
