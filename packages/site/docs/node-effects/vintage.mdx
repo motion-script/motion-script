@@ -1,0 +1,65 @@
+---
+sidebar_position: 13
+---
+
+# Vintage
+
+Applies a film-look color grade: sepia desaturation blended with a warm or cool tint. Two parameters control how far the grade is pushed (`amount`) and whether it leans amber or cyan (`warmth`).
+
+![Vintage effect demo](/effects/vintage.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Full vintage grade with default warmth
+<Rect effects={Effects.vintage()} />
+
+// Partial grade, cool tint
+<Rect effects={Effects.vintage(0.7, -0.2)} />
+
+// Raw object
+<Rect effects={[{ type: 'vintage', amount: 1, warmth: 0.2 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'vintage'` | — | Effect identifier |
+| `amount` | `number` | `1` | Grade strength — `0` = original color, `1` = full sepia + desaturate |
+| `warmth` | `number` | `0.2` | Color temperature — `−1` = cool/cyan tint, `0` = neutral, `1` = warm/amber tint |
+| `backdrop` | `boolean` | `false` | When `true`, grades the content beneath the node |
+
+## Animating
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const photo = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    photo.set({ effects: Effects.vintage(0, 0) });
+    this.add(photo);
+
+    yield* tween(1.5, (t) => {
+      photo.set({ effects: Effects.vintage(lerpNumber(0, 1, easeInOut(t)), lerpNumber(0, 0.4, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Retro VHS: vintage grade + chromatic aberration
+<Rect effects={Effects.vintage(0.9, -0.2).chromaticAberration(6, 90)} />
+
+// Warm bloom
+<Rect effects={Effects.vintage(0.6, 0.5).bloom(0.5, 20, 1)} />
+```

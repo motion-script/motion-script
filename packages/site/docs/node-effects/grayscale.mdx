@@ -6,16 +6,18 @@ sidebar_position: 2
 
 Desaturates any node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
 
+![Grayscale effect demo](/effects/grayscale.png)
+
 ## Usage
 
 ```tsx
-import { FX } from '@motion-script/core';
+import { Effects } from '@motion-script/core';
 
 // Fully grayscale
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.grayscale(1)} />
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={Effects.grayscale(1)} />
 
 // Partial desaturation
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={FX.grayscale(0.5)} />
+<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={Effects.grayscale(0.5)} />
 
 // Raw object
 <Rect effects={[{ type: 'grayscale', amount: 0.8 }]} />
@@ -23,17 +25,18 @@ import { FX } from '@motion-script/core';
 
 ## Props
 
-| Prop | Type | Description |
-|---|---|---|
-| `type` | `'grayscale'` | Effect identifier |
-| `amount` | `number` | Desaturation amount: 0 = color, 1 = grayscale |
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'grayscale'` | — | Effect identifier |
+| `amount` | `number` | — | Desaturation amount: `0` = full color, `1` = fully grayscale |
+| `backdrop` | `boolean` | `false` | When `true`, desaturates the content beneath the node instead of the node itself |
 
 ## Animating
 
 Use a `tween` with `lerpNumber` to animate between color and grayscale:
 
 ```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
@@ -42,21 +45,23 @@ export class MyScene extends Scene {
       height: 400,
       fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
     });
-    photo.set({ effects: FX.grayscale(1) });
+    photo.set({ effects: Effects.grayscale(1) });
     this.add(photo);
 
     // Colorize over 1.5 seconds
     yield* tween(1.5, (t) => {
-      photo.set({ effects: FX.grayscale(lerpNumber(1, 0, easeInOut(t))) });
+      photo.set({ effects: Effects.grayscale(lerpNumber(1, 0, easeInOut(t))) });
     });
   }
 }
 ```
 
-## Stacking
-
-Chain with blur or pixelate:
+## Stacking with other effects
 
 ```tsx
-<Rect effects={FX.grayscale(1).blur(4)} />
+// Grayscale then blur
+<Rect effects={Effects.grayscale(1).blur(4)} />
+
+// Grayscale with pixelate
+<Rect effects={Effects.grayscale(0.8).pixelate(60)} />
 ```

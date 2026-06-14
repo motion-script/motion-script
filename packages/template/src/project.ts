@@ -18,5 +18,5 @@ import layoutProject from './projects/layout/layout-project';
 import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
 
-export default layoutProject;
+export default effectsProject;
 

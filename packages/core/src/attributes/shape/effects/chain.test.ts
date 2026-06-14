@@ -1,107 +1,107 @@
 import { describe, it, expect } from 'vitest';
-import { FX, resolveChainEffects } from '@/attributes/shape/effects/chain';
+import { Effects, resolveChainEffects } from '@/attributes/shape/effects/chain';
 
 describe('FX builders', () => {
     it('blur produces a single blur effect', () => {
-        expect([...FX.blur(4)]).toEqual([{ type: 'blur', radius: 4 }]);
+        expect([...Effects.blur(4)]).toEqual([{ type: 'blur', radius: 4 }]);
     });
 
     it('blur with { backdrop: true } flags the effect as a backdrop filter', () => {
-        expect([...FX.blur(12, { backdrop: true })]).toEqual([
+        expect([...Effects.blur(12, { backdrop: true })]).toEqual([
             { type: 'blur', radius: 12, backdrop: true },
         ]);
     });
 
     it('grayscale carries the backdrop flag too', () => {
-        expect([...FX.grayscale(1, { backdrop: true })]).toEqual([
+        expect([...Effects.grayscale(1, { backdrop: true })]).toEqual([
             { type: 'grayscale', amount: 1, backdrop: true },
         ]);
     });
 
     it('omitting opts leaves backdrop unset (foreground effect)', () => {
-        expect([...FX.blur(12)]).toEqual([{ type: 'blur', radius: 12 }]);
+        expect([...Effects.blur(12)]).toEqual([{ type: 'blur', radius: 12 }]);
     });
 
     it('directionalBlur produces a direction and blurLength effect', () => {
-        expect([...FX.directionalBlur(45, 20)]).toEqual([
+        expect([...Effects.directionalBlur(45, 20)]).toEqual([
             { type: 'directionalBlur', direction: 45, blurLength: 20 },
         ]);
     });
 
     it('pixelate maps a bare number to equal block counts and sharp colours', () => {
-        expect([...FX.pixelate(20)]).toEqual([
+        expect([...Effects.pixelate(20)]).toEqual([
             { type: 'pixelate', horizontalBlocks: 20, verticalBlocks: 20, sharpColors: true },
         ]);
     });
 
     it('pixelate accepts a uniform { blocks } object', () => {
-        expect([...FX.pixelate({ blocks: 32, sharpColors: false })]).toEqual([
+        expect([...Effects.pixelate({ blocks: 32, sharpColors: false })]).toEqual([
             { type: 'pixelate', horizontalBlocks: 32, verticalBlocks: 32, sharpColors: false },
         ]);
     });
 
     it('pixelate accepts per-axis block counts', () => {
-        expect([...FX.pixelate({ horizontalBlocks: 200, verticalBlocks: 180 })]).toEqual([
+        expect([...Effects.pixelate({ horizontalBlocks: 200, verticalBlocks: 180 })]).toEqual([
             { type: 'pixelate', horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true },
         ]);
     });
 
     it('grayscale produces a grayscale effect', () => {
-        expect([...FX.grayscale(0.5)]).toEqual([{ type: 'grayscale', amount: 0.5 }]);
+        expect([...Effects.grayscale(0.5)]).toEqual([{ type: 'grayscale', amount: 0.5 }]);
     });
 
     it('bulge produces a strength-only effect', () => {
-        expect([...FX.bulge(0.6)]).toEqual([
+        expect([...Effects.bulge(0.6)]).toEqual([
             { type: 'bulge', strength: 0.6 },
         ]);
     });
 
     it('bulge accepts negative strength (pinch)', () => {
-        expect([...FX.bulge(-0.4)]).toEqual([
+        expect([...Effects.bulge(-0.4)]).toEqual([
             { type: 'bulge', strength: -0.4 },
         ]);
     });
 
     it('invert defaults to rgba at full strength', () => {
-        expect([...FX.invert()]).toEqual([
+        expect([...Effects.invert()]).toEqual([
             { type: 'invert', channel: 'rgba', strength: 1 },
         ]);
     });
 
     it('invert accepts a channel and strength', () => {
-        expect([...FX.invert('hue', 0.5)]).toEqual([
+        expect([...Effects.invert('hue', 0.5)]).toEqual([
             { type: 'invert', channel: 'hue', strength: 0.5 },
         ]);
     });
 
     it('scatter defaults to both axes', () => {
-        expect([...FX.scatter(10)]).toEqual([
+        expect([...Effects.scatter(10)]).toEqual([
             { type: 'scatter', strength: 10, direction: 'both' },
         ]);
     });
 
     it('scatter accepts a constrained direction', () => {
-        expect([...FX.scatter(5, 'horizontal')]).toEqual([
+        expect([...Effects.scatter(5, 'horizontal')]).toEqual([
             { type: 'scatter', strength: 5, direction: 'horizontal' },
         ]);
     });
 
     it('posterize defaults to 4 levels', () => {
-        expect([...FX.posterize()]).toEqual([{ type: 'posterize', level: 4 }]);
+        expect([...Effects.posterize()]).toEqual([{ type: 'posterize', level: 4 }]);
     });
 
     it('posterize accepts an explicit level', () => {
-        expect([...FX.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
+        expect([...Effects.posterize(2)]).toEqual([{ type: 'posterize', level: 2 }]);
     });
 
     it('motionBlur defaults to a centered both-axis smear', () => {
-        expect([...FX.motionBlur()]).toEqual([
+        expect([...Effects.motionBlur()]).toEqual([
             { type: 'motionBlur', length: 50, alignment: 'centered', samples: 16, strength: 1, axis: 'both' },
         ]);
     });
 
     it('motionBlur accepts explicit params', () => {
-        expect([...FX.motionBlur(80, 'ahead', 32, 2, 'x')]).toEqual([
+        expect([...Effects.motionBlur(80, 'ahead', 32, 2, 'x')]).toEqual([
             { type: 'motionBlur', length: 80, alignment: 'ahead', samples: 32, strength: 2, axis: 'x' },
         ]);
     });
@@ -109,7 +109,7 @@ describe('FX builders', () => {
 
 describe('EffectChain', () => {
     it('appends effects in order while staying immutable', () => {
-        const base = FX.blur(4);
+        const base = Effects.blur(4);
         const extended = base.grayscale(1);
         expect(base.list).toHaveLength(1);
         expect(extended.list).toHaveLength(2);
@@ -117,13 +117,13 @@ describe('EffectChain', () => {
     });
 
     it('is iterable for spreading into an array', () => {
-        const arr = [...FX.blur(2).pixelate(10)];
+        const arr = [...Effects.blur(2).pixelate(10)];
         expect(arr).toHaveLength(2);
         expect(arr[0]).toEqual({ type: 'blur', radius: 2 });
     });
 
     it('toJSON returns the raw effect list', () => {
-        const chain = FX.blur(8);
+        const chain = Effects.blur(8);
         expect(chain.toJSON()).toBe(chain.list);
     });
 });
@@ -134,7 +134,7 @@ describe('resolveChainEffects', () => {
     });
 
     it('unwraps an EffectChain to its list', () => {
-        const chain = FX.blur(3);
+        const chain = Effects.blur(3);
         expect(resolveChainEffects(chain)).toBe(chain.list);
     });
 

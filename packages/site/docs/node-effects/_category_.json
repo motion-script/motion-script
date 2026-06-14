@@ -3,6 +3,6 @@
   "position": 5,
   "link": {
     "type": "generated-index",
-    "description": "Post-process effects applied to any node via the effects prop."
+    "description": "Post-process effects applied to any node via the `effects` prop. Blur, grayscale, pixelate, bloom, directional blur, motion blur, chromatic aberration, bulge, magnify, invert, scatter, posterize, vintage, and background blur."
   }
 }

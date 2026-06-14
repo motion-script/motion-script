@@ -1,0 +1,63 @@
+---
+sidebar_position: 12
+---
+
+# Scatter
+
+Randomly displaces each pixel of the node by up to `strength` pixels, producing a static-noise smear. Mirrors After Effects' **Scatter** effect.
+
+![Scatter effect demo](/effects/scatter.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default: 10px displacement in both directions
+<Rect effects={Effects.scatter()} />
+
+// Horizontal only
+<Rect effects={Effects.scatter(20, 'horizontal')} />
+
+// Raw object
+<Rect effects={[{ type: 'scatter', strength: 10, direction: 'both' }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'scatter'` | — | Effect identifier |
+| `strength` | `number` | `10` | Maximum random pixel displacement. `0` = off |
+| `direction` | `'horizontal' \| 'vertical' \| 'both'` | `'both'` | Axis along which pixels are displaced |
+| `backdrop` | `boolean` | `false` | When `true`, scatters the content beneath the node |
+
+## Animating
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const img = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    img.set({ effects: Effects.scatter(0) });
+    this.add(img);
+
+    // Disintegrate
+    yield* tween(1.2, (t) => {
+      img.set({ effects: Effects.scatter(lerpNumber(0, 40, easeOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Signal-loss look: scatter + chromatic aberration
+<Rect effects={Effects.scatter(8, 'horizontal').chromaticAberration(4, 0)} />
+```

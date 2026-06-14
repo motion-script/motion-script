@@ -16,7 +16,7 @@ export { resolveMotionBlurAxis, resolveMotionBlurAlignment } from "./implementat
 export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
 
 /** Chainable effect builder API, chain class, and union input type. */
-export { FX, ChainableFx, EffectChain } from './chain';
+export { Effects as Effects, ChainableFx, EffectChain } from './chain';
 export type { PixelateOptions, BackdropOptions } from './chain';
 
 export type { EffectData, BackdropCapable } from './effect-data';

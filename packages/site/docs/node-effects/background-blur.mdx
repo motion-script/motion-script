@@ -1,0 +1,73 @@
+---
+sidebar_position: 14
+---
+
+# Background Blur
+
+Blurs the content _beneath_ a node rather than the node itself — the node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `backdrop: true` variant of [Blur](./blur), equivalent to Figma's background blur.
+
+![Background blur effect demo](/effects/background-blur.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Blur the backdrop behind a frosted-glass card
+<Rect
+  width={300}
+  height={200}
+  fill={{ type: 'color', value: 'rgba(255,255,255,0.2)' }}
+  effects={Effects.blur(16, { backdrop: true })}
+/>
+
+// Raw object
+<Rect effects={[{ type: 'blur', blur: 16, backdrop: true }]} />
+```
+
+The node must be layered _over_ other scene content for the effect to be visible — it blurs whatever is painted below it.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'blur'` | — | Effect identifier |
+| `blur` | `number` | — | Blur radius in pixels |
+| `backdrop` | `true` | — | Must be `true` — this is what distinguishes background blur from a regular node blur |
+
+## Animating
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const bg = new Rect({
+      width: 800,
+      height: 600,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    const card = new Rect({
+      width: 400,
+      height: 260,
+      cornerRadius: 16,
+      fill: { type: 'color', value: 'rgba(255,255,255,0.15)' },
+    });
+    card.set({ effects: Effects.blur(0, { backdrop: true }) });
+    this.add(bg, card);
+
+    yield* tween(1.2, (t) => {
+      card.set({ effects: Effects.blur(lerpNumber(0, 20, easeInOut(t)), { backdrop: true }) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+Background blur composes with other backdrop effects or regular effects on the same node:
+
+```tsx
+// Frosted glass: background blur + subtle grayscale on the backdrop
+<Rect effects={Effects.blur(16, { backdrop: true }).grayscale(0.2, { backdrop: true })} />
+```

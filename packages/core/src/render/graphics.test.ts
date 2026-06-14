@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Graphics, GraphicsShapeOp } from '@/render/graphics';
 import { PathBuilder } from '@/render/descriptors/path-builder';
-import { FX } from '@/attributes/shape/effects/chain';
+import { Effects } from '@/attributes/shape/effects/chain';
 
 describe('Graphics', () => {
     it('records shapes and paint ops in order', () => {
@@ -49,7 +49,7 @@ describe('Graphics', () => {
     });
 
     it('effects() accepts a ChainableFx (FX builder) and resolves to a SceneEffect[]', () => {
-        const g = new Graphics().rect({ width: 1, height: 1 }).effects(FX.blur(8).grayscale(1));
+        const g = new Graphics().rect({ width: 1, height: 1 }).effects(Effects.blur(8).grayscale(1));
         expect(g.groupEffects()).toEqual([
             { type: 'blur', radius: 8 },
             { type: 'grayscale', amount: 1 },

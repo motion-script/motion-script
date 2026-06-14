@@ -1,0 +1,61 @@
+---
+sidebar_position: 5
+---
+
+# Bloom
+
+Adds a soft glow to bright areas of any node. Pixels above `threshold` luminance bleed outward via a screen-blend of a blurred bright-pass onto the layer.
+
+![Bloom effect demo](/effects/bloom.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default bloom
+<Rect effects={Effects.bloom()} />
+
+// Custom threshold, spread, and intensity
+<Rect effects={Effects.bloom(0.6, 24, 1.5)} />
+
+// Raw object
+<Rect effects={[{ type: 'bloom', threshold: 0.7, radius: 12, intensity: 1 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'bloom'` | — | Effect identifier |
+| `threshold` | `number` | `0.7` | Luminance cutoff `0`–`1` — only pixels brighter than this contribute to the bloom |
+| `radius` | `number` | `12` | Glow spread in pixels |
+| `intensity` | `number` | `1` | Additive multiplier for the bloom pass — higher values make the glow brighter |
+| `backdrop` | `boolean` | `false` | When `true`, blooms the content beneath the node |
+
+## Animating
+
+Animate `intensity` to fade a glow on or off:
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const light = new Rect({ width: 200, height: 200, fill: 'white' });
+    light.set({ effects: Effects.bloom(0.5, 40, 0) });
+    this.add(light);
+
+    yield* tween(1, (t) => {
+      light.set({ effects: Effects.bloom(0.5, 40, lerpNumber(0, 2, easeOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Bloom on top of a vintage grade
+<Rect effects={Effects.vintage(0.8).bloom(0.6, 20, 1.2)} />
+```

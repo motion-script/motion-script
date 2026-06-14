@@ -14,7 +14,7 @@ import type { SkSLUniform } from "./implementations/sksl";
 export type BackdropOptions = { backdrop?: boolean };
 
 /**
- * Accepted shapes for {@link FX.pixelate} / {@link EffectChain.pixelate}.
+ * Accepted shapes for {@link Effects.pixelate} / {@link EffectChain.pixelate}.
  *
  * Block counts follow AE's Mosaic: they are the *number* of blocks across the
  * node, so a count equal to the node's pixel size on that axis is pristine and
@@ -257,7 +257,7 @@ const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(l
  * @example
  * node.effects = FX.blur(8).grayscale(1);
  */
-export const FX = {
+export const Effects = {
   /** Gaussian blur. `{ backdrop: true }` blurs the backdrop beneath the node, clipped to its silhouette. */
   blur: (blur: number, opts?: BackdropOptions) => createChain([{ type: 'blur', blur: blur, ...opts }]),
   /** Motion-blur-style directional (linear) blur. `direction` in degrees, `blurLength` in pixels. `{ backdrop }` smears the backdrop. */

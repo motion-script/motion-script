@@ -6,41 +6,44 @@ sidebar_position: 1
 
 Applies a Gaussian blur to any node. The effect covers the entire node including its children.
 
+![Blur effect demo](/effects/blur.png)
+
 ## Usage
 
 ```tsx
-import { FX } from '@motion-script/core';
+import { Effects } from '@motion-script/core';
 
-// Via FX builder
-<Rect width={400} height={300} fill="royalblue" effects={FX.blur(12)} />
+// Via Effects builder
+<Rect width={400} height={300} fill="royalblue" effects={Effects.blur(12)} />
 
 // Via raw object
-<Rect width={400} height={300} fill="royalblue" effects={[{ type: 'blur', radius: 12 }]} />
+<Rect width={400} height={300} fill="royalblue" effects={[{ type: 'blur', blur: 12 }]} />
 ```
 
 ## Props
 
-| Prop | Type | Description |
-|---|---|---|
-| `type` | `'blur'` | Effect identifier |
-| `radius` | `number` | Gaussian blur radius in pixels |
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'blur'` | — | Effect identifier |
+| `blur` | `number` | — | Gaussian blur radius in pixels |
+| `backdrop` | `boolean` | `false` | When `true`, blurs the content beneath the node (Figma-style) instead of the node itself |
 
 ## Animating
 
-Animate the radius inside a `tween` callback to create focus or defocus effects. The `tween` callback gives you `t` from 0 to 1 — interpolate the radius manually with `lerpNumber`:
+Animate the radius inside a `tween` callback to create focus or defocus effects:
 
 ```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { Scene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
     const card = new Rect({ width: 400, height: 300, fill: '#1e293b' });
-    card.set({ effects: FX.blur(30) });
+    card.set({ effects: Effects.blur(30) });
     this.add(card);
 
     // Focus in over 1 second
     yield* tween(1, (t) => {
-      card.set({ effects: FX.blur(lerpNumber(30, 0, easeOut(t))) });
+      card.set({ effects: Effects.blur(lerpNumber(30, 0, easeOut(t))) });
     });
   }
 }
@@ -48,8 +51,10 @@ export class MyScene extends Scene {
 
 ## Stacking with other effects
 
-Blur can be combined with grayscale and pixelate via the FX builder:
-
 ```tsx
-<Rect effects={FX.grayscale(0.8).blur(6)} />
+// Blur then grayscale
+<Rect effects={Effects.blur(6).grayscale(0.8)} />
+
+// Blur with pixelate
+<Rect effects={Effects.pixelate(40).blur(4)} />
 ```

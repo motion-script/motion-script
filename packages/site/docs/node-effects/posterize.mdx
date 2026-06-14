@@ -1,0 +1,63 @@
+---
+sidebar_position: 11
+---
+
+# Posterize
+
+Quantizes each color channel into a fixed number of discrete brightness bands, flattening gradients into flat-color steps. Mirrors After Effects' **Posterize** effect.
+
+![Posterize effect demo](/effects/posterize.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default: 4 levels per channel
+<Rect effects={Effects.posterize()} />
+
+// Coarser posterize
+<Rect effects={Effects.posterize(3)} />
+
+// Raw object
+<Rect effects={[{ type: 'posterize', level: 4 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'posterize'` | — | Effect identifier |
+| `level` | `number` | `4` | Number of brightness bands per channel (minimum `2`). Lower = fewer steps, more graphic |
+| `backdrop` | `boolean` | `false` | When `true`, posterizes the content beneath the node |
+
+## Animating
+
+Animate from many levels (near-photographic) down to few (graphic):
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const img = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    img.set({ effects: Effects.posterize(32) });
+    this.add(img);
+
+    yield* tween(1.5, (t) => {
+      img.set({ effects: Effects.posterize(lerpNumber(32, 3, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Graphic pop-art look
+<Rect effects={Effects.posterize(4).grayscale(0.3)} />
+```
