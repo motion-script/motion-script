@@ -1,0 +1,73 @@
+---
+sidebar_position: 9
+---
+
+# Row
+
+An invisible horizontal flex container. Lays its children out left-to-right, honouring `gap`, `alignment`, and `padding`. Use it when you want flex layout without a visible box — it draws nothing itself.
+
+![Row node](/nodes/row.png)
+
+## Usage
+
+```tsx
+import { Scene, Row, Rect, Text } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Row gap={24} padding={16}>
+        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+      </Row>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `gap` | `number \| 'auto'` | `0` | Space between children. `'auto'` distributes evenly (space-between) |
+| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Cross-axis alignment. In a row, `alignment.y` controls vertical alignment: `-1` top · `0` center · `1` bottom |
+| `padding` | `number \| PaddingProps` | `0` | Inset the content area from the node's edges |
+
+### Size defaults
+
+`Row` defaults to `width: 'hug'`, `height: 'hug'`. Give a child `flex: 1` (or `width: 'fill'`) to make it expand into remaining row space.
+
+## Animating
+
+All props animate with `.to()`:
+
+```tsx
+import { Scene, Row, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const row = createRef<Row>();
+
+    this.add(
+      <Row ref={row} gap={8}>
+        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+      </Row>
+    );
+
+    // Spread items apart
+    yield* row().to({ gap: 48 }, 0.8, easeOut);
+
+    // Align to top
+    yield* row().to({ alignment: { x: 0, y: -1 } }, 0.5, easeOut);
+  }
+}
+```
+
+## Notes
+
+- `Row` is equivalent to `<Rect group="row" ...>` but draws no box. Use `Rect` with `group="row"` when you also want a visible container.
+- `alignment.x` has no effect in a row (children are already laid out along the x axis).
+- See [Layout](../attributes/layout) for full docs on `fill`, `hug`, `flex`, and padding shorthands.

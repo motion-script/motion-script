@@ -1,44 +1,47 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
-# Text Nodes
+# Text
 
-## Text
+Renders a string with a single consistent style. Like all shape nodes it supports fills, strokes, and shadows.
 
-`Text` renders a string with a single consistent style. Like all shape nodes, it supports fills, strokes, and shadows.
+![Text node](/nodes/text.png)
+
+## Usage
 
 ```tsx
-<Text
-  text="Hello, world!"
-  fontSize={48}
-  fontFamily="Inter"
-  fontWeight={700}
-  fill="white"
-  align={0}
-/>
+import { Scene, Text } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Text
+        text="Hello, world!"
+        fontSize={48}
+        fontFamily="Inter"
+        fontWeight={700}
+        fill="white"
+      />
+    );
+  }
+}
 ```
 
-### Props
+## Props
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `text` | `string` | `''` | Text content |
-| `fontSize` | `number \| 'autofit'` | `16` | Font size in pixels, or `'autofit'` |
-| `fontFamily` | `string` | `'Roboto'` | Font name |
-| `fontWeight` | `number` | `400` | Weight 100–900 |
-| `letterSpacing` | `number` | `0` | Extra spacing between characters |
+| `text` | `string` | `''` | The text content to display |
+| `fontSize` | `number \| 'autofit'` | `16` | Font size in pixels, or `'autofit'` to shrink-fit into the node's bounds |
+| `fontFamily` | `string` | `'Inter'` | Font family name |
+| `fontWeight` | `number` | `400` | Font weight (100–900) |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Font style |
+| `letterSpacing` | `number` | `0` | Extra spacing between characters in pixels |
 | `lineHeight` | `number` | `1.2` | Line height multiplier |
-| `align` | `number` | `0` | `-1` left · `0` center · `1` right |
+| `align` | `number` | `0` | Text alignment: `-1` left · `0` center · `1` right |
 | `wrap` | `boolean` | `false` | Enable word wrapping |
-| `minFontSize` | `number` | `12` | Minimum font size for autofit |
-
-### Methods
-
-| Method | Signature | Description |
-|---|---|---|
-| `append` | `*append(text, duration, easing?)` | Animate adding text to the end |
-| `prepend` | `*prepend(text, duration, easing?)` | Animate adding text to the start |
+| `minFontSize` | `number` | `12` | Minimum font size when using `'autofit'` |
 
 ### Size defaults
 
@@ -47,60 +50,40 @@ sidebar_position: 2
 | Normal | `'hug'` | `'hug'` |
 | `fontSize: 'autofit'` or `wrap: true` | `'fill'` | `'fill'` |
 
----
+## Animating
 
-## RichText
-
-`RichText` renders mixed-style text. Style is defined as a tree of `TextSpan` objects — children inherit and can override the parent's style.
+All text props animate with `.to()`. Use `append` and `prepend` to animate characters being typed in:
 
 ```tsx
-<RichText
-  fontSize={36}
-  fill="white"
-  spans={[
-    { text: 'Hello ' },
-    { text: 'world', fill: '#4f80ff', fontWeight: 700 },
-    { text: '!', fontSize: 56, fill: '#e84393' },
-  ]}
-/>
-```
+import { Scene, Text, createRef, easeOut } from '@motion-script/core';
 
-### Props
+export class MyScene extends Scene {
+  *build() {
+    const label = createRef<Text>();
 
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `spans` | `TextSpan \| TextSpan[]` | `[]` | Span tree |
-| `fontSize` | `number` | `16` | Default font size |
-| `fontFamily` | `string` | `'Roboto'` | Default font family |
-| `fontWeight` | `number` | `400` | Default font weight |
-| `letterSpacing` | `number` | `0` | Default letter spacing |
-| `lineHeight` | `number` | `1.2` | Line height multiplier |
-| `align` | `number` | `0` | `-1` left · `0` center · `1` right |
+    this.add(
+      <Text ref={label} text="" fontSize={48} fontWeight={700} fill="white" />
+    );
 
-### TextSpan interface
+    // Type text in over 1 second
+    yield* label().append('Hello, world!', 1, easeOut);
 
-```ts
-interface TextSpan {
-  text?: string;
-  fontFamily?: string;
-  fontSize?: number;
-  fontWeight?: number;
-  letterSpacing?: number;
-  fill?: FillProp | FillProp[];
-  stroke?: StrokeProp | StrokeProp[];
-  children?: TextSpan[];  // Nested spans that inherit this span's styles
+    // Animate font size
+    yield* label().to({ fontSize: 64 }, 0.5, easeOut);
+  }
 }
 ```
 
-### Defaults
+### Methods
 
-`RichText` defaults to `width: 'hug'`, `height: 'hug'`.
+| Method | Signature | Description |
+|---|---|---|
+| `append` | `*append(text, duration, easing?)` | Animate adding text to the end |
+| `prepend` | `*prepend(text, duration, easing?)` | Animate adding text to the start |
 
----
+### Draw-on animation
 
-## Draw-on animation
-
-Both `Text` and `RichText` respect the `start` and `end` props inherited from `ShapeNode`. Animate `end` from `0` to `1` to draw text character by character along its outline:
+Animate `end` from `0` to `1` to trace the text outline character by character:
 
 ```tsx
 const label = createRef<Text>();
@@ -108,3 +91,9 @@ this.add(<Text ref={label} text="Motion" fontSize={80} fontWeight={900} fill="wh
 
 yield* label().to({ end: 1 }, 1.2);
 ```
+
+## Notes
+
+- `fontFamily` must be available to the renderer — bundle or preload custom fonts.
+- With `fontSize: 'autofit'`, the node defaults to `width: 'fill'` and `height: 'fill'` so it has bounds to shrink into. Set explicit pixel dimensions to constrain the fit area.
+- `align` accepts `-1`, `0`, or `1` rather than string keywords.

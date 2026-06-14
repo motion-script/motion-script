@@ -1,0 +1,76 @@
+---
+sidebar_position: 6
+---
+
+# Polygram
+
+A star polygon. Alternates outer and inner vertices to form a star shape. Lower `ratio` values produce sharper, more pointed stars.
+
+![Polygram node](/nodes/polygram.png)
+
+## Usage
+
+```tsx
+import { Scene, Polygram } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Classic 5-pointed star
+    this.add(
+      <Polygram sides={5} ratio={0.4} width={240} height={240} fill="gold" />
+    );
+
+    // 6-pointed star with rounded points
+    this.add(
+      <Polygram sides={6} ratio={0.5} width={240} height={240} fill="#e84393" cornerRadius={8} />
+    );
+
+    // 8-pointed star with chamfered corners
+    this.add(
+      <Polygram sides={8} ratio={0.6} width={240} height={240} fill="royalblue" cornerRadius={12} cornerStyle="angled" />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of outer points. Must be ≥ 3 |
+| `ratio` | `number` | `0.5` | Inner-to-outer radius ratio (0–1). Lower values = sharper points. At `1` the shape degenerates into a regular polygon |
+| `cornerRadius` | `number` | `0` | Vertex rounding radius applied to both inner and outer vertices |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape: circular arc (`'rounded'`) or chamfer cut (`'angled'`) |
+
+## Animating
+
+All props animate with `.to()`. Animate `ratio` to collapse points in or out, or `sides` to morph between star shapes:
+
+```tsx
+import { Scene, Polygram, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const star = createRef<Polygram>();
+
+    this.add(
+      <Polygram ref={star} sides={5} ratio={0.4} width={240} height={240} fill="gold" />
+    );
+
+    // Collapse points inward
+    yield* star().to({ ratio: 0.9 }, 1.0, easeInOut);
+
+    // Morph to 8-pointed star
+    yield* star().to({ sides: 8, ratio: 0.4 }, 0.8, easeInOut);
+
+    // Round the points
+    yield* star().to({ cornerRadius: 12 }, 0.5, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- `cornerStyle` takes a single scalar (not the per-corner shorthand from `Rect`) because star vertices don't map to named corners.
+- `ratio: 1` degenerates into a regular polygon identical to `Polygon` with the same number of sides.
+- The star is inscribed within the node's bounding rect — outer vertices touch the rect edges.

@@ -1,0 +1,133 @@
+---
+sidebar_position: 13
+---
+
+# Video
+
+Renders a playing video. Layout and child positioning are inherited from `Rect` — a Video lays out its children exactly like a Rect, with a playing video frame painted in place of the fill. The video's audio track is automatically scheduled alongside the picture.
+
+<video src="/nodes/video.mp4" autoPlay loop muted playsInline style={{width: '100%', borderRadius: '12px'}} />
+
+## Usage
+
+```tsx
+import { Scene, Video } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Video
+        src="./assets/clip.mp4"
+        fit="fill"
+        width={1280}
+        height={720}
+        cornerRadius={0}
+      />
+    );
+  }
+}
+```
+
+## Props
+
+### Source & fit
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | — | Path to the video file |
+| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | `'fill'` | How the video frame fills the node's bounds |
+| `scaling` | `number` | — | Scale multiplier applied before fitting |
+| `transform` | `ImageTransform` | — | Fine-grained frame transform (offset, scale, rotation within bounds) |
+| `filters` | `MediaFilter[] \| FilterChain` | `[]` | Visual filters applied to the rendered frame |
+
+### Playback
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `playing` | `boolean` | `true` | Whether playback advances each frame |
+| `timestamp` | `number` | — | Starting offset into the source in seconds. Defaults to `trimStart` or `0` |
+| `trimStart` | `number` | — | Starting point within the source file in seconds |
+| `trimEnd` | `number` | — | Ending point within the source file in seconds |
+| `speed` | `number` | `1` | Playback-rate multiplier (affects both picture and audio) |
+| `loop` | `'forward' \| 'reverse' \| 'none'` | — | Loop behaviour |
+| `duration` | `number` | — | Length of one loop cycle in seconds. Defaults to the trimmed clip length |
+
+### Audio
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `volume` | `number` | `1` | Audio volume in [0, 1] |
+| `muted` | `boolean` | `false` | Silence the audio track without affecting the picture |
+| `audioFilters` | `AudioFilter[] \| AudioFilterChain` | `[]` | Audio filters applied to the video's sound track |
+
+### Layout & appearance
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius (clips the frame) |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape |
+
+## Animating
+
+Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with `.to()`. For playback control, set `playing` and `timestamp` directly:
+
+```tsx
+import { Scene, Video, createRef, easeInOut, wait } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const clip = createRef<Video>();
+
+    this.add(
+      <Video
+        ref={clip}
+        src="./assets/clip.mp4"
+        fit="crop"
+        width={960}
+        height={540}
+        cornerRadius={24}
+        opacity={0}
+      />
+    );
+
+    // Fade in
+    yield* clip().to({ opacity: 1, cornerRadius: 0 }, 0.8, easeInOut);
+
+    // Pause mid-playback
+    yield* wait(3);
+    clip().set({ playing: false });
+
+    // Resume
+    yield* wait(1);
+    clip().set({ playing: true });
+  }
+}
+```
+
+### Trim and loop
+
+```tsx
+<Video
+  src="./assets/clip.mp4"
+  trimStart={2.5}
+  trimEnd={8.0}
+  loop="forward"
+  width={640}
+  height={360}
+/>
+```
+
+### Speed change
+
+```tsx
+<Video src="./assets/clip.mp4" speed={0.5} width={640} height={360} />
+```
+
+## Notes
+
+- `Video` extends `Rect`, so children can be placed on top of the video frame (for subtitles, overlays, etc.).
+- Set `muted: true` to suppress audio while keeping the picture — useful when compositing multiple video layers.
+- `playing: false` freezes both picture and sound.
+- `loop: 'reverse'` plays the clip backward when it reaches the end.
+- See [Audio Filters](../attributes/audio) for the full list of audio filters.
+- See [Image Filters](../image-filters/overview) for the full list of visual filters that can be applied to the frame.

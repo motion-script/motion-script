@@ -1,0 +1,150 @@
+---
+sidebar_position: 2
+---
+
+# RichText
+
+Renders mixed-style text. Style is defined as a tree of `TextSpan` objects — children inherit and can override the parent span's style, so you can nest spans to build up complex formatting.
+
+![RichText node](/nodes/rich-text.png)
+
+## Usage
+
+```tsx
+import { Scene, RichText } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <RichText
+        fontSize={36}
+        fill="white"
+        spans={[
+          { text: 'Hello ' },
+          { text: 'world', fill: '#4f80ff', fontWeight: 700 },
+          { text: '!', fontSize: 56, fill: '#e84393' },
+        ]}
+      />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `spans` | `TextSpan \| TextSpan[]` | `[]` | Root span tree |
+| `fontSize` | `number` | `16` | Default font size in pixels |
+| `fontFamily` | `string` | `'Inter'` | Default font family |
+| `fontWeight` | `number` | `400` | Default font weight (100–900) |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Default font style |
+| `letterSpacing` | `number` | `0` | Default letter spacing in pixels |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `align` | `number` | `0` | Text alignment: `-1` left · `0` center · `1` right |
+
+### Size defaults
+
+`RichText` defaults to `width: 'hug'`, `height: 'hug'`.
+
+## TextSpan interface
+
+Each span can carry its own style. Unset fields inherit from the parent span (or the node's top-level defaults).
+
+```ts
+interface TextSpan {
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: number;
+  fontStyle?: 'normal' | 'italic';
+  letterSpacing?: number;
+  fill?: FillProp | FillProp[];
+  stroke?: StrokeProp | StrokeProp[];
+  children?: TextSpan[];  // nested spans that inherit this span's styles
+}
+```
+
+### Nested spans
+
+Children inherit their parent span's styles and can override selectively:
+
+```tsx
+<RichText
+  fontSize={32}
+  fill="white"
+  spans={[
+    {
+      text: 'Start',
+      fontWeight: 700,
+      children: [
+        { text: ' — inherits bold' },
+        { text: ' override', fill: 'tomato' },
+      ],
+    },
+  ]}
+/>
+```
+
+## Animating
+
+Animate any top-level prop with `.to()`. To animate individual span styles, reassign `spans` inside a `tween`:
+
+```tsx
+import { Scene, RichText, createRef, tween, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const label = createRef<RichText>();
+
+    this.add(
+      <RichText
+        ref={label}
+        fontSize={36}
+        fill="white"
+        spans={[
+          { text: 'Motion ', fontWeight: 400 },
+          { text: 'Script', fontWeight: 700, fill: '#4f80ff' },
+        ]}
+      />
+    );
+
+    // Animate font size
+    yield* label().to({ fontSize: 48 }, 0.6, easeOut);
+
+    // Cross-fade span colors
+    yield* tween(0.8, (t) => {
+      label().set({
+        spans: [
+          { text: 'Motion ', fontWeight: 400 },
+          { text: 'Script', fontWeight: 700, fill: `hsl(${220 + t * 60}, 80%, 65%)` },
+        ],
+      });
+    });
+  }
+}
+```
+
+### Draw-on animation
+
+Like `Text`, animating `end` from `0` to `1` traces the text outline:
+
+```tsx
+const label = createRef<RichText>();
+this.add(
+  <RichText
+    ref={label}
+    fontSize={64}
+    end={0}
+    spans={[{ text: 'Hello ', fill: 'white' }, { text: 'World', fill: '#4f80ff', fontWeight: 700 }]}
+  />
+);
+
+yield* label().to({ end: 1 }, 1.5);
+```
+
+## Notes
+
+- Spans without a `text` field act as purely stylistic wrappers for their `children`.
+- `fill` and `stroke` on a span follow the same syntax as shape node fills — CSS strings, gradient objects, or arrays for layering.
+- `RichText` does not support word wrapping; use `Text` with `wrap: true` for that.

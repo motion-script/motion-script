@@ -1,0 +1,83 @@
+---
+sidebar_position: 8
+---
+
+# Camera
+
+A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform — clipped to the card's bounds.
+
+<video src="/nodes/camera.mp4" autoPlay loop muted playsInline style={{width: '100%', borderRadius: '12px'}} />
+
+## Usage
+
+```tsx
+import { Scene, Camera, Rect, Text } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Camera
+        width={480}
+        height={320}
+        zoom={1}
+        centerOn={{ x: 0, y: 0 }}
+        fill="#0f172a"
+        cornerRadius={16}
+      >
+        <Rect width={200} height={200} fill="royalblue" cornerRadius={12} />
+        <Text text="World" fontSize={32} fontWeight={700} fill="white" y={-160} />
+      </Camera>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `zoom` | `number` | `1` | Magnification factor. Values > 1 zoom in; < 1 zoom out |
+| `centerOn` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport |
+| `heading` | `number` | `0` | Camera rotation in degrees (clockwise) |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the card and the viewport clip |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the card |
+
+`Camera` also inherits all standard `ShapeNode` props (`fill`, `stroke`, `shadow`, `start`, `end`, etc.).
+
+## Animating
+
+All camera props animate with `.to()`. Pan, zoom, and rotate to create cinematic camera moves:
+
+```tsx
+import { Scene, Camera, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const cam = createRef<Camera>();
+
+    this.add(
+      <Camera ref={cam} width={640} height={360} fill="#0f172a" cornerRadius={12}>
+        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} x={-200} />
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} x={200} />
+      </Camera>
+    );
+
+    // Pan to the right object
+    yield* cam().to({ centerOn: { x: 200, y: 0 } }, 1.2, easeInOut);
+
+    // Zoom in
+    yield* cam().to({ zoom: 2 }, 0.8, easeInOut);
+
+    // Rotate the view
+    yield* cam().to({ heading: 15 }, 0.6, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- The Camera runs no flex or stack layout — children are positioned stack-style (centered), then viewed through the camera transform.
+- The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
+- `centerOn` is in world-space coordinates relative to the children's own origin, not screen coordinates.
+- `heading` rotates the camera's view, not the children — the world stays fixed and the camera turns.
