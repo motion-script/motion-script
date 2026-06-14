@@ -15,6 +15,7 @@ export { AlignmentStrokeScene } from "./alignment-stroke";
 export { UnionShadowScene } from "./union-shadow";
 export { MaskScene } from "./mask";
 export { BooleanOperatorScene } from "./boolean-operators";
+export { LineGridScene } from "./line-grid";
 
 export { RichTextScene } from "./rich-text";
 export { AutofitTextScene } from "./autofit-text";
