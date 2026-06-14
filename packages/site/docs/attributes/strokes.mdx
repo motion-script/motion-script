@@ -1,0 +1,104 @@
+---
+sidebar_position: 2
+---
+
+# Strokes
+
+Every shape node accepts a `stroke` prop. Strokes paint a border along the shape's path using the same fill system as shape fills.
+
+## Basic usage
+
+```tsx
+// Solid stroke
+<Rect stroke={{ weight: 3, fill: 'white' }} />
+
+// Gradient stroke
+<Rect stroke={{
+  weight: 4,
+  fill: { type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] },
+}} />
+```
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `weight` | `number` | `1` | Stroke width in pixels |
+| `fill` | `FillProp` | | Stroke color or gradient |
+| `dash` | `number \| number[]` | | Dash pattern (e.g. `[10, 5]` for 10px on, 5px off) |
+| `dashOffset` | `number` | `0` | Offset into the dash pattern |
+| `align` | `number \| 'inside' \| 'center' \| 'outside'` | `'center'` | Where the stroke sits relative to the path edge |
+
+---
+
+## Alignment
+
+`align` controls whether the stroke grows inward, outward, or straddles the path edge:
+
+```tsx
+<Rect stroke={{ weight: 8, fill: 'royalblue', align: 'inside' }} />
+<Rect stroke={{ weight: 8, fill: 'royalblue', align: 'center' }} />
+<Rect stroke={{ weight: 8, fill: 'royalblue', align: 'outside' }} />
+
+// Numeric — any value from -1 (fully inside) to 1 (fully outside)
+<Rect stroke={{ weight: 8, fill: 'royalblue', align: 0.5 }} />
+```
+
+---
+
+## Dashed strokes
+
+```tsx
+// Equal dashes and gaps
+<Rect stroke={{ weight: 2, fill: '#aaa', dash: 10 }} />
+
+// Custom pattern: 12px dash, 4px gap, 4px dash, 4px gap
+<Rect stroke={{ weight: 2, fill: 'white', dash: [12, 4, 4, 4] }} />
+```
+
+### Animated dash offset
+
+Animating `dashOffset` is a clean way to produce a draw-on or marching-ants effect:
+
+```tsx
+import { Scene, Rect, createRef } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(
+      <Rect ref={box} width={300} height={200} cornerRadius={12}
+        stroke={{ weight: 3, fill: 'white', dash: [16, 8], dashOffset: 0 }} />
+    );
+
+    // March the ants
+    yield* box().to({ stroke: { dashOffset: 100 } }, 2);
+  }
+}
+```
+
+---
+
+## Multiple strokes
+
+Pass an array to layer strokes. They paint in order, bottom to top:
+
+```tsx
+<Rect stroke={[
+  { weight: 8, fill: 'black', align: 'outside' },
+  { weight: 4, fill: 'white', align: 'outside' },
+]} />
+```
+
+---
+
+## Animating strokes
+
+All stroke props are animatable:
+
+```tsx
+yield* box().to({ stroke: { weight: 8, fill: '#e84393' } }, 0.6);
+```

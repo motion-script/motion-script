@@ -1,0 +1,88 @@
+---
+sidebar_position: 4
+---
+
+# Corners
+
+`Rect`, `Polygon`, `Polygram`, and `Image` support corner rounding via `cornerRadius` and a corner style via `cornerStyle`.
+
+## Corner radius
+
+Pass a single number for uniform rounding, or an object to target individual corners:
+
+```tsx
+// Uniform
+<Rect width={200} height={200} fill="royalblue" cornerRadius={16} />
+
+// Per-corner
+<Rect
+  width={200}
+  height={200}
+  fill="hotpink"
+  cornerRadius={{ topLeft: 0, topRight: 40, bottomLeft: 40, bottomRight: 0 }}
+/>
+
+// Pair shorthand — top and bottom together
+<Rect cornerRadius={{ top: 24, bottom: 4 }} width={200} height={120} fill="seagreen" />
+
+// Pair shorthand — left and right together
+<Rect cornerRadius={{ left: 40, right: 4 }} width={200} height={120} fill="teal" />
+```
+
+---
+
+## Corner style
+
+`cornerStyle` switches between smooth arc rounding and sharp chamfered cuts:
+
+```tsx
+// Default: rounded arcs
+<Rect width={200} height={200} fill="royalblue" cornerRadius={24} cornerStyle="rounded" />
+
+// Angled (chamfered) cuts
+<Rect width={200} height={200} fill="tomato" cornerRadius={24} cornerStyle="angled" />
+```
+
+`cornerStyle` accepts the same shorthand as `cornerRadius` — target pairs or individual corners:
+
+```tsx
+// Rounded top, angled bottom
+<Rect
+  width={240}
+  height={160}
+  fill="mediumpurple"
+  cornerRadius={28}
+  cornerStyle={{ top: 'rounded', bottom: 'angled' }}
+/>
+
+// Per-corner
+<Rect
+  width={200}
+  height={200}
+  fill="gold"
+  cornerRadius={24}
+  cornerStyle={{ topLeft: 'rounded', topRight: 'angled', bottomLeft: 'angled', bottomRight: 'rounded' }}
+/>
+```
+
+---
+
+## Animating corners
+
+Both `cornerRadius` and `cornerStyle` are animatable:
+
+```tsx
+import { Scene, Rect, createRef, easeOutBack } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={0} />);
+
+    yield* box().to({ cornerRadius: 100 }, 0.8, easeOutBack);
+  }
+}
+```
+
+Animating between `'rounded'` and `'angled'` cross-fades the two shapes over the tween duration.

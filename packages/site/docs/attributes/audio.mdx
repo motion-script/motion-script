@@ -1,0 +1,165 @@
+---
+sidebar_position: 9
+---
+
+# Audio
+
+`Sound` is a playable audio clip. Unlike nodes, it lives on a parallel timeline outside the visual scene graph — it does not appear in the tree but participates in the same frame-based timeline.
+
+## Basic usage
+
+```tsx
+import { Sound } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const clip = new Sound({ src: './music.mp3' });
+
+    // Play to completion and block
+    yield* clip.play();
+  }
+}
+```
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | | Path to the audio file |
+| `volume` | `number` | `1` | Playback volume (0 = silent, 1 = full, >1 = amplified) |
+| `loop` | `boolean` | `false` | Loop the clip |
+| `trimStart` | `number` | `0` | Start offset into the source file (seconds) |
+| `trimEnd` | `number` | | End offset into the source file (seconds) |
+| `duration` | `number` | | Shorthand for `trimStart: 0, trimEnd: duration`. Mutually exclusive with `trimStart`/`trimEnd`. |
+| `filters` | `AudioFilter[] \| AudioFilterChain` | `[]` | Audio filters |
+
+---
+
+## Trimming and duration
+
+```tsx
+// Play the first 5 seconds
+const short = new Sound({ src: './track.mp3', duration: 5 });
+yield* short.play();
+
+// Play from 10s to 20s in the source
+const excerpt = new Sound({ src: './track.mp3', trimStart: 10, trimEnd: 20 });
+yield* excerpt.play();
+```
+
+---
+
+## Looping
+
+```tsx
+const loop = new Sound({ src: './ambient.mp3', loop: true });
+
+loop.start();
+yield* wait(10);   // let it play for 10 seconds
+loop.stop();
+```
+
+For a looping clip with a known length, pass `duration` to `play()`:
+
+```tsx
+yield* loop.play(10);   // start, wait 10s, stop
+```
+
+---
+
+## Imperative control
+
+Use `start()` and `stop()` when you want to manage playback separately from `yield*`:
+
+```tsx
+const sfx = new Sound({ src: './hit.wav', volume: 0.8 });
+
+sfx.start();
+// ...other animation work...
+sfx.stop();
+```
+
+---
+
+## Audio filters
+
+The `AFX` builder chains filters fluently. Filters apply in order from index 0 (closest to the source):
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+const processed = new Sound({
+  src: './voice.mp3',
+  filters: AFX.gain(1.5).lowpass(3000).echo(0.3, 0.4),
+});
+
+yield* processed.play();
+```
+
+### Available filters
+
+| Filter | Builder | Description |
+|---|---|---|
+| Gain | `AFX.gain(value)` | Volume multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
+| High-pass | `AFX.highpass(frequency, q?)` | Rolls off content below `frequency` Hz |
+| Low-pass | `AFX.lowpass(frequency, q?)` | Rolls off content above `frequency` Hz |
+| Tremolo | `AFX.tremolo(rate, depth)` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
+| Speed | `AFX.speed(value)` | Playback-rate multiplier. Alters pitch. `2` = double speed |
+| Echo | `AFX.echo(delay, feedback, mix?)` | Delay `delay` seconds, feedback 0-<1, wet mix 0-1 |
+
+### Raw filter objects
+
+Filters can also be passed as plain objects or arrays:
+
+```tsx
+const clip = new Sound({
+  src: './music.mp3',
+  filters: [
+    { type: 'gain', value: 0.7 },
+    { type: 'lowpass', frequency: 2000 },
+  ],
+});
+```
+
+### Spreading and branching chains
+
+`AFX` chains are immutable — each method returns a new chain. Safe to share and branch:
+
+```tsx
+const base = AFX.gain(1.2).lowpass(4000);
+const wet  = base.echo(0.4, 0.5);   // 'base' is unchanged
+const dry  = base.highpass(80);
+
+// Spread into an array
+const filters = [...base, { type: 'tremolo', rate: 4, depth: 0.3 }];
+```
+
+---
+
+## Speed and pitch
+
+`speed` alters both tempo and pitch (like changing tape speed). A `2` multiplier doubles speed and raises pitch by one octave:
+
+```tsx
+const fast = new Sound({ src: './beat.mp3', filters: AFX.speed(1.5) });
+yield* fast.play();
+```
+
+The clip's scene-time duration shrinks proportionally: a 10-second source at `speed: 2` occupies 5 seconds of scene time.
+
+---
+
+## Playback ranges
+
+`sound.playRanges` returns the scene-time segments the sound has been scheduled to play — useful for visualizing audio on a timeline:
+
+```tsx
+clip.start();
+yield* wait(3);
+clip.stop();
+
+console.log(clip.playRanges);
+// [{ startAt: 0, endAt: 3 }]
+```

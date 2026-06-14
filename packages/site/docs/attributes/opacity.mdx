@@ -1,0 +1,63 @@
+---
+sidebar_position: 6
+---
+
+# Opacity
+
+`opacity` controls how transparent a node is. `1` is fully opaque, `0` is fully invisible.
+
+```tsx
+<Rect opacity={0.5} width={200} height={200} fill="royalblue" />
+```
+
+Opacity applies to the node and all of its children as a group. A child cannot exceed its parent's opacity.
+
+---
+
+## Fade animations
+
+### `.to()` — tween opacity
+
+```tsx
+import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" opacity={0} />);
+
+    // Fade in
+    yield* box().to({ opacity: 1 }, 0.6, easeOut);
+
+    // Fade out
+    yield* box().to({ opacity: 0 }, 0.4);
+  }
+}
+```
+
+### `.fadeTo()` — convenience helper
+
+```tsx
+yield* box().fadeTo(0, 0.4);   // fade out
+yield* box().fadeTo(1, 0.4);   // fade in
+```
+
+---
+
+## Blend mode
+
+`blend` controls how a node's rendered result composites against what's behind it. The default `'pass-through'` does not isolate the node — each child blends directly against the backdrop.
+
+Setting any other mode isolates the node first (flattens it into an offscreen buffer), then blends the result:
+
+```tsx
+<Rect blend="multiply" width={200} height={200} fill="royalblue" />
+<Rect blend="screen"   width={200} height={200} fill="hotpink" />
+```
+
+Available blend modes mirror the fill blend modes: `'normal'`, `'multiply'`, `'screen'`, `'overlay'`, `'darken'`, `'lighten'`, `'color-dodge'`, `'color-burn'`, `'hard-light'`, `'soft-light'`, `'difference'`, `'exclusion'`, `'hue'`, `'saturation'`, `'color'`, `'luminosity'`.
+
+:::info Isolation
+`'pass-through'` is the only mode that does not isolate — `opacity` on a pass-through node scales each child's alpha individually. Every other blend mode creates an isolated layer, which means the node's own `opacity` fades the fully-composited group as a whole.
+:::
