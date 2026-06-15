@@ -103,6 +103,49 @@ export class EllipseShape extends BaseShape<EllipseState, EllipseGeo> {
         return `M ${sx} ${sy} ${outerArc} L ${iex} ${iey} A ${innerW} ${innerH} 0 ${largeArc} ${innerSweepFlag} ${isx} ${isy} Z`;
     }
 
+    // A partial arc strokes an OPEN curve (`M … A …`, no `Z`), which bounds no
+    // region — so the stroke handler can't tell inside from outside and an
+    // aligned (inside/outside) stroke would silently collapse to centered. The
+    // arc nonetheless has a natural inside/outside relative to the ellipse it
+    // traces, so we hand the stroke handler a closed clip region to align the
+    // band against: the pie wedge (ratio ≤ 0) or annular sector (0 < ratio < 1)
+    // whose curved boundary coincides with the stroked arc. A full ellipse and
+    // the degenerate bare-ring (ratio ≥ 1, full shape) already stroke closed
+    // contours, so they need no interior. The bare-arc limit (ratio ≥ 1, partial)
+    // has no enclosed band, so its interior is the full wedge to the centre —
+    // the band straddles the arc and clips against the inside/outside of that.
+    protected override buildSVGAlignInterior(geo: EllipseGeo): string | null {
+        if (geo.isFullShape) return null;
+
+        const { cx, cy, halfWidth, halfHeight, sweep, startAngle, ratio } = geo;
+        const toRad = Math.PI / 180;
+        const endAngle = startAngle + sweep;
+        const sx = cx + halfWidth * Math.cos(startAngle * toRad);
+        const sy = cy + halfHeight * Math.sin(startAngle * toRad);
+        const ex = cx + halfWidth * Math.cos(endAngle * toRad);
+        const ey = cy + halfHeight * Math.sin(endAngle * toRad);
+        const largeArc = Math.abs(sweep) > 180 ? 1 : 0;
+        const sweepFlag = sweep > 0 ? 1 : 0;
+        const outerArc = `A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}`;
+
+        // ratio ≥ 1 (bare arc) and ratio ≤ 0 (solid wedge) both align against the
+        // full pie wedge: outer arc, then straight edges in to the centre.
+        if (ratio >= 1 || ratio <= 0) {
+            return `M ${cx} ${cy} L ${sx} ${sy} ${outerArc} Z`;
+        }
+
+        // Annular sector: the band rides the outer curve, so the closed sector
+        // between the outer and inner arcs is its inside/outside reference.
+        const innerW = halfWidth * ratio;
+        const innerH = halfHeight * ratio;
+        const isx = cx + innerW * Math.cos(startAngle * toRad);
+        const isy = cy + innerH * Math.sin(startAngle * toRad);
+        const iex = cx + innerW * Math.cos(endAngle * toRad);
+        const iey = cy + innerH * Math.sin(endAngle * toRad);
+        const innerSweepFlag = sweep > 0 ? 0 : 1;
+        return `M ${sx} ${sy} ${outerArc} L ${iex} ${iey} A ${innerW} ${innerH} 0 ${largeArc} ${innerSweepFlag} ${isx} ${isy} Z`;
+    }
+
     protected override supportsSpread(): boolean {
         return true;
     }

@@ -37,8 +37,8 @@ export class EllipseScene extends Scene {
                                 height={280}
                                 startAngle={-90}
                                 sweep={0}
-                                fill={Fills.color('white', { opacity: 1 })}
-                                stroke={{ fill: Fills.color('red', { opacity: 0.2, }), weight: 20, align: 'center' }}
+                                fill={Fills.color('red', { opacity: 1 })}
+                                stroke={{ fill: Fills.color('white', { opacity: 0.4, }), weight: 20, align: 'inside' }}
                             />
                         </Rect>
                     </>

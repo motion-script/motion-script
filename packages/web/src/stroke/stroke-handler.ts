@@ -239,7 +239,7 @@ export class StrokeHandler {
     /** Paints each resolved stroke over every shape: resolves device-px stroke width (with thin-stroke snapping), builds the fill shader per shape via the registry, then draws through {@link drawStroke}. Each fill layer in `stroke.fill` is drawn as its own pass, bottom-to-top. */
     applyStrokes(
         strokes: StrokeResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath }>,
         resolveBounds?: (
             fill: FillResolved,
             shape: { ckPath?: CKPath },
@@ -302,7 +302,7 @@ export class StrokeHandler {
     private drawStroke(
         canvas: Canvas,
         paint: Paint,
-        shape: { draw: (p: Paint) => void; ckPath?: CKPath; isText?: boolean },
+        shape: { draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath; isText?: boolean },
         stroke: StrokeResolved,
         logicalWidth: number,
         intDeviceWidth: number,
@@ -320,13 +320,18 @@ export class StrokeHandler {
             : null;
 
         const align = stroke.align ?? 0;
+        // The region an aligned band clips against. For closed shapes this is the
+        // stroked path itself; for an open contour with a defined interior (an
+        // ellipse arc → its pie wedge / sector) it's that interior, so the band
+        // still offsets radially instead of silently collapsing to centered.
+        const interior = shape.alignInterior ?? shape.ckPath;
 
         if (intDeviceWidth > 0 && shape.ckPath) {
             const source = hasDash
                 ? this.buildDashedPath(shape.ckPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined)
                 : shape.ckPath;
             if (source) {
-                const filled = this.alignedStrokeBand(source, logicalWidth, align, shape.ckPath);
+                const filled = this.alignedStrokeBand(source, logicalWidth, align, interior);
                 if (source !== shape.ckPath) source.delete();
                 if (filled) {
                     paint.setStyle(this.canvasKit.PaintStyle.Fill);
@@ -341,7 +346,7 @@ export class StrokeHandler {
         // Thick, non-dashed strokes with alignment: build the filled band and
         // draw it as a fill (the centered Skia stroke can't be aligned).
         if (align !== 0 && !hasDash && shape.ckPath) {
-            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, shape.ckPath);
+            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, interior);
             if (band) {
                 paint.setStyle(this.canvasKit.PaintStyle.Fill);
                 canvas.drawPath(band, paint);
@@ -358,9 +363,10 @@ export class StrokeHandler {
                 paint.setPathEffect(effect);
                 // An aligned dashed stroke shifts off-center by clipping the
                 // centered dashed stroke against the (doubled) shape interior.
-                // Only for closed shapes — open contours have no inside/outside.
-                if (align !== 0 && intDeviceWidth <= 0 && this.isClosedPath(shape.ckPath)) {
-                    this.drawAlignedDashedStroke(canvas, paint, shape.ckPath, align);
+                // Needs a closed region to clip against: the stroked path when
+                // it's closed, or an open arc's interior wedge/sector when not.
+                if (align !== 0 && intDeviceWidth <= 0 && interior && this.isClosedPath(interior)) {
+                    this.drawAlignedDashedStroke(canvas, paint, shape.ckPath, interior, align);
                 } else {
                     canvas.drawPath(shape.ckPath, paint);
                 }
@@ -373,23 +379,28 @@ export class StrokeHandler {
     }
 
     // Build a filled stroke band placed by `align` (-1 inside, 0 center,
-    // +1 outside). Centered strokes (align 0) just fill the centered outline.
-    // Otherwise we widen the band to w·(1+|align|) so that clipping it to the
-    // shape interior (inside) or its complement (outside) leaves a band that is
-    // full-width at the endpoints and slides continuously through center. The
-    // caller owns the returned path and must delete() it; returns null on failure.
+    // +1 outside). The band is stroked from `source` (the visible contour, open
+    // or closed) and offset by clipping against `interior` — the closed region
+    // whose boundary `source` rides. For a closed shape `source === interior`;
+    // for an open arc, `source` is the arc and `interior` is its pie wedge /
+    // sector, so the band still slides inside/outside relative to the ellipse.
+    // Centered strokes (align 0) just fill the centered outline. Otherwise we
+    // widen the band to w·(1+|align|) so that clipping it to the interior
+    // (inside) or its complement (outside) leaves a band that is full-width at
+    // the endpoints and slides continuously through center. The caller owns the
+    // returned path and must delete() it; returns null on failure.
     //
-    // Alignment only has meaning for a closed region — an open contour (a Line,
-    // or any shape trimmed by start/end) has no inside/outside, so we ignore
-    // `align` and fall back to the centered band rather than clipping against a
-    // degenerate interior (which would blank the stroke).
+    // Alignment needs a closed `interior` — when it isn't (a Line, or a shape
+    // with no interior defined), we ignore `align` and fall back to the centered
+    // band rather than clipping against a degenerate region (which would blank
+    // the stroke).
     private alignedStrokeBand(
         source: CKPath,
         width: number,
         align: number,
-        interior: CKPath,
+        interior: CKPath | undefined,
     ): CKPath | null {
-        if (align === 0 || !this.isClosedPath(interior)) {
+        if (align === 0 || !interior || !this.isClosedPath(interior)) {
             return source.makeStroked({ width });
         }
         const widened = width * (1 + Math.abs(align));
@@ -429,13 +440,17 @@ export class StrokeHandler {
 
     // Aligned dashed stroke when the makeStroked fast path didn't apply (thick
     // dashed stroke): draw the centered, dashed stroke at double width and clip
-    // it to the shape interior (inside) or its complement (outside). Doubling
+    // it to the interior region (inside) or its complement (outside). Doubling
     // before the clip means the surviving band is the full requested width on
     // the kept side rather than the half-width a centered stroke would leave.
+    // `strokePath` is the contour the dash rides (the stroked path, open or
+    // closed); `interior` is the closed region the alignment clips against —
+    // they coincide for a closed shape but differ for an open arc (its wedge).
     // `paint` already carries the dash PathEffect and stroke style.
     private drawAlignedDashedStroke(
         canvas: Canvas,
         paint: Paint,
+        strokePath: CKPath,
         interior: CKPath,
         align: number,
     ): void {
@@ -446,7 +461,7 @@ export class StrokeHandler {
             ? this.canvasKit.ClipOp.Intersect
             : this.canvasKit.ClipOp.Difference;
         canvas.clipPath(interior, op, true);
-        canvas.drawPath(interior, paint);
+        canvas.drawPath(strokePath, paint);
         canvas.restore();
         paint.setStrokeWidth(baseWidth);
     }

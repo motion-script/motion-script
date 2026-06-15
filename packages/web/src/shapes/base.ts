@@ -42,6 +42,37 @@ export abstract class BaseShape<S, G = unknown> {
     protected abstract needsTrim(): boolean;
     protected abstract getTrimRange(): { start: number; end: number };
 
+    // A closed region the stroke handler can clip an aligned (inside/outside)
+    // stroke band against when the stroked `ckPath` itself is an open contour.
+    // An arc, for instance, strokes an open curve but still has a well-defined
+    // inside/outside relative to its enclosing region (the pie wedge / sector),
+    // so subclasses can return that closed region here. Default: no interior, so
+    // open shapes fall back to a centered stroke. The cached interior is built
+    // lazily and freed in deletePaths(); the caller must NOT delete it.
+    protected buildSVGAlignInterior(_geo: G): string | null {
+        return null;
+    }
+
+    private _alignInterior: CKPath | undefined;
+    private _alignInteriorBuilt = false;
+
+    // The closed clip region for aligned strokes on this shape, or undefined when
+    // the shape has none (the stroked ckPath is already closed, or the shape kind
+    // doesn't define one). Built once and cached; owned by this instance.
+    strokeAlignInterior(): CKPath | undefined {
+        if (!this._alignInteriorBuilt) {
+            this._alignInteriorBuilt = true;
+            const svg = this.buildSVGAlignInterior(this.geometry);
+            if (svg != null) {
+                const path = this.canvasKit.Path.MakeFromSVGString(svg);
+                this._alignInterior = path
+                    ? this.applyShapeTransform(path)
+                    : undefined;
+            }
+        }
+        return this._alignInterior;
+    }
+
     // SVG for the silhouette grown (positive) or shrunk (negative) by `spread`
     // px, used by shadow spread. Subclasses whose geometry resizes cleanly
     // (ellipse, rect) override this; the default returns null so the shape kind
@@ -171,6 +202,9 @@ export abstract class BaseShape<S, G = unknown> {
         this.ckPath = undefined;
         this._basePath?.delete();
         this._basePath = undefined;
+        this._alignInterior?.delete();
+        this._alignInterior = undefined;
+        this._alignInteriorBuilt = false;
     }
 
     draw(paint: Paint, _isolated: boolean): void {
@@ -200,6 +234,7 @@ export abstract class BaseShape<S, G = unknown> {
         return {
             draw: (paint: Paint) => shape.draw(paint, isolated),
             get ckPath() { return shape.ckPath; },
+            get alignInterior() { return shape.strokeAlignInterior(); },
             bounds: this.computeBounds(this.geometry),
             spreadPath: this.supportsSpread() ? (spread: number) => shape.spreadPath(spread) : undefined,
         };

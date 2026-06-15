@@ -31,6 +31,12 @@ import { MaskHandler } from "./mask";
 export interface CurrentShape {
     draw: (paint: Paint) => void;
     ckPath?: CKPath;
+    // A closed clip region for aligned (inside/outside) strokes when `ckPath` is
+    // an open contour (e.g. an ellipse arc). Lets the stroke handler offset the
+    // band radially even though the stroked curve bounds no region itself.
+    // Absent when the shape's ckPath is already closed or defines no interior.
+    // Owned by the shape — the stroke handler must not delete it.
+    alignInterior?: CKPath;
     bounds?: { left: number; top: number; right: number; bottom: number };
     // Text shapes have no ckPath (canvaskit-wasm doesn't expose glyph paths),
     // and want strokes that follow the union of glyph silhouettes — see
