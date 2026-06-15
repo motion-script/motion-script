@@ -16,7 +16,7 @@ The block values are a **block count** — how many blocks span the node — *no
 import { Effects } from '@motion-script/core';
 
 // Uniform block count on both axes
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={Effects.pixelate(120)} />
+<Rect fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }} effects={Effects.pixelate(120)} />
 
 // Per-axis block counts + sharp colours
 <Rect effects={Effects.pixelate({ horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true })} />
@@ -56,7 +56,7 @@ export class MyScene extends Scene {
     const img = new Rect({
       width: 600,
       height: 400,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
     });
     img.set({ effects: Effects.pixelate(40) });
     this.add(img);

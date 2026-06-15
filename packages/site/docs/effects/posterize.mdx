@@ -43,7 +43,7 @@ export class MyScene extends Scene {
     const img = new Rect({
       width: 600,
       height: 400,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
     });
     img.set({ effects: Effects.posterize(32) });
     this.add(img);

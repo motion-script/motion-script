@@ -21,7 +21,7 @@ export class MyScene extends Scene {
         {/* Remaining children = clipped content */}
         <Rect
           width={400} height={400}
-          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+          fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }}
         />
       </MaskGroup>
     );
@@ -60,7 +60,7 @@ export class MyScene extends Scene {
   />
   <Rect
     width={600} height={400}
-    fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+    fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }}
   />
 </MaskGroup>
 ```
@@ -74,7 +74,7 @@ Set `inverted: true` to flip the mask — content shows **outside** the mask sha
 ```tsx
 <MaskGroup mode="vector" inverted={true}>
   <Ellipse width={200} height={200} fill="white" />
-  <Rect width="fill" height="fill" fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} />
+  <Rect width="fill" height="fill" fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }} />
 </MaskGroup>
 ```
 
@@ -96,7 +96,7 @@ export class MyScene extends Scene {
         <Ellipse ref={maskCircle} width={0} height={0} fill="white" />
         <Rect
           width={1280} height={720}
-          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
+          fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }}
         />
       </MaskGroup>
     );

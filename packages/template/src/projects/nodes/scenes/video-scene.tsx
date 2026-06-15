@@ -19,7 +19,7 @@ export class VideoScene extends Scene {
                 <Video
                     ref={videoRef}
                     src={'video.mp4'}
-                    fit={'crop'}
+                    fit={'fill'}
                     loop={'forward'}
                     muted={true}
                     width={'fill'}

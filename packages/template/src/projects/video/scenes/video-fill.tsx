@@ -12,7 +12,7 @@ import type { ImageFillMode } from "@motion-script/core";
  */
 export interface VideoFillSpec {
     label: string;
-    /** Fills mode passed to the video fill (fit/crop/tile/fill). Default 'fill'. */
+    /** Fills mode passed to the video fill (fill/fit/tile/stretch). Default 'fill'. */
     mode?: ImageFillMode;
     /** A fill chain to use directly; overrides the default `Fills.video(...)`. */
     fill?: ReturnType<typeof Fills.video>;

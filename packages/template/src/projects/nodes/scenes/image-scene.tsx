@@ -13,7 +13,7 @@ export class ImageScene extends Scene {
         this.set({ fill: 'bg' });
 
         const refs = [createRef<Image>(), createRef<Image>(), createRef<Image>()];
-        const fits: Array<'fill' | 'fit' | 'crop'> = ['fill', 'fit', 'crop'];
+        const fits: Array<'fill' | 'fit' | 'stretch'> = ['fill', 'fit', 'stretch'];
 
         this.add(
             nodeCard({

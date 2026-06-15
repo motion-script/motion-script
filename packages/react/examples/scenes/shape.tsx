@@ -6,7 +6,7 @@ import { Scene, createRef, Polygram } from "@motion-script/core";
 
 export class ShapeScene extends Scene {
   *build() {
-    this.set({ fill: { type: 'image', src: './background.jpg', mode: 'fill' } })
+    this.set({ fill: { type: 'image', src: './background.jpg', fit: 'fill' } })
     const poly = createRef<Polygram>();
 
     this.add(

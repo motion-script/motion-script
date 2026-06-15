@@ -50,26 +50,30 @@ export function computeImageMatrix(
         return (fill.transform as number[][]).flat();
     }
     if (bounds) {
-        const mode = fill.mode ?? "fit";
+        const mode = fill.mode ?? "fill";
         const shapeW = bounds.right - bounds.left;
         const shapeH = bounds.bottom - bounds.top;
         let sx: number, sy: number, tx: number, ty: number;
         if (mode === "fit") {
+            // Contain: scale uniformly so the whole image fits, letterboxing.
             const scale = Math.min(shapeW / imgW, shapeH / imgH);
             sx = scale; sy = scale;
             tx = bounds.left + (shapeW - imgW * scale) / 2;
             ty = bounds.top + (shapeH - imgH * scale) / 2;
-        } else if (mode === "crop") {
-            const scale = Math.max(shapeW / imgW, shapeH / imgH);
-            sx = scale; sy = scale;
-            tx = bounds.left + (shapeW - imgW * scale) / 2;
-            ty = bounds.top + (shapeH - imgH * scale) / 2;
+        } else if (mode === "stretch") {
+            // Distort each axis independently to fill the bounds exactly.
+            sx = shapeW / imgW; sy = shapeH / imgH;
+            tx = bounds.left; ty = bounds.top;
         } else if (mode === "tile") {
             sx = (fill as any).scaling ?? 1; sy = (fill as any).scaling ?? 1;
             tx = bounds.left; ty = bounds.top;
         } else {
-            sx = shapeW / imgW; sy = shapeH / imgH;
-            tx = bounds.left; ty = bounds.top;
+            // "fill" (default): cover — scale uniformly to fill the bounds,
+            // cropping the overflow with the image centered (Figma-style).
+            const scale = Math.max(shapeW / imgW, shapeH / imgH);
+            sx = scale; sy = scale;
+            tx = bounds.left + (shapeW - imgW * scale) / 2;
+            ty = bounds.top + (shapeH - imgH * scale) / 2;
         }
         return [sx, 0, tx, 0, sy, ty, 0, 0, 1];
     }
@@ -84,7 +88,10 @@ export function makeImageShader(
     ck: any,
     bounds: ShapeBounds | null,
 ): any {
-    const mode = fill.mode ?? "fit";
+    const mode = fill.mode ?? "fill";
+    // 'tile' repeats; 'fit' leaves letterbox margins that must stay transparent
+    // (Decal) rather than smearing edge pixels; 'fill'/'stretch' cover the rect
+    // so Clamp never shows.
     const tileMode = mode === "tile"
         ? ck.TileMode.Repeat
         : mode === "fit"

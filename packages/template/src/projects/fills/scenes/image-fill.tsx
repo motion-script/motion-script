@@ -5,8 +5,8 @@ import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
 export class ImageFillScene extends ShapeDemoScene {
     readonly spec: ShapeDemoSpec = {
         label: 'Image Fills',
-        fillFrom: Fills.image('./cat.jpg', { mode: 'fill', opacity: 0.1 }),
-        fillTo: Fills.image('./cat.jpg', { mode: 'fill', opacity: 1 }),
+        fillFrom: Fills.image('./cat.jpg', { fit: 'fill', opacity: 0.1 }),
+        fillTo: Fills.image('./cat.jpg', { fit: 'fill', opacity: 1 }),
         strokeWeight: 24,
     };
 }

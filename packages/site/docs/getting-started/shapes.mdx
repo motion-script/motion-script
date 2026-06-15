@@ -280,7 +280,7 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `src` | `string` | — | Path to the image file |
-| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How the image fills the node |
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the image fills the node (`'fill'` = cover + crop, centered) |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner rounding |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (see Image Filters) |
 | `scaling` | `number` | — | Scale multiplier applied to the image |

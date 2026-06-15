@@ -48,7 +48,7 @@ class GridCell extends ShapeNode<ShapeProps> {
             ctx.draw(new Graphics().rect({ width: r.width, height: r.height }).shadow(shadow).fill("transparent"));
         }
 
-        // The slice: draw the whole image covering the grid (mode 'crop' = cover,
+        // The slice: draw the whole image covering the grid (mode 'fill' = cover,
         // computed from the decoded image), clipped to this cell's window. The
         // grid's centre sits at (-r.x, -r.y) in the cell's local space.
         //
@@ -72,7 +72,7 @@ class GridCell extends ShapeNode<ShapeProps> {
             width: r.width + left + right,
             height: r.height + top + bottom,
         }));
-        ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "crop" }));
+        ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "fill" }));
         ctx.endClip();
 
         // Stroke on top of the slice.

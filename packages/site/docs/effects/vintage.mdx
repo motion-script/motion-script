@@ -42,7 +42,7 @@ export class MyScene extends Scene {
     const photo = new Rect({
       width: 600,
       height: 400,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
     });
     photo.set({ effects: Effects.vintage(0, 0) });
     this.add(photo);

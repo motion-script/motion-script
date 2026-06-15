@@ -14,10 +14,10 @@ Desaturates any node. `amount` ranges from `0` (full color) to `1` (fully graysc
 import { Effects } from '@motion-script/core';
 
 // Fully grayscale
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={Effects.grayscale(1)} />
+<Rect fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }} effects={Effects.grayscale(1)} />
 
 // Partial desaturation
-<Rect fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} effects={Effects.grayscale(0.5)} />
+<Rect fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }} effects={Effects.grayscale(0.5)} />
 
 // Raw object
 <Rect effects={[{ type: 'grayscale', amount: 0.8 }]} />
@@ -43,7 +43,7 @@ export class MyScene extends Scene {
     const photo = new Rect({
       width: 600,
       height: 400,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
     });
     photo.set({ effects: Effects.grayscale(1) });
     this.add(photo);

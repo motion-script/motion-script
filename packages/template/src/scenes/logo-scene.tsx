@@ -17,8 +17,8 @@ export class LogoScene extends Scene {
         this.set({
             fill: [
                 'bg',
-                Fills.image('paper.png', { opacity: 0.2, blend: 'overlay', mode: 'fill' }),
-                Fills.image('halftone.jpg', { opacity: 0.2, blend: 'overlay', mode: 'fill' }),
+                Fills.image('paper.png', { opacity: 0.2, blend: 'overlay', fit: 'fill' }),
+                Fills.image('halftone.jpg', { opacity: 0.2, blend: 'overlay', fit: 'fill' }),
             ],
             group: 'column',
 
@@ -54,7 +54,7 @@ export class LogoScene extends Scene {
                     scale={0.92}
                     effects={FX.chromaticAberration(0, 0).blur(20)}
                 >
-                    <Rect width={1000} height={160} fill={Fills.image('logo-title.png', { mode: 'fit' })} />
+                    <Rect width={1000} height={160} fill={Fills.image('logo-title.png', { fit: 'fit' })} />
                 </Rect>
 
                 {/* Subtitle slot — fixed-height so the title above stays put while

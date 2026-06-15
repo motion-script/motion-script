@@ -35,7 +35,7 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `src` | `string` | — | Path to the video file |
-| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | `'fill'` | How the video frame fills the node's bounds |
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the video frame fills the node's bounds. `'fill'` covers + crops (centered), `'fit'` letterboxes, `'tile'` repeats, `'stretch'` distorts to fill. |
 | `scaling` | `number` | — | Scale multiplier applied before fitting |
 | `transform` | `ImageTransform` | — | Fine-grained frame transform (offset, scale, rotation within bounds) |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Visual filters applied to the rendered frame |
@@ -82,7 +82,7 @@ export class MyScene extends Scene {
       <Video
         ref={clip}
         src="./assets/clip.mp4"
-        fit="crop"
+        fit="fill"
         width={960}
         height={540}
         cornerRadius={24}

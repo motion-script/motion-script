@@ -38,7 +38,7 @@ export class TextFillsScene extends Scene {
         // conic -> radial gradient
         yield* textRef().to({ fill: Fills.radialGradient(['#F5C26B', '#6990DD'], { center: { x: 0, y: 0 }, radius: 300 }) } as any, dur, easeInOutQuad);
         // radial -> image
-        yield* textRef().to({ fill: Fills.image('./cat.jpg', { mode: 'fill' }) } as any, dur, easeInOutQuad);
+        yield* textRef().to({ fill: Fills.image('./cat.jpg', { fit: 'fill' }) } as any, dur, easeInOutQuad);
         // image -> back to solid color for a clean loop
         yield* textRef().to({ fill: Fills.color('#6990DD') } as any, dur, easeInOutQuad);
     }

@@ -33,7 +33,7 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `src` | `string` | — | Path to the image file |
-| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How the image fills the node's bounds |
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the image fills the node's bounds |
 | `scaling` | `number` | — | Scale multiplier applied to the image before fitting |
 | `transform` | `ImageTransform` | — | Fine-grained image transform (offset, scale, rotation within the bounds) |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (blur, color adjustments, etc.) |
@@ -44,10 +44,10 @@ export class MyScene extends Scene {
 
 | Value | Behaviour |
 |---|---|
-| `'fill'` | Stretches the image to exactly fill the node's dimensions |
+| `'fill'` | Scales the image to cover the bounds, preserving aspect ratio and centering (cropped). The default — Figma-style. |
 | `'fit'` | Scales the image to fit within the bounds, preserving aspect ratio (letterboxed) |
-| `'crop'` | Scales the image to cover the bounds, preserving aspect ratio (cropped) |
-| `'tile'` | Tiles the image at its natural size |
+| `'tile'` | Tiles the image at its natural size (× `scaling`) |
+| `'stretch'` | Stretches each axis independently to exactly fill the bounds, distorting aspect ratio |
 
 ## Animating
 
@@ -64,7 +64,7 @@ export class MyScene extends Scene {
       <Image
         ref={photo}
         src="./assets/photo.jpg"
-        fit="crop"
+        fit="fill"
         width={640}
         height={360}
         cornerRadius={0}

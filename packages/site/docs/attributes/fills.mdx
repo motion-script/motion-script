@@ -80,7 +80,7 @@ Colors accept any CSS color string (`'red'`, `'#ff0000'`, `'rgb(255,0,0)'`, `'hs
 <Rect fill={{
   type: 'image',
   src: './texture.png',
-  mode: 'fill',   // 'fill' | 'fit' | 'crop' | 'tile'
+  fit: 'fill',   // 'fill' (cover+crop, default) | 'fit' | 'tile' | 'stretch'
 }} />
 ```
 
@@ -107,7 +107,7 @@ Pass an array to layer fills bottom to top:
 | `'linear-gradient'` | `colors`, `stops` | `start`, `end`, `blend` |
 | `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
 | `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
-| `'image'` | `src` | `mode`, `filters`, `blend` |
+| `'image'` | `src` | `fit`, `scaling`, `filters`, `opacity`, `blend` |
 
 ---
 

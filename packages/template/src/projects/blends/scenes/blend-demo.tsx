@@ -65,7 +65,7 @@ export abstract class BlendDemoScene extends Scene {
             Fills.color('yellow', { blend: mode }),
 
             //Fills.linearGradient(['#6990DD', '#F5C26B'], { blend: mode, start: { x: -1, y: -1 }, end: { x: 1, y: 1 } }),
-            // Fills.image('./cat.jpg', { mode: 'fill', blend: mode }),
+            // Fills.image('./cat.jpg', { fit: 'fill', blend: mode }),
         ];
 
         const positions =
