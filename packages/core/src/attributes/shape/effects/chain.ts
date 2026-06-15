@@ -245,9 +245,26 @@ export class EffectChain {
 
 /**
  * Accepted shapes for a node's `effects` prop.
- * Can be a single effect, a plain array, or an `EffectChain` builder result.
+ *
+ * Mirrors {@link Fill}: a single {@link SceneEffect}, an `EffectChain` builder
+ * result, or an array mixing effects and chains (each chain contributes all its
+ * effects in place). Already-resolved effects are themselves `SceneEffect`s, so
+ * a node's read-back `effects` can be assigned straight back.
+ *
+ *   FX.blur(8)                       // chain
+ *   { type: 'blur', blur: 8 }        // single effect
+ *   [FX.blur(8), { type: 'invert' }] // mixed array
+ *   [...FX.blur(8), grayscaleEffect]
  */
-export type ChainableFx = SceneEffect[] | EffectChain | SceneEffect;
+export type Effect =
+    | SceneEffect
+    | EffectChain
+    | (SceneEffect | EffectChain)[];
+
+/**
+ * @deprecated Use {@link Effect}. Retained as an alias during the rename.
+ */
+export type ChainableFx = Effect;
 
 const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(list);
 
@@ -304,12 +321,22 @@ export const FX = {
 };
 
 /**
- * Normalises any `ChainableFx` value to a plain `SceneEffect[]`.
+ * Normalises any {@link Effect} value to a plain `SceneEffect[]`.
  * Used internally when reading props before rendering or interpolation.
+ *
+ * Chains used as array elements are flattened so each contributes its effects
+ * in place: `[FX.blur(8), grayscaleEffect]`.
  */
-export function resolveChainEffects(effects: ChainableFx | undefined): SceneEffect[] {
+export function resolveChainEffects(effects: Effect | undefined): SceneEffect[] {
   if (effects === undefined) return [];
   if (effects instanceof EffectChain) return effects.list;
-  if (Array.isArray(effects)) return effects;
+  if (Array.isArray(effects)) {
+    const out: SceneEffect[] = [];
+    for (const item of effects) {
+      if (item instanceof EffectChain) out.push(...item.list);
+      else out.push(item);
+    }
+    return out;
+  }
   return [effects];
 }

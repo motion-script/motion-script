@@ -8,8 +8,8 @@ import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
 import { layoutGroupChildren } from "@/layout/group-layout";
-import { CornerRadiusProps, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
-import { CornerStyleProps, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
+import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { NodeConfig } from "./node";
@@ -22,9 +22,9 @@ export interface CameraProps extends ShapeProps {
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
-    cornerRadius: CornerRadiusProps;
+    cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
-    cornerStyle: CornerStyleProps;
+    cornerStyle: RectCornerStyle;
 }
 
 /**
@@ -46,10 +46,10 @@ export class Camera extends ShapeNode<CameraProps> {
     /** View rotation in degrees (default: 0). */
     declare heading: number;
 
-    @property({ default: 0, mapper: (v: CornerRadiusProps, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
-    declare readonly cornerRadius: CornerRadiusResolved;
-    @property({ default: "rounded", mapper: (v: CornerStyleProps, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
-    declare readonly cornerStyle: CornerStyleResolved;
+    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare cornerRadius: RectCornerRadius;
+    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare cornerStyle: RectCornerStyle;
 
     constructor(props: NodeConfig<Camera, CameraProps>) {
         super(props);

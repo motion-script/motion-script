@@ -1,15 +1,16 @@
-import { CornerRadiusProps, CornerRadiusResolved } from "@/attributes/shape/corners/corner-radius";
-import { CornerStyleProps, CornerStyleResolved } from "@/attributes/shape/corners/corner-style";
+import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeState } from "./shape";
 
 
 export interface RectState extends ShapeState {
     width: number;
     height: number;
-    // Accepts loose input or an already-resolved value: the node resolves via its
-    // @property mapper, and the renderer re-resolves idempotently.
-    cornerRadius: CornerRadiusProps | CornerRadiusResolved;
-    cornerStyle: CornerStyleProps | CornerStyleResolved;
+    // Accepts loose input or an already-resolved value (both are part of
+    // RectCornerRadius/RectCornerStyle): the node resolves via its @property
+    // mapper, and the renderer re-resolves idempotently.
+    cornerRadius: RectCornerRadius;
+    cornerStyle: RectCornerStyle;
 }
 
 export function withRectDescriptor(descriptor: Partial<RectState>): RectState {

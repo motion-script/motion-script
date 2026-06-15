@@ -3,12 +3,12 @@ import { FX, resolveChainEffects } from '@/attributes/shape/effects/chain';
 
 describe('FX builders', () => {
     it('blur produces a single blur effect', () => {
-        expect([...FX.blur(4)]).toEqual([{ type: 'blur', radius: 4 }]);
+        expect([...FX.blur(4)]).toEqual([{ type: 'blur', blur: 4 }]);
     });
 
     it('blur with { backdrop: true } flags the effect as a backdrop filter', () => {
         expect([...FX.blur(12, { backdrop: true })]).toEqual([
-            { type: 'blur', radius: 12, backdrop: true },
+            { type: 'blur', blur: 12, backdrop: true },
         ]);
     });
 
@@ -19,7 +19,7 @@ describe('FX builders', () => {
     });
 
     it('omitting opts leaves backdrop unset (foreground effect)', () => {
-        expect([...FX.blur(12)]).toEqual([{ type: 'blur', radius: 12 }]);
+        expect([...FX.blur(12)]).toEqual([{ type: 'blur', blur: 12 }]);
     });
 
     it('directionalBlur produces a direction and blurLength effect', () => {
@@ -119,7 +119,7 @@ describe('EffectChain', () => {
     it('is iterable for spreading into an array', () => {
         const arr = [...FX.blur(2).pixelate(10)];
         expect(arr).toHaveLength(2);
-        expect(arr[0]).toEqual({ type: 'blur', radius: 2 });
+        expect(arr[0]).toEqual({ type: 'blur', blur: 2 });
     });
 
     it('toJSON returns the raw effect list', () => {
@@ -138,12 +138,20 @@ describe('resolveChainEffects', () => {
         expect(resolveChainEffects(chain)).toBe(chain.list);
     });
 
-    it('passes an array through unchanged', () => {
-        const arr = [{ type: 'blur', radius: 1 } as const];
-        expect(resolveChainEffects(arr)).toBe(arr);
+    it('normalises an array, preserving its effects', () => {
+        const arr = [{ type: 'blur', blur: 1 } as const];
+        expect(resolveChainEffects(arr)).toEqual(arr);
+    });
+
+    it('flattens chains used as array elements', () => {
+        const arr = [{ type: 'invert', channel: 'rgba', strength: 1 } as const, FX.blur(2)];
+        expect(resolveChainEffects(arr)).toEqual([
+            { type: 'invert', channel: 'rgba', strength: 1 },
+            { type: 'blur', blur: 2 },
+        ]);
     });
 
     it('wraps a single effect into an array', () => {
-        expect(resolveChainEffects({ type: 'blur', blur: 5 })).toEqual([{ type: 'blur', radius: 5 }]);
+        expect(resolveChainEffects({ type: 'blur', blur: 5 })).toEqual([{ type: 'blur', blur: 5 }]);
     });
 });

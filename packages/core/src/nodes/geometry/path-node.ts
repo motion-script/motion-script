@@ -5,6 +5,7 @@ import type { PathData, PathCommand } from "@/render/descriptors/path";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
 import { Size2D } from "@/attributes/layout/size";
+import { PaddingResolved } from "@/attributes/layout/padding";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { NodeConfig } from "../base/node";
 
@@ -118,7 +119,7 @@ export class Path extends ShapeNode<PathProps> {
         }
 
         const intrinsic = measurePathData(this.d);
-        const pad = this.padding;
+        const pad = this.padding as PaddingResolved;
 
         const resolvedW = typeof wm === "number"
             ? wm

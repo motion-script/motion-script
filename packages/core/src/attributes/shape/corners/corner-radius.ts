@@ -5,17 +5,17 @@ import { Corners, CornersInput, isUniformCorners, lerpCorners, resolveCorners } 
 export type CornerRadiusResolved = Corners<number>;
 
 /**
- * Accepted corner radius input: a single number applies uniformly to all corners;
- * an object overrides corners individually (`{ topLeft, … }`) or by axis
- * (`{ top, bottom }` / `{ left, right }`). Unspecified corners fall back to a
- * previous value or 0 when resolved.
+ * Accepted corner radius input for a Rect: a single number applies uniformly to
+ * all corners; an object overrides corners individually (`{ topLeft, … }`) or by
+ * axis (`{ top, bottom }` / `{ left, right }`). An already-resolved value passes
+ * through. Unspecified corners fall back to a previous value or 0 when resolved.
  */
-export type CornerRadiusProps = CornersInput<number>;
+export type RectCornerRadius = CornersInput<number> | CornerRadiusResolved;
 
-const isNumber = (v: CornerRadiusProps): v is number => typeof v === "number";
+const isNumber = (v: RectCornerRadius): v is number => typeof v === "number";
 
 /** Returns true when `value` is a uniform (single-number) corner radius input. */
-export function isUniformCornerRadiusInput(value: CornerRadiusProps): value is number {
+export function isUniformCornerRadiusInput(value: RectCornerRadius): value is number {
     return typeof value === "number";
 }
 
@@ -43,11 +43,13 @@ export function lerpCornerRadius(from: CornerRadiusResolved, to: CornerRadiusRes
 }
 
 /**
- * Resolves `CornerRadiusProps` into a fully-specified `CornerRadiusResolved`.
+ * Resolves a {@link RectCornerRadius} input into a fully-specified `CornerRadiusResolved`.
  *
  * - A number expands to all four corners set to that value.
  * - An object fills missing corners from `previous`, then falls back to 0.
  */
-export function resolveCornerRadius(value: CornerRadiusProps, previous?: CornerRadiusResolved): CornerRadiusResolved {
-    return resolveCorners(value, 0, previous, isNumber);
+export function resolveCornerRadius(value: RectCornerRadius, previous?: CornerRadiusResolved): CornerRadiusResolved {
+    // A resolved value is structurally a full per-corner `CornersInput<number>`,
+    // so pin T=number and let resolveCorners re-resolve it idempotently.
+    return resolveCorners(value as CornersInput<number>, 0, previous, isNumber);
 }

@@ -11,6 +11,7 @@ import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
+import { PaddingResolved } from "@/attributes/layout/padding";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding } from "@/layout/padding";
 
@@ -93,7 +94,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         const size = super.measure(constraints, scope);
         // Measure children so they have a resolved size for layout(); the result
         // doesn't change the grid's own size (it never hugs its children).
-        const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding);
+        const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding as PaddingResolved);
         const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
         for (const child of this.children) child.measure(childConstraints, scope);
         return size;
@@ -102,7 +103,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         super.layout(rect, scope);
 
-        const pad = this.padding;
+        const pad = this.padding as PaddingResolved;
         const inner = applyPadding(rect.width, rect.height, pad);
         // Centre of the padded content box, in this node's local space (origin =
         // grid centre, matching how shapes are drawn).

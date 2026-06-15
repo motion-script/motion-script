@@ -41,7 +41,7 @@ describe('Graphics', () => {
         expect(op.state.scale).toBeUndefined();
         expect(op.state.opacity).toBeUndefined();
         expect(g.groupOpacity()).toBe(0.5);
-        expect(g.groupEffects()).toEqual([{ type: 'blur', radius: 2 }]);
+        expect(g.groupEffects()).toEqual([{ type: 'blur', blur: 2 }]);
         expect(g.groupTransform()).toEqual({ rotation: 30, scale: 2, center: undefined });
         expect(g.needsGroupLayer()).toBe(true);
         // Only the single shape op is recorded; modifiers don't add ops.
@@ -51,7 +51,7 @@ describe('Graphics', () => {
     it('effects() accepts a ChainableFx (FX builder) and resolves to a SceneEffect[]', () => {
         const g = new Graphics().rect({ width: 1, height: 1 }).effects(FX.blur(8).grayscale(1));
         expect(g.groupEffects()).toEqual([
-            { type: 'blur', radius: 8 },
+            { type: 'blur', blur: 8 },
             { type: 'grayscale', amount: 1 },
         ]);
         expect(g.needsGroupLayer()).toBe(true);

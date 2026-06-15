@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
-    FillSpace, property,
+    FillSpace, FillResolved, property,
     FX,
 } from "@motion-script/core";
 
@@ -49,7 +49,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
     /** Tag every fill layer with this node's `space` so the silhouette honours it. */
     private spacedFill() {
         const space = this.space;
-        return this.fill.map(fill =>
+        return (this.fill as FillResolved[]).map(fill =>
             typeof fill === 'string' ? { type: 'color' as const, color: fill, space } : { ...fill, space },
         );
     }

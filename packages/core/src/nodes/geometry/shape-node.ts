@@ -65,13 +65,13 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     declare shadow: Shadow;
 
     @property({ default: 0 })
-    declare readonly start: number;
+    declare start: number;
 
     @property({ default: 1 })
-    declare readonly end: number;
+    declare end: number;
 
     @property({ default: false })
-    declare readonly clip: boolean;
+    declare clip: boolean;
 
     // Cached: does any current fill need a per-frame update() (e.g. video)?
     // Static fills (solid, gradients, noise, image) have an identity update, so
@@ -166,7 +166,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      * lot; the renderer routes each effect to a filter or shader pass.
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        const backdropEffects = this.effects.filter(ShapeNode.isBackdropEffect);
+        const backdropEffects = (this.effects as SceneEffect[]).filter(ShapeNode.isBackdropEffect);
         if (backdropEffects.length === 0) return;
 
         const clip = this.clipSelf();
@@ -191,8 +191,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      * {@link applyBackdropEffects}), so it's excluded here.
      */
     private foregroundEffects(): SceneEffect[] {
-        const posterize = this.effects.find((e) => e.type === "posterize" && e.backdrop !== true);
-        const bulge = this.effects.find((e) => e.type === "bulge");
+        const effects = this.effects as SceneEffect[];
+        const posterize = effects.find((e) => e.type === "posterize" && e.backdrop !== true);
+        const bulge = effects.find((e) => e.type === "bulge");
         const out: SceneEffect[] = [];
         if (posterize) out.push(posterize);
         if (bulge) out.push(bulge);

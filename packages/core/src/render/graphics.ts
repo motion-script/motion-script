@@ -12,7 +12,7 @@ import type { Fill } from "@/attributes/shape/fill/chain";
 import type { Stroke } from "@/attributes/shape/stroke/mapper";
 import type { Shadow } from "@/attributes/shape/shadow/resolver";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
-import { type ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
+import { type Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import type { MaskOptions } from "@/attributes/mask/mask";
 
@@ -222,10 +222,10 @@ export class Graphics {
      * Set image effects applied to the whole drawn union. The entire drawn result
      * is composited through the composed filter as one layer, so the effect reads
      * the union silhouette (a blur bleeds across the combined shape's edges, not
-     * each shape's). Accepts a `ChainableFx` — a single effect, an array, or an
+     * each shape's). Accepts an {@link Effect} — a single effect, an array, or an
      * `FX`/`EffectChain` builder result — normalised to a `SceneEffect[]`.
      */
-    effects(effects: ChainableFx): this {
+    effects(effects: Effect): this {
         this._effects = resolveChainEffects(effects);
         return this;
     }

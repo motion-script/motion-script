@@ -8,7 +8,7 @@ export {
 
 export {
     CornerRadiusResolved,
-    CornerRadiusProps,
+    RectCornerRadius,
     isUniformCornerRadiusInput,
     isUniformCornerRadius,
     getUniformCornerRadius,
@@ -20,7 +20,7 @@ export {
 export {
     CornerStyle,
     CornerStyleResolved,
-    CornerStyleProps,
+    RectCornerStyle,
     resolveCornerStyle,
     lerpCornerStyle,
 } from "./corner-style";

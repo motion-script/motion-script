@@ -18,8 +18,8 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
-import { ChainableFx, resolveChainEffects } from "@/attributes/shape/effects/chain";
-import { PaddingProps, PaddingResolved, resolvePadding } from "@/attributes/layout/padding";
+import { Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
+import { Padding, resolvePadding } from "@/attributes/layout/padding";
 import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
 import { lerpEffectArray } from "@/attributes/shape/effects/registry";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
@@ -93,9 +93,9 @@ export interface NodeProps {
     opacity: number;
     /** Layer blend mode. `'pass-through'` (default) does not isolate the node — its opacity scales each child/fill while they blend against the backdrop. Any other mode isolates the node and blends its flattened result against the backdrop. */
     blend: NodeBlendMode;
-    effects: ChainableFx;
+    effects: Effect;
     /** Inner spacing between this node's edges and its content/children. */
-    padding: PaddingProps;
+    padding: Padding;
     children: Node | Node[];
 
     /** Pivot point for rotation and scale. (0,0)=center, (-1,1)=top-left, (1,-1)=bottom-right. Set automatically when an anchor prop is used. */
@@ -202,23 +202,28 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     // ---- Visual properties ------------------------------------------------
 
-    @property({ default: 0 }) declare readonly x: number;
-    @property({ default: 0 }) declare readonly y: number;
-    @property({ default: 'fill', tween: lerpSizeInput }) declare readonly width: SizeInput;
-    @property({ default: 'fill', tween: lerpSizeInput }) declare readonly height: SizeInput;
-    @property({ default: 1 }) declare readonly scale: number;
-    @property({ default: 0 }) declare readonly rotation: number;
-    @property({ default: 1 }) declare readonly opacity: number;
-    @property({ default: 'pass-through' }) declare readonly blend: NodeBlendMode;
-    @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare readonly effects: SceneEffect[];
-    @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare readonly padding: PaddingResolved;
+    @property({ default: 0 }) declare x: number;
+    @property({ default: 0 }) declare y: number;
+    @property({ default: 'fill', tween: lerpSizeInput }) declare width: SizeInput;
+    @property({ default: 'fill', tween: lerpSizeInput }) declare height: SizeInput;
+    @property({ default: 1 }) declare scale: number;
+    @property({ default: 0 }) declare rotation: number;
+    @property({ default: 1 }) declare opacity: number;
+    @property({ default: 'pass-through' }) declare blend: NodeBlendMode;
+    // Author-facing layout/effect props. Like `fill`, the declared type is the
+    // loose `Effect`/`Padding` so assignment (`this.padding = 3`,
+    // `this.effects = FX.blur(4)`) and reads share one simple type. At runtime
+    // the @property accessor stores the *resolved* value (via the mapper), and
+    // consumers that need the resolved shape cast at the read site.
+    @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
+    @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly pivot: Vector2;
 
-    @property({ default: 1 }) declare readonly flex: number;
-    @property({ default: undefined }) declare readonly column: number | undefined;
-    @property({ default: undefined }) declare readonly row: number | undefined;
-    @property({ default: 1 }) declare readonly colSpan: number;
-    @property({ default: 1 }) declare readonly rowSpan: number;
+    @property({ default: 1 }) declare flex: number;
+    @property({ default: undefined }) declare column: number | undefined;
+    @property({ default: undefined }) declare row: number | undefined;
+    @property({ default: 1 }) declare colSpan: number;
+    @property({ default: 1 }) declare rowSpan: number;
 
     private readonly _layoutRect = new Signal<BoxBounds>({ x: 0, y: 0, width: 0, height: 0 });
     protected constraints!: SizeConstraints;
@@ -883,7 +888,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         s.rotation = this.rotation;
         s.opacity = this.opacity;
         s.blend = this.blend;
-        s.effects = this.effects;
+        s.effects = this.effects as SceneEffect[];
         s.pivot = this.pivot;
         ctx.transform(s);
     }

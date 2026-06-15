@@ -1,4 +1,4 @@
-import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait } from "@motion-script/core";
+import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -38,8 +38,8 @@ class GridCell extends ShapeNode<ShapeProps> {
         const { width: W, height: H } = this.grid.gridSize();
         // A zero-weight stroke still rasterises a hairline, so drop those — at
         // weight 0 the cell shows no stroke at all.
-        const stroke = this.grid.stroke.filter(s => s.weight > 0);
-        const shadow = this.grid.shadow;
+        const stroke = (this.grid.stroke as StrokeResolved[]).filter(s => s.weight > 0);
+        const shadow = this.grid.shadow as ShadowResolved[];
 
         // Shadow behind the slice. A shadow only paints when a fill/stroke flushes
         // it, so pair it with a fully transparent fill — the slice covers the cell

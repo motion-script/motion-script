@@ -4,6 +4,7 @@ import { Size2D } from "@/attributes/layout/size";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
+import { PaddingResolved } from "@/attributes/layout/padding";
 import { lerpSizeInput } from "@/layout/tweens";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
@@ -72,7 +73,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
         const heightIsHug = this.height === "hug";
         const outerW = widthIsHug ? maxWidth : resolveSize(this.width, maxWidth, 0);
         const outerH = heightIsHug ? maxHeight : resolveSize(this.height, maxHeight, 0);
-        const padding = this.padding;
+        const padding = this.padding as PaddingResolved;
         const inner = applyPadding(outerW, outerH, padding);
 
         const m = this.computeMeasure(inner.width, inner.height, scope);
@@ -88,7 +89,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         super.layout(rect, scope);
 
-        const padding = this.padding;
+        const padding = this.padding as PaddingResolved;
         const inner = applyPadding(rect.width, rect.height, padding);
 
         const measure = this._cachedMeasure ?? this.computeMeasure(inner.width, inner.height, scope);
