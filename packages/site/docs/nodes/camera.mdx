@@ -20,7 +20,7 @@ export class MyScene extends Scene {
         width={480}
         height={320}
         zoom={1}
-        centerOn={{ x: 0, y: 0 }}
+        origin={{ x: 0, y: 0 }}
         fill="#0f172a"
         cornerRadius={16}
       >
@@ -37,7 +37,7 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `zoom` | `number` | `1` | Magnification factor. Values > 1 zoom in; < 1 zoom out |
-| `centerOn` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport |
+| `origin` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport |
 | `heading` | `number` | `0` | Camera rotation in degrees (clockwise) |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the card and the viewport clip |
 | `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the card |
@@ -64,7 +64,7 @@ export class MyScene extends Scene {
     );
 
     // Pan to the right object
-    yield* cam().to({ centerOn: { x: 200, y: 0 } }, 1.2, easeInOut);
+    yield* cam().to({ origin: { x: 200, y: 0 } }, 1.2, easeInOut);
 
     // Zoom in
     yield* cam().to({ zoom: 2 }, 0.8, easeInOut);
@@ -79,5 +79,5 @@ export class MyScene extends Scene {
 
 - The Camera runs no flex or stack layout — children are positioned stack-style (centered), then viewed through the camera transform.
 - The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
-- `centerOn` is in world-space coordinates relative to the children's own origin, not screen coordinates.
+- `origin` is in world-space coordinates relative to the children's own origin, not screen coordinates.
 - `heading` rotates the camera's view, not the children — the world stays fixed and the camera turns.

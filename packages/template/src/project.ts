@@ -18,5 +18,6 @@ import layoutProject from './projects/layout/layout-project';
 import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
 import shapesProject from './projects/shapes/shapes-project';
-export default shapesProject;
+import nodesProject from './projects/nodes/nodes-project';
+export default nodesProject;
 

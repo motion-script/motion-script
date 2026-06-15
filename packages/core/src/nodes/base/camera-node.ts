@@ -18,7 +18,7 @@ export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
     /** World-space point that maps to the centre of the camera viewport. */
-    centerOn: Vector2;
+    origin: Vector2;
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
@@ -42,7 +42,7 @@ export class Camera extends ShapeNode<CameraProps> {
     /** Magnification factor (default: 1). */
     declare zoom: number;
     /** World-space focus point (default: {x:0, y:0}). */
-    declare centerOn: Vector2;
+    declare origin: Vector2;
     /** View rotation in degrees (default: 0). */
     declare heading: number;
 
@@ -54,7 +54,7 @@ export class Camera extends ShapeNode<CameraProps> {
     constructor(props: NodeConfig<Camera, CameraProps>) {
         super(props);
         this.applyProp("zoom", props.zoom ?? 1, { tween: lerpNumber });
-        this.applyProp("centerOn", props.centerOn ?? { x: 0, y: 0 }, { tween: lerpVector2 });
+        this.applyProp("origin", props.origin ?? { x: 0, y: 0 }, { tween: lerpVector2 });
         this.applyProp("heading", props.heading ?? 0, { tween: lerpNumber });
     }
 
@@ -106,7 +106,7 @@ export class Camera extends ShapeNode<CameraProps> {
 
         ctx.beginCamera(
             { x: cx, y: -cy, width: w, height: h },
-            this.centerOn,
+            this.origin,
             this.zoom,
             this.heading,
         );

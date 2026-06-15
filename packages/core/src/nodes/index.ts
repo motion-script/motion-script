@@ -16,6 +16,8 @@ export * from "./geometry/path-node";
 export * from "./geometry/polygon-node";
 export * from "./geometry/polygram-node";
 export * from "./geometry/line-grid-node";
+export * from "./geometry/viewport-pattern-node";
+export * from "./geometry/grid-pattern-node";
 export * from "./text/richtext-node";
 export * from "./text/text-node";
 export * from "./text/text-selection";

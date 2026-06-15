@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Ellipse, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { Scene, createRef, Ellipse, Rect, easeInOutQuad, parallel, wait, Fills } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -37,7 +37,8 @@ export class EllipseScene extends Scene {
                                 height={280}
                                 startAngle={-90}
                                 sweep={0}
-                                stroke={{ fill: '#E8617C', weight: 20 }}
+                                fill={Fills.color('white', { opacity: 1 })}
+                                stroke={{ fill: Fills.color('red', { opacity: 0.2, }), weight: 20, align: 'center' }}
                             />
                         </Rect>
                     </>
