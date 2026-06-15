@@ -227,6 +227,20 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, centerOn: Vector2, zoom: number, heading: number): void;
     abstract endCamera(): void;
 
+    /**
+     * Push a scene-fit scope: clip to `clip` (the node's cell outline, in the
+     * node's local centred space — already positioned by the active node
+     * transform) and scale the content drawn until {@link endSceneFit} by
+     * `(scaleX, scaleY)` about the current origin. Used by a nested {@link Scene}
+     * with a `fit` set: its children are laid out against the full viewport and
+     * centred at the origin, so scaling them by `cell/viewport` shrinks the whole
+     * world into the cell (contain / cover / stretch). Unlike the per-node
+     * transform, `scaleX`/`scaleY` may differ (non-uniform), which is what makes
+     * `stretch` possible. Paired with {@link endSceneFit}.
+     */
+    abstract beginSceneFit(clip: Clip | null, scaleX: number, scaleY: number): void;
+    abstract endSceneFit(): void;
+
 
 
     /**

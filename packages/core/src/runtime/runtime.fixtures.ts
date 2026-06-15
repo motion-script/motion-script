@@ -65,6 +65,7 @@ export class FakeScene {
     disposeCount = 0;
     renderCount = 0;
     setCalls: unknown[] = [];
+    setViewportCalls: unknown[] = [];
     bindAssetsCalls: unknown[] = [];
     ellapseCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
@@ -82,6 +83,9 @@ export class FakeScene {
 
     set(props: unknown): void {
         this.setCalls.push(props);
+    }
+    setViewport(size: unknown): void {
+        this.setViewportCalls.push(size);
     }
     reset(): void {
         this.resetCount++;

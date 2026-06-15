@@ -85,6 +85,17 @@ export class Rect extends ShapeNode<RectProps> {
     private _cachedMeasureFrom: NodeMeasureResult | null = null;
     private _groupBlend: { from: LayoutMode; to: LayoutMode; t: number } | null = null;
 
+    /**
+     * Discard the measure cached by the last {@link measure} pass so the next
+     * {@link layout} recomputes children against the layout bounds. Used by a
+     * `fit` {@link Scene}, which is measured by its parent against its small cell
+     * but lays its children out against the full viewport.
+     */
+    protected invalidateMeasure(): void {
+        this._cachedMeasure = null;
+        this._cachedMeasureFrom = null;
+    }
+
     constructor(props: NodeConfig<Rect, RectProps>) {
         super(props);
         this.applyGroupProp(props.group ?? "stack");

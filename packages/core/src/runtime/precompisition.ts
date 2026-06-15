@@ -153,6 +153,7 @@ export class Precomp {
             const scene = this.scenes[sceneIndex];
             scene.reset();
             scene.set({ width: this.viewport.width, height: this.viewport.height });
+            scene.setViewport(this.viewport);
             scene.bindAssets(this.assets);
             stage.reset();
 

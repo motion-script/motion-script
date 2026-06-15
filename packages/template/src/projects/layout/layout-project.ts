@@ -13,6 +13,7 @@ import {
     GlobalScene,
 } from './scenes';
 import { CameraScene } from './scenes/camera';
+import { SceneScaling } from './scenes/scene-scale';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -32,6 +33,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new SceneScaling(),
         new GlobalScene(),
         new CameraScene(),
         new RowScene(),

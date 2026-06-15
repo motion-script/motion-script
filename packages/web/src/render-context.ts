@@ -917,6 +917,58 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
+    // ─── Scene-fit scope ─────────────────────────────────────────────────────
+
+    private sceneFitRestoreStack: number[] = [];
+
+    beginSceneFit(clip: Clip | null, scaleX: number, scaleY: number): void {
+        if (!this.isRendering) {
+            console.warn("beginSceneFit() must be called within the draw() method.");
+            return;
+        }
+        const canvas = this.currentCanvas;
+
+        canvas.save();
+        // Clip to the cell first (in the node's local centred space — already
+        // positioned by the node transform) so the scaled-up world is confined
+        // to the box, then scale the world down to fit. Reuse the same clip-path
+        // building as beginClip() so rounded corners follow the cell outline.
+        if (clip && !clip.isEmpty()) {
+            const ops = clip.ops();
+            if (ops.length === 1 && ops[0].kind !== "cut") {
+                const shape = this.buildClipShapeOp(ops[0]);
+                if (shape) {
+                    shape.clip(/* isolated= */ true);
+                    shape.deletePaths();
+                }
+            } else {
+                const combined = this.combineClipPath(clip);
+                if (combined) {
+                    canvas.clipPath(combined, this.canvasKit.ClipOp.Intersect, true);
+                    combined.delete();
+                }
+            }
+        }
+
+        // Non-uniform scale about the current origin (the cell centre). The
+        // nested world is laid out centred at the origin, so scaling here keeps
+        // it centred within the cell.
+        canvas.scale(scaleX, scaleY);
+
+        this.sceneFitRestoreStack.push(1);
+    }
+
+    endSceneFit(): void {
+        if (!this.isRendering) {
+            console.warn("endSceneFit() must be called within the draw() method.");
+            return;
+        }
+        const restores = this.sceneFitRestoreStack.pop() ?? 0;
+        for (let i = 0; i < restores; i++) {
+            this.currentCanvas.restore();
+        }
+    }
+
     // ─── Clip scope ──────────────────────────────────────────────────────────
 
     beginClip(clip: Clip): void {

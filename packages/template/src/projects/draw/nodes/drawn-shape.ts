@@ -1,7 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
     FillSpace, FillResolved, property,
-    FX,
+
 } from "@motion-script/core";
 
 export interface DrawnShapeProps extends ShapeProps {
