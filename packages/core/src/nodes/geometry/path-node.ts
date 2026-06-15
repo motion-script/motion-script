@@ -7,9 +7,12 @@ import { MeasureScope } from "@/render/measure-scope";
 import { Size2D } from "@/attributes/layout/size";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { NodeConfig } from "../base/node";
+import { property } from "@/attributes/properties/decorator";
+import { toPathCommands } from "@/attributes/shape/path/parse";
+import { lerpPath } from "@/attributes/shape/path/morph";
 
 function measurePathData(d: PathData): { width: number; height: number } {
-    const cmds: PathCommand[] = typeof d === "string" ? parsePathString(d) : d;
+    const cmds: PathCommand[] = toPathCommands(d);
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let cx = 0, cy = 0;
@@ -57,54 +60,25 @@ function measurePathData(d: PathData): { width: number; height: number } {
     return { width: maxX - minX, height: maxY - minY };
 }
 
-function parsePathString(d: string): PathCommand[] {
-    const cmds: PathCommand[] = [];
-    const re = /([MmLlHhVvCcSsQqTtAaZz])|(-?[\d.]+(?:e[-+]?\d+)?)/gi;
-    const tokens: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(d)) !== null) tokens.push(m[0]);
-
-    let i = 0;
-    const num = () => parseFloat(tokens[i++]);
-
-    while (i < tokens.length) {
-        const t = tokens[i++];
-        switch (t) {
-            case "M": cmds.push({ type: "M", x: num(), y: num() }); break;
-            case "m": cmds.push({ type: "m", x: num(), y: num() }); break;
-            case "L": cmds.push({ type: "L", x: num(), y: num() }); break;
-            case "l": cmds.push({ type: "l", x: num(), y: num() }); break;
-            case "H": cmds.push({ type: "H", x: num() }); break;
-            case "h": cmds.push({ type: "h", x: num() }); break;
-            case "V": cmds.push({ type: "V", y: num() }); break;
-            case "v": cmds.push({ type: "v", y: num() }); break;
-            case "C": cmds.push({ type: "C", x1: num(), y1: num(), x2: num(), y2: num(), x: num(), y: num() }); break;
-            case "c": cmds.push({ type: "c", x1: num(), y1: num(), x2: num(), y2: num(), x: num(), y: num() }); break;
-            case "S": cmds.push({ type: "S", x2: num(), y2: num(), x: num(), y: num() }); break;
-            case "s": cmds.push({ type: "s", x2: num(), y2: num(), x: num(), y: num() }); break;
-            case "Q": cmds.push({ type: "Q", x1: num(), y1: num(), x: num(), y: num() }); break;
-            case "q": cmds.push({ type: "q", x1: num(), y1: num(), x: num(), y: num() }); break;
-            case "T": cmds.push({ type: "T", x: num(), y: num() }); break;
-            case "t": cmds.push({ type: "t", x: num(), y: num() }); break;
-            case "A": cmds.push({ type: "A", rx: num(), ry: num(), rotation: num(), largeArc: num() as 0 | 1, sweep: num() as 0 | 1, x: num(), y: num() }); break;
-            case "a": cmds.push({ type: "a", rx: num(), ry: num(), rotation: num(), largeArc: num() as 0 | 1, sweep: num() as 0 | 1, x: num(), y: num() }); break;
-            case "Z": case "z": cmds.push({ type: "Z" }); break;
-        }
-    }
-    return cmds;
-}
 export interface PathProps extends ShapeProps {
     d: PathData;
 }
 
 export class Path extends ShapeNode<PathProps> {
 
-
-    readonly d: PathData;
+    /**
+     * The path geometry, as an SVG `d` string or a {@link PathCommand} array.
+     *
+     * Animatable: `to({ d })` morphs smoothly between arbitrary shapes via
+     * {@link lerpPath}, which reconciles differing command/subpath counts, point
+     * order, and winding before interpolating. Strings and command arrays may be
+     * freely mixed as the source and target.
+     */
+    @property({ default: "", tween: lerpPath })
+    declare readonly d: PathData;
 
     constructor(props: NodeConfig<Path, PathProps>) {
         super(props);
-        this.d = (props.d as PathData) ?? "";
         this.applyProp("width", props.width ?? "hug");
         this.applyProp("height", props.height ?? "hug");
     }

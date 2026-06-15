@@ -5,6 +5,7 @@ import {
     Fills, Fill, easeInOutQuad, wait, tween,
 } from "@motion-script/core";
 import { BuildStage } from "@motion-script/core";
+import { ShapeScene, ShapeSceneSpec } from "./shape-scene";
 
 const PATHS = [
     // Arrow right
@@ -17,101 +18,54 @@ const PATHS = [
     'M 80 0 L 160 80 L 80 160 L 0 80 Z',
 ];
 
-/**
- * Showcases the Path node by cross-fading through a set of SVG path shapes.
- * Since `d` is immutable, each transition replaces the node while fading
- * out the old one and fading in the new one.
- */
-export class PathScene extends Scene {
-    *build(_stage: BuildStage) {
-        this.set({ fill: 'bg' });
+/** Showcase for Polygon-specific properties: sides, cornerRadius, and cornerStyle. */
+export class PathScene extends ShapeScene {
+    readonly spec: ShapeSceneSpec = {
+        label: 'Path',
+        fill: Fills.color('#C77DFF'),
+        stroke: Fills.color('#FF9F1C'),
+        anims: [
+            {
+                label: 'Data',
+                prop: 'd',
+                from: PATHS[0],
+                to: PATHS[1],
+                duration: 2,
+            },
+            {
+                label: 'Data',
+                prop: 'd',
+                from: PATHS[1],
+                to: PATHS[2],
+                duration: 2,
+            },
+            {
+                label: 'Data',
+                prop: 'd',
+                from: PATHS[2],
+                to: PATHS[3],
+                duration: 2,
+            },
+            {
+                label: 'Data',
+                prop: 'd',
+                from: PATHS[3],
+                to: PATHS[4],
+                duration: 2,
+            },
 
-        const fill: Fill = Fills.color('#6990DD');
-        const stroke: Fill = Fills.color('#E8617C');
-        const strokeWeight = 12;
+        ],
+    };
 
-        const fillContainerRef = createRef<Rect>();
-        const strokeContainerRef = createRef<Rect>();
+    protected buildShape(container: Rect, props: Record<string, any>): void {
+        container.addChild(
+            <Path
+                width={320} height={320}
+                fill={props.fill}
+                stroke={props.stroke}
+                d={props.d ?? ""}
 
-        this.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={32}>
-                <Text
-                    fontFamily={'Pixelify Sans'}
-                    text={'Path'}
-                    fontSize={80}
-                    fill={'gray'}
-                    width={'fill'}
-                    align={'start'}
-                />
-                <Rect width={'fill'} height={'fill'} group={'row'} gap={80} alignment={{ x: 0, y: 0 }}>
-                    <Rect
-                        ref={fillContainerRef}
-                        width={500} height={500}
-                        group={'stack'}
-                        fill={'card'}
-                        cornerRadius={24}
-                    />
-                    <Rect
-                        ref={strokeContainerRef}
-                        width={500} height={500}
-                        group={'stack'}
-                        fill={'card'}
-                        cornerRadius={24}
-                    />
-                </Rect>
-            </Rect>
+            />
         );
-
-        const mountPath = (container: Rect, d: string, props: Record<string, any>) => {
-            const node = (
-                <Path
-                    d={d}
-                    width={280} height={280}
-                    fill={props.fill}
-                    stroke={props.stroke}
-                    opacity={1}
-                />
-            ) as Path;
-            container.addChild(node);
-            return node;
-        };
-
-        let fillNode = mountPath(fillContainerRef(), PATHS[0], { fill });
-        let strokeNode = mountPath(strokeContainerRef(), PATHS[0], { stroke: { weight: strokeWeight, fill: stroke } });
-
-        yield* wait(0.5);
-
-        for (let i = 1; i < PATHS.length; i++) {
-            const nextD = PATHS[i];
-
-            // Fade out old, mount new at opacity 0, fade in new — simultaneously
-            const nextFill = mountPath(fillContainerRef(), nextD, { fill });
-            const nextStroke = mountPath(strokeContainerRef(), nextD, { stroke: { weight: strokeWeight, fill: stroke } });
-            nextFill.set({ opacity: 0 });
-            nextStroke.set({ opacity: 0 });
-
-            const prevFill = fillNode;
-            const prevStroke = strokeNode;
-
-            yield* tween(1.2, t => {
-                const eased = easeInOutQuad(t);
-                prevFill.set({ opacity: 1 - eased });
-                prevStroke.set({ opacity: 1 - eased });
-                nextFill.set({ opacity: eased });
-                nextStroke.set({ opacity: eased });
-            });
-
-            prevFill.dispose();
-            prevStroke.dispose();
-            fillContainerRef().removeChild(prevFill);
-            strokeContainerRef().removeChild(prevStroke);
-
-            fillNode = nextFill;
-            strokeNode = nextStroke;
-
-            if (i < PATHS.length - 1) yield* wait(0.8);
-        }
-
-        yield* wait(0.5);
     }
 }
