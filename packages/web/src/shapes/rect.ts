@@ -105,6 +105,11 @@ export class RectShape extends BaseShape<RectState, RectGeo> {
         return rectToSvg(left, top, right, bottom, tl, tr, br, bl);
     }
 
+    /** True when every corner radius is zero, so the rect can be drawn/clipped as a plain rect. */
+    hasCornerRadius(): boolean {
+        return !this.geometry.isZero;
+    }
+
     protected override supportsSpread(): boolean {
         return true;
     }
