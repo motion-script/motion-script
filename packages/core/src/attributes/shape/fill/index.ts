@@ -10,7 +10,7 @@ export { Fills, FillChain, resolveChainFill } from './chain';
 export type { Fill, FillOptions } from './chain';
 
 export type { FillData } from './registry';
-export { resolveFill, resolveFillArray, lerpFill, lerpFillArray, updateFill, prepareFill } from './registry';
+export { resolveFill, resolveFillArray, lerpFill, lerpFillArray, canLerpFill, updateFill, prepareFill } from './registry';
 
 export type { SolidFillProp, SolidFillResolved } from './implementations/color';
 export type { ConicGradientFillProp, ConicGradientFillResolved } from './implementations/conic-gradient';

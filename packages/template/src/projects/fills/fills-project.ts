@@ -27,6 +27,7 @@ import {
 } from './scenes';
 import { PolygonScene } from './scenes/polygon-scene';
 import { CornerStylesScene } from './scenes/corner-styles-scene';
+import { FillArrayLerpScene } from './scenes/fill-lerp';
 
 /**
  * A project that walks through every fill, stroke, and shadow case, one
@@ -45,6 +46,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new FillArrayLerpScene(),
         new AlignmentStrokeScene(),
         new CornerStylesScene(),
         new PolygonScene(),
