@@ -1,0 +1,151 @@
+---
+sidebar_position: 5
+---
+
+# Position
+
+Every node has `x` and `y` props that offset it within its layout cell. The coordinate system is centered: `(0, 0)` is the center of the parent, positive `x` moves right, positive `y` moves up.
+
+## x and y
+
+```tsx
+<Rect x={100} y={-50} width={200} height={200} fill="royalblue" />
+```
+
+---
+
+## Cardinal anchor props
+
+Instead of `x`/`y`, you can position a node by one of its named anchor points. The node reactively adjusts its offset so that the given anchor lands at the specified scene-space coordinate.
+
+Available anchors: `center`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`, `topCenter`, `bottomCenter`, `leftCenter`, `rightCenter`.
+
+```tsx
+// Pin the top-left corner to (−400, 200)
+<Rect topLeft={{ x: -400, y: 200 }} width={200} height={120} fill="royalblue" />
+
+// Pin the bottom-right corner to (300, -100)
+<Rect bottomRight={{ x: 300, y: -100 }} width={200} height={120} fill="tomato" />
+
+// Pin the center to a reactive position — re-evaluates whenever the target changes
+<Rect center={() => otherNode.topRight} width={80} height={80} fill="seagreen" />
+```
+
+Only one anchor prop may be set at a time. Setting `pivot` alongside an anchor prop is an error — anchors manage pivot automatically.
+
+---
+
+## Pivot
+
+`pivot` controls the origin point for rotation and scaling. It is a normalized `{ x, y }` vector where `(0, 0)` is the node's center, `(-1, 1)` is the top-left corner, and `(1, -1)` is the bottom-right corner.
+
+```tsx
+// Rotate around the top-left corner
+<Rect pivot={{ x: -1, y: 1 }} rotation={45} width={200} height={200} fill="royalblue" />
+
+// Scale from the bottom-center
+<Rect pivot={{ x: 0, y: -1 }} scale={1.5} width={200} height={120} fill="tomato" />
+```
+
+When you use an anchor prop, pivot is set automatically to match the anchor's position on the node.
+
+---
+
+## Rotation
+
+`rotation` is in degrees, clockwise:
+
+```tsx
+<Rect rotation={45} width={200} height={200} fill="royalblue" />
+```
+
+Rotation happens around the `pivot` point (center by default).
+
+---
+
+## Scale
+
+`scale` is a uniform multiplier. It also applies relative to `pivot`:
+
+```tsx
+<Rect scale={1.5} width={100} height={100} fill="tomato" />
+```
+
+---
+
+## Movement animations
+
+### `.to()` — tween position
+
+```tsx
+import { Scene, Rect, createRef, easeOutBack } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={120} height={120} fill="royalblue" />);
+
+    // Move to x=300
+    yield* box().to({ x: 300 }, 0.8, easeOutBack);
+
+    // Move both axes at once
+    yield* box().to({ x: -200, y: 150 }, 0.6);
+  }
+}
+```
+
+### `.moveTo()` — convenience helper
+
+```tsx
+yield* box().moveTo(300, 100, 0.6, easeOutBack);
+```
+
+### `.moveX()` / `.moveY()` — single-axis
+
+```tsx
+yield* box().moveX(400, 0.5);
+yield* box().moveY(-200, 0.5);
+```
+
+### `.rotateTo()` — animate rotation
+
+```tsx
+yield* box().rotateTo(180, 0.8, easeInOut);
+```
+
+### `.scaleTo()` — animate scale
+
+```tsx
+yield* box().scaleTo(2, 0.4);
+yield* box().scaleTo(1, 0.4);
+```
+
+---
+
+## Anchor-based animation
+
+Animate an anchor prop to move a node so a specific corner or edge lands at a target point:
+
+```tsx
+yield* box().to({ topLeft: { x: -400, y: 300 } }, 0.8, easeOutBack);
+```
+
+---
+
+## Anchor getters
+
+Every node exposes readable getters for all nine anchor points, accounting for the node's current rotation:
+
+```tsx
+const tl = box().topLeft;       // { x, y } in scene space
+const center = box().center;    // same as { x: box().x, y: box().y }
+const br = box().bottomRight;
+```
+
+These are reactive — reading them inside a callback creates a live binding:
+
+```tsx
+// Badge always follows the top-right of the card
+<Rect center={() => card().topRight} width={24} height={24} fill="red" />
+```

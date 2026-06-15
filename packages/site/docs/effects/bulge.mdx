@@ -1,0 +1,56 @@
+---
+sidebar_position: 6
+---
+
+# Bulge
+
+Applies a barrel or pincushion lens distortion to the node's own content. A positive `strength` magnifies the centre and pins the edges (barrel); a negative value pinches the centre inward (pincushion).
+
+![Bulge effect demo](/effects/bulge.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Barrel distortion
+<Rect effects={Effects.bulge(0.6)} />
+
+// Pincushion distortion
+<Rect effects={Effects.bulge(-0.4)} />
+
+// Raw object
+<Rect effects={[{ type: 'bulge', strength: 0.6 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'bulge'` | — | Effect identifier |
+| `strength` | `number` | — | Distortion amount — positive = barrel (centre magnified), negative = pincushion (centre pinched). Typical range `−1` to `1` |
+
+## Animating
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const card = new Rect({ width: 400, height: 400, fill: '#4f46e5' });
+    card.set({ effects: Effects.bulge(0) });
+    this.add(card);
+
+    yield* tween(1.2, (t) => {
+      card.set({ effects: Effects.bulge(lerpNumber(0, 0.8, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Bulge with chromatic aberration for a lens-like look
+<Rect effects={Effects.bulge(0.5).chromaticAberration(4)} />
+```

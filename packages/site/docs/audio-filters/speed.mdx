@@ -1,0 +1,49 @@
+---
+sidebar_position: 5
+---
+
+# Speed
+
+Changes the clip's playback rate. Because the underlying audio engine resamples on rate change, this alters both tempo and pitch together — the classic chipmunk (faster) or slow-motion (slower) effect. The clip's scene-time duration shrinks or grows proportionally.
+
+## Usage
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+// Via AFX builder — play at 1.5× speed
+const clip = new Sound({ src: './beat.mp3', filters: AFX.speed(1.5) });
+
+// Via raw object
+const clip = new Sound({ src: './beat.mp3', filters: [{ type: 'speed', value: 1.5 }] });
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'speed'` | — | Filter identifier |
+| `value` | `number` | — | Playback-rate multiplier. `1` = unchanged, `2` = double speed, `0.5` = half speed |
+
+## Animating
+
+Animate speed to simulate a tape machine winding up or winding down:
+
+```tsx
+import { Sound, AFX, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+const clip = new Sound({ src: './vinyl.mp3', filters: AFX.speed(0.1) });
+clip.start();
+
+// Spin up from slow to normal
+yield* tween(2, (t) => {
+  clip.set({ filters: AFX.speed(lerpNumber(0.1, 1, easeOut(t))) });
+});
+```
+
+## Notes
+
+- Speed and pitch are coupled — there is no pitch-preservation mode. Use this filter for stylistic tape effects, not for tempo-matching.
+- A `value` of `2` doubles speed and raises pitch by one octave. `0.5` halves speed and drops pitch by one octave.
+- The clip's effective scene-time duration changes: a 10-second source at `speed: 2` occupies 5 seconds on the timeline. Plan `yield* clip.play()` durations accordingly.
+- `value` is fully animatable. Extremely low values (close to `0`) can cause audio artifacts.

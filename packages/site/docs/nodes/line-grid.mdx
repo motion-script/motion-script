@@ -1,0 +1,89 @@
+---
+sidebar_position: 7
+---
+
+# LineGrid
+
+A rectangular grid of lines filling the node's layout rect. `divisions` sets how many cells span each axis; `subdivisions` adds finer lines within each cell.
+
+![LineGrid node](/nodes/line-grid.png)
+
+## Usage
+
+```tsx
+import { Scene, LineGrid } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Simple 4×4 grid
+    this.add(
+      <LineGrid
+        width={400}
+        height={400}
+        divisions={4}
+        stroke={{ fill: '#334155', weight: 1 }}
+      />
+    );
+
+    // Grid with subdivisions
+    this.add(
+      <LineGrid
+        width={400}
+        height={400}
+        divisions={4}
+        subdivisions={4}
+        stroke={{ fill: '#1e293b', weight: 1 }}
+        subStroke={{ fill: '#0f172a', weight: 0.5 }}
+      />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `divisions` | `number` | `4` | Number of cells along each axis — equal gaps between major grid lines |
+| `subdivisions` | `number` | `1` | How many finer cells each division is split into |
+| `subStroke` | `StrokeProp \| StrokeProp[]` | — | Stroke style for the minor (subdivision) lines. Falls back to the main `stroke` if unset |
+| `origin` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Pixel offset that pans the whole grid |
+
+The standard `stroke` prop (from `ShapeNode`) styles the major division lines.
+
+## Animating
+
+All props animate with `.to()`. Animate `divisions` to reveal or collapse the grid, or `origin` to scroll it:
+
+```tsx
+import { Scene, LineGrid, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const grid = createRef<LineGrid>();
+
+    this.add(
+      <LineGrid
+        ref={grid}
+        width={600}
+        height={400}
+        divisions={1}
+        stroke={{ fill: '#334155', weight: 1 }}
+      />
+    );
+
+    // Reveal the grid
+    yield* grid().to({ divisions: 8 }, 1.2, easeOut);
+
+    // Scroll the grid
+    yield* grid().to({ origin: { x: 50, y: 50 } }, 2);
+  }
+}
+```
+
+## Notes
+
+- `subdivisions: 1` means no subdivision lines (each division is one cell).
+- `subStroke` only has an effect when `subdivisions > 1`.
+- `LineGrid` draws lines only — it has no fill of its own. Add a `fill` prop to paint a background behind the lines.
+- `origin` pans the grid lines as a whole; use it to animate an infinite-scroll effect.

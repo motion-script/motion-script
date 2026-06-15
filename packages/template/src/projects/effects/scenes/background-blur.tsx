@@ -1,4 +1,4 @@
-import { FX } from "@motion-script/core";
+import { Effects as FX } from "@motion-script/core";
 import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
 
 /** Figma-style backdrop blur — `blur` with `{ backdrop: true }` blurs the content

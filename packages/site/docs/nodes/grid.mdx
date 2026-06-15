@@ -1,0 +1,93 @@
+---
+sidebar_position: 11
+---
+
+# Grid
+
+A CSS/Tailwind-style grid container. Lays children into N equal-width columns; rows are auto-sized to the tallest child in each row. Children can span multiple cells with `colSpan`/`rowSpan` and be placed explicitly with `column`/`row`.
+
+![Grid node](/nodes/grid.png)
+
+## Usage
+
+```tsx
+import { Scene, Grid, Rect } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Grid columns={3} gap={16} padding={24} fill="#1e293b" cornerRadius={16}>
+        <Rect width="fill" height={120} fill="tomato"      cornerRadius={8} />
+        <Rect width="fill" height={120} fill="royalblue"   cornerRadius={8} />
+        <Rect width="fill" height={120} fill="seagreen"    cornerRadius={8} />
+        <Rect width="fill" height={120} fill="mediumpurple" cornerRadius={8} colSpan={2} />
+        <Rect width="fill" height={120} fill="goldenrod"   cornerRadius={8} />
+      </Grid>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `columns` | `number` | `1` | Number of equal-width columns |
+| `gap` | `number` | `0` | Shorthand: sets both `columnGap` and `rowGap` |
+| `columnGap` | `number` | `0` | Space between columns in pixels |
+| `rowGap` | `number` | `0` | Space between rows in pixels |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the grid's own background box |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the grid box |
+
+### Child placement props
+
+These props are set on children of a `Grid`, not on the `Grid` itself:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `colSpan` | `number` | `1` | Number of columns this child spans |
+| `rowSpan` | `number` | `1` | Number of rows this child spans |
+| `column` | `number` | — | Explicit column placement (1-based) |
+| `row` | `number` | — | Explicit row placement (1-based) |
+
+### Size defaults
+
+| Condition | `width` default | `height` default |
+|---|---|---|
+| No children | `'fill'` | `'fill'` |
+| Has children | `'hug'` | `'hug'` |
+
+## Animating
+
+All props animate with `.to()`. Animate `columns` to reflow the grid, or `gap` to expand/collapse spacing:
+
+```tsx
+import { Scene, Grid, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const grid = createRef<Grid>();
+
+    this.add(
+      <Grid ref={grid} columns={4} gap={8} padding={16} fill="#0f172a" cornerRadius={12}>
+        {Array.from({ length: 8 }, (_, i) => (
+          <Rect width="fill" height={80} fill="#1e293b" cornerRadius={6} />
+        ))}
+      </Grid>
+    );
+
+    // Reflow to 2 columns
+    yield* grid().to({ columns: 2 }, 1.0, easeInOut);
+
+    // Expand gaps
+    yield* grid().to({ gap: 24 }, 0.6, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- `gap` is shorthand — if you set `gap` and also `columnGap`/`rowGap`, `columnGap`/`rowGap` win for their respective axes.
+- Children with `width: 'fill'` expand to fill their column track width.
+- Explicit `column`/`row` placement uses a 1-based index. Items without explicit placement are auto-placed left-to-right, top-to-bottom.
+- `Grid` draws a background box (like `Rect`) behind its children. Use `Row`/`Column` for invisible layout containers.

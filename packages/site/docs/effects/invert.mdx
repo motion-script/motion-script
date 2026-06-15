@@ -1,0 +1,77 @@
+---
+sidebar_position: 8
+---
+
+# Invert
+
+Inverts a color channel or color space component. `channel` controls which part of the color is inverted; `strength` blends from the original (`0`) to fully inverted (`1`).
+
+![Invert effect demo](/effects/invert.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Full RGB invert
+<Rect effects={Effects.invert()} />
+
+// Hue rotation (180°)
+<Rect effects={Effects.invert('hue')} />
+
+// Partial invert with blend
+<Rect effects={Effects.invert('rgba', 0.6)} />
+
+// Raw object
+<Rect effects={[{ type: 'invert', channel: 'rgba', strength: 1 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'invert'` | — | Effect identifier |
+| `channel` | `InvertChannel` | `'rgba'` | Which channel or color component to invert (see table below) |
+| `strength` | `number` | `1` | Blend from original (`0`) to fully inverted (`1`) |
+| `backdrop` | `boolean` | `false` | When `true`, inverts the content beneath the node |
+
+### `InvertChannel` values
+
+| Value | Description |
+|---|---|
+| `'rgba'` | Inverts red, green, and blue (alpha untouched) |
+| `'red'` | Inverts the red channel only |
+| `'green'` | Inverts the green channel only |
+| `'blue'` | Inverts the blue channel only |
+| `'alpha'` | Inverts the alpha channel |
+| `'hue'` | Rotates hue by 180° |
+| `'luminance'` | Inverts perceptual luminance (BT.709) while preserving chroma |
+
+## Animating
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const photo = new Rect({
+      width: 600,
+      height: 400,
+      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
+    });
+    photo.set({ effects: Effects.invert('rgba', 0) });
+    this.add(photo);
+
+    yield* tween(1, (t) => {
+      photo.set({ effects: Effects.invert('rgba', lerpNumber(0, 1, easeInOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Inverted and desaturated
+<Rect effects={Effects.invert('luminance').grayscale(0.5)} />
+```

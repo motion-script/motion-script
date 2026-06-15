@@ -4,197 +4,93 @@ sidebar_position: 5
 
 # Effects
 
-Effects are post-process filters applied to any node via the `effects` prop. They are applied after the node is rendered, so they affect the entire node including its children.
-
-MotionScript provides three built-in effects: **blur**, **grayscale**, and **pixelate**.
+Effects are post-process filters applied to any node via the `effects` prop. They run after the node (and its children) are fully rendered, so they apply to the composite result.
 
 ## Using effects
 
-Pass an `effects` prop to any node with either an array of effect objects or the `FX` builder:
+Pass an `effects` prop to any node using the `Effects` builder or a raw array:
 
 ```tsx
-import { Scene, Rect, FX } from '@motion-script/core';
+import { Scene, Rect, Effects } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
-    // Using the FX builder (chainable)
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={FX.blur(8)} />);
+    // Via the Effects builder (chainable, type-safe)
+    this.add(<Rect width={300} height={300} fill="royalblue" effects={Effects.blur(8)} />);
 
-    // Using a raw array
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={[{ type: 'blur', radius: 8 }]} />);
+    // Via a raw array
+    this.add(<Rect width={300} height={300} fill="royalblue" effects={[{ type: 'blur', blur: 8 }]} />);
   }
 }
 ```
 
 ---
 
-## Blur
+## Chaining effects
 
-Applies a Gaussian blur. `radius` is in pixels.
-
-```tsx
-import { Scene, Rect, Image, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
-
-export class MyScene extends Scene {
-  *build() {
-    const bg = new Rect({
-      width: 800,
-      height: 450,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
-    });
-    bg.set({ effects: FX.blur(20) });
-    this.add(bg);
-  }
-}
-```
-
-### Animating blur
-
-Animate the `radius` inside a `tween` to create focus-in or defocus effects:
+The `Effects` builder returns an `EffectChain` — an immutable list you can extend fluently. Each call appends to a new chain, so chains are safe to share and branch:
 
 ```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
-
-export class MyScene extends Scene {
-  *build() {
-    const card = new Rect({ width: 400, height={300}, fill: '#1e293b' });
-    card.set({ effects: FX.blur(30) });
-    this.add(card);
-
-    // Focus in
-    yield* tween(1, (t) => {
-      card.set({ effects: FX.blur(lerpNumber(30, 0, easeOut(t))) });
-    });
-  }
-}
-```
-
----
-
-## Grayscale
-
-Desaturates the node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
-
-```tsx
-<Rect
-  width={500} height={350}
-  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-  effects={FX.grayscale(1)}
-/>
-```
-
-### Colorize animation
-
-Animate from grayscale to full color:
-
-```tsx
-yield* tween(1.5, (t) => {
-  photo.set({ effects: FX.grayscale(lerpNumber(1, 0, easeInOut(t))) });
-});
-```
-
----
-
-## Pixelate
-
-Chunks the node into rectangular blocks, like After Effects' Mosaic. The value is a **block count** — how many blocks span the node — so a count equal to the node's pixel size is pristine and lower counts are chunkier. Pass a `number` (uniform), `{ blocks, sharpColors? }`, or `{ horizontalBlocks, verticalBlocks, sharpColors? }`.
-
-```tsx
-<Rect
-  width={300} height={300}
-  fill={{ type: 'image', src: './logo.png', mode: 'fit' }}
-  effects={FX.pixelate(60)}
-/>
-```
-
-### Pixel-reveal animation
-
-Start with a low block count (coarse) and animate up toward the node's resolution:
-
-```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
-
-export class MyScene extends Scene {
-  *build() {
-    const logo = new Rect({
-      width: 300,
-      height: 300,
-      fill: { type: 'image', src: './logo.png', mode: 'fit' },
-    });
-    logo.set({ effects: FX.pixelate(40) });
-    this.add(logo);
-
-    yield* tween(1.5, (t) => {
-      logo.set({ effects: FX.pixelate(lerpNumber(40, 300, easeInOut(t))) });
-    });
-  }
-}
-```
-
----
-
-## Invert
-
-Inverts a colour channel. `channel` selects which component is inverted (`'red'`, `'green'`, `'blue'`, `'rgba'`, `'alpha'`, `'hue'`, or `'luminance'`); `strength` ranges from `0` (original) to `1` (fully inverted).
-
-```tsx
-<Rect
-  width={500} height={350}
-  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-  effects={FX.invert('rgba', 1)}
-/>
-```
-
-### Animating an invert
-
-```tsx
-yield* tween(1, (t) => {
-  photo.set({ effects: FX.invert('hue', easeInOut(t)) });
-});
-```
-
----
-
-## Chaining effects with FX
-
-The `FX` builder lets you chain multiple effects fluently:
-
-```tsx
-import { FX } from '@motion-script/core';
+import { Effects } from '@motion-script/core';
 
 // Grayscale then blur
-<Rect effects={FX.grayscale(0.8).blur(4)} />
+<Rect effects={Effects.grayscale(0.8).blur(4)} />
 
 // All three
-<Rect effects={FX.pixelate(8).grayscale(0.5).blur(2)} />
+<Rect effects={Effects.pixelate(8).grayscale(0.5).blur(2)} />
+
+const base = Effects.grayscale(1);
+const blurry = base.blur(8); // 'base' is unchanged
 ```
 
-Each `FX` method returns a new immutable chain, so chains are safe to reuse:
+---
+
+## Available effects
+
+| Effect | Builder | Description |
+|---|---|---|
+| [Blur](../node-effects/blur) | `Effects.blur(radius)` | Gaussian blur |
+| [Background Blur](../node-effects/background-blur) | `Effects.blur(radius, { backdrop: true })` | Figma-style blur applied to the backdrop |
+| [Directional Blur](../node-effects/directional-blur) | `Effects.directionalBlur(angle, length)` | Linear smear along an authored axis |
+| [Motion Blur](../node-effects/motion-blur) | `Effects.motionBlur(length, alignment)` | Velocity-driven blur that follows node movement |
+| [Grayscale](../node-effects/grayscale) | `Effects.grayscale(amount)` | Desaturate `0`–`1` |
+| [Pixelate](../node-effects/pixelate) | `Effects.pixelate(blocks)` | AE Mosaic-style block quantization |
+| [Bloom](../node-effects/bloom) | `Effects.bloom(threshold, radius, intensity)` | Glow from bright areas |
+| [Bulge](../node-effects/bulge) | `Effects.bulge(strength)` | Barrel / pincushion lens distortion |
+| [Magnify](../node-effects/magnify) | `Effects.magnify(scale, center)` | Magnifying-glass lens reading the backdrop |
+| [Chromatic Aberration](../node-effects/chromatic-aberration) | `Effects.chromaticAberration(amount, angle)` | Red/blue channel fringing |
+| [Invert](../node-effects/invert) | `Effects.invert(channel, strength)` | Invert a color channel or luminance |
+| [Scatter](../node-effects/scatter) | `Effects.scatter(strength, direction)` | Random per-pixel displacement |
+| [Posterize](../node-effects/posterize) | `Effects.posterize(level)` | Quantize colors into flat bands |
+| [Vintage](../node-effects/vintage) | `Effects.vintage(amount, warmth)` | Sepia / film-look color grade |
+
+---
+
+## Backdrop effects
+
+Several effects support a `backdrop` option that makes them operate on the content painted _beneath_ the node (clipped to its silhouette) rather than the node's own content. This is how frosted-glass, magnify, and similar compositing effects work:
 
 ```tsx
-const base = FX.grayscale(1);
-const blurry = base.blur(8);  // 'base' is unchanged
+// Blur everything behind this card, Figma-style
+<Rect
+  width={300}
+  height={200}
+  fill={{ type: 'color', value: 'rgba(255,255,255,0.15)' }}
+  effects={Effects.blur(16, { backdrop: true })}
+/>
 ```
+
+Effects that support `backdrop`: blur, directional blur, grayscale, pixelate, bloom, chromatic aberration, invert, scatter, posterize, vintage.
 
 ---
 
 ## Raw effect objects
 
-You can also pass plain objects — useful when constructing effects programmatically:
+You can pass plain objects directly — useful when constructing effects programmatically:
 
 ```tsx
 effects={[
   { type: 'grayscale', amount: 0.8 },
-  { type: 'blur', radius: 4 },
+  { type: 'blur', blur: 4 },
 ]}
 ```
-
-### Effect object types
-
-| Type | Props |
-|---|---|
-| `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
-| `{ type: 'directionalBlur', direction: number, blurLength: number }` | `direction` — smear angle in degrees (0 = horizontal, 90 = vertical); `blurLength` — smear length in pixels |
-| `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
-| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number, sharpColors: boolean }` | Number of blocks per axis (AE Mosaic); `sharpColors` — solid blocks vs. blended |
-| `{ type: 'invert', channel: InvertChannel, strength: number }` | `channel` — `'red' \| 'green' \| 'blue' \| 'rgba' \| 'alpha' \| 'hue' \| 'luminance'`; `strength` — 0 (original) to 1 (fully inverted) |

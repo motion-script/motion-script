@@ -1,0 +1,60 @@
+---
+sidebar_position: 1
+---
+
+# Blur
+
+Applies a Gaussian blur to any node. The effect covers the entire node including its children.
+
+![Blur effect demo](/effects/blur.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Via Effects builder
+<Rect width={400} height={300} fill="royalblue" effects={Effects.blur(12)} />
+
+// Via raw object
+<Rect width={400} height={300} fill="royalblue" effects={[{ type: 'blur', blur: 12 }]} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'blur'` | — | Effect identifier |
+| `blur` | `number` | — | Gaussian blur radius in pixels |
+| `backdrop` | `boolean` | `false` | When `true`, blurs the content beneath the node (Figma-style) instead of the node itself |
+
+## Animating
+
+Animate the radius inside a `tween` callback to create focus or defocus effects:
+
+```tsx
+import { Scene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const card = new Rect({ width: 400, height: 300, fill: '#1e293b' });
+    card.set({ effects: Effects.blur(30) });
+    this.add(card);
+
+    // Focus in over 1 second
+    yield* tween(1, (t) => {
+      card.set({ effects: Effects.blur(lerpNumber(30, 0, easeOut(t))) });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Blur then grayscale
+<Rect effects={Effects.blur(6).grayscale(0.8)} />
+
+// Blur with pixelate
+<Rect effects={Effects.pixelate(40).blur(4)} />
+```

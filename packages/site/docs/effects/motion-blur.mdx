@@ -1,0 +1,84 @@
+---
+sidebar_position: 10
+---
+
+# Motion Blur
+
+Velocity-driven blur that smears a node along its actual per-frame motion path. Unlike [Directional Blur](./directional-blur), the direction and smear length are derived automatically from how far the node moves between frames — a stationary node stays perfectly sharp.
+
+<video src="/effects/motion-blur.mp4" autoPlay loop muted playsInline style={{width: '100%', borderRadius: '12px', marginBottom: '1rem'}} />
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default settings (50% shutter, centered phase)
+<Ellipse effects={Effects.motionBlur()} />
+
+// Heavy shutter, trailing phase
+<Ellipse effects={Effects.motionBlur(90, 'behind', 16)} />
+
+// Raw object
+<Ellipse effects={[{ type: 'motionBlur', length: 50, alignment: 'centered', samples: 16, strength: 1, axis: 'both' }]} />
+```
+
+The effect is only visible while the node is moving. Add it to a node before animating it:
+
+```tsx
+import { Scene, Ellipse, Effects, tween } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
+    puck.set({ x: -400, effects: Effects.motionBlur(80, 'centered', 16) });
+    this.add(puck);
+
+    yield* puck.moveX(400, 0.4);
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'motionBlur'` | — | Effect identifier |
+| `length` | `number` | `50` | Shutter openness as a percentage — `100` ≈ 360° = smear spanning the node's full per-frame displacement, `0` = no blur |
+| `alignment` | `'behind' \| 'centered' \| 'ahead' \| number` | `'centered'` | Shutter phase — where the smear sits relative to the node's current position. `'behind'` trails, `'centered'` straddles, `'ahead'` leads. A number is clamped to `−1`–`1` |
+| `samples` | `number` | `16` | Quality hint — lower values use a fast continuous smear; higher values switch to multi-tap accumulation for an AE-style look |
+| `strength` | `number` | `1` | Multiplier on the computed smear length — `1` = nominal, `0` = off |
+| `axis` | `'x' \| 'y' \| 'both' \| { x: number; y: number }` | `'both'` | Per-axis velocity scale. `'x'` smears only horizontal motion; `'y'` only vertical; `{ x, y }` gives fractional control |
+
+## Animating
+
+`motionBlur` is typically set once and left — the smear responds automatically to the node's movement speed. To ramp the effect in or out, animate `strength`:
+
+```tsx
+import { Scene, Ellipse, Effects, tween, lerpNumber, easeIn } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
+    this.add(puck);
+
+    // Velocity ramp: increase motion blur as the node accelerates
+    yield* tween(1, (t) => {
+      puck.set({
+        x: lerpNumber(-400, 400, t),
+        effects: Effects.motionBlur(80, 'centered', 16, lerpNumber(0, 1, t)),
+      });
+    });
+  }
+}
+```
+
+## Stacking with other effects
+
+```tsx
+// Motion blur with chromatic aberration for a fast-camera look
+<Ellipse effects={Effects.motionBlur(80).chromaticAberration(4)} />
+
+// Smear + slight blur to soften the trail edges
+<Ellipse effects={Effects.motionBlur(60).blur(2)} />
+```

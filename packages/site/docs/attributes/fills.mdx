@@ -1,0 +1,159 @@
+---
+sidebar_position: 1
+---
+
+# Fills
+
+Every shape node accepts a `fill` prop. Pass a CSS color string as a shorthand, or a fill object for gradients, images, and layering.
+
+## Solid color
+
+```tsx
+// CSS shorthand
+<Rect fill="royalblue" />
+
+// Explicit object
+<Rect fill={{ type: 'color', color: '#4f80ff' }} />
+
+// With opacity and blend mode
+<Rect fill={{ type: 'color', color: 'white', opacity: 0.6, blend: 'screen' }} />
+```
+
+Colors accept any CSS color string (`'red'`, `'#ff0000'`, `'rgb(255,0,0)'`, `'hsl(0,100%,50%)'`) or an RGBA tuple (`[1, 0, 0, 1]`).
+
+---
+
+## Gradients
+
+### Linear gradient
+
+```tsx
+<Rect fill={{
+  type: 'linear-gradient',
+  colors: ['#4f80ff', '#e84393'],
+  stops: [0, 1],
+}} />
+
+// Custom direction — start and end are { x, y } in node-local space
+<Rect fill={{
+  type: 'linear-gradient',
+  colors: ['#4f80ff', 'transparent', '#e84393'],
+  stops: [0, 0.5, 1],
+  start: { x: -0.5, y: 0.5 },
+  end:   { x:  0.5, y: -0.5 },
+}} />
+```
+
+### Radial gradient
+
+```tsx
+<Rect fill={{
+  type: 'radial-gradient',
+  colors: ['white', 'transparent'],
+  radius: 200,
+}} />
+
+// Off-center focal point
+<Rect fill={{
+  type: 'radial-gradient',
+  colors: ['#e84393', 'transparent'],
+  radius: 300,
+  center: { x: -0.3, y: 0.2 },
+}} />
+```
+
+### Conic gradient
+
+```tsx
+<Rect fill={{
+  type: 'conic-gradient',
+  colors: ['red', 'orange', 'yellow', 'green', 'blue', 'red'],
+  stops: [0, 0.2, 0.4, 0.6, 0.8, 1],
+}} />
+```
+
+---
+
+## Image fill
+
+```tsx
+<Rect fill={{
+  type: 'image',
+  src: './texture.png',
+  mode: 'fill',   // 'fill' | 'fit' | 'crop' | 'tile'
+}} />
+```
+
+---
+
+## Multiple fills
+
+Pass an array to layer fills bottom to top:
+
+```tsx
+<Rect fill={[
+  { type: 'color', color: '#0f1117' },
+  { type: 'linear-gradient', colors: ['#4f80ff33', 'transparent'], stops: [0, 1] },
+]} />
+```
+
+---
+
+## Fill types reference
+
+| Type | Required props | Optional props |
+|---|---|---|
+| `'color'` | `color` | `opacity`, `blend` |
+| `'linear-gradient'` | `colors`, `stops` | `start`, `end`, `blend` |
+| `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
+| `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
+| `'image'` | `src` | `mode`, `filters`, `blend` |
+
+---
+
+## Animating fills
+
+Fill colors and gradient stops are all animatable with `.to()`:
+
+```tsx
+import { Scene, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={300} height={200} fill="royalblue" />);
+
+    // Animate to a new color
+    yield* box().to({ fill: '#e84393' }, 1, easeInOut);
+
+    // Animate opacity of a fill object
+    yield* box().to({ fill: { type: 'color', color: 'white', opacity: 0 } }, 0.5);
+  }
+}
+```
+
+---
+
+## Blend modes
+
+The `blend` key on any fill object controls how it composites with fills below it. Available modes:
+
+| Mode | Description |
+|---|---|
+| `'normal'` | Standard alpha composite |
+| `'multiply'` | Darkens |
+| `'screen'` | Lightens |
+| `'overlay'` | Contrast boost |
+| `'darken'` | Keeps darker pixels |
+| `'lighten'` | Keeps lighter pixels |
+| `'color-dodge'` | Brightens based on top layer |
+| `'color-burn'` | Darkens based on top layer |
+| `'hard-light'` | High-contrast overlay |
+| `'soft-light'` | Subtle contrast |
+| `'difference'` | Subtracts colors |
+| `'exclusion'` | Lower-contrast difference |
+| `'hue'` | Hue of top, saturation/luminosity of bottom |
+| `'saturation'` | Saturation of top, hue/luminosity of bottom |
+| `'color'` | Hue and saturation of top, luminosity of bottom |
+| `'luminosity'` | Luminosity of top, hue/saturation of bottom |

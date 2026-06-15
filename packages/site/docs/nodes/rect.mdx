@@ -1,0 +1,118 @@
+---
+sidebar_position: 3
+---
+
+# Rect
+
+The primary building block. A rounded rectangle that also acts as a flex or stack layout container for its children.
+
+![Rect node](/nodes/rect.png)
+
+## Usage
+
+```tsx
+import { Scene, Rect, Text } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Rect
+        width={320}
+        height={200}
+        fill="#1e293b"
+        cornerRadius={16}
+        group="column"
+        gap={12}
+        padding={24}
+      >
+        <Text text="Title" fontSize={28} fontWeight={700} fill="white" />
+        <Text text="Subtitle" fontSize={18} fill="#94a3b8" />
+      </Rect>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `group` | `'row' \| 'column' \| 'stack'` | `'stack'` | Layout mode for children |
+| `gap` | `number \| 'auto'` | `0` | Space between children along the main axis. `'auto'` distributes evenly |
+| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Cross-axis child alignment. Each axis: `-1` start · `0` center · `1` end |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius in pixels. Accepts uniform, per-corner, or per-axis shorthand |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | `'rounded'` for circular arcs, `'angled'` for chamfered cuts |
+
+### Size defaults
+
+| Condition | `width` default | `height` default |
+|---|---|---|
+| No children | `'fill'` | `'fill'` |
+| Has children | `'hug'` | `'hug'` |
+
+### Corner shorthands
+
+`cornerRadius` and `cornerStyle` share the same shorthand grammar:
+
+```tsx
+// Uniform
+<Rect cornerRadius={16} cornerStyle="rounded" />
+
+// Per-axis
+<Rect cornerRadius={16} cornerStyle={{ top: 'rounded', bottom: 'angled' }} />
+
+// Per-corner
+<Rect
+  cornerRadius={{ topLeft: 24, topRight: 24, bottomLeft: 0, bottomRight: 0 }}
+/>
+```
+
+## Animating
+
+All props animate with `.to()`. Transition `group` to cross-fade between layout modes, or animate `gap` to expand/collapse spacing:
+
+```tsx
+import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(
+      <Rect ref={box} group="row" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
+        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+      </Rect>
+    );
+
+    // Expand gap
+    yield* box().to({ gap: 40 }, 0.6, easeOut);
+
+    // Switch to column
+    yield* box().to({ group: 'column' }, 0.8, easeOut);
+
+    // Round corners
+    yield* box().to({ cornerRadius: 32 }, 0.4, easeOut);
+  }
+}
+```
+
+### Animated child insertion and removal
+
+```tsx
+const card = new Rect({ width: 200, height={80} fill="#4f80ff" cornerRadius={8} });
+
+// Insert at index 1 with a 0.4 s transition
+yield* box().addChildAt(card, 1, 0.4, easeOut);
+
+// Remove index 0 with a 0.3 s transition
+yield* box().removeChildAt(0, 0.3);
+```
+
+## Notes
+
+- `Rect` is the only shape node that runs layout on its children. `Row`, `Column`, and `Grid` are invisible layout containers; `Rect` is the layout container that also draws a box.
+- In `stack` mode children are layered on top of each other and centered by default. Use `alignment` to shift them.
+- `gap: 'auto'` only applies in `row` and `column` modes.
+- See [Layout](../attributes/layout) for a full reference on sizing, padding, and `flex`.

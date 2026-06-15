@@ -1,0 +1,73 @@
+---
+sidebar_position: 10
+---
+
+# Column
+
+An invisible vertical flex container. Lays its children out top-to-bottom, honouring `gap`, `alignment`, and `padding`. Use it when you want flex layout without a visible box — it draws nothing itself.
+
+![Column node](/nodes/column.png)
+
+## Usage
+
+```tsx
+import { Scene, Column, Rect, Text } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Column gap={16} padding={24}>
+        <Text text="First"  fontSize={28} fill="white" />
+        <Text text="Second" fontSize={28} fill="white" />
+        <Text text="Third"  fontSize={28} fill="white" />
+      </Column>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `gap` | `number \| 'auto'` | `0` | Space between children. `'auto'` distributes evenly (space-between) |
+| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Cross-axis alignment. In a column, `alignment.x` controls horizontal alignment: `-1` left · `0` center · `1` right |
+| `padding` | `number \| PaddingProps` | `0` | Inset the content area from the node's edges |
+
+### Size defaults
+
+`Column` defaults to `width: 'hug'`, `height: 'hug'`. Give a child `flex: 1` (or `height: 'fill'`) to make it expand into remaining column space.
+
+## Animating
+
+All props animate with `.to()`:
+
+```tsx
+import { Scene, Column, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const col = createRef<Column>();
+
+    this.add(
+      <Column ref={col} gap={8}>
+        <Rect width={200} height={60} fill="tomato"    cornerRadius={8} />
+        <Rect width={200} height={60} fill="royalblue" cornerRadius={8} />
+        <Rect width={200} height={60} fill="seagreen"  cornerRadius={8} />
+      </Column>
+    );
+
+    // Spread items apart
+    yield* col().to({ gap: 40 }, 0.8, easeOut);
+
+    // Left-align items
+    yield* col().to({ alignment: { x: -1, y: 0 } }, 0.5, easeOut);
+  }
+}
+```
+
+## Notes
+
+- `Column` is equivalent to `<Rect group="column" ...>` but draws no box. Use `Rect` with `group="column"` when you also want a visible container.
+- `alignment.y` has no effect in a column (children are already laid out along the y axis).
+- See [Layout](../attributes/layout) for full docs on `fill`, `hug`, `flex`, and padding shorthands.

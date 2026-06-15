@@ -1,25 +1,49 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Text, Polygon, wait, Fills } from "@motion-script/core";
+import { Rect, Polygon, Fills } from "@motion-script/core";
+import { ShapeScene, ShapeSceneSpec } from "./shape-scene";
 
-/**
- * A {@link Text} node with `fontSize: 'autofit'` that re-fits its size to the
- * available box as its content grows. The tweens change, append and prepend
- * text so the font scales down to keep everything inside the stroked frame.
- */
-export class PolygonScene extends Scene {
-    readonly label = 'Autofit Text';
+/** Showcase for Polygon-specific properties: sides, cornerRadius, and cornerStyle. */
+export class PolygonScene extends ShapeScene {
+    readonly spec: ShapeSceneSpec = {
+        label: 'Polygon',
+        fill: Fills.color('#C77DFF'),
+        stroke: Fills.color('#FF9F1C'),
+        anims: [
+            {
+                label: 'sides',
+                prop: 'sides',
+                from: 3,
+                to: 8,
+                duration: 2,
+            },
+            {
+                label: 'cornerRadius',
+                prop: 'cornerRadius',
+                from: 0,
+                to: 40,
+                duration: 2,
+            },
+            {
+                label: 'cornerStyle',
+                prop: 'cornerStyle',
+                from: 'rounded',
+                to: 'angled',
+                duration: 1.5,
+            },
+        ],
+    };
 
-    *build() {
-        this.set({ fill: 'white' });
-
-        const ref = createRef<Rect>();
-
-        this.add(
-            <Rect ref={ref} fill={'red'} width={400} height={400} cornerRadius={20} shadow={{ fill: Fills.color('black', { opacity: 1 }), dx: 10, dy: 10, blur: 0, spread: 100, inner: true }} >
-            </Rect>
+    protected buildShape(container: Rect, props: Record<string, any>): void {
+        container.addChild(
+            <Polygon
+                width={320} height={320}
+                fill={props.fill}
+                stroke={props.stroke}
+                sides={props.sides ?? 3}
+                cornerRadius={props.cornerRadius ?? 0}
+                cornerStyle={props.cornerStyle ?? 'rounded'}
+            />
         );
-
-        yield* wait(2);
     }
 }

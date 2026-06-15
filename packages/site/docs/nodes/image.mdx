@@ -1,0 +1,94 @@
+---
+sidebar_position: 12
+---
+
+# Image
+
+Renders an image file. Layout, padding, and child positioning are inherited from `Rect` — an Image lays out its children exactly like a Rect does, with a decoded image painted in place of the fill.
+
+![Image node](/nodes/image.png)
+
+## Usage
+
+```tsx
+import { Scene, Image } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Image
+        src="./assets/photo.jpg"
+        fit="fill"
+        width={800}
+        height={450}
+        cornerRadius={16}
+      />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | — | Path to the image file |
+| `fit` | `'fill' \| 'fit' \| 'crop' \| 'tile'` | — | How the image fills the node's bounds |
+| `scaling` | `number` | — | Scale multiplier applied to the image before fitting |
+| `transform` | `ImageTransform` | — | Fine-grained image transform (offset, scale, rotation within the bounds) |
+| `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (blur, color adjustments, etc.) |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius (clips the image) |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape |
+
+### Fit modes
+
+| Value | Behaviour |
+|---|---|
+| `'fill'` | Stretches the image to exactly fill the node's dimensions |
+| `'fit'` | Scales the image to fit within the bounds, preserving aspect ratio (letterboxed) |
+| `'crop'` | Scales the image to cover the bounds, preserving aspect ratio (cropped) |
+| `'tile'` | Tiles the image at its natural size |
+
+## Animating
+
+Animate standard node props like `opacity`, `scale`, `cornerRadius`, or `x`/`y`. For image filters, animate inside a `tween`:
+
+```tsx
+import { Scene, Image, Filters, createRef, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const photo = createRef<Image>();
+
+    this.add(
+      <Image
+        ref={photo}
+        src="./assets/photo.jpg"
+        fit="crop"
+        width={640}
+        height={360}
+        cornerRadius={0}
+        opacity={0}
+      />
+    );
+
+    // Fade in
+    yield* photo().to({ opacity: 1 }, 0.8, easeOut);
+
+    // Round corners
+    yield* photo().to({ cornerRadius: 24 }, 0.6, easeOut);
+
+    // Blur out with a filter
+    yield* tween(0.8, (t) => {
+      photo().set({ filters: Filters.blur(lerpNumber(0, 20, easeOut(t))) });
+    });
+  }
+}
+```
+
+## Notes
+
+- `Image` extends `Rect`, so it also supports `group`, `gap`, `alignment`, and `padding` for laying out children on top of the image.
+- Placing children inside an `Image` is useful for overlaying text or icons on top of a photo.
+- Supported formats depend on the renderer; JPEG, PNG, and WebP are universally supported.
+- See [Image Filters](../image-filters/overview) for the full list of available filters.

@@ -1,0 +1,94 @@
+---
+sidebar_position: 3
+---
+
+# Shadows
+
+Every shape node accepts a `shadow` prop. Shadows render as drop shadows or inner (inset) shadows using the same fill system as shape fills.
+
+## Basic usage
+
+```tsx
+<Rect shadow={{ blur: 20, fill: 'black', opacity: 0.4 }} />
+
+// Offset shadow
+<Rect shadow={{ blur: 16, fill: 'black', opacity: 0.35, dx: 0, dy: 8 }} />
+
+// Colored glow
+<Rect shadow={{ blur: 40, fill: '#4f80ff', opacity: 0.6 }} />
+```
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `blur` | `number` | `0` | Blur radius in pixels |
+| `dx` | `number` | `0` | Horizontal offset |
+| `dy` | `number` | `0` | Vertical offset (positive = down) |
+| `fill` | `FillProp` | | Shadow color or gradient |
+| `opacity` | `number` | `1` | Shadow opacity (0-1) |
+| `spread` | `number` | `0` | Grow (positive) or shrink (negative) the shadow shape before blurring. Only supported on `Rect` and `Ellipse`. |
+| `inner` | `boolean` | `false` | Inset shadow — paints inside the shape rather than outside |
+
+---
+
+## Spread
+
+`spread` expands or contracts the shadow silhouette before the blur is applied, matching CSS `box-shadow` spread. Only `Rect` and `Ellipse` support it:
+
+```tsx
+// Shadow grows 12px beyond the shape before blurring
+<Rect shadow={{ blur: 20, fill: 'black', opacity: 0.4, spread: 12 }} />
+
+// Negative spread shrinks first — shadow stays tight near the edges
+<Rect shadow={{ blur: 24, fill: '#000', opacity: 0.5, spread: -8 }} />
+```
+
+---
+
+## Inner shadows
+
+Set `inner: true` to paint the shadow inside the shape (inset shadow):
+
+```tsx
+<Rect shadow={{ blur: 12, fill: 'black', opacity: 0.5, dy: 4, inner: true }} />
+```
+
+---
+
+## Multiple shadows
+
+Pass an array to combine drop shadows, glows, or layered insets:
+
+```tsx
+<Rect shadow={[
+  { blur: 10, fill: 'black', opacity: 0.3, dx: 4, dy: 4 },
+  { blur: 40, fill: '#4f80ff', opacity: 0.25 },
+]} />
+```
+
+---
+
+## Animating shadows
+
+All shadow props are animatable:
+
+```tsx
+import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const card = createRef<Rect>();
+
+    this.add(
+      <Rect ref={card} width={320} height={200} fill="#1e293b" cornerRadius={16}
+        shadow={{ blur: 8, fill: 'black', opacity: 0.2, dy: 4 }} />
+    );
+
+    // Lift on hover — deepen shadow
+    yield* card().to({ shadow: { blur: 32, opacity: 0.4, dy: 16 } }, 0.4, easeOut);
+  }
+}
+```

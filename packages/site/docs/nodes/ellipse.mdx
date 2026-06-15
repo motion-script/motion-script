@@ -1,0 +1,81 @@
+---
+sidebar_position: 4
+---
+
+# Ellipse
+
+Circles, ovals, and arcs. Control the arc extent with `startAngle` and `sweep`.
+
+![Ellipse node](/nodes/ellipse.png)
+
+## Usage
+
+```tsx
+import { Scene, Ellipse } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Full circle
+    this.add(<Ellipse width={200} height={200} fill="tomato" />);
+
+    // Arc (progress ring)
+    this.add(
+      <Ellipse
+        width={200}
+        height={200}
+        startAngle={-90}
+        sweep={270}
+        stroke={{ fill: 'white', weight: 6 }}
+      />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `startAngle` | `number` | `0` | Starting angle of the arc in degrees (0 = right/3 o'clock, clockwise) |
+| `sweep` | `number` | `360` | Angular extent of the arc in degrees. `360` = full ellipse |
+| `ratio` | `number` | `1` | Width-to-height ratio override |
+
+## Animating
+
+All props animate with `.to()`. Animate `sweep` to create a progress ring or pie chart:
+
+```tsx
+import { Scene, Ellipse, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const ring = createRef<Ellipse>();
+
+    this.add(
+      <Ellipse
+        ref={ring}
+        width={200}
+        height={200}
+        startAngle={-90}
+        sweep={0}
+        stroke={{ fill: '#4f80ff', weight: 8 }}
+      />
+    );
+
+    // Draw ring from 0 to full circle
+    yield* ring().to({ sweep: 360 }, 1.5, easeInOut);
+  }
+}
+```
+
+Animate `startAngle` to spin the arc opening around the circle:
+
+```tsx
+yield* ring().to({ startAngle: ring().startAngle + 360 }, 2);
+```
+
+## Notes
+
+- Angles are in degrees, measured clockwise from the 3 o'clock position.
+- For a progress ring, set `startAngle: -90` so the arc starts at 12 o'clock.
+- The `start`/`end` draw props inherited from `ShapeNode` trace the outline; `sweep` controls the geometric arc extent.

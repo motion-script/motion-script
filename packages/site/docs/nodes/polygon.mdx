@@ -1,0 +1,71 @@
+---
+sidebar_position: 5
+---
+
+# Polygon
+
+A regular convex polygon inscribed within the node's layout rect. All sides and angles are equal.
+
+![Polygon node](/nodes/polygon.png)
+
+## Usage
+
+```tsx
+import { Scene, Polygon } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Hexagon
+    this.add(
+      <Polygon sides={6} width={200} height={200} fill="teal" />
+    );
+
+    // Triangle with rounded vertices
+    this.add(
+      <Polygon sides={3} width={200} height={200} fill="royalblue" cornerRadius={12} />
+    );
+
+    // Pentagon with chamfered corners
+    this.add(
+      <Polygon sides={5} width={200} height={200} fill="tomato" cornerRadius={16} cornerStyle="angled" />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of sides. Must be ≥ 3 |
+| `cornerRadius` | `number` | `0` | Vertex rounding radius in pixels |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape: circular arc (`'rounded'`) or chamfer cut (`'angled'`) |
+
+## Animating
+
+All props animate with `.to()`. Animate `sides` to morph between polygon shapes, or `cornerRadius` to round out vertices:
+
+```tsx
+import { Scene, Polygon, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const shape = createRef<Polygon>();
+
+    this.add(
+      <Polygon ref={shape} sides={3} width={200} height={200} fill="#4f80ff" />
+    );
+
+    // Triangle → hexagon
+    yield* shape().to({ sides: 6 }, 1.2, easeInOut);
+
+    // Round the vertices
+    yield* shape().to({ cornerRadius: 20 }, 0.6, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- `cornerStyle` takes a single scalar value (not the per-corner shorthand that `Rect` accepts) because polygon vertices don't map to named corners.
+- The polygon is always inscribed inside the node's bounding rect — the outermost vertices touch the edges of the rect.
