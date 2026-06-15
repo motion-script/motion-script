@@ -16,6 +16,7 @@ export class CodeScene extends Scene {
 
                 </Rect>
                 <Code
+                    theme={'vscode-dark'}
                     ref={code}
                     language={'typescript'}
                     padding={{ horizontal: 72, vertical: 42 }}

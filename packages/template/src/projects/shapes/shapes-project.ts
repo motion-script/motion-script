@@ -8,6 +8,7 @@ import {
     PathScene,
 } from './scenes';
 import { TextSelectionScene } from './scenes/text-selection';
+import { CodeScene } from '../../scenes/code-scene';
 
 /**
  * A project that showcases each shape node and its unique properties.
@@ -22,6 +23,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new CodeScene(),
         new TextSelectionScene(),
         new RectScene(),
         new EllipseScene(),
