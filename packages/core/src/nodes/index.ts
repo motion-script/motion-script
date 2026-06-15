@@ -18,6 +18,7 @@ export * from "./geometry/polygram-node";
 export * from "./geometry/line-grid-node";
 export * from "./text/richtext-node";
 export * from "./text/text-node";
+export * from "./text/text-selection";
 
 export * from "./geometry/grid-node";
 

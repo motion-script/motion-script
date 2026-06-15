@@ -192,20 +192,41 @@ export function layoutParagraph(
             const glyphCount = run.glyphs.length;
             if (glyphCount === 0) continue;
 
-            // run.offsets holds the character offset of each glyph (plus a
-            // trailing entry); the first pins the run to its style segment.
-            const segmentIndex = segmentIndexAt(segmentStartChar, segments, run.offsets[0]);
-
-            const font = fontForRun(segments[segmentIndex], run.typeface);
-
-            // positions hold one extra trailing pair; copy just the glyph pairs
-            // and apply the centering shift.
-            const positions = new Float32Array(glyphCount * 2);
-            for (let i = 0; i < glyphCount; i++) {
-                positions[i * 2] = run.positions[i * 2] + shiftX;
-                positions[i * 2 + 1] = run.positions[i * 2 + 1] + shiftY;
+            // CanvasKit merges adjacent text with identical *shaping* style into
+            // one run even when the segments differ only in paint (fill/stroke).
+            // run.offsets holds each glyph's character offset, so split the run
+            // into maximal contiguous slices that map to the same segment — that
+            // way per-segment fills/strokes/overrides apply even to same-styled
+            // neighbours. The run's typeface (hence Font) is shared across all
+            // slices, so build it once: every slice of a run shapes at the same
+            // weight, so they share a cache key regardless of segment paint.
+            const font = fontForRun(segments[segmentIndexAt(segmentStartChar, segments, run.offsets[0])], run.typeface);
+            let sliceStart = 0;
+            let sliceSeg = segmentIndexAt(segmentStartChar, segments, run.offsets[0]);
+            const flush = (end: number) => {
+                const count = end - sliceStart;
+                if (count <= 0) return;
+                const positions = new Float32Array(count * 2);
+                for (let i = 0; i < count; i++) {
+                    positions[i * 2] = run.positions[(sliceStart + i) * 2] + shiftX;
+                    positions[i * 2 + 1] = run.positions[(sliceStart + i) * 2 + 1] + shiftY;
+                }
+                runs.push({
+                    segmentIndex: sliceSeg,
+                    glyphs: run.glyphs.slice(sliceStart, end),
+                    positions,
+                    font,
+                });
+            };
+            for (let i = 1; i < glyphCount; i++) {
+                const seg = segmentIndexAt(segmentStartChar, segments, run.offsets[i]);
+                if (seg !== sliceSeg) {
+                    flush(i);
+                    sliceStart = i;
+                    sliceSeg = seg;
+                }
             }
-            runs.push({ segmentIndex, glyphs: run.glyphs.slice(0, glyphCount), positions, font });
+            flush(glyphCount);
         }
     }
 

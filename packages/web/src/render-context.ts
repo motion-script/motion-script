@@ -51,6 +51,7 @@ import {
 
 import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun, layoutParagraph } from "./shapes/paragraph-layout";
+import { layoutTextSegments, runCenter } from "./shapes/text-segments";
 import { ImageNodeRenderer } from "./shapes/image";
 import { RectShape } from "./shapes/rect";
 import { EllipseShape } from "./shapes/ellipse";
@@ -100,6 +101,23 @@ function tileMode(ck: CanvasKit, mode: "clamp" | "decal") {
 /** Map a {@link ShaderEffect} filter-mode literal to its CanvasKit enum. */
 function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
     return mode === "nearest" ? ck.FilterMode.Nearest : ck.FilterMode.Linear;
+}
+
+/**
+ * Fold a text segment's opacity into its fill layers by multiplying each
+ * layer's `opacity` (the fill handler then multiplies that by the node's world
+ * alpha, so node opacity and selection opacity compose). Returns the input
+ * unchanged when `segmentOpacity` is 1 to avoid allocating per frame.
+ */
+function applySegmentOpacityToFills(fills: FillResolved[], segmentOpacity: number): FillResolved[] {
+    if (segmentOpacity >= 1) return fills;
+    return fills.map(f => ({ ...f, opacity: (f.opacity ?? 1) * segmentOpacity }));
+}
+
+/** Fold a segment's opacity into each stroke's fill layers (see {@link applySegmentOpacityToFills}). */
+function applySegmentOpacityToStrokes(strokes: StrokeResolved[], segmentOpacity: number): StrokeResolved[] {
+    if (segmentOpacity >= 1) return strokes;
+    return strokes.map(s => ({ ...s, fill: applySegmentOpacityToFills(s.fill, segmentOpacity) }));
 }
 
 /**
@@ -711,7 +729,64 @@ export class WebRenderContext extends RenderContext {
     private _text(state: Partial<TextState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
+        if (state.segments && state.segments.length > 0) {
+            this._segmentedText(state);
+            return;
+        }
         this.shapeHandler.text(state);
+    }
+
+    /**
+     * Draw a Text node split into selection segments. Shapes all pieces in one
+     * paragraph (consistent kerning/wrap/align) and paints each shaped run with
+     * its segment's overrides: opacity folded into the paint, a transform about
+     * the run's centre, and the segment's fill/stroke (which default to the
+     * node's paint when the selection didn't override them). Mirrors
+     * {@link _richText}'s eager per-run paint path.
+     */
+    private _segmentedText(state: Partial<TextState>): void {
+        const layout = layoutTextSegments(
+            this.canvasKit,
+            this.storageAdapter.getFontMgr(),
+            state,
+        );
+
+        this.shapeHandler.pushBounds(layout.bounds);
+        try {
+            for (const run of layout.runs) {
+                if (run.glyphs.length === 0 || !run.segment) continue;
+                const seg = run.segment;
+
+                const transformed = seg.x !== 0 || seg.y !== 0 || seg.scale !== 1 || seg.rotation !== 0;
+                if (transformed) {
+                    const c = runCenter(run);
+                    this.currentCanvas.save();
+                    this.currentCanvas.translate(seg.x, seg.y);
+                    if (seg.rotation !== 0) this.currentCanvas.rotate(seg.rotation, c.x, c.y);
+                    if (seg.scale !== 1) {
+                        this.currentCanvas.translate(c.x, c.y);
+                        this.currentCanvas.scale(seg.scale, seg.scale);
+                        this.currentCanvas.translate(-c.x, -c.y);
+                    }
+                }
+
+                const shape = {
+                    isText: true,
+                    draw: (paint: Paint) => drawShapedRun(this.currentCanvas, run, paint),
+                };
+
+                const fills = seg.fill ? applySegmentOpacityToFills(seg.fill, seg.opacity) : [];
+                if (fills.length > 0) this.fillHandler.applyFills(fills, [shape]);
+
+                const strokes = seg.stroke ? applySegmentOpacityToStrokes(seg.stroke, seg.opacity) : [];
+                if (strokes.length > 0) this.strokeHandler.applyStrokes(strokes, [shape]);
+
+                if (transformed) this.currentCanvas.restore();
+            }
+        } finally {
+            this.shapeHandler.popBounds();
+            for (const font of layout.fonts) font.delete();
+        }
     }
 
     /** Lays out spans/runs and paints each run's fill/stroke immediately (rich text carries per-span paint, bypassing the usual fill/stroke ops). */

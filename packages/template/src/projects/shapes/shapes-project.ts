@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject, TextSelection } from '@motion-script/core';
 
 import {
     RectScene,
@@ -7,6 +7,7 @@ import {
     PolygramScene,
     PathScene,
 } from './scenes';
+import { TextSelectionScene } from './scenes/text-selection';
 
 /**
  * A project that showcases each shape node and its unique properties.
@@ -21,6 +22,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new TextSelectionScene(),
         new RectScene(),
         new EllipseScene(),
         new PolygonScene(),
