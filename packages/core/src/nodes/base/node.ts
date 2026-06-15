@@ -78,6 +78,12 @@ export interface WorldTransform {
     readonly rotation: number;
     /** Product of this node's and all ancestors' scale factors. */
     readonly scale: number;
+    /**
+     * Product of this node's and all ancestors' opacities, in `[0, 1]` — the
+     * effective alpha the node renders at. Matches the renderer's pass-through
+     * fold: an ancestor at half opacity halves everything beneath it.
+     */
+    readonly opacity: number;
 }
 
 /**
@@ -820,13 +826,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             return { x: p.x, y: -p.y };
         };
 
-        // Accumulate ancestor rotation/scale up the chain (rotation sums, scale
-        // multiplies — both match the renderer's nested transforms).
+        // Accumulate ancestor rotation/scale/opacity up the chain (rotation sums,
+        // scale and opacity multiply — all match the renderer's nested transforms
+        // and its pass-through alpha fold).
         let rotation = 0;
         let scale = 1;
+        let opacity = 1;
         for (let n: Node | null = this; n; n = n._parent) {
             rotation += n.rotation;
             scale *= n.scale;
+            opacity *= n.opacity;
         }
 
         const center = at(0, 0);
@@ -844,6 +853,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             rightCenter: at(hw, 0),
             rotation,
             scale,
+            opacity,
         };
     }
 

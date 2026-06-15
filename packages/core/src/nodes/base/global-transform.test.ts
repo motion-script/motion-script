@@ -124,6 +124,19 @@ describe('Node.global', () => {
         expect(child.global.scale).toBe(6);
     });
 
+    it('multiplies opacity down the chain', () => {
+        const parent = new Tile({ opacity: 0.5 });
+        const child = new Tile({ opacity: 0.4 });
+        parent.addChild(child);
+        parent.place({ x: 0, y: 0, width: 100, height: 100 });
+        child.place({ x: 0, y: 0, width: 10, height: 10 });
+
+        // Effective alpha is the product, matching the renderer's pass-through fold.
+        closeTo(child.global.opacity, 0.2);
+        // A node with no faded ancestor renders at full opacity.
+        expect(parent.global.opacity).toBe(0.5);
+    });
+
     it('reacts to ancestor movement', () => {
         const parent = new Tile({ x: 0, y: 0 });
         const child = new Tile({ x: 10, y: 0 });
