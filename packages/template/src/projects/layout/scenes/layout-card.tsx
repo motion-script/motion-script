@@ -32,7 +32,7 @@ export function layoutCard(opts: {
             <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
             <Rect
                 width={'fill'} height={'fill'}
-                fill={'card'} cornerRadius={32} clip={true}
+                cornerRadius={32} clip={true}
                 group={stage} gap={gap} padding={64}
             >
                 {children}

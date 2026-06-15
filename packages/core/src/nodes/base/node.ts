@@ -14,6 +14,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
+import { Matrix2D, applyToPoint, multiply, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { TransformState } from "@/render/descriptors/transform";
@@ -49,6 +50,35 @@ export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
 export type AnchorKey =
     | 'center' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
     | 'topCenter' | 'bottomCenter' | 'leftCenter' | 'rightCenter';
+
+/**
+ * A node's resolved transform in global (world / scene-root) space. Unlike the
+ * per-node `x`/`y` and anchor getters — which are relative to the node's parent
+ * — every field here is folded through the full ancestor chain, so two nodes
+ * under different parents can be compared or aligned directly.
+ *
+ * Positions use the same y-up convention as `x`/`y` (positive y is up). Read
+ * inside a reactive callback (`x: () => other().global.topRight.x`) they track
+ * changes to this node's *and* every ancestor's layout/transform.
+ */
+export interface WorldTransform {
+    /** World position of the node's center (its `x`/`y` origin). */
+    readonly x: number;
+    readonly y: number;
+    readonly center: Vector2;
+    readonly topLeft: Vector2;
+    readonly topRight: Vector2;
+    readonly bottomLeft: Vector2;
+    readonly bottomRight: Vector2;
+    readonly topCenter: Vector2;
+    readonly bottomCenter: Vector2;
+    readonly leftCenter: Vector2;
+    readonly rightCenter: Vector2;
+    /** Sum of this node's and all ancestors' rotations, in degrees clockwise. */
+    readonly rotation: number;
+    /** Product of this node's and all ancestors' scale factors. */
+    readonly scale: number;
+}
 
 /**
  * Fractional offsets (0–1) of each anchor within the node's bounding box.
@@ -713,6 +743,108 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     get rightCenter(): Vector2 {
         const r = this.layoutRect;
         return this._rotateOffset(r.width / 2, 0);
+    }
+
+    // ---- Global (world-space) transform -----------------------------------
+    // The local anchor getters above are relative to this node's *parent*; their
+    // global counterparts below fold in the full ancestor chain so a node can be
+    // aligned to another regardless of where each sits in the tree:
+    //   new Rect({ x: () => other().global.x, y: () => other().global.y })
+    // All reads are reactive — they track this node's and every ancestor's
+    // layout/x/y/rotation/scale/pivot signals.
+
+    /**
+     * This node's local transform in canvas (y-down) space, matching the matrix
+     * the renderer pushes in {@link applyTransform}/`RenderContext.transform`.
+     * Composed with the parent chain by {@link worldMatrix}.
+     */
+    private _localMatrix(): Matrix2D {
+        const r = this.layoutRect;
+        const cx = (r?.x ?? 0) + this.x;
+        const cy = (r?.y ?? 0) - this.y;
+        const pivot = this.pivot;
+        const pivotX = pivot.x * ((r?.width ?? 0) / 2);
+        const pivotY = -pivot.y * ((r?.height ?? 0) / 2);
+        return nodeLocalMatrix(cx, cy, this.rotation, this.scale, pivotX, pivotY);
+    }
+
+    /**
+     * This node's full transform in canvas (y-down) world space — the product of
+     * every ancestor's local matrix from the root down to this node. Reactive:
+     * walks the live parent chain and reads each node's transform signals.
+     */
+    protected worldMatrix(): Matrix2D {
+        const local = this._localMatrix();
+        const parent = this._parent;
+        return parent ? multiply(parent.worldMatrix(), local) : local;
+    }
+
+    /**
+     * Resolved world-space transform — the same anchor points and metrics as the
+     * local getters (`center`, `topRight`, `rotation`, …) but folded through the
+     * full ancestor chain, so values are absolute scene coordinates rather than
+     * parent-relative ones. See {@link WorldTransform}. Every field is reactive.
+     *
+     * @example
+     * // Read another node's absolute corner, regardless of its parent:
+     * const p = other.global.topRight;   // world-space {x, y}
+     *
+     * ### Reading vs. placing
+     * `global` is for *reading* world coordinates. `x`/`y` (and the anchor props)
+     * are **parent-relative**, so assigning a world value to them does not by
+     * itself place this node in world space — it offsets it from this node's own
+     * parent. To land exactly on another node regardless of either parent,
+     * subtract this node's parent's world contribution:
+     *
+     * @example
+     * // Place this node's origin exactly on `other`, any parent:
+     * new Rect({
+     *   x: () => other.global.x - (myParent.global.x),
+     *   y: () => other.global.y - (myParent.global.y),
+     * });
+     *
+     * When both nodes share the same parent origin (e.g. both at the scene root),
+     * `x: () => other.global.x` already lands on target with no compensation.
+     */
+    get global(): WorldTransform {
+        const m = this.worldMatrix();
+        const r = this.layoutRect;
+        const hw = (r?.width ?? 0) / 2;
+        const hh = (r?.height ?? 0) / 2;
+
+        // Map a node-local centered offset (y-up, like the local anchor getters)
+        // through the world matrix, returning a y-up world position. The matrix
+        // works in canvas (y-down) space, so flip y in and back out.
+        const at = (ox: number, oy: number): Vector2 => {
+            const p = applyToPoint(m, { x: ox, y: -oy });
+            return { x: p.x, y: -p.y };
+        };
+
+        // Accumulate ancestor rotation/scale up the chain (rotation sums, scale
+        // multiplies — both match the renderer's nested transforms).
+        let rotation = 0;
+        let scale = 1;
+        for (let n: Node | null = this; n; n = n._parent) {
+            rotation += n.rotation;
+            scale *= n.scale;
+        }
+
+        const center = at(0, 0);
+        return {
+            x: center.x,
+            y: center.y,
+            center,
+            topLeft: at(-hw, hh),
+            topRight: at(hw, hh),
+            bottomLeft: at(-hw, -hh),
+            bottomRight: at(hw, -hh),
+            topCenter: at(0, hh),
+            bottomCenter: at(0, -hh),
+            leftCenter: at(-hw, 0),
+            rightCenter: at(hw, 0),
+            rotation,
+            scale,
+        };
     }
 
     isAutoSize(axis: "width" | "height"): boolean {

@@ -10,6 +10,7 @@ import {
     NestedScene,
     GridScene,
     FlexNodesScene,
+    GlobalScene,
 } from './scenes';
 import { CameraScene } from './scenes/camera';
 
@@ -31,6 +32,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        new GlobalScene(),
         new CameraScene(),
         new RowScene(),
         new ColumnScene(),
