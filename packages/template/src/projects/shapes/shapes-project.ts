@@ -9,6 +9,7 @@ import {
 } from './scenes';
 import { TextSelectionScene } from './scenes/text-selection';
 import { CodeScene } from '../../scenes/code-scene';
+import { TextPathScene } from './scenes/text-path';
 
 /**
  * A project that showcases each shape node and its unique properties.
@@ -24,6 +25,7 @@ export default createProject({
     },
     scenes: [
         new CodeScene(),
+        new TextPathScene(),
         new TextSelectionScene(),
         new RectScene(),
         new EllipseScene(),

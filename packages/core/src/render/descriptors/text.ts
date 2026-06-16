@@ -2,6 +2,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { PathData } from "./path";
 import { ShapeState } from "./shape";
 
 /**
@@ -48,6 +49,13 @@ export interface TextState extends ShapeState {
      * shaped run with its piece's overrides instead of the node's single fill.
      */
     segments?: TextSegment[];
+    /**
+     * When set, the text is wrapped around this path (text-on-path) instead of
+     * laid out as straight lines: each glyph is positioned and rotated to follow
+     * the path, centered on its baseline, and glyphs past the path end are
+     * clipped. Mutually exclusive with `segments` in v1.
+     */
+    path?: PathData | null;
 }
 
 
@@ -75,5 +83,6 @@ export function withTextDescriptor(descriptor: Partial<TextState>): TextState {
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
         segments: descriptor.segments,
+        path: descriptor.path ?? null,
     };
 }

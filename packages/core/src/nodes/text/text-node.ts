@@ -15,6 +15,9 @@ import { Graphics } from "@/render/graphics";
 import { TextSegment } from "@/render/descriptors/text";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { PathData } from "@/render/descriptors/path";
+import { PathBuilder } from "@/render/descriptors/path-builder";
+import { measurePathData } from "@/attributes/shape/path/bounds";
 import { TextRange, TextSelection } from "./text-selection";
 
 
@@ -29,6 +32,19 @@ export interface TextProps extends ShapeProps {
     align: TextAlign;
     wrap: boolean;
     minFontSize: number;
+    /**
+     * Wrap the text around a path (text-on-path). Accepts the same value shapes
+     * as the {@link Path} node's `d`: an SVG path string, a `PathCommand[]`, or a
+     * {@link PathBuilder}. When set, `wrap` and multi-line (`\n`) are ignored
+     * (single line), and text selections are not applied.
+     */
+    path: PathData | PathBuilder;
+}
+
+/** Coerce the loosely-typed `path` input into stored {@link PathData} (or null). */
+function resolveTextPath(value: PathData | PathBuilder | null | undefined): PathData | null {
+    if (value == null) return null;
+    return value instanceof PathBuilder ? value.toCommands() : value;
 }
 
 
@@ -46,6 +62,8 @@ export class Text extends ShapeNode<TextProps> {
     @property({ default: 'center' }) declare readonly align: TextAlign;
     @property({ default: false }) declare readonly wrap: boolean;
     @property({ default: 12 }) declare readonly minFontSize: number;
+    @property({ default: null, mapper: resolveTextPath })
+    declare readonly path: PathData | null;
 
     constructor(props: NodeConfig<Text, TextProps>) {
         super(props);
@@ -60,6 +78,18 @@ export class Text extends ShapeNode<TextProps> {
     }
 
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+        // Text-on-path: the visual extent is the path's bounding box, not a text
+        // line box. Size the node to the path (node-local coords, like Path).
+        if (this.path != null) {
+            const { width, height } = measurePathData(this.path);
+            const wm = this.width;
+            const hm = this.height;
+            return {
+                width: typeof wm === "number" ? wm : wm === "hug" ? width : (constraints.maxWidth ?? width),
+                height: typeof hm === "number" ? hm : hm === "hug" ? height : (constraints.maxHeight ?? height),
+            };
+        }
+
         const measureFontSize = this.fontSize === 'autofit' ? 16 : this.fontSize;
         const paragraphs = this.text.split("\n");
         const lineH = measureFontSize * this.lineHeight;
@@ -259,7 +289,9 @@ export class Text extends ShapeNode<TextProps> {
     }
 
     protected override renderSelf(ctx: RenderContext): void {
-        const segments = this._buildSegments();
+        // Text-on-path and selection segments are mutually exclusive in v1: when a
+        // path is set we lay out the single string along the path and skip segments.
+        const segments = this.path == null ? this._buildSegments() : null;
         const g = new Graphics().text({
             text: this.text,
             fontSize: this.fontSize,
@@ -274,11 +306,13 @@ export class Text extends ShapeNode<TextProps> {
             width: this.layoutRect?.width ?? 0,
             height: this.layoutRect?.height ?? 0,
             segments: segments ?? undefined,
+            path: this.path,
         });
         g.shadow(this.shadow);
         // With segments the renderer paints each run eagerly with the segment's
         // own fill/stroke (so per-selection overrides apply), so the node-level
-        // fill/stroke ops are omitted to avoid double-painting.
+        // fill/stroke ops are omitted to avoid double-painting. Text-on-path uses
+        // the normal deferred path, so its fill/stroke ops apply here as usual.
         if (!segments) {
             g.fill(this.fill).stroke(this.stroke);
         }

@@ -2,6 +2,7 @@ import type { CanvasKit, Canvas, Paint, TypefaceFontProvider } from "@motion-scr
 import { TextState, withTextDescriptor } from "@motion-script/core";
 import type { CurrentShape } from "./shape-handler";
 import { layoutParagraph, drawShapedRun, type ParagraphSegment } from "./paragraph-layout";
+import { layoutTextOnPath, drawTextOnPath } from "./text-path";
 
 /**
  * Lay out a Text node into a drawable `CurrentShape`. When `fontSize` is
@@ -18,6 +19,21 @@ export function buildText(
     state: Partial<TextState>,
 ): CurrentShape {
     const fullState = withTextDescriptor(state);
+
+    // Text-on-path: lay each glyph out along the path and draw them with our own
+    // per-glyph transforms. `isText: false` (no ckPath) so strokes take the
+    // centered Skia-stroke fallback per glyph rather than the glyph-union path
+    // (which is meaningless and costly when glyphs are spread along a curve).
+    // Fonts live in the closure for the shape's deferred draw, matching the
+    // straight-text path's font lifetime.
+    if (fullState.path != null) {
+        const layout = layoutTextOnPath(canvasKit, fontMgr, state);
+        return {
+            bounds: layout.bounds,
+            draw: (paint: Paint) => drawTextOnPath(canvas, layout.glyphs, paint),
+        };
+    }
+
     const x = fullState.x;
     const y = fullState.y;
 
