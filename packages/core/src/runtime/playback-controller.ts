@@ -51,6 +51,14 @@ export class PlaybackController {
     private audioDevice: AudioDevice;
     /** Set by dispose(); once true the controller must never touch its (now-freed) render context again. */
     private disposed = false;
+    /**
+     * Monotonic token bumped by every seek / tick / seekWhilePlaying. A render
+     * pass captures it at entry and, after each await, bails before painting if a
+     * newer pass has begun — so a superseded seek (parked on loadAt /
+     * warmPendingVideo during a fast scrub) can never stamp its stale frame over
+     * the scene a later seek already rendered.
+     */
+    private seekGeneration = 0;
     readonly fps: number;
     readonly viewport: Size2D;
     readonly precomp: PrecompResult;
@@ -119,12 +127,15 @@ export class PlaybackController {
             this.storageAdapter.setPlaying(false);
         });
         this.masterClock.onTick(async (currentTime: number) => {
+            // A tick is also a render pass: claim a generation so a stale paused
+            // seek can't paint after the clock has moved on (and vice-versa).
+            const gen = ++this.seekGeneration;
             const frame = this.fps * currentTime;
             if (frame >= this.totalFrames) {
                 this.masterClock.pause();
             }
             await this.assetManager.loadAt(frame);
-            if (this.disposed) return;
+            if (!this.isCurrent(gen)) return;
             this.audioDevice.syncTo(currentTime);
             this.renderAt(frame);
             this.assetManager.prefetch(frame);
@@ -160,6 +171,11 @@ export class PlaybackController {
         this.masterClock.onPause(cb);
     }
 
+    /** True while `gen` is still the latest seek/tick and the controller is alive. */
+    private isCurrent(gen: number): boolean {
+        return !this.disposed && gen === this.seekGeneration;
+    }
+
     /**
      * Evaluate scene state, lay out nodes, and render `frame` to the render
      * context. Called on every clock tick and also directly by `seek` /
@@ -184,26 +200,36 @@ export class PlaybackController {
      */
     async seek(frame: number): Promise<void> {
         if (this.disposed) return;
+        // Claim this seek's generation. A later seek/tick/seekWhilePlaying bumps
+        // the counter, so the checks after each await below see it's no longer
+        // current and bail before painting — fixing stale frames (e.g. a video
+        // frame) bleeding into a scene a newer seek already rendered.
+        const gen = ++this.seekGeneration;
         const clamped = Math.max(0, Math.min(frame, this.totalFrames));
         this.masterClock.pause();
         this.masterClock.seek(clamped / this.fps);
         await this.assetManager.loadAt(clamped);
-        // loadAt is async — the controller may have been disposed while awaiting.
-        if (this.disposed) return;
+        // loadAt is async — this seek may have been superseded (or the controller
+        // disposed) while awaiting.
+        if (!this.isCurrent(gen)) return;
         this.renderAt(clamped);
         // A cold seek can land on a video timestamp the window hadn't decoded yet;
         // warm the exact frame(s) the render requested and re-render so the still
         // is frame-accurate. Bounded — decoding is monotonic, so this settles fast.
         for (let pass = 0; pass < 3; pass++) {
             if (!(await this.storageAdapter.warmPendingVideo())) break;
-            if (this.disposed) return;
+            if (!this.isCurrent(gen)) return;
             this.renderAt(clamped);
         }
+        if (!this.isCurrent(gen)) return;
         this.assetManager.prefetch(clamped);
     }
 
     /** Reposition the clock to `frame` without interrupting playback. */
     seekWhilePlaying(frame: number): void {
+        // Invalidate any in-flight paused seek so its late render can't paint over
+        // the live playback position we're repositioning to.
+        ++this.seekGeneration;
         const clamped = Math.max(0, Math.min(frame, this.totalFrames));
         this.masterClock.seek(clamped / this.fps);
     }
