@@ -11,6 +11,10 @@ import { ErrorsButton } from "../errors/errors-button";
 import { PreviewZoomControls } from "./preview-zoom-controls";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import type { PanelImperativeHandle } from "react-resizable-panels";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MenuIcon } from "lucide-react";
 
 // Collapsed timeline shows only the toolbar (h-12), ruler row and scene row.
 const TIMELINE_COLLAPSED_HEIGHT = "112px";
@@ -31,6 +35,12 @@ export function EditorLayout() {
 
     const frameRef = useRef<FrameHandle>(null);
     const timelinePanelRef = useRef<PanelImperativeHandle>(null);
+
+    // On mobile the fixed sidebar is replaced by a slide-in drawer so the
+    // preview + timeline can use the full width. `sceneDrawerOpen` is only
+    // meaningful on mobile; the drawer isn't mounted on desktop.
+    const isMobile = useIsMobile();
+    const [sceneDrawerOpen, setSceneDrawerOpen] = useState(false);
 
     // Drive the resizable panel from the collapse state (toolbar arrow / store).
     useEffect(() => {
@@ -81,16 +91,36 @@ export function EditorLayout() {
                 />
 
                 <div className="flex flex-1 min-h-0">
-                    <div className="w-64 shrink-0  rounded-lg m-1 mr-0  bg-panel  flex flex-col min-h-0">
-                        <ScenePanel />
-                    </div>
+                    {!isMobile && (
+                        <div className="w-64 shrink-0  rounded-lg m-1 mr-0  bg-panel  flex flex-col min-h-0">
+                            <ScenePanel />
+                        </div>
+                    )}
+                    {isMobile && (
+                        <Drawer open={sceneDrawerOpen} onOpenChange={setSceneDrawerOpen}>
+                            <DrawerContent side="left" showCloseButton={false} className="p-0">
+                                <ScenePanel onSceneSelect={() => setSceneDrawerOpen(false)} />
+                            </DrawerContent>
+                        </Drawer>
+                    )}
                     <main className="flex-1 flex flex-col min-w-0 px-1">
                         <ResizablePanelGroup orientation="vertical" className="flex-1 min-h-0">
                             <ResizablePanel defaultSize={70} minSize={20} className="flex flex-col h-full min-h-0">
                                 {/* Top bar */}
                                 <header className="grid grid-cols-3 items-center h-11 px-4 border-b mt-1 rounded-t-lg bg-panel shrink-0">
 
-                                    <div className="flex items-center min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        {isMobile && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                className="shrink-0 -ml-1.5"
+                                                aria-label="Open scenes"
+                                                onClick={() => setSceneDrawerOpen(true)}
+                                            >
+                                                <MenuIcon />
+                                            </Button>
+                                        )}
                                         <span className="text-sm font-medium text-muted-foreground truncate">{projectName}</span>
                                     </div>
                                     <div className="flex items-center justify-center">
