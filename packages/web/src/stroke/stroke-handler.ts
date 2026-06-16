@@ -3,6 +3,9 @@ import type {
     Canvas,
     Paint,
     Path as CKPath,
+    StrokeCap as CKStrokeCap,
+    StrokeJoin as CKStrokeJoin,
+    StrokeOpts,
 } from "@motion-script/canvaskit";
 import type {
     FillResolved,
@@ -141,6 +144,40 @@ export class StrokeHandler {
             return null;
         }
         return builder.detachAndDelete();
+    }
+
+    private ckCap(cap: StrokeResolved['cap']): CKStrokeCap {
+        switch (cap) {
+            case 'round': return this.canvasKit.StrokeCap.Round;
+            case 'square': return this.canvasKit.StrokeCap.Square;
+            default: return this.canvasKit.StrokeCap.Butt;
+        }
+    }
+
+    private ckJoin(join: StrokeResolved['join']): CKStrokeJoin {
+        switch (join) {
+            case 'round': return this.canvasKit.StrokeJoin.Round;
+            case 'bevel': return this.canvasKit.StrokeJoin.Bevel;
+            default: return this.canvasKit.StrokeJoin.Miter;
+        }
+    }
+
+    // Set cap/join/miter on the paint for centered (Skia-stroked) draws.
+    private applyCapJoin(paint: Paint, stroke: StrokeResolved): void {
+        paint.setStrokeCap(this.ckCap(stroke.cap));
+        paint.setStrokeJoin(this.ckJoin(stroke.join));
+        paint.setStrokeMiter(stroke.miterLimit);
+    }
+
+    // The cap/join/miter to feed Path.makeStroked() when a stroke is realized as
+    // a filled band (thin strokes, aligned strokes, dashed-thin strokes).
+    private strokeOpts(stroke: StrokeResolved, width: number): StrokeOpts {
+        return {
+            width,
+            cap: this.ckCap(stroke.cap),
+            join: this.ckJoin(stroke.join),
+            miter_limit: stroke.miterLimit,
+        };
     }
 
     private deviceMetrics(canvas: Canvas): { sx: number; sy: number; tx: number; ty: number } {
@@ -284,6 +321,11 @@ export class StrokeHandler {
         paint.setAlphaf(1.0);
         paint.setShader(null);
         paint.setStyle(this.canvasKit.PaintStyle.Stroke);
+        // Restore the shared paint's cap/join to Skia defaults so a non-default
+        // cap/join doesn't leak into later draws that reuse this paint.
+        paint.setStrokeCap(this.canvasKit.StrokeCap.Butt);
+        paint.setStrokeJoin(this.canvasKit.StrokeJoin.Miter);
+        paint.setStrokeMiter(4);
         return true;
     }
 
@@ -307,6 +349,12 @@ export class StrokeHandler {
         logicalWidth: number,
         intDeviceWidth: number,
     ): void {
+        // Cap/join on the paint cover the centered Skia-stroke and dashed-effect
+        // paths below; the makeStroked filled-band paths read them from strokeOpts.
+        // Setting it here (rather than only in applyStrokes) keeps shadow strokes,
+        // which call drawStroke directly, consistent with the real stroke.
+        this.applyCapJoin(paint, stroke);
+
         if (shape.isText) {
             this.drawTextUnionStroke(canvas, paint, shape, stroke, logicalWidth);
             return;
@@ -331,7 +379,7 @@ export class StrokeHandler {
                 ? this.buildDashedPath(shape.ckPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined)
                 : shape.ckPath;
             if (source) {
-                const filled = this.alignedStrokeBand(source, logicalWidth, align, interior);
+                const filled = this.alignedStrokeBand(source, logicalWidth, align, interior, stroke);
                 if (source !== shape.ckPath) source.delete();
                 if (filled) {
                     paint.setStyle(this.canvasKit.PaintStyle.Fill);
@@ -346,7 +394,7 @@ export class StrokeHandler {
         // Thick, non-dashed strokes with alignment: build the filled band and
         // draw it as a fill (the centered Skia stroke can't be aligned).
         if (align !== 0 && !hasDash && shape.ckPath) {
-            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, interior);
+            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, interior, stroke);
             if (band) {
                 paint.setStyle(this.canvasKit.PaintStyle.Fill);
                 canvas.drawPath(band, paint);
@@ -399,12 +447,13 @@ export class StrokeHandler {
         width: number,
         align: number,
         interior: CKPath | undefined,
+        stroke: StrokeResolved,
     ): CKPath | null {
         if (align === 0 || !interior || !this.isClosedPath(interior)) {
-            return source.makeStroked({ width });
+            return source.makeStroked(this.strokeOpts(stroke, width));
         }
         const widened = width * (1 + Math.abs(align));
-        const band = source.makeStroked({ width: widened });
+        const band = source.makeStroked(this.strokeOpts(stroke, widened));
         if (!band) return null;
         // align < 0 → keep the part inside the shape; align > 0 → outside.
         // Use the static Path.MakeFromOp (this CanvasKit build has no instance
@@ -546,6 +595,10 @@ export class StrokeHandler {
         paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
         paint.setAlphaf(1.0);
         paint.setShader(null);
+        // Shadow strokes (drawStroke) may have set a non-default cap/join — reset.
+        paint.setStrokeCap(this.canvasKit.StrokeCap.Butt);
+        paint.setStrokeJoin(this.canvasKit.StrokeJoin.Miter);
+        paint.setStrokeMiter(4);
     }
 
     /**

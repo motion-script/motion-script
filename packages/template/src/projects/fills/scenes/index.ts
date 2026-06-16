@@ -12,6 +12,7 @@ export { InnerShadowScene } from "./inner-shadow";
 export { SpreadShadowScene } from "./spread-shadow";
 export { DashStrokeScene } from "./dash-stroke";
 export { AlignmentStrokeScene } from "./alignment-stroke";
+export { CapJoinStrokeScene } from "./cap-join-stroke";
 export { UnionShadowScene } from "./union-shadow";
 export { MaskScene } from "./mask";
 export { BooleanOperatorScene } from "./boolean-operators";

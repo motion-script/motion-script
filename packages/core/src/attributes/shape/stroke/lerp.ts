@@ -29,6 +29,10 @@ function lerpStroke(from: StrokeResolved, to: StrokeResolved, t: number): Stroke
         dash: lerpDashArray(from.dash, to.dash, t) as number[], // Cast based on your StrokeResolved type expectations
         dashOffset: (from.dashOffset) + ((to.dashOffset) - (from.dashOffset)) * t,
         align: (from.align) + ((to.align) - (from.align)) * t,
+        // cap/join are discrete enums — snap at the midpoint.
+        cap: t < 0.5 ? from.cap : to.cap,
+        join: t < 0.5 ? from.join : to.join,
+        miterLimit: (from.miterLimit) + ((to.miterLimit) - (from.miterLimit)) * t,
     };
 }
 

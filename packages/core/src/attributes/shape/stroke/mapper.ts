@@ -24,6 +24,36 @@ export function resolveStrokeAlign(align: StrokeAlign | undefined, fallback: num
     return fallback;
 }
 
+// ── Cap & Join ───────────────────────────────────────────────────────────────
+
+/** How the ends of an open stroke are shaped. */
+export type StrokeCap = 'butt' | 'round' | 'square';
+
+/** How two stroke segments are joined at a corner. */
+export type StrokeJoin = 'miter' | 'round' | 'bevel';
+
+/** Normalise a loose `cap` prop, falling back when omitted/unknown. */
+export function resolveStrokeCap(cap: StrokeCap | undefined, fallback: StrokeCap): StrokeCap {
+    if (cap == null) return fallback;
+    switch (cap) {
+        case 'butt':
+        case 'round':
+        case 'square': return cap;
+    }
+    return fallback;
+}
+
+/** Normalise a loose `join` prop, falling back when omitted/unknown. */
+export function resolveStrokeJoin(join: StrokeJoin | undefined, fallback: StrokeJoin): StrokeJoin {
+    if (join == null) return fallback;
+    switch (join) {
+        case 'miter':
+        case 'round':
+        case 'bevel': return join;
+    }
+    return fallback;
+}
+
 // ── Prop (loose) ─────────────────────────────────────────────────────────────
 
 export interface StrokeProp {
@@ -41,6 +71,21 @@ export interface StrokeProp {
      * rather than leaking half its width outside.
      */
     align?: StrokeAlign;
+    /**
+     * How the ends of an open stroke (and the ends of each dash) are shaped:
+     * `'butt'` (flush, the default), `'round'`, or `'square'`.
+     */
+    cap?: StrokeCap;
+    /**
+     * How two segments meet at a corner: `'miter'` (sharp, the default),
+     * `'round'`, or `'bevel'` (flattened).
+     */
+    join?: StrokeJoin;
+    /**
+     * Maximum ratio of miter length to stroke width before a `'miter'` join is
+     * truncated to a bevel. Only affects `join: 'miter'`. Defaults to 4.
+     */
+    miterLimit?: number;
 }
 
 /**
@@ -56,6 +101,12 @@ export interface StrokeResolved {
     dashOffset: number;
     /** Stroke placement in [-1, 1]: -1 inside, 0 center, +1 outside. */
     align: number;
+    /** End-cap shape for open strokes and dash ends. */
+    cap: StrokeCap;
+    /** Corner join shape. */
+    join: StrokeJoin;
+    /** Miter limit (only used when `join` is `'miter'`). */
+    miterLimit: number;
 }
 
 /**
@@ -86,6 +137,9 @@ export function resolveStroke(prop: StrokeProp, previous?: StrokeResolved): Stro
         dash,
         dashOffset: prop.dashOffset ?? previous?.dashOffset ?? 0,
         align: resolveStrokeAlign(prop.align, previous?.align ?? -1),
+        cap: resolveStrokeCap(prop.cap, previous?.cap ?? 'butt'),
+        join: resolveStrokeJoin(prop.join, previous?.join ?? 'miter'),
+        miterLimit: prop.miterLimit ?? previous?.miterLimit ?? 4,
     };
 }
 

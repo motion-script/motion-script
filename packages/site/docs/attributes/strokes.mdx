@@ -30,6 +30,27 @@ Every shape node accepts a `stroke` prop. Strokes paint a border along the shape
 | `dash` | `number \| number[]` | | Dash pattern (e.g. `[10, 5]` for 10px on, 5px off) |
 | `dashOffset` | `number` | `0` | Offset into the dash pattern |
 | `align` | `number \| 'inside' \| 'center' \| 'outside'` | `'center'` | Where the stroke sits relative to the path edge |
+| `cap` | `'butt' \| 'round' \| 'square'` | `'butt'` | Shape of open-path ends and dash ends |
+| `join` | `'miter' \| 'round' \| 'bevel'` | `'miter'` | Shape of corners where segments meet |
+| `miterLimit` | `number` | `4` | Max miter-length / width ratio before a `'miter'` join bevels |
+
+---
+
+## Caps and joins
+
+`cap` controls how the **ends** of an open stroke (and the end of each dash) are shaped; `join` controls how **corners** are shaped where two segments meet:
+
+```tsx
+// Cap — only visible on open paths and dashes
+<Line points={[[0, 0], [200, 0]]} stroke={{ weight: 16, fill: 'white', cap: 'round' }} />
+<Line points={[[0, 0], [200, 0]]} stroke={{ weight: 16, fill: 'white', cap: 'square' }} />
+
+// Join — visible at every corner
+<Rect stroke={{ weight: 16, fill: 'royalblue', join: 'round' }} />
+<Rect stroke={{ weight: 16, fill: 'royalblue', join: 'bevel' }} />
+```
+
+A sharp `'miter'` join on a tight corner can spike far past the path; `miterLimit` caps that — once the miter would be longer than `miterLimit × weight`, the join falls back to a bevel.
 
 ---
 

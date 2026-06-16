@@ -12,6 +12,7 @@ import {
     SpreadShadowScene,
     DashStrokeScene,
     AlignmentStrokeScene,
+    CapJoinStrokeScene,
     UnionShadowScene,
     MaskScene,
     BooleanOperatorScene,
@@ -48,6 +49,7 @@ export default createProject({
     scenes: [
         new FillArrayLerpScene(),
         new AlignmentStrokeScene(),
+        new CapJoinStrokeScene(),
         new CornerStylesScene(),
         new PolygonScene(),
         new ColorFillScene(),
