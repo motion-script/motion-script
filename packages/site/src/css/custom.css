@@ -286,14 +286,26 @@ html[data-theme='dark'] {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Code blocks: always show line numbers, dark background matching the image */
+/* Code blocks: always show line numbers, surface tuned per theme.
+   Light mode uses a soft tinted surface (not pure white) so the card reads as a
+   distinct block against the white page; dark mode keeps the near-black panel
+   that matches the rest of the dark surfaces. Both pull their border from the
+   theme `--border` token so the card edge tracks the rest of the site. */
 .prism-code {
   counter-reset: line-number;
 }
 
+:root {
+  --code-card-bg: #f6f6f8;
+}
+
+html[data-theme='dark'] {
+  --code-card-bg: #18181a;
+}
+
 div[class*='language-'] {
-  --prism-background-color: #18181a !important;
-  border: 1px solid #212124;
+  --prism-background-color: var(--code-card-bg) !important;
+  border: 1px solid var(--border);
 }
 
 .token-line::before {
@@ -303,7 +315,7 @@ div[class*='language-'] {
   width: 2ch;
   margin-right: 1.5em;
   text-align: right;
-  color: #4a4a5a;
+  color: var(--muted-foreground);
   user-select: none;
   flex-shrink: 0;
 }
@@ -313,11 +325,52 @@ div[class*='language-'] {
 }
 
 div[class*='language-'] pre {
-  background-color: #18181a !important;
+  background-color: var(--code-card-bg) !important;
 }
 
 div[class*='language-'] .prism-code {
-  background-color: #18181a !important;
+  background-color: var(--code-card-bg) !important;
+}
+
+/* Tables: drive Infima's table vars off the theme palette so headers, row
+   borders, and zebra striping track the site instead of Infima's stock greys.
+   The `--secondary`/`--muted` tokens are tuned for buttons/badges and run too
+   heavy as table surfaces (a 0.40-lightness grey header on the near-black page
+   is jarring), so tables get their own subtle tints layered on the page
+   background, with both row borders and the header rule from `--border`. */
+:root {
+  --table-head-bg: #f1f1f4;
+  --table-stripe-bg: #f8f8fa;
+}
+
+html[data-theme='dark'] {
+  --table-head-bg: #1c1c22;
+  --table-stripe-bg: #161619;
+}
+
+.markdown table {
+  --ifm-table-head-background: var(--table-head-bg);
+  --ifm-table-stripe-background: var(--table-stripe-bg);
+  --ifm-table-border-color: var(--border);
+  border-collapse: collapse;
+}
+
+.markdown table thead tr {
+  border-bottom: 2px solid var(--border);
+}
+
+.markdown table th {
+  background-color: var(--table-head-bg);
+  color: var(--foreground);
+}
+
+.markdown table tr {
+  background-color: transparent;
+  border-top: 1px solid var(--border);
+}
+
+.markdown table tr:nth-child(2n) {
+  background-color: var(--table-stripe-bg);
 }
 
 /* Landing page: hide default Docusaurus navbar/footer.
@@ -409,6 +462,37 @@ body:has(.home-page) footer.footer {
 
 :root {
   --github-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z'/%3E%3C/svg%3E");
+  --globe-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M2 12h20M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20z'/%3E%3C/svg%3E");
+}
+
+/* Docs navbar "Translate" dropdown. Mirrors `.navbar__github-link`: a globe
+   glyph + the dropdown label inside a rounded, hoverable pill. The label text
+   comes from Docusaurus's locale dropdown ("Languages" by default; localized
+   per locale). */
+.navbar__locale-dropdown .navbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.navbar__locale-dropdown .navbar__link:hover {
+  color: var(--foreground);
+  background-color: color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+/* Prepend the globe glyph; keep Docusaurus's caret (::after) intact. */
+.navbar__locale-dropdown .navbar__link::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  -webkit-mask: var(--globe-icon) center / contain no-repeat;
+  mask: var(--globe-icon) center / contain no-repeat;
 }
 
 /* Footer follows the theme surface. With `style: 'dark'` dropped from the

@@ -24,11 +24,11 @@ export class MyScene extends Scene {
 }
 ```
 
-- `this.add(node)` — add a node to the scene
+- `this.add(node)` — add a node or nodes to the scene
 - `yield*` — hand control to an animation and wait for it to finish
 - Every `yield` represents one frame; `yield*` delegates to a sub-generator
 
-### createRef
+### References
 
 `createRef<T>()` returns a callable reference. Assign it as `ref={myRef}` in JSX, then call `myRef()` to get the node:
 

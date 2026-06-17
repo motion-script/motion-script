@@ -1,0 +1,1734 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.apiSidebar.category.@motion-script/core": {
+    "message": "@motion-script/core",
+    "description": "The label for category '@motion-script/core' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.assets": {
+    "message": "assets",
+    "description": "The label for category 'assets' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.attributes": {
+    "message": "attributes",
+    "description": "The label for category 'attributes' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.jsx": {
+    "message": "jsx",
+    "description": "The label for category 'jsx' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.jsx-runtime": {
+    "message": "jsx-runtime",
+    "description": "The label for category 'jsx-runtime' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.JSX": {
+    "message": "JSX",
+    "description": "The label for category 'JSX' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.layout": {
+    "message": "layout",
+    "description": "The label for category 'layout' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.nodes": {
+    "message": "nodes",
+    "description": "The label for category 'nodes' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.platform": {
+    "message": "platform",
+    "description": "The label for category 'platform' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.project": {
+    "message": "project",
+    "description": "The label for category 'project' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.render": {
+    "message": "render",
+    "description": "The label for category 'render' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.runtime": {
+    "message": "runtime",
+    "description": "The label for category 'runtime' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.signals": {
+    "message": "signals",
+    "description": "The label for category 'signals' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.tween": {
+    "message": "tween",
+    "description": "The label for category 'tween' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.util": {
+    "message": "util",
+    "description": "The label for category 'util' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.@motion-script/code": {
+    "message": "@motion-script/code",
+    "description": "The label for category '@motion-script/code' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.category.@motion-script/latex": {
+    "message": "@motion-script/latex",
+    "description": "The label for category '@motion-script/latex' in sidebar 'apiSidebar'"
+  },
+  "sidebar.apiSidebar.doc.core/assets/classes/AssetCatalog": {
+    "message": "AssetCatalog",
+    "description": "The label for the doc item 'AssetCatalog' in sidebar 'apiSidebar', linking to the doc core/assets/classes/AssetCatalog"
+  },
+  "sidebar.apiSidebar.doc.core/assets/classes/AssetManager": {
+    "message": "AssetManager",
+    "description": "The label for the doc item 'AssetManager' in sidebar 'apiSidebar', linking to the doc core/assets/classes/AssetManager"
+  },
+  "sidebar.apiSidebar.doc.core/assets/classes/AssetTracker": {
+    "message": "AssetTracker",
+    "description": "The label for the doc item 'AssetTracker' in sidebar 'apiSidebar', linking to the doc core/assets/classes/AssetTracker"
+  },
+  "sidebar.apiSidebar.doc.core/assets/interfaces/AssetManifest": {
+    "message": "AssetManifest",
+    "description": "The label for the doc item 'AssetManifest' in sidebar 'apiSidebar', linking to the doc core/assets/interfaces/AssetManifest"
+  },
+  "sidebar.apiSidebar.doc.core/assets/interfaces/AudioMeta": {
+    "message": "AudioMeta",
+    "description": "The label for the doc item 'AudioMeta' in sidebar 'apiSidebar', linking to the doc core/assets/interfaces/AudioMeta"
+  },
+  "sidebar.apiSidebar.doc.core/assets/interfaces/FontMeta": {
+    "message": "FontMeta",
+    "description": "The label for the doc item 'FontMeta' in sidebar 'apiSidebar', linking to the doc core/assets/interfaces/FontMeta"
+  },
+  "sidebar.apiSidebar.doc.core/assets/interfaces/ImageMeta": {
+    "message": "ImageMeta",
+    "description": "The label for the doc item 'ImageMeta' in sidebar 'apiSidebar', linking to the doc core/assets/interfaces/ImageMeta"
+  },
+  "sidebar.apiSidebar.doc.core/assets/interfaces/VideoMeta": {
+    "message": "VideoMeta",
+    "description": "The label for the doc item 'VideoMeta' in sidebar 'apiSidebar', linking to the doc core/assets/interfaces/VideoMeta"
+  },
+  "sidebar.apiSidebar.doc.core/assets/type-aliases/AssetMeta": {
+    "message": "AssetMeta",
+    "description": "The label for the doc item 'AssetMeta' in sidebar 'apiSidebar', linking to the doc core/assets/type-aliases/AssetMeta"
+  },
+  "sidebar.apiSidebar.doc.core/assets/type-aliases/Disposer": {
+    "message": "Disposer",
+    "description": "The label for the doc item 'Disposer' in sidebar 'apiSidebar', linking to the doc core/assets/type-aliases/Disposer"
+  },
+  "sidebar.apiSidebar.doc.core/assets/type-aliases/LoaderFn": {
+    "message": "LoaderFn",
+    "description": "The label for the doc item 'LoaderFn' in sidebar 'apiSidebar', linking to the doc core/assets/type-aliases/LoaderFn"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/AudioFilterChain": {
+    "message": "AudioFilterChain",
+    "description": "The label for the doc item 'AudioFilterChain' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/AudioFilterChain"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/AudioFilterRegistry": {
+    "message": "AudioFilterRegistry",
+    "description": "The label for the doc item 'AudioFilterRegistry' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/AudioFilterRegistry"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/EffectChain": {
+    "message": "EffectChain",
+    "description": "The label for the doc item 'EffectChain' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/EffectChain"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/FillChain": {
+    "message": "FillChain",
+    "description": "The label for the doc item 'FillChain' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/FillChain"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/FilterChain": {
+    "message": "FilterChain",
+    "description": "The label for the doc item 'FilterChain' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/FilterChain"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/FilterRegistry": {
+    "message": "FilterRegistry",
+    "description": "The label for the doc item 'FilterRegistry' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/FilterRegistry"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/classes/Sound": {
+    "message": "Sound",
+    "description": "The label for the doc item 'Sound' in sidebar 'apiSidebar', linking to the doc core/attributes/classes/Sound"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/AlphaFilter": {
+    "message": "AlphaFilter",
+    "description": "The label for the doc item 'AlphaFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/AlphaFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/AudioFilterData": {
+    "message": "AudioFilterData",
+    "description": "The label for the doc item 'AudioFilterData' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/AudioFilterData"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/AudioRequest": {
+    "message": "AudioRequest",
+    "description": "The label for the doc item 'AudioRequest' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/AudioRequest"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/BackdropCapable": {
+    "message": "BackdropCapable",
+    "description": "The label for the doc item 'BackdropCapable' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/BackdropCapable"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/BloomEffect": {
+    "message": "BloomEffect",
+    "description": "The label for the doc item 'BloomEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/BloomEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/BlurEffect": {
+    "message": "BlurEffect",
+    "description": "The label for the doc item 'BlurEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/BlurEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/BlurFilter": {
+    "message": "BlurFilter",
+    "description": "The label for the doc item 'BlurFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/BlurFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/BulgeEffect": {
+    "message": "BulgeEffect",
+    "description": "The label for the doc item 'BulgeEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/BulgeEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ChromaticAberrationEffect": {
+    "message": "ChromaticAberrationEffect",
+    "description": "The label for the doc item 'ChromaticAberrationEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ChromaticAberrationEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ColorAdjustmentFilter": {
+    "message": "ColorAdjustmentFilter",
+    "description": "The label for the doc item 'ColorAdjustmentFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ColorAdjustmentFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ColorMatrixFilter": {
+    "message": "ColorMatrixFilter",
+    "description": "The label for the doc item 'ColorMatrixFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ColorMatrixFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ConicGradientFillProp": {
+    "message": "ConicGradientFillProp",
+    "description": "The label for the doc item 'ConicGradientFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ConicGradientFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ConicGradientFillResolved": {
+    "message": "ConicGradientFillResolved",
+    "description": "The label for the doc item 'ConicGradientFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ConicGradientFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/Corners": {
+    "message": "Corners",
+    "description": "The label for the doc item 'Corners' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/Corners"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/CurvesFilter": {
+    "message": "CurvesFilter",
+    "description": "The label for the doc item 'CurvesFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/CurvesFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/DirectionalBlurEffect": {
+    "message": "DirectionalBlurEffect",
+    "description": "The label for the doc item 'DirectionalBlurEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/DirectionalBlurEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/EchoFilter": {
+    "message": "EchoFilter",
+    "description": "The label for the doc item 'EchoFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/EchoFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/EffectData": {
+    "message": "EffectData",
+    "description": "The label for the doc item 'EffectData' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/EffectData"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ExposureFilter": {
+    "message": "ExposureFilter",
+    "description": "The label for the doc item 'ExposureFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ExposureFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/FillCommon": {
+    "message": "FillCommon",
+    "description": "The label for the doc item 'FillCommon' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/FillCommon"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/FillData": {
+    "message": "FillData",
+    "description": "The label for the doc item 'FillData' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/FillData"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/FillOptions": {
+    "message": "FillOptions",
+    "description": "The label for the doc item 'FillOptions' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/FillOptions"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/FilterData": {
+    "message": "FilterData",
+    "description": "The label for the doc item 'FilterData' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/FilterData"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/GainFilter": {
+    "message": "GainFilter",
+    "description": "The label for the doc item 'GainFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/GainFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/GrayScaleEffect": {
+    "message": "GrayScaleEffect",
+    "description": "The label for the doc item 'GrayScaleEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/GrayScaleEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/GrayscaleFilter": {
+    "message": "GrayscaleFilter",
+    "description": "The label for the doc item 'GrayscaleFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/GrayscaleFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/HighPassFilter": {
+    "message": "HighPassFilter",
+    "description": "The label for the doc item 'HighPassFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/HighPassFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ImageFillProp": {
+    "message": "ImageFillProp",
+    "description": "The label for the doc item 'ImageFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ImageFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ImageFillResolved": {
+    "message": "ImageFillResolved",
+    "description": "The label for the doc item 'ImageFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ImageFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/InvertEffect": {
+    "message": "InvertEffect",
+    "description": "The label for the doc item 'InvertEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/InvertEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/LinearGradientFillProp": {
+    "message": "LinearGradientFillProp",
+    "description": "The label for the doc item 'LinearGradientFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/LinearGradientFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/LinearGradientFillResolved": {
+    "message": "LinearGradientFillResolved",
+    "description": "The label for the doc item 'LinearGradientFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/LinearGradientFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/LowPassFilter": {
+    "message": "LowPassFilter",
+    "description": "The label for the doc item 'LowPassFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/LowPassFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/MagnifyEffect": {
+    "message": "MagnifyEffect",
+    "description": "The label for the doc item 'MagnifyEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/MagnifyEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/MaskOptions": {
+    "message": "MaskOptions",
+    "description": "The label for the doc item 'MaskOptions' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/MaskOptions"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/Matrix2D": {
+    "message": "Matrix2D",
+    "description": "The label for the doc item 'Matrix2D' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/Matrix2D"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/MorphPlan": {
+    "message": "MorphPlan",
+    "description": "The label for the doc item 'MorphPlan' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/MorphPlan"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/MotionBlurEffect": {
+    "message": "MotionBlurEffect",
+    "description": "The label for the doc item 'MotionBlurEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/MotionBlurEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/NoiseFillProp": {
+    "message": "NoiseFillProp",
+    "description": "The label for the doc item 'NoiseFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/NoiseFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/NoiseFillResolved": {
+    "message": "NoiseFillResolved",
+    "description": "The label for the doc item 'NoiseFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/NoiseFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PaddingResolved": {
+    "message": "PaddingResolved",
+    "description": "The label for the doc item 'PaddingResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PaddingResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PathFrame": {
+    "message": "PathFrame",
+    "description": "The label for the doc item 'PathFrame' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PathFrame"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PathSampler": {
+    "message": "PathSampler",
+    "description": "The label for the doc item 'PathSampler' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PathSampler"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PixelateEffect": {
+    "message": "PixelateEffect",
+    "description": "The label for the doc item 'PixelateEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PixelateEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PosterizeEffect": {
+    "message": "PosterizeEffect",
+    "description": "The label for the doc item 'PosterizeEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PosterizeEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/PropOptions": {
+    "message": "PropOptions",
+    "description": "The label for the doc item 'PropOptions' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/PropOptions"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/RadialGradientFillProp": {
+    "message": "RadialGradientFillProp",
+    "description": "The label for the doc item 'RadialGradientFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/RadialGradientFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/RadialGradientFillResolved": {
+    "message": "RadialGradientFillResolved",
+    "description": "The label for the doc item 'RadialGradientFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/RadialGradientFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ResolvedTextSpan": {
+    "message": "ResolvedTextSpan",
+    "description": "The label for the doc item 'ResolvedTextSpan' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ResolvedTextSpan"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ScatterEffect": {
+    "message": "ScatterEffect",
+    "description": "The label for the doc item 'ScatterEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ScatterEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ShadowProp": {
+    "message": "ShadowProp",
+    "description": "The label for the doc item 'ShadowProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ShadowProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/ShadowResolved": {
+    "message": "ShadowResolved",
+    "description": "The label for the doc item 'ShadowResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/ShadowResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/Size2D": {
+    "message": "Size2D",
+    "description": "The label for the doc item 'Size2D' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/Size2D"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SizeConstraints": {
+    "message": "SizeConstraints",
+    "description": "The label for the doc item 'SizeConstraints' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SizeConstraints"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SkSLEffect": {
+    "message": "SkSLEffect",
+    "description": "The label for the doc item 'SkSLEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SkSLEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SkSLUniform": {
+    "message": "SkSLUniform",
+    "description": "The label for the doc item 'SkSLUniform' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SkSLUniform"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SolidFillProp": {
+    "message": "SolidFillProp",
+    "description": "The label for the doc item 'SolidFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SolidFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SolidFillResolved": {
+    "message": "SolidFillResolved",
+    "description": "The label for the doc item 'SolidFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SolidFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/SpeedFilter": {
+    "message": "SpeedFilter",
+    "description": "The label for the doc item 'SpeedFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/SpeedFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/StripeFillProp": {
+    "message": "StripeFillProp",
+    "description": "The label for the doc item 'StripeFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/StripeFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/StripeFillResolved": {
+    "message": "StripeFillResolved",
+    "description": "The label for the doc item 'StripeFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/StripeFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/StrokeProp": {
+    "message": "StrokeProp",
+    "description": "The label for the doc item 'StrokeProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/StrokeProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/StrokeResolved": {
+    "message": "StrokeResolved",
+    "description": "The label for the doc item 'StrokeResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/StrokeResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/TextSpan": {
+    "message": "TextSpan",
+    "description": "The label for the doc item 'TextSpan' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/TextSpan"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/TremoloFilter": {
+    "message": "TremoloFilter",
+    "description": "The label for the doc item 'TremoloFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/TremoloFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/Vector2": {
+    "message": "Vector2",
+    "description": "The label for the doc item 'Vector2' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/Vector2"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/VideoFillProp": {
+    "message": "VideoFillProp",
+    "description": "The label for the doc item 'VideoFillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/VideoFillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/VideoFillResolved": {
+    "message": "VideoFillResolved",
+    "description": "The label for the doc item 'VideoFillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/VideoFillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/interfaces/VintageEffect": {
+    "message": "VintageEffect",
+    "description": "The label for the doc item 'VintageEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/interfaces/VintageEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/AudioFilter": {
+    "message": "AudioFilter",
+    "description": "The label for the doc item 'AudioFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/AudioFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/BackdropOptions": {
+    "message": "BackdropOptions",
+    "description": "The label for the doc item 'BackdropOptions' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/BackdropOptions"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/BlendMode": {
+    "message": "BlendMode",
+    "description": "The label for the doc item 'BlendMode' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/BlendMode"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/BooleanOperation": {
+    "message": "BooleanOperation",
+    "description": "The label for the doc item 'BooleanOperation' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/BooleanOperation"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/BoxBounds": {
+    "message": "BoxBounds",
+    "description": "The label for the doc item 'BoxBounds' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/BoxBounds"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ChainableAfx": {
+    "message": "ChainableAfx",
+    "description": "The label for the doc item 'ChainableAfx' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ChainableAfx"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ChainableFx": {
+    "message": "ChainableFx",
+    "description": "The label for the doc item 'ChainableFx' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ChainableFx"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ChainableMx": {
+    "message": "ChainableMx",
+    "description": "The label for the doc item 'ChainableMx' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ChainableMx"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Color": {
+    "message": "Color",
+    "description": "The label for the doc item 'Color' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Color"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/CornerRadiusResolved": {
+    "message": "CornerRadiusResolved",
+    "description": "The label for the doc item 'CornerRadiusResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/CornerRadiusResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/CornersInput": {
+    "message": "CornersInput",
+    "description": "The label for the doc item 'CornersInput' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/CornersInput"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/CornerStyle": {
+    "message": "CornerStyle",
+    "description": "The label for the doc item 'CornerStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/CornerStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/CornerStyleResolved": {
+    "message": "CornerStyleResolved",
+    "description": "The label for the doc item 'CornerStyleResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/CornerStyleResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/CurvesChannel": {
+    "message": "CurvesChannel",
+    "description": "The label for the doc item 'CurvesChannel' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/CurvesChannel"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Extents": {
+    "message": "Extents",
+    "description": "The label for the doc item 'Extents' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Extents"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Fill": {
+    "message": "Fill",
+    "description": "The label for the doc item 'Fill' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Fill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/FillProp": {
+    "message": "FillProp",
+    "description": "The label for the doc item 'FillProp' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/FillProp"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/FillResolved": {
+    "message": "FillResolved",
+    "description": "The label for the doc item 'FillResolved' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/FillResolved"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/FillSpace": {
+    "message": "FillSpace",
+    "description": "The label for the doc item 'FillSpace' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/FillSpace"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/FontStyle": {
+    "message": "FontStyle",
+    "description": "The label for the doc item 'FontStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/FontStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ImageFillMode": {
+    "message": "ImageFillMode",
+    "description": "The label for the doc item 'ImageFillMode' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ImageFillMode"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ImageTransform": {
+    "message": "ImageTransform",
+    "description": "The label for the doc item 'ImageTransform' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ImageTransform"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/InvertChannel": {
+    "message": "InvertChannel",
+    "description": "The label for the doc item 'InvertChannel' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/InvertChannel"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/MaskApply": {
+    "message": "MaskApply",
+    "description": "The label for the doc item 'MaskApply' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/MaskApply"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/MaskApplyLayer": {
+    "message": "MaskApplyLayer",
+    "description": "The label for the doc item 'MaskApplyLayer' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/MaskApplyLayer"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/MaskMode": {
+    "message": "MaskMode",
+    "description": "The label for the doc item 'MaskMode' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/MaskMode"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/MediaFilter": {
+    "message": "MediaFilter",
+    "description": "The label for the doc item 'MediaFilter' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/MediaFilter"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/MotionBlurAxis": {
+    "message": "MotionBlurAxis",
+    "description": "The label for the doc item 'MotionBlurAxis' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/MotionBlurAxis"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/NodeBlendMode": {
+    "message": "NodeBlendMode",
+    "description": "The label for the doc item 'NodeBlendMode' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/NodeBlendMode"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/NormalizedColor": {
+    "message": "NormalizedColor",
+    "description": "The label for the doc item 'NormalizedColor' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/NormalizedColor"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Padding": {
+    "message": "Padding",
+    "description": "The label for the doc item 'Padding' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Padding"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/PaddingProps": {
+    "message": "PaddingProps",
+    "description": "The label for the doc item 'PaddingProps' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/PaddingProps"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/PixelateOptions": {
+    "message": "PixelateOptions",
+    "description": "The label for the doc item 'PixelateOptions' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/PixelateOptions"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/RectCornerRadius": {
+    "message": "RectCornerRadius",
+    "description": "The label for the doc item 'RectCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/RectCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/RectCornerStyle": {
+    "message": "RectCornerStyle",
+    "description": "The label for the doc item 'RectCornerStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/RectCornerStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/ScatterDirection": {
+    "message": "ScatterDirection",
+    "description": "The label for the doc item 'ScatterDirection' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/ScatterDirection"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/SceneEffect": {
+    "message": "SceneEffect",
+    "description": "The label for the doc item 'SceneEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/SceneEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Shadow": {
+    "message": "Shadow",
+    "description": "The label for the doc item 'Shadow' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Shadow"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/SkSLUniformValue": {
+    "message": "SkSLUniformValue",
+    "description": "The label for the doc item 'SkSLUniformValue' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/SkSLUniformValue"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/SoundProps": {
+    "message": "SoundProps",
+    "description": "The label for the doc item 'SoundProps' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/SoundProps"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/Stroke": {
+    "message": "Stroke",
+    "description": "The label for the doc item 'Stroke' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/Stroke"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/StrokeAlign": {
+    "message": "StrokeAlign",
+    "description": "The label for the doc item 'StrokeAlign' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/StrokeAlign"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/StrokeCap": {
+    "message": "StrokeCap",
+    "description": "The label for the doc item 'StrokeCap' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/StrokeCap"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/StrokeJoin": {
+    "message": "StrokeJoin",
+    "description": "The label for the doc item 'StrokeJoin' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/StrokeJoin"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/type-aliases/TextAlign": {
+    "message": "TextAlign",
+    "description": "The label for the doc item 'TextAlign' in sidebar 'apiSidebar', linking to the doc core/attributes/type-aliases/TextAlign"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/AFX": {
+    "message": "AFX",
+    "description": "The label for the doc item 'AFX' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/AFX"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/BLEND_MODES_LIST": {
+    "message": "BLEND_MODES_LIST",
+    "description": "The label for the doc item 'BLEND_MODES_LIST' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/BLEND_MODES_LIST"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/Effects": {
+    "message": "Effects",
+    "description": "The label for the doc item 'Effects' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/Effects"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/Fills": {
+    "message": "Fills",
+    "description": "The label for the doc item 'Fills' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/Fills"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/MX": {
+    "message": "MX",
+    "description": "The label for the doc item 'MX' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/MX"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/variables/NodeBlendModes": {
+    "message": "NodeBlendModes",
+    "description": "The label for the doc item 'NodeBlendModes' in sidebar 'apiSidebar', linking to the doc core/attributes/variables/NodeBlendModes"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/applyDashPattern": {
+    "message": "applyDashPattern",
+    "description": "The label for the doc item 'applyDashPattern' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/applyDashPattern"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/applyToPoint": {
+    "message": "applyToPoint",
+    "description": "The label for the doc item 'applyToPoint' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/applyToPoint"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/buildMorph": {
+    "message": "buildMorph",
+    "description": "The label for the doc item 'buildMorph' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/buildMorph"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/calculatePathLength": {
+    "message": "calculatePathLength",
+    "description": "The label for the doc item 'calculatePathLength' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/calculatePathLength"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/canLerpFill": {
+    "message": "canLerpFill",
+    "description": "The label for the doc item 'canLerpFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/canLerpFill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/createPathSampler": {
+    "message": "createPathSampler",
+    "description": "The label for the doc item 'createPathSampler' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/createPathSampler"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/extractSubpath": {
+    "message": "extractSubpath",
+    "description": "The label for the doc item 'extractSubpath' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/extractSubpath"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/getBlendModeHash": {
+    "message": "getBlendModeHash",
+    "description": "The label for the doc item 'getBlendModeHash' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/getBlendModeHash"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/getUniformCornerRadius": {
+    "message": "getUniformCornerRadius",
+    "description": "The label for the doc item 'getUniformCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/getUniformCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/identity": {
+    "message": "identity",
+    "description": "The label for the doc item 'identity' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/identity"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/isUniformCornerRadius": {
+    "message": "isUniformCornerRadius",
+    "description": "The label for the doc item 'isUniformCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/isUniformCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/isUniformCornerRadiusInput": {
+    "message": "isUniformCornerRadiusInput",
+    "description": "The label for the doc item 'isUniformCornerRadiusInput' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/isUniformCornerRadiusInput"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/isUniformCorners": {
+    "message": "isUniformCorners",
+    "description": "The label for the doc item 'isUniformCorners' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/isUniformCorners"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/isZeroCornerRadius": {
+    "message": "isZeroCornerRadius",
+    "description": "The label for the doc item 'isZeroCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/isZeroCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpCornerRadius": {
+    "message": "lerpCornerRadius",
+    "description": "The label for the doc item 'lerpCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpCorners": {
+    "message": "lerpCorners",
+    "description": "The label for the doc item 'lerpCorners' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpCorners"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpCornerScalarStyle": {
+    "message": "lerpCornerScalarStyle",
+    "description": "The label for the doc item 'lerpCornerScalarStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpCornerScalarStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpCornerStyle": {
+    "message": "lerpCornerStyle",
+    "description": "The label for the doc item 'lerpCornerStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpCornerStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpEffect": {
+    "message": "lerpEffect",
+    "description": "The label for the doc item 'lerpEffect' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpEffect"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpEffectArray": {
+    "message": "lerpEffectArray",
+    "description": "The label for the doc item 'lerpEffectArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpEffectArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpFill": {
+    "message": "lerpFill",
+    "description": "The label for the doc item 'lerpFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpFill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpFillArray": {
+    "message": "lerpFillArray",
+    "description": "The label for the doc item 'lerpFillArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpFillArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpPath": {
+    "message": "lerpPath",
+    "description": "The label for the doc item 'lerpPath' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpPath"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpShadowArray": {
+    "message": "lerpShadowArray",
+    "description": "The label for the doc item 'lerpShadowArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpShadowArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpStrokeArray": {
+    "message": "lerpStrokeArray",
+    "description": "The label for the doc item 'lerpStrokeArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpStrokeArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/lerpText": {
+    "message": "lerpText",
+    "description": "The label for the doc item 'lerpText' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/lerpText"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/measurePathData": {
+    "message": "measurePathData",
+    "description": "The label for the doc item 'measurePathData' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/measurePathData"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/multiply": {
+    "message": "multiply",
+    "description": "The label for the doc item 'multiply' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/multiply"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/nodeLocalMatrix": {
+    "message": "nodeLocalMatrix",
+    "description": "The label for the doc item 'nodeLocalMatrix' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/nodeLocalMatrix"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/parseColor": {
+    "message": "parseColor",
+    "description": "The label for the doc item 'parseColor' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/parseColor"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/parsePathString": {
+    "message": "parsePathString",
+    "description": "The label for the doc item 'parsePathString' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/parsePathString"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/prepareFill": {
+    "message": "prepareFill",
+    "description": "The label for the doc item 'prepareFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/prepareFill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/property": {
+    "message": "property",
+    "description": "The label for the doc item 'property' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/property"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveAudioFilters": {
+    "message": "resolveAudioFilters",
+    "description": "The label for the doc item 'resolveAudioFilters' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveAudioFilters"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveChainFill": {
+    "message": "resolveChainFill",
+    "description": "The label for the doc item 'resolveChainFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveChainFill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveChainFilters": {
+    "message": "resolveChainFilters",
+    "description": "The label for the doc item 'resolveChainFilters' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveChainFilters"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveCornerRadius": {
+    "message": "resolveCornerRadius",
+    "description": "The label for the doc item 'resolveCornerRadius' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveCornerRadius"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveCorners": {
+    "message": "resolveCorners",
+    "description": "The label for the doc item 'resolveCorners' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveCorners"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveCornerStyle": {
+    "message": "resolveCornerStyle",
+    "description": "The label for the doc item 'resolveCornerStyle' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveCornerStyle"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveFill": {
+    "message": "resolveFill",
+    "description": "The label for the doc item 'resolveFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveFill"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveFillArray": {
+    "message": "resolveFillArray",
+    "description": "The label for the doc item 'resolveFillArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveFillArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveMotionBlurAlignment": {
+    "message": "resolveMotionBlurAlignment",
+    "description": "The label for the doc item 'resolveMotionBlurAlignment' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveMotionBlurAlignment"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveMotionBlurAxis": {
+    "message": "resolveMotionBlurAxis",
+    "description": "The label for the doc item 'resolveMotionBlurAxis' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveMotionBlurAxis"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolvePadding": {
+    "message": "resolvePadding",
+    "description": "The label for the doc item 'resolvePadding' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolvePadding"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveShadow": {
+    "message": "resolveShadow",
+    "description": "The label for the doc item 'resolveShadow' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveShadow"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveShadowArray": {
+    "message": "resolveShadowArray",
+    "description": "The label for the doc item 'resolveShadowArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveShadowArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveStroke": {
+    "message": "resolveStroke",
+    "description": "The label for the doc item 'resolveStroke' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveStroke"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveStrokeAlign": {
+    "message": "resolveStrokeAlign",
+    "description": "The label for the doc item 'resolveStrokeAlign' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveStrokeAlign"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveStrokeArray": {
+    "message": "resolveStrokeArray",
+    "description": "The label for the doc item 'resolveStrokeArray' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveStrokeArray"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveStrokeCap": {
+    "message": "resolveStrokeCap",
+    "description": "The label for the doc item 'resolveStrokeCap' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveStrokeCap"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/resolveStrokeJoin": {
+    "message": "resolveStrokeJoin",
+    "description": "The label for the doc item 'resolveStrokeJoin' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/resolveStrokeJoin"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/sampleMorph": {
+    "message": "sampleMorph",
+    "description": "The label for the doc item 'sampleMorph' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/sampleMorph"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/setTheme": {
+    "message": "setTheme",
+    "description": "The label for the doc item 'setTheme' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/setTheme"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/toCubicSubpaths": {
+    "message": "toCubicSubpaths",
+    "description": "The label for the doc item 'toCubicSubpaths' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/toCubicSubpaths"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/toPathCommands": {
+    "message": "toPathCommands",
+    "description": "The label for the doc item 'toPathCommands' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/toPathCommands"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/translation": {
+    "message": "translation",
+    "description": "The label for the doc item 'translation' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/translation"
+  },
+  "sidebar.apiSidebar.doc.core/attributes/functions/updateFill": {
+    "message": "updateFill",
+    "description": "The label for the doc item 'updateFill' in sidebar 'apiSidebar', linking to the doc core/attributes/functions/updateFill"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/namespaces/JSX/interfaces/ElementChildrenAttribute": {
+    "message": "ElementChildrenAttribute",
+    "description": "The label for the doc item 'ElementChildrenAttribute' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/namespaces/JSX/interfaces/ElementChildrenAttribute"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/namespaces/JSX/interfaces/ElementClass": {
+    "message": "ElementClass",
+    "description": "The label for the doc item 'ElementClass' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/namespaces/JSX/interfaces/ElementClass"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/namespaces/JSX/interfaces/IntrinsicAttributes": {
+    "message": "IntrinsicAttributes",
+    "description": "The label for the doc item 'IntrinsicAttributes' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/namespaces/JSX/interfaces/IntrinsicAttributes"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/namespaces/JSX/interfaces/IntrinsicElements": {
+    "message": "IntrinsicElements",
+    "description": "The label for the doc item 'IntrinsicElements' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/namespaces/JSX/interfaces/IntrinsicElements"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/namespaces/JSX/type-aliases/Element": {
+    "message": "Element",
+    "description": "The label for the doc item 'Element' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/namespaces/JSX/type-aliases/Element"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/variables/Fragment": {
+    "message": "Fragment",
+    "description": "The label for the doc item 'Fragment' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/variables/Fragment"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/variables/jsxs": {
+    "message": "jsxs",
+    "description": "The label for the doc item 'jsxs' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/variables/jsxs"
+  },
+  "sidebar.apiSidebar.doc.core/jsx/jsx-runtime/functions/jsx": {
+    "message": "jsx",
+    "description": "The label for the doc item 'jsx' in sidebar 'apiSidebar', linking to the doc core/jsx/jsx-runtime/functions/jsx"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexAlignment": {
+    "message": "FlexAlignment",
+    "description": "The label for the doc item 'FlexAlignment' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexAlignment"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexChild": {
+    "message": "FlexChild",
+    "description": "The label for the doc item 'FlexChild' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexChild"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexLayoutInput": {
+    "message": "FlexLayoutInput",
+    "description": "The label for the doc item 'FlexLayoutInput' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexLayoutInput"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexMeasureEntry": {
+    "message": "FlexMeasureEntry",
+    "description": "The label for the doc item 'FlexMeasureEntry' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexMeasureEntry"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexMeasureInput": {
+    "message": "FlexMeasureInput",
+    "description": "The label for the doc item 'FlexMeasureInput' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexMeasureInput"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/FlexMeasureResult": {
+    "message": "FlexMeasureResult",
+    "description": "The label for the doc item 'FlexMeasureResult' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/FlexMeasureResult"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/GridChild": {
+    "message": "GridChild",
+    "description": "The label for the doc item 'GridChild' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/GridChild"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/GridMeasureResult": {
+    "message": "GridMeasureResult",
+    "description": "The label for the doc item 'GridMeasureResult' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/GridMeasureResult"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/GridPlacement": {
+    "message": "GridPlacement",
+    "description": "The label for the doc item 'GridPlacement' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/GridPlacement"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/InnerArea": {
+    "message": "InnerArea",
+    "description": "The label for the doc item 'InnerArea' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/InnerArea"
+  },
+  "sidebar.apiSidebar.doc.core/layout/interfaces/ResolvedTrack": {
+    "message": "ResolvedTrack",
+    "description": "The label for the doc item 'ResolvedTrack' in sidebar 'apiSidebar', linking to the doc core/layout/interfaces/ResolvedTrack"
+  },
+  "sidebar.apiSidebar.doc.core/layout/type-aliases/FlexDirection": {
+    "message": "FlexDirection",
+    "description": "The label for the doc item 'FlexDirection' in sidebar 'apiSidebar', linking to the doc core/layout/type-aliases/FlexDirection"
+  },
+  "sidebar.apiSidebar.doc.core/layout/type-aliases/GapSize": {
+    "message": "GapSize",
+    "description": "The label for the doc item 'GapSize' in sidebar 'apiSidebar', linking to the doc core/layout/type-aliases/GapSize"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/applyPadding": {
+    "message": "applyPadding",
+    "description": "The label for the doc item 'applyPadding' in sidebar 'apiSidebar', linking to the doc core/layout/functions/applyPadding"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/expandByPadding": {
+    "message": "expandByPadding",
+    "description": "The label for the doc item 'expandByPadding' in sidebar 'apiSidebar', linking to the doc core/layout/functions/expandByPadding"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/isAutoSize": {
+    "message": "isAutoSize",
+    "description": "The label for the doc item 'isAutoSize' in sidebar 'apiSidebar', linking to the doc core/layout/functions/isAutoSize"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/layoutFlex": {
+    "message": "layoutFlex",
+    "description": "The label for the doc item 'layoutFlex' in sidebar 'apiSidebar', linking to the doc core/layout/functions/layoutFlex"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/layoutGrid": {
+    "message": "layoutGrid",
+    "description": "The label for the doc item 'layoutGrid' in sidebar 'apiSidebar', linking to the doc core/layout/functions/layoutGrid"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/lerpEdgeInset": {
+    "message": "lerpEdgeInset",
+    "description": "The label for the doc item 'lerpEdgeInset' in sidebar 'apiSidebar', linking to the doc core/layout/functions/lerpEdgeInset"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/lerpSizeInput": {
+    "message": "lerpSizeInput",
+    "description": "The label for the doc item 'lerpSizeInput' in sidebar 'apiSidebar', linking to the doc core/layout/functions/lerpSizeInput"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/measureFlex": {
+    "message": "measureFlex",
+    "description": "The label for the doc item 'measureFlex' in sidebar 'apiSidebar', linking to the doc core/layout/functions/measureFlex"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/measureGrid": {
+    "message": "measureGrid",
+    "description": "The label for the doc item 'measureGrid' in sidebar 'apiSidebar', linking to the doc core/layout/functions/measureGrid"
+  },
+  "sidebar.apiSidebar.doc.core/layout/functions/resolveSize": {
+    "message": "resolveSize",
+    "description": "The label for the doc item 'resolveSize' in sidebar 'apiSidebar', linking to the doc core/layout/functions/resolveSize"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/BooleanGroup": {
+    "message": "BooleanGroup",
+    "description": "The label for the doc item 'BooleanGroup' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/BooleanGroup"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Camera": {
+    "message": "Camera",
+    "description": "The label for the doc item 'Camera' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Camera"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Column": {
+    "message": "Column",
+    "description": "The label for the doc item 'Column' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Column"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Ellipse": {
+    "message": "Ellipse",
+    "description": "The label for the doc item 'Ellipse' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Ellipse"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/FlexNode": {
+    "message": "FlexNode",
+    "description": "The label for the doc item 'FlexNode' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/FlexNode"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Grid": {
+    "message": "Grid",
+    "description": "The label for the doc item 'Grid' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Grid"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/GridPattern": {
+    "message": "GridPattern",
+    "description": "The label for the doc item 'GridPattern' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/GridPattern"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Image": {
+    "message": "Image",
+    "description": "The label for the doc item 'Image' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Image"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Line": {
+    "message": "Line",
+    "description": "The label for the doc item 'Line' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Line"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/LineGrid": {
+    "message": "LineGrid",
+    "description": "The label for the doc item 'LineGrid' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/LineGrid"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/MaskGroup": {
+    "message": "MaskGroup",
+    "description": "The label for the doc item 'MaskGroup' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/MaskGroup"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Node": {
+    "message": "Node",
+    "description": "The label for the doc item 'Node' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Node"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Path": {
+    "message": "Path",
+    "description": "The label for the doc item 'Path' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Path"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Polygon": {
+    "message": "Polygon",
+    "description": "The label for the doc item 'Polygon' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Polygon"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Polygram": {
+    "message": "Polygram",
+    "description": "The label for the doc item 'Polygram' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Polygram"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Rect": {
+    "message": "Rect",
+    "description": "The label for the doc item 'Rect' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Rect"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/RichText": {
+    "message": "RichText",
+    "description": "The label for the doc item 'RichText' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/RichText"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Row": {
+    "message": "Row",
+    "description": "The label for the doc item 'Row' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Row"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Scene": {
+    "message": "Scene",
+    "description": "The label for the doc item 'Scene' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Scene"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/ShapeNode": {
+    "message": "ShapeNode",
+    "description": "The label for the doc item 'ShapeNode' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/ShapeNode"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Text": {
+    "message": "Text",
+    "description": "The label for the doc item 'Text' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Text"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/TextSelection": {
+    "message": "TextSelection",
+    "description": "The label for the doc item 'TextSelection' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/TextSelection"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/Video": {
+    "message": "Video",
+    "description": "The label for the doc item 'Video' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/Video"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/classes/ViewportPattern": {
+    "message": "ViewportPattern",
+    "description": "The label for the doc item 'ViewportPattern' in sidebar 'apiSidebar', linking to the doc core/nodes/classes/ViewportPattern"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/BooleanGroupProps": {
+    "message": "BooleanGroupProps",
+    "description": "The label for the doc item 'BooleanGroupProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/BooleanGroupProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/CameraProps": {
+    "message": "CameraProps",
+    "description": "The label for the doc item 'CameraProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/CameraProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/ColumnProps": {
+    "message": "ColumnProps",
+    "description": "The label for the doc item 'ColumnProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/ColumnProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/EllipseProps": {
+    "message": "EllipseProps",
+    "description": "The label for the doc item 'EllipseProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/EllipseProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/FlexProps": {
+    "message": "FlexProps",
+    "description": "The label for the doc item 'FlexProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/FlexProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/GridPatternProps": {
+    "message": "GridPatternProps",
+    "description": "The label for the doc item 'GridPatternProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/GridPatternProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/GridProps": {
+    "message": "GridProps",
+    "description": "The label for the doc item 'GridProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/GridProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/ImageProps": {
+    "message": "ImageProps",
+    "description": "The label for the doc item 'ImageProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/ImageProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/LineGridProps": {
+    "message": "LineGridProps",
+    "description": "The label for the doc item 'LineGridProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/LineGridProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/LineProps": {
+    "message": "LineProps",
+    "description": "The label for the doc item 'LineProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/LineProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/MaskGroupProps": {
+    "message": "MaskGroupProps",
+    "description": "The label for the doc item 'MaskGroupProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/MaskGroupProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/NodeClock": {
+    "message": "NodeClock",
+    "description": "The label for the doc item 'NodeClock' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/NodeClock"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/NodeMetadata": {
+    "message": "NodeMetadata",
+    "description": "The label for the doc item 'NodeMetadata' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/NodeMetadata"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/NodeProps": {
+    "message": "NodeProps",
+    "description": "The label for the doc item 'NodeProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/NodeProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/PathProps": {
+    "message": "PathProps",
+    "description": "The label for the doc item 'PathProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/PathProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/PolygonProps": {
+    "message": "PolygonProps",
+    "description": "The label for the doc item 'PolygonProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/PolygonProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/PolygramProps": {
+    "message": "PolygramProps",
+    "description": "The label for the doc item 'PolygramProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/PolygramProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/RectProps": {
+    "message": "RectProps",
+    "description": "The label for the doc item 'RectProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/RectProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/RichTextProps": {
+    "message": "RichTextProps",
+    "description": "The label for the doc item 'RichTextProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/RichTextProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/RowProps": {
+    "message": "RowProps",
+    "description": "The label for the doc item 'RowProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/RowProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/SelectionOverrides": {
+    "message": "SelectionOverrides",
+    "description": "The label for the doc item 'SelectionOverrides' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/SelectionOverrides"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/ShapeProps": {
+    "message": "ShapeProps",
+    "description": "The label for the doc item 'ShapeProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/ShapeProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/TextProps": {
+    "message": "TextProps",
+    "description": "The label for the doc item 'TextProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/TextProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/TextRange": {
+    "message": "TextRange",
+    "description": "The label for the doc item 'TextRange' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/TextRange"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/TextSelectionProps": {
+    "message": "TextSelectionProps",
+    "description": "The label for the doc item 'TextSelectionProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/TextSelectionProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/VideoProps": {
+    "message": "VideoProps",
+    "description": "The label for the doc item 'VideoProps' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/VideoProps"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/interfaces/WorldTransform": {
+    "message": "WorldTransform",
+    "description": "The label for the doc item 'WorldTransform' in sidebar 'apiSidebar', linking to the doc core/nodes/interfaces/WorldTransform"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/AnchorKey": {
+    "message": "AnchorKey",
+    "description": "The label for the doc item 'AnchorKey' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/AnchorKey"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/BaseSceneConfig": {
+    "message": "BaseSceneConfig",
+    "description": "The label for the doc item 'BaseSceneConfig' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/BaseSceneConfig"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/FlexSize": {
+    "message": "FlexSize",
+    "description": "The label for the doc item 'FlexSize' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/FlexSize"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/LayoutMode": {
+    "message": "LayoutMode",
+    "description": "The label for the doc item 'LayoutMode' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/LayoutMode"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/NodeConfig": {
+    "message": "NodeConfig",
+    "description": "The label for the doc item 'NodeConfig' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/NodeConfig"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/PropInput": {
+    "message": "PropInput",
+    "description": "The label for the doc item 'PropInput' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/PropInput"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/PropInputs": {
+    "message": "PropInputs",
+    "description": "The label for the doc item 'PropInputs' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/PropInputs"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/type-aliases/SceneFit": {
+    "message": "SceneFit",
+    "description": "The label for the doc item 'SceneFit' in sidebar 'apiSidebar', linking to the doc core/nodes/type-aliases/SceneFit"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/functions/computeSceneFit": {
+    "message": "computeSceneFit",
+    "description": "The label for the doc item 'computeSceneFit' in sidebar 'apiSidebar', linking to the doc core/nodes/functions/computeSceneFit"
+  },
+  "sidebar.apiSidebar.doc.core/nodes/functions/normalizeRanges": {
+    "message": "normalizeRanges",
+    "description": "The label for the doc item 'normalizeRanges' in sidebar 'apiSidebar', linking to the doc core/nodes/functions/normalizeRanges"
+  },
+  "sidebar.apiSidebar.doc.core/platform/classes/AudioDevice": {
+    "message": "AudioDevice",
+    "description": "The label for the doc item 'AudioDevice' in sidebar 'apiSidebar', linking to the doc core/platform/classes/AudioDevice"
+  },
+  "sidebar.apiSidebar.doc.core/platform/classes/MasterClock": {
+    "message": "MasterClock",
+    "description": "The label for the doc item 'MasterClock' in sidebar 'apiSidebar', linking to the doc core/platform/classes/MasterClock"
+  },
+  "sidebar.apiSidebar.doc.core/platform/classes/StorageAdapter": {
+    "message": "StorageAdapter",
+    "description": "The label for the doc item 'StorageAdapter' in sidebar 'apiSidebar', linking to the doc core/platform/classes/StorageAdapter"
+  },
+  "sidebar.apiSidebar.doc.core/project/interfaces/NodeState": {
+    "message": "NodeState",
+    "description": "The label for the doc item 'NodeState' in sidebar 'apiSidebar', linking to the doc core/project/interfaces/NodeState"
+  },
+  "sidebar.apiSidebar.doc.core/project/interfaces/ProjectConfig": {
+    "message": "ProjectConfig",
+    "description": "The label for the doc item 'ProjectConfig' in sidebar 'apiSidebar', linking to the doc core/project/interfaces/ProjectConfig"
+  },
+  "sidebar.apiSidebar.doc.core/project/interfaces/TreeState": {
+    "message": "TreeState",
+    "description": "The label for the doc item 'TreeState' in sidebar 'apiSidebar', linking to the doc core/project/interfaces/TreeState"
+  },
+  "sidebar.apiSidebar.doc.core/project/interfaces/WaveformInfo": {
+    "message": "WaveformInfo",
+    "description": "The label for the doc item 'WaveformInfo' in sidebar 'apiSidebar', linking to the doc core/project/interfaces/WaveformInfo"
+  },
+  "sidebar.apiSidebar.doc.core/project/functions/createProject": {
+    "message": "createProject",
+    "description": "The label for the doc item 'createProject' in sidebar 'apiSidebar', linking to the doc core/project/functions/createProject"
+  },
+  "sidebar.apiSidebar.doc.core/project/functions/nodePath": {
+    "message": "nodePath",
+    "description": "The label for the doc item 'nodePath' in sidebar 'apiSidebar', linking to the doc core/project/functions/nodePath"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/BuildStage": {
+    "message": "BuildStage",
+    "description": "The label for the doc item 'BuildStage' in sidebar 'apiSidebar', linking to the doc core/render/classes/BuildStage"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/Clip": {
+    "message": "Clip",
+    "description": "The label for the doc item 'Clip' in sidebar 'apiSidebar', linking to the doc core/render/classes/Clip"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/Graphics": {
+    "message": "Graphics",
+    "description": "The label for the doc item 'Graphics' in sidebar 'apiSidebar', linking to the doc core/render/classes/Graphics"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/MeasureScope": {
+    "message": "MeasureScope",
+    "description": "The label for the doc item 'MeasureScope' in sidebar 'apiSidebar', linking to the doc core/render/classes/MeasureScope"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/PathBuilder": {
+    "message": "PathBuilder",
+    "description": "The label for the doc item 'PathBuilder' in sidebar 'apiSidebar', linking to the doc core/render/classes/PathBuilder"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/Render2DContext": {
+    "message": "Render2DContext",
+    "description": "The label for the doc item 'Render2DContext' in sidebar 'apiSidebar', linking to the doc core/render/classes/Render2DContext"
+  },
+  "sidebar.apiSidebar.doc.core/render/classes/RenderContext": {
+    "message": "RenderContext",
+    "description": "The label for the doc item 'RenderContext' in sidebar 'apiSidebar', linking to the doc core/render/classes/RenderContext"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/EllipseState": {
+    "message": "EllipseState",
+    "description": "The label for the doc item 'EllipseState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/EllipseState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/GraphicsTransform": {
+    "message": "GraphicsTransform",
+    "description": "The label for the doc item 'GraphicsTransform' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/GraphicsTransform"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/ImageState": {
+    "message": "ImageState",
+    "description": "The label for the doc item 'ImageState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/ImageState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/LineState": {
+    "message": "LineState",
+    "description": "The label for the doc item 'LineState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/LineState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/NodeRenderState": {
+    "message": "NodeRenderState",
+    "description": "The label for the doc item 'NodeRenderState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/NodeRenderState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/PathState": {
+    "message": "PathState",
+    "description": "The label for the doc item 'PathState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/PathState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/PolygonState": {
+    "message": "PolygonState",
+    "description": "The label for the doc item 'PolygonState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/PolygonState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/PolygramState": {
+    "message": "PolygramState",
+    "description": "The label for the doc item 'PolygramState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/PolygramState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/RectState": {
+    "message": "RectState",
+    "description": "The label for the doc item 'RectState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/RectState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/RichTextState": {
+    "message": "RichTextState",
+    "description": "The label for the doc item 'RichTextState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/RichTextState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/ShapeState": {
+    "message": "ShapeState",
+    "description": "The label for the doc item 'ShapeState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/ShapeState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/SpaceRect": {
+    "message": "SpaceRect",
+    "description": "The label for the doc item 'SpaceRect' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/SpaceRect"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/SpaceRects": {
+    "message": "SpaceRects",
+    "description": "The label for the doc item 'SpaceRects' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/SpaceRects"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/TextSegment": {
+    "message": "TextSegment",
+    "description": "The label for the doc item 'TextSegment' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/TextSegment"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/TextState": {
+    "message": "TextState",
+    "description": "The label for the doc item 'TextState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/TextState"
+  },
+  "sidebar.apiSidebar.doc.core/render/interfaces/TransformState": {
+    "message": "TransformState",
+    "description": "The label for the doc item 'TransformState' in sidebar 'apiSidebar', linking to the doc core/render/interfaces/TransformState"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/ClipOp": {
+    "message": "ClipOp",
+    "description": "The label for the doc item 'ClipOp' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/ClipOp"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/ClipShapeOp": {
+    "message": "ClipShapeOp",
+    "description": "The label for the doc item 'ClipShapeOp' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/ClipShapeOp"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/EffectTarget": {
+    "message": "EffectTarget",
+    "description": "The label for the doc item 'EffectTarget' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/EffectTarget"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/GraphicsOp": {
+    "message": "GraphicsOp",
+    "description": "The label for the doc item 'GraphicsOp' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/GraphicsOp"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/GraphicsShapeOp": {
+    "message": "GraphicsShapeOp",
+    "description": "The label for the doc item 'GraphicsShapeOp' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/GraphicsShapeOp"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/PathBounds": {
+    "message": "PathBounds",
+    "description": "The label for the doc item 'PathBounds' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/PathBounds"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/PathCommand": {
+    "message": "PathCommand",
+    "description": "The label for the doc item 'PathCommand' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/PathCommand"
+  },
+  "sidebar.apiSidebar.doc.core/render/type-aliases/PathData": {
+    "message": "PathData",
+    "description": "The label for the doc item 'PathData' in sidebar 'apiSidebar', linking to the doc core/render/type-aliases/PathData"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/toPathString": {
+    "message": "toPathString",
+    "description": "The label for the doc item 'toPathString' in sidebar 'apiSidebar', linking to the doc core/render/functions/toPathString"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withEllipseDescriptor": {
+    "message": "withEllipseDescriptor",
+    "description": "The label for the doc item 'withEllipseDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withEllipseDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withImageDescriptor": {
+    "message": "withImageDescriptor",
+    "description": "The label for the doc item 'withImageDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withImageDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withLineDescriptor": {
+    "message": "withLineDescriptor",
+    "description": "The label for the doc item 'withLineDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withLineDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withPathDescriptor": {
+    "message": "withPathDescriptor",
+    "description": "The label for the doc item 'withPathDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withPathDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withPolygonDescriptor": {
+    "message": "withPolygonDescriptor",
+    "description": "The label for the doc item 'withPolygonDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withPolygonDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withPolygramDescriptor": {
+    "message": "withPolygramDescriptor",
+    "description": "The label for the doc item 'withPolygramDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withPolygramDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withRectDescriptor": {
+    "message": "withRectDescriptor",
+    "description": "The label for the doc item 'withRectDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withRectDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withRichTextDescriptor": {
+    "message": "withRichTextDescriptor",
+    "description": "The label for the doc item 'withRichTextDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withRichTextDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withTextDescriptor": {
+    "message": "withTextDescriptor",
+    "description": "The label for the doc item 'withTextDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withTextDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/render/functions/withTransformDescriptor": {
+    "message": "withTransformDescriptor",
+    "description": "The label for the doc item 'withTransformDescriptor' in sidebar 'apiSidebar', linking to the doc core/render/functions/withTransformDescriptor"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/classes/PlaybackController": {
+    "message": "PlaybackController",
+    "description": "The label for the doc item 'PlaybackController' in sidebar 'apiSidebar', linking to the doc core/runtime/classes/PlaybackController"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/classes/Precomp": {
+    "message": "Precomp",
+    "description": "The label for the doc item 'Precomp' in sidebar 'apiSidebar', linking to the doc core/runtime/classes/Precomp"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/classes/StateEvaluator": {
+    "message": "StateEvaluator",
+    "description": "The label for the doc item 'StateEvaluator' in sidebar 'apiSidebar', linking to the doc core/runtime/classes/StateEvaluator"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/interfaces/AssetTrack": {
+    "message": "AssetTrack",
+    "description": "The label for the doc item 'AssetTrack' in sidebar 'apiSidebar', linking to the doc core/runtime/interfaces/AssetTrack"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/interfaces/BuildError": {
+    "message": "BuildError",
+    "description": "The label for the doc item 'BuildError' in sidebar 'apiSidebar', linking to the doc core/runtime/interfaces/BuildError"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/interfaces/NodeLifespan": {
+    "message": "NodeLifespan",
+    "description": "The label for the doc item 'NodeLifespan' in sidebar 'apiSidebar', linking to the doc core/runtime/interfaces/NodeLifespan"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/interfaces/PrecompResult": {
+    "message": "PrecompResult",
+    "description": "The label for the doc item 'PrecompResult' in sidebar 'apiSidebar', linking to the doc core/runtime/interfaces/PrecompResult"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/interfaces/ScenePrecomp": {
+    "message": "ScenePrecomp",
+    "description": "The label for the doc item 'ScenePrecomp' in sidebar 'apiSidebar', linking to the doc core/runtime/interfaces/ScenePrecomp"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/type-aliases/ControllerParams": {
+    "message": "ControllerParams",
+    "description": "The label for the doc item 'ControllerParams' in sidebar 'apiSidebar', linking to the doc core/runtime/type-aliases/ControllerParams"
+  },
+  "sidebar.apiSidebar.doc.core/runtime/functions/isParentNode": {
+    "message": "isParentNode",
+    "description": "The label for the doc item 'isParentNode' in sidebar 'apiSidebar', linking to the doc core/runtime/functions/isParentNode"
+  },
+  "sidebar.apiSidebar.doc.core/signals/classes/Signal": {
+    "message": "Signal",
+    "description": "The label for the doc item 'Signal' in sidebar 'apiSidebar', linking to the doc core/signals/classes/Signal"
+  },
+  "sidebar.apiSidebar.doc.core/signals/interfaces/ReactiveSignal": {
+    "message": "ReactiveSignal",
+    "description": "The label for the doc item 'ReactiveSignal' in sidebar 'apiSidebar', linking to the doc core/signals/interfaces/ReactiveSignal"
+  },
+  "sidebar.apiSidebar.doc.core/signals/interfaces/SignalHost": {
+    "message": "SignalHost",
+    "description": "The label for the doc item 'SignalHost' in sidebar 'apiSidebar', linking to the doc core/signals/interfaces/SignalHost"
+  },
+  "sidebar.apiSidebar.doc.core/signals/type-aliases/SignalInput": {
+    "message": "SignalInput",
+    "description": "The label for the doc item 'SignalInput' in sidebar 'apiSidebar', linking to the doc core/signals/type-aliases/SignalInput"
+  },
+  "sidebar.apiSidebar.doc.core/signals/type-aliases/TweenFn": {
+    "message": "TweenFn",
+    "description": "The label for the doc item 'TweenFn' in sidebar 'apiSidebar', linking to the doc core/signals/type-aliases/TweenFn"
+  },
+  "sidebar.apiSidebar.doc.core/signals/functions/createSignal": {
+    "message": "createSignal",
+    "description": "The label for the doc item 'createSignal' in sidebar 'apiSidebar', linking to the doc core/signals/functions/createSignal"
+  },
+  "sidebar.apiSidebar.doc.core/signals/functions/getOrCreateSignal": {
+    "message": "getOrCreateSignal",
+    "description": "The label for the doc item 'getOrCreateSignal' in sidebar 'apiSidebar', linking to the doc core/signals/functions/getOrCreateSignal"
+  },
+  "sidebar.apiSidebar.doc.core/signals/functions/getSignal": {
+    "message": "getSignal",
+    "description": "The label for the doc item 'getSignal' in sidebar 'apiSidebar', linking to the doc core/signals/functions/getSignal"
+  },
+  "sidebar.apiSidebar.doc.core/signals/functions/isTracking": {
+    "message": "isTracking",
+    "description": "The label for the doc item 'isTracking' in sidebar 'apiSidebar', linking to the doc core/signals/functions/isTracking"
+  },
+  "sidebar.apiSidebar.doc.core/tween/classes/AnimationBuilder": {
+    "message": "AnimationBuilder",
+    "description": "The label for the doc item 'AnimationBuilder' in sidebar 'apiSidebar', linking to the doc core/tween/classes/AnimationBuilder"
+  },
+  "sidebar.apiSidebar.doc.core/tween/interfaces/AnimationTarget": {
+    "message": "AnimationTarget",
+    "description": "The label for the doc item 'AnimationTarget' in sidebar 'apiSidebar', linking to the doc core/tween/interfaces/AnimationTarget"
+  },
+  "sidebar.apiSidebar.doc.core/tween/interfaces/Steppable": {
+    "message": "Steppable",
+    "description": "The label for the doc item 'Steppable' in sidebar 'apiSidebar', linking to the doc core/tween/interfaces/Steppable"
+  },
+  "sidebar.apiSidebar.doc.core/tween/interfaces/TweenStepper": {
+    "message": "TweenStepper",
+    "description": "The label for the doc item 'TweenStepper' in sidebar 'apiSidebar', linking to the doc core/tween/interfaces/TweenStepper"
+  },
+  "sidebar.apiSidebar.doc.core/tween/type-aliases/EaseFunction": {
+    "message": "EaseFunction",
+    "description": "The label for the doc item 'EaseFunction' in sidebar 'apiSidebar', linking to the doc core/tween/type-aliases/EaseFunction"
+  },
+  "sidebar.apiSidebar.doc.core/tween/type-aliases/FrameGenerator": {
+    "message": "FrameGenerator",
+    "description": "The label for the doc item 'FrameGenerator' in sidebar 'apiSidebar', linking to the doc core/tween/type-aliases/FrameGenerator"
+  },
+  "sidebar.apiSidebar.doc.core/tween/type-aliases/LerpFunction": {
+    "message": "LerpFunction",
+    "description": "The label for the doc item 'LerpFunction' in sidebar 'apiSidebar', linking to the doc core/tween/type-aliases/LerpFunction"
+  },
+  "sidebar.apiSidebar.doc.core/tween/type-aliases/TweenOptions": {
+    "message": "TweenOptions",
+    "description": "The label for the doc item 'TweenOptions' in sidebar 'apiSidebar', linking to the doc core/tween/type-aliases/TweenOptions"
+  },
+  "sidebar.apiSidebar.doc.core/tween/variables/easeInOutQuad": {
+    "message": "easeInOutQuad",
+    "description": "The label for the doc item 'easeInOutQuad' in sidebar 'apiSidebar', linking to the doc core/tween/variables/easeInOutQuad"
+  },
+  "sidebar.apiSidebar.doc.core/tween/variables/easeInQuad": {
+    "message": "easeInQuad",
+    "description": "The label for the doc item 'easeInQuad' in sidebar 'apiSidebar', linking to the doc core/tween/variables/easeInQuad"
+  },
+  "sidebar.apiSidebar.doc.core/tween/variables/easeOutQuad": {
+    "message": "easeOutQuad",
+    "description": "The label for the doc item 'easeOutQuad' in sidebar 'apiSidebar', linking to the doc core/tween/variables/easeOutQuad"
+  },
+  "sidebar.apiSidebar.doc.core/tween/variables/easeOutQuart": {
+    "message": "easeOutQuart",
+    "description": "The label for the doc item 'easeOutQuart' in sidebar 'apiSidebar', linking to the doc core/tween/variables/easeOutQuart"
+  },
+  "sidebar.apiSidebar.doc.core/tween/variables/linear": {
+    "message": "linear",
+    "description": "The label for the doc item 'linear' in sidebar 'apiSidebar', linking to the doc core/tween/variables/linear"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeInBack": {
+    "message": "easeInBack",
+    "description": "The label for the doc item 'easeInBack' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeInBack"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeInElastic": {
+    "message": "easeInElastic",
+    "description": "The label for the doc item 'easeInElastic' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeInElastic"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeInOutBack": {
+    "message": "easeInOutBack",
+    "description": "The label for the doc item 'easeInOutBack' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeInOutBack"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeInOutElastic": {
+    "message": "easeInOutElastic",
+    "description": "The label for the doc item 'easeInOutElastic' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeInOutElastic"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeOutBack": {
+    "message": "easeOutBack",
+    "description": "The label for the doc item 'easeOutBack' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeOutBack"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/easeOutElastic": {
+    "message": "easeOutElastic",
+    "description": "The label for the doc item 'easeOutElastic' in sidebar 'apiSidebar', linking to the doc core/tween/functions/easeOutElastic"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/isSteppable": {
+    "message": "isSteppable",
+    "description": "The label for the doc item 'isSteppable' in sidebar 'apiSidebar', linking to the doc core/tween/functions/isSteppable"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/lerpNumber": {
+    "message": "lerpNumber",
+    "description": "The label for the doc item 'lerpNumber' in sidebar 'apiSidebar', linking to the doc core/tween/functions/lerpNumber"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/parallel": {
+    "message": "parallel",
+    "description": "The label for the doc item 'parallel' in sidebar 'apiSidebar', linking to the doc core/tween/functions/parallel"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/prepareNumericCellTween": {
+    "message": "prepareNumericCellTween",
+    "description": "The label for the doc item 'prepareNumericCellTween' in sidebar 'apiSidebar', linking to the doc core/tween/functions/prepareNumericCellTween"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/prepareNumericTween": {
+    "message": "prepareNumericTween",
+    "description": "The label for the doc item 'prepareNumericTween' in sidebar 'apiSidebar', linking to the doc core/tween/functions/prepareNumericTween"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/sequence": {
+    "message": "sequence",
+    "description": "The label for the doc item 'sequence' in sidebar 'apiSidebar', linking to the doc core/tween/functions/sequence"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/tween": {
+    "message": "tween",
+    "description": "The label for the doc item 'tween' in sidebar 'apiSidebar', linking to the doc core/tween/functions/tween"
+  },
+  "sidebar.apiSidebar.doc.core/tween/functions/wait": {
+    "message": "wait",
+    "description": "The label for the doc item 'wait' in sidebar 'apiSidebar', linking to the doc core/tween/functions/wait"
+  },
+  "sidebar.apiSidebar.doc.core/util/interfaces/Reference": {
+    "message": "Reference",
+    "description": "The label for the doc item 'Reference' in sidebar 'apiSidebar', linking to the doc core/util/interfaces/Reference"
+  },
+  "sidebar.apiSidebar.doc.core/util/functions/clamp": {
+    "message": "clamp",
+    "description": "The label for the doc item 'clamp' in sidebar 'apiSidebar', linking to the doc core/util/functions/clamp"
+  },
+  "sidebar.apiSidebar.doc.core/util/functions/clamp01": {
+    "message": "clamp01",
+    "description": "The label for the doc item 'clamp01' in sidebar 'apiSidebar', linking to the doc core/util/functions/clamp01"
+  },
+  "sidebar.apiSidebar.doc.core/util/functions/createRef": {
+    "message": "createRef",
+    "description": "The label for the doc item 'createRef' in sidebar 'apiSidebar', linking to the doc core/util/functions/createRef"
+  },
+  "sidebar.apiSidebar.doc.core/util/functions/range": {
+    "message": "range",
+    "description": "The label for the doc item 'range' in sidebar 'apiSidebar', linking to the doc core/util/functions/range"
+  },
+  "sidebar.apiSidebar.doc.code/variables/BUILTIN_THEMES": {
+    "message": "BUILTIN_THEMES",
+    "description": "The label for the doc item 'BUILTIN_THEMES' in sidebar 'apiSidebar', linking to the doc code/variables/BUILTIN_THEMES"
+  },
+  "sidebar.apiSidebar.doc.code/classes/Code": {
+    "message": "Code",
+    "description": "The label for the doc item 'Code' in sidebar 'apiSidebar', linking to the doc code/classes/Code"
+  },
+  "sidebar.apiSidebar.doc.code/interfaces/CodeHighlightStyle": {
+    "message": "CodeHighlightStyle",
+    "description": "The label for the doc item 'CodeHighlightStyle' in sidebar 'apiSidebar', linking to the doc code/interfaces/CodeHighlightStyle"
+  },
+  "sidebar.apiSidebar.doc.code/interfaces/CodeProps": {
+    "message": "CodeProps",
+    "description": "The label for the doc item 'CodeProps' in sidebar 'apiSidebar', linking to the doc code/interfaces/CodeProps"
+  },
+  "sidebar.apiSidebar.doc.code/interfaces/CodeRange": {
+    "message": "CodeRange",
+    "description": "The label for the doc item 'CodeRange' in sidebar 'apiSidebar', linking to the doc code/interfaces/CodeRange"
+  },
+  "sidebar.apiSidebar.doc.code/interfaces/CodeStyleRule": {
+    "message": "CodeStyleRule",
+    "description": "The label for the doc item 'CodeStyleRule' in sidebar 'apiSidebar', linking to the doc code/interfaces/CodeStyleRule"
+  },
+  "sidebar.apiSidebar.doc.code/type-aliases/CodeTheme": {
+    "message": "CodeTheme",
+    "description": "The label for the doc item 'CodeTheme' in sidebar 'apiSidebar', linking to the doc code/type-aliases/CodeTheme"
+  },
+  "sidebar.apiSidebar.doc.code/type-aliases/CodeThemeName": {
+    "message": "CodeThemeName",
+    "description": "The label for the doc item 'CodeThemeName' in sidebar 'apiSidebar', linking to the doc code/type-aliases/CodeThemeName"
+  },
+  "sidebar.apiSidebar.doc.code/functions/compileStyle": {
+    "message": "compileStyle",
+    "description": "The label for the doc item 'compileStyle' in sidebar 'apiSidebar', linking to the doc code/functions/compileStyle"
+  },
+  "sidebar.apiSidebar.doc.code/variables/DefaultHighlightStyle": {
+    "message": "DefaultHighlightStyle",
+    "description": "The label for the doc item 'DefaultHighlightStyle' in sidebar 'apiSidebar', linking to the doc code/variables/DefaultHighlightStyle"
+  },
+  "sidebar.apiSidebar.doc.code/variables/GithubDarkStyle": {
+    "message": "GithubDarkStyle",
+    "description": "The label for the doc item 'GithubDarkStyle' in sidebar 'apiSidebar', linking to the doc code/variables/GithubDarkStyle"
+  },
+  "sidebar.apiSidebar.doc.code/variables/GithubLightStyle": {
+    "message": "GithubLightStyle",
+    "description": "The label for the doc item 'GithubLightStyle' in sidebar 'apiSidebar', linking to the doc code/variables/GithubLightStyle"
+  },
+  "sidebar.apiSidebar.doc.code/functions/initSyntaxHighlighter": {
+    "message": "initSyntaxHighlighter",
+    "description": "The label for the doc item 'initSyntaxHighlighter' in sidebar 'apiSidebar', linking to the doc code/functions/initSyntaxHighlighter"
+  },
+  "sidebar.apiSidebar.doc.code/functions/lines": {
+    "message": "lines",
+    "description": "The label for the doc item 'lines' in sidebar 'apiSidebar', linking to the doc code/functions/lines"
+  },
+  "sidebar.apiSidebar.doc.code/functions/loadCodeLanguage": {
+    "message": "loadCodeLanguage",
+    "description": "The label for the doc item 'loadCodeLanguage' in sidebar 'apiSidebar', linking to the doc code/functions/loadCodeLanguage"
+  },
+  "sidebar.apiSidebar.doc.code/functions/range": {
+    "message": "range",
+    "description": "The label for the doc item 'range' in sidebar 'apiSidebar', linking to the doc code/functions/range"
+  },
+  "sidebar.apiSidebar.doc.code/functions/registerCodeTheme": {
+    "message": "registerCodeTheme",
+    "description": "The label for the doc item 'registerCodeTheme' in sidebar 'apiSidebar', linking to the doc code/functions/registerCodeTheme"
+  },
+  "sidebar.apiSidebar.doc.code/functions/resolveTheme": {
+    "message": "resolveTheme",
+    "description": "The label for the doc item 'resolveTheme' in sidebar 'apiSidebar', linking to the doc code/functions/resolveTheme"
+  },
+  "sidebar.apiSidebar.doc.code/variables/VscodeDarkStyle": {
+    "message": "VscodeDarkStyle",
+    "description": "The label for the doc item 'VscodeDarkStyle' in sidebar 'apiSidebar', linking to the doc code/variables/VscodeDarkStyle"
+  },
+  "sidebar.apiSidebar.doc.code/variables/VscodeLightStyle": {
+    "message": "VscodeLightStyle",
+    "description": "The label for the doc item 'VscodeLightStyle' in sidebar 'apiSidebar', linking to the doc code/variables/VscodeLightStyle"
+  },
+  "sidebar.apiSidebar.doc.code/functions/word": {
+    "message": "word",
+    "description": "The label for the doc item 'word' in sidebar 'apiSidebar', linking to the doc code/functions/word"
+  },
+  "sidebar.apiSidebar.doc.latex/functions/buildLatexPath": {
+    "message": "buildLatexPath",
+    "description": "The label for the doc item 'buildLatexPath' in sidebar 'apiSidebar', linking to the doc latex/functions/buildLatexPath"
+  },
+  "sidebar.apiSidebar.doc.latex/classes/Latex": {
+    "message": "Latex",
+    "description": "The label for the doc item 'Latex' in sidebar 'apiSidebar', linking to the doc latex/classes/Latex"
+  },
+  "sidebar.apiSidebar.doc.latex/interfaces/LatexPathResult": {
+    "message": "LatexPathResult",
+    "description": "The label for the doc item 'LatexPathResult' in sidebar 'apiSidebar', linking to the doc latex/interfaces/LatexPathResult"
+  },
+  "sidebar.apiSidebar.doc.latex/interfaces/LatexProps": {
+    "message": "LatexProps",
+    "description": "The label for the doc item 'LatexProps' in sidebar 'apiSidebar', linking to the doc latex/interfaces/LatexProps"
+  },
+  "sidebar.apiSidebar.doc.latex/interfaces/LatexToken": {
+    "message": "LatexToken",
+    "description": "The label for the doc item 'LatexToken' in sidebar 'apiSidebar', linking to the doc latex/interfaces/LatexToken"
+  }
+}

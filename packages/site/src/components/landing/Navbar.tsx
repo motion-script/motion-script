@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from '@docusaurus/Link';
 import { useColorMode } from '@docusaurus/theme-common';
 import { Logo } from './Logo';
+import LocaleDropdown from './LocaleDropdown';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -58,6 +59,7 @@ export default function Navbar() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
+            <LocaleDropdown />
             <a
               href="https://github.com/motion-script/motion-script"
               target="_blank"
@@ -106,6 +108,9 @@ export default function Navbar() {
                 </Link>
               ))}
               <hr className="border-[var(--border)] my-2" />
+              <div className="px-2">
+                <LocaleDropdown />
+              </div>
               <a
                 href="https://github.com/motion-script/motion-script"
                 target="_blank"

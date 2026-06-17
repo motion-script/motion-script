@@ -3,6 +3,8 @@ import { useInView } from './useInView';
 import LayoutCanvas from './LayoutCanvas';
 import NumberCanvas from './NumberCanvas';
 import EffectsCanvas from './EffectsCanvas';
+import CodeCanvas from './CodeCanvas';
+import TiltCard from './TiltCard';
 
 const features = [
   {
@@ -33,7 +35,7 @@ const features = [
       { title: 'Instant preview', text: 'Hot-reload on every change, powered by Vite' },
       { title: 'Git-friendly', text: 'Readable diffs you can actually review' },
     ],
-    video: '/code.mp4',
+    video: '', // rendered live by <CodeCanvas /> — no recorded clip
     gradient: 'from-purple-500 to-pink-600',
     iconGradient: 'from-purple-500 to-pink-600',
   },
@@ -82,16 +84,18 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
       style={{ '--reveal-delay': '0.1s' } as React.CSSProperties}
       className={`reveal-up${isInView ? ' is-visible' : ''} grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center`}
     >
-      {/* Demo — the layout feature renders live on a canvas (no video to load);
-          the rest still play their recorded clips. */}
+      {/* Demo — each feature renders live on a canvas (no video to download or
+          decode), and the frame tilts toward the cursor on hover. */}
       <div className={isReversed ? 'lg:order-2' : ''}>
-        <div className="relative aspect-video rounded-xl bg-[var(--background)] border border-[var(--border)] overflow-hidden">
+        <TiltCard className="relative aspect-video rounded-xl bg-[var(--background)] border border-[var(--border)] overflow-hidden">
           {feature.id === 'layout' ? (
             <LayoutCanvas />
           ) : feature.id === 'text' ? (
             <NumberCanvas />
           ) : feature.id === 'effects' ? (
             <EffectsCanvas />
+          ) : feature.id === 'code' ? (
+            <CodeCanvas />
           ) : (
             <video
               className="absolute inset-0 h-full w-full object-cover"
@@ -103,7 +107,7 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[0]; index:
               preload="metadata"
             />
           )}
-        </div>
+        </TiltCard>
       </div>
 
       {/* Content */}

@@ -26,9 +26,28 @@ const config: Config = {
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
+  // Curated set of locales exposed by the translate dropdown (landing Navbar
+  // + docs navbar `localeDropdown`). Content for non-`en` locales lives under
+  // i18n/<locale>/; until a locale is translated it falls back to English.
+  // Run `pnpm write-translations --locale <locale>` to scaffold a locale's
+  // theme/UI translation files. `localeConfigs` sets the human label shown in
+  // the dropdown and the text direction (Arabic is RTL).
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'es', 'fr', 'de', 'pt-BR', 'zh-Hans', 'ja', 'ko', 'hi', 'ar', 'ru'],
+    localeConfigs: {
+      en: { label: 'English' },
+      es: { label: 'Español' },
+      fr: { label: 'Français' },
+      de: { label: 'Deutsch' },
+      'pt-BR': { label: 'Português' },
+      'zh-Hans': { label: '简体中文' },
+      ja: { label: '日本語' },
+      ko: { label: '한국어' },
+      hi: { label: 'हिन्दी' },
+      ar: { label: 'العربية', direction: 'rtl' },
+      ru: { label: 'Русский' },
+    },
   },
 
   plugins: [
@@ -154,10 +173,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
+          // Links "Edit this page" to the markdown source on GitHub.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/motion-script/motion-script/tree/main/packages/site/',
         },
         blog: {
           showReadingTime: true,
@@ -165,10 +183,9 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
+          // Links "Edit this page" to the markdown source on GitHub.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/motion-script/motion-script/tree/main/packages/site/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -215,6 +232,14 @@ const config: Config = {
           label: 'API',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
+        {
+          // "Translate" dropdown (top right). Built-in locale switcher; styled
+          // in custom.css (`.navbar__locale-dropdown`) to read as a globe +
+          // "Translate" pill matching the landing-page dropdown.
+          type: 'localeDropdown',
+          position: 'right',
+          className: 'navbar__locale-dropdown',
+        },
         {
           href: 'https://github.com/motion-script/motion-script',
           // `navbar__github-link` is styled in custom.css to match the landing
