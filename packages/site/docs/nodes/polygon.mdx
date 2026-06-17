@@ -2,11 +2,13 @@
 sidebar_position: 5
 ---
 
+import { PolygonCanvas } from '@site/src/components/docs/node-scenes';
+
 # Polygon
 
 A regular convex polygon inscribed within the node's layout rect. All sides and angles are equal.
 
-![Polygon node](/nodes/polygon.png)
+<PolygonCanvas />
 
 ## Usage
 
@@ -17,17 +19,17 @@ export class MyScene extends Scene {
   *build() {
     // Hexagon
     this.add(
-      <Polygon sides={6} width={200} height={200} fill="teal" />
+      <Polygon sides={6} width={370} height={370} fill="#6990DD" />
     );
 
     // Triangle with rounded vertices
     this.add(
-      <Polygon sides={3} width={200} height={200} fill="royalblue" cornerRadius={12} />
+      <Polygon sides={3} width={370} height={370} fill="#E8617C" cornerRadius={12} />
     );
 
     // Pentagon with chamfered corners
     this.add(
-      <Polygon sides={5} width={200} height={200} fill="tomato" cornerRadius={16} cornerStyle="angled" />
+      <Polygon sides={5} width={370} height={370} fill="#F5C26B" cornerRadius={16} cornerStyle="angled" />
     );
   }
 }
@@ -53,14 +55,14 @@ export class MyScene extends Scene {
     const shape = createRef<Polygon>();
 
     this.add(
-      <Polygon ref={shape} sides={3} width={200} height={200} fill="#4f80ff" />
+      <Polygon ref={shape} sides={3} width={370} height={370} fill="#6990DD" />
     );
 
     // Triangle → hexagon
     yield* shape().to({ sides: 6 }, 1.2, easeInOut);
 
-    // Round the vertices
-    yield* shape().to({ cornerRadius: 20 }, 0.6, easeInOut);
+    // Back to a triangle
+    yield* shape().to({ sides: 3 }, 1.2, easeInOut);
   }
 }
 ```

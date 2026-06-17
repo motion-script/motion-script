@@ -2,31 +2,27 @@
 sidebar_position: 3
 ---
 
+import { RectCanvas } from '@site/src/components/docs/node-scenes';
+
 # Rect
 
 The primary building block. A rounded rectangle that also acts as a flex or stack layout container for its children.
 
-![Rect node](/nodes/rect.png)
+<RectCanvas />
 
 ## Usage
 
 ```tsx
-import { Scene, Rect, Text } from '@motion-script/core';
+import { Scene, Rect } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
+    // A row container laying out three squares, separated by a gap.
     this.add(
-      <Rect
-        width={320}
-        height={200}
-        fill="#1e293b"
-        cornerRadius={16}
-        group="column"
-        gap={12}
-        padding={24}
-      >
-        <Text text="Title" fontSize={28} fontWeight={700} fill="white" />
-        <Text text="Subtitle" fontSize={18} fill="#94a3b8" />
+      <Rect group="row" gap={48} padding={44} cornerRadius={24}>
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
       </Rect>
     );
   }
@@ -79,21 +75,18 @@ export class MyScene extends Scene {
     const box = createRef<Rect>();
 
     this.add(
-      <Rect ref={box} group="row" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
-        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
-        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+      <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}>
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
       </Rect>
     );
 
     // Expand gap
-    yield* box().to({ gap: 40 }, 0.6, easeOut);
+    yield* box().to({ gap: 100 }, 0.6, easeOut);
 
     // Switch to column
     yield* box().to({ group: 'column' }, 0.8, easeOut);
-
-    // Round corners
-    yield* box().to({ cornerRadius: 32 }, 0.4, easeOut);
   }
 }
 ```
@@ -101,7 +94,7 @@ export class MyScene extends Scene {
 ### Animated child insertion and removal
 
 ```tsx
-const card = new Rect({ width: 200, height={80} fill="#4f80ff" cornerRadius={8} });
+const card = new Rect({ width: 130, height: 130, fill: '#6990DD', cornerRadius: 14 });
 
 // Insert at index 1 with a 0.4 s transition
 yield* box().addChildAt(card, 1, 0.4, easeOut);

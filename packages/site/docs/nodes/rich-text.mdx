@@ -2,11 +2,13 @@
 sidebar_position: 2
 ---
 
+import { RichTextCanvas } from '@site/src/components/docs/node-scenes';
+
 # RichText
 
 Renders mixed-style text. Style is defined as a tree of `TextSpan` objects — children inherit and can override the parent span's style, so you can nest spans to build up complex formatting.
 
-![RichText node](/nodes/rich-text.png)
+<RichTextCanvas />
 
 ## Usage
 
@@ -17,12 +19,11 @@ export class MyScene extends Scene {
   *build() {
     this.add(
       <RichText
-        fontSize={36}
+        fontSize={96}
         fill="white"
         spans={[
-          { text: 'Hello ' },
-          { text: 'world', fill: '#4f80ff', fontWeight: 700 },
-          { text: '!', fontSize: 56, fill: '#e84393' },
+          { text: 'Motion ' },
+          { text: 'Script', fill: '#6990DD', fontWeight: 800 },
         ]}
       />
     );
@@ -79,7 +80,7 @@ Children inherit their parent span's styles and can override selectively:
       fontWeight: 700,
       children: [
         { text: ' — inherits bold' },
-        { text: ' override', fill: 'tomato' },
+        { text: ' override', fill: '#E8617C' },
       ],
     },
   ]}
@@ -100,24 +101,24 @@ export class MyScene extends Scene {
     this.add(
       <RichText
         ref={label}
-        fontSize={36}
+        fontSize={96}
         fill="white"
         spans={[
           { text: 'Motion ', fontWeight: 400 },
-          { text: 'Script', fontWeight: 700, fill: '#4f80ff' },
+          { text: 'Script', fontWeight: 800, fill: '#6990DD' },
         ]}
       />
     );
 
     // Animate font size
-    yield* label().to({ fontSize: 48 }, 0.6, easeOut);
+    yield* label().to({ fontSize: 120 }, 0.6, easeOut);
 
-    // Cross-fade span colors
+    // Cross-fade the bold span from blue to pink
     yield* tween(0.8, (t) => {
       label().set({
         spans: [
           { text: 'Motion ', fontWeight: 400 },
-          { text: 'Script', fontWeight: 700, fill: `hsl(${220 + t * 60}, 80%, 65%)` },
+          { text: 'Script', fontWeight: 800, fill: `hsl(${222 + t * 126}, 68%, 64%)` },
         ],
       });
     });
@@ -136,7 +137,7 @@ this.add(
     ref={label}
     fontSize={64}
     end={0}
-    spans={[{ text: 'Hello ', fill: 'white' }, { text: 'World', fill: '#4f80ff', fontWeight: 700 }]}
+    spans={[{ text: 'Motion ', fill: 'white' }, { text: 'Script', fill: '#6990DD', fontWeight: 800 }]}
   />
 );
 

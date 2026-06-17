@@ -2,30 +2,33 @@
 sidebar_position: 8
 ---
 
+import { CameraCanvas } from '@site/src/components/docs/node-scenes';
+
 # Camera
 
 A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform — clipped to the card's bounds.
 
-<video src="/nodes/camera.mp4" autoPlay loop muted playsInline style={{width: '100%', borderRadius: '12px'}} />
+<CameraCanvas />
 
 ## Usage
 
 ```tsx
-import { Scene, Camera, Rect, Text } from '@motion-script/core';
+import { Scene, Camera, Rect } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
     this.add(
       <Camera
-        width={480}
-        height={320}
+        width={760}
+        height={380}
         zoom={1}
         origin={{ x: 0, y: 0 }}
-        fill="#0f172a"
-        cornerRadius={16}
+        fill="#0a090e"
+        cornerRadius={18}
       >
-        <Rect width={200} height={200} fill="royalblue" cornerRadius={12} />
-        <Text text="World" fontSize={32} fontWeight={700} fill="white" y={-160} />
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
       </Camera>
     );
   }
@@ -56,21 +59,21 @@ export class MyScene extends Scene {
     const cam = createRef<Camera>();
 
     this.add(
-      <Camera ref={cam} width={640} height={360} fill="#0f172a" cornerRadius={12}>
-        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} x={-200} />
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
-        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} x={200} />
+      <Camera ref={cam} width={760} height={380} fill="#0a090e" cornerRadius={18}>
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
       </Camera>
     );
 
-    // Pan to the right object
-    yield* cam().to({ origin: { x: 200, y: 0 } }, 1.2, easeInOut);
+    // Pan to the gold box on the right
+    yield* cam().to({ origin: { x: 240, y: 0 } }, 1.2, easeInOut);
 
-    // Zoom in
-    yield* cam().to({ zoom: 2 }, 0.8, easeInOut);
+    // Zoom in on it
+    yield* cam().to({ zoom: 1.8 }, 0.8, easeInOut);
 
-    // Rotate the view
-    yield* cam().to({ heading: 15 }, 0.6, easeInOut);
+    // Pull back home
+    yield* cam().to({ origin: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
   }
 }
 ```

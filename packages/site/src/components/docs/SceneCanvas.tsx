@@ -131,13 +131,23 @@ interface Props {
   loop: number;
   /** Optional caption shown beneath the frame. */
   caption?: string;
+  /** Background color filled behind the scene. Defaults to the shared `BG`. */
+  bg?: string;
+  /**
+   * CSS aspect-ratio of the frame (e.g. `'16 / 9'`, `'2 / 1'`). The horizontal
+   * scale is always derived from width, so a shorter ratio just trims vertical
+   * room without resizing the content. Defaults to 16:9.
+   */
+  aspect?: string;
 }
 
-export default function SceneCanvas({ draw, loop, caption }: Props) {
+export default function SceneCanvas({ draw, loop, caption, bg = BG, aspect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const drawRef = useRef(draw);
   drawRef.current = draw;
+  const bgRef = useRef(bg);
+  bgRef.current = bg;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -166,7 +176,7 @@ export default function SceneCanvas({ draw, loop, caption }: Props) {
 
       // Background, in device px.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = BG;
+      ctx.fillStyle = bgRef.current;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Enter scene-space: origin at center, y pointing up.
@@ -209,8 +219,11 @@ export default function SceneCanvas({ draw, loop, caption }: Props) {
     <figure style={{ margin: '0 0 1.5rem' }}>
       <div
         ref={wrapperRef}
-        className="aspect-video w-full overflow-hidden rounded-xl"
-        style={{ border: '1px solid var(--ifm-toc-border-color, rgba(255,255,255,0.1))' }}
+        className={`w-full overflow-hidden rounded-xl${aspect ? '' : ' aspect-video'}`}
+        style={{
+          border: '1px solid var(--ifm-toc-border-color, rgba(255,255,255,0.1))',
+          ...(aspect ? { aspectRatio: aspect } : null),
+        }}
       >
         <canvas ref={canvasRef} className="h-full w-full block" />
       </div>

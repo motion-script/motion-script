@@ -2,11 +2,13 @@
 sidebar_position: 13
 ---
 
+import { VideoCanvas } from '@site/src/components/docs/node-scenes';
+
 # Video
 
 Renders a playing video. Layout and child positioning are inherited from `Rect` — a Video lays out its children exactly like a Rect, with a playing video frame painted in place of the fill. The video's audio track is automatically scheduled alongside the picture.
 
-<video src="/nodes/video.mp4" autoPlay loop muted playsInline style={{width: '100%', borderRadius: '12px'}} />
+<VideoCanvas />
 
 ## Usage
 

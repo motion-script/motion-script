@@ -2,11 +2,13 @@
 sidebar_position: 4
 ---
 
+import { EllipseCanvas } from '@site/src/components/docs/node-scenes';
+
 # Ellipse
 
 Circles, ovals, and arcs. Control the arc extent with `startAngle` and `sweep`.
 
-![Ellipse node](/nodes/ellipse.png)
+<EllipseCanvas />
 
 ## Usage
 
@@ -16,16 +18,16 @@ import { Scene, Ellipse } from '@motion-script/core';
 export class MyScene extends Scene {
   *build() {
     // Full circle
-    this.add(<Ellipse width={200} height={200} fill="tomato" />);
+    this.add(<Ellipse width={200} height={200} fill="#6990DD" />);
 
     // Arc (progress ring)
     this.add(
       <Ellipse
-        width={200}
-        height={200}
+        width={360}
+        height={360}
         startAngle={-90}
         sweep={270}
-        stroke={{ fill: 'white', weight: 6 }}
+        stroke={{ fill: '#6990DD', weight: 24 }}
       />
     );
   }
@@ -54,11 +56,11 @@ export class MyScene extends Scene {
     this.add(
       <Ellipse
         ref={ring}
-        width={200}
-        height={200}
+        width={360}
+        height={360}
         startAngle={-90}
         sweep={0}
-        stroke={{ fill: '#4f80ff', weight: 8 }}
+        stroke={{ fill: '#6990DD', weight: 24 }}
       />
     );
 

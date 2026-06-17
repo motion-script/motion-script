@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
@@ -11,6 +12,30 @@ import type * as Preset from '@docusaurus/preset-classic';
 // those ids `core/...`, `code/...`, `latex/...` (relative to the api/ root)
 // rather than the default `../api/...` (which assumes output under docs/).
 const apiDocsPath = path.join(__dirname, 'api');
+
+// Discover core's documented feature folders instead of hand-listing them.
+// The API reference is organized one module per feature folder (see the typedoc
+// plugin block below), and core/src already has exactly one folder per feature,
+// each exposing an index.ts barrel — the same set re-exported by core/src/index.ts.
+// We resolve them here so a new feature folder shows up in the API docs the
+// moment it has an index.ts, with no second list to keep in sync.
+//
+// jsx is the one exception: it has no index.ts barrel, so we point at its
+// runtime entry (the public surface) explicitly.
+function discoverCoreEntryPoints(): string[] {
+  const coreSrc = path.join(__dirname, '..', 'core', 'src');
+  const barrels = fs
+    .readdirSync(coreSrc, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(coreSrc, entry.name, 'index.ts'))
+    .filter((indexPath) => fs.existsSync(indexPath));
+
+  const jsxRuntime = path.join(coreSrc, 'jsx', 'jsx-runtime.ts');
+  if (fs.existsSync(jsxRuntime)) barrels.push(jsxRuntime);
+
+  // Stable ordering keeps generated sidebar/diffs deterministic across machines.
+  return barrels.sort();
+}
 
 const config: Config = {
   title: 'MotionScript',
@@ -105,23 +130,9 @@ const config: Config = {
     ...[
       {
         id: 'core',
-        // One entry per feature folder under core/src (each has an index.ts
-        // barrel except jsx, which exposes its runtime directly). Keep this in
-        // sync with core/src/index.ts when feature folders are added/removed.
-        entryPoints: [
-          '../core/src/assets/index.ts',
-          '../core/src/attributes/index.ts',
-          '../core/src/jsx/jsx-runtime.ts',
-          '../core/src/layout/index.ts',
-          '../core/src/nodes/index.ts',
-          '../core/src/platform/index.ts',
-          '../core/src/project/index.ts',
-          '../core/src/render/index.ts',
-          '../core/src/runtime/index.ts',
-          '../core/src/signals/index.ts',
-          '../core/src/tween/index.ts',
-          '../core/src/util/index.ts',
-        ],
+        // One module per feature folder under core/src, auto-discovered so the
+        // reference can't drift from the source tree (see discoverCoreEntryPoints).
+        entryPoints: discoverCoreEntryPoints(),
         tsconfig: '../core/tsconfig.json',
       },
       { id: 'code', entryPoints: ['../components/code/src/index.ts'], tsconfig: '../components/code/tsconfig.json' },

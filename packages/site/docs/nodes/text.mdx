@@ -2,11 +2,13 @@
 sidebar_position: 1
 ---
 
+import { TextCanvas } from '@site/src/components/docs/node-scenes';
+
 # Text
 
 Renders a string with a single consistent style. Like all shape nodes it supports fills, strokes, and shadows.
 
-![Text node](/nodes/text.png)
+<TextCanvas />
 
 ## Usage
 
@@ -17,10 +19,10 @@ export class MyScene extends Scene {
   *build() {
     this.add(
       <Text
-        text="Hello, world!"
-        fontSize={48}
+        text="Motion Script"
+        fontSize={96}
         fontFamily="Inter"
-        fontWeight={700}
+        fontWeight={800}
         fill="white"
       />
     );
@@ -62,14 +64,14 @@ export class MyScene extends Scene {
     const label = createRef<Text>();
 
     this.add(
-      <Text ref={label} text="" fontSize={48} fontWeight={700} fill="white" />
+      <Text ref={label} text="" fontSize={96} fontWeight={800} fill="white" />
     );
 
-    // Type text in over 1 second
-    yield* label().append('Hello, world!', 1, easeOut);
+    // Type "Motion Script" in, character by character
+    yield* label().append('Motion Script', 1.8, easeOut);
 
     // Animate font size
-    yield* label().to({ fontSize: 64 }, 0.5, easeOut);
+    yield* label().to({ fontSize: 120 }, 0.5, easeOut);
   }
 }
 ```

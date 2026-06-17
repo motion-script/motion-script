@@ -2,11 +2,13 @@
 sidebar_position: 6
 ---
 
+import { PolygramCanvas } from '@site/src/components/docs/node-scenes';
+
 # Polygram
 
 A star polygon. Alternates outer and inner vertices to form a star shape. Lower `ratio` values produce sharper, more pointed stars.
 
-![Polygram node](/nodes/polygram.png)
+<PolygramCanvas />
 
 ## Usage
 
@@ -17,17 +19,17 @@ export class MyScene extends Scene {
   *build() {
     // Classic 5-pointed star
     this.add(
-      <Polygram sides={5} ratio={0.4} width={240} height={240} fill="gold" />
+      <Polygram sides={5} ratio={0.4} width={400} height={400} fill="#F5C26B" />
     );
 
     // 6-pointed star with rounded points
     this.add(
-      <Polygram sides={6} ratio={0.5} width={240} height={240} fill="#e84393" cornerRadius={8} />
+      <Polygram sides={6} ratio={0.5} width={400} height={400} fill="#E8617C" cornerRadius={8} />
     );
 
     // 8-pointed star with chamfered corners
     this.add(
-      <Polygram sides={8} ratio={0.6} width={240} height={240} fill="royalblue" cornerRadius={12} cornerStyle="angled" />
+      <Polygram sides={8} ratio={0.6} width={400} height={400} fill="#6990DD" cornerRadius={12} cornerStyle="angled" />
     );
   }
 }
@@ -54,17 +56,14 @@ export class MyScene extends Scene {
     const star = createRef<Polygram>();
 
     this.add(
-      <Polygram ref={star} sides={5} ratio={0.4} width={240} height={240} fill="gold" />
+      <Polygram ref={star} sides={5} ratio={0.4} width={400} height={400} fill="#F5C26B" />
     );
 
     // Collapse points inward
-    yield* star().to({ ratio: 0.9 }, 1.0, easeInOut);
+    yield* star().to({ ratio: 0.85 }, 1.0, easeInOut);
 
-    // Morph to 8-pointed star
-    yield* star().to({ sides: 8, ratio: 0.4 }, 0.8, easeInOut);
-
-    // Round the points
-    yield* star().to({ cornerRadius: 12 }, 0.5, easeInOut);
+    // Push them back out
+    yield* star().to({ ratio: 0.4 }, 1.0, easeInOut);
   }
 }
 ```

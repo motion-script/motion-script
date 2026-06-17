@@ -331,7 +331,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * disposed signals, so reading e.g. `this.stroke` returns undefined and
      * `effectivePadding()` crashes on the next measure.
      *
-     * Calling this restores the signals to their @property-default baseline. It
+     * Calling this restores the signals to their `@property`-default baseline. It
      * is a no-op when signals already exist (the common, non-disposed case), so
      * it's safe to call unconditionally before a rebuild. Subclasses that apply
      * constructor-specific prop defaults (e.g. {@link Rect}) override this to

@@ -2,11 +2,13 @@
 sidebar_position: 11
 ---
 
+import { GridCanvas } from '@site/src/components/docs/node-scenes';
+
 # Grid
 
 A CSS/Tailwind-style grid container. Lays children into N equal-width columns; rows are auto-sized to the tallest child in each row. Children can span multiple cells with `colSpan`/`rowSpan` and be placed explicitly with `column`/`row`.
 
-![Grid node](/nodes/grid.png)
+<GridCanvas />
 
 ## Usage
 
@@ -16,12 +18,12 @@ import { Scene, Grid, Rect } from '@motion-script/core';
 export class MyScene extends Scene {
   *build() {
     this.add(
-      <Grid columns={3} gap={16} padding={24} fill="#1e293b" cornerRadius={16}>
-        <Rect width="fill" height={120} fill="tomato"      cornerRadius={8} />
-        <Rect width="fill" height={120} fill="royalblue"   cornerRadius={8} />
-        <Rect width="fill" height={120} fill="seagreen"    cornerRadius={8} />
-        <Rect width="fill" height={120} fill="mediumpurple" cornerRadius={8} colSpan={2} />
-        <Rect width="fill" height={120} fill="goldenrod"   cornerRadius={8} />
+      <Grid columns={3} gap={16} padding={24} fill="#0a090e" cornerRadius={16}>
+        <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} />
+        <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
+        <Rect width="fill" height={120} fill="#F5C26B" cornerRadius={8} />
+        <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} colSpan={2} />
+        <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
       </Grid>
     );
   }
@@ -69,9 +71,14 @@ export class MyScene extends Scene {
     const grid = createRef<Grid>();
 
     this.add(
-      <Grid ref={grid} columns={4} gap={8} padding={16} fill="#0f172a" cornerRadius={12}>
+      <Grid ref={grid} columns={4} gap={20} padding={32} fill="#0a090e" cornerRadius={18}>
         {Array.from({ length: 8 }, (_, i) => (
-          <Rect width="fill" height={80} fill="#1e293b" cornerRadius={6} />
+          <Rect
+            width="fill"
+            height={130}
+            fill={['#6990DD', '#E8617C', '#F5C26B'][i % 3]}
+            cornerRadius={8}
+          />
         ))}
       </Grid>
     );
@@ -79,8 +86,8 @@ export class MyScene extends Scene {
     // Reflow to 2 columns
     yield* grid().to({ columns: 2 }, 1.0, easeInOut);
 
-    // Expand gaps
-    yield* grid().to({ gap: 24 }, 0.6, easeInOut);
+    // Reflow back to 4
+    yield* grid().to({ columns: 4 }, 1.0, easeInOut);
   }
 }
 ```

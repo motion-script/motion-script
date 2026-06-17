@@ -2,11 +2,13 @@
 sidebar_position: 14
 ---
 
+import { PathCanvas } from '@site/src/components/docs/node-scenes';
+
 # Path
 
 Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-written SVG. The node auto-measures its bounding box from the path data and defaults to `width: 'hug'`, `height: 'hug'`.
 
-![Path node](/nodes/path.png)
+<PathCanvas />
 
 ## Usage
 
@@ -19,16 +21,15 @@ export class MyScene extends Scene {
     this.add(
       <Path
         d="M 0 -60 L 52 40 L -52 40 Z"
-        fill="mediumpurple"
+        fill="#6990DD"
       />
     );
 
-    // Heart shape
+    // Heart outline drawn with a stroke
     this.add(
       <Path
         d="M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z"
-        fill="#e84393"
-        stroke={{ fill: 'white', weight: 2 }}
+        stroke={{ fill: '#6990DD', weight: 8 }}
       />
     );
   }
@@ -76,13 +77,16 @@ export class MyScene extends Scene {
       <Path
         ref={shape}
         d="M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z"
-        stroke={{ fill: 'white', weight: 3 }}
+        stroke={{ fill: '#6990DD', weight: 8 }}
         end={0}
       />
     );
 
-    // Draw the path
+    // Draw the path on
     yield* shape().to({ end: 1 }, 1.5, easeInOut);
+
+    // Erase it back off
+    yield* shape().to({ end: 0 }, 1.5, easeInOut);
   }
 }
 ```

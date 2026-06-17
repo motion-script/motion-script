@@ -6,7 +6,7 @@ import { Fill } from '../fill/chain';
 
 /**
  * Where the stroke sits relative to the shape's edge. Resolves to a number in
- * [-1, 1]: -1 = fully inside the outline, 0 = centered (straddles the edge,
+ * the range `[-1, 1]`: -1 = fully inside the outline, 0 = centered (straddles the edge,
  * half in/half out), +1 = fully outside. Named values map to the endpoints;
  * intermediate numbers bias the stroke partway, like Figma's stroke alignment.
  */
