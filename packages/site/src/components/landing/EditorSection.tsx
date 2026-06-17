@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
-import TiltCard from './TiltCard';
+import { CardShadow } from './FeatureFrame';
 import MockEditor from './MockEditor';
 
 export default function EditorSection() {
@@ -8,11 +8,11 @@ export default function EditorSection() {
     <section className="relative px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
       <div className="mx-auto w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         {/* Left: editor preview — a faked, animated mock of the web editor
-            (sliding timeline + canned preview), tilting toward the cursor. */}
+            (sliding timeline + canned preview), resting on a faint floor shadow. */}
         <div className="order-2 lg:order-1">
-          <TiltCard className="relative aspect-1610/1213 w-full rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] overflow-hidden">
+          <CardShadow tilt className="relative aspect-1610/1213 w-full rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] overflow-hidden">
             <MockEditor />
-          </TiltCard>
+          </CardShadow>
         </div>
 
         {/* Right: copy + CTA */}

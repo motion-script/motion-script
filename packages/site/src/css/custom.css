@@ -185,14 +185,76 @@ html[data-theme='dark'] {
   transform: none;
 }
 
+/* Blur-in cinematic reveal — content resolves out of a soft blur as it rises,
+   giving the features section a "rack focus" feel rather than a plain fade. */
+.reveal-focus {
+  opacity: 0;
+  transform: translateY(48px) scale(0.985);
+  filter: blur(14px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0s);
+  will-change: opacity, transform, filter;
+}
+
+.reveal-focus.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .reveal-up,
-  .reveal-left {
+  .reveal-left,
+  .reveal-focus {
     opacity: 1;
     transform: none;
+    filter: none;
     transition: none;
   }
+}
+
+/* Floating glass label that sits on a demo (e.g. "Live · 60fps"). */
+.feature-chip {
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, #0a0a0f 55%, transparent);
+}
+
+/* ── Card floor shadow ───────────────────────────────────────────────────────
+   A barely-there light-gray circular shadow pooled under a card's center,
+   revealed only on hover so the card reads as gently lifting off the page.
+   The shadow is a blurred radial ellipse on a ::after that sits behind the
+   card (z -1) and bleeds past its bottom edge. */
+.card-floor {
+  position: relative;
+}
+
+.card-floor::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: -22px;
+  width: 70%;
+  height: 60px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--foreground) 16%, transparent),
+    transparent
+  );
+  filter: blur(18px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.card-floor:hover::after {
+  opacity: 0.4;
 }
 
 /* Navbar slide-down on mount */

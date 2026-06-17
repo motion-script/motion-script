@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
-import TiltCard from './TiltCard';
+import { CardShadow } from './FeatureFrame';
 
 const SNIPPET = `export class HelloScene extends Scene {
   *build() {
@@ -45,7 +45,7 @@ export default function ProceduralSection() {
         </div>
 
         {/* Right: code snippet */}
-        <TiltCard className="relative rounded-2xl border border-[var(--border)] bg-[#17171C] overflow-hidden">
+        <CardShadow tilt className="relative rounded-2xl border border-[var(--border)] bg-[#17171C] overflow-hidden">
           <div className="flex items-center gap-1.5 px-4 py-3 border-b border-[var(--border)]">
             <span className="w-3 h-3 rounded-full bg-red-400/70" />
             <span className="w-3 h-3 rounded-full bg-yellow-400/70" />
@@ -69,7 +69,7 @@ export default function ProceduralSection() {
               </pre>
             )}
           </Highlight>
-        </TiltCard>
+        </CardShadow>
       </div>
     </section>
   );
