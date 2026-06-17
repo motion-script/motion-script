@@ -17,6 +17,7 @@ import { EllipseShape } from "./ellipse";
 import { PathShape } from "./path";
 import { LineShape } from "./line";
 import { buildText } from "./text";
+import { ParagraphShapeCache } from "./paragraph-cache";
 import { PolygonShape } from "./polygon";
 import { PolygramShape } from "./polygram";
 import { BaseShape } from "./base";
@@ -125,6 +126,8 @@ export class ShapeHandler {
         private getCanvas: () => Canvas,
         private getPaint: () => Paint,
         private fontMgr: TypefaceFontProvider,
+        private paragraphCache: ParagraphShapeCache,
+        private getFontEpoch: () => number,
     ) {
         this.boolean = new BooleanHandler(canvasKit, getCanvas);
         this.mask = new MaskHandler(canvasKit, getCanvas, this.boolean);
@@ -291,7 +294,10 @@ export class ShapeHandler {
 
     text(state: Partial<TextState>): void {
         this._boundsDirty = true;
-        const shape = buildText(this.canvasKit, this.getCanvas(), this.fontMgr, state);
+        const shape = buildText(
+            this.canvasKit, this.getCanvas(), this.fontMgr, state,
+            this.paragraphCache, this.getFontEpoch(),
+        );
         this.shapes.push(shape);
     }
 

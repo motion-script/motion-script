@@ -44,7 +44,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const theme = useEditorStore(s => s.theme);
     const playbackSpeed = useEditorStore(s => s.playbackSpeed);
     const isMuted = useEditorStore(s => s.isMuted);
-    const isLooping = useEditorStore(s => s.isLooping);
+    const loopMode = useEditorStore(s => s.loopMode);
     const sceneStartFrames = useEditorStore(s => s.sceneStartFrames);
 
     const previewZoom = useEditorStore(s => s.previewZoom);
@@ -84,7 +84,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
         const totalFrames = Math.round(duration * fps);
         if (totalFrames <= 0) return;
 
-        if (isLooping && sceneStartFrames.length > 0) {
+        if (loopMode === "scene" && sceneStartFrames.length > 0) {
             const activeSceneIndex = sceneStartFrames.reduce(
                 (best, start, i) => frame >= start ? i : best, 0
             );
@@ -96,10 +96,18 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
             }
         }
 
+        // Wrap one frame before the end: the playback controller auto-pauses
+        // the clock as soon as a tick lands on/after the last frame, so we have
+        // to seek back to 0 before that happens (mirrors the scene-loop guard).
+        if (loopMode === "video" && frame >= totalFrames - 1) {
+            frameRef.current?.seekWhilePlaying(0);
+            return;
+        }
+
         if (frame >= totalFrames) {
             setIsPlaying(false);
         }
-    }, [frameRef, fps, isLooping, sceneStartFrames, setCurrentFrame, setIsPlaying, setRootNode]);
+    }, [frameRef, fps, loopMode, sceneStartFrames, setCurrentFrame, setIsPlaying, setRootNode]);
 
     useEffect(() => {
         if (!snapshotRequested || !frameRef.current) return;

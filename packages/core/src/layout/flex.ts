@@ -261,11 +261,13 @@ export function layoutFlex<C extends FlexChild>(input: FlexLayoutInput<C>): BoxB
         let crossPos: number;
         if (mainIsRow) {
             if (align === "start") crossPos = -crossDim / 2 + childCross / 2 + padding.top;
-            else if (align === "center") crossPos = 0;
+            // Center on the *padded* inner area, not the box: asymmetric padding
+            // shifts the inner center by (top - bottom) / 2 (matches applyPadding).
+            else if (align === "center") crossPos = (padding.top - padding.bottom) / 2;
             else crossPos = crossDim / 2 - childCross / 2 - padding.bottom;
         } else {
             if (align === "start") crossPos = -crossDim / 2 + childCross / 2 + padding.left;
-            else if (align === "center") crossPos = 0;
+            else if (align === "center") crossPos = (padding.left - padding.right) / 2;
             else crossPos = crossDim / 2 - childCross / 2 - padding.right;
         }
 

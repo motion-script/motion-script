@@ -1,5 +1,5 @@
 import type { CanvasKit, Font, Paint, Canvas, TypefaceFontProvider, Typeface } from "@motion-script/canvaskit";
-import { TextState, withTextDescriptor, createPathSampler, type PathSampler, type FontStyle } from "@motion-script/core";
+import { TextState, withTextDescriptor, createPathSampler, type PathData, type PathSampler, type FontStyle } from "@motion-script/core";
 
 /**
  * Text-on-path layout: shape the string with ParagraphBuilder (so kerning,
@@ -12,6 +12,13 @@ import { TextState, withTextDescriptor, createPathSampler, type PathSampler, typ
  * shaping with `align` applied as a distance offset along the path. We draw each
  * glyph with our own `canvas.drawGlyphs` (one transformed draw per glyph) so the
  * normal fill/stroke/shadow handling still applies to the returned shape.
+ *
+ * The shaping work (ParagraphBuilder, font creation, per-glyph advances) depends
+ * only on the *text + font* inputs, never on the path — so an animating wave that
+ * rewrites `path` every frame would re-shape the whole string 60×/s for nothing.
+ * It's split into two phases: {@link shapeTextRun} (memoized on the shaping
+ * signature, owns the `Font`s) and {@link mapRunToPath} (cheap per-frame remap
+ * onto the current path). {@link layoutTextOnPath} composes them.
  */
 
 /** One placed glyph: drawn at (x,y) rotated by `angle`, offset back by half its advance to center it. */
@@ -29,8 +36,25 @@ interface PlacedGlyph {
 export interface TextPathLayout {
     glyphs: PlacedGlyph[];
     bounds: { left: number; top: number; right: number; bottom: number };
-    /** Fonts created during layout; caller must delete() each after drawing. */
-    fonts: Font[];
+}
+
+/** One shaped glyph in flat baseline space — everything the path remap needs, with no path baked in. */
+interface ShapedGlyph {
+    glyphId: number;
+    /** Distance of the glyph centre from the run start (used as arc-length along the path). */
+    midX: number;
+    /** Glyph advance, so the body can straddle its path point by half. */
+    advance: number;
+    /** Baseline offset from the line baseline (0 for a single line; kept for correctness). */
+    perp: number;
+    font: Font;
+}
+
+/** Path-independent result of shaping a run: the glyphs, the run width (for align), and the size used. */
+interface ShapedRun {
+    glyphs: ShapedGlyph[];
+    textWidth: number;
+    fontSize: number;
 }
 
 function fontSlantFor(canvasKit: CanvasKit, style: FontStyle) {
@@ -59,23 +83,76 @@ function alignOffset(align: TextState["align"], textWidth: number, pathLength: n
     }
 }
 
-export function layoutTextOnPath(
+// ─── Shape-phase memo ────────────────────────────────────────────────────────
+//
+// A ShapedRun owns CanvasKit Font objects, so the cache must delete() them on
+// eviction (mirrors GradientShaderCache). The entry is path-independent, so an
+// animating path reuses one shape pass for its whole flutter. Bounded so many
+// distinct strings/fonts can't grow the map without limit.
+
+interface ShapeCacheEntry {
+    run: ShapedRun;
+    fonts: Font[];
+}
+
+const SHAPE_CACHE_LIMIT = 64;
+const shapeCache = new Map<string, ShapeCacheEntry>();
+
+function shapeSignature(full: TextState, fontSize: number): string {
+    return [
+        full.text,
+        full.fontFamily,
+        fontSize,
+        full.fontWeight,
+        full.fontStyle,
+        full.letterSpacing,
+        full.lineHeight,
+    ].join("");
+}
+
+/**
+ * Shape the run with ParagraphBuilder and reduce it to path-independent glyphs.
+ * Memoized on the shaping signature; the returned {@link ShapedRun} (and the
+ * `Font`s it references) is owned by the cache and must not be deleted by callers.
+ */
+function shapeTextRun(
     canvasKit: CanvasKit,
     fontMgr: TypefaceFontProvider,
-    state: Partial<TextState>,
-): TextPathLayout {
-    const full = withTextDescriptor(state);
+    full: TextState,
+    fontSize: number,
+): ShapedRun | null {
+    const key = shapeSignature(full, fontSize);
+    const cached = shapeCache.get(key);
+    if (cached) {
+        // Refresh recency so the Map iteration order acts as a simple LRU.
+        shapeCache.delete(key);
+        shapeCache.set(key, cached);
+        return cached.run;
+    }
+
+    const run = buildShapedRun(canvasKit, fontMgr, full, fontSize);
+    if (!run) return null;
+
+    shapeCache.set(key, { run: run.run, fonts: run.fonts });
+    if (shapeCache.size > SHAPE_CACHE_LIMIT) {
+        const oldest = shapeCache.keys().next().value as string | undefined;
+        if (oldest !== undefined) {
+            const evicted = shapeCache.get(oldest);
+            shapeCache.delete(oldest);
+            if (evicted) for (const f of evicted.fonts) f.delete();
+        }
+    }
+    return run.run;
+}
+
+/** The actual ParagraphBuilder shaping pass; returns the run plus the Fonts it created. */
+function buildShapedRun(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    full: TextState,
+    fontSize: number,
+): { run: ShapedRun; fonts: Font[] } | null {
     const fonts: Font[] = [];
-    const empty: TextPathLayout = { glyphs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 }, fonts };
-
-    if (full.text.length === 0 || full.path == null) return empty;
-
-    const sampler: PathSampler = createPathSampler(full.path);
-    if (sampler.length <= 0) return empty;
-
-    // Autofit has no meaning on a path (no box to fit); use a fixed fallback size
-    // like the segmented path does, so the text still shapes.
-    const fontSize = full.fontSize === 'autofit' ? 100 : full.fontSize;
 
     // Shape left-aligned with no wrap/box so glyph x-positions are pure distance
     // from the text start; `align` is then applied as a path-distance offset.
@@ -110,12 +187,12 @@ export function layoutTextOnPath(
     // typeface comes back variation-positioned at the run's weight.
     const fontCache = new Map<string, Font>();
     const fontForRun = (typeface: Typeface | null): Font => {
-        const key = `${full.fontFamily}@${full.fontWeight}@${full.fontStyle}@${fontSize}`;
-        const cached = fontCache.get(key);
-        if (cached) { typeface?.delete(); return cached; }
+        const fkey = `${full.fontFamily}@${full.fontWeight}@${full.fontStyle}@${fontSize}`;
+        const c = fontCache.get(fkey);
+        if (c) { typeface?.delete(); return c; }
         const font = new canvasKit.Font(typeface, fontSize);
         typeface?.delete();
-        fontCache.set(key, font);
+        fontCache.set(fkey, font);
         fonts.push(font);
         return font;
     };
@@ -125,7 +202,8 @@ export function layoutTextOnPath(
     const line = lines[0];
     if (!line) {
         paragraph.delete(); builder.delete(); fontCollection.delete();
-        return empty;
+        for (const f of fonts) f.delete();
+        return null;
     }
 
     // Total advance of the run(s) on this line = its right edge, used for align.
@@ -134,7 +212,45 @@ export function layoutTextOnPath(
         const n = run.glyphs.length;
         if (n > 0) textWidth = Math.max(textWidth, run.positions[n * 2]); // trailing slot x
     }
-    const offset = alignOffset(full.align, textWidth, sampler.length);
+
+    const glyphs: ShapedGlyph[] = [];
+    for (const run of line.runs) {
+        const n = run.glyphs.length;
+        if (n === 0) continue;
+        const font = fontForRun(run.typeface);
+
+        for (let i = 0; i < n; i++) {
+            const startX = run.positions[i * 2];
+            const advance = run.positions[(i + 1) * 2] - startX; // trailing slot makes this valid for the last glyph
+            const midX = startX + advance / 2;
+            // perp: glyph baseline offset from the line baseline. Zero for a single
+            // line; kept for correctness.
+            const perp = run.positions[i * 2 + 1] - line.baseline;
+            glyphs.push({ glyphId: run.glyphs[i], midX, advance, perp, font });
+        }
+    }
+
+    paragraph.delete();
+    builder.delete();
+    fontCollection.delete();
+
+    return { run: { glyphs, textWidth, fontSize }, fonts };
+}
+
+// ─── Map phase ───────────────────────────────────────────────────────────────
+
+/**
+ * Map an already-shaped run onto `path`: sample the path by arc length and place
+ * each glyph at its centre distance, rotated to the tangent. Cheap — no shaping,
+ * no font creation — so it's safe to run every frame as the path animates.
+ */
+function mapRunToPath(run: ShapedRun, path: PathData, align: TextState["align"]): TextPathLayout {
+    const empty: TextPathLayout = { glyphs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 } };
+
+    const sampler: PathSampler = createPathSampler(path);
+    if (sampler.length <= 0) return empty;
+
+    const offset = alignOffset(align, run.textWidth, sampler.length);
 
     const glyphs: PlacedGlyph[] = [];
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -145,45 +261,50 @@ export function layoutTextOnPath(
         if (y > maxY) maxY = y;
     };
 
-    for (const run of line.runs) {
-        const n = run.glyphs.length;
-        if (n === 0) continue;
-        const font = fontForRun(run.typeface);
+    for (const g of run.glyphs) {
+        const d = g.midX + offset;
+        if (d < 0 || d > sampler.length) continue; // clip overflow
 
-        for (let i = 0; i < n; i++) {
-            const startX = run.positions[i * 2];
-            const advance = run.positions[(i + 1) * 2] - startX; // trailing slot makes this valid for the last glyph
-            const midX = startX + advance / 2;
-            const d = midX + offset;
-            if (d < 0 || d > sampler.length) continue; // clip overflow
+        const frame = sampler.frameAt(d);
+        if (!frame) continue;
 
-            const frame = sampler.frameAt(d);
-            if (!frame) continue;
+        // Normal N = (-ty, tx) (y-down canvas).
+        const x = frame.x + g.perp * -frame.ty;
+        const y = frame.y + g.perp * frame.tx;
+        const angle = Math.atan2(frame.ty, frame.tx) * 180 / Math.PI;
 
-            // perp: glyph baseline offset from the line baseline. Zero for a single
-            // line; kept for correctness. Normal N = (-ty, tx) (y-down canvas).
-            const perp = run.positions[i * 2 + 1] - line.baseline;
-            const x = frame.x + perp * -frame.ty;
-            const y = frame.y + perp * frame.tx;
-            const angle = Math.atan2(frame.ty, frame.tx) * 180 / Math.PI;
-
-            glyphs.push({ glyphId: run.glyphs[i], x, y, angle, halfAdvance: advance / 2, font });
-            expand(x, y);
-        }
+        glyphs.push({ glyphId: g.glyphId, x, y, angle, halfAdvance: g.advance / 2, font: g.font });
+        expand(x, y);
     }
-
-    paragraph.delete();
-    builder.delete();
-    fontCollection.delete();
 
     // Pad the bounds by the font size so glyph extents (ascenders/descenders) are
     // covered — glyph outlines extend beyond their pen point. Conservative is fine.
-    const pad = fontSize;
+    const pad = run.fontSize;
     const bounds = glyphs.length > 0
         ? { left: minX - pad, top: minY - pad, right: maxX + pad, bottom: maxY + pad }
         : { left: 0, top: 0, right: 0, bottom: 0 };
 
-    return { glyphs, bounds, fonts };
+    return { glyphs, bounds };
+}
+
+export function layoutTextOnPath(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    state: Partial<TextState>,
+): TextPathLayout {
+    const full = withTextDescriptor(state);
+    const empty: TextPathLayout = { glyphs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 } };
+
+    if (full.text.length === 0 || full.path == null) return empty;
+
+    // Autofit has no meaning on a path (no box to fit); use a fixed fallback size
+    // like the segmented path does, so the text still shapes.
+    const fontSize = full.fontSize === 'autofit' ? 100 : full.fontSize;
+
+    const run = shapeTextRun(canvasKit, fontMgr, full, fontSize);
+    if (!run) return empty;
+
+    return mapRunToPath(run, full.path, full.align);
 }
 
 /** Draw placed glyphs, one transformed draw per glyph (rotates about the glyph center). */

@@ -1,8 +1,9 @@
 import type { CanvasKit, Canvas, Paint, TypefaceFontProvider } from "@motion-script/canvaskit";
 import { TextState, withTextDescriptor } from "@motion-script/core";
 import type { CurrentShape } from "./shape-handler";
-import { layoutParagraph, drawShapedRun, type ParagraphSegment } from "./paragraph-layout";
+import { layoutParagraph, drawShapedRunAt, type ParagraphSegment } from "./paragraph-layout";
 import { layoutTextOnPath, drawTextOnPath } from "./text-path";
+import { ParagraphShapeCache, shapeKey, shapeKeyInputsFor } from "./paragraph-cache";
 
 /**
  * Lay out a Text node into a drawable `CurrentShape`. When `fontSize` is
@@ -11,12 +12,19 @@ import { layoutTextOnPath, drawTextOnPath } from "./text-path";
  * wrapping takes over instead. Returned shape has no `ckPath` (`isText: true`)
  * since glyph paths aren't available — strokes/fills fall back to glyph-union
  * handling elsewhere.
+ *
+ * The final straight-text layout is memoized in {@link paragraphCache} keyed on
+ * the text + font + wrap inputs (the origin is excluded: it's applied at draw
+ * time so an animating node position reuses one shape pass). Cache-backed Fonts
+ * are owned by the cache and must not be deleted here.
  */
 export function buildText(
     canvasKit: CanvasKit,
     canvas: Canvas,
     fontMgr: TypefaceFontProvider,
     state: Partial<TextState>,
+    paragraphCache: ParagraphShapeCache,
+    fontEpoch: number,
 ): CurrentShape {
     const fullState = withTextDescriptor(state);
 
@@ -24,8 +32,10 @@ export function buildText(
     // per-glyph transforms. `isText: false` (no ckPath) so strokes take the
     // centered Skia-stroke fallback per glyph rather than the glyph-union path
     // (which is meaningless and costly when glyphs are spread along a curve).
-    // Fonts live in the closure for the shape's deferred draw, matching the
-    // straight-text path's font lifetime.
+    // The shaping (and its Fonts) is memoized inside layoutTextOnPath keyed on
+    // the text+font signature, so an animating path only re-maps glyphs onto the
+    // new wave each frame; the Fonts the placed glyphs reference are owned by that
+    // cache and outlive this draw closure (we must not delete them here).
     if (fullState.path != null) {
         const layout = layoutTextOnPath(canvasKit, fontMgr, state);
         return {
@@ -74,22 +84,41 @@ export function buildText(
         }
     }
 
-    const layout = layoutParagraph(canvasKit, fontMgr, [segment(fontSize)], {
+    // Shape at origin (0,0) and cache on the text/font/wrap signature; the node's
+    // (x, y) is applied at draw time and to the bounds, so a node that moves every
+    // frame (e.g. each Code token) reuses one shaped run instead of re-shaping.
+    const maxWidth = wrap ? fullState.width : Infinity;
+    const seg = segment(fontSize);
+    const key = shapeKey(
+        shapeKeyInputsFor(seg, fullState.align, fullState.lineHeight, maxWidth, fullState.width),
+        fontEpoch,
+    );
+    const { layout } = paragraphCache.get(key, () => layoutParagraph(canvasKit, fontMgr, [seg], {
         align: fullState.align,
         lineHeight: fullState.lineHeight,
-        maxWidth: wrap ? fullState.width : Infinity,
+        maxWidth,
         // When not wrapping, the box width drives `align` placement within the box.
         boxWidth: fullState.width,
-        originX: x,
-        originY: y,
-    });
+        originX: 0,
+        originY: 0,
+    }));
+
+    // Cached layout is origin-(0,0); shift its bounds into the node's space so
+    // bounds-resolved fills (gradients/images) and getShapeBounds() see the same
+    // absolute box the original origin-baked layout produced.
+    const b = layout.bounds;
+    const bounds = { left: b.left + x, top: b.top + y, right: b.right + x, bottom: b.bottom + y };
 
     return {
-        bounds: layout.bounds,
+        bounds,
         isText: true,
         draw: (paint: Paint) => {
+            // Apply the node origin as a per-glyph offset (drawGlyphs adds it in the
+            // shape's pre-CTM space), NOT a canvas translate — that keeps the glyphs
+            // aligned with a shader the fill handler built from the absolute bounds
+            // above. Identical placement to baking origin into the positions.
             for (const run of layout.runs) {
-                drawShapedRun(canvas, run, paint);
+                drawShapedRunAt(canvas, run, x, y, paint);
             }
         },
     };

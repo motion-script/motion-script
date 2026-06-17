@@ -258,3 +258,13 @@ function segmentIndexAt(starts: number[], segments: ParagraphSegment[], charPos:
 export function drawShapedRun(canvas: Canvas, run: ShapedRun, paint: Paint): void {
     canvas.drawGlyphs(run.glyphs, run.positions, 0, 0, run.font, paint);
 }
+
+/**
+ * Draw a shaped run offset by (dx, dy). `drawGlyphs`' x/y args add to every glyph
+ * position in the shape's own (pre-CTM) space, so this places origin-(0,0) cached
+ * glyphs exactly where baking the origin into the positions would — keeping
+ * bounds-resolved fills (gradients/images) aligned without a canvas transform.
+ */
+export function drawShapedRunAt(canvas: Canvas, run: ShapedRun, dx: number, dy: number, paint: Paint): void {
+    canvas.drawGlyphs(run.glyphs, run.positions, dx, dy, run.font, paint);
+}

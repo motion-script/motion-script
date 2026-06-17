@@ -1,7 +1,9 @@
 import * as React from "react"
+import { Repeat, Repeat1 } from "lucide-react"
 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useEditorStore } from "@/providers/editor-provider";
 
 export const EditorToolbar: React.FC = () => {
@@ -14,8 +16,8 @@ export const EditorToolbar: React.FC = () => {
   const requestSnapshot = useEditorStore((s) => s.requestSnapshot);
   const playbackSpeed = useEditorStore((s) => s.playbackSpeed);
   const setPlaybackSpeed = useEditorStore((s) => s.setPlaybackSpeed);
-  const isLooping = useEditorStore((s) => s.isLooping);
-  const setIsLooping = useEditorStore((s) => s.setIsLooping);
+  const loopMode = useEditorStore((s) => s.loopMode);
+  const cycleLoopMode = useEditorStore((s) => s.cycleLoopMode);
   const isMuted = useEditorStore((s) => s.isMuted);
   const toggleMuted = useEditorStore((s) => s.toggleMuted);
   const replay = useEditorStore((s) => s.replay);
@@ -225,15 +227,24 @@ export const EditorToolbar: React.FC = () => {
           </svg>
         </button>
 
-        <button
-          onClick={() => setIsLooping(!isLooping)}
-          className={`h-8 px-2 rounded-lg cursor-pointer ${isLooping ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-toolbar-control'}`}
-          title="Loop current scene"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`size-5 ${isLooping ? 'text-primary' : 'text-muted-foreground'}`}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={cycleLoopMode}
+            className={`h-8 px-2 rounded-lg cursor-pointer ${loopMode !== "off" ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-toolbar-control'}`}
+          >
+            {loopMode === "scene" ? (
+              <Repeat1 className="size-5 text-primary" strokeWidth={1.5} />
+            ) : (
+              <Repeat
+                className={`size-5 ${loopMode === "video" ? "text-primary" : "text-muted-foreground"}`}
+                strokeWidth={1.5}
+              />
+            )}
+          </TooltipTrigger>
+          <TooltipContent>
+            {loopMode === "scene" ? "Loop Scene" : loopMode === "video" ? "Loop Video" : "No Loop"}
+          </TooltipContent>
+        </Tooltip>
 
         <button onClick={requestSnapshot} className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 text-muted-foreground">

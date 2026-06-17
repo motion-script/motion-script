@@ -1,6 +1,7 @@
 import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
 import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
+import { ParagraphShapeCache } from "./shapes/paragraph-cache";
 
 interface CachedPixels {
     width: number;
@@ -104,6 +105,21 @@ export class WebStorageAdapter extends StorageAdapter {
 
     /** Families already registered with the font provider (registered once, all weights at once). */
     private registeredFontFamilies = new Set<string>();
+
+    /**
+     * Cache of shaped straight-text runs, so text whose string/font is unchanged
+     * across frames isn't re-shaped through CanvasKit every frame (the Code node's
+     * per-token-per-frame draw, plus any static {@link Text}). Owns the cached
+     * Fonts; disposed with the adapter (whose {@link fontMgr} the fonts derive
+     * from). See {@link ParagraphShapeCache}.
+     */
+    private paragraphCache = new ParagraphShapeCache();
+    /**
+     * Bumped whenever a new font family registers. Folded into the paragraph
+     * cache key so any run shaped before its family loaded (and thus shaped with
+     * a fallback face) is invalidated the moment the real family arrives.
+     */
+    private fontEpoch = 0;
 
     /**
      * Frames to keep cached in the dominant direction of motion. With a 1400×800
@@ -665,10 +681,23 @@ export class WebStorageAdapter extends StorageAdapter {
         }));
 
         this.registeredFontFamilies.add(fontFamily);
+        // A new face just became available: invalidate any paragraph shaped
+        // against the old (fallback) face for this or any family.
+        this.fontEpoch++;
     }
 
     getFontMgr(): TypefaceFontProvider {
         return this.fontMgr;
+    }
+
+    /** The shared shaped-text cache (see {@link paragraphCache}). */
+    getParagraphCache(): ParagraphShapeCache {
+        return this.paragraphCache;
+    }
+
+    /** Current font-registration epoch, folded into paragraph cache keys. */
+    getFontEpoch(): number {
+        return this.fontEpoch;
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
@@ -676,6 +705,8 @@ export class WebStorageAdapter extends StorageAdapter {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+
+        this.paragraphCache.dispose();
 
         for (const img of this.imageCKCache.values()) img.delete();
         this.imageCKCache.clear();

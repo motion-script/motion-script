@@ -50,7 +50,8 @@ import {
 
 
 import { layoutRichText } from "./shapes/richtext";
-import { drawShapedRun, layoutParagraph } from "./shapes/paragraph-layout";
+import { drawShapedRun } from "./shapes/paragraph-layout";
+import { measureTextCached } from "./shapes/paragraph-cache";
 import { layoutTextSegments, runCenter } from "./shapes/text-segments";
 import { ImageNodeRenderer } from "./shapes/image";
 import { RectShape } from "./shapes/rect";
@@ -182,17 +183,13 @@ export class WebRenderContext extends RenderContext {
         this.buildHandlers();
     }
     measureText(text: string, fontSize: number, fontFamily: string, fontWeight: number = 400, letterSpacing: number = 0, fontStyle: FontStyle = 'normal'): number {
-        if (text.length === 0) return 0;
-        const fontMgr = this.storageAdapter.getFontMgr();
-        const layout = layoutParagraph(
+        return measureTextCached(
             this.canvasKit,
-            fontMgr,
-            [{ text, fontFamily, fontSize, fontWeight, letterSpacing, fontStyle }],
-            { align: 'center', lineHeight: 1, maxWidth: Infinity, originX: 0, originY: 0 },
+            this.storageAdapter.getFontMgr(),
+            this.storageAdapter.getParagraphCache(),
+            this.storageAdapter.getFontEpoch(),
+            text, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle,
         );
-        const w = layout.width;
-        for (const f of layout.fonts) f.delete();
-        return w;
     }
     private buildHandlers(): void {
         const getCanvas = () => this.currentCanvas;
@@ -203,6 +200,8 @@ export class WebRenderContext extends RenderContext {
             getCanvas,
             getPaint,
             this.storageAdapter.getFontMgr(),
+            this.storageAdapter.getParagraphCache(),
+            () => this.storageAdapter.getFontEpoch(),
         );
 
         const getWorldAlpha = () => this.worldAlpha;

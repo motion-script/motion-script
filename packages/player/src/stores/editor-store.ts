@@ -1,5 +1,7 @@
 import { AssetManifest, Scene, Color, NodeState, TreeState, type ProjectConfig, type Size2D } from "@motion-script/core";
 
+export type LoopMode = "off" | "scene" | "video";
+
 export type BuildError = {
     sceneName: string;
     sceneIndex: number;
@@ -75,8 +77,9 @@ export type EditorState = {
     selectedNode: NodeState | null;
     setSelectedNode: (node: NodeState | null) => void;
 
-    isLooping: boolean;
-    setIsLooping: (looping: boolean) => void;
+    loopMode: LoopMode;
+    setLoopMode: (mode: LoopMode) => void;
+    cycleLoopMode: () => void;
 
     isMuted: boolean;
     setIsMuted: (muted: boolean) => void;
@@ -200,8 +203,13 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
         selectedNode: null,
         setSelectedNode: (node) => set(() => ({ selectedNode: node })),
 
-        isLooping: false,
-        setIsLooping: (looping) => set(() => ({ isLooping: looping })),
+        loopMode: "off",
+        setLoopMode: (mode) => set(() => ({ loopMode: mode })),
+        cycleLoopMode: () => set((s) => {
+            const order: LoopMode[] = ["off", "scene", "video"];
+            const next = order[(order.indexOf(s.loopMode) + 1) % order.length];
+            return { loopMode: next };
+        }),
 
         isMuted: false,
         setIsMuted: (muted) => set(() => ({ isMuted: muted })),
