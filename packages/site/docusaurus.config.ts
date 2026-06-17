@@ -244,14 +244,6 @@ const config: Config = {
         },
         { to: '/blog', label: 'Blog', position: 'left' },
         {
-          // "Translate" dropdown (top right). Built-in locale switcher; styled
-          // in custom.css (`.navbar__locale-dropdown`) to read as a globe +
-          // "Translate" pill matching the landing-page dropdown.
-          type: 'localeDropdown',
-          position: 'right',
-          className: 'navbar__locale-dropdown',
-        },
-        {
           href: 'https://github.com/motion-script/motion-script',
           // `navbar__github-link` is styled in custom.css to match the landing
           // page: an octocat icon + "GitHub" label inside a rounded pill.
