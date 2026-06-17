@@ -2,6 +2,10 @@ import { AssetManifest, Scene, Color, NodeState, TreeState, type ProjectConfig, 
 
 export type LoopMode = "off" | "scene" | "video";
 
+// "column": video preview above the timeline (default).
+// "row": timeline on the left, video preview on the right — better for vertical videos.
+export type PlayerLayout = "column" | "row";
+
 export type BuildError = {
     sceneName: string;
     sceneIndex: number;
@@ -58,6 +62,10 @@ export type EditorState = {
     timelineCollapsed: boolean;
     setTimelineCollapsed: (collapsed: boolean) => void;
     toggleTimelineCollapsed: () => void;
+
+    playerLayout: PlayerLayout;
+    setPlayerLayout: (layout: PlayerLayout) => void;
+    togglePlayerLayout: () => void;
 
     previewZoom: number;
     previewPan: { x: number; y: number };
@@ -182,6 +190,10 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
         timelineCollapsed: false,
         setTimelineCollapsed: (collapsed) => set(() => ({ timelineCollapsed: collapsed })),
         toggleTimelineCollapsed: () => set((s) => ({ timelineCollapsed: !s.timelineCollapsed })),
+
+        playerLayout: "column",
+        setPlayerLayout: (layout) => set(() => ({ playerLayout: layout })),
+        togglePlayerLayout: () => set((s) => ({ playerLayout: s.playerLayout === "column" ? "row" : "column" })),
 
         previewZoom: 1,
         previewPan: { x: 0, y: 0 },

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FrameHandle } from "@motion-script/react";
 import { TimelineRuler } from "@/components/timeline/timeline";
 import { VideoPreview } from "./video-preview";
+import { PlaybackControls } from "./playback-controls";
 import { ScenePanel } from "./scene-panel";
 import { useExport } from "../export/use-export";
 import { ExportDialog } from "../export/export-dialog";
@@ -17,11 +18,18 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MenuIcon } from "lucide-react";
 
 // Collapsed timeline shows only the toolbar (h-12), ruler row and scene row.
+// In the side-by-side (row) layout the timeline collapses to a narrow column.
 const TIMELINE_COLLAPSED_HEIGHT = "112px";
+const TIMELINE_COLLAPSED_WIDTH = "260px";
 
 // ---------------------------------------------------------------------------
-// EditorLayout — top-level grid: scene panel | (preview / timeline) resizable
-// vertical split. The timeline panel's collapsed state is driven both ways:
+// EditorLayout — top-level grid: scene panel | (preview ⇄ timeline) resizable
+// split. The split orientation follows editorStore.playerLayout:
+//   "column" → preview above the timeline (default).
+//   "row"    → timeline on the left, preview on the right (good for vertical
+//              videos). The transport (PlaybackControls) always sits directly
+//              below the video preview in either layout.
+// The timeline panel's collapsed state is driven both ways:
 // editorStore.timelineCollapsed <-> the resizable panel's own collapse/expand,
 // so the toolbar's collapse arrow and the panel's drag handle stay in sync
 // (see the effect below and `onResize` on the timeline ResizablePanel).
@@ -32,6 +40,7 @@ export function EditorLayout() {
     const scenes = useEditorStore(s => s.scenes);
     const timelineCollapsed = useEditorStore(s => s.timelineCollapsed);
     const setTimelineCollapsed = useEditorStore(s => s.setTimelineCollapsed);
+    const playerLayout = useEditorStore(s => s.playerLayout);
 
     const frameRef = useRef<FrameHandle>(null);
     const timelinePanelRef = useRef<PanelImperativeHandle>(null);
@@ -43,12 +52,22 @@ export function EditorLayout() {
     const [sceneDrawerOpen, setSceneDrawerOpen] = useState(false);
 
     // Drive the resizable panel from the collapse state (toolbar arrow / store).
+    // Re-runs on layout change too: switching column ⇄ row remounts the panel
+    // group, so the freshly-mounted timeline panel must re-adopt the collapsed
+    // state. A microtask defers until after the new panel has registered.
     useEffect(() => {
-        const panel = timelinePanelRef.current;
-        if (!panel) return;
-        if (timelineCollapsed && !panel.isCollapsed()) panel.collapse();
-        else if (!timelineCollapsed && panel.isCollapsed()) panel.expand();
-    }, [timelineCollapsed]);
+        let cancelled = false;
+        const sync = () => {
+            if (cancelled) return;
+            const panel = timelinePanelRef.current;
+            if (!panel) return;
+            if (timelineCollapsed && !panel.isCollapsed()) panel.collapse();
+            else if (!timelineCollapsed && panel.isCollapsed()) panel.expand();
+        };
+        // Defer one frame so the panel group has mounted after a layout switch.
+        const id = requestAnimationFrame(sync);
+        return () => { cancelled = true; cancelAnimationFrame(id); };
+    }, [timelineCollapsed, playerLayout]);
 
     // Export state and dialog
     const exportState = useExport();
@@ -104,53 +123,87 @@ export function EditorLayout() {
                         </Drawer>
                     )}
                     <main className="flex-1 flex flex-col min-w-0 px-1">
-                        <ResizablePanelGroup orientation="vertical" className="flex-1 min-h-0">
-                            <ResizablePanel defaultSize={70} minSize={20} className="flex flex-col h-full min-h-0">
-                                {/* Top bar */}
-                                <header className="grid grid-cols-3 items-center h-11 px-4 border-b mt-1 rounded-t-lg bg-panel shrink-0">
+                        {(() => {
+                            const isRow = playerLayout === "row";
 
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        {isMobile && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-sm"
-                                                className="shrink-0 -ml-1.5"
-                                                aria-label="Open scenes"
-                                                onClick={() => setSceneDrawerOpen(true)}
-                                            >
-                                                <MenuIcon />
-                                            </Button>
-                                        )}
-                                        <span className="text-sm font-medium text-muted-foreground truncate">{projectName}</span>
-                                    </div>
-                                    <div className="flex items-center justify-center">
-                                        <PreviewZoomControls />
-                                    </div>
-                                    <div className="flex items-center justify-end gap-2">
-                                        <ErrorsButton />
-                                        <ExportButton exportState={exportState} onOpenDialog={openExportDialog} />
-                                    </div>
-                                </header>
-                                <VideoPreview frameRef={frameRef} />
-                            </ResizablePanel>
-                            <ResizableHandle withHandle className="my-1 bg-transparent" />
-                            <ResizablePanel
-                                panelRef={timelinePanelRef}
-                                defaultSize={30}
-                                minSize={10}
-                                collapsible
-                                collapsedSize={TIMELINE_COLLAPSED_HEIGHT}
-                                onResize={() => {
-                                    const collapsed = timelinePanelRef.current?.isCollapsed() ?? false;
-                                    if (collapsed !== timelineCollapsed) {
-                                        setTimelineCollapsed(collapsed);
-                                    }
-                                }}
-                                className="h-full min-h-0 pb-1"
-                            >
-                                <TimelineRuler />
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
+                            // The preview block: header, the video preview, and the
+                            // transport. The transport always sits directly below the
+                            // preview, in both layouts.
+                            const previewBlock = (
+                                <div className="flex flex-col h-full min-h-0 min-w-0">
+                                    {/* Top bar */}
+                                    <header className="grid grid-cols-3 items-center h-11 px-4 border-b mt-1 rounded-t-lg bg-panel shrink-0">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {isMobile && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    className="shrink-0 -ml-1.5"
+                                                    aria-label="Open scenes"
+                                                    onClick={() => setSceneDrawerOpen(true)}
+                                                >
+                                                    <MenuIcon />
+                                                </Button>
+                                            )}
+                                            <span className="text-sm font-medium text-muted-foreground truncate">{projectName}</span>
+                                        </div>
+                                        <div className="flex items-center justify-center">
+                                            <PreviewZoomControls />
+                                        </div>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <ErrorsButton />
+                                            <ExportButton exportState={exportState} onOpenDialog={openExportDialog} />
+                                        </div>
+                                    </header>
+                                    <VideoPreview frameRef={frameRef} />
+                                    {/* In column mode the transport lives inside the
+                                        timeline toolbar; in row mode it sits here under
+                                        the preview (the toolbar is a narrow left column). */}
+                                    {isRow && <PlaybackControls />}
+                                </div>
+                            );
+
+                            const timelinePanel = (
+                                <ResizablePanel
+                                    panelRef={timelinePanelRef}
+                                    defaultSize={30}
+                                    minSize={10}
+                                    collapsible
+                                    collapsedSize={isRow ? TIMELINE_COLLAPSED_WIDTH : TIMELINE_COLLAPSED_HEIGHT}
+                                    onResize={() => {
+                                        const collapsed = timelinePanelRef.current?.isCollapsed() ?? false;
+                                        if (collapsed !== timelineCollapsed) {
+                                            setTimelineCollapsed(collapsed);
+                                        }
+                                    }}
+                                    className={isRow ? "h-full min-h-0 min-w-0 pr-1" : "h-full min-h-0 pb-1"}
+                                >
+                                    <TimelineRuler />
+                                </ResizablePanel>
+                            );
+
+                            const previewPanel = (
+                                <ResizablePanel defaultSize={70} minSize={20} className="flex flex-col h-full min-h-0 min-w-0">
+                                    {previewBlock}
+                                </ResizablePanel>
+                            );
+
+                            // Row layout keys the group so switching orientation
+                            // remounts it cleanly (panel sizes are orientation-bound).
+                            return isRow ? (
+                                <ResizablePanelGroup key="row" orientation="horizontal" className="flex-1 min-h-0">
+                                    {timelinePanel}
+                                    <ResizableHandle withHandle className="mx-1 bg-transparent" />
+                                    {previewPanel}
+                                </ResizablePanelGroup>
+                            ) : (
+                                <ResizablePanelGroup key="column" orientation="vertical" className="flex-1 min-h-0">
+                                    {previewPanel}
+                                    <ResizableHandle withHandle className="my-1 bg-transparent" />
+                                    {timelinePanel}
+                                </ResizablePanelGroup>
+                            );
+                        })()}
                     </main>
                 </div>
 
