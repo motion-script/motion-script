@@ -1,32 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { FilterRegistry } from '@/attributes/shape/filters/registry';
-import { MediaFilter } from '@/attributes/shape/filters/union';
-// Importing the implementations registers them via module side effects.
-import '@/attributes/shape/filters/implementations/blur';
-import '@/attributes/shape/filters/implementations/alpha';
-import '@/attributes/shape/filters/implementations/grayscale';
-import '@/attributes/shape/filters/implementations/curves';
+import { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter } from '@/attributes/shape/filters/registry';
+import { MediaFilter, VideoMediaFilter } from '@/attributes/shape/filters/union';
+import { blurFilter } from '@/attributes/shape/filters/implementations/blur';
+import { curvesFilter } from '@/attributes/shape/filters/implementations/curves';
 
-describe('FilterRegistry – registration', () => {
-    it('reports registered built-in filters via has()', () => {
-        expect(FilterRegistry.has('blur')).toBe(true);
-        expect(FilterRegistry.has('alpha')).toBe(true);
+type AnyFilter = MediaFilter | VideoMediaFilter;
+
+describe('FILTERS map', () => {
+    it('contains every built-in filter, including the new video-only ones', () => {
+        for (const type of ['blur', 'alpha', 'grayscale', 'curves', 'posterizeTime', 'echo']) {
+            expect(hasFilter(type)).toBe(true);
+        }
+        expect(hasFilter('does-not-exist')).toBe(false);
     });
 
-    it('returns undefined for an unknown type', () => {
-        expect(FilterRegistry.get('does-not-exist')).toBeUndefined();
-    });
-
-    it('throws when the same type is registered twice', () => {
-        const dummy = { lerp: (a: any) => a, equals: () => true };
-        FilterRegistry.register('test-unique-type', dummy as any);
-        expect(() => FilterRegistry.register('test-unique-type', dummy as any)).toThrow(/already registered/i);
+    it('classifies pixel vs video-only filters', () => {
+        expect(isPixelFilter('blur')).toBe(true);
+        expect(isPixelFilter('colorAdjustment')).toBe(true);
+        expect(isPixelFilter('posterizeTime')).toBe(false);
+        expect(isPixelFilter('echo')).toBe(false);
     });
 });
 
-describe('FilterRegistry.lerp', () => {
-    it('interpolates two filters of the same registered type', () => {
-        const result = FilterRegistry.lerp(
+describe('lerpFilter', () => {
+    it('interpolates two filters of the same type (no longer hard-cuts — the populated-map fix)', () => {
+        const result = lerpFilter(
             { type: 'blur', value: 0 },
             { type: 'blur', value: 10 },
             0.5,
@@ -34,54 +32,72 @@ describe('FilterRegistry.lerp', () => {
         expect(result.value).toBe(5);
     });
 
+    it('interpolates the new posterizeTime fps', () => {
+        const result = lerpFilter(
+            { type: 'posterizeTime', fps: 4 },
+            { type: 'posterizeTime', fps: 12 },
+            0.5,
+        ) as Extract<VideoMediaFilter, { type: 'posterizeTime' }>;
+        expect(result.fps).toBe(8);
+    });
+
+    it('interpolates echo fields and hard-cuts the discrete blend', () => {
+        const result = lerpFilter(
+            { type: 'echo', echoes: 2, delay: 0.1, decay: 0.4, blend: 'screen' },
+            { type: 'echo', echoes: 6, delay: 0.3, decay: 0.8, blend: 'lighten' },
+            0.5,
+        ) as Extract<VideoMediaFilter, { type: 'echo' }>;
+        expect(result.echoes).toBe(4);
+        expect(result.delay).toBeCloseTo(0.2, 6);
+        expect(result.decay).toBeCloseTo(0.6, 6);
+        expect(result.blend).toBe('lighten');
+    });
+
     it('hard-cuts at t=0.5 when the two filter types differ', () => {
-        const from: MediaFilter = { type: 'blur', value: 1 };
-        const to: MediaFilter = { type: 'alpha', value: 1 };
-        expect(FilterRegistry.lerp(from, to, 0.4)).toBe(from);
-        expect(FilterRegistry.lerp(from, to, 0.6)).toBe(to);
+        const from: AnyFilter = { type: 'blur', value: 1 };
+        const to: AnyFilter = { type: 'alpha', value: 1 };
+        expect(lerpFilter(from, to, 0.4)).toBe(from);
+        expect(lerpFilter(from, to, 0.6)).toBe(to);
     });
 });
 
-describe('FilterRegistry.lerpArray', () => {
+describe('lerpFilterArray', () => {
     it('lerps matched indices pairwise', () => {
-        const from: MediaFilter[] = [{ type: 'blur', value: 0 }];
-        const to: MediaFilter[] = [{ type: 'blur', value: 8 }];
-        const out = FilterRegistry.lerpArray(from, to, 0.5);
-        expect(out).toEqual([{ type: 'blur', value: 4 }]);
+        const from: AnyFilter[] = [{ type: 'blur', value: 0 }];
+        const to: AnyFilter[] = [{ type: 'blur', value: 8 }];
+        expect(lerpFilterArray(from, to, 0.5)).toEqual([{ type: 'blur', value: 4 }]);
     });
 
     it('keeps extra source entries when the target is shorter', () => {
-        const from: MediaFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 1 }];
-        const to: MediaFilter[] = [{ type: 'blur', value: 2 }];
-        const out = FilterRegistry.lerpArray(from, to, 0.5);
+        const from: AnyFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 1 }];
+        const to: AnyFilter[] = [{ type: 'blur', value: 2 }];
+        const out = lerpFilterArray(from, to, 0.5);
         expect(out).toHaveLength(2);
         expect(out[1]).toEqual({ type: 'alpha', value: 1 });
     });
 
     it('keeps extra target entries when the source is shorter', () => {
-        const from: MediaFilter[] = [{ type: 'blur', value: 2 }];
-        const to: MediaFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 0.5 }];
-        const out = FilterRegistry.lerpArray(from, to, 0.5);
+        const from: AnyFilter[] = [{ type: 'blur', value: 2 }];
+        const to: AnyFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 0.5 }];
+        const out = lerpFilterArray(from, to, 0.5);
         expect(out).toHaveLength(2);
         expect(out[1]).toEqual({ type: 'alpha', value: 0.5 });
     });
 });
 
-describe('registered implementations – lerp & equals', () => {
+describe('filter data constants – lerp & equals', () => {
     it('blur lerps and compares by value', () => {
-        const data = FilterRegistry.get('blur')!;
-        expect(data.lerp({ type: 'blur', value: 0 } as any, { type: 'blur', value: 4 } as any, 0.25))
+        expect(blurFilter.lerp({ type: 'blur', value: 0 }, { type: 'blur', value: 4 }, 0.25))
             .toEqual({ type: 'blur', value: 1 });
-        expect(data.equals({ type: 'blur', value: 3 } as any, { type: 'blur', value: 3 } as any)).toBe(true);
-        expect(data.equals({ type: 'blur', value: 3 } as any, { type: 'blur', value: 4 } as any)).toBe(false);
+        expect(blurFilter.equals({ type: 'blur', value: 3 }, { type: 'blur', value: 3 })).toBe(true);
+        expect(blurFilter.equals({ type: 'blur', value: 3 }, { type: 'blur', value: 4 })).toBe(false);
     });
 
     it('curves lerps points and hard-cuts the channel at t=0.5', () => {
-        const data = FilterRegistry.get('curves')!;
-        const from = { type: 'curves', channel: 'r', points: [[0, 0], [1, 1]] } as any;
-        const to = { type: 'curves', channel: 'g', points: [[0, 0.5], [1, 0.5]] } as any;
-        const early = data.lerp(from, to, 0.25) as any;
-        const late = data.lerp(from, to, 0.75) as any;
+        const from = { type: 'curves', channel: 'r', points: [[0, 0], [1, 1]] } as const;
+        const to = { type: 'curves', channel: 'g', points: [[0, 0.5], [1, 0.5]] } as const;
+        const early = curvesFilter.lerp(from as any, to as any, 0.25) as any;
+        const late = curvesFilter.lerp(from as any, to as any, 0.75) as any;
         expect(early.channel).toBe('r');
         expect(late.channel).toBe('g');
         expect(early.points[0][1]).toBeCloseTo(0.125, 6);

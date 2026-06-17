@@ -1,8 +1,8 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
-import { FilterRegistry } from "@/attributes/shape/filters/registry";
-import { MediaFilter } from "@/attributes/shape/filters/union";
+import { VideoFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
+import { lerpFilterArray } from "@/attributes/shape/filters/registry";
+import { MediaFilter, VideoMediaFilter } from "@/attributes/shape/filters/union";
 import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
@@ -21,8 +21,8 @@ export interface VideoProps extends RectProps {
     fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
-    /** Visual filters applied to the rendered frame (blur, color, etc.). */
-    filters?: ChainableMx;
+    /** Visual filters applied to the rendered frame (blur, color, posterizeTime, echo, …). */
+    filters?: VideoFilter;
     /** Whether playback advances each frame (drives both picture and sound). Default true. */
     playing?: boolean;
     /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
@@ -60,8 +60,8 @@ export class Video extends Rect {
     @property() declare fit?: ImageFit;
     @property() declare transform?: ImageTransform;
     @property() declare scaling?: number;
-    @property({ default: [], tween: FilterRegistry.lerpArray, mapper: resolveChainFilters })
-    declare filters?: MediaFilter[];
+    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
+    declare filters?: (MediaFilter | VideoMediaFilter)[];
 
     @property({ default: true }) declare playing: boolean;
     @property() declare timestamp?: number;

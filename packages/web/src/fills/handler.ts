@@ -146,7 +146,28 @@ export class FillHandler {
             offscreenCanvas: this.offscreenCanvas,
             offscreenCtx: this.offscreenCtx,
             transientImages: [],
+            // Replaced per applyFills() call with a closure over the current shapes.
+            drawShape: () => { },
+            skipDefaultDraw: false,
         };
+    }
+
+    /**
+     * Paint `shapes` as one figure with `paint`. Draws their union as a single
+     * path so opacity < 1 composites once (drawing each shape separately would
+     * double the alpha where they overlap and show a seam); falls back to a
+     * per-shape draw when no union path is available.
+     */
+    private drawShapes(paint: Paint, shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>): void {
+        const unionPath = this.unionPath(shapes);
+        if (unionPath) {
+            this.getCanvas().drawPath(unionPath, paint);
+            unionPath.delete();
+        } else {
+            for (const shape of shapes) {
+                shape.draw(paint);
+            }
+        }
     }
 
     applyFills(fills: FillResolved[], shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>): boolean {
@@ -156,6 +177,8 @@ export class FillHandler {
         paint.setStyle(this.canvasKit.PaintStyle.Fill);
 
         const rendererCtx = this.buildRendererCtx(paint);
+        // Lets a renderer redraw the figure for extra passes (e.g. Echo's trail).
+        rendererCtx.drawShape = (p: Paint) => this.drawShapes(p, shapes);
         const worldAlpha = this.getWorldAlpha();
 
         for (const fill of fills) {
@@ -176,24 +199,16 @@ export class FillHandler {
             paint.setImageFilter(null);
 
             this.currentBounds = bounds;
+            rendererCtx.skipDefaultDraw = false;
             if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
 
             // Sync back mutable fields written by renderers
             this.offscreenCanvas = rendererCtx.offscreenCanvas;
             this.offscreenCtx = rendererCtx.offscreenCtx;
 
-            // Draw the shapes' union as one path so opacity < 1 composites once —
-            // drawing each shape separately would double the alpha where they
-            // overlap and show a seam.
-            const unionPath = this.unionPath(shapes);
-            if (unionPath) {
-                this.getCanvas().drawPath(unionPath, paint);
-                unionPath.delete();
-            } else {
-                for (const shape of shapes) {
-                    shape.draw(paint);
-                }
-            }
+            // A renderer (e.g. Echo) may have drawn the figure itself; otherwise
+            // perform the default single pass with the prepared paint.
+            if (!rendererCtx.skipDefaultDraw) this.drawShapes(paint, shapes);
 
             // Clear shader before deleting backing images so the paint stops
             // referencing them.

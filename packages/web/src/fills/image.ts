@@ -1,4 +1,5 @@
 import type { ImageFillResolved, MediaFilter } from "@motion-script/core";
+import { isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { type ShapeBounds } from "./handler";
@@ -20,16 +21,20 @@ export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
 }
 
 /**
- * Apply the fill's filter chain to the paint's image filter slot. Filters are
- * composed in array order (first filter is innermost). Callers (FillHandler)
- * are responsible for clearing the image filter after drawing.
+ * Apply the fill's pixel filters to the paint's image filter slot. Filters are
+ * composed in array order (first filter is innermost). Video-only filters
+ * (`posterizeTime`, `echo`) are skipped here — they are handled by the video
+ * fill's per-frame update (posterizeTime) or a dedicated multi-pass draw (echo),
+ * not the CanvasKit image-filter chain. Callers (FillHandler) clear the image
+ * filter after drawing.
  */
-export function applyMediaFilters(fill: { filters?: MediaFilter[] }, ctx: FillRendererContext): void {
-    if (!fill.filters || fill.filters.length === 0) {
+export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: FillRendererContext): void {
+    const pixel = (fill.filters ?? []).filter((f): f is MediaFilter => isPixelFilter(f.type));
+    if (pixel.length === 0) {
         ctx.paint.setImageFilter(null);
         return;
     }
-    const composed = ImageFillFilterRegistry.compose(fill.filters, ctx.canvasKit);
+    const composed = ImageFillFilterRegistry.compose(pixel, ctx.canvasKit);
     ctx.paint.setImageFilter(composed);
 }
 

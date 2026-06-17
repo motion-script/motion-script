@@ -1,4 +1,4 @@
-import { FilterRegistry } from "../registry";
+import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
 /** Scales the overall luminance of the media layer. */
@@ -8,7 +8,7 @@ export interface ExposureFilter {
     value: number;
 }
 
-FilterRegistry.register<ExposureFilter>("exposure", {
+export const exposureFilter: FilterData<ExposureFilter> = {
     lerp: (from, to, t) => ({ type: "exposure", value: lerpNumber(from.value, to.value, t) }),
     equals: (a, b) => a.value === b.value,
-});
+};

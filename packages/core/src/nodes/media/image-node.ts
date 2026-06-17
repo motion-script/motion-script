@@ -1,7 +1,7 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
-import { FilterRegistry } from "@/attributes/shape/filters/registry";
+import { ImageFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
+import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
 import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 import { Rect, RectProps } from "../geometry/rect-node";
@@ -14,7 +14,7 @@ export interface ImageProps extends RectProps {
     fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
-    filters?: ChainableMx;
+    filters?: ImageFilter;
 }
 
 /**
@@ -29,7 +29,7 @@ export class Image extends Rect {
     @property() declare fit?: ImageFit;
     @property() declare transform?: ImageTransform;
     @property() declare scaling?: number;
-    @property({ default: [], tween: FilterRegistry.lerpArray, mapper: resolveChainFilters })
+    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
     declare filters?: MediaFilter[];
 
     constructor(props: NodeConfig<Image, ImageProps>) {

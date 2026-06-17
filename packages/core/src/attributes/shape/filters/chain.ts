@@ -1,11 +1,18 @@
-import { MediaFilter } from "./union";
+import { MediaFilter, VideoMediaFilter } from "./union";
 import type { CurvesChannel } from "./implementations/curves";
+import type { VideoEchoFilter } from "./implementations/echo";
+
+/** Any concrete filter a chain may hold — pixel or video-only. */
+type AnyFilter = MediaFilter | VideoMediaFilter;
 
 /**
  * Immutable, chainable list of media filters.
  *
  * Each builder method returns a new `FilterChain` with the filter appended,
- * so chains are safe to share and branch.
+ * so chains are safe to share and branch. The chain is intentionally permissive
+ * — it can hold video-only filters (`posterizeTime`, `echo`) too; the type gate
+ * for "image fills can't take video filters" lives at the fill boundary
+ * (`ImageFilter` vs `VideoFilter`), mirroring how `Fill` is structured.
  *
  * @example
  * const mx = MX.blur(4).grayscale(0.5);
@@ -13,7 +20,7 @@ import type { CurvesChannel } from "./implementations/curves";
  * node.filters = [...mx, { type: 'alpha', value: 0.5 }]; // spread into array
  */
 export class FilterChain {
-  constructor(public list: MediaFilter[] = []) { }
+  constructor(public list: AnyFilter[] = []) { }
 
   /** Append a blur with the given pixel `radius`. */
   blur(radius: number) {
@@ -50,6 +57,16 @@ export class FilterChain {
     return new FilterChain([...this.list, { type: 'curves', points, channel }]);
   }
 
+  /** Append a posterize-time filter; snaps the video playhead to `fps` (video fills only). */
+  posterizeTime(fps: number) {
+    return new FilterChain([...this.list, { type: 'posterizeTime', fps }]);
+  }
+
+  /** Append an echo (motion-trail) filter from the given settings (video fills only). */
+  echo(settings: Omit<VideoEchoFilter, 'type'>) {
+    return new FilterChain([...this.list, { type: 'echo', ...settings }]);
+  }
+
   /** Allows spreading the chain into an array: `[...MX.blur(5)]`. */
   *[Symbol.iterator]() {
     yield* this.list;
@@ -62,12 +79,22 @@ export class FilterChain {
 }
 
 /**
- * Accepted shapes for a node's `filters` prop.
- * Can be a single filter, a plain array, or a `FilterChain` builder result.
+ * Accepted shapes for an **image** fill's `filters` prop — a single pixel
+ * filter, a plain array of them, or a `FilterChain`. Mirrors how `Fill` is the
+ * loose author-facing union for a fill. Video-only filters are excluded here.
  */
-export type ChainableMx = MediaFilter[] | FilterChain | MediaFilter;
+export type ImageFilter = MediaFilter | MediaFilter[] | FilterChain;
 
-const createChain = (list: MediaFilter[] = []): FilterChain => new FilterChain(list);
+/**
+ * Accepted shapes for a **video** fill's `filters` prop — the pixel filters
+ * plus the video-only temporal filters (`posterizeTime`, `echo`).
+ */
+export type VideoFilter =
+  | (MediaFilter | VideoMediaFilter)
+  | (MediaFilter | VideoMediaFilter)[]
+  | FilterChain;
+
+const createChain = (list: AnyFilter[] = []): FilterChain => new FilterChain(list);
 
 /**
  * Entry points for building media-filter chains fluently.
@@ -85,13 +112,15 @@ export const MX = {
   colorMatrix: (matrix: number[]) => createChain([{ type: 'colorMatrix', matrix }]),
   curves: (points: [number, number][], channel?: CurvesChannel) =>
     createChain([{ type: 'curves', points, channel }]),
+  posterizeTime: (fps: number) => createChain([{ type: 'posterizeTime', fps }]),
+  echo: (settings: Omit<VideoEchoFilter, 'type'>) => createChain([{ type: 'echo', ...settings }]),
 };
 
 /**
- * Normalises any `ChainableMx` value to a plain `MediaFilter[]`.
+ * Normalises any `ImageFilter`/`VideoFilter` value to a plain filter array.
  * Used internally when reading props before rendering or interpolation.
  */
-export function resolveChainFilters(filters: ChainableMx | undefined): MediaFilter[] {
+export function resolveChainFilters(filters: ImageFilter | VideoFilter | undefined): AnyFilter[] {
   if (filters === undefined) return [];
   if (filters instanceof FilterChain) return filters.list;
   if (Array.isArray(filters)) return filters;

@@ -1,6 +1,8 @@
 import type { Color } from "./color/parser";
 import type { BlendMode } from "./blend";
 import type { Vector2 } from "@/attributes/layout/vector2";
+import { resolveChainFilters } from "../filters/chain";
+import type { ImageFilter, VideoFilter } from "../filters/chain";
 import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageFit, ImageTransform } from "./implementations/image";
@@ -10,7 +12,7 @@ export interface VideoFillOptions extends FillOptions {
     fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
-    filters?: MediaFilter[];
+    filters?: VideoFilter;
     /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
     timestamp?: number;
     /** Whether playback advances each frame. Defaults to `true`. */
@@ -63,9 +65,12 @@ export class FillChain {
     }
 
     /** Append an image fill from `src`. */
-    image(src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) {
+    image(src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) {
         const { fit, mode, transform, scaling, filters, ...common } = options ?? {};
-        return new FillChain([...this.list, withOptions({ type: 'image' as const, src, fit: fit ?? mode, transform, scaling, filters }, common)]);
+        // `ImageFilter` admits only pixel filters, so the resolved array is safely
+        // a `MediaFilter[]` for the image prop (video-only filters can't reach here).
+        const imageFilters = filters ? (resolveChainFilters(filters) as MediaFilter[]) : undefined;
+        return new FillChain([...this.list, withOptions({ type: 'image' as const, src, fit: fit ?? mode, transform, scaling, filters: imageFilters }, common)]);
     }
 
     /** Append a video fill from `src`. Plays by default, advancing its timestamp each frame. */
@@ -74,7 +79,7 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
-            mode, transform, scaling, filters,
+            mode, transform, scaling, filters: filters && resolveChainFilters(filters),
             timestamp: timestamp ?? trimStart ?? 0,
             playing: playing ?? true,
             trimStart, trimEnd, speed, loop, duration,
@@ -151,7 +156,7 @@ export type Fill =
 export const Fills = {
     color: (color: Color, options?: FillOptions) =>
         new FillChain().color(color, options),
-    image: (src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) =>
+    image: (src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) =>
         new FillChain().image(src, options),
     video: (src: string, options?: VideoFillOptions) =>
         new FillChain().video(src, options),

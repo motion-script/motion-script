@@ -5,6 +5,8 @@ import {
     VideoFitScene,
     VideoCropScene,
     VideoFilteredScene,
+    VideoPosterizedScene,
+    VideoEchoedScene,
     VideoBlendedScene,
     VideoNodeScene,
 } from './scenes';
@@ -31,6 +33,8 @@ export default createProject({
         new VideoFitScene(),
         new VideoCropScene(),
         new VideoFilteredScene(),
+        new VideoPosterizedScene(),
+        new VideoEchoedScene(),
         new VideoBlendedScene(),
     ],
     theme: {
