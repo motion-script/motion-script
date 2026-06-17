@@ -39,7 +39,7 @@ export class CameraScene extends Scene {
                     <Text text={'Camera'} fontSize={80} fontWeight={800} fill={'white'} opacity={0.15} />
                 </Camera>
                 {/* HUD label */}
-                <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={16} alignment={{ x: -1, y: -1 }}>
+                <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={16} align={{ x: -1, y: -1 }}>
                     <Text fontFamily={'Pixelify Sans'} text={'Camera'} fontSize={80} fill={'gray'} />
                 </Rect>
             </Rect>

@@ -21,7 +21,7 @@ export class ImageScene extends Scene {
                 stage: 'row',
                 gap: 48,
                 children: fits.map((fit, i) => (
-                    <Rect key={i} width={'fill'} height={'fill'} group={'column'} gap={16} alignment={{ x: 0, y: 1 }}>
+                    <Rect key={i} width={'fill'} height={'fill'} group={'column'} gap={16} align={{ x: 0, y: 1 }}>
                         <Image
                             ref={refs[i]}
                             src={'kingfisher.jpg'}

@@ -27,7 +27,7 @@ export class VideoNodeScene extends Scene {
                 height={'fill'}
                 group={'column'}
                 padding={80}
-                alignment={{ x: -1, y: 1 }}
+                align={{ x: -1, y: 1 }}
             >
                 <Text
                     fontFamily={'Pixelify Sans'}

@@ -7,7 +7,7 @@ export interface RowProps extends FlexProps { }
 
 /**
  * Lays its children out left-to-right in a horizontal flex row, honouring `gap`,
- * `alignment`, and `padding`. A convenience wrapper around the same flex layout
+ * `align`, and `padding`. A convenience wrapper around the same flex layout
  * {@link Rect} performs with `group="row"`, minus the drawn box — use it when you
  * want layout without a visible container.
  */

@@ -81,7 +81,7 @@ export abstract class ShapeScene extends Scene {
                     width={'fill'}
                     align={'start'}
                 />
-                <Rect width={'fill'} height={'fill'} group={'row'} gap={80} alignment={{ x: 0, y: 0 }}>
+                <Rect width={'fill'} height={'fill'} group={'row'} gap={80} align={{ x: 0, y: 0 }}>
                     <Rect
                         ref={fillRef}
                         width={500} height={500}

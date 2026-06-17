@@ -2,95 +2,87 @@
 sidebar_position: 5
 ---
 
-# Effects
+import { EffectsCanvas } from '@site/src/components/docs/getting-started-scenes';
 
-Effects are post-process filters applied to any node via the `effects` prop. They run after the node (and its children) are fully rendered, so they apply to the composite result.
+# Adding Effects
 
-## Using effects
+Our card is laid out nicely. Now let's make it pop. **Effects** are visual filters you drop onto any node with the `effects` prop, like blur, glow, or grayscale. They run after the node is drawn, so they apply to everything it contains.
 
-Pass an `effects` prop to any node using the `Effects` builder or a raw array:
+## Blur a node
 
-```tsx
-import { Scene, Rect, Effects } from '@motion-script/core';
+The simplest effect is a blur. Reach for the `Effects` builder and pass it to a node.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, Rect, Text, Effects } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
-    // Via the Effects builder (chainable, type-safe)
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={Effects.blur(8)} />);
-
-    // Via a raw array
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={[{ type: 'blur', blur: 8 }]} />);
+    this.add(
+      <Rect
+        group="column"
+        gap={16}
+        padding={32}
+        fill="#1e293b"
+        cornerRadius={16}
+        effects={Effects.blur(8)}
+      >
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    );
   }
 }
 ```
 
----
+That blurs the whole card, square, text, and all. Because the effect is on the container, it covers the children too.
 
-## Chaining effects
+## Animate an effect for a focus pull
 
-The `Effects` builder returns an `EffectChain` — an immutable list you can extend fluently. Each call appends to a new chain, so chains are safe to share and branch:
+Effects shine when you animate them. A classic move is to start blurry and snap into focus. Animate the blur with `.to()` like any other property.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, Rect, Text, createRef, Effects, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const card = createRef<Rect>();
+
+    this.add(
+      <Rect
+        ref={card}
+        group="column"
+        gap={16}
+        padding={32}
+        fill="#1e293b"
+        cornerRadius={16}
+        effects={Effects.blur(20)}
+      >
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    );
+
+    // pull into focus
+    yield* card().to({ effects: Effects.blur(0) }, 1, easeOut);
+  }
+}
+```
+
+The card resolves from a soft blur into a crisp image. A small touch that makes an intro feel polished.
+
+<EffectsCanvas />
+
+## Stack effects together
+
+You can chain effects, and they apply in order. Each call adds to the chain:
 
 ```tsx
-import { Effects } from '@motion-script/core';
-
-// Grayscale then blur
+// grayscale, then blur
 <Rect effects={Effects.grayscale(0.8).blur(4)} />
-
-// All three
-<Rect effects={Effects.pixelate(8).grayscale(0.5).blur(2)} />
-
-const base = Effects.grayscale(1);
-const blurry = base.blur(8); // 'base' is unchanged
 ```
 
----
+## More effects to play with
 
-## Available effects
+Blur and grayscale are just the start. There's a whole catalog, glow, pixelate, chromatic aberration, vintage film looks, and more, each with its own page in the [Effects reference](/docs/category/effects). They all attach the same way: build a chain and hand it to `effects`.
 
-| Effect | Builder | Description |
-|---|---|---|
-| [Blur](../node-effects/blur) | `Effects.blur(radius)` | Gaussian blur |
-| [Background Blur](../node-effects/background-blur) | `Effects.blur(radius, { backdrop: true })` | Figma-style blur applied to the backdrop |
-| [Directional Blur](../node-effects/directional-blur) | `Effects.directionalBlur(angle, length)` | Linear smear along an authored axis |
-| [Motion Blur](../node-effects/motion-blur) | `Effects.motionBlur(length, alignment)` | Velocity-driven blur that follows node movement |
-| [Grayscale](../node-effects/grayscale) | `Effects.grayscale(amount)` | Desaturate `0`–`1` |
-| [Pixelate](../node-effects/pixelate) | `Effects.pixelate(blocks)` | AE Mosaic-style block quantization |
-| [Bloom](../node-effects/bloom) | `Effects.bloom(threshold, radius, intensity)` | Glow from bright areas |
-| [Bulge](../node-effects/bulge) | `Effects.bulge(strength)` | Barrel / pincushion lens distortion |
-| [Magnify](../node-effects/magnify) | `Effects.magnify(scale, center)` | Magnifying-glass lens reading the backdrop |
-| [Chromatic Aberration](../node-effects/chromatic-aberration) | `Effects.chromaticAberration(amount, angle)` | Red/blue channel fringing |
-| [Invert](../node-effects/invert) | `Effects.invert(channel, strength)` | Invert a color channel or luminance |
-| [Scatter](../node-effects/scatter) | `Effects.scatter(strength, direction)` | Random per-pixel displacement |
-| [Posterize](../node-effects/posterize) | `Effects.posterize(level)` | Quantize colors into flat bands |
-| [Vintage](../node-effects/vintage) | `Effects.vintage(amount, warmth)` | Sepia / film-look color grade |
-
----
-
-## Backdrop effects
-
-Several effects support a `backdrop` option that makes them operate on the content painted _beneath_ the node (clipped to its silhouette) rather than the node's own content. This is how frosted-glass, magnify, and similar compositing effects work:
-
-```tsx
-// Blur everything behind this card, Figma-style
-<Rect
-  width={300}
-  height={200}
-  fill={{ type: 'color', value: 'rgba(255,255,255,0.15)' }}
-  effects={Effects.blur(16, { backdrop: true })}
-/>
-```
-
-Effects that support `backdrop`: blur, directional blur, grayscale, pixelate, bloom, chromatic aberration, invert, scatter, posterize, vintage.
-
----
-
-## Raw effect objects
-
-You can pass plain objects directly — useful when constructing effects programmatically:
-
-```tsx
-effects={[
-  { type: 'grayscale', amount: 0.8 },
-  { type: 'blur', blur: 4 },
-]}
-```
+We've animated, laid out, and styled our scene. For the grand finale, let's reveal it with a mask.

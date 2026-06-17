@@ -1,0 +1,82 @@
+---
+sidebar_position: 1
+---
+
+import { FirstSceneCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Your First Scene
+
+Welcome! In this guide you'll build a small animation from scratch, one page at a time. By the end you'll have a title card that slides in, gets laid out neatly, picks up a blur, and finishes with a mask reveal. Each page adds onto the example from the page before, so follow along in order.
+
+Let's start with the absolute basics: a scene, a single shape, and getting it on screen.
+
+## Create a scene
+
+Everything in MotionScript lives inside a **scene**. A scene is a class that extends `Scene` and describes your animation inside a `build()` method.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // your animation goes here
+  }
+}
+```
+
+The `*` in front of `build` makes it a generator. Don't worry about what that means yet, just know that it's how MotionScript steps through your animation one frame at a time. We'll use it on the next page.
+
+## Add your first node
+
+A scene starts empty. To put something on screen, you create a **node** and add it with `this.add()`. Let's add a blue rounded square using the `Rect` node.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, Rect } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Rect width={200} height={200} fill="royalblue" cornerRadius={16} />
+    );
+  }
+}
+```
+
+That's it. You've placed a 200×200 blue square in the center of your scene. Nodes are written as JSX (the `<Rect ... />` syntax), and every node takes props to control how it looks:
+
+- `width` / `height`: the size in pixels
+- `fill`: the color (any CSS color name or hex value works)
+- `cornerRadius`: how rounded the corners are
+
+`Rect` is the most common node you'll reach for, but there are plenty of others, like `Ellipse`, `Line`, and `Image`. You can browse them all later in the [Nodes reference](/docs/category/available-nodes). For now, one square is all we need.
+
+## Show it in a project
+
+Your scene won't run on its own. A **project** ties one or more scenes together and tells MotionScript how to render them. Every project exports a default config from `createProject`.
+
+```ts title="src/project.ts"
+import { createProject } from '@motion-script/core';
+import { MyScene } from './scenes/my-scene';
+
+export default createProject({
+  name: 'My First Animation',
+  scenes: [new MyScene()],
+  viewport: { width: 1920, height: 1080 },
+  fps: 60,
+});
+```
+
+Here's what you're telling MotionScript:
+
+- `name`: what shows up in the player
+- `scenes`: the list of scenes to play, in order (just one for now)
+- `viewport`: the size of your video, in pixels
+- `fps`: how many frames per second to render
+
+Run your project and you'll see your blue square sitting in the middle of the frame:
+
+<FirstSceneCanvas />
+
+It doesn't move yet, but that's about to change.
+
+Next up: making it animate.

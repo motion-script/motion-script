@@ -88,17 +88,21 @@ Pass `gap="auto"` to distribute children evenly (space-between):
 
 ## Alignment
 
-`alignment` is a `{ x, y }` vector. Each axis is `-1` (start), `0` (center), or `1` (end) and controls child placement on the **cross axis**:
+`align` controls child placement on the **cross axis**. Pass a named position
+(`'center'`, `'topLeft'`, `'topRight'`, `'bottomLeft'`, `'bottomRight'`,
+`'topCenter'`, `'bottomCenter'`, `'leftCenter'`, `'rightCenter'`) or an explicit
+`{ x, y }` pivot. On each axis, `x` is `-1` (left) … `1` (right) and `y` is `-1`
+(bottom) … `1` (top); `0` centers. It defaults to `'center'`.
 
 ```tsx
-// Row: cross axis is vertical — y: -1 aligns children to the top
-<Rect group="row" gap={20} alignment={{ x: 0, y: -1 }}>
+// Row: cross axis is vertical — align children to the top
+<Rect group="row" gap={20} align="topCenter">
   <Rect width={60} height={120} fill="tomato" />
   <Rect width={60} height={60}  fill="royalblue" />
 </Rect>
 
 // Column: cross axis is horizontal — x: 1 aligns children to the right
-<Rect group="column" gap={12} alignment={{ x: 1, y: 0 }}>
+<Rect group="column" gap={12} align={{ x: 1, y: 0 }}>
   <Rect width={200} height={50} fill="tomato" />
   <Rect width={100} height={50} fill="royalblue" />
 </Rect>

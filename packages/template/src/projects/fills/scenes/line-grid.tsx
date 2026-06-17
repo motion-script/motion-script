@@ -22,7 +22,7 @@ export class LineGridScene extends Scene {
         const pan = createRef<LineGrid>();
 
         this.add(
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={96} padding={96} alignment={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} group={'row'} gap={96} padding={96} align={{ x: 0, y: 0 }}>
                 {/* subStroke omitted → defaults to `stroke` at 50% opacity. `origin`
                     pans the grid behind the fixed rect (tiles to stay full). */}
                 <LineGrid
@@ -48,7 +48,7 @@ export class LineGridScene extends Scene {
                     shadow={{ fill: Fills.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
                 >
                     {/* children stack centred over the grid, like other shapes */}
-                    <Rect width={200} height={80} cornerRadius={12} fill={'#C77DFF'} alignment={{ x: 0, y: 0 }}>
+                    <Rect width={200} height={80} cornerRadius={12} fill={'#C77DFF'} align={{ x: 0, y: 0 }}>
                         <Text text={'Centered'} fontSize={28} fill={'white'} />
                     </Rect>
                 </LineGrid>

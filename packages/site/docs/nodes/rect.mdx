@@ -39,7 +39,7 @@ export class MyScene extends Scene {
 |---|---|---|---|
 | `group` | `'row' \| 'column' \| 'stack'` | `'stack'` | Layout mode for children |
 | `gap` | `number \| 'auto'` | `0` | Space between children along the main axis. `'auto'` distributes evenly |
-| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Cross-axis child alignment. Each axis: `-1` start · `0` center · `1` end |
+| `align` | `AlignName \| { x: number, y: number }` | `'center'` | Child alignment. A named position (`'center'`, `'topLeft'`, `'bottomRight'`, …) or a per-axis vector — x: `-1` left · `0` center · `1` right, y: `-1` bottom · `0` center · `1` top |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius in pixels. Accepts uniform, per-corner, or per-axis shorthand |
 | `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | `'rounded'` for circular arcs, `'angled'` for chamfered cuts |
 
@@ -113,6 +113,6 @@ yield* box().removeChildAt(0, 0.3);
 ## Notes
 
 - `Rect` is the only shape node that runs layout on its children. `Row`, `Column`, and `Grid` are invisible layout containers; `Rect` is the layout container that also draws a box.
-- In `stack` mode children are layered on top of each other and centered by default. Use `alignment` to shift them.
+- In `stack` mode children are layered on top of each other and centered by default. Use `align` to shift them (e.g. `align="bottomRight"` or `align={{ x: 1, y: -1 }}`).
 - `gap: 'auto'` only applies in `row` and `column` modes.
 - See [Layout](../attributes/layout) for a full reference on sizing, padding, and `flex`.

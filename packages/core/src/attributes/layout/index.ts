@@ -4,3 +4,4 @@ export { Matrix2D, identity, translation, multiply, applyToPoint, nodeLocalMatri
 export { Padding, PaddingProps, PaddingResolved, resolvePadding } from './padding';
 export { Size2D } from './size';
 export { Vector2 } from './vector2';
+export { AlignInput, AlignName, resolveAlign } from './align';

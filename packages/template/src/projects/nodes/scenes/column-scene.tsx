@@ -21,7 +21,7 @@ export class ColumnScene extends Scene {
                 label: 'Column',
                 stage: 'stack',
                 children: (
-                    <Column ref={colRef} gap={24} alignment={{ x: 0, y: 0 }}>
+                    <Column ref={colRef} gap={24} align={{ x: 0, y: 0 }}>
                         {tileRefs.map((ref, i) => (
                             <Rect
                                 ref={ref}
@@ -47,11 +47,11 @@ export class ColumnScene extends Scene {
 
         yield* colRef().to({ gap: 48 }, 1.0, easeInOutQuad);
         yield* parallel(
-            colRef().to({ alignment: { x: -1, y: 0 } }, 0.8, easeInOutQuad),
+            colRef().to({ align: { x: -1, y: 0 } }, 0.8, easeInOutQuad),
             tileRefs[1]().to({ width: 360 }, 0.8, easeInOutQuad),
         );
         yield* parallel(
-            colRef().to({ alignment: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOutQuad),
+            colRef().to({ align: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOutQuad),
             tileRefs[1]().to({ width: 240 }, 0.8, easeInOutQuad),
         );
         yield* wait(0.5);

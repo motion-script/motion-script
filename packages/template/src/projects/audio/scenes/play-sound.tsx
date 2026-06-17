@@ -16,7 +16,7 @@ export class PlaySoundScene extends Scene {
         this.add(
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
                 <Text fontFamily={'Pixelify Sans'} text={'yield* playSound (blocking)'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
+                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
                     <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
                 </Rect>
             </Rect>

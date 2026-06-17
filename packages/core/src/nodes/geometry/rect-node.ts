@@ -11,7 +11,8 @@ import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpSizeInput } from "@/layout/tweens";
-import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, GapSize, FlexDirection } from "@/layout/flex";
 import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -31,8 +32,12 @@ export interface RectProps extends ShapeProps {
     group: LayoutMode;
     /** Spacing between children along the layout's main axis. */
     gap: GapSize;
-    /** Per-axis alignment of children within the content box (-1…1). */
-    alignment: Vector2;
+    /**
+     * Alignment of children within the content box: a named position
+     * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
+     * (x: -1 left … +1 right, y: -1 bottom … +1 top).
+     */
+    align: AlignInput;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
     cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
@@ -61,14 +66,18 @@ type NodeMeasureResult = FlexNodeMeasure | StackNodeMeasure;
 /**
  * The Rectangle is the only node that performs flex / stack layout on its
  * children. It measures and positions children according to `group`
- * (row | column | stack), `gap`, `alignment`, and `padding`, then draws
+ * (row | column | stack), `gap`, `align`, and `padding`, then draws
  * itself as a rounded rect behind them.
  */
 export class Rect extends ShapeNode<RectProps> {
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly alignment: Vector2;
+    // Declared as the loose `AlignInput` so one @property covers both assignment
+    // (`this.align = 'center'`) and reads. At runtime the accessor stores the
+    // resolved per-axis `Vector2` pivot; readers cast at the read site.
+    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
+    declare align: AlignInput;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment (`this.cornerRadius = 8`) and reads. At runtime the
     // accessor stores the resolved per-corner value; readers that need the
@@ -314,7 +323,7 @@ export class Rect extends ShapeNode<RectProps> {
             innerWidth,
             innerHeight,
             gap: this.gap,
-            alignment: this.alignment,
+            alignment: this.align as Vector2,
             padding,
         });
     }
@@ -388,14 +397,15 @@ export class Rect extends ShapeNode<RectProps> {
         const offsetX = (pad.left - pad.right) / 2;
         const offsetY = (pad.top - pad.bottom) / 2;
 
+        const align = this.align as Vector2;
         const result: BoxBounds[] = [];
         for (const size of measure.sizes) {
             const w = size.width ?? 0;
             const h = size.height ?? 0;
             const slackX = Math.max(0, innerW - w);
             const slackY = Math.max(0, innerH - h);
-            const localX = offsetX + (this.alignment.x * slackX) / 2;
-            const localY = offsetY - (this.alignment.y * slackY) / 2;
+            const localX = offsetX + (align.x * slackX) / 2;
+            const localY = offsetY - (align.y * slackY) / 2;
             result.push({ x: localX, y: localY, width: w, height: h });
         }
         return result;

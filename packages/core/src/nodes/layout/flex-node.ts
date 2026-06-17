@@ -6,7 +6,8 @@ import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { lerpSizeInput } from "@/layout/tweens";
-import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -18,8 +19,12 @@ export type { FlexDirection, GapSize } from "@/layout/flex";
 export interface FlexProps extends NodeProps {
     /** Spacing between children along the main axis. */
     gap: GapSize;
-    /** Per-axis alignment of children within the content box (-1…1). */
-    alignment: Vector2;
+    /**
+     * Alignment of children within the content box: a named position
+     * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
+     * (x: -1 left … +1 right, y: -1 bottom … +1 top).
+     */
+    align: AlignInput;
 }
 
 
@@ -34,7 +39,7 @@ interface FlexMeasureCache {
 /**
  * Base for the {@link Row} and {@link Column} convenience containers. A pure
  * flex-layout node: it measures and positions its children along a fixed main
- * axis (set by the subclass via {@link direction}) honouring `gap`, `alignment`,
+ * axis (set by the subclass via {@link direction}) honouring `gap`, `align`,
  * and `padding`, but draws nothing itself.
  *
  * It is the layout half of {@link Rect} without the shape — no fill, stroke,
@@ -45,7 +50,10 @@ interface FlexMeasureCache {
 export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> {
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly alignment: Vector2;
+    // Stored resolved as a per-axis `Vector2` pivot; the loose `AlignInput`
+    // declared type covers both named-string assignment and reads. See Rect.
+    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
+    declare align: AlignInput;
 
     /** Main axis this container lays its children along. */
     protected abstract readonly direction: FlexDirection;
@@ -102,7 +110,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
             innerWidth: inner.width,
             innerHeight: inner.height,
             gap: this.gap,
-            alignment: this.alignment,
+            alignment: this.align as Vector2,
             padding,
         });
         for (let i = 0; i < measure.children.length; i++) {

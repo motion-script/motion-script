@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Row
 
-An invisible horizontal flex container. Lays its children out left-to-right, honouring `gap`, `alignment`, and `padding`. Use it when you want flex layout without a visible box — it draws nothing itself.
+An invisible horizontal flex container. Lays its children out left-to-right, honouring `gap`, `align`, and `padding`. Use it when you want flex layout without a visible box — it draws nothing itself.
 
 ![Row node](/nodes/row.png)
 
@@ -31,7 +31,7 @@ export class MyScene extends Scene {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `gap` | `number \| 'auto'` | `0` | Space between children. `'auto'` distributes evenly (space-between) |
-| `alignment` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Cross-axis alignment. In a row, `alignment.y` controls vertical alignment: `-1` top · `0` center · `1` bottom |
+| `align` | `AlignName \| { x: number, y: number }` | `'center'` | Child alignment. A named position (`'center'`, `'topLeft'`, …) or a per-axis vector. In a row, `align.y` controls vertical alignment: `1` top · `0` center · `-1` bottom |
 | `padding` | `number \| PaddingProps` | `0` | Inset the content area from the node's edges |
 
 ### Size defaults
@@ -61,7 +61,7 @@ export class MyScene extends Scene {
     yield* row().to({ gap: 48 }, 0.8, easeOut);
 
     // Align to top
-    yield* row().to({ alignment: { x: 0, y: -1 } }, 0.5, easeOut);
+    yield* row().to({ align: { x: 0, y: 1 } }, 0.5, easeOut);
   }
 }
 ```
@@ -69,5 +69,5 @@ export class MyScene extends Scene {
 ## Notes
 
 - `Row` is equivalent to `<Rect group="row" ...>` but draws no box. Use `Rect` with `group="row"` when you also want a visible container.
-- `alignment.x` has no effect in a row (children are already laid out along the x axis).
+- `align.x` has no effect in a row (children are already laid out along the x axis).
 - See [Layout](../attributes/layout) for full docs on `fill`, `hug`, `flex`, and padding shorthands.

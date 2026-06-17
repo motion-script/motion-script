@@ -47,7 +47,7 @@ export abstract class AudioDemoScene extends Scene {
                     align={'start'}
                 />
                 {/* Track the bar sweeps across. */}
-                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} alignment={{ x: -1, y: 0 }}>
+                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
                     <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
                 </Rect>
             </Rect>
