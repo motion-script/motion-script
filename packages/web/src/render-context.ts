@@ -586,14 +586,12 @@ export class WebRenderContext extends RenderContext {
         const foregroundEffects = effects.filter((e) => !("backdrop" in e && e.backdrop));
         let effectFilter: any = null;
         if (foregroundEffects.length > 0) {
-            const w = this.surface.width();
-            const h = this.surface.height();
             // Motion blur needs the node's live velocity, which static effect data
             // can't carry — resolve each `motionBlur` against the current node's
             // render state here, then hand the renderer a concrete directional
             // smear. Effects without motion blur skip the copy entirely.
             const resolved = this.resolveMotionBlurEffects(foregroundEffects);
-            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
+            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, width, height);
         }
 
         const isolating = blend !== 'pass-through';
@@ -621,7 +619,13 @@ export class WebRenderContext extends RenderContext {
             if (effectFilter != null) {
                 this.layerPaint.setAlphaf(1);
                 this.layerPaint.setImageFilter(effectFilter);
-                this.currentCanvas.saveLayer(this.layerPaint);
+                // Bound the effect layer to the node rect (laid out centred on the
+                // local origin). Scaling filters like pixelate otherwise let Skia
+                // pick layer bounds from the filter output, which overruns the
+                // active clip and squares off rounded corners; an explicit bound
+                // keeps the filtered result inside the node so the clip cuts clean.
+                const bounds = this.canvasKit.LTRBRect(-width / 2, -height / 2, width / 2, height / 2);
+                this.currentCanvas.saveLayer(this.layerPaint, bounds);
                 this.layerPaint.setImageFilter(null);
                 this.effectLayerStack[this.effectLayerStack.length - 1]++;
             }
