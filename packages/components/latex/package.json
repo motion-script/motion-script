@@ -3,6 +3,11 @@
   "version": "2.1.0",
   "type": "module",
   "description": "Animated LaTeX math for Motion Script, rendering formulas to glyph paths via MathJax and morphing them token by token.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motion-script/motion-script.git",
+    "directory": "packages/components/latex"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,

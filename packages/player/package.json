@@ -5,6 +5,11 @@
   "type": "module",
   "author": "Motion Script",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motion-script/motion-script.git",
+    "directory": "packages/player"
+  },
   "publishConfig": {
     "access": "public"
   },

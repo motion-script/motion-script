@@ -2,6 +2,11 @@
   "name": "@motion-script/create",
   "version": "2.1.0",
   "description": "Scaffold a new Motion Script project with a single command",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motion-script/motion-script.git",
+    "directory": "packages/create"
+  },
   "main": "index.js",
   "license": "Apache-2.0",
   "type": "module",

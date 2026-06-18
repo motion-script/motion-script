@@ -3,6 +3,11 @@
   "version": "2.1.0",
   "type": "module",
   "description": "React bindings for Motion Script.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motion-script/motion-script.git",
+    "directory": "packages/react"
+  },
   "license": "Apache-2.0",
   "sideEffects": false,
   "publishConfig": {
