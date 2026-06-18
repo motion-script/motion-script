@@ -32,9 +32,9 @@
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "@motion-script/core": "workspace:*",
-    "@motion-script/react": "workspace:*",
-    "@motion-script/web": "workspace:*",
+    "@motion-script/core": "workspace:^",
+    "@motion-script/react": "workspace:^",
+    "@motion-script/web": "workspace:^",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

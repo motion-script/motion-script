@@ -6,7 +6,8 @@
     "type": "git",
     "url": "https://github.com/motion-script/motion-script/"
   },
-  "fixed": [
+  "fixed": [],
+  "linked": [
     [
       "@motion-script/core",
       "@motion-script/canvaskit",
@@ -20,11 +21,13 @@
       "@motion-script/cli"
     ]
   ],
-  "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
     "@motion-script/template"
-  ]
+  ],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

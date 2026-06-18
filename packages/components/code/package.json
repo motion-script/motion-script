@@ -35,7 +35,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@motion-script/core": "workspace:*"
+    "@motion-script/core": "workspace:^"
   },
   "dependencies": {
     "@lezer/common": "^1.5.2",

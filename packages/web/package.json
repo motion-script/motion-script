@@ -30,8 +30,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "@motion-script/canvaskit": "workspace:*",
-    "@motion-script/core": "workspace:*"
+    "@motion-script/canvaskit": "workspace:^",
+    "@motion-script/core": "workspace:^"
   },
   "devDependencies": {
     "@motion-script/canvaskit": "workspace:*",

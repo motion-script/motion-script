@@ -35,7 +35,7 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@motion-script/core": "workspace:*"
+    "@motion-script/core": "workspace:^"
   },
   "dependencies": {
     "@mathjax/src": "^4.1.1"

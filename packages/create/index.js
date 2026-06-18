@@ -201,12 +201,13 @@ function getPackageManager() {
 }
 
 function cloneVersions(versions) {
+  // The @motion-script/* packages are released together as a linked group, so
+  // create's own version always matches the libs it scaffolds. Pinning a caret
+  // range to that version gives the generated project a concrete floor, so a
+  // stale cached release can't satisfy the range (a bare "*" would).
   for (const dependency in versions) {
-    if (
-      dependency.startsWith('@motion-script') &&
-      MANIFEST.devDependencies?.[dependency]
-    ) {
-      versions[dependency] = MANIFEST.devDependencies[dependency];
+    if (dependency.startsWith('@motion-script')) {
+      versions[dependency] = `^${MANIFEST.version}`;
     }
   }
 }
