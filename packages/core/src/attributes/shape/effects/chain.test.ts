@@ -3,12 +3,12 @@ import { Effects, resolveChainEffects } from '@/attributes/shape/effects/chain';
 
 describe('FX builders', () => {
     it('blur produces a single blur effect', () => {
-        expect([...Effects.blur(4)]).toEqual([{ type: 'blur', radius: 4 }]);
+        expect([...Effects.blur(4)]).toEqual([{ type: 'blur', blur: 4 }]);
     });
 
     it('blur with { backdrop: true } flags the effect as a backdrop filter', () => {
         expect([...Effects.blur(12, { backdrop: true })]).toEqual([
-            { type: 'blur', radius: 12, backdrop: true },
+            { type: 'blur', blur: 12, backdrop: true },
         ]);
     });
 
@@ -19,7 +19,7 @@ describe('FX builders', () => {
     });
 
     it('omitting opts leaves backdrop unset (foreground effect)', () => {
-        expect([...Effects.blur(12)]).toEqual([{ type: 'blur', radius: 12 }]);
+        expect([...Effects.blur(12)]).toEqual([{ type: 'blur', blur: 12 }]);
     });
 
     it('directionalBlur produces a direction and blurLength effect', () => {
