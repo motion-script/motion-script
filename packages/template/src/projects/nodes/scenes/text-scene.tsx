@@ -30,7 +30,7 @@ export class TextScene extends Scene {
                                 fontSize={52}
                                 fontWeight={400}
                                 fill={'white'}
-                                align={'center'}
+                                textAlign={'center'}
                             />
                         </Rect>
                         <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
@@ -40,7 +40,7 @@ export class TextScene extends Scene {
                                 fontSize={32}
                                 fontWeight={700}
                                 fill={'primary'}
-                                align={'center'}
+                                textAlign={'center'}
                             />
                         </Rect>
                         <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
@@ -50,7 +50,7 @@ export class TextScene extends Scene {
                                 fontSize={48}
                                 fontWeight={100}
                                 fill={'white'}
-                                align={'center'}
+                                textAlign={'center'}
                             />
                         </Rect>
                     </>

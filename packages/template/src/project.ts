@@ -19,5 +19,5 @@ import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
 import shapesProject from './projects/shapes/shapes-project';
 import nodesProject from './projects/nodes/nodes-project';
-export default effectsProject;
+export default nodesProject;
 
