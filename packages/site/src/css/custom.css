@@ -185,24 +185,20 @@ html[data-theme='dark'] {
   transform: none;
 }
 
-/* Blur-in cinematic reveal — content resolves out of a soft blur as it rises,
-   giving the features section a "rack focus" feel rather than a plain fade. */
+/* Fade + slide reveal — content rises and fades into place as it enters view. */
 .reveal-focus {
   opacity: 0;
-  transform: translateY(48px) scale(0.985);
-  filter: blur(14px);
+  transform: translateY(48px);
   transition:
     opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: var(--reveal-delay, 0s);
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .reveal-focus.is-visible {
   opacity: 1;
   transform: none;
-  filter: blur(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -440,6 +436,20 @@ html[data-theme='dark'] {
 body:has(.home-page) .navbar--fixed-top,
 body:has(.home-page) footer.footer {
   display: none;
+}
+
+/* Editor page: with the navbar hidden, Docusaurus still reserves
+   --ifm-navbar-height of layout in the main wrapper, leaving an empty strip
+   below the player. Pin the wrapper to the exact viewport and let its <main>
+   stretch to fill it so the iframe occupies the full height. */
+body:has(.editor-page) .main-wrapper {
+  height: 100vh;
+  min-height: 100vh;
+}
+
+body:has(.editor-page) .main-wrapper > main {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Docusaurus navbar: blurred glass effect */

@@ -43,7 +43,7 @@ export default function HeroSection() {
           style={{ animationDelay: '0.7s' }}
         >
           An open-source motion design tool, inspired by tools like Manim to help developers and
-          educators create stunning animations — all from your browser.
+          educators create stunning animations, all from code!
         </p>
 
         <div

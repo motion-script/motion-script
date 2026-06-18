@@ -5,8 +5,8 @@ import {
     EffectChain, SceneEffect, easeOutQuad, parallel,
     Polygon,
     Node,
-    Grid,
-    range,
+    Grid, range
+
 } from "@motion-script/core";
 
 /**
@@ -64,7 +64,6 @@ export abstract class EffectDemoScene extends Scene {
 
     *build() {
         this.set({ fill: '#F1E2C3' });
-
         const { label, from, to, background = false, compare = false, duration = 3 } = this.spec;
 
         if (compare && !background) {
