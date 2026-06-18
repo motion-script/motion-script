@@ -31,15 +31,15 @@ jobs:
       id-token: write        # request the OIDC token from npm for provenance
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
@@ -58,6 +58,13 @@ jobs:
       # must be installed on the runner before `pnpm test`.
       - name: Install Playwright Chromium
         run: pnpm --filter @motion-script/web exec playwright install --with-deps chromium
+
+      # The web tests import the built `@motion-script/core` (its package
+      # `exports` point at `dist/`), so the libraries must be compiled before
+      # `pnpm test` — a fresh checkout has no `dist/` yet. `build:lib` builds
+      # every package except the `site` app in topological order.
+      - name: Build libraries
+        run: pnpm build:lib
 
       - name: Run tests
         run: pnpm test
