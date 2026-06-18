@@ -53,6 +53,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # @motion-script/web runs its tests in a real headless Chromium via
+      # @vitest/browser-playwright, so the browser (and its Linux system deps)
+      # must be installed on the runner before `pnpm test`.
+      - name: Install Playwright Chromium
+        run: pnpm --filter @motion-script/web exec playwright install --with-deps chromium
+
       - name: Run tests
         run: pnpm test
 
