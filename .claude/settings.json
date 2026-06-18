@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(node_modules/.bin/tsc --noEmit -p packages/web/tsconfig.json)"
-    ]
-  }
-}
