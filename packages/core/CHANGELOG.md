@@ -1,5 +1,11 @@
 # @motion-script/core
 
+## 2.3.0
+
+### Minor Changes
+
+- fix text align
+
 ## 2.2.0
 
 ### Minor Changes

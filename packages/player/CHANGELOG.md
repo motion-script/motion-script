@@ -1,5 +1,16 @@
 # @motion-script/player
 
+## 2.3.0
+
+### Minor Changes
+
+- fix text align
+
+### Patch Changes
+
+- Updated dependencies
+  - @motion-script/canvaskit@2.3.0
+
 ## 2.2.0
 
 ### Minor Changes

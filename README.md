@@ -1,21 +1,19 @@
 <div align="center">
 
-# Motion Script
+<img src="assets/logo_label.png" alt="Motion Script" width="320" />
 
-**Motion graphics with code.**
 
-An open-source motion design tool — inspired by tools like Manim — that helps
+An open-source motion design tool, inspired by tools like Manim, that helps
 developers and educators create stunning animations from the browser.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@motion-script/create.svg)](https://www.npmjs.com/package/@motion-script/create)
 
 [Documentation](https://motionscript.dev/docs) ·
 [API Reference](https://motionscript.dev/api) ·
 [Contributing](CONTRIBUTING.md)
 
 </div>
-
----
 
 ## What is Motion Script?
 
@@ -29,21 +27,21 @@ import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
 
 export class ShapeScene extends Scene {
   *build() {
-    const lens = createRef<Ellipse>();
+    const ref = createRef<Ellipse>();
 
     this.add(
       <Rect width={400} height={400} fill="white" cornerRadius={20}>
-        <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
-      </Rect>,
+        <Ellipse ref={ref} x={200} y={200} width={350} height={350} />
+      </Rect>
     );
 
     // Animate: tween the ellipse to x=700 over 3 seconds.
-    yield* lens().to({ x: 700 }, 3);
+    yield* ref().to({ x: 700 }, 3);
   }
 }
 ```
 
-Animations are driven by generators — `yield*` a tween and the engine advances
+Animations are driven by generators: `yield*` a tween and the engine advances
 time, interpolating attributes frame by frame. Reactive signals, flex layout,
 fills, gradients, filters, SkSL shader effects, paths, text, and audio are all
 supported. See the [docs](https://motionscript.dev/docs) for the full feature
@@ -89,7 +87,10 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 | [`@motion-script/react`](packages/react) | React bindings for embedding Motion Script. |
 | [`@motion-script/player`](packages/player) | The timeline-based editor/player UI. |
 | [`@motion-script/vite-plugin`](packages/vite-plugin) | Vite plugin that boots the player app around your project and wires up assets. |
-| [`create-motion-script`](packages/create) | The project scaffolding CLI. |
+| [`@motion-script/cli`](packages/cli) | The command-line interface for managing and exporting Motion Script projects. |
+| [`@motion-script/code`](packages/components/code) | Syntax-highlighted code block component for use in scenes. |
+| [`@motion-script/latex`](packages/components/latex) | LaTeX math rendering component for use in scenes. |
+| [`@motion-script/create`](packages/create) | The project scaffolding CLI. |
 
 Plus internal workspaces: [`docs`](packages/docs) (the Docusaurus site),
 [`e2e`](packages/e2e) (Playwright tests), and [`my-video`](packages/my-video)

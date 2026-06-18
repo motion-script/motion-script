@@ -1,5 +1,19 @@
 # @motion-script/vite-plugin
 
+## 2.3.0
+
+### Minor Changes
+
+- fix text align
+
+### Patch Changes
+
+- Updated dependencies
+  - @motion-script/core@2.3.0
+  - @motion-script/canvaskit@2.3.0
+  - @motion-script/player@2.3.0
+  - @motion-script/web@2.3.0
+
 ## 2.2.0
 
 ### Minor Changes
