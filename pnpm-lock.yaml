@@ -618,6 +618,9 @@ importers:
       eslint-plugin-import-x:
         specifier: 'catalog:'
         version: 4.16.2(@typescript-eslint/utils@8.60.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0))
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
       tsc-alias:
         specifier: 'catalog:'
         version: 1.8.17
