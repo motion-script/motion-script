@@ -28,7 +28,7 @@ export interface RichTextProps extends ShapeProps {
     letterSpacing: number;
     /** Line height multiplier applied to each run's font size. */
     lineHeight: number;
-    align: TextAlign;
+    textAlign: TextAlign;
 }
 
 export class RichText extends ShapeNode<RichTextProps> {
@@ -46,7 +46,7 @@ export class RichText extends ShapeNode<RichTextProps> {
     @property({ default: 'normal' }) declare readonly fontStyle: FontStyle;
     @property({ default: 0 }) declare readonly letterSpacing: number;
     @property({ default: 1.2 }) declare readonly lineHeight: number;
-    @property({ default: 'center' }) declare readonly align: TextAlign;
+    @property({ default: 'center' }) declare readonly textAlign: TextAlign;
 
     constructor(props: NodeConfig<RichText, RichTextProps>) {
         super(props);
@@ -162,7 +162,7 @@ export class RichText extends ShapeNode<RichTextProps> {
         ctx.draw(new Graphics().richText({
             spans: this.runs(),
             lineHeight: this.lineHeight,
-            align: this.align,
+            align: this.textAlign,
             width: this.layoutRect?.width ?? 0,
             height: this.layoutRect?.height ?? 0,
         }));

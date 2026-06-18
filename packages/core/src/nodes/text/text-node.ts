@@ -29,7 +29,7 @@ export interface TextProps extends ShapeProps {
     fontStyle: FontStyle;
     letterSpacing: number;
     lineHeight: number;
-    align: TextAlign;
+    textAlign: TextAlign;
     wrap: boolean;
     minFontSize: number;
     /**
@@ -59,7 +59,7 @@ export class Text extends ShapeNode<TextProps> {
     @property({ default: 'normal' }) declare readonly fontStyle: FontStyle;
     @property({ default: 0 }) declare readonly letterSpacing: number;
     @property({ default: 1.2 }) declare readonly lineHeight: number;
-    @property({ default: 'center' }) declare readonly align: TextAlign;
+    @property({ default: 'center' }) declare readonly textAlign: TextAlign;
     @property({ default: false }) declare readonly wrap: boolean;
     @property({ default: 12 }) declare readonly minFontSize: number;
     @property({ default: null, mapper: resolveTextPath })
@@ -300,7 +300,7 @@ export class Text extends ShapeNode<TextProps> {
             fontStyle: this.fontStyle,
             letterSpacing: this.letterSpacing,
             lineHeight: this.lineHeight,
-            align: this.align,
+            align: this.textAlign,
             wrap: this.wrap,
             minFontSize: this.minFontSize,
             width: this.layoutRect?.width ?? 0,

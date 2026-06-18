@@ -1,5 +1,11 @@
 # @motion-script/site
 
+## 0.3.0
+
+### Minor Changes
+
+- fix text align
+
 ## 0.2.0
 
 ### Minor Changes

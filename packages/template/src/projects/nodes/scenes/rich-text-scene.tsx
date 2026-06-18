@@ -22,7 +22,7 @@ export class RichTextScene extends Scene {
                     <RichText
                         ref={ref}
                         fontSize={52}
-                        align={'center'}
+                        textAlign={'center'}
                         spans={[
                             { text: 'Mix ', fill: 'white', fontWeight: 300 },
                             { text: 'styles', fill: '#6990DD', fontWeight: 800, fontSize: 52 },
