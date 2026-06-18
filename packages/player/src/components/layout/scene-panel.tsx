@@ -101,7 +101,7 @@ export function ScenePanel({ onSceneSelect }: { onSceneSelect?: () => void } = {
                 </div>
 
                 <a
-                    href="https://motionscript.dev/docs"
+                    href="https://motionscript.dev/docs/intro"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2.5 px-3 py-3 border-t shrink-0 text-sm font-medium text-muted-foreground bg-muted/30 hover:bg-muted/50 hover:text-foreground transition-colors"

@@ -67,12 +67,21 @@ export default defineConfig(({ command }) => {
         // resolves a single shared core/web from the consumer at runtime (the
         // vite-plugin declares them as deps and dedupes them). React was already
         // external for the same single-instance reason.
+        // Match import *specifiers* (bare module IDs), never resolved file
+        // paths. The old /use-sync-external-store/ was unanchored, so it also
+        // matched zustand's pnpm path on CI — its peer-dep hash directory is
+        // named `zustand@..._use-sync-external-store@1.6.0_react@...`. That made
+        // rolldown externalize zustand's *absolute* CI path, shipping an
+        // unresolvable `import { create } from "/home/runner/.../zustand/esm/
+        // index.mjs"` in the published bundle. The boundary anchors below match
+        // `use-sync-external-store`, `use-sync-external-store/shim`, etc. but not
+        // a path that merely contains the substring.
         external: [
           'react',
           'react-dom',
           'react/jsx-runtime',
           'react/jsx-dev-runtime',
-          /use-sync-external-store/,
+          /^use-sync-external-store(\/|$)/,
           /^@motion-script\//,
         ],
         output: {

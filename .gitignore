@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+
+
 # Vitest browser-mode artifacts (failure screenshots / attachments)
 **/.vitest-attachments/
 **/test/__screenshots__/

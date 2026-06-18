@@ -1,5 +1,11 @@
 # @motion-script/web
 
+## 2.2.0
+
+### Minor Changes
+
+- fix player build
+
 ## 2.1.0
 
 ### Minor Changes

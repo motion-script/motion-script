@@ -10,6 +10,7 @@
     "version-packages": "changeset version && node scripts/sync-root-version.js && pnpm install --no-frozen-lockfile",
     "release": "pnpm build:lib && changeset publish",
     "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @motion-script/e2e run test:e2e",
     "clean": "turbo run clean && rimraf .turbo"
   },
   "author": "Motion Script",
