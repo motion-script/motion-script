@@ -22,6 +22,20 @@ export interface SymmetricPadding {
 export type PaddingProps = number | Partial<PaddingResolved> & Partial<SymmetricPadding>;
 
 /**
+ * Accepted shapes for a node's `padding` prop.
+ *
+ * Mirrors {@link Fill}: the loose author-facing {@link PaddingProps} (a number
+ * or per-side/symmetric object) plus the strict {@link PaddingResolved} — a
+ * read-back resolved value structurally satisfies `PaddingProps`, so it passes
+ * through `resolvePadding` idempotently and can be assigned straight back.
+ *
+ *   node.padding = 3                          // uniform
+ *   node.padding = { horizontal: 8, top: 4 }  // mixed
+ *   node.padding = otherNode.padding          // resolved passes through
+ */
+export type Padding = PaddingProps | PaddingResolved;
+
+/**
  * Resolves a `PaddingProps` input to a fully specified `PaddingResolved` value.
  * Resolution order per side: explicit side value → symmetric shorthand → `previous` fallback → 0.
  */

@@ -24,6 +24,20 @@ export interface FillRendererContext {
      * frame's worth of textures rather than the whole cached clip.
      */
     transientImages: CKImage[];
+    /**
+     * Paints the current shape geometry (the same union/per-shape draw the
+     * handler performs for the main pass) with the given paint. Lets a renderer
+     * that needs extra passes — e.g. the video Echo filter drawing the current
+     * frame plus its trailing past frames — draw the figure itself.
+     */
+    drawShape: (paint: Paint) => void;
+    /**
+     * Set by a renderer that has already drawn the figure itself (e.g. the Echo
+     * filter draws the whole frame stack), telling the handler to skip its own
+     * default draw pass. The handler still clears the shader and frees
+     * `transientImages` afterward. Reset to false before each fill.
+     */
+    skipDefaultDraw: boolean;
 }
 
 export abstract class FillRenderer<T extends FillResolved = FillResolved> {

@@ -2,7 +2,7 @@
 
 import {
     Scene, createRef, Reference, Text, Rect, Image,
-    Fill, BlendMode, easeInOutQuad, parallel, sequence, wait,
+    Fills, BlendMode, easeInOutQuad, parallel, sequence, wait,
     Ellipse,
 } from "@motion-script/core";
 /**
@@ -60,12 +60,12 @@ export abstract class BlendDemoScene extends Scene {
         const refs = Array.from({ length: 3 }, () => createRef<Rect>());
 
         const fills = [
-            Fill.color('red', { blend: mode }),
-            Fill.color('blue', { blend: mode }),
-            Fill.color('yellow', { blend: mode }),
+            Fills.color('red', { blend: mode }),
+            Fills.color('blue', { blend: mode }),
+            Fills.color('yellow', { blend: mode }),
 
-            //Fill.linearGradient(['#6990DD', '#F5C26B'], { blend: mode, start: { x: -1, y: -1 }, end: { x: 1, y: 1 } }),
-            // Fill.image('./cat.jpg', { mode: 'fill', blend: mode }),
+            //Fills.linearGradient(['#6990DD', '#F5C26B'], { blend: mode, start: { x: -1, y: -1 }, end: { x: 1, y: 1 } }),
+            // Fills.image('./cat.jpg', { fit: 'fill', blend: mode }),
         ];
 
         const positions =
@@ -74,7 +74,7 @@ export abstract class BlendDemoScene extends Scene {
             this.add(
                 <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                     <Text fontFamily={'Pixelify Sans'} text={`Blend: ${mode}`} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                    <Rect width={'fill'} height={'fill'} clip={true} borderRadius={32} group={'stack'}>
+                    <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'}>
                         <Image src={'kingfisher.jpg'} fit={'fill'} width={1200} height={900} />
                         {refs.map((ref, i) => {
                             const { x, y } = cords[i];

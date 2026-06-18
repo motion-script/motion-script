@@ -79,6 +79,35 @@ describe('PlaybackController – seek', () => {
         await controller.seek(99999);
         expect(clock.seekCalls.at(-1)).toBeCloseTo(1, 6); // 10 / 10 fps
     });
+
+    it('a superseded seek does not render after a newer seek resolves', async () => {
+        // Fast scrub: seek(5) parks on the warm re-render loop while seek(2) runs
+        // to completion. When seek(5) wakes, its generation is stale, so it must
+        // bail before re-rendering — otherwise frame 5 would paint over frame 2
+        // (the bug: a Video scene's frame bleeding into a later scene).
+        const { controller, clock, storage, rc } = makeController(10, 10);
+
+        // Park the first seek's warm loop on a deferred that wants another render.
+        let releaseWarm!: (more: boolean) => void;
+        storage.warmGate = new Promise<boolean>((res) => { releaseWarm = res; });
+
+        const stale = controller.seek(5);   // renders frame 5 once, then parks on warmGate
+        await flush();                       // let it reach the parked warmPendingVideo
+        expect(clock.seekCalls.at(-1)).toBeCloseTo(0.5, 6);
+
+        // Newer seek completes immediately (no warm gate) and is the last render.
+        storage.warmGate = null;
+        await controller.seek(2);
+        expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);
+        const rendersAfterCurrentSeek = rc.renderCount;
+
+        // Wake the stale seek and ask it to re-render — it must refuse.
+        releaseWarm(true);
+        await stale;
+
+        expect(rc.renderCount).toBe(rendersAfterCurrentSeek); // no stale frame-5 repaint
+        expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);   // playhead stays at the newest target
+    });
 });
 
 describe('PlaybackController – play / pause wiring', () => {

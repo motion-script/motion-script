@@ -66,6 +66,7 @@ export class StateEvaluator {
 
         for (const s of scenes) {
             s.set({ width: viewport.width, height: viewport.height });
+            s.setViewport(viewport);
         }
 
         let offset = 0;

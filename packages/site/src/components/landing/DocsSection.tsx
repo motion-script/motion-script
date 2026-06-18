@@ -82,10 +82,6 @@ export function ContributeSection() {
           ref={ref}
           className={`reveal-up${isInView ? ' is-visible' : ''} relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] p-8 sm:p-12 lg:p-16 text-center`}
         >
-          {/* Background gradient orbs */}
-          <div className="absolute top-0 left-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
           <div className="relative">
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
               <HeartIcon className="w-8 h-8 text-white" />

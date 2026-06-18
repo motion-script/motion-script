@@ -3,18 +3,21 @@ import type {
     Canvas,
     Surface,
     Paint,
+    Path as CKPath,
+    Shader,
 } from "@motion-script/canvaskit";
 import {
     type BooleanOperation,
-    type ClipShape,
+    Clip,
+    type ClipOp,
     type EllipseState,
-    type FillProp,
+    type Fill,
     type FillResolved,
     type FillSpace,
     type ImageState,
-    type ShadowProp,
+    type Shadow,
     type ShadowResolved,
-    type StrokeProp,
+    type Stroke,
     type StrokeResolved,
     type LineState,
     type MaskOptions,
@@ -31,13 +34,10 @@ import {
     type TextState,
     type TransformState,
     type Vector2,
-    type BulgeEffect,
-    type MagnifyEffect,
     type MotionBlurEffect,
-    type PosterizeEffect,
     type FontStyle,
-    type SkSLEffect,
     type SceneEffect,
+    type EffectTarget,
     type NodeBlendMode,
 
     withImageDescriptor,
@@ -50,7 +50,9 @@ import {
 
 
 import { layoutRichText } from "./shapes/richtext";
-import { drawShapedRun, layoutParagraph } from "./shapes/paragraph-layout";
+import { drawShapedRun } from "./shapes/paragraph-layout";
+import { measureTextCached } from "./shapes/paragraph-cache";
+import { layoutTextSegments, runCenter } from "./shapes/text-segments";
 import { ImageNodeRenderer } from "./shapes/image";
 import { RectShape } from "./shapes/rect";
 import { EllipseShape } from "./shapes/ellipse";
@@ -61,10 +63,11 @@ import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { CanvasKitEffectRegistry } from "./effects/registry";
 import { resolveMotionBlur } from "./effects/motion-blur";
-import { makeBulgeShader, disposeBulge } from "./effects/bulge";
-import { makeMagnifyShader, disposeMagnify } from "./effects/magnify";
-import { makePosterizeShader, disposePosterize } from "./effects/posterize";
-import { getOrCompileSkSL, disposeSkSLCache } from "./effects/sksl-cache";
+import { ShaderEffectRegistry, type ShaderEffect, type ShaderEffectGeometry } from "./effects/shader-effect";
+import { disposeBulge } from "./effects/bulge";
+import { disposeMagnify } from "./effects/magnify";
+import { disposePosterize } from "./effects/posterize";
+import { disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
 import { FillHandler } from "./fills/handler";
@@ -74,6 +77,49 @@ import { getCanvasKitBlendMode } from "./blend";
 type DeferredPaintCall =
     | { kind: 'fill'; shapes: CurrentShape[]; fills: FillResolved[]; shadows: ShadowResolved[] | null }
     | { kind: 'stroke'; shapes: CurrentShape[]; strokes: StrokeResolved[]; shadows: ShadowResolved[] | null };
+
+/**
+ * A foreground shader effect mid-flight: drawing is redirected into `offscreen`
+ * until {@link WebRenderContext.endEffectScope} snapshots it and repaints it
+ * through `handler`'s lens. `width`/`height` are the node's logical size,
+ * `matrix` the CTM captured when the scope opened.
+ */
+type ForegroundCapture = {
+    handler: ShaderEffect;
+    effect: SceneEffect;
+    width: number;
+    height: number;
+    savedCanvas: Canvas;
+    offscreen: Surface;
+    matrix: number[];
+};
+
+/** Map a {@link ShaderEffect} tile-mode literal to its CanvasKit enum. */
+function tileMode(ck: CanvasKit, mode: "clamp" | "decal") {
+    return mode === "decal" ? ck.TileMode.Decal : ck.TileMode.Clamp;
+}
+
+/** Map a {@link ShaderEffect} filter-mode literal to its CanvasKit enum. */
+function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
+    return mode === "nearest" ? ck.FilterMode.Nearest : ck.FilterMode.Linear;
+}
+
+/**
+ * Fold a text segment's opacity into its fill layers by multiplying each
+ * layer's `opacity` (the fill handler then multiplies that by the node's world
+ * alpha, so node opacity and selection opacity compose). Returns the input
+ * unchanged when `segmentOpacity` is 1 to avoid allocating per frame.
+ */
+function applySegmentOpacityToFills(fills: FillResolved[], segmentOpacity: number): FillResolved[] {
+    if (segmentOpacity >= 1) return fills;
+    return fills.map(f => ({ ...f, opacity: (f.opacity ?? 1) * segmentOpacity }));
+}
+
+/** Fold a segment's opacity into each stroke's fill layers (see {@link applySegmentOpacityToFills}). */
+function applySegmentOpacityToStrokes(strokes: StrokeResolved[], segmentOpacity: number): StrokeResolved[] {
+    if (segmentOpacity >= 1) return strokes;
+    return strokes.map(s => ({ ...s, fill: applySegmentOpacityToFills(s.fill, segmentOpacity) }));
+}
 
 /**
  * CanvasKit/Skia implementation of {@link RenderContext} — the main render
@@ -137,17 +183,13 @@ export class WebRenderContext extends RenderContext {
         this.buildHandlers();
     }
     measureText(text: string, fontSize: number, fontFamily: string, fontWeight: number = 400, letterSpacing: number = 0, fontStyle: FontStyle = 'normal'): number {
-        if (text.length === 0) return 0;
-        const fontMgr = this.storageAdapter.getFontMgr();
-        const layout = layoutParagraph(
+        return measureTextCached(
             this.canvasKit,
-            fontMgr,
-            [{ text, fontFamily, fontSize, fontWeight, letterSpacing, fontStyle }],
-            { align: 'center', lineHeight: 1, maxWidth: Infinity, originX: 0, originY: 0 },
+            this.storageAdapter.getFontMgr(),
+            this.storageAdapter.getParagraphCache(),
+            this.storageAdapter.getFontEpoch(),
+            text, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle,
         );
-        const w = layout.width;
-        for (const f of layout.fonts) f.delete();
-        return w;
     }
     private buildHandlers(): void {
         const getCanvas = () => this.currentCanvas;
@@ -158,6 +200,8 @@ export class WebRenderContext extends RenderContext {
             getCanvas,
             getPaint,
             this.storageAdapter.getFontMgr(),
+            this.storageAdapter.getParagraphCache(),
+            () => this.storageAdapter.getFontEpoch(),
         );
 
         const getWorldAlpha = () => this.worldAlpha;
@@ -277,14 +321,10 @@ export class WebRenderContext extends RenderContext {
         this.effectLayerStack.length = 0;
         this.clipRestoreStack.length = 0;
         this.deferredPaintsStack.length = 0;
-        this.backgroundBlurStack.length = 0;
-        this.backgroundDistortionStack.length = 0;
-        this.backdropSkSLStack.length = 0;
+        this.effectScopeStack.length = 0;
         disposeBulge();
         disposeMagnify();
         disposePosterize();
-        this.foregroundDistortionStack.length = 0;
-        this.posterizeStack.length = 0;
         disposeSkSLCache();
 
         super.dispose();
@@ -401,7 +441,9 @@ export class WebRenderContext extends RenderContext {
         let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
-            const effects = graphics.groupEffects();
+            // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+            // not the node's own content — exclude them from the foreground filter chain.
+            const effects = graphics.groupEffects().filter((e) => !("backdrop" in e && e.backdrop));
             if (effects.length > 0) {
                 const w = this.surface.width();
                 const h = this.surface.height();
@@ -417,6 +459,25 @@ export class WebRenderContext extends RenderContext {
             if (opacity < 1) this.worldAlpha *= opacity;
         }
 
+        // Graphics-level rotation/scale transforms the whole union as one figure.
+        // It's realised as a canvas matrix about the pivot (default: the union's
+        // bbox centre, sized in a throwaway measurement pass) wrapping the entire
+        // op replay — so the combined silhouette turns/grows together and the CTM
+        // change flows into fill/stroke space resolution.
+        const groupTransform = graphics.groupTransform();
+        let pushedTransform = false;
+        if (groupTransform) {
+            const center = groupTransform.center ?? this.measureUnionCenter(graphics);
+            const cx = center.x;
+            const cy = center.y;
+            this.currentCanvas.save();
+            this.currentCanvas.translate(cx, cy);
+            this.currentCanvas.rotate(groupTransform.rotation, 0, 0);
+            this.currentCanvas.scale(groupTransform.scale, groupTransform.scale);
+            this.currentCanvas.translate(-cx, -cy);
+            pushedTransform = true;
+        }
+
         // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
         // the fill/stroke for a boolean result left active by endBoolean) is
         // applied to the currently-active surface without resetting it.
@@ -427,11 +488,40 @@ export class WebRenderContext extends RenderContext {
         // paint call (mirrors end()'s flush; harmless if nothing is pending).
         this.flushPendingImage();
 
+        if (pushedTransform) this.currentCanvas.restore();
         this.worldAlpha = prevWorldAlpha;
         if (pushedLayer) {
             this.currentCanvas.restore();
             groupFilter?.delete?.();
         }
+    }
+
+    /**
+     * Size the union of a Graphics' shapes in a throwaway measurement pass and
+     * return the centre of its bounding box — the default pivot for a
+     * graphics-level rotation/scale. Builds the shape ops (skipping paint and
+     * compositing ops) into a suspended-cache scope so the real paint pass that
+     * follows is unaffected. Falls back to the local origin when there are no
+     * path-backed shapes (e.g. text only).
+     */
+    private measureUnionCenter(graphics: Graphics): Vector2 {
+        this.shapeHandler.beginMeasure();
+        for (const op of graphics.ops()) {
+            switch (op.kind) {
+                case "rect": this.shapeHandler.rect(op.state); break;
+                case "ellipse": this.shapeHandler.ellipse(op.state); break;
+                case "path": this.shapeHandler.path(op.state); break;
+                case "line": this.shapeHandler.line(op.state); break;
+                case "polygon": this.shapeHandler.polygon(op.state); break;
+                case "polygram": this.shapeHandler.polygram(op.state); break;
+                // Paint/compositing/text/image ops don't change the union bbox used
+                // for the pivot, so they're skipped during measurement.
+            }
+        }
+        const bounds = this.shapeHandler.measureUnionBounds();
+        this.shapeHandler.endMeasure();
+        if (!bounds) return { x: 0, y: 0 };
+        return { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
     }
 
     private applyOp(op: GraphicsOp): void {
@@ -491,16 +581,17 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.scale(scale, scale);
         this.currentCanvas.translate(-pivotX, -pivotY);
 
+        // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+        // not the node's own content — exclude them from the foreground filter chain.
+        const foregroundEffects = effects.filter((e) => !("backdrop" in e && e.backdrop));
         let effectFilter: any = null;
-        if (effects.length > 0) {
-            const w = this.surface.width();
-            const h = this.surface.height();
+        if (foregroundEffects.length > 0) {
             // Motion blur needs the node's live velocity, which static effect data
             // can't carry — resolve each `motionBlur` against the current node's
             // render state here, then hand the renderer a concrete directional
             // smear. Effects without motion blur skip the copy entirely.
-            const resolved = this.resolveMotionBlurEffects(effects);
-            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, w, h);
+            const resolved = this.resolveMotionBlurEffects(foregroundEffects);
+            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, width, height);
         }
 
         const isolating = blend !== 'pass-through';
@@ -528,7 +619,13 @@ export class WebRenderContext extends RenderContext {
             if (effectFilter != null) {
                 this.layerPaint.setAlphaf(1);
                 this.layerPaint.setImageFilter(effectFilter);
-                this.currentCanvas.saveLayer(this.layerPaint);
+                // Bound the effect layer to the node rect (laid out centred on the
+                // local origin). Scaling filters like pixelate otherwise let Skia
+                // pick layer bounds from the filter output, which overruns the
+                // active clip and squares off rounded corners; an explicit bound
+                // keeps the filtered result inside the node so the clip cuts clean.
+                const bounds = this.canvasKit.LTRBRect(-width / 2, -height / 2, width / 2, height / 2);
+                this.currentCanvas.saveLayer(this.layerPaint, bounds);
                 this.layerPaint.setImageFilter(null);
                 this.effectLayerStack[this.effectLayerStack.length - 1]++;
             }
@@ -635,7 +732,64 @@ export class WebRenderContext extends RenderContext {
     private _text(state: Partial<TextState>): void {
         this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
+        if (state.segments && state.segments.length > 0) {
+            this._segmentedText(state);
+            return;
+        }
         this.shapeHandler.text(state);
+    }
+
+    /**
+     * Draw a Text node split into selection segments. Shapes all pieces in one
+     * paragraph (consistent kerning/wrap/align) and paints each shaped run with
+     * its segment's overrides: opacity folded into the paint, a transform about
+     * the run's centre, and the segment's fill/stroke (which default to the
+     * node's paint when the selection didn't override them). Mirrors
+     * {@link _richText}'s eager per-run paint path.
+     */
+    private _segmentedText(state: Partial<TextState>): void {
+        const layout = layoutTextSegments(
+            this.canvasKit,
+            this.storageAdapter.getFontMgr(),
+            state,
+        );
+
+        this.shapeHandler.pushBounds(layout.bounds);
+        try {
+            for (const run of layout.runs) {
+                if (run.glyphs.length === 0 || !run.segment) continue;
+                const seg = run.segment;
+
+                const transformed = seg.x !== 0 || seg.y !== 0 || seg.scale !== 1 || seg.rotation !== 0;
+                if (transformed) {
+                    const c = runCenter(run);
+                    this.currentCanvas.save();
+                    this.currentCanvas.translate(seg.x, seg.y);
+                    if (seg.rotation !== 0) this.currentCanvas.rotate(seg.rotation, c.x, c.y);
+                    if (seg.scale !== 1) {
+                        this.currentCanvas.translate(c.x, c.y);
+                        this.currentCanvas.scale(seg.scale, seg.scale);
+                        this.currentCanvas.translate(-c.x, -c.y);
+                    }
+                }
+
+                const shape = {
+                    isText: true,
+                    draw: (paint: Paint) => drawShapedRun(this.currentCanvas, run, paint),
+                };
+
+                const fills = seg.fill ? applySegmentOpacityToFills(seg.fill, seg.opacity) : [];
+                if (fills.length > 0) this.fillHandler.applyFills(fills, [shape]);
+
+                const strokes = seg.stroke ? applySegmentOpacityToStrokes(seg.stroke, seg.opacity) : [];
+                if (strokes.length > 0) this.strokeHandler.applyStrokes(strokes, [shape]);
+
+                if (transformed) this.currentCanvas.restore();
+            }
+        } finally {
+            this.shapeHandler.popBounds();
+            for (const font of layout.fonts) font.delete();
+        }
     }
 
     /** Lays out spans/runs and paints each run's fill/stroke immediately (rich text carries per-span paint, bypassing the usual fill/stroke ops). */
@@ -687,7 +841,7 @@ export class WebRenderContext extends RenderContext {
         this.pendingImageStrokes = [];
     }
 
-    private _fill(fills: FillProp | FillProp[]): void {
+    private _fill(fills: Fill): void {
         const resolved = resolveFillArray(fills);
         if (resolved.length === 0) return;
         // A fill following an image op styles that pending image, mirroring the
@@ -713,10 +867,14 @@ export class WebRenderContext extends RenderContext {
         if (pendingShadows) {
             const space = pendingShadows[0].fill[0]?.space ?? "local";
             const { shapes, dispose } = this.strokeShapesForSpace(space);
+            // Outer shadows paint beneath the fill; inner shadows paint over it.
             this.strokeHandler.applyShadows(pendingShadows, shapes, resolved, [], this.applyFillSpaceBounds);
+            this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
+            this.strokeHandler.applyInnerShadows(pendingShadows, shapes, resolved, this.applyFillSpaceBounds);
             dispose();
+        } else {
+            this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
         }
-        this.fillHandler.applyFills(resolved, this.shapeHandler.shapes);
         this.shapeHandler.paintApplied = true;
     }
 
@@ -735,7 +893,7 @@ export class WebRenderContext extends RenderContext {
     // any transient union path. `space` is accepted for call-site symmetry with
     // the fill path but no longer changes the grouping.
     private strokeShapesForSpace(_space: FillSpace): {
-        shapes: Array<{ draw: (p: any) => void; ckPath?: any }>;
+        shapes: Array<{ draw: (p: any) => void; ckPath?: any; spreadPath?: (spread: number) => any }>;
         dispose: () => void;
     } {
         const union = this.shapeHandler.unionStrokeShape();
@@ -745,7 +903,7 @@ export class WebRenderContext extends RenderContext {
         return { shapes: this.shapeHandler.shapes, dispose: () => { } };
     }
 
-    private _stroke(strokes: StrokeProp | StrokeProp[]): void {
+    private _stroke(strokes: Stroke): void {
         const resolved = resolveStrokeArray(strokes);
         if (resolved.length === 0) return;
         // A stroke following an image op styles that pending image.
@@ -782,7 +940,7 @@ export class WebRenderContext extends RenderContext {
         this.shapeHandler.paintApplied = true;
     }
 
-    private _shadow(shadows: ShadowProp | ShadowProp[]): void {
+    private _shadow(shadows: Shadow): void {
         const resolved = resolveShadowArray(shadows);
         if (resolved.length === 0) return;
         // A shadow following an image op styles that pending image.
@@ -837,32 +995,88 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    // ─── Clip scope ──────────────────────────────────────────────────────────
+    // ─── Scene-fit scope ─────────────────────────────────────────────────────
 
-    beginClipRect(state: Partial<RectState>): void {
+    private sceneFitRestoreStack: number[] = [];
+
+    beginSceneFit(clip: Clip | null, scaleX: number, scaleY: number): void {
         if (!this.isRendering) {
-            console.warn("beginClipRect() must be called within the draw() method.");
+            console.warn("beginSceneFit() must be called within the draw() method.");
             return;
         }
         const canvas = this.currentCanvas;
+
         canvas.save();
-        const shape = new RectShape(this.canvasKit, () => this.currentCanvas, state);
-        shape.clip(/* isolated= */ true);
-        if (shape.ckPath) shape.ckPath.delete();
-        this.clipRestoreStack.push(1);
+        // Clip to the cell first (in the node's local centred space — already
+        // positioned by the node transform) so the scaled-up world is confined
+        // to the box, then scale the world down to fit. Reuse the same clip-path
+        // building as beginClip() so rounded corners follow the cell outline.
+        if (clip && !clip.isEmpty()) {
+            const ops = clip.ops();
+            if (ops.length === 1 && ops[0].kind !== "cut") {
+                const shape = this.buildClipShapeOp(ops[0]);
+                if (shape) {
+                    shape.clip(/* isolated= */ true);
+                    shape.deletePaths();
+                }
+            } else {
+                const combined = this.combineClipPath(clip);
+                if (combined) {
+                    canvas.clipPath(combined, this.canvasKit.ClipOp.Intersect, true);
+                    combined.delete();
+                }
+            }
+        }
+
+        // Non-uniform scale about the current origin (the cell centre). The
+        // nested world is laid out centred at the origin, so scaling here keeps
+        // it centred within the cell.
+        canvas.scale(scaleX, scaleY);
+
+        this.sceneFitRestoreStack.push(1);
     }
 
-    beginClipEllipse(state: Partial<EllipseState>): void {
+    endSceneFit(): void {
         if (!this.isRendering) {
-            console.warn("beginClipEllipse() must be called within the draw() method.");
+            console.warn("endSceneFit() must be called within the draw() method.");
+            return;
+        }
+        const restores = this.sceneFitRestoreStack.pop() ?? 0;
+        for (let i = 0; i < restores; i++) {
+            this.currentCanvas.restore();
+        }
+    }
+
+    // ─── Clip scope ──────────────────────────────────────────────────────────
+
+    beginClip(clip: Clip): void {
+        if (!this.isRendering) {
+            console.warn("beginClip() must be called within the draw() method.");
             return;
         }
         const canvas = this.currentCanvas;
         canvas.save();
-        const shape = new EllipseShape(this.canvasKit, () => this.currentCanvas, state);
-        shape.clip(/* isolated= */ true);
-        if (shape.ckPath) shape.ckPath.delete();
         this.clipRestoreStack.push(1);
+
+        const ops = clip.ops();
+        // Fast path — a single shape with no cut clips natively (clipRect/clipRRect
+        // for axis-aligned rects/ellipses), no combined path needed.
+        if (ops.length === 1 && ops[0].kind !== "cut") {
+            const shape = this.buildClipShapeOp(ops[0]);
+            if (shape) {
+                shape.clip(/* isolated= */ true);
+                shape.deletePaths();
+            }
+            return;
+        }
+
+        // Compound clip: union the shapes (subtracting cuts) into one path and
+        // clip to it. No-op when nothing built a path.
+        const combined = this.combineClipPath(clip);
+        if (combined) {
+            canvas.clipPath(combined, this.canvasKit.ClipOp.Intersect, true);
+            combined.delete();
+        }
     }
 
     endClip(): void {
@@ -876,184 +1090,240 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    private buildClipShape(shape: ClipShape): CurrentShape | null {
+    /** Build the concrete shape instance for a single clip shape op. */
+    private buildClipShapeOp(op: ClipOp): RectShape | EllipseShape | PolygonShape | PolygramShape | PathShape | LineShape | null {
         const ck = this.canvasKit;
         const canvas = () => this.currentCanvas;
-        // Call clip(true) to apply the clip (uses native clipRect/clipRRect when possible),
-        // then return a stub CurrentShape only if a ckPath was built so beginClipShape
-        // can delete it. Returns null when the clip was applied without a path.
-        let s: RectShape | EllipseShape | PolygonShape | PolygramShape | PathShape | LineShape;
-        switch (shape.kind) {
-            case "rect": s = new RectShape(ck, canvas, shape.state); break;
-            case "ellipse": s = new EllipseShape(ck, canvas, shape.state); break;
-            case "polygon": s = new PolygonShape(ck, canvas, shape.state); break;
-            case "polygram": s = new PolygramShape(ck, canvas, shape.state); break;
-            case "path": s = new PathShape(ck, canvas, shape.state); break;
-            case "line": s = new LineShape(ck, canvas, shape.state); break;
+        switch (op.kind) {
+            case "rect": return new RectShape(ck, canvas, op.state);
+            case "ellipse": return new EllipseShape(ck, canvas, op.state);
+            case "polygon": return new PolygonShape(ck, canvas, op.state);
+            case "polygram": return new PolygramShape(ck, canvas, op.state);
+            case "path": return new PathShape(ck, canvas, op.state);
+            case "line": return new LineShape(ck, canvas, op.state);
+            case "cut": return null;
         }
-        s.clip(true);
-        return s.ckPath ? { draw: () => { }, ckPath: s.ckPath } : null;
     }
 
-    beginClipShape(shape: ClipShape): void {
-        if (!this.isRendering) {
-            console.warn("beginClipShape() must be called within the draw() method.");
-            return;
-        }
-        const canvas = this.currentCanvas;
-        canvas.save();
-        const built = this.buildClipShape(shape);
-        if (built?.ckPath) {
-            canvas.clipPath(built.ckPath, this.canvasKit.ClipOp.Intersect, true);
-            built.ckPath.delete();
-        }
-        this.clipRestoreStack.push(1);
-    }
-
-    // ─── Background blur ───────────────────────────────────────────────────────
-
-    // Tracks the layer pushed by beginBackgroundBlur so endBackgroundBlur can
-    // pop exactly that many — kept as a stack to allow nesting.
-    private backgroundBlurStack: number[] = [];
-
-    beginBackgroundBlur(radius: number): void {
-        if (!this.isRendering) {
-            console.warn("beginBackgroundBlur() must be called within the draw() method.");
-            return;
-        }
-        if (radius <= 0) {
-            this.backgroundBlurStack.push(0);
-            return;
-        }
+    /**
+     * Replay a {@link Clip}'s ops into a single CanvasKit path: shapes union
+     * together, and a `cut` subtracts the most-recently declared shape from the
+     * shapes before it (mirroring `Graphics.cut()`). Returns a freshly-owned path
+     * the caller must `delete()`, or `null` when no shape produced a path.
+     */
+    private combineClipPath(clip: Clip): CKPath | null {
         const ck = this.canvasKit;
-        // Blur radius is given in logical px; the surface is scaled by pixelRatio,
-        // and sigma ≈ radius/2 matches the node `blur` effect's mapping.
-        const sigma = (radius * this.pixelRatio) / 2;
-        const backdrop = ck.ImageFilter.MakeBlur(sigma, sigma, ck.TileMode.Clamp, null);
-        // saveLayer with a backdrop filter seeds the new layer with the current
-        // canvas content run through `backdrop`. Clamp tiling samples beyond the
-        // active clip so the blur doesn't darken toward the silhouette edge. The
-        // layer is bounded by the active clip, so only the silhouette composites
-        // back on restore.
-        this.currentCanvas.saveLayer(undefined, null, backdrop, undefined, ck.TileMode.Clamp);
-        backdrop.delete();
-        this.backgroundBlurStack.push(1);
+        // Each entry is a path the caller (this method) owns; we fold them into one.
+        const paths: CKPath[] = [];
+        for (const op of clip.ops()) {
+            if (op.kind === "cut") {
+                // Subtract the last path from the union of the ones before it.
+                const cutter = paths.pop();
+                if (!cutter) continue;
+                const base = this.unionPaths(paths.splice(0, paths.length));
+                if (!base) { cutter.delete(); continue; }
+                const diff = ck.Path.MakeFromOp(base, cutter, ck.PathOp.Difference);
+                base.delete();
+                cutter.delete();
+                if (diff) paths.push(diff);
+                continue;
+            }
+            const shape = this.buildClipShapeOp(op);
+            if (!shape) continue;
+            shape.ensurePath();
+            // Copy out the path so deletePaths() doesn't free what we keep.
+            if (shape.ckPath) paths.push(shape.ckPath.copy());
+            shape.deletePaths();
+        }
+        return this.unionPaths(paths);
     }
 
-    endBackgroundBlur(): void {
+    /** Union a list of owned paths into one, consuming the inputs. */
+    private unionPaths(paths: CKPath[]): CKPath | null {
+        const ck = this.canvasKit;
+        if (paths.length === 0) return null;
+        let combined = paths[0];
+        for (let i = 1; i < paths.length; i++) {
+            const next = ck.Path.MakeFromOp(combined, paths[i], ck.PathOp.Union);
+            combined.delete();
+            paths[i].delete();
+            if (!next) {
+                for (let j = i + 1; j < paths.length; j++) paths[j].delete();
+                return null;
+            }
+            combined = next;
+        }
+        return combined;
+    }
+
+    // ─── Effect scope (filters + shader effects, foreground or backdrop) ─────────
+
+    // One entry per open beginEffectScope/endEffectScope pair. `canvasRestores`
+    // counts saveLayer()s pushed in begin (the backdrop filter layer) that end()
+    // must pop. `captures` holds foreground offscreen captures (one per foreground
+    // shader effect), resolved in end() inner-first so nested effects compose in
+    // the same order the old separate begin/end pairs did.
+    private effectScopeStack: Array<{
+        canvasRestores: number;
+        captures: ForegroundCapture[];
+    }> = [];
+
+    /**
+     * Open an effect scope over the node (see {@link RenderContext.beginEffectScope}).
+     * Effects are routed by the renderer, not the caller:
+     *
+     * - ImageFilter-composable effects (blur, grayscale, …) — only meaningful for
+     *   the backdrop here (foreground filters ride the node's transform layer) —
+     *   are composed into one filter and seeded into a backdrop saveLayer.
+     * - Shader effects (bulge, magnify, posterize, backdrop SkSL) are dispatched to
+     *   their {@link ShaderEffect} handler. Backdrop ones snapshot the surface and
+     *   repaint warped in device space immediately; foreground ones redirect drawing
+     *   into a per-effect offscreen surface that {@link endEffectScope} resamples.
+     *
+     * `width`/`height` are logical px (size-relative filters and shader lens boxes
+     * scale them by the CTM as needed).
+     */
+    beginEffectScope(effects: SceneEffect[], target: EffectTarget, width: number, height: number): void {
         if (!this.isRendering) {
-            console.warn("endBackgroundBlur() must be called within the draw() method.");
+            console.warn("beginEffectScope() must be called within the draw() method.");
             return;
         }
-        const layers = this.backgroundBlurStack.pop() ?? 0;
-        for (let i = 0; i < layers; i++) {
+
+        const entry: (typeof this.effectScopeStack)[number] = { canvasRestores: 0, captures: [] };
+
+        // Split into shader effects (per-handler) and the ImageFilter-composable
+        // remainder, preserving authoring order.
+        const filterEffects: SceneEffect[] = [];
+        const shaderEffects: Array<{ handler: ShaderEffect; effect: SceneEffect }> = [];
+        for (const effect of effects) {
+            const handler = ShaderEffectRegistry.resolve(effect, target);
+            if (handler) shaderEffects.push({ handler, effect });
+            else filterEffects.push(effect);
+        }
+
+        // Backdrop filter layer first (matches the old order: filters under the
+        // shader passes). Foreground filters are handled by transform()/draw(), so
+        // only run this for the backdrop.
+        if (target === "backdrop" && filterEffects.length > 0) {
+            if (this.openBackdropFilterLayer(filterEffects, width, height)) entry.canvasRestores++;
+        }
+
+        for (const { handler, effect } of shaderEffects) {
+            if (target === "backdrop") {
+                this.paintBackdropShaderEffect(handler, effect, width, height);
+            } else {
+                // Foreground: redirect drawing into an offscreen capture; resolved
+                // (resampled through the lens) in endEffectScope.
+                const capture = this.openForegroundCapture(handler, effect, width, height);
+                if (capture) entry.captures.push(capture);
+            }
+        }
+
+        this.effectScopeStack.push(entry);
+    }
+
+    endEffectScope(): void {
+        if (!this.isRendering) {
+            console.warn("endEffectScope() must be called within the draw() method.");
+            return;
+        }
+        const entry = this.effectScopeStack.pop();
+        if (!entry) return;
+
+        // Resolve foreground captures inner-first (reverse of begin order) so a
+        // capture's lens output redraws onto the next-outer capture's canvas,
+        // composing exactly as the old nested begin/end pairs did.
+        for (let i = entry.captures.length - 1; i >= 0; i--) {
+            this.resolveForegroundCapture(entry.captures[i]);
+        }
+        for (let i = 0; i < entry.canvasRestores; i++) {
             this.currentCanvas.restore();
         }
     }
 
-    // ─── Background distortion (magnify) ────────────────────────────────────────────
-
-    private backgroundDistortionStack: number[] = [];
-
-    beginBackgroundDistortion(effect: MagnifyEffect, width: number, height: number): void {
-        if (!this.isRendering) {
-            console.warn("beginBackgroundDistortion() must be called within the draw() method.");
-            return;
-        }
+    /**
+     * Compose `effects` into one ImageFilter and seed a backdrop saveLayer with the
+     * current canvas content run through it, clipped to the active silhouette.
+     * Returns `true` when a layer was pushed (so end() restores it).
+     *
+     * Per-effect handlers author filters in *logical* px, but a `saveLayer` backdrop
+     * filter runs in *device* space, so the composed logical filter `F` is wrapped
+     * `scale(pr) ∘ F ∘ scale(1/pr)` to behave as it would in the foreground.
+     */
+    private openBackdropFilterLayer(effects: SceneEffect[], width: number, height: number): boolean {
         const ck = this.canvasKit;
-        // The node was already translated to its centre by applyTransform, so the
-        // CTM maps the node's local origin (0,0) to its device centre, and the CTM
-        // scale converts the node's logical size into device px for the lens.
-        const m = this.currentCanvas.getTotalMatrix(); // row-major 3x3
-        const centerX = m[2];
-        const centerY = m[5];
-        const sx = Math.hypot(m[0], m[3]);
-        const sy = Math.hypot(m[1], m[4]);
+        const composed = CanvasKitEffectRegistry.composeFilters(effects, ck, width, height);
+        if (composed == null) return false;
+        const pr = this.pixelRatio;
+        const linear = { filter: ck.FilterMode.Linear, mipmap: ck.MipmapMode.None };
+        const toLogical = ck.ImageFilter.MakeMatrixTransform(ck.Matrix.scaled(1 / pr, 1 / pr), linear, null);
+        const inLogical = ck.ImageFilter.MakeCompose(composed, toLogical);
+        const backdrop = ck.ImageFilter.MakeMatrixTransform(ck.Matrix.scaled(pr, pr), linear, inLogical);
+        // saveLayer with a backdrop filter seeds the new layer with the current
+        // canvas content run through `backdrop`. Clamp tiling samples beyond the
+        // active clip so the filter doesn't darken toward the silhouette edge; the
+        // layer is bounded by the active clip, so only the silhouette composites
+        // back on restore.
+        this.currentCanvas.saveLayer(undefined, null, backdrop, undefined, ck.TileMode.Clamp);
+        backdrop.delete();
+        inLogical.delete();
+        toLogical.delete();
+        composed.delete();
+        return true;
+    }
 
-        // Snapshot the content painted so far (the backdrop) and wrap it as a child
-        // shader. The lens shader resamples this snapshot at magnify-remapped device
-        // coordinates — a real magnifier, not a nudge.
+    /**
+     * Snapshot the backdrop (the content beneath the node), build the handler's
+     * lens shader from it, and repaint it warped in device space — confined to the
+     * active silhouette clip. Used for magnify, backdrop posterize, backdrop SkSL.
+     */
+    private paintBackdropShaderEffect(
+        handler: ShaderEffect,
+        effect: SceneEffect,
+        width: number,
+        height: number,
+    ): void {
+        const ck = this.canvasKit;
+        if (width <= 0 || height <= 0) return;
+
+        // The node is already translated to its centre, so the CTM maps local
+        // origin → device centre and its scale converts logical size to device px.
+        const m = this.currentCanvas.getTotalMatrix();
+        // A backdrop snapshot fully covers the surface, so it always samples with
+        // Clamp regardless of the handler's foreground tile preference.
         const snapshot = this.surface.makeImageSnapshot();
-        const backdropShader = snapshot.makeShaderOptions(
-            ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Linear, ck.MipmapMode.None,
+        const content = snapshot.makeShaderOptions(
+            ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.filterMode), ck.MipmapMode.None,
         );
-        const lens = makeMagnifyShader(
-            effect, ck, backdropShader, centerX, centerY, width * sx, height * sy,
-        );
+        const lens = handler.makeShader(effect, ck, content, this.shaderGeometry(m, width, height));
         if (lens == null) {
-            backdropShader.delete();
+            content.delete();
             snapshot.delete();
-            this.backgroundDistortionStack.push(0);
             return;
         }
-
-        // Draw the warped backdrop in device space (identity CTM, so fragCoord ==
-        // snapshot px), bounded by the active silhouette clip — which is stored in
-        // device space, so it survives the matrix reset. Only the node's shape
-        // region is repainted with the distorted backdrop. CanvasKit has no
-        // resetMatrix, so concat the inverse of the current CTM to reach identity.
-        this.currentCanvas.save();
-        const inverse = ck.Matrix.invert(m);
-        if (inverse) this.currentCanvas.concat(inverse);
-        const paint = new ck.Paint();
-        paint.setShader(lens);
-        paint.setAntiAlias(true);
-        this.currentCanvas.drawRect(
-            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
-            paint,
-        );
-        paint.delete();
+        this.paintShaderInDeviceSpace(lens, m);
         lens.delete();
-        backdropShader.delete();
+        content.delete();
         snapshot.delete();
-        this.currentCanvas.restore();
-        this.backgroundDistortionStack.push(0);
     }
 
-    endBackgroundDistortion(): void {
-        if (!this.isRendering) {
-            console.warn("endBackgroundDistortion() must be called within the draw() method.");
-            return;
-        }
-        // The distortion is painted entirely within begin(); the stack entry is kept
-        // only for API symmetry with the other backdrop scopes.
-        this.backgroundDistortionStack.pop();
-    }
-
-    // ─── Foreground distortion (bulge) ───────────────────────────────────────────
-
-    // One entry per active begin/end pair. `null` marks a no-op scope (effect was
-    // a no-op or the offscreen surface couldn't be created), so end() can unwind
-    // symmetrically without touching the canvas.
-    private foregroundDistortionStack: Array<{
-        effect: BulgeEffect;
-        width: number;
-        height: number;
-        savedCanvas: Canvas;
-        offscreen: Surface;
-        matrix: number[];
-    } | null> = [];
-
-    beginForegroundDistortion(effect: BulgeEffect, width: number, height: number): void {
-        if (!this.isRendering) {
-            console.warn("beginForegroundDistortion() must be called within the draw() method.");
-            return;
-        }
+    /**
+     * Redirect drawing into a fresh offscreen surface so the node's own content can
+     * later be resampled through the handler's lens, leaving the backdrop untouched.
+     * Returns the capture (resolved in {@link resolveForegroundCapture}) or `null`
+     * when the offscreen couldn't be created (drawing then stays on the main canvas).
+     */
+    private openForegroundCapture(
+        handler: ShaderEffect,
+        effect: SceneEffect,
+        width: number,
+        height: number,
+    ): ForegroundCapture | null {
         const ck = this.canvasKit;
-        if (effect.strength === 0 || width <= 0 || height <= 0) {
-            this.foregroundDistortionStack.push(null);
-            return;
-        }
+        if (width <= 0 || height <= 0) return null;
 
-        // Render the node's own content into a fresh offscreen surface sharing the
-        // main surface's dimensions/format, so we can later resample just that
-        // content through the lens (the backdrop is left untouched on the main
-        // surface). A per-scope surface keeps nested bulges independent.
         const offscreen = this.surface.makeSurface(this.surface.imageInfo());
-        if (!offscreen) {
-            this.foregroundDistortionStack.push(null);
-            return;
-        }
+        if (!offscreen) return null;
 
         const m = this.currentCanvas.getTotalMatrix();
         const offCanvas = offscreen.getCanvas();
@@ -1063,202 +1333,55 @@ export class WebRenderContext extends RenderContext {
 
         const savedCanvas = this.currentCanvas;
         this.currentCanvas = offCanvas;
-        this.foregroundDistortionStack.push({ effect, width, height, savedCanvas, offscreen, matrix: m });
+        return { handler, effect, width, height, savedCanvas, offscreen, matrix: m };
     }
 
-    endForegroundDistortion(): void {
-        if (!this.isRendering) {
-            console.warn("endForegroundDistortion() must be called within the draw() method.");
-            return;
-        }
-        const entry = this.foregroundDistortionStack.pop();
-        if (!entry) return;
-
+    /**
+     * Stop capturing into an offscreen, snapshot what the node drew, and repaint it
+     * through the handler's lens onto the canvas active when the capture opened.
+     */
+    private resolveForegroundCapture(capture: ForegroundCapture): void {
         const ck = this.canvasKit;
-        const { effect, width, height, savedCanvas, offscreen, matrix: m } = entry;
+        const { handler, effect, width, height, savedCanvas, offscreen, matrix: m } = capture;
 
-        // Stop capturing: balance the save() from begin and restore drawing to the
-        // main canvas.
+        // Balance the save() from openForegroundCapture and resume the outer canvas.
         this.currentCanvas.restore();
         this.currentCanvas = savedCanvas;
 
-        const centerX = m[2];
-        const centerY = m[5];
+        const snapshot = offscreen.makeImageSnapshot();
+        const tm = tileMode(ck, handler.tileMode);
+        const content = snapshot.makeShaderOptions(
+            tm, tm, filterMode(ck, handler.filterMode), ck.MipmapMode.None,
+        );
+        const lens = handler.makeShader(effect, ck, content, this.shaderGeometry(m, width, height));
+        if (lens == null) {
+            content.delete();
+            snapshot.delete();
+            offscreen.delete();
+            return;
+        }
+        this.paintShaderInDeviceSpace(lens, m);
+        lens.delete();
+        content.delete();
+        snapshot.delete();
+        offscreen.delete();
+    }
+
+    /** Node box in device px: centre from the CTM translation, size from its scale. */
+    private shaderGeometry(m: number[], width: number, height: number): ShaderEffectGeometry {
         const sx = Math.hypot(m[0], m[3]);
         const sy = Math.hypot(m[1], m[4]);
-
-        // Snapshot the captured node content and wrap it as a child shader. Decal
-        // tiling makes samples outside the content read transparent, so the warp
-        // never drags in stray pixels — only the node itself is distorted.
-        const snapshot = offscreen.makeImageSnapshot();
-        const contentShader = snapshot.makeShaderOptions(
-            ck.TileMode.Decal, ck.TileMode.Decal, ck.FilterMode.Linear, ck.MipmapMode.None,
-        );
-        const lens = makeBulgeShader(
-            effect, ck, contentShader, centerX, centerY, width * sx, height * sy,
-        );
-        if (lens == null) {
-            contentShader.delete();
-            snapshot.delete();
-            offscreen.delete();
-            return;
-        }
-
-        // Draw the warped content in device space (identity CTM, so fragCoord ==
-        // snapshot px). CanvasKit has no resetMatrix, so concat the inverse CTM.
-        this.currentCanvas.save();
-        const inverse = ck.Matrix.invert(m);
-        if (inverse) this.currentCanvas.concat(inverse);
-        const paint = new ck.Paint();
-        paint.setShader(lens);
-        paint.setAntiAlias(true);
-        this.currentCanvas.drawRect(
-            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
-            paint,
-        );
-        paint.delete();
-        lens.delete();
-        contentShader.delete();
-        snapshot.delete();
-        this.currentCanvas.restore();
-        offscreen.delete();
+        return { centerX: m[2], centerY: m[5], width: width * sx, height: height * sy };
     }
 
-    // ─── Posterize (node-content colour quantization) ────────────────────────────
-
-    // One entry per active begin/end pair. `null` marks a no-op scope, so end()
-    // can unwind symmetrically without touching the canvas.
-    private posterizeStack: Array<{
-        effect: PosterizeEffect;
-        savedCanvas: Canvas;
-        offscreen: Surface;
-        matrix: number[];
-    } | null> = [];
-
-    beginPosterize(effect: PosterizeEffect, width: number, height: number): void {
-        if (!this.isRendering) {
-            console.warn("beginPosterize() must be called within the draw() method.");
-            return;
-        }
+    /**
+     * Paint `shader` over the whole surface in device space (identity CTM, so the
+     * shader's fragCoord == device px), confined to the active silhouette clip
+     * (stored in device space, so it survives the matrix reset). CanvasKit has no
+     * resetMatrix, so concat the inverse CTM to reach identity.
+     */
+    private paintShaderInDeviceSpace(shader: Shader, m: number[]): void {
         const ck = this.canvasKit;
-        if (effect.level < 2 || width <= 0 || height <= 0) {
-            this.posterizeStack.push(null);
-            return;
-        }
-
-        // Capture the node's own content into a fresh offscreen surface so we can
-        // later re-band just that content through the posterize shader, leaving the
-        // backdrop on the main surface untouched. A per-scope surface keeps nested
-        // posterize scopes independent.
-        const offscreen = this.surface.makeSurface(this.surface.imageInfo());
-        if (!offscreen) {
-            this.posterizeStack.push(null);
-            return;
-        }
-
-        const m = this.currentCanvas.getTotalMatrix();
-        const offCanvas = offscreen.getCanvas();
-        offCanvas.save();
-        offCanvas.clear(ck.TRANSPARENT);
-        offCanvas.concat(m); // replicate the full CTM so the node draws at the same device coords
-
-        const savedCanvas = this.currentCanvas;
-        this.currentCanvas = offCanvas;
-        this.posterizeStack.push({ effect, savedCanvas, offscreen, matrix: m });
-    }
-
-    endPosterize(): void {
-        if (!this.isRendering) {
-            console.warn("endPosterize() must be called within the draw() method.");
-            return;
-        }
-        const entry = this.posterizeStack.pop();
-        if (!entry) return;
-
-        const ck = this.canvasKit;
-        const { effect, savedCanvas, offscreen, matrix: m } = entry;
-
-        // Stop capturing: balance the save() from begin and restore drawing to the
-        // main canvas.
-        this.currentCanvas.restore();
-        this.currentCanvas = savedCanvas;
-
-        // Snapshot the captured node content and wrap it as a child shader. Decal
-        // tiling makes samples outside the content read transparent, so the empty
-        // surround stays transparent rather than banding to a solid colour.
-        const snapshot = offscreen.makeImageSnapshot();
-        const contentShader = snapshot.makeShaderOptions(
-            ck.TileMode.Decal, ck.TileMode.Decal, ck.FilterMode.Nearest, ck.MipmapMode.None,
-        );
-        const banded = makePosterizeShader(effect, ck, contentShader);
-        if (banded == null) {
-            contentShader.delete();
-            snapshot.delete();
-            offscreen.delete();
-            return;
-        }
-
-        // Draw the banded content in device space (identity CTM, so fragCoord ==
-        // snapshot px). CanvasKit has no resetMatrix, so concat the inverse CTM.
-        this.currentCanvas.save();
-        const inverse = ck.Matrix.invert(m);
-        if (inverse) this.currentCanvas.concat(inverse);
-        const paint = new ck.Paint();
-        paint.setShader(banded);
-        paint.setAntiAlias(true);
-        this.currentCanvas.drawRect(
-            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
-            paint,
-        );
-        paint.delete();
-        banded.delete();
-        contentShader.delete();
-        snapshot.delete();
-        this.currentCanvas.restore();
-        offscreen.delete();
-    }
-
-    // ─── Custom SkSL backdrop ─────────────────────────────────────────────────
-
-    private backdropSkSLStack: number[] = [];
-
-    beginBackdropSkSL(effect: SkSLEffect, width: number, height: number): void {
-        if (!this.isRendering) {
-            console.warn("beginBackdropSkSL() must be called within the draw() method.");
-            return;
-        }
-        const ck = this.canvasKit;
-        if (width <= 0 || height <= 0) {
-            this.backdropSkSLStack.push(0);
-            return;
-        }
-
-        const rte = getOrCompileSkSL(effect.shader, ck);
-        if (!rte) {
-            this.backdropSkSLStack.push(0);
-            return;
-        }
-
-        // Read the current CTM so we can reset to device-space for the draw.
-        const m = this.currentCanvas.getTotalMatrix();
-
-        // Snapshot what's beneath the node (before any of the node's own draws).
-        const snapshot = this.surface.makeImageSnapshot();
-        const backdropShader = snapshot.makeShaderOptions(
-            ck.TileMode.Clamp, ck.TileMode.Clamp, ck.FilterMode.Linear, ck.MipmapMode.None,
-        );
-
-        // Flatten user uniforms in declaration order.
-        const flat = effect.uniforms.flatMap((u) =>
-            typeof u.value === "number" ? [u.value] : u.value
-        );
-
-        // The first child shader is always u_backdrop.
-        const shader = rte.makeShaderWithChildren(flat, [backdropShader]);
-
-        // Draw the warped backdrop in device space (reset to identity via inverse CTM)
-        // so fragCoord matches snapshot pixel coordinates. The active silhouette clip
-        // (stored in device space) confines the repaint to the node's shape.
         this.currentCanvas.save();
         const inverse = ck.Matrix.invert(m);
         if (inverse) this.currentCanvas.concat(inverse);
@@ -1270,20 +1393,7 @@ export class WebRenderContext extends RenderContext {
             paint,
         );
         paint.delete();
-        shader.delete();
-        backdropShader.delete();
-        snapshot.delete();
         this.currentCanvas.restore();
-
-        this.backdropSkSLStack.push(0);
-    }
-
-    endBackdropSkSL(): void {
-        if (!this.isRendering) {
-            console.warn("endBackdropSkSL() must be called within the draw() method.");
-            return;
-        }
-        this.backdropSkSLStack.pop();
     }
 
     drawWebGLCanvas(canvas: HTMLCanvasElement, x: number, y: number, w: number, h: number): boolean {
@@ -1388,6 +1498,9 @@ export class WebRenderContext extends RenderContext {
                     this.strokeHandler.applyShadows(d.shadows, d.shapes, d.fills, [], this.applyFillSpaceBounds);
                 }
                 this.fillHandler.applyFills(d.fills, d.shapes);
+                if (d.shadows) {
+                    this.strokeHandler.applyInnerShadows(d.shadows, d.shapes, d.fills, this.applyFillSpaceBounds);
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-import { FilterRegistry } from "../registry";
+import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
 /**
@@ -27,7 +27,7 @@ export interface ColorAdjustmentFilter {
     vignette?: number;
 }
 
-FilterRegistry.register<ColorAdjustmentFilter>("colorAdjustment", {
+export const colorAdjustmentFilter: FilterData<ColorAdjustmentFilter> = {
     lerp: (from, to, t) => ({
         type: "colorAdjustment",
         brightness: lerpNumber(from.brightness ?? 0, to.brightness ?? 0, t),
@@ -50,4 +50,4 @@ FilterRegistry.register<ColorAdjustmentFilter>("colorAdjustment", {
         a.temperature === b.temperature &&
         a.tint === b.tint &&
         a.vignette === b.vignette,
-});
+};

@@ -2,19 +2,17 @@ import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFil
 
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
-import { resolveStrokeArray, StrokeResolved, type StrokeProp } from "@/attributes/shape/stroke/mapper";
-import { resolveShadowArray, ShadowResolved, type ShadowProp } from "@/attributes/shape/shadow/resolver";
+import { resolveStrokeArray, StrokeResolved, type Stroke } from "@/attributes/shape/stroke/mapper";
+import { resolveShadowArray, ShadowResolved, type Shadow } from "@/attributes/shape/shadow/resolver";
 import { FillResolved } from "@/attributes/shape/fill/union";
-import { ChainableFill } from "@/attributes/shape/fill/chain";
+import { Fill } from "@/attributes/shape/fill/chain";
 
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
+import { Clip } from "@/render/clip";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
-import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
-import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
-import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
 import { FrameGenerator } from "@/tween/generator";
@@ -27,19 +25,21 @@ export interface ShapeProps extends NodeProps {
      * - A plain CSS color string → treated as a solid fill
      * - A fill prop object (SolidFillProp, LinearGradientFillProp, …)
      * - An already-resolved fill object
-     * - A {@link FillChain} from the `Fill` builder (e.g. `Fill.color('red')`)
+     * - A {@link FillChain} from the `Fills` builder (e.g. `Fills.color('red')`)
      */
-    fill?: ChainableFill;
+    fill?: Fill;
     /**
-     * Stroke layer(s). `fill` inside each stroke accepts the same loose
+     * Stroke layer(s): a single {@link StrokeProp}, an array of them, or an
+     * already-resolved stroke. `fill` inside each stroke accepts the same loose
      * values as the top-level fill prop.
      */
-    stroke?: StrokeProp | StrokeProp[];
+    stroke?: Stroke;
     /**
-     * Shadow layer(s). `fill` inside each shadow accepts the same loose
+     * Shadow layer(s): a single {@link ShadowProp}, an array of them, or an
+     * already-resolved shadow. `fill` inside each shadow accepts the same loose
      * values as the top-level fill prop.
      */
-    shadow?: ShadowProp | ShadowProp[];
+    shadow?: Shadow;
     start?: number;
     end?: number;
     /** When true, content drawn outside this shape's outline is clipped away. */
@@ -49,24 +49,29 @@ export interface ShapeProps extends NodeProps {
 
 export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
-    declare readonly fill: FillResolved[];
-
+    // Author-facing paint props. The declared type is the loose `Fill`/`Stroke`/
+    // `Shadow` so assignment (`this.fill = 'red'`) and reads share one simple
+    // type. At runtime the @property accessor stores the *resolved* value (via
+    // the mapper), and consumers that need the resolved shape cast at the read
+    // site — see `tick`/`prepare`/`*To` and the `Graphics` paint calls.
     // Stroke weight feeds Rect.effectivePadding(), which insets children.
+    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    declare fill: Fill;
+
     @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
-    declare readonly stroke: StrokeResolved[];
+    declare stroke: Stroke;
 
     @property({ default: [], mapper: resolveShadowArray, tween: lerpShadowArray })
-    declare readonly shadow: ShadowResolved[];
+    declare shadow: Shadow;
 
     @property({ default: 0 })
-    declare readonly start: number;
+    declare start: number;
 
     @property({ default: 1 })
-    declare readonly end: number;
+    declare end: number;
 
     @property({ default: false })
-    declare readonly clip: boolean;
+    declare clip: boolean;
 
     // Cached: does any current fill need a per-frame update() (e.g. video)?
     // Static fills (solid, gradients, noise, image) have an identity update, so
@@ -99,84 +104,100 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
     public tick(time: number): void {
         if (!this._hasDynamicFill) return;
-        this.set({ fill: this.fill.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
+        const fills = this.fill as FillResolved[];
+        this.set({ fill: fills.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
     }
 
     prepare(tracker: AssetTracker): void {
         super.prepare(tracker);
         [
-            ...this.fill,
-            ...this.stroke.flatMap(s => s.fill),
-            ...this.shadow.flatMap(s => s.fill),
+            ...(this.fill as FillResolved[]),
+            ...(this.stroke as StrokeResolved[]).flatMap(s => s.fill),
+            ...(this.shadow as ShadowResolved[]).flatMap(s => s.fill),
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
     protected abstract renderSelf(ctx: RenderContext): void;
 
     /**
-     * Push a clip region matching this shape's outline. Subclasses with a
-     * concrete silhouette (rect, ellipse, …) override this; the default is a
-     * no-op so shapes without a clip outline simply render unclipped.
+     * This shape's outline as a {@link Clip} command list — the single source of
+     * truth for every clip the node needs: its `clip` boundary (when `clip` is
+     * true) and the silhouette its backdrop effects (backdrop-flagged filters,
+     * magnify) are confined to. Concrete shapes with a fillable outline override this to
+     * describe their geometry (and can compose multiple shapes / `cut()`s for a
+     * compound clip); the default `null` means the shape has no clip outline, so
+     * it renders unclipped and gets no backdrop effects.
      */
-    protected applyClip(_ctx: RenderContext): void { }
+    protected clipSelf(): Clip | null { return null; }
 
     /**
-     * This shape's outline, used to clip the background blur to its silhouette.
-     * Concrete shapes with a fillable outline override this; the default `null`
-     * means the shape gets no background blur.
+     * Push this shape's `clipSelf()` outline as a clip scope, confining whatever
+     * is drawn until the matching `endClip()` to the shape. Returns `true` when a
+     * clip was actually opened (so the caller knows to close it) and `false` when
+     * the shape has no outline. Not overridable — the outline is defined once in
+     * `clipSelf()`.
      */
-    protected silhouette(): ClipShape | null { return null; }
+    private applyClip(ctx: RenderContext): boolean {
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return false;
+        ctx.beginClip(clip);
+        return true;
+    }
 
     /**
-     * Apply backdrop effects (background blur, bulge/pinch) beneath this shape,
-     * clipped to its silhouette, before the shape's own fill/stroke are drawn —
-     * so the content underneath is blurred/warped while the shape's own edges
-     * stay sharp. Each effect opens a backdrop layer within the silhouette clip
-     * and composites it straight back.
+     * Does `effect` target the backdrop (the content painted beneath this node)
+     * rather than the node's own content? `magnify` and backdrop-mode `sksl`
+     * always do; everything else opts in via the `backdrop` flag (the filter
+     * effects and posterize). The renderer decides per effect whether to express
+     * it as an ImageFilter or a shader — callers only pick the target.
+     */
+    private static isBackdropEffect(effect: SceneEffect): boolean {
+        if (effect.type === "magnify") return true;
+        if (effect.type === "sksl") return effect.mode === "backdrop";
+        return "backdrop" in effect && effect.backdrop === true;
+    }
+
+    /**
+     * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
+     * grayscale, …; plus magnify and backdrop SkSL) beneath this shape, clipped
+     * to its silhouette, before the shape's own fill/stroke are drawn — so the
+     * content underneath is filtered/warped while the shape's own edges stay
+     * sharp. One backdrop effect scope, confined to the silhouette clip, runs the
+     * lot; the renderer routes each effect to a filter or shader pass.
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        let blurRadius = 0;
-        const distortions: MagnifyEffect[] = [];
-        const skslBackdrops: SkSLEffect[] = [];
-        for (const effect of this.effects) {
-            if (effect.type === "backgroundBlur") blurRadius += effect.radius;
-            else if (effect.type === "magnify") distortions.push(effect);
-            else if (effect.type === "sksl" && effect.mode === "backdrop") skslBackdrops.push(effect);
-        }
-        if (blurRadius <= 0 && distortions.length === 0 && skslBackdrops.length === 0) return;
+        const backdropEffects = (this.effects as SceneEffect[]).filter(ShapeNode.isBackdropEffect);
+        if (backdropEffects.length === 0) return;
 
-        const shape = this.silhouette();
-        if (!shape) return;
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return;
 
         const w = this.layoutRect?.width ?? 0;
         const h = this.layoutRect?.height ?? 0;
 
-        // Clip to the silhouette first so each backdrop layer is confined to the
-        // shape; the renderer opens the backdrop filter within that clip.
-        ctx.beginClipShape(shape);
-        if (blurRadius > 0) {
-            ctx.beginBackgroundBlur(blurRadius);
-            ctx.endBackgroundBlur();
-        }
-        for (const effect of distortions) {
-            ctx.beginBackgroundDistortion(effect, w, h);
-            ctx.endBackgroundDistortion();
-        }
-        for (const effect of skslBackdrops) {
-            ctx.beginBackdropSkSL(effect, w, h);
-            ctx.endBackdropSkSL();
-        }
+        // Clip to the silhouette first so the backdrop passes are confined to the
+        // shape; the renderer opens its backdrop layers within that clip.
+        ctx.beginClip(clip);
+        ctx.beginEffectScope(backdropEffects, "backdrop", w, h);
+        ctx.endEffectScope();
         ctx.endClip();
     }
 
-    /** The bulge effect, if any — applied to this node's own content (self + children). */
-    private bulgeEffect(): BulgeEffect | undefined {
-        return this.effects.find((e): e is BulgeEffect => e.type === "bulge");
-    }
-
-    /** The posterize effect, if any — quantizes this node's own content (self + children). */
-    private posterizeEffect(): PosterizeEffect | undefined {
-        return this.effects.find((e): e is PosterizeEffect => e.type === "posterize");
+    /**
+     * Effects that warp/band this node's *own* content (self + children), in the
+     * order they should compose: posterize wraps bulge, so it comes first and the
+     * renderer applies bulge inside it (mirroring how blur-style content effects
+     * nest). `backdrop`-flagged posterize bands the backdrop instead (see
+     * {@link applyBackdropEffects}), so it's excluded here.
+     */
+    private foregroundEffects(): SceneEffect[] {
+        const effects = this.effects as SceneEffect[];
+        const posterize = effects.find((e) => e.type === "posterize" && e.backdrop !== true);
+        const bulge = effects.find((e) => e.type === "bulge");
+        const out: SceneEffect[] = [];
+        if (posterize) out.push(posterize);
+        if (bulge) out.push(bulge);
+        return out;
     }
 
     onRender(ctx: RenderContext): void {
@@ -186,29 +207,27 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const w = this.layoutRect?.width ?? 0;
         const h = this.layoutRect?.height ?? 0;
 
-        // Posterize quantizes the node's own pixels. It wraps the bulge scope so
-        // it bands the final (possibly warped) content, mirroring how blur-style
-        // content effects compose.
-        const posterize = this.posterizeEffect();
-        if (posterize) ctx.beginPosterize(posterize, w, h);
-
-        // Bulge warps the node's own content (like blur), so capture everything
-        // this node paints — its fill/stroke and its children — and warp the lot.
-        const bulge = this.bulgeEffect();
-        if (bulge) ctx.beginForegroundDistortion(bulge, w, h);
+        // Capture everything this node paints — its fill/stroke and its children —
+        // so the foreground effects (posterize wrapping bulge) warp/band the lot,
+        // mirroring how blur-style content effects compose.
+        const foreground = this.foregroundEffects();
+        const hasForeground = foreground.length > 0;
+        if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
 
         this.renderSelf(ctx);
-        if (this.clip) this.applyClip(ctx);
+        // Confine children to this shape's outline. Built once from clipSelf();
+        // skipped when the shape has no outline (clipped === false) so the
+        // endClip() below stays balanced.
+        const clipped = this.clip && this.applyClip(ctx);
         this.renderChildren(ctx);
-        if (this.clip) ctx.endClip();
+        if (clipped) ctx.endClip();
 
-        if (bulge) ctx.endForegroundDistortion();
-        if (posterize) ctx.endPosterize();
+        if (hasForeground) ctx.endEffectScope();
     }
 
-    *fillTo(to: ChainableFill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+    *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.fill;
+        const from = this.fill as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
         const ease = options?.ease;
@@ -217,9 +236,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         });
     }
 
-    *strokeTo(to: StrokeProp | StrokeProp[], duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
+    *strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.stroke;
+        const from = this.stroke as StrokeResolved[];
         const target = resolveStrokeArray(to, from);
         const lerp = options?.lerp ?? lerpStrokeArray;
         const ease = options?.ease;
@@ -228,9 +247,9 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         });
     }
 
-    *shadowTo(to: ShadowProp | ShadowProp[], duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
+    *shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
-        const from = this.shadow;
+        const from = this.shadow as ShadowResolved[];
         const target = resolveShadowArray(to, from);
         const lerp = options?.lerp ?? lerpShadowArray;
         const ease = options?.ease;

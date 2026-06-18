@@ -1,4 +1,4 @@
-import { FilterRegistry } from "../registry";
+import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
 /** Applies a Gaussian blur to the media layer. */
@@ -8,7 +8,7 @@ export interface BlurFilter {
     value: number;
 }
 
-FilterRegistry.register<BlurFilter>("blur", {
+export const blurFilter: FilterData<BlurFilter> = {
     lerp: (from, to, t) => ({ type: "blur", value: lerpNumber(from.value, to.value, t) }),
     equals: (a, b) => a.value === b.value,
-});
+};

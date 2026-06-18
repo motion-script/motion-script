@@ -1,6 +1,7 @@
 import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
 import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
+import { ParagraphShapeCache } from "./shapes/paragraph-cache";
 
 interface CachedPixels {
     width: number;
@@ -78,6 +79,14 @@ export class WebStorageAdapter extends StorageAdapter {
     /** Decoded frame bitmaps per src, keyed by quantized source timestamp; bounded to the forward/back window. */
     private videoFrames = new Map<string, Map<number, DecodedVideoFrame>>();
     /**
+     * Decoded past frames the Echo filter needs, kept in a SEPARATE cache so the
+     * forward/back window eviction (which is centered on the current playhead)
+     * never drops them — echo taps reach intentionally outside that window. Keyed
+     * by quantized source timestamp; bounded by trimming to the most-recently
+     * requested {@link ECHO_CACHE_LIMIT} per src.
+     */
+    private videoEchoFrames = new Map<string, Map<number, DecodedVideoFrame>>();
+    /**
      * Last timestamp each src's playhead was asked to show, used to drive
      * sequential decoding forward and to detect direction. Updated by getVideoFrame.
      */
@@ -89,6 +98,15 @@ export class WebStorageAdapter extends StorageAdapter {
      * without each render site knowing the per-fill playback math.
      */
     private pendingVideoFrames = new Map<string, number>();
+    /**
+     * Exact past timestamps the Echo filter asked for but couldn't satisfy from
+     * the warm window. Unlike {@link pendingVideoFrames} (one current frame per
+     * src), an echo needs several past frames at once, so this holds a set per
+     * src. Drained by {@link warmPendingVideo} so screenshot/export render the
+     * trail frame-accurately even when not playing (where the back-window, which
+     * only fills during live playback, would otherwise hold just one frame).
+     */
+    private pendingEchoFrames = new Map<string, Set<number>>();
     /**
      * Whether playback is live. When false (paused / scrubbing settled), the
      * adapter does no look-ahead prefetch — it decodes only the exact frame the
@@ -106,6 +124,21 @@ export class WebStorageAdapter extends StorageAdapter {
     private registeredFontFamilies = new Set<string>();
 
     /**
+     * Cache of shaped straight-text runs, so text whose string/font is unchanged
+     * across frames isn't re-shaped through CanvasKit every frame (the Code node's
+     * per-token-per-frame draw, plus any static {@link Text}). Owns the cached
+     * Fonts; disposed with the adapter (whose {@link fontMgr} the fonts derive
+     * from). See {@link ParagraphShapeCache}.
+     */
+    private paragraphCache = new ParagraphShapeCache();
+    /**
+     * Bumped whenever a new font family registers. Folded into the paragraph
+     * cache key so any run shaped before its family loaded (and thus shaped with
+     * a fallback face) is invalidated the moment the real family arrives.
+     */
+    private fontEpoch = 0;
+
+    /**
      * Frames to keep cached in the dominant direction of motion. With a 1400×800
      * RGBA frame at ~4.5 MB, 96 frames ≈ 430 MB of GPU memory — generous but
      * bounded regardless of clip length.
@@ -116,6 +149,12 @@ export class WebStorageAdapter extends StorageAdapter {
      * but not so large that ping-pong loops eat all VRAM.
      */
     private static readonly BACK_WINDOW_FRAMES = 32;
+    /**
+     * Max distinct past frames the Echo cache holds per src. Caps the renderer's
+     * MAX_ECHOES (32) with a little slack so adjacent frames' trails coexist;
+     * trimmed LRU-style so an animated `delay`/`echoes` can't grow it unbounded.
+     */
+    private static readonly ECHO_CACHE_LIMIT = 48;
 
     constructor(canvasKit: CanvasKit, catalog: AssetCatalog, viewport: Size2D, fps: number) {
         super(catalog, viewport);
@@ -394,6 +433,57 @@ export class WebStorageAdapter extends StorageAdapter {
     }
 
     /**
+     * Like {@link getVideoFrame}, but returns an INDEPENDENT, caller-owned image
+     * for a past `timestamp` instead of the shared per-session texture. Used by
+     * the video Echo filter, which needs several frames resident at once — calling
+     * getVideoFrame twice would clobber the single session texture. Returns the
+     * nearest already-decoded frame within the warm window, or null if none is
+     * decoded (the caller simply skips that echo tap, so a cold seek degrades to
+     * the current frame and the trail fills in as playback warms the back window).
+     *
+     * The caller OWNS the returned image and must push it to `transientImages` so
+     * the fill handler deletes it after the draw — that bounds GPU memory to the
+     * tap count for the duration of one shape's draw.
+     *
+     * On a miss (the exact past frame isn't decoded yet) it records the timestamp
+     * for {@link warmPendingVideo} and returns null, so the tap is skipped this
+     * pass and a blocking caller (seek/screenshot/export) decodes it and re-renders
+     * — making the trail frame-accurate. During live playback the back-window
+     * fills these in, so misses settle within a frame or two.
+     */
+    getVideoFrameImage(src: string, timestamp: number): CKImage | null {
+        const session = this.videoSessions.get(src);
+        if (!session || !this.surface || !Number.isFinite(timestamp)) return null;
+
+        const clamped = Math.max(0, Math.min(timestamp, session.durationSec));
+        const step = session.frameStep;
+        // The decoded sample for a requested time lands on the source's own frame
+        // grid, which may quantize to an adjacent key — so match the NEAREST frame
+        // within half a frame step (like the playback path's nearestDecoded) rather
+        // than an exact key. Prefer the dedicated echo cache, then a frame already
+        // warm in the playback window (lets live playback skip a decode round-trip).
+        const frame =
+            this.nearestWithin(this.videoEchoFrames.get(src), clamped, step) ??
+            this.nearestWithin(this.videoFrames.get(src), clamped, step);
+        if (!frame) {
+            // Not decoded — register it so warmPendingVideo() decodes it into the
+            // echo cache for the next (re-)render. Skip this tap for now.
+            let set = this.pendingEchoFrames.get(src);
+            if (!set) { set = new Set(); this.pendingEchoFrames.set(src, set); }
+            set.add(clamped);
+            return null;
+        }
+
+        return this.surface.makeImageFromTextureSource(frame.bitmap, {
+            width: session.width,
+            height: session.height,
+            alphaType: this.canvasKit.AlphaType.Unpremul,
+            colorType: this.canvasKit.ColorType.RGBA_8888,
+            colorSpace: this.canvasKit.ColorSpace.SRGB,
+        });
+    }
+
+    /**
      * Upload `frame`'s bitmap into the session's persistent texture (creating it on
      * first use) and return the image. No-op upload when the same timestamp is
      * already resident, so a paused/parked playhead costs nothing per render.
@@ -428,10 +518,22 @@ export class WebStorageAdapter extends StorageAdapter {
      * last render asked for is warm, so the re-render loop terminates.
      */
     async warmPendingVideo(): Promise<boolean> {
-        if (this.pendingVideoFrames.size === 0) return false;
         const pending = [...this.pendingVideoFrames];
         this.pendingVideoFrames.clear();
-        await Promise.all(pending.map(([src, ts]) => this.decodeAt(src, ts)));
+
+        // Echo's past-frame taps: decode each requested past timestamp too, so the
+        // trail is frame-accurate on a static seek/export (where the back-window
+        // isn't filled by playback).
+        const echo = [...this.pendingEchoFrames].flatMap(
+            ([src, set]) => [...set].map((ts) => [src, ts] as [string, number]),
+        );
+        this.pendingEchoFrames.clear();
+
+        if (pending.length === 0 && echo.length === 0) return false;
+        await Promise.all([
+            ...pending.map(([src, ts]) => this.decodeAt(src, ts)),
+            ...echo.map(([src, ts]) => this.decodeEchoFrameAt(src, ts)),
+        ]);
         return true;
     }
 
@@ -502,6 +604,55 @@ export class WebStorageAdapter extends StorageAdapter {
         }
     }
 
+    /**
+     * Decode a single past frame into the dedicated {@link videoEchoFrames} cache
+     * for the Echo filter. Like {@link decodeAt} but it does NOT window-evict — echo
+     * taps reach intentionally outside the playback window, so they must survive the
+     * current playhead's eviction. Bounds the cache to {@link ECHO_CACHE_LIMIT}
+     * frames per src (oldest-inserted dropped first). Idempotent per quantized ts.
+     */
+    private async decodeEchoFrameAt(src: string, timestampSec: number): Promise<void> {
+        const session = this.videoSessions.get(src);
+        if (!session || !Number.isFinite(timestampSec)) return;
+        const clamped = Math.max(0, Math.min(timestampSec, session.durationSec));
+        const key = this.quantizeTs(clamped, session.frameStep);
+        let store = this.videoEchoFrames.get(src);
+        if (store?.has(key)) return;
+        // Already warm in the playback window? Copy the reference in rather than re-decode.
+        const windowed = this.videoFrames.get(src)?.get(key);
+
+        try {
+            if (!store) { store = new Map(); this.videoEchoFrames.set(src, store); }
+            if (windowed) {
+                store.set(key, windowed);
+            } else {
+                const wrapped = await session.sink.getCanvas(clamped);
+                if (!wrapped || this.disposed) return;
+                store = this.videoEchoFrames.get(src);
+                if (!store) return;
+                const k = this.quantizeTs(wrapped.timestamp, session.frameStep);
+                if (!store.has(k)) store.set(k, { timestamp: wrapped.timestamp, bitmap: await this.snapshot(wrapped.canvas) });
+            }
+            this.trimEchoCache(src);
+        } catch (err) {
+            if (!this.disposed) console.error(`[WebStorageAdapter] echo decode failed for ${src}@${clamped}:`, err);
+        }
+    }
+
+    /** Bound the echo cache to ECHO_CACHE_LIMIT frames per src, dropping oldest-inserted first. */
+    private trimEchoCache(src: string): void {
+        const store = this.videoEchoFrames.get(src);
+        if (!store) return;
+        while (store.size > WebStorageAdapter.ECHO_CACHE_LIMIT) {
+            const oldest = store.keys().next().value as number | undefined;
+            if (oldest === undefined) break;
+            const frame = store.get(oldest);
+            // Only close the bitmap if it isn't shared with the live playback window.
+            if (frame && this.videoFrames.get(src)?.get(oldest) !== frame) frame.bitmap.close();
+            store.delete(oldest);
+        }
+    }
+
     /** Snapshot a decoded (possibly pooled) canvas into an immutable, GPU-friendly ImageBitmap. */
     private snapshot(canvas: HTMLCanvasElement | OffscreenCanvas): Promise<ImageBitmap> {
         return createImageBitmap(canvas);
@@ -546,6 +697,27 @@ export class WebStorageAdapter extends StorageAdapter {
     /** Quantize a source timestamp to a stable integer ring key. */
     private quantizeTs(timestamp: number, step: number): number {
         return Math.round(timestamp / step);
+    }
+
+    /**
+     * The frame in `store` closest to `timestamp`, but only if it's within ~one
+     * frame step (so a requested time matches the decoded sample whose grid-aligned
+     * timestamp quantized to an adjacent key, without ever returning a clearly wrong
+     * frame). Used by the Echo lookup, whose taps are sparse exact-ish requests.
+     */
+    private nearestWithin(
+        store: Map<number, DecodedVideoFrame> | undefined,
+        timestamp: number,
+        step: number,
+    ): DecodedVideoFrame | null {
+        if (!store || store.size === 0) return null;
+        let best: DecodedVideoFrame | null = null;
+        let bestDist = Infinity;
+        for (const frame of store.values()) {
+            const dist = Math.abs(frame.timestamp - timestamp);
+            if (dist < bestDist) { bestDist = dist; best = frame; }
+        }
+        return best && bestDist <= step ? best : null;
     }
 
     /** Probe the first sample for the frame step (seconds) and decoded size; fall back to ~30fps / target. */
@@ -665,10 +837,23 @@ export class WebStorageAdapter extends StorageAdapter {
         }));
 
         this.registeredFontFamilies.add(fontFamily);
+        // A new face just became available: invalidate any paragraph shaped
+        // against the old (fallback) face for this or any family.
+        this.fontEpoch++;
     }
 
     getFontMgr(): TypefaceFontProvider {
         return this.fontMgr;
+    }
+
+    /** The shared shaped-text cache (see {@link paragraphCache}). */
+    getParagraphCache(): ParagraphShapeCache {
+        return this.paragraphCache;
+    }
+
+    /** Current font-registration epoch, folded into paragraph cache keys. */
+    getFontEpoch(): number {
+        return this.fontEpoch;
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
@@ -677,14 +862,23 @@ export class WebStorageAdapter extends StorageAdapter {
         if (this.disposed) return;
         this.disposed = true;
 
+        this.paragraphCache.dispose();
+
         for (const img of this.imageCKCache.values()) img.delete();
         this.imageCKCache.clear();
         this.imagePixels.clear();
 
+        // Close window bitmaps, tracking them so shared echo entries aren't
+        // double-closed below.
+        const closed = new Set<ImageBitmap>();
         for (const frames of this.videoFrames.values()) {
-            for (const { bitmap } of frames.values()) bitmap.close();
+            for (const { bitmap } of frames.values()) { bitmap.close(); closed.add(bitmap); }
         }
         this.videoFrames.clear();
+        for (const frames of this.videoEchoFrames.values()) {
+            for (const { bitmap } of frames.values()) if (!closed.has(bitmap)) bitmap.close();
+        }
+        this.videoEchoFrames.clear();
         for (const session of this.videoSessions.values()) {
             session.textureImage?.delete();
             session.input.dispose();
@@ -692,6 +886,7 @@ export class WebStorageAdapter extends StorageAdapter {
         this.videoSessions.clear();
         this.videoPlayhead.clear();
         this.pendingVideoFrames.clear();
+        this.pendingEchoFrames.clear();
         this.surface = null;
 
 

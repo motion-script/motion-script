@@ -1,3 +1,4 @@
+import { CornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeState } from "./shape";
 
 export interface PolygramState extends ShapeState {
@@ -5,7 +6,10 @@ export interface PolygramState extends ShapeState {
     height: number;
     sides: number;
     ratio: number;
-    borderRadius: number;
+    /** Vertex rounding radius in pixels (applied uniformly to every vertex). */
+    cornerRadius: number;
+    /** Vertex shape: `'rounded'` (circular arc) or `'angled'` (chamfer). */
+    cornerStyle: CornerStyle;
 }
 
 export function withPolygramDescriptor(descriptor: Partial<PolygramState>): PolygramState {
@@ -18,13 +22,13 @@ export function withPolygramDescriptor(descriptor: Partial<PolygramState>): Poly
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
 
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
         sides: descriptor.sides ?? 5,
         ratio: descriptor.ratio ?? 0.5,
-        borderRadius: descriptor.borderRadius ?? 0,
+        cornerRadius: descriptor.cornerRadius ?? 0,
+        cornerStyle: descriptor.cornerStyle ?? "rounded",
     };
 }

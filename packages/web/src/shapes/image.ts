@@ -19,6 +19,7 @@ import type { ShapeHandler } from "./shape-handler";
 import type { StrokeHandler } from "../stroke/stroke-handler";
 import { computeImageMatrix, makeImageShader } from "../fills/image";
 import { ImageFillFilterRegistry } from "../fills/filters/registry";
+import { RectShape } from "./rect";
 
 /**
  * Renders an Image node.
@@ -142,28 +143,32 @@ export class ImageNodeRenderer {
         const imageFill = this.toImageFillResolved(state);
 
         // Path may be null if the image is still decoding or has no alpha
-        // contour. We fall back to drawing strokes/shadows around the rect
-        // bounds in that case (matches Box behaviour).
+        // contour. We fall back to drawing strokes/shadows around the rounded-rect
+        // bounds (or plain rect, if no corner radius) in that case (matches Box
+        // behaviour).
         const alphaPath = this.buildAlphaPath(img, state, bounds);
+
+        const rectShape = new RectShape(ck, () => canvas, state);
 
         this.shapeHandler.pushBounds(bounds);
         try {
             for (const shadow of shadows) {
-                this.drawShadow(canvas, alphaPath, boundsRect, shadow, overlayFills, strokes);
+                this.drawShadow(canvas, alphaPath, rectShape, boundsRect, shadow, overlayFills, strokes);
             }
 
-            this.drawImage(canvas, img, imageFill, bounds, boundsRect);
+            this.drawImage(canvas, img, imageFill, bounds, boundsRect, rectShape);
 
             if (overlayFills.length > 0) {
-                this.drawOverlayFills(canvas, alphaPath, boundsRect, overlayFills);
+                this.drawOverlayFills(canvas, alphaPath, rectShape, boundsRect, overlayFills);
             }
 
             for (const stroke of strokes) {
-                this.drawStroke(canvas, alphaPath, boundsRect, stroke);
+                this.drawStroke(canvas, alphaPath, rectShape, boundsRect, stroke);
             }
         } finally {
             this.shapeHandler.popBounds();
             alphaPath?.delete();
+            rectShape.deletePaths();
             // Only the `state.data` (inline) path produces a renderer-owned
             // CKImage. The adapter-cached path is released by the adapter
             // when underlying pixels are evicted.
@@ -177,6 +182,7 @@ export class ImageNodeRenderer {
         imageFill: ImageFillResolved,
         bounds: ShapeBounds,
         boundsRect: Float32Array,
+        rectShape: RectShape,
     ): void {
         const ck = this.canvasKit;
         const paint = this.getPaint();
@@ -185,7 +191,16 @@ export class ImageNodeRenderer {
         paint.setBlendMode(ck.BlendMode.SrcOver);
         paint.setShader(makeImageShader(img, imageFill, ck, bounds));
         this.applyFilters(paint, imageFill);
-        canvas.drawRect(boundsRect, paint);
+
+        if (rectShape.hasCornerRadius()) {
+            canvas.save();
+            rectShape.clip(/* isolated= */ true);
+            canvas.drawRect(boundsRect, paint);
+            canvas.restore();
+        } else {
+            canvas.drawRect(boundsRect, paint);
+        }
+
         paint.setShader(null);
         paint.setImageFilter(null);
         paint.setAlphaf(1);
@@ -207,6 +222,7 @@ export class ImageNodeRenderer {
     private drawShadow(
         canvas: Canvas,
         alphaPath: CKPath | null,
+        rectShape: RectShape,
         boundsRect: Float32Array,
         shadow: ShadowResolved,
         _overlayFills: FillResolved[],
@@ -230,10 +246,7 @@ export class ImageNodeRenderer {
         canvas.translate(dx, -dy);
         canvas.saveLayer(layerPaint);
 
-        const shape: { draw: (p: Paint) => void; ckPath?: CKPath } = alphaPath
-            ? { draw: (p) => canvas.drawPath(alphaPath, p), ckPath: alphaPath }
-            : { draw: (p) => canvas.drawRect(boundsRect, p) };
-
+        const shape = this.fallbackShape(canvas, alphaPath, rectShape, boundsRect);
         this.fills.applyFills(shadow.fill, [shape]);
 
         canvas.restore();
@@ -241,30 +254,47 @@ export class ImageNodeRenderer {
         layerPaint.delete();
     }
 
-    /** Overlay fills clipped to the alpha contour (or rect if no contour). */
+    /** Overlay fills clipped to the alpha contour (or rounded rect if no contour). */
     private drawOverlayFills(
         canvas: Canvas,
         alphaPath: CKPath | null,
+        rectShape: RectShape,
         boundsRect: Float32Array,
         overlayFills: FillResolved[],
     ): void {
-        const shape: { draw: (p: Paint) => void; ckPath?: CKPath } = alphaPath
-            ? { draw: (p) => canvas.drawPath(alphaPath, p), ckPath: alphaPath }
-            : { draw: (p) => canvas.drawRect(boundsRect, p) };
+        const shape = this.fallbackShape(canvas, alphaPath, rectShape, boundsRect);
         this.fills.applyFills(overlayFills, [shape]);
     }
 
-    /** Stroke the alpha contour. Sharp edges at any weight, real joins, dash support. */
+    /** Stroke the alpha contour (or rounded rect if no contour). Sharp edges at any weight, real joins, dash support. */
     private drawStroke(
         canvas: Canvas,
         alphaPath: CKPath | null,
+        rectShape: RectShape,
         boundsRect: Float32Array,
         stroke: StrokeResolved,
     ): void {
-        const shape: { draw: (p: Paint) => void; ckPath?: CKPath } = alphaPath
-            ? { draw: (p) => canvas.drawPath(alphaPath, p), ckPath: alphaPath }
-            : { draw: (p) => canvas.drawRect(boundsRect, p) };
+        const shape = this.fallbackShape(canvas, alphaPath, rectShape, boundsRect);
         this.strokes.applyStrokes([stroke], [shape]);
+    }
+
+    /** The silhouette to fill/stroke when there's no alpha contour: the rounded rect (honouring corner radius/style), or the plain bounds rect when the radius is zero. */
+    private fallbackShape(
+        canvas: Canvas,
+        alphaPath: CKPath | null,
+        rectShape: RectShape,
+        boundsRect: Float32Array,
+    ): { draw: (p: Paint) => void; ckPath?: CKPath } {
+        if (alphaPath) {
+            return { draw: (p) => canvas.drawPath(alphaPath, p), ckPath: alphaPath };
+        }
+        if (!rectShape.hasCornerRadius()) {
+            return { draw: (p) => canvas.drawRect(boundsRect, p) };
+        }
+        rectShape.ensurePath();
+        const path = rectShape.ckPath;
+        if (!path) return { draw: (p) => canvas.drawRect(boundsRect, p) };
+        return { draw: (p) => canvas.drawPath(path, p), ckPath: path };
     }
 }
 

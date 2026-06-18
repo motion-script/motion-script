@@ -1,16 +1,18 @@
 import type { Color } from "./color/parser";
 import type { BlendMode } from "./blend";
 import type { Vector2 } from "@/attributes/layout/vector2";
+import { resolveChainFilters } from "../filters/chain";
+import type { ImageFilter, VideoFilter } from "../filters/chain";
 import type { MediaFilter } from "../filters/union";
-import type { FillProp, FillSpace } from "./union";
-import type { ImageFillMode, ImageTransform } from "./implementations/image";
+import type { FillProp, FillResolved, FillSpace } from "./union";
+import type { ImageFit, ImageTransform } from "./implementations/image";
 
 /** Author-facing options for a {@link FillChain.video} layer. */
 export interface VideoFillOptions extends FillOptions {
-    mode?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
-    filters?: MediaFilter[];
+    filters?: VideoFilter;
     /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
     timestamp?: number;
     /** Whether playback advances each frame. Defaults to `true`. */
@@ -49,8 +51,8 @@ function withOptions<T extends object>(base: T, options: FillOptions = {}): T & 
  * chains are safe to share and branch — mirroring {@link EffectChain}.
  *
  * @example
- * const bg = Fill.image('./background.jpg', { blend: 'overlay', opacity: 0.2 })
- *                .color('red', { opacity: 0.3 });
+ * const bg = Fills.image('./background.jpg', { blend: 'overlay', opacity: 0.2 })
+ *                 .color('red', { opacity: 0.3 });
  * node.fill = bg;                 // assign directly
  * node.fill = [...bg, 'white'];   // spread into an array
  */
@@ -63,18 +65,21 @@ export class FillChain {
     }
 
     /** Append an image fill from `src`. */
-    image(src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) {
-        const { mode, transform, scaling, filters, ...common } = options ?? {};
-        return new FillChain([...this.list, withOptions({ type: 'image' as const, src, mode, transform, scaling, filters }, common)]);
+    image(src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) {
+        const { fit, mode, transform, scaling, filters, ...common } = options ?? {};
+        // `ImageFilter` admits only pixel filters, so the resolved array is safely
+        // a `MediaFilter[]` for the image prop (video-only filters can't reach here).
+        const imageFilters = filters ? (resolveChainFilters(filters) as MediaFilter[]) : undefined;
+        return new FillChain([...this.list, withOptions({ type: 'image' as const, src, fit: fit ?? mode, transform, scaling, filters: imageFilters }, common)]);
     }
 
     /** Append a video fill from `src`. Plays by default, advancing its timestamp each frame. */
     video(src: string, options?: VideoFillOptions) {
-        const { mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
+        const { fit: mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
-            mode, transform, scaling, filters,
+            mode, transform, scaling, filters: filters && resolveChainFilters(filters),
             timestamp: timestamp ?? trimStart ?? 0,
             playing: playing ?? true,
             trimStart, trimEnd, speed, loop, duration,
@@ -112,7 +117,7 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'stripe' as const, gap, strokeWidth, angle, color }, common)]);
     }
 
-    /** Allows spreading the chain into an array: `[...Fill.color('red')]`. */
+    /** Allows spreading the chain into an array: `[...Fills.color('red')]`. */
     *[Symbol.iterator]() {
         yield* this.list;
     }
@@ -125,25 +130,33 @@ export class FillChain {
 
 /**
  * Accepted shapes for a node's `fill` prop.
- * Can be a single fill, a `FillChain` builder result, or an array mixing
- * plain fills with chains (each chain contributes all its layers in place):
  *
- *   Fill.image('bg.jpg')
- *   ['#e8c584', Fill.image('bg.jpg')]
- *   ['#e8c584', ...Fill.image('bg.jpg')]
+ * Can be a single fill, a `FillChain` builder result, an already-resolved
+ * {@link FillResolved}, or an array mixing any of these (each chain contributes
+ * all its layers in place):
+ *
+ *   'red'                                  // plain CSS color
+ *   Fills.image('bg.jpg')                  // chain
+ *   ['#e8c584', Fills.image('bg.jpg')]
+ *   ['#e8c584', ...Fills.image('bg.jpg')]
+ *   resolvedFills                          // FillResolved[] passes through
  */
-export type ChainableFill = FillProp | FillChain | (FillProp | FillChain)[];
+export type Fill =
+    | FillProp
+    | FillResolved
+    | FillChain
+    | (FillProp | FillResolved | FillChain)[];
 
 /**
  * Entry points for building fill chains fluently.
  *
  * @example
- * node.fill = Fill.image('./bg.jpg', { opacity: 0.2 }).color('red', { opacity: 0.3 });
+ * node.fill = Fills.image('./bg.jpg', { opacity: 0.2 }).color('red', { opacity: 0.3 });
  */
-export const Fill = {
+export const Fills = {
     color: (color: Color, options?: FillOptions) =>
         new FillChain().color(color, options),
-    image: (src: string, options?: FillOptions & { mode?: ImageFillMode; transform?: ImageTransform; scaling?: number; filters?: MediaFilter[] }) =>
+    image: (src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) =>
         new FillChain().image(src, options),
     video: (src: string, options?: VideoFillOptions) =>
         new FillChain().video(src, options),
@@ -161,21 +174,24 @@ export const Fill = {
 };
 
 /**
- * Normalises any `ChainableFill` value to a plain `FillProp[]`.
+ * Normalises any {@link Fill} value to a plain `FillProp[]`.
  * Used by `resolveFillArray` before resolving to the renderer shape.
+ *
+ * Already-resolved fills (`FillResolved`) structurally satisfy `FillProp`, so
+ * they pass straight through and `resolveFill` re-normalises them idempotently.
  */
-export function resolveChainFill(fill: ChainableFill | undefined): FillProp[] {
+export function resolveChainFill(fill: Fill | undefined): FillProp[] {
     if (fill == null) return [];
     if (fill instanceof FillChain) return fill.list;
     if (Array.isArray(fill)) {
         // Flatten any chains used as array elements so each contributes its
-        // layers in place: `['#e8c584', Fill.image('bg.jpg')]`.
+        // layers in place: `['#e8c584', Fills.image('bg.jpg')]`.
         const out: FillProp[] = [];
         for (const item of fill) {
             if (item instanceof FillChain) out.push(...item.list);
-            else out.push(item);
+            else out.push(item as FillProp);
         }
         return out;
     }
-    return [fill];
+    return [fill as FillProp];
 }

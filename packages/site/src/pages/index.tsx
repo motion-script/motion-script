@@ -4,6 +4,7 @@ import Layout from '@theme/Layout';
 import Navbar from '@site/src/components/landing/Navbar';
 import HeroSection from '@site/src/components/landing/HeroSection';
 import EditorSection from '@site/src/components/landing/EditorSection';
+import ProceduralSection from '@site/src/components/landing/ProceduralSection';
 import FeaturesSection from '@site/src/components/landing/FeaturesSection';
 import DocsSection, { ContributeSection } from '@site/src/components/landing/DocsSection';
 import Footer from '@site/src/components/landing/Footer';
@@ -24,6 +25,8 @@ export default function Home(): ReactNode {
 
           <div className="relative bg-[var(--background)]">
             <EditorSection />
+            <div className="h-px bg-gradient-to-r from-transparent via-[var(--border)] to-transparent" />
+            <ProceduralSection />
             <div className="h-px bg-gradient-to-r from-transparent via-[var(--border)] to-transparent" />
             <FeaturesSection />
             {/* <div className="h-px bg-gradient-to-r from-transparent via-[var(--border)] to-transparent" />

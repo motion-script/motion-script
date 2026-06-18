@@ -37,18 +37,28 @@ export class PixelateCanvasKitEffect extends CanvasKitEffect<PixelateEffect> {
             ? { filter: ck.FilterMode.Nearest }
             : { filter: ck.FilterMode.Linear };
 
-        // Step 1: output(x,y) = layer(x * blockW, y * blockH) — coarse subsampling
-        // onto the blocksX × blocksY grid.
+        // The node is laid out centred on its local origin, so its content spans
+        // [-width/2, width/2] × [-height/2, height/2]. The matrix transforms scale
+        // about the *device origin*, so without this offset the block grid is
+        // anchored at (0,0) rather than the node, and the node's edges land at
+        // arbitrary fractions of a block. Anchor the grid to the node's top-left so
+        // the first/last block rows sit flush with the node rect (and the grid stays
+        // put as the node moves) instead of straddling the boundary mid-block.
+        const ox = -width / 2;
+        const oy = -height / 2;
+
+        // Step 1: output(i,j) = layer(ox + i*blockW, oy + j*blockH) — coarse
+        // subsampling onto the blocksX × blocksY grid, anchored at the node origin.
         const step1 = ck.ImageFilter.MakeMatrixTransform(
-            [1 / blockW, 0, 0, 0, 1 / blockH, 0, 0, 0, 1],
+            [1 / blockW, 0, -ox / blockW, 0, 1 / blockH, -oy / blockH, 0, 0, 1],
             nearest,
             null,
         );
 
-        // Step 2: output(x,y) = step1(x / blockW, y / blockH) — upscale each grid
-        // cell back to a full block. Nearest = solid blocks, Linear = blended.
+        // Step 2: inverse of step 1 — upscale each grid cell back to a full block,
+        // re-anchored at the node origin. Nearest = solid blocks, Linear = blended.
         const step2 = ck.ImageFilter.MakeMatrixTransform(
-            [blockW, 0, 0, 0, blockH, 0, 0, 0, 1],
+            [blockW, 0, ox, 0, blockH, oy, 0, 0, 1],
             upsample,
             step1,
         );

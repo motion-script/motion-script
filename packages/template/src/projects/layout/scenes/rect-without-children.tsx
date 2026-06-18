@@ -24,7 +24,7 @@ export class RectWithoutChildrenScene extends Scene {
                     <Rect
                         ref={box}
                         width={300} height={300}
-                        fill={'#6990DD'} borderRadius={24}
+                        fill={'#6990DD'} cornerRadius={24}
                         stroke={{ weight: 8, fill: '#F5C26B' }}
                     />
                 ),
@@ -32,7 +32,7 @@ export class RectWithoutChildrenScene extends Scene {
         );
 
         // A childless rect is just a shape: tween its size, rounding, and fill.
-        yield* box().to({ width: 560, height: 560, borderRadius: 280, fill: '#E8617C' }, 2, easeInOutQuad);
-        yield* box().to({ width: 300, height: 300, borderRadius: 24, fill: '#6990DD' }, 2, easeInOutQuad);
+        yield* box().to({ width: 560, height: 560, cornerRadius: 280, fill: '#E8617C' }, 2, easeInOutQuad);
+        yield* box().to({ width: 300, height: 300, cornerRadius: 24, fill: '#6990DD' }, 2, easeInOutQuad);
     }
 }

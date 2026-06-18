@@ -1,4 +1,4 @@
-import { FX } from "@motion-script/core";
+import { Effects as FX } from "@motion-script/core";
 import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
 
 export class PosterizeScene extends EffectDemoScene {
@@ -6,5 +6,6 @@ export class PosterizeScene extends EffectDemoScene {
         label: 'Posterize',
         from: FX.posterize(32),
         to: FX.posterize(4),
+        compare: true,
     };
 }

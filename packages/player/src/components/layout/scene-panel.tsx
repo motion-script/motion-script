@@ -4,7 +4,9 @@ import { ErrorsDialog } from "../errors/errors-dialog";
 import type { BuildError } from "@/stores/editor-store";
 import { Logo } from "../theme/logo";
 
-export function ScenePanel() {
+// `onSceneSelect` lets a host (e.g. the mobile drawer) react after a scene tile
+// is clicked — used to close the drawer once the user picks a scene.
+export function ScenePanel({ onSceneSelect }: { onSceneSelect?: () => void } = {}) {
     const scenes = useEditorStore(s => s.scenes);
     const sceneStartFrames = useEditorStore(s => s.sceneStartFrames);
     const currentFrame = useEditorStore(s => s.currentFrame);
@@ -20,6 +22,7 @@ export function ScenePanel() {
     const goToScene = (startFrame: number) => {
         setIsPlaying(false);
         setCurrentFrame(startFrame);
+        onSceneSelect?.();
     };
 
     // Derive active scene index from real start frames

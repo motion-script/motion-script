@@ -2,134 +2,92 @@
 sidebar_position: 6
 ---
 
-# Masks
+import { MaskCanvas, TextMaskCanvas } from '@site/src/components/docs/getting-started-scenes';
 
-`MaskGroup` clips a set of nodes using a shape as a mask. The **first child** is always the mask shape; all subsequent children are the clipped content.
+# Revealing with Masks
 
-## Basic mask
+For our finale, let's get a little carried away. A **mask** lets you show only part of a node, clipped to the shape of another. Animate that shape and you get reveals, wipes, and all sorts of fun.
 
-```tsx
-import { Scene, MaskGroup, Ellipse, Rect, wait } from '@motion-script/core';
+You create one with `MaskGroup`. The rule to remember: the **first child is the mask**, and everything after it is the content that gets clipped to that mask.
+
+## A basic mask
+
+Here we use a circle to clip our card. Only the part of the card inside the circle shows.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, MaskGroup, Ellipse, Rect, Text } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
     this.add(
       <MaskGroup mode="vector">
-        {/* First child = mask (circle) */}
+        {/* first child = the mask */}
         <Ellipse width={300} height={300} fill="white" />
 
-        {/* Remaining children = clipped content */}
-        <Rect
-          width={400} height={400}
-          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-        />
+        {/* everything after = the clipped content (our card) */}
+        <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+          <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+          <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+        </Rect>
       </MaskGroup>
     );
-
-    yield* wait(2);
   }
 }
 ```
 
----
+The mask shape's color doesn't matter in `vector` mode, only its outline. We use white out of habit.
 
-## Mask modes
+## Animate the mask for an iris reveal
 
-| Mode | Description |
-|---|---|
-| `'vector'` | Clips based on the mask shape's outline — fill color is ignored |
-| `'alpha'` | Clips based on the mask shape's alpha channel (transparency) |
-| `'luminance'` | Clips based on the mask shape's brightness |
+This is the payoff. Start the mask circle tiny, then grow it to reveal the card behind it. Grab the mask with a ref and animate it like anything else.
 
-`'vector'` is the most common: any filled shape works regardless of its color.
-
-`'alpha'` is useful for gradient masks — areas with lower opacity reveal less content.
-
-### Alpha mask with gradient
-
-```tsx
-<MaskGroup mode="alpha">
-  {/* Gradient mask: fully visible on left, fades out on right */}
-  <Rect
-    width={600} height={400}
-    fill={{
-      type: 'linear-gradient',
-      colors: ['black', 'transparent'],
-      stops: [0.5, 1],
-    }}
-  />
-  <Rect
-    width={600} height={400}
-    fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-  />
-</MaskGroup>
-```
-
----
-
-## Inverted mask
-
-Set `inverted: true` to flip the mask — content shows **outside** the mask shape:
-
-```tsx
-<MaskGroup mode="vector" inverted={true}>
-  <Ellipse width={200} height={200} fill="white" />
-  <Rect width="fill" height="fill" fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }} />
-</MaskGroup>
-```
-
----
-
-## Animating the mask shape
-
-The mask is a regular node. Animate it with `.to()` to create wipe or reveal effects:
-
-```tsx
-import { Scene, MaskGroup, Ellipse, Rect, createRef, easeInOut } from '@motion-script/core';
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
-    const maskCircle = createRef<Ellipse>();
+    const reveal = createRef<Ellipse>();
 
     this.add(
       <MaskGroup mode="vector">
-        <Ellipse ref={maskCircle} width={0} height={0} fill="white" />
-        <Rect
-          width={1280} height={720}
-          fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-        />
+        <Ellipse ref={reveal} width={0} height={0} fill="white" />
+
+        <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+          <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+          <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+        </Rect>
       </MaskGroup>
     );
 
-    // Iris wipe reveal
-    yield* maskCircle().to({ width: 1500, height: 1500 }, 1.2, easeInOut);
+    // grow the circle to reveal the card
+    yield* reveal().to({ width: 800, height: 800 }, 1.2, easeInOut);
   }
 }
 ```
 
----
+The card irises open from a point. That's the same `.to()` you've used the whole way through, now driving a reveal.
 
-## Text as a mask
+<MaskCanvas />
 
-Any node type — including `Text` — works as the mask shape:
+## Get carried away: text as a mask
 
-```tsx
-import { Scene, MaskGroup, Text, Rect } from '@motion-script/core';
+Any node can be the mask, even text. Use a word as the mask and a colorful fill as the content, and the color shows *through the letters*.
+
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, MaskGroup, Text, Rect, Fills } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
     this.add(
       <MaskGroup mode="alpha">
-        <Text
-          text="MOTION"
-          fontSize={140}
-          fontWeight={900}
-          fill="white"
-          align={0}
-        />
+        {/* the word is the mask */}
+        <Text text="MOTION" fontSize={140} fontWeight={900} fill="white" />
+
+        {/* the gradient shows through the letters */}
         <Rect
-          width="fill" height="fill"
-          fill={{ type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] }}
+          width="fill"
+          height="fill"
+          fill={Fills.linearGradient(['#4f80ff', '#e84393'])}
         />
       </MaskGroup>
     );
@@ -137,11 +95,12 @@ export class MyScene extends Scene {
 }
 ```
 
----
+<TextMaskCanvas />
 
-## MaskGroup props
+This uses `mode="alpha"`, which clips by the mask's transparency instead of its outline, perfect for text and gradient masks. There's also `mode="luminance"` and an `inverted` option to show content *outside* the shape instead. You'll find them in the [Nodes reference](/docs/category/available-nodes).
 
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `mode` | `'vector' \| 'alpha' \| 'luminance'` | — | How the mask shape is interpreted |
-| `inverted` | `boolean` | `false` | Invert the mask (show content outside the shape) |
+## You made it
+
+Look back at what you built: a scene with a square and a title, animated into place, arranged in a tidy card, polished with a blur, and revealed with a mask. That's a complete little animation, and the same handful of ideas (nodes, `.to()`, layouts, effects, masks) scale up to anything you want to make.
+
+From here, dig into the [Nodes](/docs/category/available-nodes), [Attributes](/docs/category/attributes), and [Effects](/docs/category/effects) references whenever you need more detail. Now go make something.

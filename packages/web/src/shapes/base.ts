@@ -42,6 +42,46 @@ export abstract class BaseShape<S, G = unknown> {
     protected abstract needsTrim(): boolean;
     protected abstract getTrimRange(): { start: number; end: number };
 
+    // A closed region the stroke handler can clip an aligned (inside/outside)
+    // stroke band against when the stroked `ckPath` itself is an open contour.
+    // An arc, for instance, strokes an open curve but still has a well-defined
+    // inside/outside relative to its enclosing region (the pie wedge / sector),
+    // so subclasses can return that closed region here. Default: no interior, so
+    // open shapes fall back to a centered stroke. The cached interior is built
+    // lazily and freed in deletePaths(); the caller must NOT delete it.
+    protected buildSVGAlignInterior(_geo: G): string | null {
+        return null;
+    }
+
+    private _alignInterior: CKPath | undefined;
+    private _alignInteriorBuilt = false;
+
+    // The closed clip region for aligned strokes on this shape, or undefined when
+    // the shape has none (the stroked ckPath is already closed, or the shape kind
+    // doesn't define one). Built once and cached; owned by this instance.
+    strokeAlignInterior(): CKPath | undefined {
+        if (!this._alignInteriorBuilt) {
+            this._alignInteriorBuilt = true;
+            const svg = this.buildSVGAlignInterior(this.geometry);
+            if (svg != null) {
+                const path = this.canvasKit.Path.MakeFromSVGString(svg);
+                this._alignInterior = path
+                    ? this.applyShapeTransform(path)
+                    : undefined;
+            }
+        }
+        return this._alignInterior;
+    }
+
+    // SVG for the silhouette grown (positive) or shrunk (negative) by `spread`
+    // px, used by shadow spread. Subclasses whose geometry resizes cleanly
+    // (ellipse, rect) override this; the default returns null so the shape kind
+    // is treated as not supporting spread. Returning null for a given `spread`
+    // (e.g. a shrink that collapses the shape) is also valid.
+    protected buildSpreadSVGPath(_geo: G, _spread: number): string | null {
+        return null;
+    }
+
     // Public accessors used by ShapeHandler for cache invalidation.
     hasTrim(): boolean { return this.needsTrim(); }
     trimRange(): { start: number; end: number } { return this.getTrimRange(); }
@@ -67,13 +107,15 @@ export abstract class BaseShape<S, G = unknown> {
             console.warn(`${this.constructor.name}: failed to create path`);
             return;
         }
-        this.applyShapeTransform(path);
+        // Bake the shape's own rotation/scale into the geometry (no-op for the
+        // common untransformed case), replacing `path` with the transformed copy.
+        const transformed = this.applyShapeTransform(path);
         if (this.needsTrim()) {
-            this._basePath = path;
+            this._basePath = transformed;
             const { start, end } = this.getTrimRange();
-            this.ckPath = trimPath(this.canvasKit, path, start, end);
+            this.ckPath = trimPath(this.canvasKit, transformed, start, end);
         } else {
-            this.ckPath = path;
+            this.ckPath = transformed;
         }
     }
 
@@ -81,9 +123,12 @@ export abstract class BaseShape<S, G = unknown> {
     // into the path geometry. The shape's x/y are already baked into the SVG by
     // computeGeometry, so a shape rotates about its own (x,y) centre. Pivot is in
     // normalised shape space (0,0 = centre, ±1 = edges), matching the node-level
-    // transform in WebRenderContext. No-op for the common untransformed case so
-    // axis-aligned rects/ellipses keep their fast native draw/clip paths.
-    private applyShapeTransform(path: CKPath): void {
+    // transform in WebRenderContext. Returns `path` unchanged for the common
+    // untransformed case so axis-aligned rects/ellipses keep their fast native
+    // draw/clip paths; otherwise returns a new transformed path and deletes the
+    // input. Subclasses that override ensurePath (e.g. PathShape) call this on
+    // their built path so per-shape rotation/scale still bakes in.
+    protected applyShapeTransform(path: CKPath, centerOverride?: { x: number; y: number }): CKPath {
         const s = this.fullState as unknown as {
             x?: number; y?: number; rotation?: number; scale?: number;
             width?: number; height?: number;
@@ -91,10 +136,13 @@ export abstract class BaseShape<S, G = unknown> {
         };
         const rotation = s.rotation ?? 0;
         const scale = s.scale ?? 1;
-        if (rotation === 0 && scale === 1) return;
+        if (rotation === 0 && scale === 1) return path;
 
-        const cx = s.x ?? 0;
-        const cy = s.y ?? 0;
+        // Shapes bake x/y into their SVG, so they rotate/scale about their own
+        // (x,y) centre. Subclasses that re-centre their path to the origin first
+        // (PathShape) pass that origin as `centerOverride`.
+        const cx = centerOverride ? centerOverride.x : (s.x ?? 0);
+        const cy = centerOverride ? centerOverride.y : (s.y ?? 0);
         const pivot = s.pivot ?? { x: 0, y: 0 };
         const px = cx + pivot.x * ((s.width ?? 0) / 2);
         const py = cy - pivot.y * ((s.height ?? 0) / 2);
@@ -110,10 +158,29 @@ export abstract class BaseShape<S, G = unknown> {
         const d = cos * scale;
         const e = px - a * px - b * py;
         const f = py - c * px - d * py;
-        // CanvasKit's Path.transform takes a 3x3 row-major matrix as 9 params and
-        // mutates in place (not in the bundled .d.ts Path interface).
-        (path as unknown as { transform(...m: number[]): void })
+        // This CanvasKit build exposes Path as immutable — geometry edits go
+        // through a PathBuilder. Build from the path, apply the 3x3 row-major
+        // matrix, and detach the transformed result (mirrors PathShape's offset).
+        const builder = new this.canvasKit.PathBuilder(path);
+        (builder as unknown as { transform(...m: number[]): void })
             .transform(a, b, e, c, d, f, 0, 0, 1);
+        const out = builder.detachAndDelete();
+        path.delete();
+        return out;
+    }
+
+    // Build a fresh path for the silhouette grown/shrunk by `spread` px, with the
+    // shape's own rotation/scale baked in (so a spread shadow tracks a rotated
+    // shape). Returns null when the shape kind doesn't support spread or the
+    // shrink collapses it. Trim is intentionally ignored — a spread shadow is
+    // cast by the whole silhouette, not a trimmed arc. Caller owns the result and
+    // must delete() it.
+    spreadPath(spread: number): CKPath | null {
+        const svg = this.buildSpreadSVGPath(this.geometry, spread);
+        if (svg == null) return null;
+        const path = this.canvasKit.Path.MakeFromSVGString(svg);
+        if (!path) return null;
+        return this.applyShapeTransform(path);
     }
 
     protected _setBasePath(path: CKPath): void {
@@ -135,6 +202,9 @@ export abstract class BaseShape<S, G = unknown> {
         this.ckPath = undefined;
         this._basePath?.delete();
         this._basePath = undefined;
+        this._alignInterior?.delete();
+        this._alignInterior = undefined;
+        this._alignInteriorBuilt = false;
     }
 
     draw(paint: Paint, _isolated: boolean): void {
@@ -149,6 +219,14 @@ export abstract class BaseShape<S, G = unknown> {
         }
     }
 
+    // True when this shape kind can resize its geometry cleanly for shadow
+    // spread (ellipse, rect). Defaults to false; spread is silently ignored for
+    // every other shape kind. Subclasses that override buildSpreadSVGPath set
+    // this so the capability is advertised on the CurrentShape.
+    protected supportsSpread(): boolean {
+        return false;
+    }
+
     // Returns a CurrentShape whose ckPath is a live getter on this instance,
     // so ensurePath() called after toCurrentShape() is reflected immediately.
     toCurrentShape(isolated: boolean): CurrentShape {
@@ -156,7 +234,9 @@ export abstract class BaseShape<S, G = unknown> {
         return {
             draw: (paint: Paint) => shape.draw(paint, isolated),
             get ckPath() { return shape.ckPath; },
+            get alignInterior() { return shape.strokeAlignInterior(); },
             bounds: this.computeBounds(this.geometry),
+            spreadPath: this.supportsSpread() ? (spread: number) => shape.spreadPath(spread) : undefined,
         };
     }
 

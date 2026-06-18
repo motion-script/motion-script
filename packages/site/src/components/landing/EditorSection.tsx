@@ -1,24 +1,18 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
+import { CardShadow } from './FeatureFrame';
+import MockEditor from './MockEditor';
 
 export default function EditorSection() {
   return (
     <section className="relative px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
       <div className="mx-auto w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-        {/* Left: editor preview */}
+        {/* Left: editor preview — a faked, animated mock of the web editor
+            (sliding timeline + canned preview), resting on a faint floor shadow. */}
         <div className="order-2 lg:order-1">
-          <div className="relative aspect-1610/1213 w-full rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] overflow-hidden">
-            {/* Subtle gradient orbs for depth */}
-            <div className="absolute -top-10 -left-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <img
-              src="/editor.jpg"
-              alt="Motion Script web editor"
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
+          <CardShadow tilt className="relative aspect-1610/1213 w-full rounded-2xl border border-[var(--border)] bg-[var(--foreground)]/[0.03] overflow-hidden">
+            <MockEditor />
+          </CardShadow>
         </div>
 
         {/* Right: copy + CTA */}

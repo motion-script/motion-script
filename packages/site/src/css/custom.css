@@ -185,14 +185,72 @@ html[data-theme='dark'] {
   transform: none;
 }
 
+/* Fade + slide reveal — content rises and fades into place as it enters view. */
+.reveal-focus {
+  opacity: 0;
+  transform: translateY(48px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.reveal-focus.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .reveal-up,
-  .reveal-left {
+  .reveal-left,
+  .reveal-focus {
     opacity: 1;
     transform: none;
+    filter: none;
     transition: none;
   }
+}
+
+/* Floating glass label that sits on a demo (e.g. "Live · 60fps"). */
+.feature-chip {
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, #0a0a0f 55%, transparent);
+}
+
+/* ── Card floor shadow ───────────────────────────────────────────────────────
+   A barely-there light-gray circular shadow pooled under a card's center,
+   revealed only on hover so the card reads as gently lifting off the page.
+   The shadow is a blurred radial ellipse on a ::after that sits behind the
+   card (z -1) and bleeds past its bottom edge. */
+.card-floor {
+  position: relative;
+}
+
+.card-floor::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: -22px;
+  width: 70%;
+  height: 60px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--foreground) 16%, transparent),
+    transparent
+  );
+  filter: blur(18px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.card-floor:hover::after {
+  opacity: 0.4;
 }
 
 /* Navbar slide-down on mount */
@@ -286,14 +344,26 @@ html[data-theme='dark'] {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Code blocks: always show line numbers, dark background matching the image */
+/* Code blocks: always show line numbers, surface tuned per theme.
+   Light mode uses a soft tinted surface (not pure white) so the card reads as a
+   distinct block against the white page; dark mode keeps the near-black panel
+   that matches the rest of the dark surfaces. Both pull their border from the
+   theme `--border` token so the card edge tracks the rest of the site. */
 .prism-code {
   counter-reset: line-number;
 }
 
+:root {
+  --code-card-bg: #f6f6f8;
+}
+
+html[data-theme='dark'] {
+  --code-card-bg: #18181a;
+}
+
 div[class*='language-'] {
-  --prism-background-color: #18181a !important;
-  border: 1px solid #212124;
+  --prism-background-color: var(--code-card-bg) !important;
+  border: 1px solid var(--border);
 }
 
 .token-line::before {
@@ -303,7 +373,7 @@ div[class*='language-'] {
   width: 2ch;
   margin-right: 1.5em;
   text-align: right;
-  color: #4a4a5a;
+  color: var(--muted-foreground);
   user-select: none;
   flex-shrink: 0;
 }
@@ -313,11 +383,52 @@ div[class*='language-'] {
 }
 
 div[class*='language-'] pre {
-  background-color: #18181a !important;
+  background-color: var(--code-card-bg) !important;
 }
 
 div[class*='language-'] .prism-code {
-  background-color: #18181a !important;
+  background-color: var(--code-card-bg) !important;
+}
+
+/* Tables: drive Infima's table vars off the theme palette so headers, row
+   borders, and zebra striping track the site instead of Infima's stock greys.
+   The `--secondary`/`--muted` tokens are tuned for buttons/badges and run too
+   heavy as table surfaces (a 0.40-lightness grey header on the near-black page
+   is jarring), so tables get their own subtle tints layered on the page
+   background, with both row borders and the header rule from `--border`. */
+:root {
+  --table-head-bg: #f1f1f4;
+  --table-stripe-bg: #f8f8fa;
+}
+
+html[data-theme='dark'] {
+  --table-head-bg: #1c1c22;
+  --table-stripe-bg: #161619;
+}
+
+.markdown table {
+  --ifm-table-head-background: var(--table-head-bg);
+  --ifm-table-stripe-background: var(--table-stripe-bg);
+  --ifm-table-border-color: var(--border);
+  border-collapse: collapse;
+}
+
+.markdown table thead tr {
+  border-bottom: 2px solid var(--border);
+}
+
+.markdown table th {
+  background-color: var(--table-head-bg);
+  color: var(--foreground);
+}
+
+.markdown table tr {
+  background-color: transparent;
+  border-top: 1px solid var(--border);
+}
+
+.markdown table tr:nth-child(2n) {
+  background-color: var(--table-stripe-bg);
 }
 
 /* Landing page: hide default Docusaurus navbar/footer.
@@ -325,6 +436,20 @@ div[class*='language-'] .prism-code {
 body:has(.home-page) .navbar--fixed-top,
 body:has(.home-page) footer.footer {
   display: none;
+}
+
+/* Editor page: with the navbar hidden, Docusaurus still reserves
+   --ifm-navbar-height of layout in the main wrapper, leaving an empty strip
+   below the player. Pin the wrapper to the exact viewport and let its <main>
+   stretch to fill it so the iframe occupies the full height. */
+body:has(.editor-page) .main-wrapper {
+  height: 100vh;
+  min-height: 100vh;
+}
+
+body:has(.editor-page) .main-wrapper > main {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Docusaurus navbar: blurred glass effect */

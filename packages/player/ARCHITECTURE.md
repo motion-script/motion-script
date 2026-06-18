@@ -64,9 +64,11 @@ Hosts the `MotionPlayer` and layers pan/zoom interaction on top:
 - Renders ruler tick marks along the top/left edges in viewport units,
   computed from the current zoom and the video's displayed (CSS) size.
 - `handleFrameChange` is the player's per-frame callback: it updates
-  `currentFrame`/`rootNode` and additionally implements **scene looping**
-  (`isLooping`) by seeking back to the active scene's start just before its
-  last frame, and stops playback once the timeline runs out.
+  `currentFrame`/`rootNode` and additionally implements **looping**
+  (`loopMode`: `"off" | "scene" | "video"`). In `"scene"` mode it seeks back
+  to the active scene's start just before its last frame; in `"video"` mode it
+  seeks back to frame 0 when the timeline runs out; in `"off"` mode it stops
+  playback at the end.
 
 ## Timeline (`components/timeline/`)
 

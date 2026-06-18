@@ -1,4 +1,4 @@
-import { FilterRegistry } from "../registry";
+import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
 /** Desaturates the media layer toward black and white. */
@@ -8,7 +8,7 @@ export interface GrayscaleFilter {
     value: number;
 }
 
-FilterRegistry.register<GrayscaleFilter>("grayscale", {
+export const grayscaleFilter: FilterData<GrayscaleFilter> = {
     lerp: (from, to, t) => ({ type: "grayscale", value: lerpNumber(from.value, to.value, t) }),
     equals: (a, b) => a.value === b.value,
-});
+};

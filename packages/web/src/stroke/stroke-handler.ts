@@ -3,6 +3,9 @@ import type {
     Canvas,
     Paint,
     Path as CKPath,
+    StrokeCap as CKStrokeCap,
+    StrokeJoin as CKStrokeJoin,
+    StrokeOpts,
 } from "@motion-script/canvaskit";
 import type {
     FillResolved,
@@ -143,6 +146,40 @@ export class StrokeHandler {
         return builder.detachAndDelete();
     }
 
+    private ckCap(cap: StrokeResolved['cap']): CKStrokeCap {
+        switch (cap) {
+            case 'round': return this.canvasKit.StrokeCap.Round;
+            case 'square': return this.canvasKit.StrokeCap.Square;
+            default: return this.canvasKit.StrokeCap.Butt;
+        }
+    }
+
+    private ckJoin(join: StrokeResolved['join']): CKStrokeJoin {
+        switch (join) {
+            case 'round': return this.canvasKit.StrokeJoin.Round;
+            case 'bevel': return this.canvasKit.StrokeJoin.Bevel;
+            default: return this.canvasKit.StrokeJoin.Miter;
+        }
+    }
+
+    // Set cap/join/miter on the paint for centered (Skia-stroked) draws.
+    private applyCapJoin(paint: Paint, stroke: StrokeResolved): void {
+        paint.setStrokeCap(this.ckCap(stroke.cap));
+        paint.setStrokeJoin(this.ckJoin(stroke.join));
+        paint.setStrokeMiter(stroke.miterLimit);
+    }
+
+    // The cap/join/miter to feed Path.makeStroked() when a stroke is realized as
+    // a filled band (thin strokes, aligned strokes, dashed-thin strokes).
+    private strokeOpts(stroke: StrokeResolved, width: number): StrokeOpts {
+        return {
+            width,
+            cap: this.ckCap(stroke.cap),
+            join: this.ckJoin(stroke.join),
+            miter_limit: stroke.miterLimit,
+        };
+    }
+
     private deviceMetrics(canvas: Canvas): { sx: number; sy: number; tx: number; ty: number } {
         const m = canvas.getTotalMatrix();
         return {
@@ -239,7 +276,7 @@ export class StrokeHandler {
     /** Paints each resolved stroke over every shape: resolves device-px stroke width (with thin-stroke snapping), builds the fill shader per shape via the registry, then draws through {@link drawStroke}. Each fill layer in `stroke.fill` is drawn as its own pass, bottom-to-top. */
     applyStrokes(
         strokes: StrokeResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath }>,
         resolveBounds?: (
             fill: FillResolved,
             shape: { ckPath?: CKPath },
@@ -284,6 +321,11 @@ export class StrokeHandler {
         paint.setAlphaf(1.0);
         paint.setShader(null);
         paint.setStyle(this.canvasKit.PaintStyle.Stroke);
+        // Restore the shared paint's cap/join to Skia defaults so a non-default
+        // cap/join doesn't leak into later draws that reuse this paint.
+        paint.setStrokeCap(this.canvasKit.StrokeCap.Butt);
+        paint.setStrokeJoin(this.canvasKit.StrokeJoin.Miter);
+        paint.setStrokeMiter(4);
         return true;
     }
 
@@ -302,11 +344,17 @@ export class StrokeHandler {
     private drawStroke(
         canvas: Canvas,
         paint: Paint,
-        shape: { draw: (p: Paint) => void; ckPath?: CKPath; isText?: boolean },
+        shape: { draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath; isText?: boolean },
         stroke: StrokeResolved,
         logicalWidth: number,
         intDeviceWidth: number,
     ): void {
+        // Cap/join on the paint cover the centered Skia-stroke and dashed-effect
+        // paths below; the makeStroked filled-band paths read them from strokeOpts.
+        // Setting it here (rather than only in applyStrokes) keeps shadow strokes,
+        // which call drawStroke directly, consistent with the real stroke.
+        this.applyCapJoin(paint, stroke);
+
         if (shape.isText) {
             this.drawTextUnionStroke(canvas, paint, shape, stroke, logicalWidth);
             return;
@@ -320,13 +368,18 @@ export class StrokeHandler {
             : null;
 
         const align = stroke.align ?? 0;
+        // The region an aligned band clips against. For closed shapes this is the
+        // stroked path itself; for an open contour with a defined interior (an
+        // ellipse arc → its pie wedge / sector) it's that interior, so the band
+        // still offsets radially instead of silently collapsing to centered.
+        const interior = shape.alignInterior ?? shape.ckPath;
 
         if (intDeviceWidth > 0 && shape.ckPath) {
             const source = hasDash
                 ? this.buildDashedPath(shape.ckPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined)
                 : shape.ckPath;
             if (source) {
-                const filled = this.alignedStrokeBand(source, logicalWidth, align, shape.ckPath);
+                const filled = this.alignedStrokeBand(source, logicalWidth, align, interior, stroke);
                 if (source !== shape.ckPath) source.delete();
                 if (filled) {
                     paint.setStyle(this.canvasKit.PaintStyle.Fill);
@@ -341,7 +394,7 @@ export class StrokeHandler {
         // Thick, non-dashed strokes with alignment: build the filled band and
         // draw it as a fill (the centered Skia stroke can't be aligned).
         if (align !== 0 && !hasDash && shape.ckPath) {
-            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, shape.ckPath);
+            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, interior, stroke);
             if (band) {
                 paint.setStyle(this.canvasKit.PaintStyle.Fill);
                 canvas.drawPath(band, paint);
@@ -358,9 +411,10 @@ export class StrokeHandler {
                 paint.setPathEffect(effect);
                 // An aligned dashed stroke shifts off-center by clipping the
                 // centered dashed stroke against the (doubled) shape interior.
-                // Only for closed shapes — open contours have no inside/outside.
-                if (align !== 0 && intDeviceWidth <= 0 && this.isClosedPath(shape.ckPath)) {
-                    this.drawAlignedDashedStroke(canvas, paint, shape.ckPath, align);
+                // Needs a closed region to clip against: the stroked path when
+                // it's closed, or an open arc's interior wedge/sector when not.
+                if (align !== 0 && intDeviceWidth <= 0 && interior && this.isClosedPath(interior)) {
+                    this.drawAlignedDashedStroke(canvas, paint, shape.ckPath, interior, align);
                 } else {
                     canvas.drawPath(shape.ckPath, paint);
                 }
@@ -373,27 +427,33 @@ export class StrokeHandler {
     }
 
     // Build a filled stroke band placed by `align` (-1 inside, 0 center,
-    // +1 outside). Centered strokes (align 0) just fill the centered outline.
-    // Otherwise we widen the band to w·(1+|align|) so that clipping it to the
-    // shape interior (inside) or its complement (outside) leaves a band that is
-    // full-width at the endpoints and slides continuously through center. The
-    // caller owns the returned path and must delete() it; returns null on failure.
+    // +1 outside). The band is stroked from `source` (the visible contour, open
+    // or closed) and offset by clipping against `interior` — the closed region
+    // whose boundary `source` rides. For a closed shape `source === interior`;
+    // for an open arc, `source` is the arc and `interior` is its pie wedge /
+    // sector, so the band still slides inside/outside relative to the ellipse.
+    // Centered strokes (align 0) just fill the centered outline. Otherwise we
+    // widen the band to w·(1+|align|) so that clipping it to the interior
+    // (inside) or its complement (outside) leaves a band that is full-width at
+    // the endpoints and slides continuously through center. The caller owns the
+    // returned path and must delete() it; returns null on failure.
     //
-    // Alignment only has meaning for a closed region — an open contour (a Line,
-    // or any shape trimmed by start/end) has no inside/outside, so we ignore
-    // `align` and fall back to the centered band rather than clipping against a
-    // degenerate interior (which would blank the stroke).
+    // Alignment needs a closed `interior` — when it isn't (a Line, or a shape
+    // with no interior defined), we ignore `align` and fall back to the centered
+    // band rather than clipping against a degenerate region (which would blank
+    // the stroke).
     private alignedStrokeBand(
         source: CKPath,
         width: number,
         align: number,
-        interior: CKPath,
+        interior: CKPath | undefined,
+        stroke: StrokeResolved,
     ): CKPath | null {
-        if (align === 0 || !this.isClosedPath(interior)) {
-            return source.makeStroked({ width });
+        if (align === 0 || !interior || !this.isClosedPath(interior)) {
+            return source.makeStroked(this.strokeOpts(stroke, width));
         }
         const widened = width * (1 + Math.abs(align));
-        const band = source.makeStroked({ width: widened });
+        const band = source.makeStroked(this.strokeOpts(stroke, widened));
         if (!band) return null;
         // align < 0 → keep the part inside the shape; align > 0 → outside.
         // Use the static Path.MakeFromOp (this CanvasKit build has no instance
@@ -429,13 +489,17 @@ export class StrokeHandler {
 
     // Aligned dashed stroke when the makeStroked fast path didn't apply (thick
     // dashed stroke): draw the centered, dashed stroke at double width and clip
-    // it to the shape interior (inside) or its complement (outside). Doubling
+    // it to the interior region (inside) or its complement (outside). Doubling
     // before the clip means the surviving band is the full requested width on
     // the kept side rather than the half-width a centered stroke would leave.
+    // `strokePath` is the contour the dash rides (the stroked path, open or
+    // closed); `interior` is the closed region the alignment clips against —
+    // they coincide for a closed shape but differ for an open arc (its wedge).
     // `paint` already carries the dash PathEffect and stroke style.
     private drawAlignedDashedStroke(
         canvas: Canvas,
         paint: Paint,
+        strokePath: CKPath,
         interior: CKPath,
         align: number,
     ): void {
@@ -446,7 +510,7 @@ export class StrokeHandler {
             ? this.canvasKit.ClipOp.Intersect
             : this.canvasKit.ClipOp.Difference;
         canvas.clipPath(interior, op, true);
-        canvas.drawPath(interior, paint);
+        canvas.drawPath(strokePath, paint);
         canvas.restore();
         paint.setStrokeWidth(baseWidth);
     }
@@ -498,10 +562,14 @@ export class StrokeHandler {
         }
     }
 
-    /** Paints drop shadows: for each shadow (and each fill layer within it), offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
+    /**
+     * Paints *outer* (drop) shadows: offsets/blurs a silhouette layer beneath the
+     * real paint. Inner shadows are skipped here — they must composite over the
+     * fill, so the caller paints them afterwards via {@link applyInnerShadows}.
+     */
     applyShadows(
         shadows: ShadowResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         fills: FillResolved[],
         strokes: StrokeResolved[],
         resolveBounds?: (
@@ -511,7 +579,6 @@ export class StrokeHandler {
     ): void {
         if (shadows.length === 0) return;
 
-        const canvas = this.getCanvas();
         const paint = this.getPaint();
 
         const hasFill = fills.length > 0 && fills.some(f => (f.opacity ?? 1) > 0);
@@ -519,8 +586,194 @@ export class StrokeHandler {
         const worldAlpha = this.fills.worldAlpha();
 
         for (const shadow of shadows) {
-            const dx = shadow.dx ?? 0;
-            const dy = shadow.dy ?? 0;
+            if (shadow.inner) continue; // drawn after the fill — see applyInnerShadows
+            this.applyDropShadow(shadow, shapes, hasFill, hasStrokes, strokes, worldAlpha, resolveBounds);
+        }
+
+        paint.setStyle(this.canvasKit.PaintStyle.Fill);
+        paint.setPathEffect(null);
+        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
+        paint.setAlphaf(1.0);
+        paint.setShader(null);
+        // Shadow strokes (drawStroke) may have set a non-default cap/join — reset.
+        paint.setStrokeCap(this.canvasKit.StrokeCap.Butt);
+        paint.setStrokeJoin(this.canvasKit.StrokeJoin.Miter);
+        paint.setStrokeMiter(4);
+    }
+
+    /**
+     * Paints *inner* (inset) shadows, which must run after the fill so they sit
+     * on top of it rather than being hidden beneath. Outer shadows are ignored
+     * here. Call once the shape's fill has been drawn.
+     */
+    applyInnerShadows(
+        shadows: ShadowResolved[],
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
+        fills: FillResolved[],
+        resolveBounds?: (
+            fill: FillResolved,
+            shape: { ckPath?: CKPath } | null,
+        ) => void,
+    ): void {
+        if (shadows.length === 0) return;
+
+        const paint = this.getPaint();
+        const hasFill = fills.length > 0 && fills.some(f => (f.opacity ?? 1) > 0);
+        const worldAlpha = this.fills.worldAlpha();
+
+        for (const shadow of shadows) {
+            if (!shadow.inner) continue;
+            this.applyInnerShadow(shadow, shapes, hasFill, worldAlpha, resolveBounds);
+        }
+
+        paint.setStyle(this.canvasKit.PaintStyle.Fill);
+        paint.setPathEffect(null);
+        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
+        paint.setAlphaf(1.0);
+        paint.setShader(null);
+    }
+
+    /** Outer drop shadow: for each fill layer, offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
+    private applyDropShadow(
+        shadow: ShadowResolved,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
+        hasFill: boolean,
+        hasStrokes: boolean,
+        strokes: StrokeResolved[],
+        worldAlpha: number,
+        resolveBounds?: (fill: FillResolved, shape: { ckPath?: CKPath } | null) => void,
+    ): void {
+        const canvas = this.getCanvas();
+        const paint = this.getPaint();
+        const dx = shadow.dx ?? 0;
+        const dy = shadow.dy ?? 0;
+
+        // A non-zero spread grows/shrinks the filled silhouette before blur, but
+        // only for shapes that can resize their geometry cleanly (ellipse, rect);
+        // every other shape ignores it. Spread applies to the box, not strokes, so
+        // only build them when there's a fill to recolour. Built once and reused
+        // across fill layers. A null entry means "this shape has no spread path"
+        // (unsupported kind, or the shrink collapsed it) — fall back to the real
+        // silhouette so the shadow still casts.
+        const spreadPaths = shadow.spread !== 0 && hasFill
+            ? shapes.map(s => s.spreadPath?.(shadow.spread) ?? null)
+            : null;
+
+        for (const fill of shadow.fill) {
+            const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
+
+            const layerPaint = new this.canvasKit.Paint();
+            layerPaint.setAlphaf(opacity);
+            if (shadow.blur > 0) {
+                const sigma = shadow.blur / 2;
+                const filter = this.canvasKit.ImageFilter.MakeBlur(
+                    sigma, sigma, this.canvasKit.TileMode.Decal, null,
+                );
+                layerPaint.setImageFilter(filter);
+            }
+
+            canvas.save();
+            // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
+            // a positive dy nudging the shadow upward.
+            canvas.translate(dx, -dy);
+            canvas.saveLayer(layerPaint);
+
+            paint.setAlphaf(1.0);
+            if (resolveBounds) resolveBounds(fill, null);
+            // worldAlpha is already realised by the alpha'd saveLayer above;
+            // pass 1 so a solid silhouette colour isn't dimmed by it twice.
+            FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint, 1));
+
+            if (hasFill) {
+                paint.setStyle(this.canvasKit.PaintStyle.Fill);
+                paint.setPathEffect(null);
+                for (let i = 0; i < shapes.length; i++) {
+                    const spreadPath = spreadPaths?.[i];
+                    if (spreadPath) canvas.drawPath(spreadPath, paint);
+                    else shapes[i].draw(paint);
+                }
+            }
+
+            if (hasStrokes) {
+                paint.setStyle(this.canvasKit.PaintStyle.Stroke);
+                for (const stroke of strokes) {
+                    const weight = stroke.weight ?? 1;
+                    const { sx, sy } = this.deviceMetrics(canvas);
+                    const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
+                    paint.setStrokeWidth(logical);
+                    paint.setPathEffect(null);
+                    // Shadow strokes inherit the shadow's silhouette colour set
+                    // above — they are not painted with the real stroke fill.
+                    for (const shape of shapes) {
+                        const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
+                        this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
+                        if (snapped) canvas.restore();
+                    }
+                }
+            }
+
+            canvas.restore();
+            canvas.restore();
+            layerPaint.delete();
+        }
+
+        if (spreadPaths) for (const p of spreadPaths) p?.delete();
+    }
+
+    /**
+     * Inner (inset) shadow: clip to the shape silhouette, then fill the region
+     * *outside* an offset copy of the contour. We build that region explicitly as
+     * (bounding rect − offset shape), since this CanvasKit build exposes no
+     * inverse fill type. Blurred and clipped back to the shape, it bleeds inward
+     * along the edges opposite the offset — the look of light cast into a recess.
+     * Needs each shape's `ckPath`; shapes without one (text) are skipped. Strokes
+     * aren't applicable to an inset shadow.
+     */
+    private applyInnerShadow(
+        shadow: ShadowResolved,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
+        hasFill: boolean,
+        worldAlpha: number,
+        resolveBounds?: (fill: FillResolved, shape: { ckPath?: CKPath } | null) => void,
+    ): void {
+        if (!hasFill) return;
+
+        const canvas = this.getCanvas();
+        const paint = this.getPaint();
+        const dx = shadow.dx ?? 0;
+        // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep a
+        // positive dy casting the inset shadow from the top edge downward.
+        const dy = -(shadow.dy ?? 0);
+
+        for (const shape of shapes) {
+            if (!shape.ckPath) continue;
+
+            // Spread is the inverse for an inset shadow: a positive spread makes
+            // the shadow intrude further, which means shrinking the contour it is
+            // cast from — so we ask for spreadPath(-spread). The clip still uses
+            // the real silhouette below, so only the visible recess is painted.
+            const supportsSpread = shadow.spread !== 0 && !!shape.spreadPath;
+            const spreadContour = supportsSpread
+                ? shape.spreadPath!(-shadow.spread)
+                : null;
+
+            // A positive spread that exceeds the shape's half-size collapses the
+            // contour to nothing (spreadPath returns null on a supported shape):
+            // the inset shadow then fills the whole interior, so there's no contour
+            // to subtract — pass null and the region becomes the full padded rect.
+            // For unsupported shapes we cast from the real silhouette (no spread).
+            const contour = spreadContour
+                ?? (supportsSpread ? null : shape.ckPath);
+
+            // The blur reaches `blur` px past the contour, and the offset shifts
+            // it further; pad the bounding rect so its own edges never cast a
+            // shadow into the shape. The enclosing rect is sized from the *real*
+            // silhouette (shape.ckPath), not the spread contour — a large positive
+            // spread shrinks the contour well inside the shape, so a rect sized to
+            // the contour would fall short of the real edges and leave an unpainted
+            // band there.
+            const region = this.buildInnerShadowRegion(contour, shape.ckPath, dx, dy, shadow.blur);
+            if (!region) { spreadContour?.delete(); continue; }
 
             for (const fill of shadow.fill) {
                 const opacity = (fill.opacity !== undefined ? fill.opacity : 1.0) * worldAlpha;
@@ -536,51 +789,66 @@ export class StrokeHandler {
                 }
 
                 canvas.save();
-                // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep
-                // a positive dy nudging the shadow upward.
-                canvas.translate(dx, -dy);
+                // Confine the painting to the shape so only the part of the region
+                // that intrudes past the contour shows as an inset shadow.
+                canvas.clipPath(shape.ckPath, this.canvasKit.ClipOp.Intersect, true);
                 canvas.saveLayer(layerPaint);
 
                 paint.setAlphaf(1.0);
                 if (resolveBounds) resolveBounds(fill, null);
-                // worldAlpha is already realised by the alpha'd saveLayer above;
-                // pass 1 so a solid silhouette colour isn't dimmed by it twice.
+                // worldAlpha is realised by the alpha'd saveLayer above; pass 1
+                // so a solid silhouette colour isn't dimmed by it twice.
                 FillRenderRegistry.applyPaint(fill, this.fills.buildRendererCtx(paint, 1));
 
-                if (hasFill) {
-                    paint.setStyle(this.canvasKit.PaintStyle.Fill);
-                    paint.setPathEffect(null);
-                    for (const shape of shapes) shape.draw(paint);
-                }
-
-                if (hasStrokes) {
-                    paint.setStyle(this.canvasKit.PaintStyle.Stroke);
-                    for (const stroke of strokes) {
-                        const weight = stroke.weight ?? 1;
-                        const { sx, sy } = this.deviceMetrics(canvas);
-                        const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
-                        paint.setStrokeWidth(logical);
-                        paint.setPathEffect(null);
-                        // Shadow strokes inherit the shadow's silhouette colour set
-                        // above — they are not painted with the real stroke fill.
-                        for (const shape of shapes) {
-                            const snapped = this.snapPath(canvas, intDeviceWidth, shape.ckPath);
-                            this.drawStroke(canvas, paint, shape, stroke, logical, intDeviceWidth);
-                            if (snapped) canvas.restore();
-                        }
-                    }
-                }
+                paint.setStyle(this.canvasKit.PaintStyle.Fill);
+                paint.setPathEffect(null);
+                canvas.drawPath(region, paint);
 
                 canvas.restore();
                 canvas.restore();
                 layerPaint.delete();
             }
-        }
 
-        paint.setStyle(this.canvasKit.PaintStyle.Fill);
-        paint.setPathEffect(null);
-        paint.setBlendMode(this.canvasKit.BlendMode.SrcOver);
-        paint.setAlphaf(1.0);
-        paint.setShader(null);
+            region.delete();
+            spreadContour?.delete();
+        }
+    }
+
+    /**
+     * The fillable region for an inset shadow: a padded bounding rect with an
+     * offset copy of `contour` subtracted, so filling it covers everything
+     * *outside* the shifted contour. The enclosing rect is sized from `silhouette`
+     * — the real shape the result is clipped to — rather than `contour`, so a
+     * spread-shrunk contour can't pull the rect inside the shape and leave an
+     * unpainted band at the edges. A null `contour` (a positive spread that
+     * collapsed the contour to nothing) subtracts nothing, so the region is the
+     * whole padded rect and the shadow fills the entire interior. Caller owns the
+     * result and must delete() it; returns null if the boolean op fails.
+     */
+    private buildInnerShadowRegion(contour: CKPath | null, silhouette: CKPath, dx: number, dy: number, blur: number): CKPath | null {
+        // Bounding rect padded past the blur + offset reach, measured from the
+        // real silhouette so the rect always fully encloses the shape no matter
+        // how far a positive spread shrank the contour.
+        const b = silhouette.getBounds();
+        const pad = blur * 2 + Math.abs(dx) + Math.abs(dy) + 1;
+        const rectBuilder = new this.canvasKit.PathBuilder();
+        rectBuilder.addRect([b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad]);
+        const rect = rectBuilder.detachAndDelete();
+
+        // No contour to subtract — the whole padded rect is the region (clipped to
+        // the shape later, this fills the entire interior).
+        if (!contour) return rect;
+
+        // Offset copy of the contour (PathBuilder, since Path is immutable here).
+        const offsetBuilder = new this.canvasKit.PathBuilder(contour);
+        offsetBuilder.offset(dx, dy);
+        const offset = offsetBuilder.detachAndDelete();
+
+        // rect − offsetShape = the area outside the shifted contour, as a normal
+        // (non-inverse) fillable path. MakeFromOp doesn't consume its inputs.
+        const region = this.canvasKit.Path.MakeFromOp(rect, offset, this.canvasKit.PathOp.Difference);
+        rect.delete();
+        offset.delete();
+        return region;
     }
 }

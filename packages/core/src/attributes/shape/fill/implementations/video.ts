@@ -1,14 +1,17 @@
 import type { BlendMode } from '../blend';
-import type { MediaFilter } from '../../filters/union';
+import type { MediaFilter, VideoMediaFilter } from '../../filters/union';
+import type { PosterizeTimeFilter } from '../../filters/implementations/posterize-time';
 import type { FillData } from '../registry';
-import type { ImageFillMode, ImageTransform } from './image';
+import type { ImageFit, ImageTransform } from './image';
 import { lerpNumber } from '@/tween/lerp';
 
+/** Filters a video fill carries — the pixel filters plus the video-only ones. */
+type VideoFillFilter = MediaFilter | VideoMediaFilter;
 
 export interface VideoFillProp {
     type: 'video';
     src: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     timestamp: number;
@@ -16,7 +19,7 @@ export interface VideoFillProp {
     trimStart?: number;
     trimEnd?: number;
     speed?: number;
-    filters?: MediaFilter[];
+    filters?: VideoFillFilter[];
     loop?: 'forward' | 'reverse' | 'none';
     duration?: number;
     opacity?: number;
@@ -26,7 +29,7 @@ export interface VideoFillProp {
 export interface VideoFillResolved {
     type: 'video';
     src: string;
-    mode?: ImageFillMode;
+    mode?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
     timestamp: number;
@@ -35,7 +38,7 @@ export interface VideoFillResolved {
     trimEnd?: number;
     playStart?: number;
     speed?: number;
-    filters?: MediaFilter[];
+    filters?: VideoFillFilter[];
     loop?: 'forward' | 'reverse' | 'none';
     duration?: number;
     opacity?: number;
@@ -88,6 +91,18 @@ export const videoFill: FillData<VideoFillResolved> = {
         } else {
             newTimestamp = start + elapsed;
             if (end !== Infinity) newTimestamp = Math.min(newTimestamp, end);
+        }
+        // Posterize Time: snap the resolved source timestamp to a coarser grid so
+        // each frame is held for a full 1/fps interval (the stop-motion look). Done
+        // after trim/speed/loop so the quantization lives in source-time space and
+        // lines up with the adapter's decoded-frame grid. `floor` (not round) holds
+        // a frame for its whole interval, matching After Effects.
+        const posterize = previous.filters?.find(
+            (f): f is PosterizeTimeFilter => f.type === 'posterizeTime',
+        );
+        if (posterize && posterize.fps > 0) {
+            const grid = 1 / posterize.fps;
+            newTimestamp = start + Math.floor((newTimestamp - start) / grid) * grid;
         }
         return { ...previous, timestamp: newTimestamp, playStart };
     },

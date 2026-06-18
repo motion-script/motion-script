@@ -159,7 +159,7 @@ export class Latex extends ShapeNode<LatexProps> {
             if (token.opacity <= 0) continue;
 
             // Scale each token's fill opacity by the token's animated opacity
-            const scaledFill = scaleFillopacity(this.fill, token.opacity);
+            const scaledFill = scaleFillopacity(this.fill as FillResolved[], token.opacity);
 
             // Translate the path by token's interpolated position offset
             const pathStr = token.x !== 0 || token.y !== 0

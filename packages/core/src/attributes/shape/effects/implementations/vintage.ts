@@ -1,7 +1,7 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { EffectData } from "../effect-data";
+import type { BackdropCapable, EffectData } from "../effect-data";
 
-export interface VintageEffect {
+export interface VintageEffect extends BackdropCapable {
     type: "vintage";
     /** 0–1: blend from original (0) to full sepia/desaturate (1). */
     amount: number;
@@ -14,6 +14,7 @@ export const vintageEffect: EffectData<VintageEffect> = {
         type: "vintage",
         amount: lerpNumber(from.amount, to.amount, t),
         warmth: lerpNumber(from.warmth, to.warmth, t),
+        backdrop: t < 0.5 ? from.backdrop : to.backdrop,
     }),
-    equals: (a, b) => a.amount === b.amount && a.warmth === b.warmth,
+    equals: (a, b) => a.amount === b.amount && a.warmth === b.warmth && a.backdrop === b.backdrop,
 };

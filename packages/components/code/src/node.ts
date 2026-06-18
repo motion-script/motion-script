@@ -18,6 +18,7 @@ import {
     resolveLineHeightScales,
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
+import { CodeTheme, DefaultHighlightStyle } from "./style";
 import { RenderContext, Graphics, EaseFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
@@ -45,7 +46,7 @@ export class Code extends Node<CodeProps> {
     @property({ default: "" }) declare readonly code: string;
     @property({ default: "typescript" }) declare readonly language: string;
     @property({ default: "Fira Mono" }) declare readonly fontFamily: string;
-    @property({ default: "github-dark" }) declare readonly theme: string;
+    @property({ default: DefaultHighlightStyle.name }) declare readonly theme: CodeTheme;
     @property({ default: 16 }) declare readonly fontSize: number;
     @property({ default: 1.6 }) declare readonly lineHeight: number;
     // Extra horizontal space added after every glyph (in px), like CSS
@@ -102,7 +103,8 @@ export class Code extends Node<CodeProps> {
         // highlighting. The authoritative load runs on the timeline via prepare().
         // We deliberately don't await — tokenize() falls back to plain text until
         // the language is ready, and onRender re-tokenizes once it loads.
-        ensureHighlighter([this.theme], [this.language]).catch(() => { });
+        // (Theme is a synchronous color style; only the language parser loads.)
+        ensureHighlighter(undefined, [this.language]).catch(() => { });
         this.tokenize();
     }
 
@@ -131,12 +133,13 @@ export class Code extends Node<CodeProps> {
 
         // Track the language as a timeline asset: the AssetManager runs this load
         // when the frame window opens (before the scene renders) and disposes it
-        // when the window closes. Keyed by language+theme so every frame and every
-        // Code node sharing them collapses to one load. Re-tokenizing on the next
-        // render is handled by onRender's guard, so the disposer is a no-op
-        // (Shiki languages are cheap to keep resident).
-        storage.requestLoader(`code:lang:${this.language}|${this.theme}`, async () => {
-            await ensureHighlighter([this.theme], [this.language]);
+        // when the window closes. Keyed by language so every frame and every Code
+        // node sharing it collapses to one load (the theme is a synchronous color
+        // style and never needs loading). Re-tokenizing on the next render is
+        // handled by onRender's guard, so the disposer is a no-op (parsers are
+        // cheap to keep resident).
+        storage.requestLoader(`code:lang:${this.language}`, async () => {
+            await ensureHighlighter(undefined, [this.language]);
             this.tokenized = false;
             return () => { };
         });

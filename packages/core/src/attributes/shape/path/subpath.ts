@@ -104,7 +104,12 @@ function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
     return angle;
 }
 
-function arcVector2Function(
+/**
+ * Returns a parametric function tracing the SVG arc from `from` to `to` (the
+ * endpoint-to-center conversion of the `A` command). Exported so the path
+ * sampler can flatten arcs accurately instead of approximating them as chords.
+ */
+export function arcVector2Function(
     from: Vector2, to: Vector2,
     rxRaw: number, ryRaw: number, rotation: number, largeArc: 0 | 1, sweep: 0 | 1,
 ): (t: number) => Vector2 {

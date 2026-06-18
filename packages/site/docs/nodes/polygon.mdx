@@ -1,0 +1,73 @@
+---
+sidebar_position: 5
+---
+
+import { PolygonCanvas } from '@site/src/components/docs/node-scenes';
+
+# Polygon
+
+A regular convex polygon inscribed within the node's layout rect. All sides and angles are equal.
+
+<PolygonCanvas />
+
+## Usage
+
+```tsx
+import { Scene, Polygon } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    // Hexagon
+    this.add(
+      <Polygon sides={6} width={370} height={370} fill="#6990DD" />
+    );
+
+    // Triangle with rounded vertices
+    this.add(
+      <Polygon sides={3} width={370} height={370} fill="#E8617C" cornerRadius={12} />
+    );
+
+    // Pentagon with chamfered corners
+    this.add(
+      <Polygon sides={5} width={370} height={370} fill="#F5C26B" cornerRadius={16} cornerStyle="angled" />
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of sides. Must be ≥ 3 |
+| `cornerRadius` | `number` | `0` | Vertex rounding radius in pixels |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape: circular arc (`'rounded'`) or chamfer cut (`'angled'`) |
+
+## Animating
+
+All props animate with `.to()`. Animate `sides` to morph between polygon shapes, or `cornerRadius` to round out vertices:
+
+```tsx
+import { Scene, Polygon, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const shape = createRef<Polygon>();
+
+    this.add(
+      <Polygon ref={shape} sides={3} width={370} height={370} fill="#6990DD" />
+    );
+
+    // Triangle → hexagon
+    yield* shape().to({ sides: 6 }, 1.2, easeInOut);
+
+    // Back to a triangle
+    yield* shape().to({ sides: 3 }, 1.2, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- `cornerStyle` takes a single scalar value (not the per-corner shorthand that `Rect` accepts) because polygon vertices don't map to named corners.
+- The polygon is always inscribed inside the node's bounding rect — the outermost vertices touch the edges of the rect.

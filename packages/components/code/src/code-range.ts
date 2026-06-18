@@ -45,17 +45,7 @@ export function lines(from: number, to?: number): CodeRange {
     };
 }
 
-/**
- * Create an arbitrary range from (startLine, startCol) to (endLine, endCol).
- */
-export function range(
-    startLine: number,
-    startCol: number,
-    endLine: number,
-    endCol: number,
-): CodeRange {
-    return { startLine, startCol, endLine, endCol };
-}
+
 
 /**
  * Convert a CodeRange to absolute character offsets [start, end) in the joined

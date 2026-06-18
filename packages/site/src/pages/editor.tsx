@@ -17,10 +17,10 @@ export default function Editor(): ReactNode {
     <Layout
       title="Editor — MotionScript"
       description="A web-based editor to sync your code-driven animations with audio, all in your browser."
-      wrapperClassName="home-page"
+      wrapperClassName="home-page editor-page"
       noFooter
     >
-      <div className="relative h-[calc(100vh-var(--ifm-navbar-height))] w-full bg-[var(--background)] overflow-hidden">
+      <div className="relative h-full w-full bg-[var(--background)] overflow-hidden">
         <BrowserOnly fallback={<EditorFallback />}>
           {() => (
             <iframe

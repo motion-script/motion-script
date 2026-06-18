@@ -1,22 +1,14 @@
 
 import { FontStyle } from "@/attributes/text/span";
-import { type RectState } from "./descriptors/rect";
 import { TransformState } from "./descriptors/transform";
 
-import { PathState } from "./descriptors/path";
-import { EllipseState } from "./descriptors/ellipse";
-import { LineState } from "./descriptors/line";
-import { PolygonState } from "./descriptors/polygon";
-import { PolygramState } from "./descriptors/polygram";
 import { MeasureScope } from "./measure-scope";
 import { Graphics } from "./graphics";
+import { Clip } from "./clip";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
-import type { BulgeEffect } from "@/attributes/shape/effects/implementations/bulge";
-import type { MagnifyEffect } from "@/attributes/shape/effects/implementations/magnify";
-import type { PosterizeEffect } from "@/attributes/shape/effects/implementations/posterize";
-import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl";
+import type { SceneEffect } from "@/attributes/shape/effects/union";
 
 
 
@@ -26,17 +18,12 @@ import type { SkSLEffect } from "@/attributes/shape/effects/implementations/sksl
 
 
 /**
- * A shape outline to clip against, tagged by kind so the renderer can build the
- * same path it would draw. Used by background blur to confine the backdrop blur
- * to any shape's silhouette.
+ * Where an effect scope draws: `'foreground'` warps/filters the node's *own*
+ * content (its fill, stroke and children), `'backdrop'` warps/filters the canvas
+ * content already painted *beneath* the node (clipped to its silhouette). See
+ * {@link RenderContext.beginEffectScope}.
  */
-export type ClipShape =
-    | { kind: "rect"; state: Partial<RectState> }
-    | { kind: "ellipse"; state: Partial<EllipseState> }
-    | { kind: "polygon"; state: Partial<PolygonState> }
-    | { kind: "polygram"; state: Partial<PolygramState> }
-    | { kind: "path"; state: Partial<PathState> }
-    | { kind: "line"; state: Partial<LineState> };
+export type EffectTarget = "foreground" | "backdrop";
 
 /**
  * A bounding box in the current node's local space (origin = the node's
@@ -194,66 +181,37 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     abstract endMask(): void;
 
     /**
-     * Push a rectangular clip region so children are confined to the node's
-     * rect boundary. Paired with `endClip()`.
+     * Push a clip region built from a {@link Clip} command list. The clip's
+     * shapes are unioned (with `cut()`s subtracted) into a single path and
+     * intersected with the active clip, so children are confined to that
+     * compound outline — any silhouette, not just a rect or ellipse. Used both
+     * for a node's `clip` boundary and to confine backdrop effects (blur,
+     * magnify) to the node's exact shape. Paired with `endClip()`.
      */
-    abstract beginClipRect(state: Partial<RectState>): void;
-    /** Push an elliptical clip region. Paired with `endClip()`. */
-    abstract beginClipEllipse(state: Partial<EllipseState>): void;
+    abstract beginClip(clip: Clip): void;
     /** Pop the most-recently pushed clip region. */
     abstract endClip(): void;
 
     /**
-     * Push a silhouette clip built from `shape`'s outline — used by backdrop
-     * effects to confine the effect to the node's exact boundary regardless of
-     * shape type. Paired with `endClip()`. No-op by default; renderers that
-     * don't support it can leave this unimplemented.
+     * Open an effect scope over the node, applying `effects` to either the node's
+     * own content or the content beneath it. Paired with {@link endEffectScope}.
+     *
+     * `target`:
+     * - `'foreground'` — warps/filters the node's *own* drawing (its fill, stroke
+     *   and children captured between begin/end), like blur. Used for bulge and
+     *   foreground posterize.
+     * - `'backdrop'` — warps/filters the canvas content already painted *beneath*
+     *   the node, clipped to the active silhouette clip, so the node's own edges
+     *   stay sharp (Figma-style). Used for backdrop-flagged filters (blur,
+     *   grayscale, pixelate, …), magnify, backdrop posterize, and backdrop SkSL.
+     *
+     * The renderer decides per effect whether to compose it as an `ImageFilter`
+     * or run it as a snapshot/redraw shader — callers never route by effect type.
+     * `width`/`height` are the node's logical size, for size-relative effects
+     * (e.g. pixelate) and shader lens boxes. No-op by default.
      */
-    beginClipShape(_shape: ClipShape): void { }
-
-    /**
-     * Open a backdrop-blur layer. The already-painted canvas beneath the node
-     * is blurred by `radius` and composited back, clipped to the active
-     * silhouette clip. No-op by default.
-     */
-    beginBackgroundBlur(_radius: number): void { }
-    endBackgroundBlur(): void { }
-
-    /**
-     * Open a backdrop-distortion (magnify) layer. The backdrop is warped by a lens
-     * centred on the node (`width` × `height`), clipped to the active
-     * silhouette clip. No-op by default.
-     */
-    beginBackgroundDistortion(_effect: MagnifyEffect, _width: number, _height: number): void { }
-    endBackgroundDistortion(): void { }
-
-    /**
-     * Begin a foreground (node-content) distortion. Unlike the backdrop
-     * distortion, this warps the node's *own* drawing — every paint call between
-     * `begin` and `end` is captured, then redrawn through the bulge lens centred
-     * on the node (`width` × `height`). Behaves like blur: the effect applies to
-     * the node itself, not the content beneath it. No-op by default.
-     */
-    beginForegroundDistortion(_effect: BulgeEffect, _width: number, _height: number): void { }
-    endForegroundDistortion(): void { }
-
-    /**
-     * Begin a posterize scope over the node's *own* content. Like the foreground
-     * distortion, every paint call between `begin` and `end` is captured into an
-     * offscreen snapshot, then redrawn with each colour channel quantized into
-     * `effect.level` bands (After Effects' Posterize). No-op by default.
-     */
-    beginPosterize(_effect: PosterizeEffect, _width: number, _height: number): void { }
-    endPosterize(): void { }
-
-    /**
-     * Open a custom SkSL backdrop layer. The shader receives
-     * `uniform shader u_backdrop` (a snapshot of the canvas beneath the node)
-     * and can produce distortion, ripple, refraction, etc., clipped to the
-     * active silhouette clip. No-op by default.
-     */
-    beginBackdropSkSL(_effect: SkSLEffect, _width: number, _height: number): void { }
-    endBackdropSkSL(): void { }
+    beginEffectScope(_effects: SceneEffect[], _target: EffectTarget, _width: number, _height: number): void { }
+    endEffectScope(): void { }
 
     /**
      * Push a camera viewport. Clips to `viewport` (canvas-space, centred
@@ -268,6 +226,20 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      */
     abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, centerOn: Vector2, zoom: number, heading: number): void;
     abstract endCamera(): void;
+
+    /**
+     * Push a scene-fit scope: clip to `clip` (the node's cell outline, in the
+     * node's local centred space — already positioned by the active node
+     * transform) and scale the content drawn until {@link endSceneFit} by
+     * `(scaleX, scaleY)` about the current origin. Used by a nested {@link Scene}
+     * with a `fit` set: its children are laid out against the full viewport and
+     * centred at the origin, so scaling them by `cell/viewport` shrinks the whole
+     * world into the cell (contain / cover / stretch). Unlike the per-node
+     * transform, `scaleX`/`scaleY` may differ (non-uniform), which is what makes
+     * `stretch` possible. Paired with {@link endSceneFit}.
+     */
+    abstract beginSceneFit(clip: Clip | null, scaleX: number, scaleY: number): void;
+    abstract endSceneFit(): void;
 
 
 

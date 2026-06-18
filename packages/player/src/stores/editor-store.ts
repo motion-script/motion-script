@@ -1,5 +1,11 @@
 import { AssetManifest, Scene, Color, NodeState, TreeState, type ProjectConfig, type Size2D } from "@motion-script/core";
 
+export type LoopMode = "off" | "scene" | "video";
+
+// "column": video preview above the timeline (default).
+// "row": timeline on the left, video preview on the right — better for vertical videos.
+export type PlayerLayout = "column" | "row";
+
 export type BuildError = {
     sceneName: string;
     sceneIndex: number;
@@ -57,6 +63,10 @@ export type EditorState = {
     setTimelineCollapsed: (collapsed: boolean) => void;
     toggleTimelineCollapsed: () => void;
 
+    playerLayout: PlayerLayout;
+    setPlayerLayout: (layout: PlayerLayout) => void;
+    togglePlayerLayout: () => void;
+
     previewZoom: number;
     previewPan: { x: number; y: number };
     setPreviewZoom: (zoom: number) => void;
@@ -75,8 +85,9 @@ export type EditorState = {
     selectedNode: NodeState | null;
     setSelectedNode: (node: NodeState | null) => void;
 
-    isLooping: boolean;
-    setIsLooping: (looping: boolean) => void;
+    loopMode: LoopMode;
+    setLoopMode: (mode: LoopMode) => void;
+    cycleLoopMode: () => void;
 
     isMuted: boolean;
     setIsMuted: (muted: boolean) => void;
@@ -180,6 +191,10 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
         setTimelineCollapsed: (collapsed) => set(() => ({ timelineCollapsed: collapsed })),
         toggleTimelineCollapsed: () => set((s) => ({ timelineCollapsed: !s.timelineCollapsed })),
 
+        playerLayout: "column",
+        setPlayerLayout: (layout) => set(() => ({ playerLayout: layout })),
+        togglePlayerLayout: () => set((s) => ({ playerLayout: s.playerLayout === "column" ? "row" : "column" })),
+
         previewZoom: 1,
         previewPan: { x: 0, y: 0 },
         setPreviewZoom: (zoom) =>
@@ -200,8 +215,13 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
         selectedNode: null,
         setSelectedNode: (node) => set(() => ({ selectedNode: node })),
 
-        isLooping: false,
-        setIsLooping: (looping) => set(() => ({ isLooping: looping })),
+        loopMode: "off",
+        setLoopMode: (mode) => set(() => ({ loopMode: mode })),
+        cycleLoopMode: () => set((s) => {
+            const order: LoopMode[] = ["off", "scene", "video"];
+            const next = order[(order.indexOf(s.loopMode) + 1) % order.length];
+            return { loopMode: next };
+        }),
 
         isMuted: false,
         setIsMuted: (muted) => set(() => ({ isMuted: muted })),

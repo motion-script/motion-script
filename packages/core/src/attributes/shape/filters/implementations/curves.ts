@@ -1,4 +1,4 @@
-import { FilterRegistry } from "../registry";
+import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
 /** Which color channel(s) a curves adjustment targets. */
@@ -19,7 +19,7 @@ export interface CurvesFilter {
     channel?: CurvesChannel;
 }
 
-FilterRegistry.register<CurvesFilter>("curves", {
+export const curvesFilter: FilterData<CurvesFilter> = {
     // Channel hard-cuts at t=0.5 because interpolating between channel names
     // would produce meaningless intermediate states.
     lerp: (from, to, t) => ({
@@ -34,4 +34,4 @@ FilterRegistry.register<CurvesFilter>("curves", {
         a.channel === b.channel &&
         a.points.length === b.points.length &&
         a.points.every(([x, y], i) => x === b.points[i]?.[0] && y === b.points[i]?.[1]),
-});
+};

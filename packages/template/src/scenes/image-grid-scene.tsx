@@ -1,4 +1,4 @@
-import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait } from "@motion-script/core";
+import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -38,8 +38,8 @@ class GridCell extends ShapeNode<ShapeProps> {
         const { width: W, height: H } = this.grid.gridSize();
         // A zero-weight stroke still rasterises a hairline, so drop those — at
         // weight 0 the cell shows no stroke at all.
-        const stroke = this.grid.stroke.filter(s => s.weight > 0);
-        const shadow = this.grid.shadow;
+        const stroke = (this.grid.stroke as StrokeResolved[]).filter(s => s.weight > 0);
+        const shadow = this.grid.shadow as ShadowResolved[];
 
         // Shadow behind the slice. A shadow only paints when a fill/stroke flushes
         // it, so pair it with a fully transparent fill — the slice covers the cell
@@ -48,7 +48,7 @@ class GridCell extends ShapeNode<ShapeProps> {
             ctx.draw(new Graphics().rect({ width: r.width, height: r.height }).shadow(shadow).fill("transparent"));
         }
 
-        // The slice: draw the whole image covering the grid (mode 'crop' = cover,
+        // The slice: draw the whole image covering the grid (mode 'fill' = cover,
         // computed from the decoded image), clipped to this cell's window. The
         // grid's centre sits at (-r.x, -r.y) in the cell's local space.
         //
@@ -66,13 +66,13 @@ class GridCell extends ShapeNode<ShapeProps> {
         const right = this.col < this.grid.columns ? bx : 0;
         const top = this.row > 1 ? by : 0;
         const bottom = this.row < this.grid.rows ? by : 0;
-        ctx.beginClipRect({
+        ctx.beginClip(new Clip().rect({
             x: (right - left) / 2,
             y: (bottom - top) / 2,
             width: r.width + left + right,
             height: r.height + top + bottom,
-        });
-        ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "crop" }));
+        }));
+        ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "fill" }));
         ctx.endClip();
 
         // Stroke on top of the slice.

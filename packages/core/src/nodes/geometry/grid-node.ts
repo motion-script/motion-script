@@ -1,16 +1,19 @@
 
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
 import { lerpSizeInput } from "@/layout/tweens";
 import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/grid";
-import { BorderRadiusProps, BorderRadiusResolved, lerpBorderRadius, resolveBorderRadius } from "@/attributes/shape/corners/border-radius";
+import { RectCornerRadius, CornerRadiusResolved, lerpCornerRadius, resolveCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle, CornerStyleResolved, lerpCornerStyle, resolveCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -25,7 +28,10 @@ export interface GridProps extends ShapeProps {
     rowGap: number;
     /** Shorthand: sets both columnGap and rowGap. */
     gap: number;
-    borderRadius: BorderRadiusProps;
+    /** Corner radius in pixels — uniform, per-corner, or per-axis. */
+    cornerRadius: RectCornerRadius;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: RectCornerStyle;
 }
 
 /**
@@ -38,8 +44,10 @@ export class Grid extends ShapeNode<GridProps> {
     @property({ default: 1 }) declare readonly columns: number;
     @property({ default: 0 }) declare readonly columnGap: number;
     @property({ default: 0 }) declare readonly rowGap: number;
-    @property({ default: 0, mapper: (v: BorderRadiusProps) => resolveBorderRadius(v), tween: lerpBorderRadius })
-    declare readonly borderRadius: BorderRadiusResolved;
+    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare cornerRadius: RectCornerRadius;
+    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare cornerStyle: RectCornerStyle;
 
     private _cachedMeasure: GridMeasureResult | null = null;
 
@@ -65,43 +73,35 @@ export class Grid extends ShapeNode<GridProps> {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })
             .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    protected override applyClip(ctx: RenderContext): void {
-        ctx.beginClipRect({
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
         });
-    }
-
-    protected override silhouette(): ClipShape {
-        return {
-            kind: "rect",
-            state: {
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
-            },
-        };
     }
 
     // ---- Padding -------------------------------------------------------------
 
     private effectivePadding(): PaddingResolved {
         let extra = 0;
-        if (this.stroke && Symbol.iterator in Object(this.stroke)) {
-            for (const s of this.stroke) {
+        const p = this.padding as PaddingResolved;
+        const strokes = this.stroke as StrokeResolved[];
+        if (strokes && Symbol.iterator in Object(strokes)) {
+            for (const s of strokes) {
                 if (s.weight > extra) extra = s.weight;
             }
         }
-        if (extra === 0) return this.padding;
-        const p = this.padding;
+        if (extra === 0) return p;
         return { left: p.left + extra, right: p.right + extra, top: p.top + extra, bottom: p.bottom + extra };
     }
 

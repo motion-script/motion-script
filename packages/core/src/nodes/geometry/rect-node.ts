@@ -1,17 +1,21 @@
-import { ClipShape, RenderContext } from "@/render/render-context";
+import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpSizeInput } from "@/layout/tweens";
-import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, GapSize, FlexDirection } from "@/layout/flex";
-import { BorderRadiusProps, BorderRadiusResolved, resolveBorderRadius, lerpBorderRadius } from "@/attributes/shape/corners/border-radius";
+import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -28,9 +32,16 @@ export interface RectProps extends ShapeProps {
     group: LayoutMode;
     /** Spacing between children along the layout's main axis. */
     gap: GapSize;
-    /** Per-axis alignment of children within the content box (-1…1). */
-    alignment: Vector2;
-    borderRadius: BorderRadiusProps;
+    /**
+     * Alignment of children within the content box: a named position
+     * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
+     * (x: -1 left … +1 right, y: -1 bottom … +1 top).
+     */
+    align: AlignInput;
+    /** Corner radius in pixels — uniform, per-corner, or per-axis. */
+    cornerRadius: RectCornerRadius;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: RectCornerStyle;
 }
 
 
@@ -55,22 +66,44 @@ type NodeMeasureResult = FlexNodeMeasure | StackNodeMeasure;
 /**
  * The Rectangle is the only node that performs flex / stack layout on its
  * children. It measures and positions children according to `group`
- * (row | column | stack), `gap`, `alignment`, and `padding`, then draws
+ * (row | column | stack), `gap`, `align`, and `padding`, then draws
  * itself as a rounded rect behind them.
  */
 export class Rect extends ShapeNode<RectProps> {
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly alignment: Vector2;
-    @property({ default: 0, mapper: (v: BorderRadiusProps) => resolveBorderRadius(v), tween: lerpBorderRadius })
-    declare readonly borderRadius: BorderRadiusResolved;
+    // Declared as the loose `AlignInput` so one @property covers both assignment
+    // (`this.align = 'center'`) and reads. At runtime the accessor stores the
+    // resolved per-axis `Vector2` pivot; readers cast at the read site.
+    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
+    declare align: AlignInput;
+    // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
+    // covers both assignment (`this.cornerRadius = 8`) and reads. At runtime the
+    // accessor stores the resolved per-corner value; readers that need the
+    // resolved shape cast at the read site (none here — RectState/Clip accept the
+    // loose type).
+    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare cornerRadius: RectCornerRadius;
+    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare cornerStyle: RectCornerStyle;
 
     declare group: LayoutMode;
 
     private _cachedMeasure: NodeMeasureResult | null = null;
     private _cachedMeasureFrom: NodeMeasureResult | null = null;
     private _groupBlend: { from: LayoutMode; to: LayoutMode; t: number } | null = null;
+
+    /**
+     * Discard the measure cached by the last {@link measure} pass so the next
+     * {@link layout} recomputes children against the layout bounds. Used by a
+     * `fit` {@link Scene}, which is measured by its parent against its small cell
+     * but lays its children out against the full viewport.
+     */
+    protected invalidateMeasure(): void {
+        this._cachedMeasure = null;
+        this._cachedMeasureFrom = null;
+    }
 
     constructor(props: NodeConfig<Rect, RectProps>) {
         super(props);
@@ -126,30 +159,21 @@ export class Rect extends ShapeNode<RectProps> {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })
             .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    protected override applyClip(ctx: RenderContext): void {
-        ctx.beginClipRect({
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
-            borderRadius: this.borderRadius,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
         });
-    }
-
-    protected override silhouette(): ClipShape {
-        return {
-            kind: "rect",
-            state: {
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
-            },
-        };
     }
 
     // ---- Padding ----------------------------------------------------------
@@ -162,15 +186,16 @@ export class Rect extends ShapeNode<RectProps> {
     // weight·(1 - align)/2.
     private effectivePadding(): PaddingResolved {
         let extra = 0;
-        if (!this.stroke || !(Symbol.iterator in Object(this.stroke))) {
-            return this.padding;
+        const p = this.padding as PaddingResolved;
+        const strokes = this.stroke as StrokeResolved[];
+        if (!strokes || !(Symbol.iterator in Object(strokes))) {
+            return p;
         }
-        for (const s of this.stroke) {
+        for (const s of strokes) {
             const intrusion = s.weight * (1 - s.align) / 2;
             if (intrusion > extra) extra = intrusion;
         }
-        if (extra === 0) return this.padding;
-        const p = this.padding;
+        if (extra === 0) return p;
         return {
             left: p.left + extra,
             right: p.right + extra,
@@ -298,7 +323,7 @@ export class Rect extends ShapeNode<RectProps> {
             innerWidth,
             innerHeight,
             gap: this.gap,
-            alignment: this.alignment,
+            alignment: this.align as Vector2,
             padding,
         });
     }
@@ -372,14 +397,15 @@ export class Rect extends ShapeNode<RectProps> {
         const offsetX = (pad.left - pad.right) / 2;
         const offsetY = (pad.top - pad.bottom) / 2;
 
+        const align = this.align as Vector2;
         const result: BoxBounds[] = [];
         for (const size of measure.sizes) {
             const w = size.width ?? 0;
             const h = size.height ?? 0;
             const slackX = Math.max(0, innerW - w);
             const slackY = Math.max(0, innerH - h);
-            const localX = offsetX + (this.alignment.x * slackX) / 2;
-            const localY = offsetY - (this.alignment.y * slackY) / 2;
+            const localX = offsetX + (align.x * slackX) / 2;
+            const localY = offsetY - (align.y * slackY) / 2;
             result.push({ x: localX, y: localY, width: w, height: h });
         }
         return result;

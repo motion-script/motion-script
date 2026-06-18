@@ -1,4 +1,4 @@
-import { FX } from "@motion-script/core";
+import { Effects as FX } from "@motion-script/core";
 import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
 
 export class InvertScene extends EffectDemoScene {
@@ -6,5 +6,6 @@ export class InvertScene extends EffectDemoScene {
         label: 'Invert',
         from: FX.invert('rgba', 0),
         to: FX.invert('rgba', 1),
+        compare: true,
     };
 }

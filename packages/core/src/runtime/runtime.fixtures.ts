@@ -65,6 +65,7 @@ export class FakeScene {
     disposeCount = 0;
     renderCount = 0;
     setCalls: unknown[] = [];
+    setViewportCalls: unknown[] = [];
     bindAssetsCalls: unknown[] = [];
     ellapseCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
@@ -82,6 +83,9 @@ export class FakeScene {
 
     set(props: unknown): void {
         this.setCalls.push(props);
+    }
+    setViewport(size: unknown): void {
+        this.setViewportCalls.push(size);
     }
     reset(): void {
         this.resetCount++;
@@ -147,8 +151,8 @@ export function asCatalog(c: FakeAssetCatalog): AssetCatalog {
 export class FakeRenderContext {
     renderCount = 0;
     screenshotValue: string | undefined = "data:image/png;base64,FAKE";
-    /** Invokes the draw callback, mirroring the real render() contract. */
-    render(cb: () => void): void {
+    /** Invokes the draw callback, mirroring the real RenderContext.execute() contract. */
+    execute(cb: () => void): void {
         this.renderCount++;
         cb();
     }
@@ -165,6 +169,14 @@ export class FakeStorageAdapter {
     fetchAudioCalls: string[] = [];
     /** When set, loadAsset rejects with this error (to exercise prefetch's catch). */
     loadShouldReject = false;
+    /**
+     * When set, `warmPendingVideo()` returns this controllable promise instead of
+     * resolving immediately — lets a test park a seek on the warm re-render loop so
+     * a second, newer seek can be interleaved against it (supersession tests).
+     */
+    warmGate: Promise<boolean> | null = null;
+    warmPendingVideoCalls = 0;
+    setPlayingCalls: boolean[] = [];
 
     loadAsset(key: string, record: AssetRecord): Promise<void> {
         this.loadAssetCalls.push({ key, record });
@@ -173,6 +185,13 @@ export class FakeStorageAdapter {
     fetchAudioData(src: string): Promise<ArrayBuffer> {
         this.fetchAudioCalls.push(src);
         return Promise.resolve(new ArrayBuffer(8));
+    }
+    warmPendingVideo(): Promise<boolean> {
+        this.warmPendingVideoCalls++;
+        return this.warmGate ?? Promise.resolve(false);
+    }
+    setPlaying(playing: boolean): void {
+        this.setPlayingCalls.push(playing);
     }
 }
 export function asStorage(s: FakeStorageAdapter): StorageAdapter {

@@ -1,3 +1,17 @@
+/**
+ * Mixin for effects that can run on the **backdrop** — the content already painted
+ * beneath the node — instead of the node's own content. When `backdrop` is `true`,
+ * the effect's filter is applied to whatever lies underneath the node and clipped to
+ * the node's silhouette, so the node's own edges stay sharp (Figma-style). Defaults
+ * to `false` (the effect applies to the node's own content, the foreground).
+ *
+ * Only filter-expressible effects mix this in (blur, grayscale, …). `magnify` and the
+ * backdrop variant of `sksl` address the backdrop through their own dedicated paths.
+ */
+export interface BackdropCapable {
+    backdrop?: boolean;
+}
+
 export interface EffectData<T> {
     /**
      * Linearly interpolates between two effect states.

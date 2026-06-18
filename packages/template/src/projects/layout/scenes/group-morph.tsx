@@ -28,7 +28,7 @@ export class GroupMorphScene extends Scene {
                 <Rect
                     ref={stage}
                     width={'fill'} height={'fill'}
-                    fill={'card'} borderRadius={32} clip={true}
+                    fill={'card'} cornerRadius={32} clip={true}
                     group={'row'} gap={48} padding={64}
                 >
                     {colors.map((color, i) =>

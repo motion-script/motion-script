@@ -1,7 +1,7 @@
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { FillProp, FillResolved, FillSpace } from "./union";
-import { ChainableFill, resolveChainFill } from "./chain";
+import { Fill, resolveChainFill } from "./chain";
 import { canCoerce, coercePair } from "./coerce";
 
 import { colorFill } from "./implementations/color";
@@ -55,8 +55,22 @@ export function resolveFill(prop: FillProp): FillResolved {
     return space !== undefined ? { ...resolved, space } : resolved;
 }
 
-export function resolveFillArray(prop: ChainableFill | undefined): FillResolved[] {
+export function resolveFillArray(prop: Fill | undefined): FillResolved[] {
     return resolveChainFill(prop).map(resolveFill);
+}
+
+/**
+ * True when `a` and `b` can be interpolated into a single fill by {@link
+ * lerpFill} without throwing — i.e. they share a type with the same `blend`, or
+ * they're a color/gradient pair {@link canCoerce} can promote to one type.
+ *
+ * Pairs that fail this (e.g. color↔image, image↔video, or same-type fills with
+ * differing blend modes) have no meaningful single-type in-between; {@link
+ * lerpFillArray} cross-fades them as two stacked layers instead.
+ */
+export function canLerpFill(a: FillResolved, b: FillResolved): boolean {
+    if (a.type === b.type) return a.blend === b.blend;
+    return canCoerce(a, b);
 }
 
 export function lerpFill(a: FillResolved, b: FillResolved, t: number): FillResolved {
@@ -80,20 +94,37 @@ export function lerpFill(a: FillResolved, b: FillResolved, t: number): FillResol
     return { ...a, ...get(a.type).lerp(a, b, clamped) };
 }
 
+/** Returns `fill` with its effective opacity scaled by `factor` (clamped to ≥0). */
+function scaleOpacity(fill: FillResolved, factor: number): FillResolved {
+    return { ...fill, opacity: (fill.opacity ?? 1) * Math.max(0, factor) };
+}
+
 export function lerpFillArray(from: FillResolved[], to: FillResolved[], t: number): FillResolved[] {
     if (from === to) return from;
     if (!from.length && !to.length) return [];
+    const clamped = Math.min(1, Math.max(0, t));
     const maxLength = Math.max(from.length, to.length);
     const result: FillResolved[] = [];
     for (let i = 0; i < maxLength; i++) {
         const f = from[i];
         const tf = to[i];
         if (f && tf) {
-            result.push(lerpFill(f, tf, t));
+            // Interpolate in place when the two fills share an interpolatable
+            // shape (same type, or a coercible color/gradient pair). When they
+            // don't (e.g. color↔image, image↔video) there is no single-type
+            // in-between, so cross-fade instead: paint the outgoing fill fading
+            // out beneath the incoming fill fading in. The dropped-out endpoints
+            // are omitted so a static array of one fill stays a single layer.
+            if (canLerpFill(f, tf)) {
+                result.push(lerpFill(f, tf, clamped));
+            } else {
+                if (clamped < 1) result.push(scaleOpacity(f, 1 - clamped));
+                if (clamped > 0) result.push(scaleOpacity(tf, clamped));
+            }
         } else if (f) {
-            result.push(lerpFill(f, { ...f, opacity: 0 }, t));
+            result.push(lerpFill(f, { ...f, opacity: 0 }, clamped));
         } else if (tf) {
-            result.push(lerpFill({ ...tf, opacity: 0 }, tf, t));
+            result.push(lerpFill({ ...tf, opacity: 0 }, tf, clamped));
         }
     }
     return result;

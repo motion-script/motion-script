@@ -1,21 +1,22 @@
-import { Scene, createRef, wait, easeOutQuad, Rect, Fill, Ellipse } from "@motion-script/core";
+import { Scene, createRef, wait, easeOutQuad, Rect, Fills, Ellipse } from "@motion-script/core";
 import { Code, lines, word } from "@motion-script/code";
 
 export class CodeScene extends Scene {
     *build() {
-        this.set({ fill: Fill.image('background.jpg', { mode: 'fill' }).color('#0f121a', { opacity: 0.24 }), padding: 120 });
+        this.set({ fill: Fills.image('background.jpg', { fit: 'fill' }).color('#0f121a', { opacity: 0.24 }), padding: 120 });
 
         const code = createRef<Code>();
 
         this.add(
-            <Rect borderRadius={32} fill={'#0f121a'} height={'hug'} group={'column'} clip={true} >
-                <Rect fill={'#191C24'} gap={24} padding={{ horizontal: 36, vertical: 32 }} width={'fill'} alignment={{ x: -1, y: 1 }}>
+            <Rect cornerRadius={32} fill={'#0f121a'} height={'hug'} group={'column'} clip={true} >
+                <Rect fill={'#191C24'} gap={24} padding={{ horizontal: 36, vertical: 32 }} width={'fill'} align={{ x: -1, y: 1 }}>
                     <Ellipse width={32} height={32} fill={'#FF5252'} />
                     <Ellipse width={32} height={32} fill={'#FFD70A'} />
                     <Ellipse width={32} height={32} fill={'#29EC71'} />
 
                 </Rect>
                 <Code
+                    theme={'vscode-dark'}
                     ref={code}
                     language={'typescript'}
                     padding={{ horizontal: 72, vertical: 42 }}

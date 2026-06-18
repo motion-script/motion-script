@@ -1,0 +1,95 @@
+---
+sidebar_position: 7
+---
+
+# Size
+
+`width` and `height` accept three value kinds: a fixed pixel number, `'fill'`, or `'hug'`.
+
+## Fixed size
+
+```tsx
+<Rect width={300} height={200} fill="royalblue" />
+```
+
+---
+
+## `'fill'` — expand to parent
+
+A node with `width: 'fill'` stretches to consume all available space along that axis in its parent container. Multiple `fill` siblings share the space equally (or by their `flex` ratio):
+
+```tsx
+<Rect group="row" gap={16} padding={24} fill="#0f1117" width={600} height={100}>
+  <Rect width="fill" height="fill" fill="royalblue" />  {/* takes half */}
+  <Rect width="fill" height="fill" fill="tomato" />     {/* takes half */}
+</Rect>
+```
+
+:::info Default sizing
+A node with no children defaults to `width: 'fill'`, `height: 'fill'`. A `Rect` with children defaults to `width: 'hug'`, `height: 'hug'`.
+:::
+
+---
+
+## `'hug'` — shrink to content
+
+A node with `width: 'hug'` measures its children and sizes itself to fit them exactly (plus any padding):
+
+```tsx
+<Rect group="row" gap={12} width="hug" height="hug" padding={20} fill="#1e293b">
+  <Rect width={60} height={60} fill="tomato" cornerRadius={8} />
+  <Rect width={60} height={60} fill="royalblue" cornerRadius={8} />
+</Rect>
+```
+
+---
+
+## `flex` — proportional fill
+
+When multiple siblings use `width: 'fill'` (or `height: 'fill'`), the `flex` prop controls how much of the free space each one gets. The default is `1` — equal shares.
+
+```tsx
+<Rect group="row" gap={8} fill="#0f1117" width={600} height={80}>
+  <Rect flex={2} height="fill" fill="royalblue" />  {/* takes 2/3 */}
+  <Rect flex={1} height="fill" fill="tomato" />     {/* takes 1/3 */}
+</Rect>
+```
+
+Setting `flex` without an explicit `width`/`height` defaults both to `'fill'` automatically.
+
+---
+
+## Animating size
+
+Fixed sizes animate smoothly with `.to()`. Switching between fixed and `'fill'`/`'hug'` also cross-fades:
+
+```tsx
+import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const box = createRef<Rect>();
+
+    this.add(<Rect ref={box} width={100} height={100} fill="royalblue" />);
+
+    // Grow
+    yield* box().to({ width: 400, height: 200 }, 0.8, easeOut);
+
+    // Shrink back
+    yield* box().to({ width: 100, height: 100 }, 0.6);
+  }
+}
+```
+
+---
+
+## Measuring layout size
+
+After layout runs, you can read the resolved pixel size from a node:
+
+```tsx
+const w = box().measuredWidth;
+const h = box().measuredHeight;
+```
+
+These are reactive — reads inside callbacks track changes automatically.

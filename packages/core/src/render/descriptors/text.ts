@@ -1,6 +1,34 @@
 import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
+import { FillResolved } from "@/attributes/shape/fill/union";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { PathData } from "./path";
 import { ShapeState } from "./shape";
+
+/**
+ * One contiguous piece of a Text node split at selection boundaries. Pieces
+ * carry their effective shaping inputs (`text`/`fontWeight`/`letterSpacing`)
+ * plus draw-time overrides applied per shaped run: `opacity` folded into the
+ * paint alpha, an optional `fill`/`stroke` override (falls back to the node's
+ * when omitted), and a transform applied about the run's centered position.
+ *
+ * Present only when a Text node has active selections; otherwise the node
+ * renders as a single string with no segments (unchanged behavior).
+ */
+export interface TextSegment {
+    text: string;
+    fontWeight: number;
+    letterSpacing: number;
+    opacity: number;
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    /** Override fill for this piece; falls back to the node's fill when undefined. */
+    fill?: FillResolved[];
+    /** Override stroke for this piece; falls back to the node's stroke when undefined. */
+    stroke?: StrokeResolved[];
+}
 
 export interface TextState extends ShapeState {
     text: string;
@@ -15,6 +43,19 @@ export interface TextState extends ShapeState {
     minFontSize: number;
     width: number;
     height: number;
+    /**
+     * Per-piece overrides when the node has active text selections. When set,
+     * the renderer shapes these pieces together (one paragraph) and paints each
+     * shaped run with its piece's overrides instead of the node's single fill.
+     */
+    segments?: TextSegment[];
+    /**
+     * When set, the text is wrapped around this path (text-on-path) instead of
+     * laid out as straight lines: each glyph is positioned and rotated to follow
+     * the path, centered on its baseline, and glyphs past the path end are
+     * clipped. Mutually exclusive with `segments` in v1.
+     */
+    path?: PathData | null;
 }
 
 
@@ -28,7 +69,6 @@ export function withTextDescriptor(descriptor: Partial<TextState>): TextState {
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
         text: descriptor.text ?? "",
         fontSize: descriptor.fontSize ?? 16,
@@ -42,5 +82,7 @@ export function withTextDescriptor(descriptor: Partial<TextState>): TextState {
         minFontSize: descriptor.minFontSize ?? 12,
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
+        segments: descriptor.segments,
+        path: descriptor.path ?? null,
     };
 }

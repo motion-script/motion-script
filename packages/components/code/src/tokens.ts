@@ -1,6 +1,7 @@
 import { canHighlight, highlightToTokens } from "./highlight";
+import { CodeTheme } from "./style";
 
-// IdToken is our internal wrapper around shiki's ThemedToken that gives every
+// IdToken is our internal wrapper around a highlighter token that gives every
 // token a stable identity across line insertions/removals. All animation state
 // is keyed by `id`, so concurrent edits at different positions don't clobber
 // each other while one is mid-animation.
@@ -31,10 +32,10 @@ export function makeIdLine(tokens: IdToken[]): IdLine {
     return { id: nextLineId++, tokens };
 }
 
-export function tokenizeCodeToIdLines(code: string, language: string, theme: string): IdLine[] {
-    // Until the language+theme have loaded (they stream in via the asset loader),
-    // fall back to flat, uncolored lines instead of letting Shiki throw
-    // "Language `x` not found". The node re-tokenizes once the load completes.
+export function tokenizeCodeToIdLines(code: string, language: string, theme: CodeTheme): IdLine[] {
+    // Until the language parser has loaded (it streams in via the asset loader),
+    // fall back to flat, uncolored lines instead of throwing on an unloaded
+    // grammar. The node re-tokenizes once the load completes.
     if (!canHighlight(language, theme)) {
         return code.split('\n').map(line => makeIdLine([makeIdToken(line, '#d1d5db')]));
     }

@@ -437,6 +437,23 @@ describe('layoutFlex – padding', () => {
         // mainPos = 500/2 - 100 - 20 = 130, center = 130 + 50 = 180
         expect(result[0].x).toBe(180);
     });
+
+    it('center in column shifts to the padded inner center for asymmetric padding', () => {
+        const entries = [
+            { child: child(100, 50), width: 100, height: 50, isFlexibleMain: false },
+        ];
+        const result = layoutFlex(layoutInput({
+            direction: 'column',
+            entries,
+            rect: rect(500, 200),
+            innerWidth: 200,
+            innerHeight: 200,
+            alignment: { x: 0, y: 0 },
+            padding: { left: 50, right: 250, top: 0, bottom: 0 },
+        }));
+        // cross center honors padding asymmetry: (50 - 250) / 2 = -100
+        expect(result[0].x).toBe(-100);
+    });
 });
 
 describe('layoutFlex – column direction', () => {

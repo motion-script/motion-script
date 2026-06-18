@@ -31,7 +31,7 @@ export default createProject({
     fps: 60,
     viewport: {
         width: 1920,
-        height: 1080,
+        height: 1080 - 240,
     },
     scenes: [
         new BlurScene(),
@@ -53,7 +53,7 @@ export default createProject({
     ],
     theme: {
         'bg': '#0D0F15',
-        'card': '#161a21',
+        'card': '#1e232b',
         'primary': '#6990DD'
     },
 });

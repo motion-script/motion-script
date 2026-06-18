@@ -4,7 +4,8 @@ import { Graphics } from "@/render/graphics";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveFillArray } from "@/attributes/shape/fill/registry";
-import { resolveStrokeArray } from "@/attributes/shape/stroke/mapper";
+import { FillResolved } from "@/attributes/shape/fill/union";
+import { resolveStrokeArray, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetTracker } from "@/assets/tracker";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
@@ -77,8 +78,8 @@ export class RichText extends ShapeNode<RichTextProps> {
             fontWeight: this.fontWeight,
             fontStyle: this.fontStyle,
             letterSpacing: this.letterSpacing,
-            fill: this.fill,
-            stroke: this.stroke,
+            fill: this.fill as FillResolved[],
+            stroke: this.stroke as StrokeResolved[],
         };
         const walk = (span: TextSpan, inherited: typeof base) => {
             const merged = {

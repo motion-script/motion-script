@@ -1,0 +1,86 @@
+---
+sidebar_position: 8
+---
+
+import { CameraCanvas } from '@site/src/components/docs/node-scenes';
+
+# Camera
+
+A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform — clipped to the card's bounds.
+
+<CameraCanvas />
+
+## Usage
+
+```tsx
+import { Scene, Camera, Rect } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    this.add(
+      <Camera
+        width={760}
+        height={380}
+        zoom={1}
+        origin={{ x: 0, y: 0 }}
+        fill="#0a090e"
+        cornerRadius={18}
+      >
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
+      </Camera>
+    );
+  }
+}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `zoom` | `number` | `1` | Magnification factor. Values > 1 zoom in; < 1 zoom out |
+| `origin` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport |
+| `heading` | `number` | `0` | Camera rotation in degrees (clockwise) |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the card and the viewport clip |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the card |
+
+`Camera` also inherits all standard `ShapeNode` props (`fill`, `stroke`, `shadow`, `start`, `end`, etc.).
+
+## Animating
+
+All camera props animate with `.to()`. Pan, zoom, and rotate to create cinematic camera moves:
+
+```tsx
+import { Scene, Camera, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export class MyScene extends Scene {
+  *build() {
+    const cam = createRef<Camera>();
+
+    this.add(
+      <Camera ref={cam} width={760} height={380} fill="#0a090e" cornerRadius={18}>
+        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
+      </Camera>
+    );
+
+    // Pan to the gold box on the right
+    yield* cam().to({ origin: { x: 240, y: 0 } }, 1.2, easeInOut);
+
+    // Zoom in on it
+    yield* cam().to({ zoom: 1.8 }, 0.8, easeInOut);
+
+    // Pull back home
+    yield* cam().to({ origin: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
+  }
+}
+```
+
+## Notes
+
+- The Camera runs no flex or stack layout — children are positioned stack-style (centered), then viewed through the camera transform.
+- The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
+- `origin` is in world-space coordinates relative to the children's own origin, not screen coordinates.
+- `heading` rotates the camera's view, not the children — the world stays fixed and the camera turns.

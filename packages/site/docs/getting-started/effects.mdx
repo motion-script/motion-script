@@ -2,199 +2,87 @@
 sidebar_position: 5
 ---
 
-# Effects
+import { EffectsCanvas } from '@site/src/components/docs/getting-started-scenes';
 
-Effects are post-process filters applied to any node via the `effects` prop. They are applied after the node is rendered, so they affect the entire node including its children.
+# Adding Effects
 
-MotionScript provides three built-in effects: **blur**, **grayscale**, and **pixelate**.
+Our card is laid out nicely. Now let's make it pop. **Effects** are visual filters you drop onto any node with the `effects` prop, like blur, glow, or grayscale. They run after the node is drawn, so they apply to everything it contains.
 
-## Using effects
+## Blur a node
 
-Pass an `effects` prop to any node with either an array of effect objects or the `FX` builder:
+The simplest effect is a blur. Reach for the `Effects` builder and pass it to a node.
 
-```tsx
-import { Scene, Rect, FX } from '@motion-script/core';
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, Rect, Text, Effects } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
-    // Using the FX builder (chainable)
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={FX.blur(8)} />);
-
-    // Using a raw array
-    this.add(<Rect width={300} height={300} fill="royalblue" effects={[{ type: 'blur', radius: 8 }]} />);
+    this.add(
+      <Rect
+        group="column"
+        gap={16}
+        padding={32}
+        fill="#1e293b"
+        cornerRadius={16}
+        effects={Effects.blur(8)}
+      >
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    );
   }
 }
 ```
 
----
+That blurs the whole card, square, text, and all. Because the effect is on the container, it covers the children too.
 
-## Blur
+## Animate an effect for a focus pull
 
-Applies a Gaussian blur. `radius` is in pixels.
+Effects shine when you animate them. A classic move is to start blurry and snap into focus. Animate the blur with `.to()` like any other property.
 
-```tsx
-import { Scene, Rect, Image, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
+```tsx title="src/scenes/my-scene.ts"
+import { Scene, Rect, Text, createRef, Effects, easeOut } from '@motion-script/core';
 
 export class MyScene extends Scene {
   *build() {
-    const bg = new Rect({
-      width: 800,
-      height: 450,
-      fill: { type: 'image', src: './photo.jpg', mode: 'fill' },
-    });
-    bg.set({ effects: FX.blur(20) });
-    this.add(bg);
+    const card = createRef<Rect>();
+
+    this.add(
+      <Rect
+        ref={card}
+        group="column"
+        gap={16}
+        padding={32}
+        fill="#1e293b"
+        cornerRadius={16}
+        effects={Effects.blur(20)}
+      >
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    );
+
+    // pull into focus
+    yield* card().to({ effects: Effects.blur(0) }, 1, easeOut);
   }
 }
 ```
 
-### Animating blur
+The card resolves from a soft blur into a crisp image. A small touch that makes an intro feel polished.
 
-Animate the `radius` inside a `tween` to create focus-in or defocus effects:
+<EffectsCanvas />
 
-```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeOut } from '@motion-script/core';
+## Stack effects together
 
-export class MyScene extends Scene {
-  *build() {
-    const card = new Rect({ width: 400, height={300}, fill: '#1e293b' });
-    card.set({ effects: FX.blur(30) });
-    this.add(card);
-
-    // Focus in
-    yield* tween(1, (t) => {
-      card.set({ effects: FX.blur(lerpNumber(30, 0, easeOut(t))) });
-    });
-  }
-}
-```
-
----
-
-## Grayscale
-
-Desaturates the node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
+You can chain effects, and they apply in order. Each call adds to the chain:
 
 ```tsx
-<Rect
-  width={500} height={350}
-  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-  effects={FX.grayscale(1)}
-/>
+// grayscale, then blur
+<Rect effects={Effects.grayscale(0.8).blur(4)} />
 ```
 
-### Colorize animation
+## More effects to play with
 
-Animate from grayscale to full color:
+Blur and grayscale are just the start. There's a whole catalog, glow, pixelate, chromatic aberration, vintage film looks, and more, each with its own page in the [Effects reference](/docs/category/effects). They all attach the same way: build a chain and hand it to `effects`.
 
-```tsx
-yield* tween(1.5, (t) => {
-  photo.set({ effects: FX.grayscale(lerpNumber(1, 0, easeInOut(t))) });
-});
-```
-
----
-
-## Pixelate
-
-Chunks the node into rectangular blocks, like After Effects' Mosaic. The value is a **block count** — how many blocks span the node — so a count equal to the node's pixel size is pristine and lower counts are chunkier. Pass a `number` (uniform), `{ blocks, sharpColors? }`, or `{ horizontalBlocks, verticalBlocks, sharpColors? }`.
-
-```tsx
-<Rect
-  width={300} height={300}
-  fill={{ type: 'image', src: './logo.png', mode: 'fit' }}
-  effects={FX.pixelate(60)}
-/>
-```
-
-### Pixel-reveal animation
-
-Start with a low block count (coarse) and animate up toward the node's resolution:
-
-```tsx
-import { Scene, Rect, FX, tween, lerpNumber, easeInOut } from '@motion-script/core';
-
-export class MyScene extends Scene {
-  *build() {
-    const logo = new Rect({
-      width: 300,
-      height: 300,
-      fill: { type: 'image', src: './logo.png', mode: 'fit' },
-    });
-    logo.set({ effects: FX.pixelate(40) });
-    this.add(logo);
-
-    yield* tween(1.5, (t) => {
-      logo.set({ effects: FX.pixelate(lerpNumber(40, 300, easeInOut(t))) });
-    });
-  }
-}
-```
-
----
-
-## Invert
-
-Inverts a colour channel. `channel` selects which component is inverted (`'red'`, `'green'`, `'blue'`, `'rgba'`, `'alpha'`, `'hue'`, or `'luminance'`); `strength` ranges from `0` (original) to `1` (fully inverted).
-
-```tsx
-<Rect
-  width={500} height={350}
-  fill={{ type: 'image', src: './photo.jpg', mode: 'fill' }}
-  effects={FX.invert('rgba', 1)}
-/>
-```
-
-### Animating an invert
-
-```tsx
-yield* tween(1, (t) => {
-  photo.set({ effects: FX.invert('hue', easeInOut(t)) });
-});
-```
-
----
-
-## Chaining effects with FX
-
-The `FX` builder lets you chain multiple effects fluently:
-
-```tsx
-import { FX } from '@motion-script/core';
-
-// Grayscale then blur
-<Rect effects={FX.grayscale(0.8).blur(4)} />
-
-// All three
-<Rect effects={FX.pixelate(8).grayscale(0.5).blur(2)} />
-```
-
-Each `FX` method returns a new immutable chain, so chains are safe to reuse:
-
-```tsx
-const base = FX.grayscale(1);
-const blurry = base.blur(8);  // 'base' is unchanged
-```
-
----
-
-## Raw effect objects
-
-You can also pass plain objects — useful when constructing effects programmatically:
-
-```tsx
-effects={[
-  { type: 'grayscale', amount: 0.8 },
-  { type: 'blur', radius: 4 },
-]}
-```
-
-### Effect object types
-
-| Type | Props |
-|---|---|
-| `{ type: 'blur', radius: number }` | `radius` — Gaussian blur radius in pixels |
-| `{ type: 'directionalBlur', direction: number, blurLength: number }` | `direction` — smear angle in degrees (0 = horizontal, 90 = vertical); `blurLength` — smear length in pixels |
-| `{ type: 'grayscale', amount: number }` | `amount` — 0 (color) to 1 (grayscale) |
-| `{ type: 'pixelate', horizontalBlocks: number, verticalBlocks: number, sharpColors: boolean }` | Number of blocks per axis (AE Mosaic); `sharpColors` — solid blocks vs. blended |
-| `{ type: 'invert', channel: InvertChannel, strength: number }` | `channel` — `'red' \| 'green' \| 'blue' \| 'rgba' \| 'alpha' \| 'hue' \| 'luminance'`; `strength` — 0 (original) to 1 (fully inverted) |
+We've animated, laid out, and styled our scene. For the grand finale, let's reveal it with a mask.

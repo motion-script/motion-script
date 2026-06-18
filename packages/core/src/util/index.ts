@@ -1,3 +1,3 @@
 export * from './clamp'
-export * from './range'
+export * from './generateList'
 export * from './reference'

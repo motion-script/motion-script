@@ -20,14 +20,14 @@ export class VideoNodeScene extends Scene {
         this.add(
             <Video
                 src={SAMPLE_VIDEO}
-                fit={'crop'}
+                fit={'fill'}
                 loop={'forward'}
                 volume={0.8}
                 width={'fill'}
                 height={'fill'}
                 group={'column'}
                 padding={80}
-                alignment={{ x: -1, y: 1 }}
+                align={{ x: -1, y: 1 }}
             >
                 <Text
                     fontFamily={'Pixelify Sans'}

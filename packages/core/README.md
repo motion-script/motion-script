@@ -13,7 +13,7 @@ export class ShapeScene extends Scene {
     const lens = createRef<Ellipse>();
 
     this.add(
-      <Rect width={400} height={400} fill="white" borderRadius={20}>
+      <Rect width={400} height={400} fill="white" cornerRadius={20}>
         <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
       </Rect>,
     );

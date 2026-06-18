@@ -13,9 +13,17 @@
                 "public/**"
             ]
         },
+        "build:app": {
+            "dependsOn": [
+                "^build"
+            ],
+            "outputs": [
+                "../site/static/player/**"
+            ]
+        },
         "@motion-script/site#build": {
             "dependsOn": [
-                "@motion-script/player#build",
+                "@motion-script/player#build:app",
                 "^build"
             ]
         },

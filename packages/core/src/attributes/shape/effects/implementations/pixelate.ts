@@ -1,5 +1,5 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { EffectData } from "../effect-data";
+import type { BackdropCapable, EffectData } from "../effect-data";
 
 /**
  * After Effects-style Mosaic / pixelate.
@@ -15,7 +15,7 @@ import type { EffectData } from "../effect-data";
  * a single solid colour with hard edges (nearest-neighbour); when `false` the
  * block colours are smoothly interpolated between centres (linear).
  */
-export interface PixelateEffect {
+export interface PixelateEffect extends BackdropCapable {
     type: "pixelate";
     /** Number of blocks horizontally (AE "Horizontal Blocks"). */
     horizontalBlocks: number;
@@ -32,9 +32,11 @@ export const pixelateEffect: EffectData<PixelateEffect> = {
         verticalBlocks: lerpNumber(from.verticalBlocks, to.verticalBlocks, t),
         // Boolean has no in-between — snap at the midpoint.
         sharpColors: t < 0.5 ? from.sharpColors : to.sharpColors,
+        backdrop: t < 0.5 ? from.backdrop : to.backdrop,
     }),
     equals: (a, b) =>
         a.horizontalBlocks === b.horizontalBlocks &&
         a.verticalBlocks === b.verticalBlocks &&
-        a.sharpColors === b.sharpColors,
+        a.sharpColors === b.sharpColors &&
+        a.backdrop === b.backdrop,
 };

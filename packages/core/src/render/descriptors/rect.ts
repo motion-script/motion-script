@@ -1,11 +1,16 @@
-import { BorderRadiusProps } from "@/attributes/shape/corners/border-radius";
+import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeState } from "./shape";
 
 
 export interface RectState extends ShapeState {
     width: number;
     height: number;
-    borderRadius: BorderRadiusProps;
+    // Accepts loose input or an already-resolved value (both are part of
+    // RectCornerRadius/RectCornerStyle): the node resolves via its @property
+    // mapper, and the renderer re-resolves idempotently.
+    cornerRadius: RectCornerRadius;
+    cornerStyle: RectCornerStyle;
 }
 
 export function withRectDescriptor(descriptor: Partial<RectState>): RectState {
@@ -18,20 +23,11 @@ export function withRectDescriptor(descriptor: Partial<RectState>): RectState {
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
 
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
-        borderRadius: descriptor.borderRadius ?? 0,
+        cornerRadius: descriptor.cornerRadius ?? 0,
+        cornerStyle: descriptor.cornerStyle ?? "rounded",
     };
 }
-
-
-
-
-
-
-
-
-

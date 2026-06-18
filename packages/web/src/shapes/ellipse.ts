@@ -7,9 +7,19 @@ type EllipseGeo = {
     left: number; right: number;
     sweep: number; isFullShape: boolean;
     startAngle: number;
+    // Inner radius as a fraction (0..1) of the outer radius. 0 = solid pie/disk,
+    // >0 = donut/annulus with a hole, 1 = no enclosed area (a bare arc/ring).
+    ratio: number;
 };
 
-/** Ellipse, optionally a partial arc (`sweep` < 360°) defined via SVG arc commands. */
+/**
+ * Ellipse, optionally a partial arc (`sweep` < 360°) and/or an inner hole
+ * (`ratio` > 0). `ratio` is the inner radius as a fraction of the outer:
+ *   - 0   → solid wedge (pie / Pac-Man when sweep < 360, full disk at 360)
+ *   - 0.5 → donut / annular sector
+ *   - 1   → inner edge meets the outer edge, leaving just the bare arc/ring
+ * Geometry is emitted as SVG arc commands.
+ */
 export class EllipseShape extends BaseShape<EllipseState, EllipseGeo> {
     protected resolveState(state: Partial<EllipseState>): EllipseState {
         return withEllipseDescriptor(state);
@@ -29,14 +39,40 @@ export class EllipseShape extends BaseShape<EllipseState, EllipseGeo> {
             sweep,
             isFullShape: Math.abs(sweep) >= 360,
             startAngle: s.startAngle ?? 0,
+            ratio: Math.max(0, Math.min(1, s.ratio ?? 1)),
         };
     }
 
     protected buildSVGPath(geo: EllipseGeo): string {
-        const { cx, cy, halfWidth, halfHeight, left, right, sweep, isFullShape, startAngle } = geo;
+        const { cx, cy, halfWidth, halfHeight, left, right, sweep, isFullShape, startAngle, ratio } = geo;
+        // `ratio` is the inner radius as a fraction of the outer. The stroke
+        // traces the perimeter of the enclosed region (donut / pie outline),
+        // matching Polygram. Geometry stays a single CONTINUOUS family across the
+        // whole range so animating `ratio` never pops between path topologies:
+        //   - ratio < 1 → a closed region (annulus / annular sector / wedge)
+        //   - ratio → 1 → the band's width → 0, so the region degenerates to the
+        //                 bare outer curve, which is exactly what we emit there.
+        // The only special-cased frame is ratio === 1: a zero-area region would
+        // otherwise stroke out-and-back over itself (a doubled line). Emitting the
+        // bare outer curve is the geometric limit of the family, so the transition
+        // is visually continuous rather than a topology flip.
+        const innerW = halfWidth * ratio;
+        const innerH = halfHeight * ratio;
+        const isDegenerate = ratio >= 1;
+
         if (isFullShape) {
-            return `M ${left} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${right} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${left} ${cy} Z`;
+            // Outer ellipse, drawn as two semicircular arcs.
+            const outer = `M ${left} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${right} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${left} ${cy} Z`;
+            // ratio 0 = solid disk, ratio 1 = bare ellipse outline (zero-area ring).
+            if (ratio <= 0 || isDegenerate) return outer;
+            // Inner ellipse wound the opposite way (sweepFlag 1) so the even-odd /
+            // nonzero fill leaves a hole — an annulus.
+            const il = cx - innerW;
+            const ir = cx + innerW;
+            const inner = `M ${il} ${cy} A ${innerW} ${innerH} 0 1 1 ${ir} ${cy} A ${innerW} ${innerH} 0 1 1 ${il} ${cy} Z`;
+            return `${outer} ${inner}`;
         }
+
         const endAngle = startAngle + sweep;
         const toRad = Math.PI / 180;
         const sx = cx + halfWidth * Math.cos(startAngle * toRad);
@@ -45,7 +81,88 @@ export class EllipseShape extends BaseShape<EllipseState, EllipseGeo> {
         const ey = cy + halfHeight * Math.sin(endAngle * toRad);
         const largeArc = Math.abs(sweep) > 180 ? 1 : 0;
         const sweepFlag = sweep > 0 ? 1 : 0;
-        return `M ${sx} ${sy} A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}`;
+        const outerArc = `A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}`;
+
+        if (isDegenerate) {
+            // ratio 1 limit: the band has collapsed to the outer curve. Bare arc.
+            return `M ${sx} ${sy} ${outerArc}`;
+        }
+
+        if (ratio <= 0) {
+            // Solid wedge: outer arc, then straight edges in to the centre (pie / Pac-Man).
+            return `M ${cx} ${cy} L ${sx} ${sy} ${outerArc} Z`;
+        }
+
+        // Annular sector: outer arc out, radial step in to the inner edge, inner
+        // arc back (reverse sweep), then close along the start radius.
+        const isx = cx + innerW * Math.cos(startAngle * toRad);
+        const isy = cy + innerH * Math.sin(startAngle * toRad);
+        const iex = cx + innerW * Math.cos(endAngle * toRad);
+        const iey = cy + innerH * Math.sin(endAngle * toRad);
+        const innerSweepFlag = sweep > 0 ? 0 : 1;
+        return `M ${sx} ${sy} ${outerArc} L ${iex} ${iey} A ${innerW} ${innerH} 0 ${largeArc} ${innerSweepFlag} ${isx} ${isy} Z`;
+    }
+
+    // A partial arc strokes an OPEN curve (`M … A …`, no `Z`), which bounds no
+    // region — so the stroke handler can't tell inside from outside and an
+    // aligned (inside/outside) stroke would silently collapse to centered. The
+    // arc nonetheless has a natural inside/outside relative to the ellipse it
+    // traces, so we hand the stroke handler a closed clip region to align the
+    // band against: the pie wedge (ratio ≤ 0) or annular sector (0 < ratio < 1)
+    // whose curved boundary coincides with the stroked arc. A full ellipse and
+    // the degenerate bare-ring (ratio ≥ 1, full shape) already stroke closed
+    // contours, so they need no interior. The bare-arc limit (ratio ≥ 1, partial)
+    // has no enclosed band, so its interior is the full wedge to the centre —
+    // the band straddles the arc and clips against the inside/outside of that.
+    protected override buildSVGAlignInterior(geo: EllipseGeo): string | null {
+        if (geo.isFullShape) return null;
+
+        const { cx, cy, halfWidth, halfHeight, sweep, startAngle, ratio } = geo;
+        const toRad = Math.PI / 180;
+        const endAngle = startAngle + sweep;
+        const sx = cx + halfWidth * Math.cos(startAngle * toRad);
+        const sy = cy + halfHeight * Math.sin(startAngle * toRad);
+        const ex = cx + halfWidth * Math.cos(endAngle * toRad);
+        const ey = cy + halfHeight * Math.sin(endAngle * toRad);
+        const largeArc = Math.abs(sweep) > 180 ? 1 : 0;
+        const sweepFlag = sweep > 0 ? 1 : 0;
+        const outerArc = `A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}`;
+
+        // ratio ≥ 1 (bare arc) and ratio ≤ 0 (solid wedge) both align against the
+        // full pie wedge: outer arc, then straight edges in to the centre.
+        if (ratio >= 1 || ratio <= 0) {
+            return `M ${cx} ${cy} L ${sx} ${sy} ${outerArc} Z`;
+        }
+
+        // Annular sector: the band rides the outer curve, so the closed sector
+        // between the outer and inner arcs is its inside/outside reference.
+        const innerW = halfWidth * ratio;
+        const innerH = halfHeight * ratio;
+        const isx = cx + innerW * Math.cos(startAngle * toRad);
+        const isy = cy + innerH * Math.sin(startAngle * toRad);
+        const iex = cx + innerW * Math.cos(endAngle * toRad);
+        const iey = cy + innerH * Math.sin(endAngle * toRad);
+        const innerSweepFlag = sweep > 0 ? 0 : 1;
+        return `M ${sx} ${sy} ${outerArc} L ${iex} ${iey} A ${innerW} ${innerH} 0 ${largeArc} ${innerSweepFlag} ${isx} ${isy} Z`;
+    }
+
+    protected override supportsSpread(): boolean {
+        return true;
+    }
+
+    // Grow/shrink the ellipse by `spread` px on every side: each half-axis moves
+    // by `spread`. Spread only makes sense for the full ellipse — a partial arc
+    // bounds no region to inset — so arcs return null (no spread). A shrink that
+    // collapses either axis returns null too.
+    protected override buildSpreadSVGPath(geo: EllipseGeo, spread: number): string | null {
+        if (!geo.isFullShape) return null;
+        const halfWidth = geo.halfWidth + spread;
+        const halfHeight = geo.halfHeight + spread;
+        if (halfWidth <= 0 || halfHeight <= 0) return null;
+        const { cx, cy } = geo;
+        const left = cx - halfWidth;
+        const right = cx + halfWidth;
+        return `M ${left} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${right} ${cy} A ${halfWidth} ${halfHeight} 0 1 0 ${left} ${cy} Z`;
     }
 
     protected needsTrim(): boolean {

@@ -1,7 +1,7 @@
 {
   "name": "@motion-script/player",
   "description": "Visual editor and preview app for Motion Script projects, with timeline scrubbing, scene inspection, and video export.",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "type": "module",
   "author": "Motion Script",
   "license": "Apache-2.0",
@@ -10,9 +10,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo ../site/static/player",
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:app": "vite build --config vite.config.app.ts",
+    "build:app:watch": "vite build --watch --config vite.config.app.ts",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview"

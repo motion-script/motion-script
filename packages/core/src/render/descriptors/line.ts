@@ -16,7 +16,6 @@ export function withLineDescriptor(descriptor: Partial<LineState>): LineState {
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
         pivot: descriptor.pivot ?? { x: 0, y: 0 },

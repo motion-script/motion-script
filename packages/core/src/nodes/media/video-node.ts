@@ -1,9 +1,9 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { ChainableMx, resolveChainFilters } from "@/attributes/shape/filters/chain";
-import { FilterRegistry } from "@/attributes/shape/filters/registry";
-import { MediaFilter } from "@/attributes/shape/filters/union";
-import { ImageFillMode, ImageTransform } from "@/attributes/shape/fill/implementations/image";
+import { VideoFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
+import { lerpFilterArray } from "@/attributes/shape/filters/registry";
+import { MediaFilter, VideoMediaFilter } from "@/attributes/shape/filters/union";
+import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
@@ -18,11 +18,11 @@ import { ChainableAfx, resolveAudioFilters, AFX } from "@/attributes/audio/filte
 export interface VideoProps extends RectProps {
     src?: string;
     /** Fit mode for the painted frame (fill | fit | crop | tile). Default 'fill'. */
-    fit?: ImageFillMode;
+    fit?: ImageFit;
     transform?: ImageTransform;
     scaling?: number;
-    /** Visual filters applied to the rendered frame (blur, color, etc.). */
-    filters?: ChainableMx;
+    /** Visual filters applied to the rendered frame (blur, color, posterizeTime, echo, …). */
+    filters?: VideoFilter;
     /** Whether playback advances each frame (drives both picture and sound). Default true. */
     playing?: boolean;
     /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
@@ -57,11 +57,11 @@ export interface VideoProps extends RectProps {
 export class Video extends Rect {
 
     @property() declare src?: string;
-    @property() declare fit?: ImageFillMode;
+    @property() declare fit?: ImageFit;
     @property() declare transform?: ImageTransform;
     @property() declare scaling?: number;
-    @property({ default: [], tween: FilterRegistry.lerpArray, mapper: resolveChainFilters })
-    declare filters?: MediaFilter[];
+    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
+    declare filters?: (MediaFilter | VideoMediaFilter)[];
 
     @property({ default: true }) declare playing: boolean;
     @property() declare timestamp?: number;
@@ -79,7 +79,7 @@ export class Video extends Rect {
     /**
      * The live `video` fill state, advanced each tick by the fill's own dynamic
      * `update()` (loop / trim / clamp logic). `renderSelf` paints this — so the
-     * picture reuses the exact playback model authors get from `Fill.video(...)`,
+     * picture reuses the exact playback model authors get from `Fills.video(...)`,
      * rather than re-deriving timestamps here. Rebuilt from props when the source
      * or any playback knob changes (see {@link videoKey}).
      */
@@ -226,7 +226,8 @@ export class Video extends Rect {
             .rect({
                 width: this.layoutRect.width,
                 height: this.layoutRect.height,
-                borderRadius: this.borderRadius,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
                 start: this.start,
                 end: this.end,
             })

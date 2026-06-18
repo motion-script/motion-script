@@ -1,4 +1,4 @@
-import { FX } from "@motion-script/core";
+import { Effects as FX } from "@motion-script/core";
 import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
 
 /** Composed look: grayscale + blur stacked into one chain. */

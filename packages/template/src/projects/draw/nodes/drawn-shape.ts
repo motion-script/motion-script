@@ -1,6 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
-    FillSpace, property,
+    FillSpace, FillResolved, property,
+
 } from "@motion-script/core";
 
 export interface DrawnShapeProps extends ShapeProps {
@@ -48,7 +49,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
     /** Tag every fill layer with this node's `space` so the silhouette honours it. */
     private spacedFill() {
         const space = this.space;
-        return this.fill.map(fill =>
+        return (this.fill as FillResolved[]).map(fill =>
             typeof fill === 'string' ? { type: 'color' as const, color: fill, space } : { ...fill, space },
         );
     }
@@ -69,7 +70,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
         const g = new Graphics()
             // ── Solid body, accumulated as one surface ───────────────────────
             // Outer rounded rect — the main mass.
-            .rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, borderRadius: e * 0.28 })
+            .rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })
             // Ellipse lobe — a head bulging off the top-left.
             .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.9, height: e * 0.9 })
             // Bezier wing path, sharing the body's frame.
@@ -79,7 +80,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
             .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.3, height: e * 0.3 })
             .cut()
             // Slot hole: a rounded rect notch cut lower in the body.
-            .rect({ x: -e * 0.15, y: e * 0.45, width: e * 0.55, height: e * 0.18, borderRadius: e * 0.09 })
+            .rect({ x: -e * 0.15, y: e * 0.45, width: e * 0.55, height: e * 0.18, cornerRadius: e * 0.09, scale: 1 })
             .cut()
             // ── Paint the whole union with the space-tagged fill ─────────────
             .shadow(this.shadow)

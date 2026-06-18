@@ -20,7 +20,6 @@ export function withRichTextDescriptor(descriptor: Partial<RichTextState>): Rich
         y: descriptor.y ?? 0,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        effects: descriptor.effects ?? [],
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
         spans: descriptor.spans ?? [],
         lineHeight: descriptor.lineHeight ?? 1.2,

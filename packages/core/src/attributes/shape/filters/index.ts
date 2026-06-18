@@ -6,13 +6,16 @@ export type { AlphaFilter } from './implementations/alpha';
 export type { ColorMatrixFilter } from './implementations/color-matrix';
 export type { CurvesChannel, CurvesFilter } from './implementations/curves';
 export type { ColorAdjustmentFilter } from './implementations/color-adjustment';
+export type { PosterizeTimeFilter } from './implementations/posterize-time';
+export type { VideoEchoFilter } from './implementations/echo';
 
-/** Chainable filter builder API, chain class, and union input type. */
-export { MX, ChainableMx, FilterChain, resolveChainFilters } from './chain';
+/** Chainable filter builder API, chain class, and the loose author-facing unions. */
+export { MX, FilterChain, resolveChainFilters } from './chain';
+export type { ImageFilter, VideoFilter } from './chain';
 
-/** Union of all concrete media-filter types accepted by media nodes. */
-export type { MediaFilter } from './union';
+/** Unions of concrete filter types: pixel (`MediaFilter`) and video-only. */
+export type { MediaFilter, VideoMediaFilter } from './union';
 
-/** Interpolation/equality registry and contract. */
-export { FilterRegistry } from './registry';
-export type { FilterData } from './registry';
+/** Interpolation/equality registry: constants map plus the lerp helpers. */
+export { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter } from './registry';
+export type { FilterData, AnyFilter } from './registry';

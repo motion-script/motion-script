@@ -11,37 +11,13 @@ import { DrawScene } from './scenes/draw-scene';
 import { ImageGrid, ImageGridScene } from './scenes/image-grid-scene';
 import { FillScene } from './scenes/fill-scene';
 import effectsProject from './projects/effects/effects-project';
-import shapesProject from './projects/shapes/shapes-project';
+import fillsProject from './projects/fills/fills-project';
 import blendsProject from './projects/blends/blends-project';
 import drawProject from './projects/draw/draw-project';
 import layoutProject from './projects/layout/layout-project';
 import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
+import shapesProject from './projects/shapes/shapes-project';
+import nodesProject from './projects/nodes/nodes-project';
+export default effectsProject;
 
-// Swap the default to preview a specific showcase project. `videoProject` walks
-// through the video fill (playback, fit/crop modes, MediaFilters, opacity/blend).
-export default videoProject;
-// createProject({
-//   name: 'My Video',
-//   fps: 60,
-//   viewport: {
-//     width: 1920,
-//     height: 1080
-//   },
-//   scenes: [
-//     new FillScene(),
-//     new ImageGridScene(),
-//     //new DrawScene(),
-//     new LogoScene(),
-//     // new LayoutScene(),
-//     // new NumberScene(),
-//     // new ShapeScene(),
-//     // new CodeScene(),
-//     // For a per-effect walkthrough of every built-in effect, see the standalone
-//     // `./effects-project.ts` (one scene per effect).
-//   ],
-//   theme: {
-//     'bg': '#0D0F15',
-//     'card': '#161a21'
-//   }
-// })
