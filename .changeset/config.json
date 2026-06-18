@@ -16,7 +16,8 @@
       "@motion-script/vite-plugin",
       "@motion-script/latex",
       "@motion-script/code",
-      "@motion-script/create"
+      "@motion-script/create",
+      "@motion-script/cli"
     ]
   ],
   "linked": [],
