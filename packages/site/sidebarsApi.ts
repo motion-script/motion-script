@@ -6,7 +6,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 // entry or a `category` that nests more items. Enough to flatten kind groups
 // below without depending on a deep internal Docusaurus type path.
 type ApiSidebarItem =
-  | {type: 'doc'; id: string; label: string; key?: string}
+  | {type: 'doc'; id: string; label: string}
   | {type: 'category'; label: string; items: ApiSidebarItem[]; link?: unknown};
 
 // Sidebar for the dedicated API docs-content instance (served at /api, see
@@ -49,40 +49,25 @@ function flattenByKind(items: ApiSidebarItem[]): ApiSidebarItem[] {
   return docs.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-// Docusaurus derives a translation key from each doc item's label
-// (`sidebar.apiSidebar.doc.<label>`), so same-named members across packages
-// (e.g. core's `range` and code's `range`) collide and break
-// `write-translations`. The doc `id` is globally unique, so stamp it as the
-// item `key` to give each entry a distinct translation key. Recurses through
-// `core`'s feature categories; the flattened sidebars only carry leaf docs.
-function withKeys(items: ApiSidebarItem[]): ApiSidebarItem[] {
-  return items.map(item => {
-    if (item.type === 'category') {
-      return {...item, items: withKeys(item.items)};
-    }
-    return {...item, key: item.id};
-  });
-}
-
 const sidebars: SidebarsConfig = {
   apiSidebar: [
     {
       type: 'category',
       label: '@motion-script/core',
       link: {type: 'doc', id: 'core/index'},
-      items: withKeys(coreApiSidebar),
+      items: coreApiSidebar,
     },
     {
       type: 'category',
       label: '@motion-script/code',
       link: {type: 'doc', id: 'code/index'},
-      items: withKeys(flattenByKind(codeApiSidebar)),
+      items: flattenByKind(codeApiSidebar),
     },
     {
       type: 'category',
       label: '@motion-script/latex',
       link: {type: 'doc', id: 'latex/index'},
-      items: withKeys(flattenByKind(latexApiSidebar)),
+      items: flattenByKind(latexApiSidebar),
     },
   ],
 };

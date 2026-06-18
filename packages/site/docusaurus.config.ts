@@ -34,7 +34,10 @@ function discoverCoreEntryPoints(): string[] {
   if (fs.existsSync(jsxRuntime)) barrels.push(jsxRuntime);
 
   // Stable ordering keeps generated sidebar/diffs deterministic across machines.
-  return barrels.sort();
+  // Normalize to POSIX separators: TypeDoc treats entry points as glob patterns
+  // and rejects Windows backslashes ("escapes a non-special character"), so the
+  // paths path.join produced on Windows would otherwise fail the build there.
+  return barrels.sort().map((p) => p.split(path.sep).join('/'));
 }
 
 const config: Config = {
@@ -47,33 +50,6 @@ const config: Config = {
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
-
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
-  // Curated set of locales exposed by the translate dropdown (landing Navbar
-  // + docs navbar `localeDropdown`). Content for non-`en` locales lives under
-  // i18n/<locale>/; until a locale is translated it falls back to English.
-  // Run `pnpm write-translations --locale <locale>` to scaffold a locale's
-  // theme/UI translation files. `localeConfigs` sets the human label shown in
-  // the dropdown and the text direction (Arabic is RTL).
-  i18n: {
-    defaultLocale: 'en',
-    locales: ['en', 'es', 'fr', 'de', 'pt-BR', 'zh-Hans', 'ja', 'ko', 'hi', 'ar', 'ru'],
-    localeConfigs: {
-      en: { label: 'English' },
-      es: { label: 'Español' },
-      fr: { label: 'Français' },
-      de: { label: 'Deutsch' },
-      'pt-BR': { label: 'Português' },
-      'zh-Hans': { label: '简体中文' },
-      ja: { label: '日本語' },
-      ko: { label: '한국어' },
-      hi: { label: 'हिन्दी' },
-      ar: { label: 'العربية', direction: 'rtl' },
-      ru: { label: 'Русский' },
-    },
-  },
 
   plugins: [
     function tailwindPlugin() {

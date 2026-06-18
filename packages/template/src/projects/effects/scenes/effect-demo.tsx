@@ -5,7 +5,7 @@ import {
     EffectChain, SceneEffect, easeOutQuad, parallel,
     Polygon,
     Node,
-    Grid, range
+    Grid,
 
 } from "@motion-script/core";
 
