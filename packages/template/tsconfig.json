@@ -4,11 +4,11 @@
     "experimentalDecorators": true,
     "jsxImportSource": "@motion-script/core/jsx",
     "module": "preserve",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022"
+    ],
   },
-  "lib": [
-    "ES2022"
-  ],
   "include": [
     "src"
   ]

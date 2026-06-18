@@ -310,6 +310,21 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                                 ? path.resolve(userRoot, userProject)
                                 : path.resolve(pluginAppRoot, 'src/empty-project.ts'),
                         },
+                        // The player ships with @motion-script/core and /web
+                        // marked external, so it imports them at runtime rather
+                        // than bundling its own copy. The user's scene imports
+                        // core too. Both MUST resolve to the *same* physical
+                        // module: core defines runtime identity (the fill
+                        // registry keyed by `type`, the Node tree shape) that
+                        // breaks if the player and the scene hold divergent
+                        // copies — e.g. `Fill "undefined" is not registered`.
+                        // dedupe forces a single instance even when pnpm's
+                        // nested layout makes more than one reachable.
+                        dedupe: [
+                            '@motion-script/core',
+                            '@motion-script/web',
+                            '@motion-script/canvaskit',
+                        ],
                     },
 
                     optimizeDeps: {

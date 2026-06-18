@@ -12,8 +12,6 @@ packages:
   - "packages/components/code"
   - "packages/components/latex"
 
-
-
 confirmModulesPurge: false
 
 allowBuilds:

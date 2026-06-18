@@ -1,33 +1,71 @@
-# This workflow runs tests using node and then publishes a package to npm via OIDC Trusted Publishing
-name: Node.js Package
+# Release workflow driven by Changesets.
+#
+# On every push to `main`:
+#   - If there are unreleased changesets, the changesets/action opens (or updates)
+#     a "Version Packages" PR. That PR runs `pnpm version-packages`, which bumps
+#     versions, syncs the root version, and updates the lockfile.
+#   - When that PR is merged, this workflow runs again, finds the bumped versions,
+#     and runs `pnpm release` (build:lib + changeset publish) to publish to npm.
+#
+# Publishing uses npm OIDC Trusted Publishing (provenance), so no NPM_TOKEN is
+# required. Each @motion-script/* package must have a Trusted Publisher configured
+# on npmjs.com pointing at this repo + this workflow file.
+name: Release
 
 on:
-  release:
-    types: [created]
-  workflow_dispatch: # <--- Added this to enable the manual "Run workflow" button
+  push:
+    branches:
+      - main
+  workflow_dispatch: # enables the manual "Run workflow" button
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: npm test
-
-  publish-npm:
-    needs: build
+  release:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # Crucial: Allows GitHub to request the OIDC token from npm
-      contents: read  # Crucial: Allows actions/checkout to read your repository code
+      contents: write       # create the Version Packages PR / push tags
+      pull-requests: write   # open and update the Version Packages PR
+      id-token: write        # request the OIDC token from npm for provenance
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm publish --provenance # Crucial: Generates a publicly verifiable supply chain build record
+          cache: pnpm
+
+      # OIDC Trusted Publishing requires npm CLI >= 11.5.1. `changeset publish`
+      # shells out to whatever `npm` is on PATH, so pin a recent one explicitly.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Create Release PR or Publish to npm
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          publish: pnpm release
+          commit: "ci: release packages"
+          title: "ci: release packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # npm authenticates via OIDC (the id-token permission above), so no
+          # NPM_TOKEN is needed. This env var makes `changeset publish` attach
+          # provenance without having to pass --provenance in the release script.
+          NPM_CONFIG_PROVENANCE: "true"
