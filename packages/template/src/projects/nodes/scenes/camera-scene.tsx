@@ -1,19 +1,18 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link Camera} node.
  * The camera pans, zooms, and rotates over a world containing a grid and
  * coloured shapes, demonstrating the viewport transform in action.
  */
-export class CameraScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const camRef = createRef<Camera>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'stack'}>
                 <Camera
                     ref={camRef}
@@ -50,5 +49,4 @@ export class CameraScene extends Scene {
         yield* camRef().to({ origin: { x: -400, y: -200 } }, 1.5, easeInOutQuad);
         yield* camRef().to({ zoom: 1, origin: { x: 0, y: 0 }, heading: 0 }, 1.8, easeInOutQuad);
         yield* wait(0.5);
-    }
-}
+});

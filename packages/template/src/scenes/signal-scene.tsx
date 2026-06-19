@@ -1,11 +1,10 @@
-import { Scene, createRef, Ellipse, FX, Text, Rect, wait } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait } from "@motion-script/core";
 
-export class SignalScene extends Scene {
-    *build() {
-        this.set({ fill: "bg" })
+export default createScene(function* (stage) {
+        stage.set({ fill: "bg" })
         const rect = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <>
                 <Rect
                     ref={rect}
@@ -35,6 +34,4 @@ export class SignalScene extends Scene {
 
         yield* rect().to({ rotation: 10 }, 2).to({ rotation: -10 }, 2);
         yield* wait(0.5);
-
-    }
-};
+});

@@ -62,6 +62,15 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const setBuildErrors = useEditorStore(s => s.setBuildErrors);
     const snapshotRequested = useEditorStore(s => s.snapshotRequested);
     const completeSnapshot = useEditorStore(s => s.completeSnapshot);
+    const registerHotReplace = useEditorStore(s => s.registerHotReplace);
+
+    // Bridge the dev-server `?scene` HMR signal to the live controller: register
+    // the mounted player's in-place scene swap so the store's hotReplaceScene
+    // (driven by window.__motionScriptSceneHot) can route an edited scene to it.
+    useEffect(() => {
+        registerHotReplace((scene) => frameRef.current?.hotReplaceScene(scene) ?? -1);
+        return () => registerHotReplace(null);
+    }, [registerHotReplace, frameRef]);
 
     const handleLoadingChange = useCallback((loading: boolean) => {
         setIsLoading(loading);

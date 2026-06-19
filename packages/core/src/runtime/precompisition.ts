@@ -50,6 +50,17 @@ export interface NodeLifespan {
     endFrame: number;
 }
 
+/**
+ * Everything learned from running one scene's generator to completion, in
+ * **scene-local** terms (frame 0 = the scene's first frame).
+ *
+ * Scenes are independent units — they no longer compose — so each scene's pass
+ * is fully self-contained: its frame count, its own asset usage, its audio, and
+ * its node lifespans are all scene-local. The only place a scene's global
+ * position enters is `startFrame`, recomputed cheaply when an upstream scene's
+ * duration changes (see {@link assembleTimeline}). This is what makes a single
+ * scene re-runnable in isolation for hot reloading.
+ */
 export interface ScenePrecomp {
     /** Frame count for this scene. */
     frameCount: number;
@@ -57,6 +68,13 @@ export interface ScenePrecomp {
     startFrame: number;
     /** Audio requests emitted by this scene's nodes, with scene-relative timing. */
     audioRequests: AudioRequest[];
+    /**
+     * This scene's own asset usage, in **scene-local** frames (records carry
+     * `startFrame`/`endFrame` relative to the scene). Merged and shifted into the
+     * global asset map by {@link assembleTimeline}. Keyed by stable asset key
+     * (src for images/videos, family for fonts).
+     */
+    assetRecords: ReadonlyMap<string, AssetRecord>;
     /**
      * Per-node lifespan within this scene, in scene-local frames. Keyed by the
      * node's structural path (child-index path from the scene root, e.g.
@@ -79,8 +97,9 @@ export interface PrecompResult {
     /** Total duration in seconds. */
     totalDuration: number;
     /**
-     * Complete asset timeline built from one full generator pass per scene.
-     * Keyed by stable asset key (src for images/videos, "Family@weight" for fonts).
+     * Complete asset timeline assembled by merging every scene's own asset usage,
+     * each shifted by that scene's global startFrame. Keyed by stable asset key
+     * (src for images/videos, "Family" for fonts).
      */
     assets: ReadonlyMap<string, AssetTrack>;
     /** Errors thrown by scene generators during the build pass. */
@@ -90,24 +109,19 @@ export interface PrecompResult {
 // ─── Precomp runner ───────────────────────────────────────────────────────────
 
 /**
- * Runs a full offline build pass over every scene before playback starts.
+ * Runs offline build passes over a project's scenes before/while it plays.
  *
- * The pass drives each scene's generator frame-by-frame (without rendering)
- * to collect three things:
+ * Each scene is driven through its generator (without rendering) to learn its
+ * frame count, asset usage, audio, and per-node lifespans — all scene-local.
+ * {@link run} does this for every scene up front; {@link replaceScene} re-runs a
+ * single scene and reuses every other scene's cached pass, which is what makes
+ * scene-level hot reloading cheap (editing scene N never re-runs scenes ≠ N).
  *
- * - **Frame counts** — how long each scene lasts, from which the global
- *   timeline is assembled.
- * - **Asset timeline** — every image / video / font each scene needs, with
- *   the global frame range it is visible, so the asset manager knows exactly
- *   when to load and evict each one.
- * - **Node lifespans** — which structural path was alive during which frames,
- *   used by the timeline UI to draw per-node bars.
- *
- * Construct and then call `run()` once; the result is a `PrecompResult` that
- * `PlaybackController` holds onto for the lifetime of the playback session.
+ * The runner is stateless across calls: `run`/`replaceScene` return a fresh
+ * immutable {@link PrecompResult} the `PlaybackController` swaps in.
  */
 export class Precomp {
-    private readonly scenes: Scene[];
+    private scenes: Scene[];
     private readonly viewport: Size2D;
     private readonly fps: number;
     private readonly assets: AssetCatalog;
@@ -127,110 +141,213 @@ export class Precomp {
         this.measureScope = measureScope;
     }
 
+    /** The scene list this precomp drives (kept in sync by {@link replaceScene}). */
+    get sceneList(): readonly Scene[] {
+        return this.scenes;
+    }
+
     /**
-     * Execute the build pass and return the complete precomp result.
+     * Execute a build pass over every scene and assemble the complete result.
      *
-     * Each scene is driven through its full generator loop: `build()` yields
+     * Each scene's generator is driven through its full loop: `build()` yields
      * once per frame, and each tick calls `layout`, `prepareAssets`, and
-     * `recordLifespans` before advancing the clock. Errors thrown by a scene
-     * generator are caught and recorded in `buildErrors` rather than aborting
-     * the entire pass, so other scenes can still precomp successfully.
+     * `recordLifespans` before advancing the clock. A scene that throws is
+     * recorded in `buildErrors` rather than aborting the whole pass, so other
+     * scenes still precomp.
      */
     run(): PrecompResult {
+        const perScene: ScenePrecomp[] = [];
+        const buildErrors: BuildError[] = [];
+
+        for (let i = 0; i < this.scenes.length; i++) {
+            const { precomp, error } = this.precompScene(this.scenes[i], i);
+            perScene.push(precomp);
+            if (error) buildErrors.push(error);
+        }
+
+        return assembleTimeline(perScene, buildErrors, this.fps);
+    }
+
+    /**
+     * Re-run a single scene and produce a fresh result that reuses every other
+     * scene's cached pass. The replaced scene's new frame count shifts all
+     * downstream `startFrame`s and re-merges the global asset map; nothing about
+     * the untouched scenes is recomputed.
+     *
+     * @param prev      The current result whose other scenes are reused.
+     * @param index     Index of the scene to re-run.
+     * @param newScene  The edited scene instance to swap in at `index`.
+     */
+    replaceScene(prev: PrecompResult, index: number, newScene: Scene): PrecompResult {
+        this.scenes = this.scenes.slice();
+        this.scenes[index] = newScene;
+
+        const { precomp, error } = this.precompScene(newScene, index);
+
+        const perScene = prev.scenes.slice();
+        perScene[index] = precomp;
+
+        // Carry forward the other scenes' build errors; replace this scene's.
+        const buildErrors = prev.buildErrors.filter(e => e.sceneIndex !== index);
+        if (error) buildErrors.push(error);
+
+        return assembleTimeline(perScene, buildErrors, this.fps);
+    }
+
+    /**
+     * Drive one scene's generator to completion and collect its scene-local
+     * precomp (frame count, asset usage, audio, lifespans). `startFrame` is left
+     * 0 here and filled in by {@link assembleTimeline}.
+     */
+    private precompScene(scene: Scene, sceneIndex: number): { precomp: ScenePrecomp; error?: BuildError } {
         const dt = 1 / this.fps;
         const layoutBounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
 
-        // Single shared registry accumulates across all scenes so frame ranges
-        // span the global timeline and cross-scene shared assets merge correctly.
+        // A fresh, scene-local registry: frame ranges are relative to this scene's
+        // own frame 0, so the pass is independent of where the scene sits on the
+        // global timeline. assembleTimeline shifts these into absolute frames.
         const registry = new AssetTracker(this.assets);
         const stage = new BuildStage(this.viewport, this.fps);
 
-        const sceneResults: ScenePrecomp[] = [];
-        const buildErrors: BuildError[] = [];
-        let globalFrameOffset = 0;
+        scene.reset();
+        scene.set({ width: this.viewport.width, height: this.viewport.height });
+        scene.setViewport(this.viewport);
+        scene.bindAssets(this.assets);
+        stage.reset();
 
-        for (let sceneIndex = 0; sceneIndex < this.scenes.length; sceneIndex++) {
-            const scene = this.scenes[sceneIndex];
-            scene.reset();
-            scene.set({ width: this.viewport.width, height: this.viewport.height });
-            scene.setViewport(this.viewport);
-            scene.bindAssets(this.assets);
-            stage.reset();
+        let localFrame = 0;
+        const lifespans = new Map<string, NodeLifespan>();
+        let error: BuildError | undefined;
 
-            let localFrame = 0;
-            const lifespans = new Map<string, NodeLifespan>();
+        try {
+            const generator = scene.build(stage);
 
-            try {
-                const generator = scene.build(stage);
+            // Prime: advance to first yield so frame-0 nodes are registered.
+            generator.next(dt);
 
-                // Prime: advance to first yield so frame-0 nodes are registered.
-                generator.next(dt);
+            while (true) {
+                // layout before prepare — layout gives nodes their layoutRect,
+                // which prepare uses to determine decode resolution.
+                scene.layout(layoutBounds, this.measureScope);
 
-                while (true) {
-                    const globalFrame = globalFrameOffset + localFrame;
+                registry.start(localFrame);
+                scene.prepareAssets(registry);
+                registry.end();
 
-                    // layout before prepare — layout gives nodes their layoutRect,
-                    // which prepare uses to determine decode resolution.
-                    scene.layout(layoutBounds, this.measureScope);
+                // Record which nodes are alive this frame so the timeline can draw
+                // each node's bar over only its true lifespan. The scene's world
+                // lives on `scene.root` (path "" = root).
+                recordLifespans(scene.root, "", localFrame, lifespans);
 
-                    registry.start(globalFrame);
-                    scene.prepareAssets(registry);
-                    registry.end();
+                localFrame++;
+                scene.bindAssets(this.assets);
+                scene.ellapse(localFrame * dt);
 
-                    // Record which nodes are alive this frame so the timeline can
-                    // draw each node's bar over only its true lifespan.
-                    recordLifespans(scene, "", localFrame, lifespans);
-
-                    localFrame++;
-                    scene.bindAssets(this.assets);
-                    scene.ellapse(localFrame * dt);
-
-                    const result = generator.next(dt);
-                    if (result.done) break;
-                }
-            } catch (err) {
-                const e = err instanceof Error ? err : new Error(String(err));
-                buildErrors.push({
-                    sceneName: scene.name ?? `Scene ${sceneIndex}`,
-                    sceneIndex,
-                    message: e.message,
-                    stack: e.stack,
-                });
+                const result = generator.next(dt);
+                if (result.done) break;
             }
-
-            // Scene-boundary blockade: a scene's audio is confined to that
-            // scene's own span. Composite scenes (a parent that runs child
-            // builds inside its own loop) collect their children's audio into
-            // this same request set with parent-relative timing, so they share a
-            // timeline as intended — but two sibling top-level scenes are wholly
-            // separate, and a clip whose source outlasts the scene (e.g. a long
-            // video on a short scene) must not bleed past the cut. Clamp every
-            // request's [startAt, endAt) to [0, sceneDuration); drop any that
-            // begins at or after the scene ends.
-            const sceneDuration = localFrame / this.fps;
-            const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
-            registry.clearAudio();
-
-            sceneResults.push({
-                frameCount: localFrame,
-                startFrame: globalFrameOffset,
-                audioRequests,
-                lifespans,
-            });
-
-            globalFrameOffset += localFrame;
-            scene.reset();
+        } catch (err) {
+            const e = err instanceof Error ? err : new Error(String(err));
+            error = {
+                sceneName: scene.name ?? `Scene ${sceneIndex}`,
+                sceneIndex,
+                message: e.message,
+                stack: e.stack,
+            };
         }
 
+        // Scene-boundary blockade: a clip whose source outlasts the scene (e.g. a
+        // long video on a short scene, or a startSound left running) must not
+        // bleed past the cut. Clamp every request to [0, sceneDuration); drop any
+        // that begins at or after the scene ends.
+        const sceneDuration = localFrame / this.fps;
+        const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
+
+        // Snapshot the scene-local asset records before the registry is dropped.
+        const assetRecords = new Map(registry.assets);
+        registry.dispose();
+        scene.reset();
+
         return {
-            fps: this.fps,
-            scenes: sceneResults,
-            totalFrames: globalFrameOffset,
-            totalDuration: globalFrameOffset / this.fps,
-            assets: buildAssetMap(registry, this.fps),
-            buildErrors,
+            precomp: {
+                frameCount: localFrame,
+                startFrame: 0, // assigned by assembleTimeline
+                audioRequests,
+                assetRecords,
+                lifespans,
+            },
+            error,
         };
     }
+}
+
+// ─── Timeline assembly ──────────────────────────────────────────────────────
+
+/**
+ * Compose per-scene passes into the final {@link PrecompResult}: assign each
+ * scene its global `startFrame`, sum the total, and merge every scene's
+ * scene-local asset usage into one absolute-frame asset map.
+ *
+ * Kept separate from the per-scene pass so both {@link Precomp.run} and
+ * {@link Precomp.replaceScene} share the exact same assembly — the only thing
+ * `replaceScene` changes is which scenes' passes are fresh vs. reused.
+ */
+function assembleTimeline(perScene: ScenePrecomp[], buildErrors: BuildError[], fps: number): PrecompResult {
+    let offset = 0;
+    const scenes: ScenePrecomp[] = [];
+    // Merge scene-local records into absolute-frame records, unioning ranges for
+    // assets shared across scenes (and taking the max decode size).
+    const mergedRecords = new Map<string, AssetRecord>();
+
+    for (const sp of perScene) {
+        const placed: ScenePrecomp = { ...sp, startFrame: offset };
+        scenes.push(placed);
+
+        for (const [key, record] of sp.assetRecords) {
+            mergeRecord(mergedRecords, key, shiftRecord(record, offset));
+        }
+
+        offset += sp.frameCount;
+    }
+
+    return {
+        fps,
+        scenes,
+        totalFrames: offset,
+        totalDuration: offset / fps,
+        assets: buildAssetMap(mergedRecords, fps),
+        buildErrors,
+    };
+}
+
+/** Shift an asset record's frame range into the global timeline by `offset`. */
+function shiftRecord(record: AssetRecord, offset: number): AssetRecord {
+    if (offset === 0) return record;
+    return { ...record, startFrame: record.startFrame + offset, endFrame: record.endFrame + offset };
+}
+
+/**
+ * Merge `record` into `out[key]`, unioning frame ranges and taking the max
+ * decode size — so an asset used in several scenes resolves to a single track
+ * spanning its full usage, exactly as the old shared-registry pass produced.
+ */
+function mergeRecord(out: Map<string, AssetRecord>, key: string, record: AssetRecord): void {
+    const existing = out.get(key);
+    if (!existing) {
+        out.set(key, record);
+        return;
+    }
+    const merged: AssetRecord = {
+        ...existing,
+        startFrame: Math.min(existing.startFrame, record.startFrame),
+        endFrame: Math.max(existing.endFrame, record.endFrame),
+    } as AssetRecord;
+    if ((merged.type === 'image' || merged.type === 'video') &&
+        (record.type === 'image' || record.type === 'video')) {
+        (merged as { width: number }).width = Math.max(merged.width, record.width);
+        (merged as { height: number }).height = Math.max(merged.height, record.height);
+    }
+    out.set(key, merged);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -259,12 +376,9 @@ function recordLifespans(node: Node, path: string, frame: number, out: Map<strin
 /**
  * Confine a scene's audio requests to its own `[0, sceneDuration)` span.
  *
- * Audio is collected per top-level scene (see {@link Precomp.run}), so this is
- * the cut between two sibling scenes: a clip whose source outlasts the scene —
- * e.g. a long video on a short scene, or a `startSound` left running — must not
- * sound or draw past the scene boundary. Composite scenes are unaffected: a
- * parent runs its children's builds inside its *own* loop, so their requests are
- * already parent-relative and bounded by the parent's (longer) duration.
+ * Scenes are independent, so this is the cut between two sibling scenes: a clip
+ * whose source outlasts the scene — e.g. a long video on a short scene, or a
+ * `startSound` left running — must not sound or draw past the scene boundary.
  *
  * Each request is clipped to the span: a `startAt` at or after the end drops the
  * request entirely; an `endAt` past the end (including an unbounded `Infinity`
@@ -305,23 +419,21 @@ function leadFrames(mb: number): number {
 }
 
 /**
- * Convert the raw asset registry into the typed `AssetTrack` map consumed by
- * `AssetManager`. Each asset type gets a `cacheAt` / `discardAt` window based
- * on its decoded size and usage range. Fonts are pinned at frame 0 and never
- * evicted; images and video get size-proportional lead time.
+ * Convert merged absolute-frame asset records into the typed `AssetTrack` map
+ * consumed by `AssetManager`. Each asset type gets a `cacheAt` / `discardAt`
+ * window based on its decoded size and usage range. Fonts are pinned at frame 0
+ * and never evicted; images and video get size-proportional lead time.
  */
-function buildAssetMap(registry: AssetTracker, fps: number): ReadonlyMap<string, AssetTrack> {
+function buildAssetMap(records: ReadonlyMap<string, AssetRecord>, fps: number): ReadonlyMap<string, AssetTrack> {
     const out = new Map<string, AssetTrack>();
 
-    for (const [key, entry] of registry.assets) {
+    for (const [key, entry] of records) {
         switch (entry.type) {
             case "image": {
                 const mb = decodedMB(entry.width, entry.height);
                 const lead = leadFrames(mb);
                 out.set(key, {
-
                     record: entry,
-
                     cacheAt: Math.max(0, entry.startFrame - lead),
                     discardAt: entry.endFrame + TAIL_FRAMES,
                 });
@@ -334,7 +446,6 @@ function buildAssetMap(registry: AssetTracker, fps: number): ReadonlyMap<string,
                 const lead = Math.min(MAX_LEAD, leadFrames(mb) * 2 + Math.round(fps));
                 out.set(key, {
                     record: entry,
-
                     cacheAt: Math.max(0, entry.startFrame - lead),
                     discardAt: entry.endFrame + TAIL_FRAMES,
                 });
@@ -345,7 +456,6 @@ function buildAssetMap(registry: AssetTracker, fps: number): ReadonlyMap<string,
                 // and never evict.
                 out.set(key, {
                     record: entry,
-
                     cacheAt: 0,
                     discardAt: null,
                 });

@@ -1,14 +1,13 @@
-import { Scene, createRef, wait, Rect } from "@motion-script/core";
+import { createScene, createRef, wait, Rect } from "@motion-script/core";
 import { Latex } from "@motion-script/latex";
 
-export class LatexScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg', group: 'column', gap: 60 });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg', group: 'column', gap: 60 });
 
         const intro = createRef<Latex>();
         const integral = createRef<Latex>();
 
-        this.add(
+        stage.add(
             <Rect group={'column'} gap={20} padding={32} fill={'card'} cornerRadius={16}>
                 <Latex ref={intro} latex="F = ma" fontSize={72} fill={'white'} opacity={0} x={-100} />
                 <Rect width={'fill'} height={3} fill={'#4f80ff'} />
@@ -16,7 +15,7 @@ export class LatexScene extends Scene {
             </Rect>
         );
 
-        this.add(
+        stage.add(
             <Latex
                 ref={integral}
                 latex="$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$"
@@ -33,5 +32,4 @@ export class LatexScene extends Scene {
 
         yield* integral().to({ opacity: 1 }, 0.6);
         yield* wait(1);
-    }
-};
+});

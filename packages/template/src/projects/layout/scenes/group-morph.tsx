@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
 import { tile } from "./layout-card";
 
 /**
@@ -14,15 +14,14 @@ import { tile } from "./layout-card";
  * The heading text tracks the current mode so it's clear which arrangement the
  * tiles are settling into at each step.
  */
-export class GroupMorphScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const stage = createRef<Rect>();
         const heading = createRef<Text>();
         const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text ref={heading} fontFamily={'Pixelify Sans'} text={'group: row -> stack -> column'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect
@@ -49,5 +48,4 @@ export class GroupMorphScene extends Scene {
         yield* wait(hold);
         // column → row: close the loop back to where we started.
         yield* stage().to({ group: 'row' }, 2, easeInOutQuad);
-    }
-}
+});

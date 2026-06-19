@@ -1,10 +1,16 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect,
+    SceneGenerator, createRef, Text, Rect,
     Fill, easeInOutQuad, parallel, wait,
 } from "@motion-script/core";
-import { BuildStage } from "@motion-script/core";
+
+/**
+ * Mounts the concrete shape into a container with merged current props. Called
+ * once for the fill sample (props contains `fill`) and once for the stroke
+ * sample (props contains `stroke`). Implementations `container.add(...)` the node.
+ */
+export type BuildShape = (container: Rect, props: Record<string, any>) => void;
 
 /**
  * Per-property animation step: animate a named prop from one value to another.
@@ -41,19 +47,13 @@ export interface ShapeSceneSpec {
  * Subclasses provide `spec` and implement `buildShape()` to mount the concrete
  * shape node into a given container with merged current props.
  */
-export abstract class ShapeScene extends Scene {
-    abstract readonly spec: ShapeSceneSpec;
-
-    /**
-     * Mount the shape into the container applying `props`. Called once for the
-     * fill sample (props contains `fill`) and once for the stroke sample (props
-     * contains `stroke`). Implementations should `container.add(...)` the node
-     * and return it so the base can call `.to()` on it.
-     */
-    protected abstract buildShape(container: Rect, props: Record<string, any>): void;
-
-    *build(_stage: BuildStage) {
-        this.set({ fill: 'bg' });
+/**
+ * A parameterized scene generator for per-shape property showcases. Each shape's
+ * `?scene` file calls `createScene(shapeScene(spec, buildShape))`, passing its
+ * metadata and a `buildShape` that mounts the concrete shape node.
+ */
+export const shapeScene = (spec: ShapeSceneSpec, buildShape: BuildShape): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const {
             label,
@@ -63,7 +63,7 @@ export abstract class ShapeScene extends Scene {
             anims,
             holdBefore = 0.5,
             holdBetween = 0.5,
-        } = this.spec;
+        } = spec;
 
         const currentProps: Record<string, any> = {};
         for (const anim of anims) currentProps[anim.prop] = anim.from;
@@ -71,7 +71,7 @@ export abstract class ShapeScene extends Scene {
         const fillRef = createRef<Rect>();
         const strokeRef = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={32}>
                 <Text
                     fontFamily={'Pixelify Sans'}
@@ -100,8 +100,8 @@ export abstract class ShapeScene extends Scene {
             </Rect>
         );
 
-        this.buildShape(fillRef(), { ...currentProps, fill });
-        this.buildShape(strokeRef(), { ...currentProps, stroke: { weight: strokeWeight, fill: stroke } });
+        buildShape(fillRef(), { ...currentProps, fill });
+        buildShape(strokeRef(), { ...currentProps, stroke: { weight: strokeWeight, fill: stroke } });
 
         yield* wait(holdBefore);
 
@@ -127,5 +127,4 @@ export abstract class ShapeScene extends Scene {
         }
 
         yield* wait(holdBefore);
-    }
-}
+};

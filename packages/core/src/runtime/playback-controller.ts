@@ -61,7 +61,10 @@ export class PlaybackController {
     private seekGeneration = 0;
     readonly fps: number;
     readonly viewport: Size2D;
-    readonly precomp: PrecompResult;
+    /** The precomp runner, kept so a single scene can be re-run on hot reload. */
+    private readonly precomper: Precomp;
+    /** Latest assembled precomp result. Swapped wholesale on a scene replace. */
+    precomp: PrecompResult;
 
     /** Per-scene frame counts in timeline order, used to build the track list. */
     get tracks(): number[] {
@@ -94,13 +97,8 @@ export class PlaybackController {
 
         const catalog = params.assets;
 
-        this.precomp = new Precomp(
-            params.scenes,
-            this.viewport,
-            this.fps,
-            catalog,
-            this.measureScope,
-        ).run();
+        this.precomper = params.precomposition;
+        this.precomp = this.precomper.run();
 
         this.stateEvaluator = new StateEvaluator(
             params.scenes,
@@ -225,6 +223,44 @@ export class PlaybackController {
         this.assetManager.prefetch(clamped);
     }
 
+    /**
+     * Hot-reload a single scene in place.
+     *
+     * Re-runs **only** the edited scene's precomp (reusing every other scene's
+     * cached pass), swaps it into the state evaluator's matching slot, and
+     * refreshes the asset manager and clock duration. Untouched scenes keep
+     * their cached generators, so editing scene N never re-runs scenes ≠ N.
+     *
+     * The render context is never torn down, so the next render paints the new
+     * frame over the old with no blank flash. Returns the resolved scene index,
+     * or -1 if no slot matched (caller can fall back to a full reload).
+     *
+     * @param newScene The edited scene instance (carries `__sceneHotId`).
+     */
+    replaceScene(newScene: Scene): number {
+        if (this.disposed) return -1;
+
+        const scenes = this.precomper.sceneList;
+        // Match by stable hot id first; fall back to scene name (class name).
+        let index = newScene.__sceneHotId
+            ? scenes.findIndex(s => s.__sceneHotId === newScene.__sceneHotId)
+            : -1;
+        if (index < 0) index = scenes.findIndex(s => s.name === newScene.name);
+        if (index < 0) return -1;
+
+        this.precomp = this.precomper.replaceScene(this.precomp, index, newScene);
+        this.stateEvaluator.replaceScene(index, newScene, this.tracks);
+        this.assetManager.setPrecomp(this.precomp);
+        this.masterClock.setDuration(this.totalDuration);
+
+        // Repaint the current frame against the edited scene. Bumping the seek
+        // generation invalidates any in-flight async render so it can't stamp a
+        // stale frame over the reloaded scene.
+        ++this.seekGeneration;
+        this.renderAt(this.currentFrame);
+        return index;
+    }
+
     /** Reposition the clock to `frame` without interrupting playback. */
     seekWhilePlaying(frame: number): void {
         // Invalidate any in-flight paused seek so its late render can't paint over
@@ -268,14 +304,17 @@ export class PlaybackController {
         // its own bar (a Video's clip on the Video row, a scene's playSound on
         // the scene row). Requests with no owner fall back to the scene root.
         const waveformsByPath = waveformsByOwner(audioRequests);
-        const tree = nodeToTreeState(scene, "", lifespans, sceneStart, waveformsByPath);
+        // A scene is no longer a node — its world lives on `scene.root`. Walk the
+        // root so structural paths (path "" = root) match how precomp records
+        // lifespans, keeping the per-node bars aligned.
+        const tree = nodeToTreeState(scene.root, "", lifespans, sceneStart, waveformsByPath);
         return tree;
     }
 
     getNodeState(nodeId: string): NodeState | null {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
-        const node = findNode(scene, nodeId);
+        const node = findNode(scene.root, nodeId);
         if (!node) return null;
         return { id: node.id, type: node.name, properties: node.properties };
     }

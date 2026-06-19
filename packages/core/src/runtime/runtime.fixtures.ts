@@ -81,6 +81,17 @@ export class FakeScene {
         this.onPrepare = opts.onPrepare;
     }
 
+    /**
+     * The scene's world container. A real {@link Scene} is no longer a node — it
+     * owns a root node that carries the children the runtime walks for
+     * tree-state / lifespans. This fake mirrors that: `root` presents the
+     * scene's own id/name/properties plus its children as a node, so
+     * `getTreeState`/`getNodeState` (which now walk `scene.root`) see them.
+     */
+    get root(): FakeNode {
+        return new FakeNode(this.id, this.name, this.children, this.properties);
+    }
+
     set(props: unknown): void {
         this.setCalls.push(props);
     }
@@ -319,6 +330,7 @@ export function makeScenePrecomp(over: Partial<ScenePrecomp> = {}): ScenePrecomp
         frameCount: 10,
         startFrame: 0,
         audioRequests: [],
+        assetRecords: new Map(),
         lifespans: new Map(),
         ...over,
     };

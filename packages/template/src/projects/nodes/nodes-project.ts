@@ -1,21 +1,19 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    TextScene,
-    RichTextScene,
-    RectScene,
-    EllipseScene,
-    PolygonScene,
-    PolygramScene,
-    LineGridScene,
-    CameraScene,
-    RowScene,
-    ColumnScene,
-    GridScene,
-    ImageScene,
-    VideoScene,
-    PathScene,
-} from './scenes';
+import text from './scenes/text-scene?scene';
+import richText from './scenes/rich-text-scene?scene';
+import rect from './scenes/rect-scene?scene';
+import ellipse from './scenes/ellipse-scene?scene';
+import polygon from './scenes/polygon-scene?scene';
+import polygram from './scenes/polygram-scene?scene';
+import lineGrid from './scenes/line-grid-scene?scene';
+import camera from './scenes/camera-scene?scene';
+import row from './scenes/row-scene?scene';
+import column from './scenes/column-scene?scene';
+import grid from './scenes/grid-scene?scene';
+import image from './scenes/image-scene?scene';
+import video from './scenes/video-scene?scene';
+import path from './scenes/path-scene?scene';
 
 /**
  * One scene per built-in node — used to generate the screenshots and
@@ -32,20 +30,20 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new TextScene(),
-        new RichTextScene(),
-        new RectScene(),
-        new EllipseScene(),
-        new PolygonScene(),
-        new PolygramScene(),
-        new LineGridScene(),
-        new CameraScene(),
-        new RowScene(),
-        new ColumnScene(),
-        new GridScene(),
-        new ImageScene(),
-        new VideoScene(),
-        new PathScene(),
+        text,
+        richText,
+        rect,
+        ellipse,
+        polygon,
+        polygram,
+        lineGrid,
+        camera,
+        row,
+        column,
+        grid,
+        image,
+        video,
+        path,
     ],
     theme: {
         bg: '#0D0F15',

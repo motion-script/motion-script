@@ -1,15 +1,13 @@
-import { createProject, TextSelection } from '@motion-script/core';
+import { createProject } from '@motion-script/core';
 
-import {
-    RectScene,
-    EllipseScene,
-    PolygonScene,
-    PolygramScene,
-    PathScene,
-} from './scenes';
-import { TextSelectionScene } from './scenes/text-selection';
-import { CodeScene } from '../../scenes/code-scene';
-import { TextPathScene } from './scenes/text-path';
+import rect from './scenes/rect-scene?scene';
+import ellipse from './scenes/ellipse-scene?scene';
+import polygon from './scenes/polygon-scene?scene';
+import polygram from './scenes/polygram-scene?scene';
+import path from './scenes/path-scene?scene';
+import textSelection from './scenes/text-selection?scene';
+import code from '../../scenes/code-scene?scene';
+import textPath from './scenes/text-path?scene';
 
 /**
  * A project that showcases each shape node and its unique properties.
@@ -24,14 +22,14 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new CodeScene(),
-        new TextPathScene(),
-        new TextSelectionScene(),
-        new RectScene(),
-        new EllipseScene(),
-        new PolygonScene(),
-        new PolygramScene(),
-        new PathScene(),
+        code,
+        textPath,
+        textSelection,
+        rect,
+        ellipse,
+        polygon,
+        polygram,
+        path,
     ],
     theme: {
         'bg': '#0D0F15',

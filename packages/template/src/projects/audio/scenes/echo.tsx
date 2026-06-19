@@ -1,10 +1,9 @@
 import { AFX } from "@motion-script/core";
-import { AudioDemoScene, AudioDemoSpec } from "./audio-demo";
+import { createScene } from "@motion-script/core";
+import { audioDemo } from "./audio-demo";
 
 /** EchoFilter: adds a delayed, fading repeat of the signal. */
-export class EchoScene extends AudioDemoScene {
-    readonly spec: AudioDemoSpec = {
+export default createScene(audioDemo({
         label: 'Echo 0.3s',
         filters: AFX.echo(0.3, 0.45, 0.5),
-    };
-}
+    }));

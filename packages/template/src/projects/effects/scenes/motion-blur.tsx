@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOutQuad, parallel } from "@motion-script/core";
 
 /**
  * Motion blur is velocity-driven, so a static card can't show it — this scene
@@ -8,14 +8,13 @@ import { Scene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOutQuad, pa
  * smears along its path; the bottom one is identical but un-blurred, for
  * contrast. Both render sharp at the ends where they stop.
  */
-export class MotionBlurScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const blurred = createRef<Ellipse>();
         const sharp = createRef<Ellipse>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40} padding={60}>
                 <Text text={'Motion blur — velocity-driven'} fontSize={28} fill={'white'} width={'fill'} align={'center'} />
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={80}>
@@ -37,5 +36,4 @@ export class MotionBlurScene extends Scene {
                 sharp().moveX(-560, 0.5, easeInOutQuad),
             );
         }
-    }
-}
+});

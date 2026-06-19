@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Row, Column, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, Row, Column, easeInOutQuad, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -12,14 +12,13 @@ import { layoutCard, tile } from "./layout-card";
  * containers reflow around them, exactly as a `Rect` with `group` would, just
  * without the box.
  */
-export class FlexNodesScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const middle = [createRef<Rect>(), createRef<Rect>()];
         const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'Row + Column nodes',
                 // The card's own stage just centers the (hugging) Row.
@@ -46,5 +45,4 @@ export class FlexNodesScene extends Scene {
         // Grow then shrink the middle column's tiles; the Row/Column reflow.
         yield* parallel(...middle.map((ref) => ref().to({ width: 320 }, 1.5, easeInOutQuad)));
         yield* parallel(...middle.map((ref) => ref().to({ width: 200 }, 1.5, easeInOutQuad)));
-    }
-}
+});

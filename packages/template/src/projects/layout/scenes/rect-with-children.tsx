@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -11,13 +11,12 @@ import { layoutCard, tile } from "./layout-card";
  * with it — the wrapper has no size of its own, it's defined entirely by what's
  * inside it.
  */
-export class RectWithChildrenScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const middle = createRef<Rect>();
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'Rect with children (hug)',
                 stage: 'stack',
@@ -38,5 +37,4 @@ export class RectWithChildrenScene extends Scene {
         // Grow then shrink the middle tile; the hugging wrapper resizes with it.
         yield* parallel(middle().to({ width: 380, height: 320 }, 2, easeInOutQuad));
         yield* parallel(middle().to({ width: 200, height: 200 }, 2, easeInOutQuad));
-    }
-}
+});

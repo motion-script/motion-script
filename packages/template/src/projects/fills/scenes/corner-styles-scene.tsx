@@ -1,18 +1,15 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, Rect, Polygon, Polygram, wait } from "@motion-script/core";
+import { createScene, Rect, Polygon, Polygram, wait } from "@motion-script/core";
 
 /**
  * Visual showcase for corner styles: a circular `rounded` corner and an
  * `angled` chamfer, across rects, polygons, and polygrams.
  */
-export class CornerStylesScene extends Scene {
-    readonly label = 'Corner Styles';
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
-    *build() {
-        this.set({ fill: 'bg' });
-
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'row'} gap={48} padding={64} align={{ x: 0, y: 0 }}>
                 <Rect width={240} height={240} fill={'tomato'} cornerRadius={48} />
                 <Rect width={240} height={240} fill={'tomato'} cornerRadius={48} cornerStyle={'angled'} />
@@ -23,5 +20,4 @@ export class CornerStylesScene extends Scene {
         );
 
         yield* wait(1);
-    }
-}
+});

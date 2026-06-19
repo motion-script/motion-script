@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect, Fills, FillSpace, Node,
+    SceneGenerator, createRef, Text, Rect, Fills, FillSpace, Node,
     easeInOutQuad, sequence,
 } from "@motion-script/core";
 import { DrawnShape } from "../nodes/drawn-shape";
@@ -38,19 +38,23 @@ type Backdrop = 'none' | 'parent' | 'scene';
  * faded copy of the same gradient over their reference rect (see {@link Backdrop})
  * so that slice is easy to read against the field it samples.
  */
-export abstract class DrawDemoScene extends Scene {
+/** Options for a {@link drawDemo} scene. */
+export interface DrawDemoOpts {
     /** Fills space this scene demonstrates. */
-    abstract readonly space: FillSpace;
+    space: FillSpace;
     /** Card heading. */
-    abstract readonly label: string;
+    label: string;
     /** Reference-gradient backdrop to paint behind the figure. */
-    readonly backdrop: Backdrop = 'none';
+    backdrop?: Backdrop;
+}
 
-    *build() {
-        this.set({ fill: 'bg' });
+/** A parameterized scene generator: per-space `?scene` files call this, e.g.
+ *  `createScene(drawDemo({ space: 'local', label: 'Local space' }))`. */
+export const drawDemo = (opts: DrawDemoOpts): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg' });
 
+        const { space, label, backdrop = 'none' } = opts;
         const shapeRef = createRef<DrawnShape>();
-        const space = this.space;
 
         // The figure's gradient. Endpoints are FIXED — only the figure's position
         // animates — so each space's behaviour is isolated to the motion: under
@@ -71,23 +75,23 @@ export abstract class DrawDemoScene extends Scene {
 
         // Full-bleed reference field for the `global` (viewport) scene, painted
         // straight onto the scene behind the padded column.
-        if (this.backdrop === 'scene') {
-            this.add(<Rect width={'fill'} height={'fill'} fill={backdropFill} />);
+        if (backdrop === 'scene') {
+            stage.add(<Rect width={'fill'} height={'fill'} fill={backdropFill} />);
         }
 
         // The card stacks an optional parent-space reference field behind the
         // figure. Built as a child array so the backdrop can be omitted cleanly.
         const cardChildren: Node[] = [];
-        if (this.backdrop === 'parent') {
+        if (backdrop === 'parent') {
             cardChildren.push(<Rect width={'fill'} height={'fill'} fill={backdropFill} />);
         }
         cardChildren.push(
             <DrawnShape ref={shapeRef} space={space} extent={300} fill={figureFill} />,
         );
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} >
                     {cardChildren}
                 </Rect>
@@ -102,5 +106,4 @@ export abstract class DrawDemoScene extends Scene {
             shapeRef().to({ x: 360 } as any, 3, easeInOutQuad),
             shapeRef().to({ x: 0 } as any, 2, easeInOutQuad),
         );
-    }
-}
+};

@@ -1,7 +1,5 @@
-import { BlendMode } from "@motion-script/core";
-import { BlendDemoScene } from "./blend-demo";
+import { createScene } from "@motion-script/core";
+import { blendDemo } from "./blend-demo";
 
 /** `normal` blend mode fading in over the photo. */
-export class NormalBlendScene extends BlendDemoScene {
-    readonly mode: BlendMode = 'normal';
-}
+export default createScene(blendDemo({ mode: "normal" }));

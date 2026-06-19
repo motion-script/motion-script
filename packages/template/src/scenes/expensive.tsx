@@ -1,12 +1,11 @@
-import { Scene, createRef, Ellipse, FX, Text, Rect, wait, BuildStage, parallel } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait, BuildStage, parallel } from "@motion-script/core";
 
-export class ExpensiveScene extends Scene {
-    *build(stage: BuildStage) {
-        this.set({ fill: "#e8c584" })
+export default createScene(function* (stage) {
+        stage.set({ fill: "#e8c584" })
         const count = 1000;
         // randomly place #count rects on the screen and then animate their position and rotation.
         const rects = Array.from({ length: count }, () => createRef<Rect>());
-        this.add(
+        stage.add(
             <>
                 {rects.map((ref, i) => (
                     <Rect
@@ -35,7 +34,4 @@ export class ExpensiveScene extends Scene {
                 ),
             ),
         );
-
-
-    }
-};
+});

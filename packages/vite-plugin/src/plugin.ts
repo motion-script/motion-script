@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import react from '@vitejs/plugin-react';
 import type { PluginOption, UserConfig } from 'vite';
 import { buildAssetManifest } from './asset-manifest';
+import { sceneTransform } from './scene-transform';
 
 /**
  * Options accepted by the {@link motionScript} Vite plugin.
@@ -148,6 +149,10 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
     let resolvedOutDir: string | null = null;
 
     return [
+        // `?scene` import handling. Runs with enforce:'pre' so it claims the
+        // `?scene` id before the React plugin; the wrapper it emits imports the
+        // real .tsx, which then goes through React/esbuild normally.
+        sceneTransform(process.cwd()),
         react(),
         {
             name: 'vite-plugin-motion-script',

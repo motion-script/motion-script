@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Ellipse, Rect, easeInOutQuad, parallel, wait, Fills } from "@motion-script/core";
+import { createScene, createRef, Ellipse, Rect, easeInOutQuad, parallel, wait, Fills } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,14 +8,13 @@ import { nodeCard } from "./node-card";
  * Full circle on the left; progress-ring arc on the right that sweeps from
  * 0 to 360 degrees.
  */
-export class EllipseScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const ringRef = createRef<Ellipse>();
         const circleRef = createRef<Ellipse>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Ellipse',
                 stage: 'row',
@@ -56,5 +55,4 @@ export class EllipseScene extends Scene {
             circleRef().to({ sweep: 360 }, 1.0, easeInOutQuad),
         );
         yield* wait(0.5);
-    }
-}
+});

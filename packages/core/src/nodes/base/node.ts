@@ -345,6 +345,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
+     * Public entry point to {@link reinitProps}. A {@link Scene} owns its root
+     * node by composition (it no longer *is* a node), so it can't reach the
+     * protected `reinitProps` directly — it calls this on its root before a
+     * rebuild to restore default-baseline signals after a prior dispose.
+     */
+    public reinit(): void {
+        this.reinitProps();
+    }
+
+    /**
      * Declare a reactive prop on this node. Creates a Signal-backed
      * accessor for `field`, applies an initial value (callback → reactive
      * binding; otherwise constant), and registers optional tween/mapper

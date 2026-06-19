@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -10,15 +10,14 @@ import { layoutCard, tile } from "./layout-card";
  * their offsets and slide back — showing that in a stack, position is owned by
  * the child, not distributed by the container.
  */
-export class StackScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const back = createRef<Rect>();
         const mid = createRef<Rect>();
         const front = createRef<Rect>();
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'group: stack',
                 stage: 'stack',
@@ -39,5 +38,4 @@ export class StackScene extends Scene {
             back().to({ x: 0, y: 0 }, 1.5, easeInOutQuad),
             front().to({ x: 0, y: 0 }, 1.5, easeInOutQuad),
         );
-    }
-}
+});

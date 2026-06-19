@@ -96,6 +96,16 @@ export type EditorState = {
     replay: () => void;
     resetConfig: (config: ProjectConfig) => void;
 
+    /**
+     * Bridge the dev-server `?scene` HMR signal to the live player. The video
+     * preview registers the mounted controller's in-place scene swap here; the
+     * `?scene` wrapper (via `window.__motionScriptSceneHot`) calls
+     * {@link hotReplaceScene} with the freshly-edited instance.
+     */
+    _hotReplace: ((scene: Scene) => number) | null;
+    registerHotReplace: (fn: ((scene: Scene) => number) | null) => void;
+    hotReplaceScene: (scene: Scene) => void;
+
     _pendingSceneIndex: number | null;
 };
 
@@ -233,6 +243,23 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
                 currentTime: 0,
                 isPlaying: true,
             }));
+        },
+
+        _hotReplace: null,
+        registerHotReplace: (fn) => { set(() => ({ _hotReplace: fn })); },
+        hotReplaceScene: (scene) => {
+            const { scenes, _hotReplace } = get();
+            if (!_hotReplace) return;
+            // Swap the controller's scene in place (per-scene precomp re-run, no
+            // surface teardown → no flash). Returns the matched slot index.
+            const index = _hotReplace(scene);
+            if (index < 0) return;
+            // Keep the store's scene list pointing at the live instance, but do
+            // NOT replace the array reference — the video preview passes `scenes`
+            // to MotionPlayer, whose heavy effect would otherwise tear the whole
+            // controller down (and flash). Mutating in place is exactly what we
+            // want: same name/count/order, just the edited instance swapped.
+            scenes[index] = scene;
         },
 
         resetConfig: (newConfig) => {

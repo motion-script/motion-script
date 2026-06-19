@@ -1,20 +1,19 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Polygon, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Polygon, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
  * Showcases the {@link Polygon} node.
  * Morphs sides from triangle → hexagon, then rounds and chamfers the vertices.
  */
-export class PolygonScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const leftRef = createRef<Polygon>();
         const rightRef = createRef<Polygon>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Polygon',
                 stage: 'row',
@@ -54,5 +53,4 @@ export class PolygonScene extends Scene {
             rightRef().to({ cornerStyle: 'angled' }, 0.8, easeInOutQuad),
         );
         yield* wait(0.5);
-    }
-}
+});

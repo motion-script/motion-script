@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Polygram, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Polygram, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,14 +8,13 @@ import { nodeCard } from "./node-card";
  * Animates `ratio` to collapse and sharpen the star points, then morphs
  * the sides count and rounds the vertices.
  */
-export class PolygramScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const leftRef = createRef<Polygram>();
         const rightRef = createRef<Polygram>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Polygram',
                 stage: 'row',
@@ -57,5 +56,4 @@ export class PolygramScene extends Scene {
             rightRef().to({ sides: 4, ratio: 0.4 }, 1.5, easeInOutQuad),
         );
         yield* wait(0.8);
-    }
-}
+});

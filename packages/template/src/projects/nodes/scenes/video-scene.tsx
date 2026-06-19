@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Video, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Video, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link Video} node.
@@ -8,13 +8,12 @@ import { Scene, createRef, Video, Rect, Text, easeInOutQuad, wait } from "@motio
  * audio track automatically. Corner radius animates in to demonstrate that
  * Video inherits all Rect layout and corner props.
  */
-export class VideoScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const videoRef = createRef<Video>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'stack'}>
                 <Video
                     ref={videoRef}
@@ -45,5 +44,4 @@ export class VideoScene extends Scene {
         yield* wait(2.0);
         yield* videoRef().to({ cornerRadius: 0 }, 0.8, easeInOutQuad);
         yield* wait(0.5);
-    }
-}
+});

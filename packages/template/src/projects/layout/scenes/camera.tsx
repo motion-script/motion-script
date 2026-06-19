@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel, Camera, LineGrid, Fills } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad, parallel, Camera, LineGrid, Fills } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -9,12 +9,11 @@ import { layoutCard, tile } from "./layout-card";
  * watch the column reflow — siblings push down to make room as each one
  * expands, the defining behaviour of a vertical flex container.
  */
-export class CameraScene extends Scene {
-    *build() {
-        this.fill = 'bg';
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
         const cameraRef = createRef<Camera>();
         const rectRef = createRef<Rect>();
-        this.add(<Camera ref={cameraRef} fill={'card'} width={800} height={800} stroke={{ weight: 4, fill: 'white' }} >
+        stage.add(<Camera ref={cameraRef} fill={'card'} width={800} height={800} stroke={{ weight: 4, fill: 'white' }} >
             <LineGrid
 
                 width={2000}
@@ -32,5 +31,4 @@ export class CameraScene extends Scene {
         </Camera>);
 
         yield* cameraRef().to({ origin: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
-    }
-}
+});

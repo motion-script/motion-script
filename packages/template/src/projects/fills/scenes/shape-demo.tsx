@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect,
+    SceneGenerator, createRef, Text, Rect,
     Fill, Shadow, easeInOutQuad, parallel,
 } from "@motion-script/core";
 
@@ -35,12 +35,10 @@ export interface ShapeDemoSpec {
     duration?: number;
 }
 
-export abstract class ShapeDemoScene extends Scene {
-    /** Declared by each concrete demo scene. */
-    abstract readonly spec: ShapeDemoSpec;
-
-    *build() {
-        this.set({ fill: 'bg' });
+/** A parameterized scene generator: per-demo `?scene` files call this with their
+ *  {@link ShapeDemoSpec}, e.g. `createScene(shapeDemo({ label, fillFrom, fillTo }))`. */
+export const shapeDemo = (spec: ShapeDemoSpec): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const {
             label,
@@ -49,12 +47,12 @@ export abstract class ShapeDemoScene extends Scene {
             shadowFrom, shadowTo,
             strokeWeight = 16,
             duration = 3,
-        } = this.spec;
+        } = spec;
 
         const fillRef = createRef<Rect>();
         const strokeRef = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
@@ -84,5 +82,4 @@ export abstract class ShapeDemoScene extends Scene {
         }
 
         yield* parallel(...animations);
-    }
-}
+};

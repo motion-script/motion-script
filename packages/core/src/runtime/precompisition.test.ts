@@ -4,6 +4,7 @@ import {
     FakeScene,
     FakeMeasureScope,
     FakeAssetCatalog,
+    asScene,
     asScenes,
     asCatalog,
     makeAudioRequest,
@@ -212,5 +213,47 @@ describe('Precomp – asset map (font & video)', () => {
         // One entry despite being requested every frame, with a backward-scrub tail.
         expect(track.cacheAt).toBe(0);
         expect(typeof track.discardAt).toBe('number');
+    });
+});
+
+describe('Precomp – replaceScene (hot reload)', () => {
+    it('re-runs only the replaced scene and shifts downstream start frames', () => {
+        const a = new FakeScene({ yieldCount: 3 });
+        const b = new FakeScene({ yieldCount: 7 });
+        const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+        expect(first.scenes.map(s => s.startFrame)).toEqual([0, 3]);
+
+        // Edit scene 0 to be longer; scene 1 must shift, and only scene 0 re-runs.
+        const aEdited = new FakeScene({ yieldCount: 5 });
+        const bBuildsBefore = b.buildCount;
+        const next = precomp.replaceScene(first, 0, asScene(aEdited));
+
+        expect(next.scenes.map(s => s.frameCount)).toEqual([5, 7]);
+        expect(next.scenes.map(s => s.startFrame)).toEqual([0, 5]);
+        expect(next.totalFrames).toBe(12);
+        // Scene 1 was reused, not rebuilt.
+        expect(b.buildCount).toBe(bBuildsBefore);
+        expect(aEdited.buildCount).toBe(1);
+        // The reused scene's pass is carried forward (only startFrame is re-stamped):
+        // its lifespans map is the same instance, proving it wasn't recomputed.
+        expect(next.scenes[1].lifespans).toBe(first.scenes[1].lifespans);
+        expect(next.scenes[1].frameCount).toBe(first.scenes[1].frameCount);
+    });
+
+    it('re-merges the global asset map, shifting the replaced scene’s assets', () => {
+        const a = new FakeScene({ yieldCount: 3 });
+        const b = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => { if (f === 0) t.requestImage('b.png', 100, 100); },
+        });
+        const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+        // b's image starts at b's local frame 0 → global frame 3 (a is 3 long).
+        expect(first.assets.get('b.png')!.record.startFrame).toBe(3);
+
+        // Grow scene 0; b shifts later, so its asset's global start frame shifts too.
+        const next = precomp.replaceScene(first, 0, asScene(new FakeScene({ yieldCount: 6 })));
+        expect(next.assets.get('b.png')!.record.startFrame).toBe(6);
     });
 });

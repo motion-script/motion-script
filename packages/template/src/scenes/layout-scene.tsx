@@ -1,14 +1,13 @@
-import { Scene, createRef, Ellipse, FX, Text, Rect, wait, BuildStage, parallel, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait, BuildStage, parallel, easeOutQuad } from "@motion-script/core";
 
-export class LayoutScene extends Scene {
-    *build(stage: BuildStage) {
-        this.set({ fill: "bg", padding: 80 });
+export default createScene(function* (stage) {
+        stage.set({ fill: "bg", padding: 80 });
         const colA = createRef<Rect>();
         const colB = createRef<Rect>();
         const rowA = createRef<Rect>();
         const rowB = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <>
                 <Rect gap={20} group={'row'} padding={10} width={1000} height={600}>
                     <Rect ref={colA} width={'fill'} flex={1} fill={'card'} cornerRadius={8} />
@@ -41,8 +40,4 @@ export class LayoutScene extends Scene {
         );
 
         yield* rowA().to({ flex: 2 }, 0.5, easeOutQuad);
-
-
-
-    }
-};
+});

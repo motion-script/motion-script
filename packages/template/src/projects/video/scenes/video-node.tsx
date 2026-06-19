@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, Video, Text, wait } from "@motion-script/core";
+import { createScene, Video, Text, wait } from "@motion-script/core";
 import { SAMPLE_VIDEO } from "./video-fill";
 
 /**
@@ -13,11 +13,10 @@ import { SAMPLE_VIDEO } from "./video-fill";
  * point `src` at a clip that has audio and the node plays it in sync with no
  * other wiring.)
  */
-export class VideoNodeScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
-        this.add(
+        stage.add(
             <Video
                 src={SAMPLE_VIDEO}
                 fit={'fill'}
@@ -39,5 +38,4 @@ export class VideoNodeScene extends Scene {
         );
 
         yield* wait(4);
-    }
-}
+});

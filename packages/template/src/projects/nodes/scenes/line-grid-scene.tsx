@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, LineGrid, Rect, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, LineGrid, Rect, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,14 +8,13 @@ import { nodeCard } from "./node-card";
  * Left grid pans its origin diagonally. Right grid densifies its subdivisions
  * from 1 to 5 and has a contrasting subStroke.
  */
-export class LineGridScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const panRef = createRef<LineGrid>();
         const fineRef = createRef<LineGrid>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'LineGrid',
                 stage: 'row',
@@ -58,5 +57,4 @@ export class LineGridScene extends Scene {
             fineRef().to({ subdivisions: 1 }, 1.5, easeInOutQuad),
         );
         yield* wait(0.5);
-    }
-}
+});

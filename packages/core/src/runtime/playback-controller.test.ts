@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PlaybackController, ControllerParams } from '@/runtime/playback-controller';
+import { Precomp } from '@/runtime/precompisition';
 import {
     FakeScene,
     FakeNode,
@@ -24,18 +25,22 @@ function makeController(yieldCount = 10, fps = 10) {
     const audio = new FakeAudioDevice();
     const storage = new FakeStorageAdapter();
     const rc = new FakeRenderContext();
+    const viewport = { width: 100, height: 50 };
+    const scenes = asScenes([scene]);
+    const measureScope = new FakeMeasureScope();
+    const catalog = asCatalog(new FakeAssetCatalog());
 
     const controller = new PlaybackController({
         renderContext: asRenderContext(rc),
-        measureScope: new FakeMeasureScope(),
+        measureScope,
         storageAdapter: asStorage(storage),
         masterClock: clock,
         audioDevice: audio,
-        assets: asCatalog(new FakeAssetCatalog()),
-        precomposition: undefined,
+        assets: catalog,
+        precomposition: new Precomp(scenes, viewport, fps, catalog, measureScope),
         fps,
-        viewport: { width: 100, height: 50 },
-        scenes: asScenes([scene]),
+        viewport,
+        scenes,
     } as unknown as ControllerParams);
 
     return { controller, scene, clock, audio, storage, rc, child };

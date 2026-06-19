@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad } from "@motion-script/core";
 import { layoutCard } from "./layout-card";
 
 /**
@@ -10,13 +10,12 @@ import { layoutCard } from "./layout-card";
  * border radius. It animates its own size, corner rounding, and color to show
  * that a childless rect is simply a shape, with no layout role at all.
  */
-export class RectWithoutChildrenScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const box = createRef<Rect>();
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'Rect without children (shape)',
                 stage: 'stack',
@@ -34,5 +33,4 @@ export class RectWithoutChildrenScene extends Scene {
         // A childless rect is just a shape: tween its size, rounding, and fill.
         yield* box().to({ width: 560, height: 560, cornerRadius: 280, fill: '#E8617C' }, 2, easeInOutQuad);
         yield* box().to({ width: 300, height: 300, cornerRadius: 24, fill: '#6990DD' }, 2, easeInOutQuad);
-    }
-}
+});

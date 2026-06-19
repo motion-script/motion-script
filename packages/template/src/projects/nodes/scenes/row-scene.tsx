@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Row, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Row, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,15 +8,14 @@ import { nodeCard } from "./node-card";
  * Three coloured tiles laid out left-to-right. Gap expands and contracts,
  * and alignment shifts from centered to top-aligned.
  */
-export class RowScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const rowRef = createRef<Row>();
         const tileRefs = [createRef<Rect>(), createRef<Rect>(), createRef<Rect>()];
         const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Row',
                 stage: 'stack',
@@ -55,5 +54,4 @@ export class RowScene extends Scene {
             tileRefs[1]().to({ height: 180 }, 0.8, easeInOutQuad),
         );
         yield* wait(0.5);
-    }
-}
+});

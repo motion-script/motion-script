@@ -1,12 +1,4 @@
-import {
-    Scene,
-    createRef,
-    Text,
-    wait,
-    parallel,
-    easeOutQuad,
-    easeInOutQuad,
-} from "@motion-script/core";
+import { createScene, createRef, Text, wait, parallel, easeOutQuad, easeInOutQuad } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -18,9 +10,8 @@ const BLUE = '#6990DD';
  * animates it independently (opacity, transform, fill, fontWeight/letterSpacing
  * reshaping), plus two overlapping selections animated in parallel.
  */
-export class TextSelectionScene extends Scene {
-    *build() {
-        this.set({ fill: BG, group: 'column', gap: 60, padding: 80 });
+export default createScene(function* (stage) {
+        stage.set({ fill: BG, group: 'column', gap: 60, padding: 80 });
 
         const find = createRef<Text>();
         const word = createRef<Text>();
@@ -32,11 +23,11 @@ export class TextSelectionScene extends Scene {
             <Text ref={ref} text={text} fontSize={64} fontWeight={500} fill={CREAM} align={'center'} />
         );
 
-        this.add(line(find, 'select pieces of text'));
-        this.add(line(word, 'animate any word'));
-        this.add(line(regex, 'fade 123 numbers 456'));
-        this.add(line(weight, 'embolden the middle'));
-        this.add(line(overlap, 'overlapping selections'));
+        stage.add(line(find, 'select pieces of text'));
+        stage.add(line(word, 'animate any word'));
+        stage.add(line(regex, 'fade 123 numbers 456'));
+        stage.add(line(weight, 'embolden the middle'));
+        stage.add(line(overlap, 'overlapping selections'));
 
         yield* wait(0.4);
 
@@ -62,5 +53,4 @@ export class TextSelectionScene extends Scene {
         );
 
         yield* wait(1);
-    }
-}
+});

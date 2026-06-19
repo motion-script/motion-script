@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Reference, Text, Rect, Image,
+    SceneGenerator, createRef, Text, Rect, Image, Vector2,
     Fills, BlendMode, easeInOutQuad, parallel, sequence, wait,
     Ellipse,
 } from "@motion-script/core";
@@ -37,24 +37,29 @@ function generateColorCircleCoordinates(radius: number, overlapFactor: number = 
  * `blend` mixes against the photo throughout the fade — the blend is visible
  * mid-tween, not just at opacity === 1.
  */
-export abstract class BlendDemoScene extends Scene {
+/** Options for a {@link blendDemo} scene. */
+export interface BlendDemoOpts {
     /**
      * The `mix-blend-mode` keyword this scene demonstrates. Named `mode` (not
      * `blend`) to avoid shadowing the {@link Node.blend} layer-blend prop, which
      * would isolate the whole scene node instead of the per-fill blend we want.
      */
-    abstract readonly mode: BlendMode;
-
+    mode: BlendMode;
     /** Seconds for the opacity 0 -> 1 fade (default 2). */
-    readonly duration: number = 2;
-
+    duration?: number;
     /** Seconds to hold at opacity 1 once the fade completes (default 1). */
-    readonly hold: number = 1;
+    hold?: number;
+}
 
-    *build() {
-        this.set({ fill: 'bg' });
+/**
+ * A parameterized scene generator: each per-mode `?scene` file calls this with
+ * its blend mode (e.g. `createScene(blendDemo({ mode: 'multiply' }))`). One
+ * instance per file keeps the hot-reload boundary intact.
+ */
+export const blendDemo = (opts: BlendDemoOpts): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg' });
 
-        const { mode, duration, hold } = this;
+        const { mode, duration = 2, hold = 1 } = opts;
         const radius = 300;
         const cords = generateColorCircleCoordinates(radius, 0.45);
         const refs = Array.from({ length: 3 }, () => createRef<Rect>());
@@ -68,10 +73,7 @@ export abstract class BlendDemoScene extends Scene {
             // Fills.image('./cat.jpg', { fit: 'fill', blend: mode }),
         ];
 
-        const positions =
-
-
-            this.add(
+        stage.add(
                 <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                     <Text fontFamily={'Pixelify Sans'} text={`Blend: ${mode}`} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                     <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'}>
@@ -97,5 +99,4 @@ export abstract class BlendDemoScene extends Scene {
             parallel(...refs.map(ref => ref().to({ opacity: 1 }, duration, easeInOutQuad))),
             wait(hold),
         );
-    }
-}
+};

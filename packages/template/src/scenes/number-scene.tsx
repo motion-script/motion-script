@@ -1,17 +1,5 @@
 
-import {
-    Scene,
-    createRef,
-    Text,
-    Rect,
-    wait,
-    parallel,
-    easeOutQuart,
-    easeOutQuad,
-
-    tween,
-    FX
-} from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeOutQuart, easeOutQuad, tween, FX } from "@motion-script/core";
 
 const CREAM = '#F5ECD7';
 const COPPER = '#C07840';
@@ -48,9 +36,8 @@ export function* incrementText(
     });
 }
 
-export class NumberScene extends Scene {
-    *build() {
-        this.set({ fill: '#0f0e0d' });
+export default createScene(function* (stage) {
+        stage.set({ fill: '#0f0e0d' });
 
         const GHOSTS = buildGhosts(8, 1.8);
 
@@ -59,7 +46,7 @@ export class NumberScene extends Scene {
         const ghostRefs = GHOSTS.map(() => createRef<Text>());
 
         for (let i = 0; i < GHOSTS.length; i++) {
-            this.add(
+            stage.add(
                 <Text
                     ref={ghostRefs[i]}
                     text={'244'}
@@ -74,7 +61,7 @@ export class NumberScene extends Scene {
             );
         }
 
-        this.add(
+        stage.add(
             <Rect group={'column'} gap={0}>
                 <Text
                     ref={mainNumber}
@@ -113,5 +100,4 @@ export class NumberScene extends Scene {
         );
 
         yield* wait(1.5);
-    }
-}
+});

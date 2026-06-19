@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -9,14 +9,13 @@ import { layoutCard, tile } from "./layout-card";
  * watch the column reflow — siblings push down to make room as each one
  * expands, the defining behaviour of a vertical flex container.
  */
-export class ColumnScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const refs = [createRef<Rect>(), createRef<Rect>(), createRef<Rect>()];
         const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'group: column',
                 stage: 'column',
@@ -30,5 +29,4 @@ export class ColumnScene extends Scene {
         // Each tile grows in turn; the column reflows its siblings around it.
         yield* parallel(...refs.map((ref) => ref().to({ height: 220 }, 1.5, easeInOutQuad)));
         yield* parallel(...refs.map((ref) => ref().to({ height: 140 }, 1.5, easeInOutQuad)));
-    }
-}
+});

@@ -1,7 +1,5 @@
-import { BlendMode } from "@motion-script/core";
-import { BlendDemoScene } from "./blend-demo";
+import { createScene } from "@motion-script/core";
+import { blendDemo } from "./blend-demo";
 
 /** `difference` blend mode fading in over the photo. */
-export class DifferenceBlendScene extends BlendDemoScene {
-    readonly mode: BlendMode = 'difference';
-}
+export default createScene(blendDemo({ mode: "difference" }));

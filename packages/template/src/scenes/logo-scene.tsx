@@ -1,20 +1,7 @@
-import {
-    Scene,
-    createRef,
-    wait,
-    parallel,
-    Rect,
-    Fills,
-    FX,
-    Text,
-    easeOutQuad,
-    easeInQuad,
-    easeOutBack,
-} from "@motion-script/core";
+import { createScene, createRef, wait, parallel, Rect, Fills, FX, Text, easeOutQuad, easeInQuad, easeOutBack } from "@motion-script/core";
 
-export class LogoScene extends Scene {
-    *build() {
-        this.set({
+export default createScene(function* (stage) {
+        stage.set({
             fill: [
                 'bg',
                 Fills.image('paper.png', { opacity: 0.2, blend: 'overlay', fit: 'fill' }),
@@ -41,7 +28,7 @@ export class LogoScene extends Scene {
             'Animation, done right.',
         ];
 
-        this.add(
+        stage.add(
             <>
                 {/* Title — starts hidden, dropped down and slightly small. */}
                 <Rect
@@ -114,7 +101,7 @@ export class LogoScene extends Scene {
             const next = phrases[(i + 1) % phrases.length];
             wheel().set({ text: next, y: ENTER_FROM });
         }
-        const glitch = this.startSound('glitch.mp3');
+        const glitch = stage.startSound('glitch.mp3');
 
 
         // --- Glitch finale on the lingering title + subtitle. ------------------
@@ -131,8 +118,7 @@ export class LogoScene extends Scene {
             title().to({ effects: FX.chromaticAberration(0, 0) }, 0.1, easeOutQuad),
             wheel().to({ effects: FX.chromaticAberration(0, 0) }, 0.1, easeOutQuad),
         );
-        this.stopSound(glitch);
+        stage.stopSound(glitch);
 
         yield* wait(1);
-    }
-};
+});

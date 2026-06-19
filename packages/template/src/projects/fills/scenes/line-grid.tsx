@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, LineGrid, Text, Fills, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, LineGrid, Text, Fills, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link LineGrid} node. Two grids sit side by side. `stroke`
@@ -12,16 +12,13 @@ import { Scene, createRef, Rect, LineGrid, Text, Fills, wait } from "@motion-scr
  * opacity. The right grid sets an explicit, contrasting `subStroke` and then
  * animates its subdivisions count up.
  */
-export class LineGridScene extends Scene {
-    readonly label = 'Line Grid';
-
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const fine = createRef<LineGrid>();
         const pan = createRef<LineGrid>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'row'} gap={96} padding={96} align={{ x: 0, y: 0 }}>
                 {/* subStroke omitted → defaults to `stroke` at 50% opacity. `origin`
                     pans the grid behind the fixed rect (tiles to stay full). */}
@@ -61,5 +58,4 @@ export class LineGridScene extends Scene {
         yield* pan().to({ origin: { x: 130, y: 130 } }, 2);
         yield* fine().to({ subdivisions: 4 }, 1.5);
         yield* wait(1);
-    }
-}
+});

@@ -1,7 +1,5 @@
-import { BlendMode } from "@motion-script/core";
-import { BlendDemoScene } from "./blend-demo";
+import { createScene } from "@motion-script/core";
+import { blendDemo } from "./blend-demo";
 
 /** `soft-light` blend mode fading in over the photo. */
-export class SoftLightBlendScene extends BlendDemoScene {
-    readonly mode: BlendMode = 'soft-light';
-}
+export default createScene(blendDemo({ mode: "soft-light" }));

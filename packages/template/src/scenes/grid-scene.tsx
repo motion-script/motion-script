@@ -1,14 +1,13 @@
-import { Scene, createRef, Rect, Text, Grid, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, Grid, wait } from "@motion-script/core";
 
 const COLORS = ["#e07b54", "#5ea8d8", "#6bcc8a", "#c97dd4", "#e8c84a", "#d45e6e"];
 
-export class GridScene extends Scene {
-    *build() {
-        this.set({ fill: "#0D0F15", padding: 80 });
+export default createScene(function* (stage) {
+        stage.set({ fill: "#0D0F15", padding: 80 });
 
         const grid = createRef<Grid>();
 
-        this.add(
+        stage.add(
             <Grid
                 ref={grid}
                 columns={3}
@@ -55,5 +54,4 @@ export class GridScene extends Scene {
         yield* grid().to({ columns: 3 }, 0.6);
 
         yield* wait(1);
-    }
-}
+});

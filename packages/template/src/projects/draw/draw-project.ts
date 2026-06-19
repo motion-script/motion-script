@@ -1,11 +1,9 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    LocalSpaceScene,
-    ParentSpaceScene,
-    GlobalSpaceScene,
-    DrawMaskScene,
-} from './scenes';
+import localSpace from './scenes/local-space?scene';
+import parentSpace from './scenes/parent-space?scene';
+import globalSpace from './scenes/global-space?scene';
+import drawMask from './scenes/mask?scene';
 
 /**
  * A project that exercises the draw-command API. Every scene paints one complex
@@ -28,10 +26,10 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new LocalSpaceScene(),
-        new ParentSpaceScene(),
-        new GlobalSpaceScene(),
-        new DrawMaskScene(),
+        localSpace,
+        parentSpace,
+        globalSpace,
+        drawMask,
     ],
     theme: {
         'bg': '#0D0F15',

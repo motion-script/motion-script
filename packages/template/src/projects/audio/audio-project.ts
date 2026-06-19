@@ -1,18 +1,16 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    OriginalScene,
-    GainScene,
-    LowPassScene,
-    HighPassScene,
-    TremoloScene,
-    SpeedScene,
-    EchoScene,
-    MultipleFiltersScene,
-    PlaySoundScene,
-    StartStopSoundScene,
-    MultipleSoundsScene,
-} from './scenes';
+import original from './scenes/original?scene';
+import gain from './scenes/gain?scene';
+import lowpass from './scenes/lowpass?scene';
+import highpass from './scenes/highpass?scene';
+import tremolo from './scenes/tremolo?scene';
+import speed from './scenes/speed?scene';
+import echo from './scenes/echo?scene';
+import multipleFilters from './scenes/multiple-filters?scene';
+import playSound from './scenes/play-sound?scene';
+import startStopSound from './scenes/start-stop-sound?scene';
+import multipleSounds from './scenes/multiple-sounds?scene';
 
 /**
  * A project that walks through every audio filter (one scene each, plus a
@@ -33,17 +31,17 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new OriginalScene(),
-        new GainScene(),
-        new LowPassScene(),
-        new HighPassScene(),
-        new TremoloScene(),
-        new SpeedScene(),
-        new EchoScene(),
-        new MultipleFiltersScene(),
-        new PlaySoundScene(),
-        new StartStopSoundScene(),
-        new MultipleSoundsScene(),
+        original,
+        gain,
+        lowpass,
+        highpass,
+        tremolo,
+        speed,
+        echo,
+        multipleFilters,
+        playSound,
+        startStopSound,
+        multipleSounds,
     ],
     theme: {
         'bg': '#0D0F15',

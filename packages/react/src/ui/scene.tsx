@@ -69,6 +69,14 @@ export interface FrameHandle {
     getSceneDurations: () => number[];
     /** Errors raised while building the scene graph, if any. */
     getBuildErrors: () => BuildError[];
+    /**
+     * Hot-reload a single scene in place (dev-server `?scene` HMR). Re-runs only
+     * the edited scene's precomp, swaps it into the live controller without
+     * tearing down the render surface, and repaints the current frame. Returns
+     * the matched scene index, or -1 if no slot matched (caller can fall back to
+     * a full reload). No-op before the controller mounts.
+     */
+    hotReplaceScene: (scene: Scene) => number;
 }
 
 /**
@@ -202,6 +210,18 @@ export function MotionPlayer({
             getDuration: () => controllerRef.current?.totalDuration ?? 0,
             getSceneDurations: () => controllerRef.current?.tracks.slice() ?? [],
             getBuildErrors: () => controllerRef.current?.buildErrors ?? [],
+            hotReplaceScene: (scene: Scene) => {
+                const pc = controllerRef.current;
+                if (!pc) return -1;
+                const index = pc.replaceScene(scene);
+                if (index < 0) return -1;
+                // Surface any new build error from the edited scene, and refresh
+                // durations/tree via the loading cycle so the timeline updates.
+                onBuildErrorsRef.current?.(pc.buildErrors);
+                onLoadingChangeRef.current?.(true);
+                onLoadingChangeRef.current?.(false);
+                return index;
+            },
         }),
         [],
     );

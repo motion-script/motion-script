@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect, Ellipse, BooleanGroup,
+    createScene, createRef, Text, Rect, Ellipse, BooleanGroup,
     Fills, BooleanOperation, easeInOutQuad, parallel,
 } from "@motion-script/core";
 
@@ -10,6 +10,13 @@ interface OpSpec {
     op: BooleanOperation;
     label: string;
 }
+
+const OPS: OpSpec[] = [
+    { op: 'union', label: 'Union' },
+    { op: 'subtract', label: 'Subtract' },
+    { op: 'intersect', label: 'Intersect' },
+    { op: 'exclude', label: 'Exclude' },
+];
 
 /**
  * Walks through every Figma-style boolean operation in one scene. A 2x2 grid
@@ -22,18 +29,8 @@ interface OpSpec {
  * stays a blob, intersect vanishes when they separate, subtract bites a
  * crescent, and exclude punches out the shared core.
  */
-export class BooleanOperatorScene extends Scene {
-    readonly label = 'Boolean Operations';
-
-    private readonly ops: OpSpec[] = [
-        { op: 'union', label: 'Union' },
-        { op: 'subtract', label: 'Subtract' },
-        { op: 'intersect', label: 'Intersect' },
-        { op: 'exclude', label: 'Exclude' },
-    ];
-
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const radius = 200;
         // Horizontal offset of each circle from its cell center. The pair
@@ -41,7 +38,7 @@ export class BooleanOperatorScene extends Scene {
         const spread = 70;
 
         // Two refs per cell (left + right circle) so every op animates in sync.
-        const cellRefs = this.ops.map(() => ({
+        const cellRefs = OPS.map(() => ({
             left: createRef<Ellipse>(),
             right: createRef<Ellipse>(),
         }));
@@ -68,17 +65,17 @@ export class BooleanOperatorScene extends Scene {
             );
         };
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={'Boolean Operations'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={48}>
                     <Rect width={'fill'} height={'fill'} group={'row'} gap={48}>
-                        {cell(this.ops[0], 0)}
-                        {cell(this.ops[1], 1)}
+                        {cell(OPS[0], 0)}
+                        {cell(OPS[1], 1)}
                     </Rect>
                     <Rect width={'fill'} height={'fill'} group={'row'} gap={48}>
-                        {cell(this.ops[2], 2)}
-                        {cell(this.ops[3], 3)}
+                        {cell(OPS[2], 2)}
+                        {cell(OPS[3], 3)}
                     </Rect>
                 </Rect>
             </Rect>
@@ -96,5 +93,4 @@ export class BooleanOperatorScene extends Scene {
         // up so the scene loops cleanly.
         yield* animate(wide);
         yield* animate(spread);
-    }
-}
+});

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Text, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, easeInOutQuad, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -14,14 +14,13 @@ import { layoutCard, tile } from "./layout-card";
  * space between them slides back and forth while every nested child reflows to
  * follow — showing that layout propagates cleanly down the tree.
  */
-export class NestedScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const left = createRef<Rect>();
         const right = createRef<Rect>();
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'Nested layouts',
                 stage: 'stack',
@@ -58,5 +57,4 @@ export class NestedScene extends Scene {
             left().to({ flex: 1 }, 2, easeInOutQuad),
             right().to({ flex: 3 }, 2, easeInOutQuad),
         );
-    }
-}
+});

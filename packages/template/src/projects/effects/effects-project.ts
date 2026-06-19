@@ -1,23 +1,21 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    BlurScene,
-    DirectionalBlurScene,
-    BackgroundBlurScene,
-    GrayscaleScene,
-    PixelateScene,
-    BulgeScene,
-    MagnifyScene,
-    BloomScene,
-    VintageScene,
-    ChromaticAberrationScene,
-    ScatterScene,
-    PosterizeScene,
-    FrostedScene,
-    RetroVhsScene,
-    InvertScene,
-    MotionBlurScene,
-} from './scenes';
+import blur from './scenes/blur?scene';
+import directionalBlur from './scenes/directional-blur?scene';
+import backgroundBlur from './scenes/background-blur?scene';
+import grayscale from './scenes/grayscale?scene';
+import pixelate from './scenes/pixelate?scene';
+import bulge from './scenes/bulge?scene';
+import magnify from './scenes/magnify?scene';
+import bloom from './scenes/bloom?scene';
+import vintage from './scenes/vintage?scene';
+import chromaticAberration from './scenes/chromatic-aberration?scene';
+import scatter from './scenes/scatter?scene';
+import posterize from './scenes/posterize?scene';
+import frosted from './scenes/frosted?scene';
+import retroVhs from './scenes/retro-vhs?scene';
+import invert from './scenes/invert?scene';
+import motionBlur from './scenes/motion-blur?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
@@ -34,22 +32,22 @@ export default createProject({
         height: 1080 - 240,
     },
     scenes: [
-        new BlurScene(),
-        new DirectionalBlurScene(),
-        new BackgroundBlurScene(),
-        new GrayscaleScene(),
-        new PixelateScene(),
-        new BulgeScene(),
-        new MagnifyScene(),
-        new BloomScene(),
-        new VintageScene(),
-        new ChromaticAberrationScene(),
-        new ScatterScene(),
-        new PosterizeScene(),
-        new FrostedScene(),
-        new RetroVhsScene(),
-        new InvertScene(),
-        new MotionBlurScene(),
+        blur,
+        directionalBlur,
+        backgroundBlur,
+        grayscale,
+        pixelate,
+        bulge,
+        magnify,
+        bloom,
+        vintage,
+        chromaticAberration,
+        scatter,
+        posterize,
+        frosted,
+        retroVhs,
+        invert,
+        motionBlur,
     ],
     theme: {
         'bg': '#0D0F15',

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, Rect, Text, Fills, wait } from "@motion-script/core";
+import { SceneGenerator, Rect, Text, Fills, wait } from "@motion-script/core";
 import type { ImageFillMode } from "@motion-script/core";
 
 /**
@@ -22,22 +22,20 @@ export interface VideoFillSpec {
 
 export const SAMPLE_VIDEO = 'video.mp4';
 
-export abstract class VideoFillScene extends Scene {
-    abstract readonly spec: VideoFillSpec;
+/** A parameterized scene generator: per-video `?scene` files call this with their
+ *  {@link VideoFillSpec}, e.g. `createScene(videoFill({ label: 'Basic', mode: 'fit' }))`. */
+export const videoFill = (spec: VideoFillSpec): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg' });
 
-    *build() {
-        this.set({ fill: 'bg' });
+        const { label, mode = 'fill', fill, duration = 4 } = spec;
+        const fillChain = fill ?? Fills.video(SAMPLE_VIDEO, { fit: mode, loop: 'forward' });
 
-        const { label, mode = 'fill', fill, duration = 4 } = this.spec;
-        const videoFill = fill ?? Fills.video(SAMPLE_VIDEO, { fit: mode, loop: 'forward' });
-
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
-                <Rect width={'fill'} height={'fill'} cornerRadius={32} fill={videoFill} />
+                <Rect width={'fill'} height={'fill'} cornerRadius={32} fill={fillChain} />
             </Rect>
         );
 
         yield* wait(duration);
-    }
-}
+};

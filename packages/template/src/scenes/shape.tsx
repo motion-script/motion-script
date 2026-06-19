@@ -1,4 +1,4 @@
-import { Scene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOutQuad, easeOutBack, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOutQuad, easeOutBack, easeOutQuad } from "@motion-script/core";
 
 const easeBack = easeOutBack();
 
@@ -16,9 +16,8 @@ const LINE_POINTS = [
   { x: SIZE / 2, y: SIZE },
 ];
 
-export class ShapeScene extends Scene {
-  *build() {
-    this.set({ fill: "#0D0F15", padding: 80 });
+export default createScene(function* (stage) {
+    stage.set({ fill: "#0D0F15", padding: 80 });
 
     // Polygon refs
     const polygonStroke = createRef<Polygon>();
@@ -63,7 +62,7 @@ export class ShapeScene extends Scene {
       </Rect>
     );
 
-    this.add(
+    stage.add(
       <Grid columns={3} gap={20} width={"fill"} height={"fill"}>
         {cell("Polygon", <>
           <Polygon ref={polygonStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={3} cornerRadius={0} />
@@ -194,5 +193,4 @@ export class ShapeScene extends Scene {
     );
 
     yield* wait(0.5);
-  }
-};
+});

@@ -1,9 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import {
-    Scene, createRef, Text, Rect, Ellipse, Image, MaskGroup,
-    easeInOutQuad, parallel, sequence,
-} from "@motion-script/core";
+import { createScene, createRef, Text, Rect, Ellipse, Image, MaskGroup, easeInOutQuad, parallel, sequence } from "@motion-script/core";
 
 /**
  * Shows a {@link MaskGroup} clipping content with an animated mask shape.
@@ -15,18 +12,15 @@ import {
  * and pulsing in size) so the reveal is in constant motion, demonstrating that
  * the mask is a live, animatable node rather than a static clip.
  */
-export class MaskScene extends Scene {
-    readonly label = 'Mask Group';
-
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const maskRef = createRef<Ellipse>();
         const size = 520;
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={"Mask Group"} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
                     <MaskGroup mode={'alpha'}>
                         {/* First child = mask. The moving circle reveals the photo. */}
@@ -57,5 +51,4 @@ export class MaskScene extends Scene {
                 maskRef().to({ width: size, height: size }, 1.6, easeInOutQuad),
             ),
         );
-    }
-}
+});

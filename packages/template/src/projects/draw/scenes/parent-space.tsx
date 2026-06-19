@@ -1,5 +1,5 @@
-import { FillSpace } from "@motion-script/core";
-import { DrawDemoScene } from "./draw-demo";
+import { createScene } from "@motion-script/core";
+import { drawDemo } from "./draw-demo";
 
 /**
  * `parent`: the gradient resolves against the parent node's layout rect (the
@@ -8,8 +8,4 @@ import { DrawDemoScene } from "./draw-demo";
  * copy of the same gradient fills the card so the slice the figure reveals lines
  * up with the field behind it.
  */
-export class ParentSpaceScene extends DrawDemoScene {
-    readonly space: FillSpace = 'parent';
-    readonly label = 'Fill Space — parent';
-    readonly backdrop = 'parent' as const;
-}
+export default createScene(drawDemo({ space: 'parent', label: 'Fill Space — parent', backdrop: 'parent' }));

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Image, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Image, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,14 +8,13 @@ import { nodeCard } from "./node-card";
  * Three instances of the same image rendered with different fit modes.
  * Corner radius animates in on all three simultaneously.
  */
-export class ImageScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const refs = [createRef<Image>(), createRef<Image>(), createRef<Image>()];
         const fits: Array<'fill' | 'fit' | 'stretch'> = ['fill', 'fit', 'stretch'];
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Image',
                 stage: 'row',
@@ -50,5 +49,4 @@ export class ImageScene extends Scene {
             ...refs.map((ref) => ref().to({ cornerRadius: 0 }, 0.8, easeInOutQuad))
         );
         yield* wait(0.5);
-    }
-}
+});

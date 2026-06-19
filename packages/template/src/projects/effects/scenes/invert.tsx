@@ -1,11 +1,10 @@
 import { Effects as FX } from "@motion-script/core";
-import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
+import { createScene } from "@motion-script/core";
+import { effectDemo } from "./effect-demo";
 
-export class InvertScene extends EffectDemoScene {
-    readonly spec: EffectDemoSpec = {
+export default createScene(effectDemo({
         label: 'Invert',
         from: FX.invert('rgba', 0),
         to: FX.invert('rgba', 1),
         compare: true,
-    };
-}
+    }));

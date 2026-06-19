@@ -9,7 +9,7 @@ import { AssetTrack, PrecompResult } from "@/runtime/precompisition";
  * Wraps a {@link PrecompResult} and delegates storage/audio work to platform adapters.
  */
 export class AssetManager {
-    private readonly precomp: PrecompResult;
+    private precomp: PrecompResult;
     private readonly storageAdapter: StorageAdapter;
     private readonly audioDevice: AudioDevice;
 
@@ -33,6 +33,19 @@ export class AssetManager {
     }
 
     // ─── Public surface ───────────────────────────────────────────────────────
+
+    /**
+     * Swap in a new precomp result (scene hot reload). The manager keeps its
+     * warm loader disposers and in-flight audio fetches so a single-scene edit
+     * doesn't re-fetch unchanged assets; the next loadAt/syncAudio picks up the
+     * new asset windows. Resetting the audio signature forces a reschedule so a
+     * changed scene's audio is re-evaluated against the new timeline.
+     */
+    setPrecomp(precomp: PrecompResult): void {
+        this.precomp = precomp;
+        this.lastAudioRequestKey = "";
+        this.lastAudioSrcs = new Set();
+    }
 
     /**
      * Blocking load for seek and initial render. Waits for every asset whose

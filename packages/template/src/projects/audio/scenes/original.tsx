@@ -1,8 +1,7 @@
-import { AudioDemoScene, AudioDemoSpec } from "./audio-demo";
+import { createScene } from "@motion-script/core";
+import { audioDemo } from "./audio-demo";
 
 /** The unfiltered clip, as a reference to compare the filtered scenes against. */
-export class OriginalScene extends AudioDemoScene {
-    readonly spec: AudioDemoSpec = {
+export default createScene(audioDemo({
         label: 'Original',
-    };
-}
+    }));

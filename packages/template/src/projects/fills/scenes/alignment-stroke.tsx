@@ -1,5 +1,6 @@
-import { Fills, sequence, easeInOutQuad, Rect } from "@motion-script/core";
-import { StrokeCardScene } from "./stroke-card";
+/** @jsxImportSource @motion-script/core/jsx */
+
+import { createScene, Fills, Rect } from "@motion-script/core";
 
 /**
  * Sweeps a thick stroke's `align` across its full range so you can see where
@@ -13,19 +14,15 @@ import { StrokeCardScene } from "./stroke-card";
  * placement obvious as it animates. `align` lerps numerically, so the band
  * slides smoothly outward rather than snapping.
  */
-export class AlignmentStrokeScene extends StrokeCardScene {
-    readonly label = 'Stroke Alignment';
-
-    *build() {
-        this.set({ group: 'row', gap: 40, padding: 120 })
-        // A thick stroke painted inside the edge to start.
-        this.add(<>
-            <Rect fill={Fills.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'inside' }} />
-            <Rect fill={Fills.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'center' }} />
-            <Rect fill={Fills.color('#161a21')} height={320} width={320}
-                stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'outside' }} />
-        </>)
-    }
-}
+export default createScene(function* (stage) {
+    stage.set({ fill: 'bg', group: 'row', gap: 40, padding: 120 });
+    // A thick stroke painted inside the edge to start.
+    stage.add(<>
+        <Rect fill={Fills.color('#161a21')} height={320} width={320}
+            stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'inside' }} />
+        <Rect fill={Fills.color('#161a21')} height={320} width={320}
+            stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'center' }} />
+        <Rect fill={Fills.color('#161a21')} height={320} width={320}
+            stroke={{ weight: 16, fill: Fills.color('#6990DD', { opacity: 0.3 }), align: 'outside' }} />
+    </>);
+});

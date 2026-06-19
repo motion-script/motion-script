@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Path, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Path, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,15 +8,14 @@ import { nodeCard } from "./node-card";
  * Three SVG paths with `end` animated from 0→1 to draw them on.
  * Left: a triangle. Center: a wave. Right: a heart.
  */
-export class PathScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const triRef = createRef<Path>();
         const waveRef = createRef<Path>();
         const heartRef = createRef<Path>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Path',
                 stage: 'row',
@@ -64,5 +63,4 @@ export class PathScene extends Scene {
             heartRef().to({ end: 0 }, 1.0, easeInOutQuad),
         );
         yield* wait(0.3);
-    }
-}
+});

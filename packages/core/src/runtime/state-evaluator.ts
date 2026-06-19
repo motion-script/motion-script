@@ -201,6 +201,53 @@ export class StateEvaluator {
         this._currentFrame = clampedFrame;
     }
 
+    /**
+     * Swap a single scene in place (hot reload). Disposes the old scene at
+     * `index`, installs `newScene`, and recomputes every slot's global frame
+     * range from `tracks` (the replaced scene's new duration shifts everything
+     * downstream). Only the replaced slot's generator is dropped — untouched
+     * slots keep their cached generators, so scenes ≠ index never re-run.
+     *
+     * @param index     Index of the scene to replace.
+     * @param newScene  The edited scene instance to install.
+     * @param tracks    New per-scene frame counts in timeline order.
+     */
+    replaceScene(index: number, newScene: Scene, tracks: number[]): void {
+        const slot = this.slots[index];
+        if (!slot) return;
+
+        const wasCurrent = this._currentScene === slot.scene;
+
+        // Install the new scene; the old one is owned by the project config, but
+        // its prior signals/generator state are stale — dispose to free them.
+        const oldScene = slot.scene;
+        newScene.set({ width: this.viewport.width, height: this.viewport.height });
+        newScene.setViewport(this.viewport);
+        this.scenes[index] = newScene;
+        slot.scene = newScene;
+        slot.generator = null;
+        slot.localFrame = -1;
+        if (oldScene !== newScene) oldScene.dispose();
+
+        // Recompute every slot's global frame range from the new track list — the
+        // replaced scene's duration may have changed, shifting all later scenes.
+        let offset = 0;
+        for (let i = 0; i < this.slots.length; i++) {
+            const duration = tracks[i] ?? 0;
+            this.slots[i].startFrame = offset;
+            this.slots[i].endFrame = offset + duration - 1;
+            offset += duration;
+        }
+
+        // If the replaced scene was on screen, point currentScene at the new
+        // instance and force a re-evaluation on the next stateAt (its generator
+        // is null, so the slot is reset and replayed to the current local frame).
+        if (wasCurrent) {
+            this._currentScene = newScene;
+            this._currentFrame = -1;
+        }
+    }
+
     /** Dispose all scenes and drop generator references. */
     dispose(): void {
         for (const slot of this.slots) {

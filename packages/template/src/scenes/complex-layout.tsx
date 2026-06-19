@@ -1,12 +1,11 @@
 
 
-import { Scene, createRef, Text, easeOutQuad, NormalizedColor, Rect, Grid, BuildStage, RichText, FX } from "@motion-script/core";
+import { createScene, createRef, Text, easeOutQuad, NormalizedColor, Rect, Grid, BuildStage, RichText, FX } from "@motion-script/core";
 
 
 
-export class ComplexTextScene extends Scene {
-    *build(stage: BuildStage) {
-        this.set({ fill: 'bg' })
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' })
         const cardColor = 'card';
 
         const autoFitText = createRef<Text>();
@@ -21,7 +20,7 @@ export class ComplexTextScene extends Scene {
             </Rect>
         );
 
-        this.add(<Grid columns={3} gap={40} padding={120} width={'fill'} height={'fill'}>
+        stage.add(<Grid columns={3} gap={40} padding={120} width={'fill'} height={'fill'}>
             {cell('Rich text', <RichText width={'fill'} spans={[{ text: 'Hello world this is ', fill: 'white', fontWeight: 200, fontSize: 30, }, { text: 'hello my name is', fill: 'white' }, { text: ' John', stroke: { fill: 'white', weight: 1.5 }, fontSize: 70, fontWeight: 600 },]} fontSize={40} />)}
             {cell('Autofit text', <Rect width={'fill'} height={'fill'} cornerRadius={20} stroke={{ fill: 'orange', weight: 10 }} padding={40}>
                 <Text ref={autoFitText} fontStyle={'italic'} text={'Hello world! '} width={'fill'} fill={'white'} wrap={true} minFontSize={40} fontSize={'autofit'} align={'center'} />
@@ -36,9 +35,4 @@ export class ComplexTextScene extends Scene {
         yield* autoFitText().append(' Appending more text.', 2);
         yield* autoFitText().prepend('Prepended: ', 2);
         yield* letterSpacingText().to({ letterSpacing: 20 }, 2);
-
-
-    }
-};
-
-
+});

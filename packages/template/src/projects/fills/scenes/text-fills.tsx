@@ -1,23 +1,20 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Text, Fills, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, Fills, easeInOutQuad } from "@motion-script/core";
 
 /**
  * A single {@link Text} node cycling through every fill type — solid color,
  * linear gradient, conic gradient, radial gradient and image — by tweening its
  * `fill` from one to the next, so the glyphs are repainted in place.
  */
-export class TextFillsScene extends Scene {
-    readonly label = 'Text Fills';
-
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const textRef = createRef<Text>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={"Text Fills"} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={32} fill={'card'} padding={80}>
                     <Text
                         ref={textRef}
@@ -41,5 +38,4 @@ export class TextFillsScene extends Scene {
         yield* textRef().to({ fill: Fills.image('./cat.jpg', { fit: 'fill' }) } as any, dur, easeInOutQuad);
         // image -> back to solid color for a clean loop
         yield* textRef().to({ fill: Fills.color('#6990DD') } as any, dur, easeInOutQuad);
-    }
-}
+});

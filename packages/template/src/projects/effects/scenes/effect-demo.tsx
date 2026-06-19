@@ -1,12 +1,9 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Reference, Text, Rect, Ellipse, Image,
+    SceneGenerator, SceneStage, createRef, Reference, Text, Rect, Ellipse, Image,
     EffectChain, SceneEffect, easeOutQuad, parallel,
-    Polygon,
     Node,
-    Grid,
-
 } from "@motion-script/core";
 
 /**
@@ -58,32 +55,32 @@ function toBackdrop(chain: EffectChain): EffectChain {
     return new EffectChain(chain.list.map((e) => ({ ...e, backdrop: true }) as SceneEffect));
 }
 
-export abstract class EffectDemoScene extends Scene {
-    /** Declared by each concrete effect scene. */
-    abstract readonly spec: EffectDemoSpec;
+/**
+ * A parameterized scene generator: each per-effect `?scene` file calls this with
+ * its {@link EffectDemoSpec} (e.g. `createScene(effectDemo({ label, from, to }))`).
+ */
+export const effectDemo = (spec: EffectDemoSpec): SceneGenerator => function* (stage) {
+    stage.set({ fill: '#F1E2C3' });
+    const { label, from, to, background = false, compare = false, duration = 3 } = spec;
 
-    *build() {
-        this.set({ fill: '#F1E2C3' });
-        const { label, from, to, background = false, compare = false, duration = 3 } = this.spec;
-
-        if (compare && !background) {
-            yield* this.buildComparison(label, from, to, duration);
-            return;
-        }
-
-        if (background) {
-            yield* this.buildBackground(label, from, to, duration);
-            return;
-        }
-
-        yield* this.buildDirect(label, from, to, duration);
+    if (compare && !background) {
+        yield* buildComparison(stage, label, from, to, duration);
+        return;
     }
 
-    /** Single centred card: the effect applied directly to a cat.jpg image. */
-    private *buildDirect(label: string, from: EffectChain, to: EffectChain, duration: number) {
-        const imgRef: Reference<any> = createRef<Node>();
+    if (background) {
+        yield* buildBackground(stage, label, from, to, duration);
+        return;
+    }
 
-        this.add(
+    yield* buildDirect(stage, label, from, to, duration);
+};
+
+/** Single centred card: the effect applied directly to a cat.jpg image. */
+function* buildDirect(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+    const imgRef: Reference<any> = createRef<Node>();
+
+    stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
                 <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} align={'center'} />
                 <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20}>
@@ -100,10 +97,10 @@ export abstract class EffectDemoScene extends Scene {
      * so backdrop-reading effects (blur backdrop, magnify) have visible content
      * beneath the affected node.
      */
-    private *buildBackground(label: string, from: EffectChain, to: EffectChain, duration: number) {
-        const overlayRef: Reference<any> = createRef<Node>();
+function* buildBackground(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+    const overlayRef: Reference<any> = createRef<Node>();
 
-        this.add(
+    stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
                 <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} align={'center'} />
                 <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
@@ -121,13 +118,13 @@ export abstract class EffectDemoScene extends Scene {
      * to the node's content (left) and to the backdrop beneath the node (right),
      * both animating from → to in lock-step.
      */
-    private *buildComparison(label: string, from: EffectChain, to: EffectChain, duration: number) {
-        const directRef: Reference<any> = createRef<Node>();
-        const backdropRef: Reference<any> = createRef<Node>();
-        const backdropFrom = toBackdrop(from);
-        const backdropTo = toBackdrop(to);
+function* buildComparison(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+    const directRef: Reference<any> = createRef<Node>();
+    const backdropFrom = toBackdrop(from);
+    const backdropTo = toBackdrop(to);
+    void backdropFrom; void backdropTo;
 
-        this.add(
+    stage.add(
             <Rect width={'fill'} height={'fill'} group={'row'} padding={120} gap={120}>
                 {/* Left — effect applied directly to the node's own content. */}
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={24}>
@@ -158,5 +155,4 @@ export abstract class EffectDemoScene extends Scene {
             directRef().to({ effects: to }, duration, easeOutQuad),
             //backdropRef().to({ effects: backdropTo }, duration, easeOutQuad),
         );
-    }
 }

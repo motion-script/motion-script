@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Grid, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,14 +8,13 @@ import { nodeCard } from "./node-card";
  * A 3-column grid of cards. Animates `columns` from 3 → 2, then gap expansion,
  * and a colSpan spanning cell.
  */
-export class GridScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const gridRef = createRef<Grid>();
         const palette = ['#6990DD', '#E8617C', '#F5C26B', '#C77DFF', '#4CAF82', '#FF8C42'];
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Grid',
                 stage: 'stack',
@@ -46,5 +45,4 @@ export class GridScene extends Scene {
         yield* gridRef().to({ columns: 2 }, 1.2, easeInOutQuad);
         yield* gridRef().to({ columns: 3, gap: 20 }, 1.2, easeInOutQuad);
         yield* wait(0.5);
-    }
-}
+});

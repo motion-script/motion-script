@@ -1,18 +1,38 @@
 import { Size2D } from "@/attributes/layout/size";
 import { SeedGenerator } from "@/util/random";
+import { FrameGenerator } from "@/tween/generator";
 
 /**
- * Provides per-frame context during the build/evaluation pass of a scene.
+ * The scene-authoring surface a {@link Scene} binds onto its {@link BuildStage}
+ * for the duration of a build pass. Kept as a structural interface (rather than
+ * importing `Scene`/`Node`/`Sound`) so `@/render` doesn't depend on `@/nodes`,
+ * which would be circular. The concrete types are supplied by the Scene that
+ * binds it; callers in scene generators get the real signatures via the
+ * `BuildStage` re-declarations below.
+ */
+export interface SceneContext {
+    add(node: unknown): void;
+    set(props: Record<string, unknown>): void;
+    startSound(src: unknown, opts?: unknown): unknown;
+    stopSound(sound: unknown): void;
+    playSound(src: unknown, opts?: unknown): FrameGenerator;
+    readonly clock: unknown;
+    readonly assets: unknown;
+}
+
+/**
+ * Per-scene authoring + evaluation context handed to a scene's generator.
  *
- * Each scene node receives a `BuildStage` when its properties are being
- * evaluated for a given frame. It exposes:
- * - The canvas `viewport` dimensions and the target `fps`.
- * - A seeded pseudo-random number generator (`random`) for reproducible
- *   randomness across timeline replays.
- * - A smooth value-noise function (`noise`) built on the same seed, useful
- *   for organic motion without discontinuities.
+ * A scene generator (`createScene(function* (stage) { … })`) receives a
+ * `BuildStage`. It exposes two things:
  *
- * `reset()` is called before each timeline replay so that every run produces
+ * - **Authoring** — `add`, `set`, `startSound`/`playSound`/`stopSound`, `clock`,
+ *   `assets`: these forward to the scene currently being built (bound via
+ *   {@link bindScene} by the runtime before driving the generator).
+ * - **Determinism** — the canvas `viewport`, target `fps`, a seeded `random`,
+ *   and value `noise`, so randomness is reproducible across timeline replays.
+ *
+ * `reset()` is called before each timeline replay so every run produces
  * identical results for the same seed.
  */
 export class BuildStage {
@@ -22,9 +42,68 @@ export class BuildStage {
     /** Target frames-per-second of the composition. */
     readonly fps: number;
 
+    /** The scene this stage is currently bound to (see {@link bindScene}). */
+    private _scene: SceneContext | null = null;
+
     constructor(viewport: Size2D, fps: number) {
         this.viewport = viewport;
         this.fps = fps;
+    }
+
+    // ─── Scene binding ────────────────────────────────────────────────────────
+
+    /**
+     * Bind the scene whose generator is about to run, so the authoring methods
+     * (`add`, `set`, sounds, `clock`, `assets`) forward to it. The runtime calls
+     * this before driving each scene's generator; one stage is reused across all
+     * scenes in a pass, re-bound per scene.
+     */
+    bindScene(scene: SceneContext | null): void {
+        this._scene = scene;
+    }
+
+    private get scene(): SceneContext {
+        if (!this._scene) {
+            throw new Error("BuildStage has no bound scene — add()/set()/sounds are only available inside a scene generator.");
+        }
+        return this._scene;
+    }
+
+    // ─── Authoring surface (forwards to the bound scene) ──────────────────────
+
+    /** Add a node (or array of nodes) to the scene's root container. */
+    add(node: unknown): void {
+        this.scene.add(node);
+    }
+
+    /** Set one or more reactive props on the scene's root container. */
+    set(props: Record<string, unknown>): void {
+        this.scene.set(props);
+    }
+
+    /** Start a non-blocking sound on the scene's audio timeline. */
+    startSound(src: unknown, opts?: unknown): unknown {
+        return this.scene.startSound(src, opts);
+    }
+
+    /** Stop a sound started via {@link startSound}. */
+    stopSound(sound: unknown): void {
+        this.scene.stopSound(sound);
+    }
+
+    /** Play a sound, blocking the generator for the clip's duration. */
+    playSound(src: unknown, opts?: unknown): FrameGenerator {
+        return this.scene.playSound(src, opts);
+    }
+
+    /** The scene's clock (scene-relative time). */
+    get clock(): unknown {
+        return this.scene.clock;
+    }
+
+    /** The asset catalog bound to the scene. */
+    get assets(): unknown {
+        return this.scene.assets;
     }
 
     /**

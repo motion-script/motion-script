@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    Scene, createRef, Text, Rect,
+    SceneGenerator, createRef, Text, Rect,
     ChainableAfx, easeInOutQuad, parallel, wait,
 } from "@motion-script/core";
 
@@ -25,18 +25,25 @@ export interface AudioDemoSpec {
     clip?: number;
 }
 
-export abstract class AudioDemoScene extends Scene {
-    /** Declared by each concrete demo scene. */
-    abstract readonly spec: AudioDemoSpec;
+/** Scene-time length of the clip, accounting for any speed filter. */
+function estimateLength(clip: number, filters?: ChainableAfx): number {
+    if (!filters) return clip;
+    const list = Array.isArray(filters) ? filters : [...(filters as Iterable<any>)];
+    let speed = 1;
+    for (const f of list) if (f.type === 'speed' && f.value > 0) speed *= f.value;
+    return clip / speed;
+}
 
-    *build() {
-        this.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
+/** A parameterized scene generator: per-filter `?scene` files call this with
+ *  their {@link AudioDemoSpec}, e.g. `createScene(audioDemo({ label, filters }))`. */
+export const audioDemo = (spec: AudioDemoSpec): SceneGenerator => function* (stage) {
+        stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
 
-        const { label, src = 'song.mp3', filters, clip = 4 } = this.spec;
+        const { label, src = 'song.mp3', filters, clip = 4 } = spec;
 
         const bar = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
                 <Text
                     fontFamily={'Pixelify Sans'}
@@ -57,19 +64,8 @@ export abstract class AudioDemoScene extends Scene {
         // so a sped-up clip visibly finishes sooner and a slowed one lingers.
         // playSound() already divides by the speed multiplier for us.
         yield* parallel(
-            this.playSound(src, { duration: clip, filters }),
-            bar().to({ width: 'fill' } as any, this.estimateLength(clip), easeInOutQuad),
+            stage.playSound(src, { duration: clip, filters }),
+            bar().to({ width: 'fill' } as any, estimateLength(clip, filters), easeInOutQuad),
         );
         yield* wait(0.4);
-    }
-
-    /** Scene-time length of the clip, accounting for any speed filter. */
-    private estimateLength(clip: number): number {
-        const filters = this.spec.filters;
-        if (!filters) return clip;
-        const list = Array.isArray(filters) ? filters : [...(filters as Iterable<any>)];
-        let speed = 1;
-        for (const f of list) if (f.type === 'speed' && f.value > 0) speed *= f.value;
-        return clip / speed;
-    }
-}
+};

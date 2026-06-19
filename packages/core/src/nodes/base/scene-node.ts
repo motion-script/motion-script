@@ -1,202 +1,156 @@
-import { Node, NodeConfig } from "./node";
+import { Node, NodeClock } from "./node";
 import { FrameGenerator } from "@/tween/generator";
-import { BuildStage } from "@/render/build-stage";
+import { BuildStage, SceneContext } from "@/render/build-stage";
 import { Rect, RectProps } from "../geometry/rect-node";
+import { Fill } from "@/attributes/shape/fill/chain";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
 import { AssetTracker } from "@/assets/tracker";
-import { property } from "@/attributes/properties/decorator";
+import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
 import { RenderContext } from "@/render/render-context";
 
 /**
- * How a nested scene scales itself into the box it occupies. A subset of
- * {@link ImageFit} — `tile` is excluded (a rendered scene has no shader-tiling
- * equivalent). Any other value is treated as `'fit'`.
+ * The context a scene generator is given. It is the {@link BuildStage} (canvas
+ * `viewport`, `fps`, seeded `random`/`noise`) augmented with the scene-authoring
+ * surface, all typed precisely:
+ *
+ *   export default createScene(function* (stage) {
+ *     stage.set({ fill: 'bg' });
+ *     stage.add(<Rect … />);
+ *     yield* stage.playSound('x.mp3');
+ *   });
+ *
+ * At runtime this is a single `BuildStage` instance with the current scene bound
+ * onto it; the precise method signatures here override the structural ones the
+ * stage declares so authors get real types.
  */
-export type SceneFit = 'fit' | 'fill' | 'stretch';
-
-export type BaseSceneConfig = NodeConfig<any, RectProps> & {
-    /** Child scenes used for asset preloading and composite sequencing. */
-    scenes?: Scene[];
-    /**
-     * When set, a scene nested inside another scene acts almost like an image:
-     * it lays its children out against the *full viewport* (as if it were the
-     * top-level scene), renders that whole world, then scales it to fit the box
-     * it occupies — `'fit'` (contain), `'fill'` (cover), or `'stretch'`
-     * (distort). Unset (default) keeps the old behaviour: the scene lays out
-     * against its own cell and its content reflows.
-     */
-    fit?: SceneFit;
+export type SceneStage = Omit<BuildStage, 'add' | 'set' | 'startSound' | 'stopSound' | 'playSound' | 'clock' | 'assets'> & {
+    /** Add a node (or array of nodes) to the scene's root container. */
+    add(node: Node | Node[]): void;
+    /** Set one or more reactive props on the scene's root container. */
+    set(props: { [K in keyof RectProps]?: RectProps[K] | (() => RectProps[K]) }): void;
+    /** Start a non-blocking sound on the scene's audio timeline. */
+    startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound;
+    /** Stop a sound started via {@link startSound}. */
+    stopSound(sound: Sound): void;
+    /** Play a sound, blocking the generator for the clip's duration. */
+    playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator;
+    /** The scene's clock (scene-relative time). */
+    readonly clock: Readonly<NodeClock>;
+    /** The asset catalog bound to the scene. */
+    readonly assets: AssetCatalog;
 };
 
+/** A scene's body: a generator factory given the {@link SceneStage}. */
+export type SceneGenerator = (stage: SceneStage) => FrameGenerator;
+
 /**
- * Compute the per-axis scale that fits a `viewport`-sized world into `cell`.
- * Mirrors the image-fit scale math (`computeImageMatrix` in the web package):
- * `fit` = contain (min), `fill` = cover (max), `stretch` = per-axis. Both the
- * cell and the world are centred at the same origin, so no translation is
- * needed — scaling about the origin keeps the world centred in the cell.
+ * A self-contained unit of a project's timeline.
+ *
+ * A scene is **not a node** and is **not composed**. It owns a root {@link Rect}
+ * (a viewport-sized world container) and a generator that builds into it. This
+ * is what makes scene-level hot reloading work: each scene file is its own HMR
+ * boundary (`import scene from './scene?scene'`), and a scene can be swapped in
+ * place without rebuilding the rest of the timeline.
+ *
+ * Authored with {@link createScene} — you never construct one directly:
+ *
+ *   // scenes/intro.tsx
+ *   export default createScene(function* (stage) {
+ *     stage.set({ fill: 'bg' });
+ *     stage.add(<Rect … />);
+ *     yield* …;
+ *   });
+ *
+ * The runtime drives a scene through `reset → bindAssets → ellapse → build →
+ * layout → render → prepareAssets → dispose`, each forwarding to the root.
+ * The scene also implements {@link SceneContext} so a {@link BuildStage} can
+ * bind it and route `add`/`set`/sounds back here.
  */
-export function computeSceneFit(
-    fit: SceneFit,
-    viewport: Size2D,
-    cell: { width: number; height: number },
-): { scaleX: number; scaleY: number } {
-    const W = viewport.width || 1;
-    const H = viewport.height || 1;
-    const fx = cell.width / W;
-    const fy = cell.height / H;
-    if (fit === 'stretch') return { scaleX: fx, scaleY: fy };
-    if (fit === 'fill') { const s = Math.max(fx, fy); return { scaleX: s, scaleY: s }; }
-    // 'fit' (contain) — also the fallback for any unexpected value.
-    const s = Math.min(fx, fy);
-    return { scaleX: s, scaleY: s };
-}
+export class Scene implements SceneContext {
 
-export abstract class Scene extends Rect {
+    /** The world container this scene builds into. Viewport-sized, top-level. */
+    readonly root: Rect;
 
-    /** Child scenes declared up-front. Used by buildChildren() and asset preloading. */
-    readonly scenes: Scene[];
+    /** The generator body supplied to {@link createScene}. */
+    private readonly generator: SceneGenerator;
 
     /**
-     * When set, a scene nested in another scene lays out against the full
-     * viewport and scales to fit its cell. See {@link SceneFit}. Unset on
-     * top-level scenes (they already fill the viewport).
+     * Stable identity of the scene's source module, stamped by the `?scene` Vite
+     * transform (the scene file's path relative to the project root). Used to
+     * route a hot update back to the right timeline slot. `undefined` outside the
+     * dev-server `?scene` pipeline.
      */
-    @property() declare fit?: SceneFit;
+    __sceneHotId?: string;
 
-    /** Sounds created via sound() / playSound() — auto-ticked and auto-prepared. */
+    /** Human-readable name for the timeline/errors. Defaults to "Scene"; the
+     *  `?scene` transform overrides it with the file's basename. */
+    name: string = "Scene";
+
+    /** Sounds created via startSound() / playSound() — auto-ticked and auto-prepared. */
     private _managedSounds: Sound[] = [];
 
-    /** Full viewport this scene fits its world into (set by the framework). */
+    /** Full viewport this scene renders against (set by the playback engine). */
     private _viewport: Size2D | null = null;
 
-    /** The box this scene occupies in its parent, captured during layout(). */
-    private readonly _cell: BoxBounds = { x: 0, y: 0, width: 0, height: 0 };
-
-    constructor(config: BaseSceneConfig = {}) {
-        // `fit` stays in nodeConfig so the base constructor auto-applies it like
-        // any other @property; only `scenes` (not a reactive prop) is stripped.
-        const { scenes, ...nodeConfig } = config;
-        super({
-            width: 'fill',
-            height: 'fill',
-            group: 'stack',
-            ...(nodeConfig as NodeConfig<any, RectProps>),
-        });
-
-        this.scenes = scenes ?? [];
+    constructor(generator: SceneGenerator) {
+        this.generator = generator;
+        // The root keeps the historical scene defaults: it fills the viewport and
+        // stacks its children. A scene generator overrides these with set(...).
+        this.root = new Rect({ width: 'fill', height: 'fill', group: 'stack' });
     }
 
-    /**
-     * The full viewport this scene renders its world against. Set on top-level
-     * scenes by the playback engine; inherited by nested scenes from the nearest
-     * ancestor scene. Used by a `fit` scene to scale its full-viewport world
-     * into its cell.
-     */
+    // ─── Viewport ─────────────────────────────────────────────────────────────
+
+    /** The full viewport this scene renders its world against. */
     get viewportSize(): Size2D | null {
-        if (this._viewport) return this._viewport;
-        // Nested scene: inherit from the nearest ancestor scene.
-        for (let n = this.parent; n; n = n.parent) {
-            if (n instanceof Scene && n._viewport) return n._viewport;
-        }
-        return null;
+        return this._viewport;
     }
 
-    /** Record the full viewport (called by the playback engine for top-level scenes). */
+    /** Record the full viewport (called by the playback engine). */
     setViewport(size: Size2D): void {
         this._viewport = { width: size.width, height: size.height };
     }
 
-    // ---- Fit layout / render ----------------------------------------------
+    // ─── Authoring surface (SceneContext — bound onto the BuildStage) ─────────
 
-    /** The viewport a `fit` scene lays out against; falls back to the cell. */
-    private fitViewport(cell: BoxBounds): Size2D {
-        const vp = this.viewportSize;
-        if (vp && vp.width > 0 && vp.height > 0) return vp;
-        return { width: cell.width, height: cell.height };
-    }
-
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
-        if (!this.fit) { super.layout(rect, scope); return; }
-
-        // Remember the cell we occupy in the parent — applyTransform positions us
-        // there and renderSelf draws our card at that size.
-        this._cell.x = rect.x;
-        this._cell.y = rect.y;
-        this._cell.width = rect.width;
-        this._cell.height = rect.height;
-
-        // Lay our children out against the full viewport, exactly as the playback
-        // engine does for a top-level scene: flex/stack positions are centred
-        // local offsets (independent of rect.x/y), so they form a viewport-sized
-        // world centred at the origin. Drop the measure the parent cached against
-        // the smaller cell first, so Rect.layout recomputes children against the
-        // viewport bounds — otherwise fill/hug children would size to the cell.
-        this.invalidateMeasure();
-        const vp = this.fitViewport(rect);
-        super.layout({ x: 0, y: 0, width: vp.width, height: vp.height }, scope);
-
-        // super.layout() set layoutRect to the viewport; restore it to the cell so
-        // applyTransform positions us in the parent and renderSelf draws our card
-        // at cell size (Node.layout just stores the rect).
-        Node.prototype.layout.call(this, rect, scope);
-    }
-
-    override renderChildren(ctx: RenderContext): void {
-        if (!this.fit) { super.renderChildren(ctx); return; }
-
-        // The active node transform has already positioned the canvas at the
-        // cell centre. Clip to the cell and scale the viewport-sized world down
-        // to fit, then render the world.
-        const cell = this._cell;
-        const vp = this.fitViewport(cell);
-        const { scaleX, scaleY } = computeSceneFit(this.fit, vp, cell);
-        ctx.beginSceneFit(this.clipSelf(), scaleX, scaleY);
-        super.renderChildren(ctx);
-        ctx.endSceneFit();
-    }
-
-    /** Clear all dynamically-added children and managed sounds, and reset the clock. */
-    reset(): void {
-        // A scene instance is owned by the project config and reused across
-        // playback controllers (StrictMode double-mount, HMR). A prior
-        // controller's dispose() frees this scene's own signals; restore them
-        // from defaults before rebuilding so reads like `this.stroke` are valid.
-        this.reinitProps();
-        for (const child of this.children) child.dispose();
-        this.clearChildren();
-        for (const s of this._managedSounds) s.dispose();
-        this._managedSounds.length = 0;
-    }
-
-    override tick(time: number): void {
-        for (const s of this._managedSounds) s.tick(time);
-    }
-
-    abstract build(stage: BuildStage): FrameGenerator;
-
-    /** Add a node (or array of nodes) as a child of this scene. */
+    /** Add a node (or array of nodes) as a child of the scene's root. */
     add(node: Node | Node[]): void {
         if (Array.isArray(node)) {
-            this.addChildren(node);
+            this.root.addChildren(node);
         } else {
-            this.addChild(node);
+            this.root.addChild(node);
         }
+    }
+
+    /** Set one or more reactive props on the root container. */
+    set(props: { [K in keyof RectProps]?: RectProps[K] | (() => RectProps[K]) }): void {
+        this.root.set(props);
+    }
+
+    /** The root's fill. */
+    get fill(): Fill { return this.root.fill; }
+    set fill(value: Fill) { this.root.fill = value; }
+
+    /** Internal timing state of the root (scene-relative clock). */
+    get clock(): Readonly<NodeClock> {
+        return this.root.clock;
+    }
+
+    /** The asset catalog bound to the scene (via {@link bindAssets}). */
+    get assets(): AssetCatalog {
+        return this.root.assets;
     }
 
     /**
      * Start a sound on the scene's audio timeline without blocking, and return
-     * the {@link Sound} handle. Pair with {@link stopSound} to end playback —
-     * handy for running audio in parallel with visuals without nesting `all()`.
-     *
-     * The returned handle stays managed (auto-ticked, auto-prepared) until the
-     * scene resets, so you can also let a bounded clip stop on its own.
+     * the {@link Sound} handle. Pair with {@link stopSound} to end playback.
      */
     startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound {
         const s = src instanceof Sound ? src : new Sound({ src, ...opts } as SoundProps);
-        // The asset catalog is bound on the node, so the full-length default for
+        // The asset catalog is bound on the scene, so the full-length default for
         // trimEnd can only be resolved here, not at Sound construction time.
         if (s.trimEnd === Infinity && !s.loop) {
             s.trimEnd = this.assets.getMediaDuration(s.src);
@@ -215,12 +169,10 @@ export abstract class Scene extends Rect {
 
     /**
      * Play a sound on the scene's audio timeline. Blocks for the clip's duration.
-     * Use as `yield* this.playSound(...)` inside a scene generator.
+     * Use as `yield* stage.playSound(...)` inside a scene generator.
      */
     *playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator {
         const s = src instanceof Sound ? src : new Sound({ src, ...opts } as SoundProps);
-        // The asset catalog is bound on the node, so the full-length default for
-        // trimEnd can only be resolved here, not at Sound construction time.
         if (s.trimEnd === Infinity && !s.loop) {
             s.trimEnd = this.assets.getMediaDuration(s.src);
         }
@@ -234,40 +186,94 @@ export abstract class Scene extends Rect {
         }
     }
 
+    // ─── Build ────────────────────────────────────────────────────────────────
 
+    /**
+     * Produce this scene's frame generator. Binds this scene onto the stage (so
+     * `stage.add`/`set`/sounds forward here), then runs the authored generator.
+     */
+    build(stage: BuildStage): FrameGenerator {
+        stage.bindScene(this);
+        return this.generator(stage as unknown as SceneStage);
+    }
 
-    override prepare(tracker: AssetTracker): void {
-        super.prepare(tracker);
+    // ─── Runtime lifecycle (forwarders to the root) ───────────────────────────
+
+    /** Clear all dynamically-added children and managed sounds, and reset the clock. */
+    reset(): void {
+        // A scene instance is owned by the project config and reused across
+        // playback controllers (StrictMode double-mount, HMR). A prior
+        // controller's dispose() frees the root's signals; restore them from
+        // defaults before rebuilding so reads like `this.fill` stay valid.
+        this.root.reinit();
+        for (const child of this.root.children) child.dispose();
+        this.root.clearChildren();
+        for (const s of this._managedSounds) s.dispose();
+        this._managedSounds.length = 0;
+    }
+
+    /** Bind the asset catalog to the scene's whole node subtree. */
+    bindAssets(context: AssetCatalog): void {
+        this.root.bindAssets(context);
+    }
+
+    /** Advance the scene's clock and per-frame sampling for the whole subtree. */
+    ellapse(totalTime: number): void {
+        this.root.ellapse(totalTime);
+        for (const s of this._managedSounds) s.tick(totalTime);
+    }
+
+    /** Seed per-frame derived state (motion) without a full ellapse. */
+    sample(): void {
+        this.root.sample();
+    }
+
+    /** Lay the scene's world out against the given (full-viewport) bounds. */
+    layout(rect: BoxBounds, scope: MeasureScope): void {
+        this.root.layout(rect, scope);
+    }
+
+    /** Render the scene's world into `context`. */
+    render(context: RenderContext): void {
+        this.root.render(context);
+    }
+
+    /** Collect this scene's asset requests (nodes + managed sounds). */
+    prepareAssets(tracker: AssetTracker): void {
+        this.root.prepareAssets(tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
     }
 
-    /**
-     * Mount a child scene, run its build() to completion (its frames spliced
-     * into the parent's timeline), then unmount and dispose it. Any nodes the
-     * parent attached before the call are preserved.
-     */
-    private *_buildScene(child: Scene, stage: BuildStage): FrameGenerator {
-        child.reset();
-        this.addChild(child);
-        try {
-            yield* child.build(stage);
-        } finally {
-            this.removeChild(child);
-            child.reset();
-        }
-    }
-
-    /** Run every child scene in order via buildChild(). */
-    *buildAll(stage: BuildStage): FrameGenerator {
-        for (const child of this.scenes) {
-            yield* this._buildScene(child, stage);
-        }
-    }
-
     dispose(): void {
-        super.dispose();
+        this.root.dispose();
         for (const s of this._managedSounds) s.dispose();
         this._managedSounds.length = 0;
-        for (const child of this.scenes) child.dispose();
     }
+}
+
+/**
+ * Create a scene from a generator body. This is the only way to author a scene:
+ *
+ *   // scenes/intro.tsx
+ *   import { createScene, Rect } from '@motion-script/core';
+ *
+ *   export default createScene(function* (stage) {
+ *     stage.set({ fill: 'bg' });
+ *     stage.add(<Rect width={200} height={200} fill="royalblue" />);
+ *     yield* …;
+ *   });
+ *
+ * For a **parameterized** scene, write a function that returns a generator and
+ * call it per `?scene` file (one instance per file keeps the hot-reload boundary
+ * intact):
+ *
+ *   // scenes/card.ts  (shared factory — not a ?scene file)
+ *   export const card = (opts: { color: string }): SceneGenerator =>
+ *     function* (stage) { stage.add(<Rect fill={opts.color} />); yield* …; };
+ *
+ *   // scenes/blue-card.tsx  (a ?scene file → one instance)
+ *   export default createScene(card({ color: 'royalblue' }));
+ */
+export function createScene(generator: SceneGenerator): Scene {
+    return new Scene(generator);
 }

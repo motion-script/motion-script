@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, Ellipse } from "@motion-script/core";
+import { createScene, createRef, Rect, Ellipse } from "@motion-script/core";
 
 /**
  * Demonstrates `node.global` — a node's position resolved into absolute scene
@@ -12,14 +12,13 @@ import { Scene, createRef, Rect, Ellipse } from "@motion-script/core";
  * it lands exactly on circleA regardless of the parent's offset. (Both share the
  * root's origin, so no parent compensation is needed.)
  */
-export class GlobalScene extends Scene {
-    *build() {
-        this.fill = 'bg';
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const circleA = createRef<Rect>();
         const circleB = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <>
                 <Rect x={200} y={40} group={'stack'} rotation={30} >
                     <Rect ref={circleA} rotation={10} x={0} y={80} width={600} height={400} fill={'card'} stroke={{ weight: 2, fill: 'primary' }} />
@@ -33,5 +32,4 @@ export class GlobalScene extends Scene {
                 />
             </>
         );
-    }
-}
+});

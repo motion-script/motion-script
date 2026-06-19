@@ -2,10 +2,8 @@
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { ScriptEmbed } from "./embed";
 import { MotionScriptProvider } from "../src/ui/provider";
-import { ExpensiveScene } from "./scenes/expensive";
 
 const youtubeRes = { width: 1920, height: 1080 };
-const scenes = [new ExpensiveScene(),];
 
 export function App() {
     return (
@@ -14,7 +12,7 @@ export function App() {
                 <ScriptEmbed viewport={youtubeRes} theme={{
                     'bg': '#1e1f21',
                     'card': '#2b2d30'
-                }} fps={60} scenes={scenes} assets={{
+                }} fps={60} scenes={[]} assets={{
                     image: {
                         'background.jpg': {
                             sizeBytes: 501375,

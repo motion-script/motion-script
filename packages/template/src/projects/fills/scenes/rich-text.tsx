@@ -1,20 +1,17 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, Rect, Text, RichText } from "@motion-script/core";
+import { createScene, Rect, Text, RichText } from "@motion-script/core";
 
 /**
  * A {@link RichText} node mixing per-span fill, weight, size and stroke so a
  * single text run carries several distinct styles inline.
  */
-export class RichTextScene extends Scene {
-    readonly label = 'Rich Text';
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
-    *build() {
-        this.set({ fill: 'bg' });
-
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={this.label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={"Rich Text"} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={32} fill={'card'} padding={80}>
                     <RichText
                         width={'fill'}
@@ -28,5 +25,4 @@ export class RichTextScene extends Scene {
                 </Rect>
             </Rect>
         );
-    }
-}
+});

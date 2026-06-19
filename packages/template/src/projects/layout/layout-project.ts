@@ -1,19 +1,16 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    RowScene,
-    ColumnScene,
-    StackScene,
-    GroupMorphScene,
-    RectWithChildrenScene,
-    RectWithoutChildrenScene,
-    NestedScene,
-    GridScene,
-    FlexNodesScene,
-    GlobalScene,
-} from './scenes';
-import { CameraScene } from './scenes/camera';
-import { SceneScaling } from './scenes/scene-scale';
+import global from './scenes/global?scene';
+import camera from './scenes/camera?scene';
+import row from './scenes/row?scene';
+import column from './scenes/column?scene';
+import stack from './scenes/stack?scene';
+import groupMorph from './scenes/group-morph?scene';
+import rectWithChildren from './scenes/rect-with-children?scene';
+import rectWithoutChildren from './scenes/rect-without-children?scene';
+import nested from './scenes/nested?scene';
+import grid from './scenes/grid?scene';
+import flexNodes from './scenes/flex-nodes?scene';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -33,18 +30,17 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new SceneScaling(),
-        new GlobalScene(),
-        new CameraScene(),
-        new RowScene(),
-        new ColumnScene(),
-        new StackScene(),
-        new GroupMorphScene(),
-        new RectWithChildrenScene(),
-        new RectWithoutChildrenScene(),
-        new NestedScene(),
-        new GridScene(),
-        new FlexNodesScene(),
+        global,
+        camera,
+        row,
+        column,
+        stack,
+        groupMorph,
+        rectWithChildren,
+        rectWithoutChildren,
+        nested,
+        grid,
+        flexNodes,
     ],
     theme: {
         'bg': '#0D0F15',

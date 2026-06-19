@@ -1,15 +1,13 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    VideoBasicScene,
-    VideoFitScene,
-    VideoCropScene,
-    VideoFilteredScene,
-    VideoPosterizedScene,
-    VideoEchoedScene,
-    VideoBlendedScene,
-    VideoNodeScene,
-} from './scenes';
+import videoBasic from './scenes/basic?scene';
+import videoFit from './scenes/fit-mode?scene';
+import videoCrop from './scenes/crop-mode?scene';
+import videoFiltered from './scenes/filtered?scene';
+import videoPosterized from './scenes/posterized?scene';
+import videoEchoed from './scenes/echoed?scene';
+import videoBlended from './scenes/blended?scene';
+import videoNode from './scenes/video-node?scene';
 
 /**
  * A project that walks through the video fill: a shape painted with a *playing*
@@ -28,14 +26,14 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new VideoNodeScene(),
-        new VideoBasicScene(),
-        new VideoFitScene(),
-        new VideoCropScene(),
-        new VideoFilteredScene(),
-        new VideoPosterizedScene(),
-        new VideoEchoedScene(),
-        new VideoBlendedScene(),
+        videoNode,
+        videoBasic,
+        videoFit,
+        videoCrop,
+        videoFiltered,
+        videoPosterized,
+        videoEchoed,
+        videoBlended,
     ],
     theme: {
         'bg': '#0D0F15',

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Text, Rect, easeInOutQuad, sequence, wait, parallel } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, easeInOutQuad, sequence, wait, parallel } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -8,15 +8,14 @@ import { nodeCard } from "./node-card";
  * Demonstrates: basic rendering, fontSize animation, fontWeight change,
  * and the append() method typing text character-by-character.
  */
-export class TextScene extends Scene {
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
         const labelRef = createRef<Text>();
         const sizeRef = createRef<Text>();
         const weightRef = createRef<Text>();
 
-        this.add(
+        stage.add(
             nodeCard({
                 label: 'Text',
                 stage: 'row',
@@ -71,5 +70,4 @@ export class TextScene extends Scene {
         );
 
         yield* wait(1);
-    }
-}
+});

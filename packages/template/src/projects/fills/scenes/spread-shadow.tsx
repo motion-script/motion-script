@@ -1,5 +1,6 @@
 import { Fills } from "@motion-script/core";
-import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
+import { createScene } from "@motion-script/core";
+import { shapeDemo } from "./shape-demo";
 
 /**
  * Drop shadow animating `spread`, which grows the shadow's silhouette before it
@@ -7,12 +8,10 @@ import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
  * ellipses and rectangles, whose geometry resizes cleanly; the rounded-rect
  * samples here qualify.
  */
-export class SpreadShadowScene extends ShapeDemoScene {
-    readonly spec: ShapeDemoSpec = {
+export default createScene(shapeDemo({
         label: 'Spread Shadow',
         fillFrom: Fills.color('#161a21'),
         fillTo: Fills.color('#161a21'),
         shadowFrom: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, dx: 0, dy: 0, spread: 0 },
         shadowTo: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, dx: 0, dy: 0, spread: 60 },
-    };
-}
+    }));

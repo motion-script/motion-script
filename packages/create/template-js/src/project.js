@@ -1,8 +1,8 @@
-import { ExampleScene } from "./scenes/example";
+import example from "./scenes/example?scene";
 import { createProject } from '@motion-script/core';
 
 export default createProject({
   name: 'Example Project',
-  scenes: [new ExampleScene()]
+  scenes: [example]
 });
 

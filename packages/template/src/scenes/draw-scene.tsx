@@ -1,4 +1,4 @@
-import { Scene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "@motion-script/core";
 export interface CustomShapeProps extends ShapeProps {
     ratio: number;
     sweep: number;
@@ -76,15 +76,14 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
     }
 }
 
-export class DrawScene extends Scene {
-    *build() {
-        this.set({ fill: ["#e8c584"] })
+export default createScene(function* (stage) {
+        stage.set({ fill: ["#e8c584"] })
 
         const ref = createRef<CustomShape>();
 
 
 
-        this.add(
+        stage.add(
             <CustomShape
                 ref={ref}
 
@@ -99,5 +98,4 @@ export class DrawScene extends Scene {
         );
 
         yield* ref().to({ x: 700 }, 3);
-    }
-};
+});

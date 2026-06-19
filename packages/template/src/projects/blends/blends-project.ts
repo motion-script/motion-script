@@ -1,23 +1,21 @@
 import { createProject } from '@motion-script/core';
 
-import {
-    MultiplyBlendScene,
-    ScreenBlendScene,
-    OverlayBlendScene,
-    DarkenBlendScene,
-    LightenBlendScene,
-    ColorDodgeBlendScene,
-    ColorBurnBlendScene,
-    HardLightBlendScene,
-    SoftLightBlendScene,
-    DifferenceBlendScene,
-    ExclusionBlendScene,
-    HueBlendScene,
-    SaturationBlendScene,
-    ColorBlendScene,
-    LuminosityBlendScene,
-    NormalBlendScene,
-} from './scenes';
+import multiply from './scenes/multiply?scene';
+import screen from './scenes/screen?scene';
+import overlay from './scenes/overlay?scene';
+import darken from './scenes/darken?scene';
+import lighten from './scenes/lighten?scene';
+import colorDodge from './scenes/color-dodge?scene';
+import colorBurn from './scenes/color-burn?scene';
+import hardLight from './scenes/hard-light?scene';
+import softLight from './scenes/soft-light?scene';
+import difference from './scenes/difference?scene';
+import exclusion from './scenes/exclusion?scene';
+import hue from './scenes/hue?scene';
+import saturation from './scenes/saturation?scene';
+import color from './scenes/color?scene';
+import luminosity from './scenes/luminosity?scene';
+import normal from './scenes/normal?scene';
 
 /**
  * A project that walks through every `mix-blend-mode` keyword, one scene
@@ -38,22 +36,22 @@ export default createProject({
         height: 1080,
     },
     scenes: [
-        new MultiplyBlendScene(),
-        new ScreenBlendScene(),
-        new OverlayBlendScene(),
-        new DarkenBlendScene(),
-        new LightenBlendScene(),
-        new ColorDodgeBlendScene(),
-        new ColorBurnBlendScene(),
-        new HardLightBlendScene(),
-        new SoftLightBlendScene(),
-        new DifferenceBlendScene(),
-        new ExclusionBlendScene(),
-        new HueBlendScene(),
-        new SaturationBlendScene(),
-        new ColorBlendScene(),
-        new LuminosityBlendScene(),
-        new NormalBlendScene(),
+        multiply,
+        screen,
+        overlay,
+        darken,
+        lighten,
+        colorDodge,
+        colorBurn,
+        hardLight,
+        softLight,
+        difference,
+        exclusion,
+        hue,
+        saturation,
+        color,
+        luminosity,
+        normal,
     ],
     theme: {
         'bg': '#0D0F15',

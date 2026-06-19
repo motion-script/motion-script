@@ -1,5 +1,5 @@
-import { FillSpace } from "@motion-script/core";
-import { DrawDemoScene } from "./draw-demo";
+import { createScene } from "@motion-script/core";
+import { drawDemo } from "./draw-demo";
 
 /**
  * `global`: the gradient resolves against the render viewport, so it's anchored
@@ -8,8 +8,4 @@ import { DrawDemoScene } from "./draw-demo";
  * covers. A faded copy of the same gradient fills the whole scene so that slice
  * lines up with the field behind it.
  */
-export class GlobalSpaceScene extends DrawDemoScene {
-    readonly space: FillSpace = 'global';
-    readonly label = 'Fill Space — global';
-    readonly backdrop = 'scene' as const;
-}
+export default createScene(drawDemo({ space: 'global', label: 'Fill Space — global', backdrop: 'scene' }));

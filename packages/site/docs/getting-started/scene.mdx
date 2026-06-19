@@ -54,13 +54,15 @@ That's it. You've placed a 200×200 blue square in the center of your scene. Nod
 
 Your scene won't run on its own. A **project** ties one or more scenes together and tells MotionScript how to render them. Every project exports a default config from `createProject`.
 
+Import each scene with the `?scene` suffix and list it directly:
+
 ```ts title="src/project.ts"
 import { createProject } from '@motion-script/core';
-import { MyScene } from './scenes/my-scene';
+import myScene from './scenes/my-scene?scene';
 
 export default createProject({
   name: 'My First Animation',
-  scenes: [new MyScene()],
+  scenes: [myScene],
   viewport: { width: 1920, height: 1080 },
   fps: 60,
 });
@@ -72,6 +74,14 @@ Here's what you're telling MotionScript:
 - `scenes`: the list of scenes to play, in order (just one for now)
 - `viewport`: the size of your video, in pixels
 - `fps`: how many frames per second to render
+
+:::tip Hot reloading
+The `?scene` suffix makes each scene file its own hot-reload boundary. When you
+edit a scene while the player is running, only that scene re-runs — the playhead
+stays put and the rest of the timeline is untouched. You write
+`export class MyScene extends Scene` exactly as before; the suffix gives you back
+a ready-to-use scene, so you list `myScene` (not `new MyScene()`).
+:::
 
 Run your project and you'll see your blue square sitting in the middle of the frame:
 

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { Scene, createRef, Rect, easeInOutQuad, parallel, sequence, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOutQuad, parallel, sequence, wait } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -13,20 +13,18 @@ import { layoutCard, tile } from "./layout-card";
  * Each cell pulses its corner radius in a staggered wave that ripples across
  * the grid, making the regular row/column structure easy to read.
  */
-export class GridScene extends Scene {
-    private readonly size = 3;
-
-    *build() {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        const size = 3;
+        stage.set({ fill: 'bg' });
 
         const palette = ['#6990DD', '#E8617C', '#F5C26B'];
         // One entry per cell, carrying its ref and diagonal index (r + c) so we
         // can ripple the wave across the grid corner-to-corner.
         const cells: { ref: ReturnType<typeof createRef<Rect>>; diag: number }[] = [];
 
-        const rows = Array.from({ length: this.size }, (_, r) => (
+        const rows = Array.from({ length: size }, (_, r) => (
             <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
-                {Array.from({ length: this.size }, (_, c) => {
+                {Array.from({ length: size }, (_, c) => {
                     const ref = createRef<Rect>();
                     cells.push({ ref, diag: r + c });
                     return tile({
@@ -39,7 +37,7 @@ export class GridScene extends Scene {
             </Rect>
         ));
 
-        this.add(
+        stage.add(
             layoutCard({
                 label: 'Grid (column of rows)',
                 stage: 'column',
@@ -60,5 +58,4 @@ export class GridScene extends Scene {
             ),
         );
         yield* parallel(...cells.map(({ ref }) => ref().to({ cornerRadius: 24 }, 1, easeInOutQuad)));
-    }
-}
+});

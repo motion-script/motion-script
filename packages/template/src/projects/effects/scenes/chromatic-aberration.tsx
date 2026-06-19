@@ -1,11 +1,10 @@
 import { Effects as FX } from "@motion-script/core";
-import { EffectDemoScene, EffectDemoSpec } from "./effect-demo";
+import { createScene } from "@motion-script/core";
+import { effectDemo } from "./effect-demo";
 
-export class ChromaticAberrationScene extends EffectDemoScene {
-    readonly spec: EffectDemoSpec = {
+export default createScene(effectDemo({
         label: 'Chromatic aberration',
         from: FX.chromaticAberration(0, 0),
         to: FX.chromaticAberration(8, 0),
         compare: true,
-    };
-}
+    }));

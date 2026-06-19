@@ -1,4 +1,4 @@
-import { Scene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -177,11 +177,10 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
     protected renderSelf(_ctx: RenderContext): void { }
 }
 
-export class ImageGridScene extends Scene {
-    *build() {
-        this.set({ fill: ["#e8c584"] })
+export default createScene(function* (stage) {
+        stage.set({ fill: ["#e8c584"] })
         const ref = createRef<ImageGrid>();
-        this.add(
+        stage.add(
             <>
                 <ImageGrid
                     ref={ref}
@@ -202,5 +201,4 @@ export class ImageGridScene extends Scene {
         yield* ref().to({ effects: FX.bulge(0.05), stroke: { weight: 2 }, rowGap: 10, columnGap: 10, width: 850, height: 850 }, 1.5, easeOutElastic());
         yield* ref().cell(2, 4).to({ x: -400, scale: 5 }, 1, easeOutQuad);
         yield* wait(1);
-    }
-};
+});

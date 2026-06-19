@@ -1,4 +1,4 @@
-import { BuildStage, createRef, Text, Image, easeInOutQuad, Fills, FrameGenerator, parallel, Rect, Scene, wait } from "@motion-script/core";
+import { createScene, BuildStage, createRef, Text, Image, easeInOutQuad, Fills, FrameGenerator, parallel, Rect, wait } from "@motion-script/core";
 import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
 
 /**
@@ -6,16 +6,15 @@ import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
  * solid color via the stroke sample). Exercises cross-type fill lerping —
  * frame 0 should read as the flat color, then resolve into the gradient.
  */
-export class FillArrayLerpScene extends Scene {
-    *build(): FrameGenerator {
-        this.set({ fill: 'bg' });
+export default createScene(function* (stage) {
+        stage.set({ fill: 'bg' });
 
 
 
         const fillRef = createRef<Rect>();
         const strokeRef = createRef<Rect>();
 
-        this.add(
+        stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={'Fill Lerp'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
@@ -39,8 +38,4 @@ export class FillArrayLerpScene extends Scene {
         yield* fillRef().to({ fill: Fills.linearGradient(['#E8617C', '#F5C26B']) }, 1);
         yield* fillRef().to({ fill: Fills.image('cat.jpg', { fit: 'fill' }) }, 1);
         yield* wait(2);
-
-
-    }
-
-}
+});

@@ -1,16 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import {
-    Scene,
-    createRef,
-    Text,
-    Rect,
-    wait,
-    parallel,
-    easeOutQuad,
-    easeInOutQuad,
-    PathBuilder,
-} from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeOutQuad, easeInOutQuad, PathBuilder } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -45,9 +35,8 @@ const straight = (w: number) =>
  * circle, flexed along a wave, and laid on a straight baseline (which reproduces
  * normal one-line text). Each demo is anchored in its own stacked cell.
  */
-export class TextPathScene extends Scene {
-    *build() {
-        this.set({ fill: BG, group: 'row', gap: 0, padding: 80 });
+export default createScene(function* (stage) {
+        stage.set({ fill: BG, group: 'row', gap: 0, padding: 80 });
 
         const ring = createRef<Text>();
         const flex = createRef<Text>();
@@ -68,7 +57,7 @@ export class TextPathScene extends Scene {
             </Rect>
         );
 
-        this.add(cell('around a circle',
+        stage.add(cell('around a circle',
             <Text
                 ref={ring}
                 path={circle(170)}
@@ -79,7 +68,7 @@ export class TextPathScene extends Scene {
             />,
         ));
 
-        this.add(cell('along a wave',
+        stage.add(cell('along a wave',
             <Text
                 ref={flex}
                 path={wave(440, 70)}
@@ -90,7 +79,7 @@ export class TextPathScene extends Scene {
             />,
         ));
 
-        this.add(cell('on a straight baseline',
+        stage.add(cell('on a straight baseline',
             <Text
                 ref={base}
                 path={straight(440)}
@@ -117,5 +106,4 @@ export class TextPathScene extends Scene {
         );
 
         yield* wait(1);
-    }
-}
+});
