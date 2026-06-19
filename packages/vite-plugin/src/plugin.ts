@@ -328,7 +328,16 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     },
 
                     optimizeDeps: {
-                        include: ['@motion-script/canvaskit'],
+                        // Pre-bundle the player (and canvaskit) up front. The player
+                        // ships as ESM but imports a CommonJS dep
+                        // (use-sync-external-store/shim) and externalizes core/react;
+                        // letting Vite optimize it converts that CJS into ESM with
+                        // proper named exports and folds it into one stable chunk, so
+                        // it resolves identically whether the plugin is run from the
+                        // monorepo or installed from npm. Explicitly including it also
+                        // stops Vite from discovering it mid-session and triggering an
+                        // optimizer re-run + full page reload on first load.
+                        include: ['@motion-script/canvaskit', '@motion-script/player'],
                     },
 
                     build: {
