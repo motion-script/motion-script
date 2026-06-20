@@ -16,6 +16,12 @@ import { create } from "zustand";
 
 const EMPTY_MANIFEST: AssetManifest = { image: {}, video: {}, audio: {}, font: {} };
 
+// Vertical (portrait) videos are far easier to work on side-by-side: a tall
+// preview leaves no room for a stacked timeline. Default such projects to the
+// row layout; landscape/square keep the stacked column default.
+const defaultLayoutForViewport = (viewport: Size2D): PlayerLayout =>
+    viewport.height > viewport.width ? "row" : "column";
+
 // One store instance per loaded ProjectConfig (see editor-provider.tsx). On
 // reload, `resetConfig` mutates this store in place rather than recreating it,
 // so UI state (zoom, pan, playback) survives across project reloads. See
@@ -58,10 +64,6 @@ export type EditorState = {
     timelineZoom: number;
     setTimelineZoom: (zoom: number) => void;
     zoomTimelineBy: (delta: number, opts?: { min?: number; max?: number }) => void;
-
-    timelineCollapsed: boolean;
-    setTimelineCollapsed: (collapsed: boolean) => void;
-    toggleTimelineCollapsed: () => void;
 
     playerLayout: PlayerLayout;
     setPlayerLayout: (layout: PlayerLayout) => void;
@@ -197,11 +199,7 @@ export const createEditorStore = (config: ProjectConfig, assets: AssetManifest =
             }));
         },
 
-        timelineCollapsed: false,
-        setTimelineCollapsed: (collapsed) => set(() => ({ timelineCollapsed: collapsed })),
-        toggleTimelineCollapsed: () => set((s) => ({ timelineCollapsed: !s.timelineCollapsed })),
-
-        playerLayout: "column",
+        playerLayout: defaultLayoutForViewport(config.viewport),
         setPlayerLayout: (layout) => set(() => ({ playerLayout: layout })),
         togglePlayerLayout: () => set((s) => ({ playerLayout: s.playerLayout === "column" ? "row" : "column" })),
 

@@ -59,7 +59,6 @@ export function TimelineRuler({
   const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
   const timelineZoom = useEditorStore((s) => s.timelineZoom);
   const isPlaying = useEditorStore((s) => s.isPlaying);
-  const timelineCollapsed = useEditorStore((s) => s.timelineCollapsed);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
 
@@ -504,7 +503,6 @@ export function TimelineRuler({
           </div>
         </div>
 
-        {!timelineCollapsed && (
         <div className="flex-1 flex overflow-hidden">
           {/* Left: node names (virtualized) */}
           <NodeNamesColumn
@@ -536,10 +534,8 @@ export function TimelineRuler({
             scrollRef={(el) => { trackScrollRef.current = el; }}
           />
         </div>
-        )}
 
         {/* Horizontal scrollbar */}
-        {!timelineCollapsed && (
         <div className="flex shrink-0">
           <div style={{ width: NODE_LIST_WIDTH, minWidth: NODE_LIST_WIDTH }} className="shrink-0 border-r border-border bg-panel" />
           <div
@@ -553,7 +549,6 @@ export function TimelineRuler({
             <div style={{ width: fullContentWidth, height: 1 }} />
           </div>
         </div>
-        )}
       </div>
     </div>
   );

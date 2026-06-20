@@ -5,39 +5,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { PlaybackControls } from "@/components/layout/playback-controls";
 import { useEditorStore } from "@/providers/editor-provider";
 
-// EditorToolbar — the timeline's top strip. It carries the collapse arrow, the
-// player-layout switch (column ⇄ row), and the timeline zoom controls. The
-// transport (play/pause, speed, loop, …) lives in PlaybackControls under the
-// video preview instead, so this toolbar's contents are the same in both
-// layouts even though the surrounding chrome differs.
+// EditorToolbar — the timeline's top strip. It carries the player-layout switch
+// (column ⇄ row) and the timeline zoom controls. The transport (play/pause,
+// speed, loop, …) lives in PlaybackControls under the video preview instead, so
+// this toolbar's contents are the same in both layouts even though the
+// surrounding chrome differs.
 export const EditorToolbar: React.FC = () => {
   const timelineZoom = useEditorStore((s) => s.timelineZoom);
   const setTimelineZoom = useEditorStore((s) => s.setTimelineZoom);
-  const timelineCollapsed = useEditorStore((s) => s.timelineCollapsed);
-  const toggleTimelineCollapsed = useEditorStore((s) => s.toggleTimelineCollapsed);
   const playerLayout = useEditorStore((s) => s.playerLayout);
   const togglePlayerLayout = useEditorStore((s) => s.togglePlayerLayout);
 
   return (
     <div className="relative h-12 flex border-b border-border items-center">
       <div className="flex items-center gap-1 px-3">
-        <button
-          onClick={toggleTimelineCollapsed}
-          className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer flex items-center"
-          title={timelineCollapsed ? "Expand timeline" : "Collapse timeline"}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className={`size-5 text-muted-foreground transition-transform ${timelineCollapsed ? "rotate-180" : ""}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
-        </button>
-
         <Tooltip>
           <TooltipTrigger
             onClick={togglePlayerLayout}

@@ -10,64 +10,34 @@ import { ExportDialog } from "../export/export-dialog";
 import { ExportButton } from "../export/export-button";
 import { ErrorsButton } from "../errors/errors-button";
 import { PreviewZoomControls } from "./preview-zoom-controls";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import type { PanelImperativeHandle } from "react-resizable-panels";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MenuIcon } from "lucide-react";
 
-// Collapsed timeline shows only the toolbar (h-12), ruler row and scene row.
-// In the side-by-side (row) layout the timeline collapses to a narrow column.
-const TIMELINE_COLLAPSED_HEIGHT = "112px";
-const TIMELINE_COLLAPSED_WIDTH = "260px";
-
 // ---------------------------------------------------------------------------
-// EditorLayout — top-level grid: scene panel | (preview ⇄ timeline) resizable
-// split. The split orientation follows editorStore.playerLayout:
+// EditorLayout — top-level grid: scene panel | (preview + timeline) fixed split.
+// The split orientation follows editorStore.playerLayout:
 //   "column" → preview above the timeline (default).
 //   "row"    → timeline on the left, preview on the right (good for vertical
 //              videos). The transport (PlaybackControls) always sits directly
 //              below the video preview in either layout.
-// The timeline panel's collapsed state is driven both ways:
-// editorStore.timelineCollapsed <-> the resizable panel's own collapse/expand,
-// so the toolbar's collapse arrow and the panel's drag handle stay in sync
-// (see the effect below and `onResize` on the timeline ResizablePanel).
+// The timeline is a fixed size (TIMELINE_FIXED); the preview fills the rest via
+// a CSS-grid `1fr` track. No drag-to-resize.
 // ---------------------------------------------------------------------------
 
 export function EditorLayout() {
     const projectName = useEditorStore(s => s.projectName);
     const scenes = useEditorStore(s => s.scenes);
-    const timelineCollapsed = useEditorStore(s => s.timelineCollapsed);
-    const setTimelineCollapsed = useEditorStore(s => s.setTimelineCollapsed);
     const playerLayout = useEditorStore(s => s.playerLayout);
 
     const frameRef = useRef<FrameHandle>(null);
-    const timelinePanelRef = useRef<PanelImperativeHandle>(null);
 
     // On mobile the fixed sidebar is replaced by a slide-in drawer so the
     // preview + timeline can use the full width. `sceneDrawerOpen` is only
     // meaningful on mobile; the drawer isn't mounted on desktop.
     const isMobile = useIsMobile();
     const [sceneDrawerOpen, setSceneDrawerOpen] = useState(false);
-
-    // Drive the resizable panel from the collapse state (toolbar arrow / store).
-    // Re-runs on layout change too: switching column ⇄ row remounts the panel
-    // group, so the freshly-mounted timeline panel must re-adopt the collapsed
-    // state. A microtask defers until after the new panel has registered.
-    useEffect(() => {
-        let cancelled = false;
-        const sync = () => {
-            if (cancelled) return;
-            const panel = timelinePanelRef.current;
-            if (!panel) return;
-            if (timelineCollapsed && !panel.isCollapsed()) panel.collapse();
-            else if (!timelineCollapsed && panel.isCollapsed()) panel.expand();
-        };
-        // Defer one frame so the panel group has mounted after a layout switch.
-        const id = requestAnimationFrame(sync);
-        return () => { cancelled = true; cancelAnimationFrame(id); };
-    }, [timelineCollapsed, playerLayout]);
 
     // Export state and dialog
     const exportState = useExport();
@@ -163,45 +133,27 @@ export function EditorLayout() {
                                 </div>
                             );
 
-                            const timelinePanel = (
-                                <ResizablePanel
-                                    panelRef={timelinePanelRef}
-                                    defaultSize={30}
-                                    minSize={10}
-                                    collapsible
-                                    collapsedSize={isRow ? TIMELINE_COLLAPSED_WIDTH : TIMELINE_COLLAPSED_HEIGHT}
-                                    onResize={() => {
-                                        const collapsed = timelinePanelRef.current?.isCollapsed() ?? false;
-                                        if (collapsed !== timelineCollapsed) {
-                                            setTimelineCollapsed(collapsed);
-                                        }
-                                    }}
-                                    className={isRow ? "h-full min-h-0 min-w-0 pr-1" : "h-full min-h-0 pb-1"}
-                                >
+                            const timelinePane = (
+                                <div className={isRow ? "h-full min-h-0 min-w-0" : "h-full min-h-0 pb-1"}>
                                     <TimelineRuler />
-                                </ResizablePanel>
+                                </div>
                             );
 
-                            const previewPanel = (
-                                <ResizablePanel defaultSize={70} minSize={20} className="flex flex-col h-full min-h-0 min-w-0">
-                                    {previewBlock}
-                                </ResizablePanel>
-                            );
-
-                            // Row layout keys the group so switching orientation
-                            // remounts it cleanly (panel sizes are orientation-bound).
+                            // Fixed split via Tailwind grid fractions.
+                            //   row    → two columns [timeline 2fr | preview 1fr]:
+                            //            side-by-side timeline takes the majority.
+                            //   column → two rows [preview 2fr / timeline 1fr]:
+                            //            stacked preview takes the majority.
                             return isRow ? (
-                                <ResizablePanelGroup key="row" orientation="horizontal" className="flex-1 min-h-0">
-                                    {timelinePanel}
-                                    <ResizableHandle withHandle className="mx-1 bg-transparent" />
-                                    {previewPanel}
-                                </ResizablePanelGroup>
+                                <div className="grid grid-cols-[2fr_1fr] gap-1 flex-1 min-h-0">
+                                    {timelinePane}
+                                    {previewBlock}
+                                </div>
                             ) : (
-                                <ResizablePanelGroup key="column" orientation="vertical" className="flex-1 min-h-0">
-                                    {previewPanel}
-                                    <ResizableHandle withHandle className="my-1 bg-transparent" />
-                                    {timelinePanel}
-                                </ResizablePanelGroup>
+                                <div className="grid grid-rows-[2fr_1fr] gap-1 flex-1 min-h-0">
+                                    {previewBlock}
+                                    {timelinePane}
+                                </div>
                             );
                         })()}
                     </main>

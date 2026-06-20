@@ -17,7 +17,7 @@ import { tile } from "./layout-card";
 export default createScene(function* (stage) {
         stage.set({ fill: 'bg' });
 
-        const stage = createRef<Rect>();
+        const container = createRef<Rect>();
         const heading = createRef<Text>();
         const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
@@ -25,7 +25,7 @@ export default createScene(function* (stage) {
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
                 <Text ref={heading} fontFamily={'Pixelify Sans'} text={'group: row -> stack -> column'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
                 <Rect
-                    ref={stage}
+                    ref={container}
                     width={'fill'} height={'fill'}
                     fill={'card'} cornerRadius={32} clip={true}
                     group={'row'} gap={48} padding={64}
@@ -41,11 +41,11 @@ export default createScene(function* (stage) {
 
         yield* wait(hold);
         // row → stack: the horizontal line collapses into a centered pile.
-        yield* stage().to({ group: 'stack' }, 2, easeInOutQuad);
+        yield* container().to({ group: 'stack' }, 2, easeInOutQuad);
         yield* wait(hold);
         // stack → column: the pile fans out downward into a vertical stack.
-        yield* stage().to({ group: 'column' }, 2, easeInOutQuad);
+        yield* container().to({ group: 'column' }, 2, easeInOutQuad);
         yield* wait(hold);
         // column → row: close the loop back to where we started.
-        yield* stage().to({ group: 'row' }, 2, easeInOutQuad);
+        yield* container().to({ group: 'row' }, 2, easeInOutQuad);
 });

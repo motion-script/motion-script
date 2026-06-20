@@ -26,8 +26,8 @@ export default createProject({
     name: 'Nodes Showcase',
     fps: 60,
     viewport: {
-        width: 1920,
-        height: 1080,
+        width: 1080,
+        height: 1920,
     },
     scenes: [
         text,
