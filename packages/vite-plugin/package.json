@@ -18,10 +18,14 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./project": {
+      "types": "./project.d.ts"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "project.d.ts"
   ],
   "scripts": {
     "build": "vite build",
