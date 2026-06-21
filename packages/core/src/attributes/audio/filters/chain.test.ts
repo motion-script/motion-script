@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AFX, AudioFilterChain, resolveAudioFilters } from '@/attributes/audio/filters/chain';
+import { fadeIn, ramp, isCurve } from '@/attributes/audio/filters/curve';
 
 describe('AFX builders', () => {
     it('gain produces a single gain filter', () => {
@@ -23,6 +24,36 @@ describe('AFX builders', () => {
         expect([...AFX.echo(0.3, 0.45, 0.5)]).toEqual([
             { type: 'echo', delay: 0.3, feedback: 0.45, mix: 0.5 },
         ]);
+    });
+
+    it('volume is an alias for gain', () => {
+        expect([...AFX.volume(2)]).toEqual([{ type: 'gain', value: 2 }]);
+        expect([...AFX.gain(2).volume(1.5)]).toEqual([
+            { type: 'gain', value: 2 },
+            { type: 'gain', value: 1.5 },
+        ]);
+    });
+
+    it('accepts a Curve as a param and stores it verbatim', () => {
+        const curve = fadeIn(0.5).fadeOut(1);
+        const [filter] = [...AFX.volume(curve)];
+        expect(filter.type).toBe('gain');
+        if (filter.type !== 'gain') throw new Error('expected gain');
+        expect(isCurve(filter.value)).toBe(true);
+        expect(filter.value).toBe(curve);
+    });
+
+    it('mixes scalar and curve params across a chain', () => {
+        const sweep = ramp(200, 2000, 1);
+        const chain = AFX.volume(fadeIn(0.5)).highpass(sweep).speed(1.2);
+        const list = [...chain];
+        const [gain, hp, spd] = list;
+        if (gain.type !== 'gain' || hp.type !== 'highpass' || spd.type !== 'speed') {
+            throw new Error('unexpected filter order');
+        }
+        expect(isCurve(gain.value)).toBe(true);       // gain curve
+        expect(isCurve(hp.frequency)).toBe(true);     // highpass curve
+        expect(spd.value).toBe(1.2);                  // scalar speed
     });
 });
 

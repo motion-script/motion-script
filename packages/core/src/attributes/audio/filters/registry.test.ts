@@ -8,6 +8,7 @@ import '@/attributes/audio/filters/implementations/tremolo';
 import '@/attributes/audio/filters/implementations/speed';
 import '@/attributes/audio/filters/implementations/echo';
 import type { AudioFilter } from '@/attributes/audio/filters/union';
+import { ramp } from '@/attributes/audio/filters/curve';
 
 describe('AudioFilterRegistry registration', () => {
     it('registers all six built-in filters', () => {
@@ -37,6 +38,14 @@ describe('AudioFilterRegistry.lerp', () => {
         const to: AudioFilter = { type: 'speed', value: 2 };
         expect(AudioFilterRegistry.lerp(from, to, 0.4)).toBe(from);
         expect(AudioFilterRegistry.lerp(from, to, 0.6)).toBe(to);
+    });
+
+    it('hard-cuts a curve-valued param at t=0.5 instead of lerping', () => {
+        const curve = ramp(0, 1, 1);
+        const from: AudioFilter = { type: 'gain', value: 2 };
+        const to: AudioFilter = { type: 'gain', value: curve };
+        expect(AudioFilterRegistry.lerp(from, to, 0.4)).toEqual({ type: 'gain', value: 2 });
+        expect(AudioFilterRegistry.lerp(from, to, 0.6)).toEqual({ type: 'gain', value: curve });
     });
 });
 

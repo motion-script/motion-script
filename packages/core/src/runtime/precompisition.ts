@@ -310,14 +310,52 @@ function assembleTimeline(perScene: ScenePrecomp[], buildErrors: BuildError[], f
         offset += sp.frameCount;
     }
 
+    const totalFrames = offset;
+    const totalDuration = totalFrames / fps;
+
+    // Resolve cross-scene OPEN requests now that the project total is known. Audio
+    // requests stay scene-local (the asset manager re-adds each scene's offset when
+    // it plays them), so we resolve the absolute end and store it back as a
+    // scene-local `endAt` (= absoluteEnd - sceneOffset). A non-looped open request
+    // ends at min(start + mediaDuration, projectEnd); a looped one runs to projectEnd.
+    //
+    // This runs on every assembly (including HMR `replaceScene`) and is idempotent:
+    // the `open` marker is PRESERVED so editing a later scene that changes the total
+    // re-resolves the bed's end. Resolution writes into fresh copies so reused
+    // `prev.scenes` passes are never mutated.
+    for (let i = 0; i < scenes.length; i++) {
+        scenes[i] = resolveOpenAudio(scenes[i], fps, totalDuration);
+    }
+
     return {
         fps,
         scenes,
-        totalFrames: offset,
-        totalDuration: offset / fps,
+        totalFrames,
+        totalDuration,
         assets: buildAssetMap(mergedRecords, fps),
         buildErrors,
     };
+}
+
+/**
+ * Return a copy of `scene` with every {@link AudioRequest.open} request's `endAt`
+ * resolved against the project total. The `open`/`mediaDuration` markers are kept so
+ * a later re-assembly (HMR) re-resolves; only `endAt` changes. Bounded requests and
+ * scenes with no open requests are returned without copying their request arrays.
+ */
+function resolveOpenAudio(scene: ScenePrecomp, fps: number, totalDuration: number): ScenePrecomp {
+    if (!scene.audioRequests.some((r) => r.open)) return scene;
+
+    const sceneOffset = scene.startFrame / fps;
+    const audioRequests = scene.audioRequests.map((req) => {
+        if (!req.open) return req;
+        const absStart = sceneOffset + req.startAt;
+        const naturalEnd = req.loop
+            ? totalDuration
+            : Math.min(absStart + (req.mediaDuration ?? 0), totalDuration);
+        return { ...req, endAt: Math.max(req.startAt, naturalEnd - sceneOffset) };
+    });
+    return { ...scene, audioRequests };
 }
 
 /** Shift an asset record's frame range into the global timeline by `offset`. */
@@ -374,19 +412,27 @@ function recordLifespans(node: Node, path: string, frame: number, out: Map<strin
 }
 
 /**
- * Confine a scene's audio requests to its own `[0, sceneDuration)` span.
+ * Confine a scene's **bounded** audio requests to its own `[0, sceneDuration)` span.
  *
- * Scenes are independent, so this is the cut between two sibling scenes: a clip
- * whose source outlasts the scene — e.g. a long video on a short scene, or a
- * `startSound` left running — must not sound or draw past the scene boundary.
+ * Scenes are independent, so this is the cut between two sibling scenes: a bounded
+ * clip whose source outlasts the scene — e.g. a long video on a short scene, or a
+ * `playSound`/stopped/trimmed clip — must not sound or draw past the scene boundary.
  *
- * Each request is clipped to the span: a `startAt` at or after the end drops the
- * request entirely; an `endAt` past the end (including an unbounded `Infinity`
- * loop) is pulled back to the boundary.
+ * Each bounded request is clipped to the span: a `startAt` at or after the end drops
+ * the request; an `endAt` past the end is pulled back to the boundary.
+ *
+ * **Open** requests (a `startSound` left running, not stopped/trimmed) are the sole
+ * exception: they are allowed to outlive their scene and pass through untouched here,
+ * to be shifted and resolved against the project total in {@link assembleTimeline}.
  */
 function clampAudioToScene(requests: readonly AudioRequest[], sceneDuration: number): AudioRequest[] {
     const out: AudioRequest[] = [];
     for (const req of requests) {
+        if (req.open) {
+            // Cross-scene: keep scene-local startAt; end is resolved at assembly.
+            out.push({ ...req });
+            continue;
+        }
         if (req.startAt >= sceneDuration) continue;
         const endAt = Math.min(req.endAt, sceneDuration);
         if (endAt <= req.startAt) continue;

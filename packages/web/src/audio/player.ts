@@ -1,5 +1,5 @@
-import { AudioDevice, AudioRequest } from "@motion-script/core";
-import { buildAudioFilterGraph, effectiveSpeed } from "./filter-graph";
+import { AudioDevice, AudioRequest, sourceTimeAtSceneElapsed } from "@motion-script/core";
+import { buildAudioFilterGraph, effectiveSpeed, speedCurveOf, applySpeedToPlaybackRate } from "./filter-graph";
 
 type ActiveSource = {
     source: AudioBufferSourceNode;
@@ -135,26 +135,52 @@ export class WebAudioDevice extends AudioDevice {
     /** Starts a buffer source mid-clip if `sceneTime` lands after the request's start — `audioOffset` accounts for the request's trim, the elapsed time since `startAt`, and any speed (playbackRate) change. */
     private playBuffer(buffer: AudioBuffer, req: AudioRequest, sceneTime: number): void {
         const gainNode = this.context.createGain();
-        gainNode.gain.value = req.volume;
+        // Guard against a missing/NaN volume — a non-finite AudioParam value throws.
+        gainNode.gain.value = Number.isFinite(req.volume) ? req.volume : 1;
         gainNode.connect(this.masterGain);
 
         const source = this.context.createBufferSource();
         source.buffer = buffer;
         source.loop = req.loop;
 
-        const rate = effectiveSpeed(req.filters);
-        if (rate !== 1) source.playbackRate.value = rate;
+        const scalarSpeed = effectiveSpeed(req.filters);
+        const rate = Number.isFinite(scalarSpeed) && scalarSpeed > 0 ? scalarSpeed : 1;
+        const speedCurve = speedCurveOf(req.filters);
+        if (rate !== 1 && !speedCurve) source.playbackRate.value = rate;
 
-        // Insert the filter chain between the source and the per-request gain.
-        const graph = buildAudioFilterGraph(this.context, source, req.filters ?? []);
+        const elapsed = Math.max(0, sceneTime - req.startAt);
+        // Trimmed source length the filter curves / speed curve are authored over.
+        const sourceLength = Math.max(0, buffer.duration - req.trimStart);
+        // Scene-time length of the clip. Prefer the bounded [startAt, endAt) span; if
+        // endAt is unbounded (an open/looping clip reaching the device unresolved),
+        // fall back to the source length scaled by speed so curve params still resolve
+        // (a clipDuration of 0 would otherwise silently drop every fade/sweep).
+        const clipDuration = isFinite(req.endAt)
+            ? Math.max(0, req.endAt - req.startAt)
+            : sourceLength / (rate || 1);
+
+        // Insert the filter chain between the source and the per-request gain. Pass
+        // the start time, clip duration, and elapsed so curve-valued params schedule
+        // and align to a mid-clip seek.
+        const startTime = this.context.currentTime;
+        const graph = buildAudioFilterGraph(
+            this.context, source, req.filters ?? [], startTime, clipDuration, elapsed,
+        );
         graph.output.connect(gainNode);
 
-        // A faster clip consumes its buffer proportionally faster, so the
-        // source-time offset for a mid-clip seek scales by the playback rate.
-        const elapsed = sceneTime - req.startAt;
-        const audioOffset = req.trimStart + Math.max(0, elapsed) * rate;
+        // Source-time offset for a mid-clip seek. Scalar speed scales linearly; a
+        // speed curve uses the integral inverse to find the true source position.
+        let audioOffset: number;
+        if (speedCurve) {
+            audioOffset = req.trimStart + sourceTimeAtSceneElapsed(speedCurve, sourceLength, elapsed);
+            // Schedule the time-varying playbackRate (folds in any scalar speed too).
+            applySpeedToPlaybackRate(
+                source.playbackRate, speedCurve, sourceLength, clipDuration, rate, startTime, elapsed,
+            );
+        } else {
+            audioOffset = req.trimStart + elapsed * rate;
+        }
 
-        const startTime = this.context.currentTime;
         source.start(startTime, audioOffset);
         for (const osc of graph.oscillators) osc.start(startTime);
 

@@ -1,14 +1,14 @@
 import { AudioFilterRegistry } from "../registry";
-import { lerpNumber } from "@/tween/lerp";
+import { Param, lerpParam, equalsParam } from "../curve";
 
 /** Scales the clip's amplitude by a linear factor. */
 export interface GainFilter {
     type: 'gain';
-    /** Linear gain multiplier. 1 = unchanged, 0 = silent, >1 = louder. */
-    value: number;
+    /** Linear gain multiplier. 1 = unchanged, 0 = silent, >1 = louder. May be a time-varying curve. */
+    value: Param;
 }
 
 AudioFilterRegistry.register<GainFilter>("gain", {
-    lerp: (from, to, t) => ({ type: "gain", value: lerpNumber(from.value, to.value, t) }),
-    equals: (a, b) => a.value === b.value,
+    lerp: (from, to, t) => ({ type: "gain", value: lerpParam(from.value, to.value, t) }),
+    equals: (a, b) => equalsParam(a.value, b.value),
 });

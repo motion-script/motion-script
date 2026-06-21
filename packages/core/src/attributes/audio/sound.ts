@@ -4,6 +4,7 @@ import { AssetTracker } from "@/assets/tracker";
 import { AudioRequest } from "@/attributes/audio/request";
 import { AudioFilter } from "@/attributes/audio/filters/union";
 import { ChainableAfx, resolveAudioFilters } from "@/attributes/audio/filters/chain";
+import { isCurve, integrateSpeedToSceneTime } from "@/attributes/audio/filters/curve";
 
 interface SoundPropsBase {
     src: string;
@@ -73,16 +74,49 @@ export class Sound {
     }
 
     /**
-     * Net playback-rate multiplier from any `speed` filters (product of all),
-     * defaulting to 1. A clip of source length `L` occupies `L / effectiveSpeed`
-     * seconds of scene time, so this is what scales every duration calculation.
+     * Net constant playback-rate multiplier from any *scalar* `speed` filters
+     * (product of all), defaulting to 1. Curve-valued speed filters contribute 1
+     * here — they're handled by {@link sceneDurationFor} via integration, not a
+     * simple division. A clip of source length `L` occupies `L / effectiveSpeed`
+     * seconds of scene time when every speed is scalar.
      */
     effectiveSpeed(): number {
         let speed = 1;
         for (const f of this.filters) {
-            if (f.type === "speed" && f.value > 0) speed *= f.value;
+            if (f.type === "speed" && !isCurve(f.value) && f.value > 0) speed *= f.value;
         }
         return speed;
+    }
+
+    /** True if any speed filter is a time-varying curve (duration needs integration). */
+    private hasSpeedCurve(): boolean {
+        return this.filters.some((f) => f.type === "speed" && isCurve(f.value));
+    }
+
+    /**
+     * Scene-time length consumed by playing `trimmedSourceLength` seconds of source.
+     *
+     * - All speeds scalar → `trimmedSourceLength / effectiveSpeed()` (fast path,
+     *   unchanged behavior).
+     * - A speed *curve* is present → numerically integrate `∫ 1/speed(τ) dτ` over the
+     *   trimmed source length. Scalar speed filters are folded in by dividing the
+     *   integral by their product (they scale the rate uniformly).
+     *
+     * This is the single source of truth for how much scene time a clip occupies and
+     * must match the renderer's `playbackRate` schedule.
+     */
+    sceneDurationFor(trimmedSourceLength: number): number {
+        const scalar = this.effectiveSpeed();
+        if (!this.hasSpeedCurve()) {
+            return trimmedSourceLength / scalar;
+        }
+        const curveFilter = this.filters.find(
+            (f): f is Extract<AudioFilter, { type: "speed" }> => f.type === "speed" && isCurve(f.value),
+        );
+        // hasSpeedCurve() guarantees this exists and that value is a Curve.
+        const curve = curveFilter!.value;
+        if (!isCurve(curve)) return trimmedSourceLength / scalar;
+        return integrateSpeedToSceneTime(curve, trimmedSourceLength) / scalar;
     }
 
     /**
@@ -102,10 +136,9 @@ export class Sound {
         if (this._activeId !== null) return;
         const startAt = this._currentTime;
         const id = `${this.src}|${startAt}|${this._requests.length}`;
-        // A speed change shrinks/grows how much scene time the clip occupies.
-        const speed = this.effectiveSpeed();
+        // A speed change (scalar or curve) shrinks/grows how much scene time the clip occupies.
         const endAt = this.trimEnd !== Infinity
-            ? startAt + Math.max(0, this.trimEnd - this.trimStart) / speed
+            ? startAt + this.sceneDurationFor(Math.max(0, this.trimEnd - this.trimStart))
             : Infinity;
         this._requests.push({
             id,
@@ -124,7 +157,15 @@ export class Sound {
     stop(): void {
         if (this._activeId === null) return;
         const req = this._requests.find(r => r.id === this._activeId);
-        if (req) req.endAt = this._currentTime;
+        if (req) {
+            req.endAt = this._currentTime;
+            // An explicit stop bounds the clip: it must NOT be treated as a
+            // cross-scene "open" request. Clear any open marker a prior `prepare`
+            // pass set while the clip was still running, or `assembleTimeline` would
+            // re-extend its end past the stop point and across later scenes.
+            req.open = false;
+            req.mediaDuration = undefined;
+        }
         this._activeId = null;
     }
 
@@ -135,11 +176,11 @@ export class Sound {
      */
     *play(duration?: number): FrameGenerator {
         this.start();
-        // The clip's scene-time length is its trimmed source length divided by
-        // the speed multiplier (2× speed → blocks for half as long).
+        // The clip's scene-time length is its trimmed source length scaled by the
+        // speed profile (2× speed → blocks for half as long; a curve integrates).
         const d = duration
             ?? (this.trimEnd !== Infinity
-                ? (this.trimEnd - this.trimStart) / this.effectiveSpeed()
+                ? this.sceneDurationFor(this.trimEnd - this.trimStart)
                 : undefined);
         if (d !== undefined && d > 0) yield* wait(d);
         this.stop();
@@ -152,15 +193,32 @@ export class Sound {
      */
     prepare(tracker: AssetTracker): void {
         tracker.requestAudio(this.src);
-        const speed = this.effectiveSpeed();
         for (const req of this._requests) {
             if (req.endAt === Infinity && !req.loop) {
-                req.endAt = req.startAt + Math.max(0,
-                    (this.trimEnd !== Infinity
-                        ? this.trimEnd
-                        : tracker.catalog.getMediaDuration(this.src)
-                    ) - this.trimStart,
-                ) / speed;
+                if (this.trimEnd !== Infinity) {
+                    // Finite-trimmed but never explicitly stopped: bounded to its clip length.
+                    const trimmed = Math.max(0, this.trimEnd - this.trimStart);
+                    req.endAt = req.startAt + this.sceneDurationFor(trimmed);
+                } else {
+                    // Untrimmed and never stopped: an OPEN request. Leave `endAt`
+                    // unresolved (Infinity) and carry the clip's natural SCENE-time
+                    // length (source length scaled by the speed profile) so
+                    // assembleTimeline can resolve the end against the project total,
+                    // letting the sound continue across scene boundaries.
+                    const sourceLen = Math.max(0,
+                        tracker.catalog.getMediaDuration(this.src) - this.trimStart,
+                    );
+                    req.open = true;
+                    req.mediaDuration = this.sceneDurationFor(sourceLen);
+                }
+            } else if (req.endAt === Infinity && req.loop) {
+                // Unbounded loop left running: open, runs to the project end.
+                req.open = true;
+            } else {
+                // Bounded (stopped or finite-trimmed): never cross-scene. Clear any
+                // stale open marker so assembleTimeline keeps the bounded end.
+                req.open = false;
+                req.mediaDuration = undefined;
             }
             tracker.addAudioRequest(req);
         }

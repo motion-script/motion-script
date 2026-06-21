@@ -7,10 +7,14 @@ import highpass from './scenes/highpass?scene';
 import tremolo from './scenes/tremolo?scene';
 import speed from './scenes/speed?scene';
 import echo from './scenes/echo?scene';
+import fade from './scenes/fade?scene';
+import filterSweep from './scenes/filter-sweep?scene';
 import multipleFilters from './scenes/multiple-filters?scene';
 import playSound from './scenes/play-sound?scene';
 import startStopSound from './scenes/start-stop-sound?scene';
 import multipleSounds from './scenes/multiple-sounds?scene';
+import crossSceneBedA from './scenes/cross-scene-bed-a?scene';
+import crossSceneBedB from './scenes/cross-scene-bed-b?scene';
 
 /**
  * A project that walks through every audio filter (one scene each, plus a
@@ -38,10 +42,14 @@ export default createProject({
         tremolo,
         speed,
         echo,
+        fade,
+        filterSweep,
         multipleFilters,
         playSound,
         startStopSound,
         multipleSounds,
+        crossSceneBedA,
+        crossSceneBedB,
     ],
     theme: {
         'bg': '#0D0F15',

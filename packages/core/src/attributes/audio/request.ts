@@ -22,6 +22,23 @@ export interface AudioRequest {
     /** The scene timestamp when the audio should STOP playing. (Optional) */
     endAt: number; // in seconds
 
+    /**
+     * True when this request was started (`startSound`) and left running at its
+     * scene's end — neither explicitly stopped nor finite-trimmed. Open requests
+     * are exempt from the per-scene audio clamp and instead **continue across scene
+     * boundaries**: `assembleTimeline` shifts them to absolute time and resolves
+     * `endAt = min(startAt + mediaDuration, projectTotalDuration)` (a looped open
+     * request runs to the project end). Bounded requests are unaffected.
+     */
+    open?: boolean;
+
+    /**
+     * Source media length in seconds, carried on **open** requests so the
+     * cross-scene end can be resolved at assembly time without re-reading the
+     * asset catalog. Ignored for bounded requests.
+     */
+    mediaDuration?: number;
+
     // --- Media Trimming (Local Audio Time) ---
 
     /** Offset in seconds to skip ahead in the audio file. Default: 0 */

@@ -1,4 +1,5 @@
 import { AudioRequest } from "@/attributes/audio/request";
+import { filtersKey } from "@/attributes/audio/filters/union";
 import { Disposer } from "@/assets/record";
 import { AudioDevice } from "@/platform/audio-device";
 import { StorageAdapter } from "@/platform/storage-adapter";
@@ -187,9 +188,14 @@ export class AssetManager {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Produce a deterministic string key that uniquely identifies an audio request's playback identity. */
+/**
+ * Produce a deterministic string key that uniquely identifies an audio request's
+ * playback identity. Includes the filter chain (via {@link filtersKey}) so editing a
+ * filter/volume curve changes the id — the device then stops the stale source and
+ * rebuilds the graph with the new filters instead of reusing the old one.
+ */
 function stableKey(req: AudioRequest, sceneOffsetSecs: number): string {
-    return `${req.src}|${sceneOffsetSecs + req.startAt}|${sceneOffsetSecs + req.endAt}|${req.trimStart}|${req.loop ? 1 : 0}|${req.volume}`;
+    return `${req.src}|${sceneOffsetSecs + req.startAt}|${sceneOffsetSecs + req.endAt}|${req.trimStart}|${req.loop ? 1 : 0}|${req.volume}|${filtersKey(req.filters)}`;
 }
 
 /** Produce a stable hash of the active audio request set to detect scheduling changes. */

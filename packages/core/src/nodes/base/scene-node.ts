@@ -150,11 +150,11 @@ export class Scene implements SceneContext {
      */
     startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound {
         const s = src instanceof Sound ? src : new Sound({ src, ...opts } as SoundProps);
-        // The asset catalog is bound on the scene, so the full-length default for
-        // trimEnd can only be resolved here, not at Sound construction time.
-        if (s.trimEnd === Infinity && !s.loop) {
-            s.trimEnd = this.assets.getMediaDuration(s.src);
-        }
+        // Intentionally do NOT resolve `trimEnd` to the scene's media length here. A
+        // sound started and never stopped stays unbounded so it can continue across
+        // scene boundaries: `Sound.prepare` emits it as an OPEN request whose end is
+        // resolved against the project total in `assembleTimeline`. (An explicit
+        // `stopSound`, a finite trim/duration, or `playSound` still bounds it.)
         s.tick(this.clock.time);
         if (this._managedSounds.indexOf(s) < 0) this._managedSounds.push(s);
         s.start();

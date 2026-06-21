@@ -224,4 +224,17 @@ describe('AssetManager.syncAudio', () => {
         mgr.syncAudio(0);
         expect(audio.scheduleCalls[0]).toHaveLength(1);
     });
+
+    it('gives requests differing only by filters distinct ids (so a filter edit reschedules)', () => {
+        // Two clips identical except for their filter chain must NOT collapse to one
+        // playback identity — otherwise editing a filter keeps the stale source.
+        const a = makeAudioRequest({ id: 'a', src: 's1', startAt: 0, endAt: 1, filters: [{ type: 'gain', value: 2 }] });
+        const b = makeAudioRequest({ id: 'b', src: 's1', startAt: 0, endAt: 1, filters: [{ type: 'gain', value: 0.5 }] });
+        const { mgr, audio } = setup(precompWith([a, b]));
+        mgr.syncAudio(0);
+        // Both scheduled (distinct stable ids), not deduped to one.
+        expect(audio.scheduleCalls[0]).toHaveLength(2);
+        const ids = audio.scheduleCalls[0].map((r) => r.id);
+        expect(new Set(ids).size).toBe(2);
+    });
 });

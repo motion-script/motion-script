@@ -20,8 +20,25 @@ export type { EchoFilter } from './implementations/echo';
 export { AFX, AudioFilterChain, resolveAudioFilters } from './chain';
 export type { ChainableAfx } from './chain';
 
+/** Time-varying param curves: builders, the Curve type, and param helpers. */
+export {
+    Curve,
+    ramp,
+    hold,
+    fadeIn,
+    fadeOut,
+    isCurve,
+    staticValue,
+    lerpParam,
+    equalsParam,
+    integrateSpeedToSceneTime,
+    sourceTimeAtSceneElapsed,
+} from './curve';
+export type { Param, CurveSegment, ResolvedSegment } from './curve';
+
 /** Union of all concrete audio-filter types accepted by sounds. */
 export type { AudioFilter } from './union';
+export { filtersKey } from './union';
 
 /** Interpolation/equality registry and contract. */
 export { AudioFilterRegistry } from './registry';

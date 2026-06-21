@@ -129,6 +129,102 @@ describe('Precomp – audio capture', () => {
     });
 });
 
+describe('Precomp – cross-scene (open) audio', () => {
+    // An OPEN request is started but never stopped/trimmed; it should outlive its
+    // scene and end at min(start + mediaDuration, projectTotal).
+
+    it('lets an open bed continue past its scene and end at the media length', () => {
+        // Scene A 0.4s, scene B 0.4s → project total 0.8s. Bed starts at A:0 with a
+        // 0.6s media length → ends at absolute 0.6s, i.e. scene-local 0.6 (still in A's frame).
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({
+                    id: 'bed', src: 'a.mp3', startAt: 0, endAt: Infinity, open: true, mediaDuration: 0.6,
+                }));
+            },
+        });
+        const b = new FakeScene({ yieldCount: 4 });
+        const result = run([a, b], 10);
+
+        const bed = result.scenes[0].audioRequests[0];
+        // Scene-local endAt; absolute end = sceneOffset(0) + 0.6 = 0.6s, within the 0.8s total.
+        expect(bed.endAt).toBeCloseTo(0.6);
+    });
+
+    it('clamps an open bed to the project total when the media is longer', () => {
+        // Project total 0.8s; bed media length 5s → clamped to project end (0.8s).
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({
+                    id: 'bed', src: 'a.mp3', startAt: 0, endAt: Infinity, open: true, mediaDuration: 5,
+                }));
+            },
+        });
+        const b = new FakeScene({ yieldCount: 4 });
+        const result = run([a, b], 10);
+
+        const bed = result.scenes[0].audioRequests[0];
+        expect(bed.endAt).toBeCloseTo(0.8); // sceneOffset 0 + 0.8 total
+    });
+
+    it('runs an open looped bed to the project total', () => {
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({
+                    id: 'loop', src: 'a.mp3', startAt: 0, endAt: Infinity, loop: true, open: true,
+                }));
+            },
+        });
+        const b = new FakeScene({ yieldCount: 4 });
+        const result = run([a, b], 10);
+
+        expect(result.scenes[0].audioRequests[0].endAt).toBeCloseTo(0.8);
+    });
+
+    it('accounts for the scene offset when resolving a bed started in a later scene', () => {
+        // Bed starts in scene B (offset 0.4s) with 0.2s media → absolute end 0.6s,
+        // stored scene-local as 0.6 - 0.4 = 0.2.
+        const a = new FakeScene({ yieldCount: 4 });
+        const b = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({
+                    id: 'bed', src: 'b.mp3', startAt: 0, endAt: Infinity, open: true, mediaDuration: 0.2,
+                }));
+            },
+        });
+        const result = run([a, b], 10);
+
+        expect(result.scenes[1].audioRequests[0].endAt).toBeCloseTo(0.2);
+    });
+
+    it('re-resolves an open bed when a later scene edit changes the total (HMR)', () => {
+        const a = new FakeScene({
+            yieldCount: 4,
+            onPrepare: (t, f) => {
+                if (f === 0) t.addAudioRequest(makeAudioRequest({
+                    id: 'bed', src: 'a.mp3', startAt: 0, endAt: Infinity, open: true, mediaDuration: 5,
+                }));
+            },
+        });
+        const b = new FakeScene({ yieldCount: 4 });
+        const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+        // Initial total 0.8s → bed clamped to 0.8.
+        expect(first.scenes[0].audioRequests[0].endAt).toBeCloseTo(0.8);
+
+        // Grow scene B to 10 frames (1.0s) → total 1.4s; the bed (5s media) should now
+        // extend to its full 1.4s clamp, proving the open marker survived re-assembly.
+        const biggerB = new FakeScene({ yieldCount: 10 });
+        const second = precomp.replaceScene(first, 1, asScene(biggerB));
+        expect(second.totalDuration).toBeCloseTo(1.4);
+        expect(second.scenes[0].audioRequests[0].endAt).toBeCloseTo(1.4);
+    });
+});
+
 describe('Precomp – asset map (image)', () => {
     it('computes lead time and a backward-scrub tail for an image', () => {
         // Register a 512×512 image only from frame 5 onward (single 10-frame scene).

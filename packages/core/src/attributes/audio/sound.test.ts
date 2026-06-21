@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Sound } from '@/attributes/audio/sound';
 import { AFX } from '@/attributes/audio/filters/chain';
+import { ramp } from '@/attributes/audio/filters/curve';
 import { AssetTracker } from '@/assets/tracker';
 import { AssetCatalog } from '@/assets/catalog';
 import type { AssetManifest } from '@/assets/manifest';
@@ -80,17 +81,63 @@ describe('SpeedFilter timing', () => {
         expect(req.endAt).toBeCloseTo(8);
     });
 
-    it('divides the catalog-resolved full length by speed in prepare()', () => {
-        // Unbounded clip resolves to full 10s source, played at 2x => 5s scene time.
+    it('emits an OPEN request carrying speed-adjusted media length for an unbounded clip', () => {
+        // An untrimmed, un-stopped clip is now CROSS-SCENE: prepare() leaves it open
+        // (endAt unresolved) and carries the speed-adjusted source length so
+        // assembleTimeline can bound it against the project total. (Old behavior
+        // pre-resolved endAt to fullLength/speed here.)
         const sound = new Sound({ src: SRC, filters: AFX.speed(2) });
         const req = emit(sound, 0);
-        expect(req.endAt).toBeCloseTo(5);
+        expect(req.open).toBe(true);
+        expect(req.endAt).toBe(Infinity);
+        // 10s source at 2x => 5s of scene-time media length carried for resolution.
+        expect(req.mediaDuration).toBeCloseTo(5);
     });
 
     it('leaves endAt unchanged at speed 1', () => {
         const sound = new Sound({ src: SRC, trimEnd: 4 });
         const req = emit(sound, 0);
         expect(req.endAt).toBeCloseTo(4);
+    });
+
+    it('integrates a speed CURVE to compute scene duration', () => {
+        // Constant 2× expressed as a curve: 4s of source → 2s of scene time, same
+        // as the scalar case but via the integral path.
+        const sound = new Sound({ src: SRC, filters: AFX.speed(ramp(2, 2, 4)), trimEnd: 4 });
+        const req = emit(sound, 0);
+        expect(req.endAt).toBeCloseTo(2, 1);
+    });
+});
+
+describe('Sound open/cross-scene marking', () => {
+    it('an untrimmed, un-stopped sound is open', () => {
+        const sound = new Sound({ src: SRC });
+        const req = emit(sound, 0);
+        expect(req.open).toBe(true);
+    });
+
+    it('a started-then-STOPPED sound is bounded and NOT open', () => {
+        // Regression: stopSound must end the clip; the open marker (set by an earlier
+        // prepare pass while it was running) must be cleared so assembleTimeline does
+        // not re-extend it across later scenes.
+        const sound = new Sound({ src: SRC });
+        const req = emit(sound, 0, 2); // start at 0, stop at 2
+        expect(req.open).toBeFalsy();
+        expect(req.mediaDuration).toBeUndefined();
+        expect(req.endAt).toBeCloseTo(2);
+    });
+
+    it('stops are sticky even if prepare runs again afterward', () => {
+        // Mimic the precomp loop: prepare() is called every frame. Once stopped, a
+        // later prepare must not re-open the request.
+        const sound = new Sound({ src: SRC });
+        sound.tick(0); sound.start();
+        sound.tick(2); sound.stop();
+        const t = makeTracker();
+        t.start(0); sound.prepare(t); sound.prepare(t); t.end();
+        const req = t.audioRequests[0];
+        expect(req.open).toBeFalsy();
+        expect(req.endAt).toBeCloseTo(2);
     });
 });
 

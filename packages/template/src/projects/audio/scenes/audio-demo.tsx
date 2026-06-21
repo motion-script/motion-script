@@ -37,35 +37,35 @@ function estimateLength(clip: number, filters?: ChainableAfx): number {
 /** A parameterized scene generator: per-filter `?scene` files call this with
  *  their {@link AudioDemoSpec}, e.g. `createScene(audioDemo({ label, filters }))`. */
 export const audioDemo = (spec: AudioDemoSpec): SceneGenerator => function* (stage) {
-        stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
+    stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
 
-        const { label, src = 'song.mp3', filters, clip = 4 } = spec;
+    const { label, src = 'song.mp3', filters, clip = 4 } = spec;
 
-        const bar = createRef<Rect>();
+    const bar = createRef<Rect>();
 
-        stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
-                <Text
-                    fontFamily={'Pixelify Sans'}
-                    text={label}
-                    fontSize={96}
-                    fill={'gray'}
-                    width={'fill'}
-                    align={'start'}
-                />
-                {/* Track the bar sweeps across. */}
-                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
-                    <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
-                </Rect>
+    stage.add(
+        <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
+            <Text
+                fontFamily={'Pixelify Sans'}
+                text={label}
+                fontSize={96}
+                fill={'gray'}
+                width={'fill'}
+                textAlign={'start'}
+            />
+            {/* Track the bar sweeps across. */}
+            <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
+                <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
             </Rect>
-        );
+        </Rect>
+    );
 
-        // The bar sweep lasts exactly as long as the clip occupies the timeline,
-        // so a sped-up clip visibly finishes sooner and a slowed one lingers.
-        // playSound() already divides by the speed multiplier for us.
-        yield* parallel(
-            stage.playSound(src, { duration: clip, filters }),
-            bar().to({ width: 'fill' } as any, estimateLength(clip, filters), easeInOutQuad),
-        );
-        yield* wait(0.4);
+    // The bar sweep lasts exactly as long as the clip occupies the timeline,
+    // so a sped-up clip visibly finishes sooner and a slowed one lingers.
+    // playSound() already divides by the speed multiplier for us.
+    yield* parallel(
+        stage.playSound(src, { duration: clip, filters }),
+        bar().to({ width: 'fill' } as any, estimateLength(clip, filters), easeInOutQuad),
+    );
+    yield* wait(0.4);
 };

@@ -343,6 +343,15 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         // stops Vite from discovering it mid-session and triggering an
                         // optimizer re-run + full page reload on first load.
                         include: ['@motion-script/canvaskit', '@motion-script/player'],
+                        // Keep core/web OUT of the optimizer so they are served straight
+                        // from their (workspace) `dist` rather than folded into the
+                        // player's optimized chunk. The optimize hash ignores a dep's
+                        // file contents, so a bundled copy of core/web goes stale on
+                        // every source edit and the dev server keeps serving old code
+                        // (e.g. an audio-filter fix that "doesn't take effect until
+                        // restart"). Excluding them lets Vite re-read the rebuilt dist.
+                        // Dedupe (above) still guarantees a single shared instance.
+                        exclude: ['@motion-script/core', '@motion-script/web'],
                     },
 
                     build: {
