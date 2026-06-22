@@ -64,21 +64,19 @@ Setting `flex` without an explicit `width`/`height` defaults both to `'fill'` au
 Fixed sizes animate smoothly with `.to()`. Switching between fixed and `'fill'`/`'hug'` also cross-fades:
 
 ```tsx
-import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={100} height={100} fill="royalblue" />);
+  stage.add(<Rect ref={box} width={100} height={100} fill="royalblue" />);
 
-    // Grow
-    yield* box().to({ width: 400, height: 200 }, 0.8, easeOut);
+  // Grow
+  yield* box().to({ width: 400, height: 200 }, 0.8, easeOut);
 
-    // Shrink back
-    yield* box().to({ width: 100, height: 100 }, 0.6);
-  }
-}
+  // Shrink back
+  yield* box().to({ width: 100, height: 100 }, 0.6);
+});
 ```
 
 ---

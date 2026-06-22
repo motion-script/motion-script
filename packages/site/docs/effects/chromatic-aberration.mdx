@@ -35,23 +35,21 @@ import { Effects } from '@motion-script/core';
 ## Animating
 
 ```tsx
-import { Scene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { createScene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const img = new Rect({
-      width: 600,
-      height: 400,
-      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
-    });
-    img.set({ effects: Effects.chromaticAberration(0) });
-    this.add(img);
+export default createScene(function* (stage) {
+  const img = new Rect({
+    width: 600,
+    height: 400,
+    fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+  });
+  img.set({ effects: Effects.chromaticAberration(0) });
+  stage.add(img);
 
-    yield* tween(0.8, (t) => {
-      img.set({ effects: Effects.chromaticAberration(lerpNumber(0, 12, easeOut(t))) });
-    });
-  }
-}
+  yield* tween(0.8, (t) => {
+    img.set({ effects: Effects.chromaticAberration(lerpNumber(0, 12, easeOut(t))) });
+  });
+});
 ```
 
 ## Stacking with other effects

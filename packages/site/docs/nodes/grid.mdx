@@ -13,21 +13,19 @@ A CSS/Tailwind-style grid container. Lays children into N equal-width columns; r
 ## Usage
 
 ```tsx
-import { Scene, Grid, Rect } from '@motion-script/core';
+import { createScene, Grid, Rect } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Grid columns={3} gap={16} padding={24} fill="#0a090e" cornerRadius={16}>
-        <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} />
-        <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
-        <Rect width="fill" height={120} fill="#F5C26B" cornerRadius={8} />
-        <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} colSpan={2} />
-        <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
-      </Grid>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Grid columns={3} gap={16} padding={24} fill="#0a090e" cornerRadius={16}>
+      <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} />
+      <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
+      <Rect width="fill" height={120} fill="#F5C26B" cornerRadius={8} />
+      <Rect width="fill" height={120} fill="#6990DD" cornerRadius={8} colSpan={2} />
+      <Rect width="fill" height={120} fill="#E8617C" cornerRadius={8} />
+    </Grid>
+  );
+});
 ```
 
 ## Props
@@ -64,32 +62,30 @@ These props are set on children of a `Grid`, not on the `Grid` itself:
 All props animate with `.to()`. Animate `columns` to reflow the grid, or `gap` to expand/collapse spacing:
 
 ```tsx
-import { Scene, Grid, Rect, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Grid, Rect, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const grid = createRef<Grid>();
+export default createScene(function* (stage) {
+  const grid = createRef<Grid>();
 
-    this.add(
-      <Grid ref={grid} columns={4} gap={20} padding={32} fill="#0a090e" cornerRadius={18}>
-        {Array.from({ length: 8 }, (_, i) => (
-          <Rect
-            width="fill"
-            height={130}
-            fill={['#6990DD', '#E8617C', '#F5C26B'][i % 3]}
-            cornerRadius={8}
-          />
-        ))}
-      </Grid>
-    );
+  stage.add(
+    <Grid ref={grid} columns={4} gap={20} padding={32} fill="#0a090e" cornerRadius={18}>
+      {Array.from({ length: 8 }, (_, i) => (
+        <Rect
+          width="fill"
+          height={130}
+          fill={['#6990DD', '#E8617C', '#F5C26B'][i % 3]}
+          cornerRadius={8}
+        />
+      ))}
+    </Grid>
+  );
 
-    // Reflow to 2 columns
-    yield* grid().to({ columns: 2 }, 1.0, easeInOut);
+  // Reflow to 2 columns
+  yield* grid().to({ columns: 2 }, 1.0, easeInOut);
 
-    // Reflow back to 4
-    yield* grid().to({ columns: 4 }, 1.0, easeInOut);
-  }
-}
+  // Reflow back to 4
+  yield* grid().to({ columns: 4 }, 1.0, easeInOut);
+});
 ```
 
 ## Notes

@@ -13,20 +13,18 @@ The primary building block. A rounded rectangle that also acts as a flex or stac
 ## Usage
 
 ```tsx
-import { Scene, Rect } from '@motion-script/core';
+import { createScene, Rect } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    // A row container laying out three squares, separated by a gap.
-    this.add(
-      <Rect group="row" gap={48} padding={44} cornerRadius={24}>
-        <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
-        <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
-        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
-      </Rect>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  // A row container laying out three squares, separated by a gap.
+  stage.add(
+    <Rect group="row" gap={48} padding={44} cornerRadius={24}>
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
+    </Rect>
+  );
+});
 ```
 
 ## Props
@@ -68,27 +66,25 @@ export class MyScene extends Scene {
 All props animate with `.to()`. Transition `group` to cross-fade between layout modes, or animate `gap` to expand/collapse spacing:
 
 ```tsx
-import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(
-      <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}>
-        <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
-        <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
-        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
-      </Rect>
-    );
+  stage.add(
+    <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}>
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
+    </Rect>
+  );
 
-    // Expand gap
-    yield* box().to({ gap: 100 }, 0.6, easeOut);
+  // Expand gap
+  yield* box().to({ gap: 100 }, 0.6, easeOut);
 
-    // Switch to column
-    yield* box().to({ group: 'column' }, 0.8, easeOut);
-  }
-}
+  // Switch to column
+  yield* box().to({ group: 'column' }, 0.8, easeOut);
+});
 ```
 
 ### Animated child insertion and removal

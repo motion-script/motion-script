@@ -13,25 +13,23 @@ Our card is laid out nicely. Now let's make it pop. **Effects** are visual filte
 The simplest effect is a blur. Reach for the `Effects` builder and pass it to a node.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, Rect, Text, Effects } from '@motion-script/core';
+import { createScene, Rect, Text, Effects } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Rect
-        group="column"
-        gap={16}
-        padding={32}
-        fill="#1e293b"
-        cornerRadius={16}
-        effects={Effects.blur(8)}
-      >
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-      </Rect>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Rect
+      group="column"
+      gap={16}
+      padding={32}
+      fill="#1e293b"
+      cornerRadius={16}
+      effects={Effects.blur(8)}
+    >
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
+});
 ```
 
 That blurs the whole card, square, text, and all. Because the effect is on the container, it covers the children too.
@@ -41,31 +39,29 @@ That blurs the whole card, square, text, and all. Because the effect is on the c
 Effects shine when you animate them. A classic move is to start blurry and snap into focus. Animate the blur with `.to()` like any other property.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, Rect, Text, createRef, Effects, easeOut } from '@motion-script/core';
+import { createScene, Rect, Text, createRef, Effects, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const card = createRef<Rect>();
+export default createScene(function* (stage) {
+  const card = createRef<Rect>();
 
-    this.add(
-      <Rect
-        ref={card}
-        group="column"
-        gap={16}
-        padding={32}
-        fill="#1e293b"
-        cornerRadius={16}
-        effects={Effects.blur(20)}
-      >
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-      </Rect>
-    );
+  stage.add(
+    <Rect
+      ref={card}
+      group="column"
+      gap={16}
+      padding={32}
+      fill="#1e293b"
+      cornerRadius={16}
+      effects={Effects.blur(20)}
+    >
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
 
-    // pull into focus
-    yield* card().to({ effects: Effects.blur(0) }, 1, easeOut);
-  }
-}
+  // pull into focus
+  yield* card().to({ effects: Effects.blur(0) }, 1, easeOut);
+});
 ```
 
 The card resolves from a soft blur into a crisp image. A small touch that makes an intro feel polished.

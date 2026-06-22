@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 # Introduction
 
-MotionScript is a TypeScript-first animation library for creating programmatic 2D (and 3D) animations. You describe scenes as generator methods on a `Scene` class, compose animations with `yield*`, and render to video.
+MotionScript is a TypeScript-first animation library for creating programmatic 2D (and 3D) animations. You describe scenes as generator functions passed to `createScene`, compose animations with `yield*`, and render to video.
 
 ## Quick start
 
@@ -44,29 +44,27 @@ pnpm create @motion-script@latest
 
 ## How scenes work
 
-Every animation is a **Scene**, a class that extends `Scene` and implements a `build()` generator method. Inside `build()` you add nodes to the scene and use `yield*` to drive animations frame by frame.
+Every animation is a **Scene**, created by passing a generator function to `createScene` and exporting it as the file's default. Inside that function you add nodes to the `stage` and use `yield*` to drive animations frame by frame.
 
 ```tsx
-import { Scene, Rect, createRef, wait } from '@motion-script/core';
+import { createScene, Rect, createRef, wait } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(
-      <Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={16} />
-    );
+  stage.add(
+    <Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={16} />
+  );
 
-    // Slide right over 1 second, then wait
-    yield* box().to({ x: 400 }, 1);
-    yield* wait(0.5);
-  }
-}
+  // Slide right over 1 second, then wait
+  yield* box().to({ x: 400 }, 1);
+  yield* wait(0.5);
+});
 ```
 
 Key concepts:
 
-- `this.add(node)` — attach a node to the scene
+- `stage.add(node)` — attach a node to the scene
 - `createRef<T>()` — get a typed reference to a JSX node
 - `yield* node.to(props, duration)` — animate properties over time
 - `yield* wait(seconds)` — pause for a duration

@@ -11,14 +11,12 @@ sidebar_position: 9
 ```tsx
 import { Sound } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const clip = new Sound({ src: './music.mp3' });
+export default createScene(function* (stage) {
+  const clip = new Sound({ src: './music.mp3' });
 
-    // Play to completion and block
-    yield* clip.play();
-  }
-}
+  // Play to completion and block
+  yield* clip.play();
+});
 ```
 
 ---

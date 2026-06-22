@@ -116,21 +116,19 @@ Pass an array to layer fills bottom to top:
 Fill colors and gradient stops are all animatable with `.to()`:
 
 ```tsx
-import { Scene, Rect, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={300} height={200} fill="royalblue" />);
+  stage.add(<Rect ref={box} width={300} height={200} fill="royalblue" />);
 
-    // Animate to a new color
-    yield* box().to({ fill: '#e84393' }, 1, easeInOut);
+  // Animate to a new color
+  yield* box().to({ fill: '#e84393' }, 1, easeInOut);
 
-    // Animate opacity of a fill object
-    yield* box().to({ fill: { type: 'color', color: 'white', opacity: 0 } }, 0.5);
-  }
-}
+  // Animate opacity of a fill object
+  yield* box().to({ fill: { type: 'color', color: 'white', opacity: 0 } }, 0.5);
+});
 ```
 
 ---

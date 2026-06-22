@@ -84,21 +84,19 @@ A sharp `'miter'` join on a tight corner can spike far past the path; `miterLimi
 Animating `dashOffset` is a clean way to produce a draw-on or marching-ants effect:
 
 ```tsx
-import { Scene, Rect, createRef } from '@motion-script/core';
+import { createScene, Rect, createRef } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(
-      <Rect ref={box} width={300} height={200} cornerRadius={12}
-        stroke={{ weight: 3, fill: 'white', dash: [16, 8], dashOffset: 0 }} />
-    );
+  stage.add(
+    <Rect ref={box} width={300} height={200} cornerRadius={12}
+      stroke={{ weight: 3, fill: 'white', dash: [16, 8], dashOffset: 0 }} />
+  );
 
-    // March the ants
-    yield* box().to({ stroke: { dashOffset: 100 } }, 2);
-  }
-}
+  // March the ants
+  yield* box().to({ stroke: { dashOffset: 100 } }, 2);
+});
 ```
 
 ---

@@ -72,17 +72,15 @@ Pass a single number for uniform rounding, or an object to target individual cor
 Both `cornerRadius` and `cornerStyle` are animatable:
 
 ```tsx
-import { Scene, Rect, createRef, easeOutBack } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOutBack } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={0} />);
+  stage.add(<Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={0} />);
 
-    yield* box().to({ cornerRadius: 100 }, 0.8, easeOutBack);
-  }
-}
+  yield* box().to({ cornerRadius: 100 }, 0.8, easeOutBack);
+});
 ```
 
 Animating between `'rounded'` and `'angled'` cross-fades the two shapes over the tween duration.

@@ -19,21 +19,19 @@ Opacity applies to the node and all of its children as a group. A child cannot e
 ### `.to()` — tween opacity
 
 ```tsx
-import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={200} height={200} fill="royalblue" opacity={0} />);
+  stage.add(<Rect ref={box} width={200} height={200} fill="royalblue" opacity={0} />);
 
-    // Fade in
-    yield* box().to({ opacity: 1 }, 0.6, easeOut);
+  // Fade in
+  yield* box().to({ opacity: 1 }, 0.6, easeOut);
 
-    // Fade out
-    yield* box().to({ opacity: 0 }, 0.4);
-  }
-}
+  // Fade out
+  yield* box().to({ opacity: 0 }, 0.4);
+});
 ```
 
 ### `.fadeTo()` — convenience helper

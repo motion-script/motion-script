@@ -13,21 +13,19 @@ Renders an image file. Layout, padding, and child positioning are inherited from
 ## Usage
 
 ```tsx
-import { Scene, Image } from '@motion-script/core';
+import { createScene, Image } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Image
-        src="./assets/photo.jpg"
-        fit="fill"
-        width={800}
-        height={450}
-        cornerRadius={16}
-      />
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Image
+      src="./assets/photo.jpg"
+      fit="fill"
+      width={800}
+      height={450}
+      cornerRadius={16}
+    />
+  );
+});
 ```
 
 ## Props
@@ -56,36 +54,34 @@ export class MyScene extends Scene {
 Animate standard node props like `opacity`, `scale`, `cornerRadius`, or `x`/`y`. For image filters, animate inside a `tween`:
 
 ```tsx
-import { Scene, Image, Filters, createRef, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { createScene, Image, Filters, createRef, tween, lerpNumber, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const photo = createRef<Image>();
+export default createScene(function* (stage) {
+  const photo = createRef<Image>();
 
-    this.add(
-      <Image
-        ref={photo}
-        src="./assets/photo.jpg"
-        fit="fill"
-        width={640}
-        height={360}
-        cornerRadius={0}
-        opacity={0}
-      />
-    );
+  stage.add(
+    <Image
+      ref={photo}
+      src="./assets/photo.jpg"
+      fit="fill"
+      width={640}
+      height={360}
+      cornerRadius={0}
+      opacity={0}
+    />
+  );
 
-    // Fade in
-    yield* photo().to({ opacity: 1 }, 0.8, easeOut);
+  // Fade in
+  yield* photo().to({ opacity: 1 }, 0.8, easeOut);
 
-    // Round corners
-    yield* photo().to({ cornerRadius: 24 }, 0.6, easeOut);
+  // Round corners
+  yield* photo().to({ cornerRadius: 24 }, 0.6, easeOut);
 
-    // Blur out with a filter
-    yield* tween(0.8, (t) => {
-      photo().set({ filters: Filters.blur(lerpNumber(0, 20, easeOut(t))) });
-    });
-  }
-}
+  // Blur out with a filter
+  yield* tween(0.8, (t) => {
+    photo().set({ filters: Filters.blur(lerpNumber(0, 20, easeOut(t))) });
+  });
+});
 ```
 
 ## Notes

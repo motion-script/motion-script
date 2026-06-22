@@ -15,24 +15,22 @@ You create one with `MaskGroup`. The rule to remember: the **first child is the 
 Here we use a circle to clip our card. Only the part of the card inside the circle shows.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, MaskGroup, Ellipse, Rect, Text } from '@motion-script/core';
+import { createScene, MaskGroup, Ellipse, Rect, Text } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <MaskGroup mode="vector">
-        {/* first child = the mask */}
-        <Ellipse width={300} height={300} fill="white" />
+export default createScene(function* (stage) {
+  stage.add(
+    <MaskGroup mode="vector">
+      {/* first child = the mask */}
+      <Ellipse width={300} height={300} fill="white" />
 
-        {/* everything after = the clipped content (our card) */}
-        <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
-          <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-          <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-        </Rect>
-      </MaskGroup>
-    );
-  }
-}
+      {/* everything after = the clipped content (our card) */}
+      <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    </MaskGroup>
+  );
+});
 ```
 
 The mask shape's color doesn't matter in `vector` mode, only its outline. We use white out of habit.
@@ -42,27 +40,25 @@ The mask shape's color doesn't matter in `vector` mode, only its outline. We use
 This is the payoff. Start the mask circle tiny, then grow it to reveal the card behind it. Grab the mask with a ref and animate it like anything else.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from '@motion-script/core';
+import { createScene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const reveal = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const reveal = createRef<Ellipse>();
 
-    this.add(
-      <MaskGroup mode="vector">
-        <Ellipse ref={reveal} width={0} height={0} fill="white" />
+  stage.add(
+    <MaskGroup mode="vector">
+      <Ellipse ref={reveal} width={0} height={0} fill="white" />
 
-        <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
-          <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-          <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-        </Rect>
-      </MaskGroup>
-    );
+      <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    </MaskGroup>
+  );
 
-    // grow the circle to reveal the card
-    yield* reveal().to({ width: 800, height: 800 }, 1.2, easeInOut);
-  }
-}
+  // grow the circle to reveal the card
+  yield* reveal().to({ width: 800, height: 800 }, 1.2, easeInOut);
+});
 ```
 
 The card irises open from a point. That's the same `.to()` you've used the whole way through, now driving a reveal.
@@ -74,25 +70,23 @@ The card irises open from a point. That's the same `.to()` you've used the whole
 Any node can be the mask, even text. Use a word as the mask and a colorful fill as the content, and the color shows *through the letters*.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, MaskGroup, Text, Rect, Fills } from '@motion-script/core';
+import { createScene, MaskGroup, Text, Rect, Fills } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <MaskGroup mode="alpha">
-        {/* the word is the mask */}
-        <Text text="MOTION" fontSize={140} fontWeight={900} fill="white" />
+export default createScene(function* (stage) {
+  stage.add(
+    <MaskGroup mode="alpha">
+      {/* the word is the mask */}
+      <Text text="MOTION" fontSize={140} fontWeight={900} fill="white" />
 
-        {/* the gradient shows through the letters */}
-        <Rect
-          width="fill"
-          height="fill"
-          fill={Fills.linearGradient(['#4f80ff', '#e84393'])}
-        />
-      </MaskGroup>
-    );
-  }
-}
+      {/* the gradient shows through the letters */}
+      <Rect
+        width="fill"
+        height="fill"
+        fill={Fills.linearGradient(['#4f80ff', '#e84393'])}
+      />
+    </MaskGroup>
+  );
+});
 ```
 
 <TextMaskCanvas />

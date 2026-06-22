@@ -13,19 +13,17 @@ An invisible vertical flex container. Lays its children out top-to-bottom, honou
 ## Usage
 
 ```tsx
-import { Scene, Column, Rect } from '@motion-script/core';
+import { createScene, Column, Rect } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Column gap={16} padding={24}>
-        <Rect width={380} height={90} fill="#6990DD" cornerRadius={12} />
-        <Rect width={380} height={90} fill="#E8617C" cornerRadius={12} />
-        <Rect width={380} height={90} fill="#F5C26B" cornerRadius={12} />
-      </Column>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Column gap={16} padding={24}>
+      <Rect width={380} height={90} fill="#6990DD" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#E8617C" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#F5C26B" cornerRadius={12} />
+    </Column>
+  );
+});
 ```
 
 ## Props
@@ -45,27 +43,25 @@ export class MyScene extends Scene {
 All props animate with `.to()`:
 
 ```tsx
-import { Scene, Column, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Column, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const col = createRef<Column>();
+export default createScene(function* (stage) {
+  const col = createRef<Column>();
 
-    this.add(
-      <Column ref={col} gap={16}>
-        <Rect width={380} height={90} fill="#6990DD" cornerRadius={12} />
-        <Rect width={380} height={90} fill="#E8617C" cornerRadius={12} />
-        <Rect width={380} height={90} fill="#F5C26B" cornerRadius={12} />
-      </Column>
-    );
+  stage.add(
+    <Column ref={col} gap={16}>
+      <Rect width={380} height={90} fill="#6990DD" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#E8617C" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#F5C26B" cornerRadius={12} />
+    </Column>
+  );
 
-    // Spread items apart
-    yield* col().to({ gap: 90 }, 0.8, easeOut);
+  // Spread items apart
+  yield* col().to({ gap: 90 }, 0.8, easeOut);
 
-    // Bring them back together
-    yield* col().to({ gap: 16 }, 0.8, easeOut);
-  }
-}
+  // Bring them back together
+  yield* col().to({ gap: 16 }, 0.8, easeOut);
+});
 ```
 
 ## Notes

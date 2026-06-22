@@ -78,21 +78,19 @@ Rotation happens around the `pivot` point (center by default).
 ### `.to()` — tween position
 
 ```tsx
-import { Scene, Rect, createRef, easeOutBack } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOutBack } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const box = createRef<Rect>();
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
 
-    this.add(<Rect ref={box} width={120} height={120} fill="royalblue" />);
+  stage.add(<Rect ref={box} width={120} height={120} fill="royalblue" />);
 
-    // Move to x=300
-    yield* box().to({ x: 300 }, 0.8, easeOutBack);
+  // Move to x=300
+  yield* box().to({ x: 300 }, 0.8, easeOutBack);
 
-    // Move both axes at once
-    yield* box().to({ x: -200, y: 150 }, 0.6);
-  }
-}
+  // Move both axes at once
+  yield* box().to({ x: -200, y: 150 }, 0.6);
+});
 ```
 
 ### `.moveTo()` — convenience helper

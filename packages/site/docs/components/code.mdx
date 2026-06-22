@@ -15,27 +15,25 @@ npm install @motion-script/code
 ## Basic usage
 
 ```tsx
-import { Scene, createRef } from '@motion-script/core';
+import { createScene, createRef } from '@motion-script/core';
 import { Code, lines, word } from '@motion-script/code';
 
-export class MyScene extends Scene {
-  *build() {
-    const ref = createRef<Code>();
+export default createScene(function* (stage) {
+  const ref = createRef<Code>();
 
-    this.add(
-      <Code
-        ref={ref}
-        code={`function greet(name: string) {
+  stage.add(
+    <Code
+      ref={ref}
+      code={`function greet(name: string) {
   return \`Hello, \${name}!\`;
 }`}
-        fontSize={28}
-        showLineNumbers={true}
-      />
-    );
+      fontSize={28}
+      showLineNumbers={true}
+    />
+  );
 
-    yield* ref().highlight(lines(2), 0.5);
-  }
-}
+  yield* ref().highlight(lines(2), 0.5);
+});
 ```
 
 ## Props
@@ -105,46 +103,44 @@ word(3, 10, 9)
 ## Full example
 
 ```tsx
-import { Scene, createRef, wait, parallel, easeOutQuad } from '@motion-script/core';
+import { createScene, createRef, wait, parallel, easeOutQuad } from '@motion-script/core';
 import { Code, lines, word } from '@motion-script/code';
 
-export class CodeScene extends Scene {
-  *build() {
-    const ref = createRef<Code>();
+export default createScene(function* (stage) {
+  const ref = createRef<Code>();
 
-    this.add(
-      <Code
-        ref={ref}
-        code={`function getUser(id: number) {
+  stage.add(
+    <Code
+      ref={ref}
+      code={`function getUser(id: number) {
   const user = db.find(id);
   return user.name;
 }`}
-        fontSize={32}
-        showLineNumbers={true}
-      />
-    );
+      fontSize={32}
+      showLineNumbers={true}
+    />
+  );
 
-    yield* wait(0.5);
+  yield* wait(0.5);
 
-    // Highlight line 2
-    yield* ref().highlight(lines(2), 0.5);
-    yield* wait(0.6);
+  // Highlight line 2
+  yield* ref().highlight(lines(2), 0.5);
+  yield* wait(0.6);
 
-    // Highlight a specific word
-    yield* ref().highlight(word(3, 10, 9), 0.4);
-    yield* wait(0.6);
+  // Highlight a specific word
+  yield* ref().highlight(word(3, 10, 9), 0.4);
+  yield* wait(0.6);
 
-    // Clear highlight
-    yield* ref().resetHighlight(0.4);
-    yield* wait(0.3);
+  // Clear highlight
+  yield* ref().resetHighlight(0.4);
+  yield* wait(0.3);
 
-    // Replace a token
-    yield* ref().replace(word(1, 22, 6), 'string', 0.3, easeOutQuad);
-    yield* wait(0.5);
+  // Replace a token
+  yield* ref().replace(word(1, 22, 6), 'string', 0.3, easeOutQuad);
+  yield* wait(0.5);
 
-    // Remove a line
-    yield* ref().remove(lines(2), 0.4);
-    yield* wait(1);
-  }
-}
+  // Remove a line
+  yield* ref().remove(lines(2), 0.4);
+  yield* wait(1);
+});
 ```

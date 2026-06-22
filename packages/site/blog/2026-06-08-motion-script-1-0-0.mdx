@@ -19,22 +19,20 @@ turns it into frames using a Skia (CanvasKit) rendering backend, and the bundled
 player gives you a timeline-based editor to preview, scrub, and export.
 
 ```tsx
-import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
+import { createScene, createRef, Rect, Ellipse } from '@motion-script/core';
 
-export class ShapeScene extends Scene {
-  *build() {
-    const lens = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const lens = createRef<Ellipse>();
 
-    this.add(
-      <Rect width={400} height={400} fill="white" cornerRadius={20}>
-        <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
-      </Rect>,
-    );
+  stage.add(
+    <Rect width={400} height={400} fill="white" cornerRadius={20}>
+      <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
+    </Rect>,
+  );
 
-    // Animate: tween the ellipse to x=700 over 3 seconds.
-    yield* lens().to({ x: 700 }, 3);
-  }
-}
+  // Animate: tween the ellipse to x=700 over 3 seconds.
+  yield* lens().to({ x: 700 }, 3);
+});
 ```
 
 Animations are driven by generators — `yield*` a tween and the engine advances

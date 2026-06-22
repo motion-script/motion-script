@@ -33,19 +33,17 @@ import { Effects } from '@motion-script/core';
 ## Animating
 
 ```tsx
-import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+import { createScene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const card = new Rect({ width: 400, height: 400, fill: '#4f46e5' });
-    card.set({ effects: Effects.bulge(0) });
-    this.add(card);
+export default createScene(function* (stage) {
+  const card = new Rect({ width: 400, height: 400, fill: '#4f46e5' });
+  card.set({ effects: Effects.bulge(0) });
+  stage.add(card);
 
-    yield* tween(1.2, (t) => {
-      card.set({ effects: Effects.bulge(lerpNumber(0, 0.8, easeInOut(t))) });
-    });
-  }
-}
+  yield* tween(1.2, (t) => {
+    card.set({ effects: Effects.bulge(lerpNumber(0, 0.8, easeInOut(t))) });
+  });
+});
 ```
 
 ## Stacking with other effects

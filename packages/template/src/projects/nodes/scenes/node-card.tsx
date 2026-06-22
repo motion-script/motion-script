@@ -23,7 +23,7 @@ export function nodeCard(opts: {
                 fontSize={80}
                 fill={'gray'}
                 width={'fill'}
-                align={'start'}
+                textAlign={'start'}
             />
             <Rect
                 width={'fill'}

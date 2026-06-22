@@ -38,29 +38,27 @@ The node must be layered _over_ other scene content for the effect to be visible
 ## Animating
 
 ```tsx
-import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+import { createScene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const bg = new Rect({
-      width: 800,
-      height: 600,
-      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
-    });
-    const card = new Rect({
-      width: 400,
-      height: 260,
-      cornerRadius: 16,
-      fill: { type: 'color', value: 'rgba(255,255,255,0.15)' },
-    });
-    card.set({ effects: Effects.blur(0, { backdrop: true }) });
-    this.add(bg, card);
+export default createScene(function* (stage) {
+  const bg = new Rect({
+    width: 800,
+    height: 600,
+    fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+  });
+  const card = new Rect({
+    width: 400,
+    height: 260,
+    cornerRadius: 16,
+    fill: { type: 'color', value: 'rgba(255,255,255,0.15)' },
+  });
+  card.set({ effects: Effects.blur(0, { backdrop: true }) });
+  stage.add(bg, card);
 
-    yield* tween(1.2, (t) => {
-      card.set({ effects: Effects.blur(lerpNumber(0, 20, easeInOut(t)), { backdrop: true }) });
-    });
-  }
-}
+  yield* tween(1.2, (t) => {
+    card.set({ effects: Effects.blur(lerpNumber(0, 20, easeInOut(t)), { backdrop: true }) });
+  });
+});
 ```
 
 ## Stacking with other effects

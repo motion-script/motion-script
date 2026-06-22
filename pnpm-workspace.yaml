@@ -13,14 +13,10 @@ packages:
   - "packages/components/code"
   - "packages/components/latex"
 
-confirmModulesPurge: false
-
 allowBuilds:
-  '@motion-script/player': false
   '@swc/core': false
   core-js: false
-  msw: false
-  unrs-resolver: true
+  unrs-resolver: false
 
 catalog:
   react: ^19.2.3

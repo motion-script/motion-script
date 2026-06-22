@@ -13,22 +13,20 @@ Renders mixed-style text. Style is defined as a tree of `TextSpan` objects — c
 ## Usage
 
 ```tsx
-import { Scene, RichText } from '@motion-script/core';
+import { createScene, RichText } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <RichText
-        fontSize={96}
-        fill="white"
-        spans={[
-          { text: 'Motion ' },
-          { text: 'Script', fill: '#6990DD', fontWeight: 800 },
-        ]}
-      />
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <RichText
+      fontSize={96}
+      fill="white"
+      spans={[
+        { text: 'Motion ' },
+        { text: 'Script', fill: '#6990DD', fontWeight: 800 },
+      ]}
+    />
+  );
+});
 ```
 
 ## Props
@@ -92,38 +90,36 @@ Children inherit their parent span's styles and can override selectively:
 Animate any top-level prop with `.to()`. To animate individual span styles, reassign `spans` inside a `tween`:
 
 ```tsx
-import { Scene, RichText, createRef, tween, easeOut } from '@motion-script/core';
+import { createScene, RichText, createRef, tween, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const label = createRef<RichText>();
+export default createScene(function* (stage) {
+  const label = createRef<RichText>();
 
-    this.add(
-      <RichText
-        ref={label}
-        fontSize={96}
-        fill="white"
-        spans={[
-          { text: 'Motion ', fontWeight: 400 },
-          { text: 'Script', fontWeight: 800, fill: '#6990DD' },
-        ]}
-      />
-    );
+  stage.add(
+    <RichText
+      ref={label}
+      fontSize={96}
+      fill="white"
+      spans={[
+        { text: 'Motion ', fontWeight: 400 },
+        { text: 'Script', fontWeight: 800, fill: '#6990DD' },
+      ]}
+    />
+  );
 
-    // Animate font size
-    yield* label().to({ fontSize: 120 }, 0.6, easeOut);
+  // Animate font size
+  yield* label().to({ fontSize: 120 }, 0.6, easeOut);
 
-    // Cross-fade the bold span from blue to pink
-    yield* tween(0.8, (t) => {
-      label().set({
-        spans: [
-          { text: 'Motion ', fontWeight: 400 },
-          { text: 'Script', fontWeight: 800, fill: `hsl(${222 + t * 126}, 68%, 64%)` },
-        ],
-      });
+  // Cross-fade the bold span from blue to pink
+  yield* tween(0.8, (t) => {
+    label().set({
+      spans: [
+        { text: 'Motion ', fontWeight: 400 },
+        { text: 'Script', fontWeight: 800, fill: `hsl(${222 + t * 126}, 68%, 64%)` },
+      ],
     });
-  }
-}
+  });
+});
 ```
 
 ### Draw-on animation
@@ -132,7 +128,7 @@ Like `Text`, animating `end` from `0` to `1` traces the text outline:
 
 ```tsx
 const label = createRef<RichText>();
-this.add(
+stage.add(
   <RichText
     ref={label}
     fontSize={64}

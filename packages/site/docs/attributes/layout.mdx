@@ -19,19 +19,17 @@ sidebar_position: 8
 ## Row
 
 ```tsx
-import { Scene, Rect } from '@motion-script/core';
+import { createScene, Rect } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Rect group="row" gap={24} padding={32} fill="#1e293b" cornerRadius={16}>
-        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
-        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
-      </Rect>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Rect group="row" gap={24} padding={32} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+      <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+    </Rect>
+  );
+});
 ```
 
 ---
@@ -39,7 +37,7 @@ export class MyScene extends Scene {
 ## Column
 
 ```tsx
-this.add(
+stage.add(
   <Rect group="column" gap={16} padding={24} fill="#1e293b" cornerRadius={12}>
     <Rect width="fill" height={60} fill="royalblue" cornerRadius={8} />
     <Rect width="fill" height={60} fill="tomato"    cornerRadius={8} />
@@ -55,7 +53,7 @@ this.add(
 Children are layered in z-order, centered within the container:
 
 ```tsx
-this.add(
+stage.add(
   <Rect group="stack" width={300} height={300}>
     <Rect width={300} height={300} fill="royalblue" cornerRadius={16} />
     <Text text="Stacked" fontSize={32} fontWeight={700} fill="white" />
@@ -132,7 +130,7 @@ Inset the layout's content area from the container's edges:
 Layouts can be nested arbitrarily deep:
 
 ```tsx
-this.add(
+stage.add(
   <Rect group="column" gap={16} padding={32} fill="#0f1117" width="fill" height="fill">
     <Rect group="row" gap={16} width="fill">
       <Rect width="fill" height={200} fill="#1e293b" cornerRadius={12} />
@@ -150,27 +148,25 @@ this.add(
 All layout props are animatable with `.to()`:
 
 ```tsx
-import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const container = createRef<Rect>();
+export default createScene(function* (stage) {
+  const container = createRef<Rect>();
 
-    this.add(
-      <Rect ref={container} group="row" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
-        <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
-        <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
-      </Rect>
-    );
+  stage.add(
+    <Rect ref={container} group="row" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
+      <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
+    </Rect>
+  );
 
-    // Expand gap
-    yield* container().to({ gap: 48 }, 0.6, easeOut);
+  // Expand gap
+  yield* container().to({ gap: 48 }, 0.6, easeOut);
 
-    // Switch to column layout
-    yield* container().to({ group: 'column' }, 0.5, easeOut);
-  }
-}
+  // Switch to column layout
+  yield* container().to({ group: 'column' }, 0.5, easeOut);
+});
 ```
 
 ---

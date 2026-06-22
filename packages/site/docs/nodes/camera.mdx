@@ -13,26 +13,24 @@ A viewport card that renders its children through a virtual camera transform. It
 ## Usage
 
 ```tsx
-import { Scene, Camera, Rect } from '@motion-script/core';
+import { createScene, Camera, Rect } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Camera
-        width={760}
-        height={380}
-        zoom={1}
-        origin={{ x: 0, y: 0 }}
-        fill="#0a090e"
-        cornerRadius={18}
-      >
-        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
-        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
-        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
-      </Camera>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Camera
+      width={760}
+      height={380}
+      zoom={1}
+      origin={{ x: 0, y: 0 }}
+      fill="#0a090e"
+      cornerRadius={18}
+    >
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
+    </Camera>
+  );
+});
 ```
 
 ## Props
@@ -52,30 +50,28 @@ export class MyScene extends Scene {
 All camera props animate with `.to()`. Pan, zoom, and rotate to create cinematic camera moves:
 
 ```tsx
-import { Scene, Camera, Rect, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Camera, Rect, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const cam = createRef<Camera>();
+export default createScene(function* (stage) {
+  const cam = createRef<Camera>();
 
-    this.add(
-      <Camera ref={cam} width={760} height={380} fill="#0a090e" cornerRadius={18}>
-        <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
-        <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
-        <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
-      </Camera>
-    );
+  stage.add(
+    <Camera ref={cam} width={760} height={380} fill="#0a090e" cornerRadius={18}>
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
+    </Camera>
+  );
 
-    // Pan to the gold box on the right
-    yield* cam().to({ origin: { x: 240, y: 0 } }, 1.2, easeInOut);
+  // Pan to the gold box on the right
+  yield* cam().to({ origin: { x: 240, y: 0 } }, 1.2, easeInOut);
 
-    // Zoom in on it
-    yield* cam().to({ zoom: 1.8 }, 0.8, easeInOut);
+  // Zoom in on it
+  yield* cam().to({ zoom: 1.8 }, 0.8, easeInOut);
 
-    // Pull back home
-    yield* cam().to({ origin: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
-  }
-}
+  // Pull back home
+  yield* cam().to({ origin: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
+});
 ```
 
 ## Notes

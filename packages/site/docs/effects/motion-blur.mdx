@@ -26,17 +26,15 @@ import { Effects } from '@motion-script/core';
 The effect is only visible while the node is moving. Add it to a node before animating it:
 
 ```tsx
-import { Scene, Ellipse, Effects, tween } from '@motion-script/core';
+import { createScene, Ellipse, Effects, tween } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
-    puck.set({ x: -400, effects: Effects.motionBlur(80, 'centered', 16) });
-    this.add(puck);
+export default createScene(function* (stage) {
+  const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
+  puck.set({ x: -400, effects: Effects.motionBlur(80, 'centered', 16) });
+  stage.add(puck);
 
-    yield* puck.moveX(400, 0.4);
-  }
-}
+  yield* puck.moveX(400, 0.4);
+});
 ```
 
 ## Props
@@ -55,22 +53,20 @@ export class MyScene extends Scene {
 `motionBlur` is typically set once and left — the smear responds automatically to the node's movement speed. To ramp the effect in or out, animate `strength`:
 
 ```tsx
-import { Scene, Ellipse, Effects, tween, lerpNumber, easeIn } from '@motion-script/core';
+import { createScene, Ellipse, Effects, tween, lerpNumber, easeIn } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
-    this.add(puck);
+export default createScene(function* (stage) {
+  const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
+  stage.add(puck);
 
-    // Velocity ramp: increase motion blur as the node accelerates
-    yield* tween(1, (t) => {
-      puck.set({
-        x: lerpNumber(-400, 400, t),
-        effects: Effects.motionBlur(80, 'centered', 16, lerpNumber(0, 1, t)),
-      });
+  // Velocity ramp: increase motion blur as the node accelerates
+  yield* tween(1, (t) => {
+    puck.set({
+      x: lerpNumber(-400, 400, t),
+      effects: Effects.motionBlur(80, 'centered', 16, lerpNumber(0, 1, t)),
     });
-  }
-}
+  });
+});
 ```
 
 ## Stacking with other effects

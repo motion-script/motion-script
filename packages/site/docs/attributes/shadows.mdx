@@ -76,19 +76,17 @@ Pass an array to combine drop shadows, glows, or layered insets:
 All shadow props are animatable:
 
 ```tsx
-import { Scene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const card = createRef<Rect>();
+export default createScene(function* (stage) {
+  const card = createRef<Rect>();
 
-    this.add(
-      <Rect ref={card} width={320} height={200} fill="#1e293b" cornerRadius={16}
-        shadow={{ blur: 8, fill: 'black', opacity: 0.2, dy: 4 }} />
-    );
+  stage.add(
+    <Rect ref={card} width={320} height={200} fill="#1e293b" cornerRadius={16}
+      shadow={{ blur: 8, fill: 'black', opacity: 0.2, dy: 4 }} />
+  );
 
-    // Lift on hover — deepen shadow
-    yield* card().to({ shadow: { blur: 32, opacity: 0.4, dy: 16 } }, 0.4, easeOut);
-  }
-}
+  // Lift on hover — deepen shadow
+  yield* card().to({ shadow: { blur: 32, opacity: 0.4, dy: 16 } }, 0.4, easeOut);
+});
 ```

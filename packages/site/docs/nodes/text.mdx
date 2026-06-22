@@ -13,21 +13,19 @@ Renders a string with a single consistent style. Like all shape nodes it support
 ## Usage
 
 ```tsx
-import { Scene, Text } from '@motion-script/core';
+import { createScene, Text } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Text
-        text="Motion Script"
-        fontSize={96}
-        fontFamily="Inter"
-        fontWeight={800}
-        fill="white"
-      />
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Text
+      text="Motion Script"
+      fontSize={96}
+      fontFamily="Inter"
+      fontWeight={800}
+      fill="white"
+    />
+  );
+});
 ```
 
 ## Props
@@ -57,23 +55,21 @@ export class MyScene extends Scene {
 All text props animate with `.to()`. Use `append` and `prepend` to animate characters being typed in:
 
 ```tsx
-import { Scene, Text, createRef, easeOut } from '@motion-script/core';
+import { createScene, Text, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const label = createRef<Text>();
+export default createScene(function* (stage) {
+  const label = createRef<Text>();
 
-    this.add(
-      <Text ref={label} text="" fontSize={96} fontWeight={800} fill="white" />
-    );
+  stage.add(
+    <Text ref={label} text="" fontSize={96} fontWeight={800} fill="white" />
+  );
 
-    // Type "Motion Script" in, character by character
-    yield* label().append('Motion Script', 1.8, easeOut);
+  // Type "Motion Script" in, character by character
+  yield* label().append('Motion Script', 1.8, easeOut);
 
-    // Animate font size
-    yield* label().to({ fontSize: 120 }, 0.5, easeOut);
-  }
-}
+  // Animate font size
+  yield* label().to({ fontSize: 120 }, 0.5, easeOut);
+});
 ```
 
 ### Methods
@@ -89,7 +85,7 @@ Animate `end` from `0` to `1` to trace the text outline character by character:
 
 ```tsx
 const label = createRef<Text>();
-this.add(<Text ref={label} text="Motion" fontSize={80} fontWeight={900} fill="white" end={0} />);
+stage.add(<Text ref={label} text="Motion" fontSize={80} fontWeight={900} fill="white" end={0} />);
 
 yield* label().to({ end: 1 }, 1.2);
 ```

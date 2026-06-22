@@ -35,15 +35,14 @@ export default createScene(function* (stage) {
                     <Rect width={'fill'} height={'fill'} group={'column'} cornerRadius={24} fill={'bg'}>
                         <Text
                             ref={sizeRef}
-                            text={'Hello my name is cookie cat and I\'m a pet for your dummy. I\'mk really good and suepr duper yummy.'}
-                            fontSize={'autofit'}
+                            text={'Aa'}
+                            fontSize={30}
                             wrap={true}
                             minFontSize={20}
                             fontWeight={700}
                             fill={'primary'}
                             textAlign={'center'}
                         />
-                        <Rect fill={'red'} width={'fill'} height={'fill'} />
                     </Rect>
                     <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
                         <Text

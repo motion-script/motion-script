@@ -9,49 +9,48 @@ import { nodeCard } from "./node-card";
  * tile grows its height so the column reflows around it.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg' });
+    stage.set({ fill: 'bg' });
 
-        const colRef = createRef<Column>();
-        const tileRefs = [createRef<Rect>(), createRef<Rect>(), createRef<Rect>()];
-        const colors = ['#6990DD', '#E8617C', '#F5C26B'];
+    const colRef = createRef<Column>();
+    const tileRefs = [createRef<Rect>(), createRef<Rect>(), createRef<Rect>()];
+    const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        stage.add(
-            nodeCard({
-                label: 'Column',
-                stage: 'stack',
-                children: (
-                    <Column ref={colRef} gap={24} align={{ x: 0, y: 0 }}>
-                        {tileRefs.map((ref, i) => (
-                            <Rect
-                                ref={ref}
-                                key={i}
-                                width={240}
-                                height={120}
-                                fill={colors[i]}
-                                cornerRadius={20}
-                                group={'stack'}
-                            >
-                                <Text
-                                    fontFamily={'Pixelify Sans'}
-                                    text={`${i + 1}`}
-                                    fontSize={56}
-                                    fill={'bg'}
-                                />
-                            </Rect>
-                        ))}
-                    </Column>
-                ),
-            })
-        );
+    stage.add(
+        nodeCard({
+            label: 'Column',
+            stage: 'stack',
+            children: (
+                <Column ref={colRef} gap={24} align={{ x: 0, y: 0 }}>
+                    {tileRefs.map((ref, i) => (
+                        <Rect
+                            ref={ref}
+                            width={240}
+                            height={120}
+                            fill={colors[i]}
+                            cornerRadius={20}
+                            group={'stack'}
+                        >
+                            <Text
+                                fontFamily={'Pixelify Sans'}
+                                text={`${i + 1}`}
+                                fontSize={56}
+                                fill={'bg'}
+                            />
+                        </Rect>
+                    ))}
+                </Column>
+            ),
+        })
+    );
 
-        yield* colRef().to({ gap: 48 }, 1.0, easeInOutQuad);
-        yield* parallel(
-            colRef().to({ align: { x: -1, y: 0 } }, 0.8, easeInOutQuad),
-            tileRefs[1]().to({ width: 360 }, 0.8, easeInOutQuad),
-        );
-        yield* parallel(
-            colRef().to({ align: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOutQuad),
-            tileRefs[1]().to({ width: 240 }, 0.8, easeInOutQuad),
-        );
-        yield* wait(0.5);
+    yield* colRef().to({ gap: 48 }, 1.0, easeInOutQuad);
+    yield* parallel(
+        colRef().to({ align: { x: -1, y: 0 } }, 0.8, easeInOutQuad),
+        tileRefs[1]().to({ width: 360 }, 0.8, easeInOutQuad),
+    );
+    yield* parallel(
+        colRef().to({ align: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOutQuad),
+        tileRefs[1]().to({ width: 240 }, 0.8, easeInOutQuad),
+    );
+    yield* wait(0.5);
 });

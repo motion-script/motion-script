@@ -13,19 +13,17 @@ An invisible horizontal flex container. Lays its children out left-to-right, hon
 ## Usage
 
 ```tsx
-import { Scene, Row, Rect, Text } from '@motion-script/core';
+import { createScene, Row, Rect, Text } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Row gap={24} padding={16}>
-        <Rect width={140} height={140} fill="#6990DD" cornerRadius={12} />
-        <Rect width={140} height={140} fill="#E8617C" cornerRadius={12} />
-        <Rect width={140} height={140} fill="#F5C26B" cornerRadius={12} />
-      </Row>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Row gap={24} padding={16}>
+      <Rect width={140} height={140} fill="#6990DD" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#E8617C" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#F5C26B" cornerRadius={12} />
+    </Row>
+  );
+});
 ```
 
 ## Props
@@ -45,27 +43,25 @@ export class MyScene extends Scene {
 All props animate with `.to()`:
 
 ```tsx
-import { Scene, Row, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Row, Rect, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const row = createRef<Row>();
+export default createScene(function* (stage) {
+  const row = createRef<Row>();
 
-    this.add(
-      <Row ref={row} gap={24}>
-        <Rect width={140} height={140} fill="#6990DD" cornerRadius={12} />
-        <Rect width={140} height={140} fill="#E8617C" cornerRadius={12} />
-        <Rect width={140} height={140} fill="#F5C26B" cornerRadius={12} />
-      </Row>
-    );
+  stage.add(
+    <Row ref={row} gap={24}>
+      <Rect width={140} height={140} fill="#6990DD" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#E8617C" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#F5C26B" cornerRadius={12} />
+    </Row>
+  );
 
-    // Spread items apart
-    yield* row().to({ gap: 170 }, 0.8, easeOut);
+  // Spread items apart
+  yield* row().to({ gap: 170 }, 0.8, easeOut);
 
-    // Bring them back together
-    yield* row().to({ gap: 24 }, 0.8, easeOut);
-  }
-}
+  // Bring them back together
+  yield* row().to({ gap: 24 }, 0.8, easeOut);
+});
 ```
 
 ## Notes

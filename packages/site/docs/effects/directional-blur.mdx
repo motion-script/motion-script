@@ -37,20 +37,18 @@ import { Effects } from '@motion-script/core';
 Animate `blurLength` to create a speed-up or slow-down effect:
 
 ```tsx
-import { Scene, Rect, Effects, tween, lerpNumber, easeIn } from '@motion-script/core';
+import { createScene, Rect, Effects, tween, lerpNumber, easeIn } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const card = new Rect({ width: 500, height: 300, fill: 'royalblue' });
-    card.set({ effects: Effects.directionalBlur(0, 0) });
-    this.add(card);
+export default createScene(function* (stage) {
+  const card = new Rect({ width: 500, height: 300, fill: 'royalblue' });
+  card.set({ effects: Effects.directionalBlur(0, 0) });
+  stage.add(card);
 
-    // Blur out to the right
-    yield* tween(0.6, (t) => {
-      card.set({ effects: Effects.directionalBlur(0, lerpNumber(0, 60, easeIn(t))) });
-    });
-  }
-}
+  // Blur out to the right
+  yield* tween(0.6, (t) => {
+    card.set({ effects: Effects.directionalBlur(0, lerpNumber(0, 60, easeIn(t))) });
+  });
+});
 ```
 
 ## Stacking with other effects

@@ -2,26 +2,24 @@ import React, { useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
 import { CardShadow } from './FeatureFrame';
 
-const SNIPPET = `export class HelloScene extends Scene {
-  *build() {
-    this.set({ fill: "#0D0F15", padding: 80 });
+const SNIPPET = `export default createScene(function* (stage) {
+  stage.set({ fill: "#0D0F15", padding: 80 });
 
-    const card = createRef<Rect>();
+  const card = createRef<Rect>();
 
-    this.add(
-      <Rect ref={card} width={240} height={120} fill="#5ea8d8">
-        <Text text="Hello" fontSize={32} fill="white" />
-      </Rect>
-    );
+  stage.add(
+    <Rect ref={card} width={240} height={120} fill="#5ea8d8">
+      <Text text="Hello" fontSize={32} fill="white" />
+    </Rect>
+  );
 
-    // The execution of your code defines the animation
-    yield* wait(0.5);
-    yield* sequence(
-      card().to({ cornerRadius: 60 }, 0.8, easeOutBack()),
-      card().to({ rotation: 360 }, 0.8),
-    );
-  }
-}`;
+  // The execution of your code defines the animation
+  yield* wait(0.5);
+  yield* sequence(
+    card().to({ cornerRadius: 60 }, 0.8, easeOutBack()),
+    card().to({ rotation: 360 }, 0.8),
+  );
+});`;
 
 export default function ProceduralSection() {
   return (

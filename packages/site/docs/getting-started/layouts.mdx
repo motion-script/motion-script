@@ -15,18 +15,16 @@ Here's the trick: a `Rect` isn't just a shape, it's also a container. Give it a 
 Set `group="row"` to place children side by side, or `group="column"` to stack them top to bottom. Add `gap` for spacing and `padding` for breathing room around the edges.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, Rect, Text } from '@motion-script/core';
+import { createScene, Rect, Text } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-      </Rect>
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
+});
 ```
 
 Notice we put our square and title **inside** the container, and we didn't set a single `x` or `y`. The outer `Rect` sizes itself to wrap its children and lays them out in a tidy column. That's our scene's two elements, neatly combined into a card.
@@ -72,22 +70,20 @@ Now the square and the title are centered within the card.
 Here's the fun part: layout props are animatable just like everything else. Grab the container with a ref and animate its `gap` to spread the contents apart, or even switch it from a column to a row.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { Scene, Rect, Text, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, Text, createRef, easeOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const card = createRef<Rect>();
+export default createScene(function* (stage) {
+  const card = createRef<Rect>();
 
-    this.add(
-      <Rect ref={card} group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
-        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
-        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
-      </Rect>
-    );
+  stage.add(
+    <Rect ref={card} group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
 
-    yield* card().to({ gap: 40 }, 0.8, easeOut);
-  }
-}
+  yield* card().to({ gap: 40 }, 0.8, easeOut);
+});
 ```
 
 The whole card smoothly re-flows as the gap grows. Lay your scene out once, then animate the layout itself.

@@ -13,25 +13,23 @@ Circles, ovals, and arcs. Control the arc extent with `startAngle` and `sweep`.
 ## Usage
 
 ```tsx
-import { Scene, Ellipse } from '@motion-script/core';
+import { createScene, Ellipse } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    // Full circle
-    this.add(<Ellipse width={200} height={200} fill="#6990DD" />);
+export default createScene(function* (stage) {
+  // Full circle
+  stage.add(<Ellipse width={200} height={200} fill="#6990DD" />);
 
-    // Arc (progress ring)
-    this.add(
-      <Ellipse
-        width={360}
-        height={360}
-        startAngle={-90}
-        sweep={270}
-        stroke={{ fill: '#6990DD', weight: 24 }}
-      />
-    );
-  }
-}
+  // Arc (progress ring)
+  stage.add(
+    <Ellipse
+      width={360}
+      height={360}
+      startAngle={-90}
+      sweep={270}
+      stroke={{ fill: '#6990DD', weight: 24 }}
+    />
+  );
+});
 ```
 
 ## Props
@@ -47,27 +45,25 @@ export class MyScene extends Scene {
 All props animate with `.to()`. Animate `sweep` to create a progress ring or pie chart:
 
 ```tsx
-import { Scene, Ellipse, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Ellipse, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const ring = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const ring = createRef<Ellipse>();
 
-    this.add(
-      <Ellipse
-        ref={ring}
-        width={360}
-        height={360}
-        startAngle={-90}
-        sweep={0}
-        stroke={{ fill: '#6990DD', weight: 24 }}
-      />
-    );
+  stage.add(
+    <Ellipse
+      ref={ring}
+      width={360}
+      height={360}
+      startAngle={-90}
+      sweep={0}
+      stroke={{ fill: '#6990DD', weight: 24 }}
+    />
+  );
 
-    // Draw ring from 0 to full circle
-    yield* ring().to({ sweep: 360 }, 1.5, easeInOut);
-  }
-}
+  // Draw ring from 0 to full circle
+  yield* ring().to({ sweep: 360 }, 1.5, easeInOut);
+});
 ```
 
 Animate `startAngle` to spin the arc opening around the circle:

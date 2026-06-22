@@ -13,21 +13,19 @@ Renders a playing video. Layout and child positioning are inherited from `Rect` 
 ## Usage
 
 ```tsx
-import { Scene, Video } from '@motion-script/core';
+import { createScene, Video } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    this.add(
-      <Video
-        src="./assets/clip.mp4"
-        fit="fill"
-        width={1280}
-        height={720}
-        cornerRadius={0}
-      />
-    );
-  }
-}
+export default createScene(function* (stage) {
+  stage.add(
+    <Video
+      src="./assets/clip.mp4"
+      fit="fill"
+      width={1280}
+      height={720}
+      cornerRadius={0}
+    />
+  );
+});
 ```
 
 ## Props
@@ -74,36 +72,34 @@ export class MyScene extends Scene {
 Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with `.to()`. For playback control, set `playing` and `timestamp` directly:
 
 ```tsx
-import { Scene, Video, createRef, easeInOut, wait } from '@motion-script/core';
+import { createScene, Video, createRef, easeInOut, wait } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const clip = createRef<Video>();
+export default createScene(function* (stage) {
+  const clip = createRef<Video>();
 
-    this.add(
-      <Video
-        ref={clip}
-        src="./assets/clip.mp4"
-        fit="fill"
-        width={960}
-        height={540}
-        cornerRadius={24}
-        opacity={0}
-      />
-    );
+  stage.add(
+    <Video
+      ref={clip}
+      src="./assets/clip.mp4"
+      fit="fill"
+      width={960}
+      height={540}
+      cornerRadius={24}
+      opacity={0}
+    />
+  );
 
-    // Fade in
-    yield* clip().to({ opacity: 1, cornerRadius: 0 }, 0.8, easeInOut);
+  // Fade in
+  yield* clip().to({ opacity: 1, cornerRadius: 0 }, 0.8, easeInOut);
 
-    // Pause mid-playback
-    yield* wait(3);
-    clip().set({ playing: false });
+  // Pause mid-playback
+  yield* wait(3);
+  clip().set({ playing: false });
 
-    // Resume
-    yield* wait(1);
-    clip().set({ playing: true });
-  }
-}
+  // Resume
+  yield* wait(1);
+  clip().set({ playing: true });
+});
 ```
 
 ### Trim and loop

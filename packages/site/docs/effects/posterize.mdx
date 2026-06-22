@@ -36,23 +36,21 @@ import { Effects } from '@motion-script/core';
 Animate from many levels (near-photographic) down to few (graphic):
 
 ```tsx
-import { Scene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+import { createScene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const img = new Rect({
-      width: 600,
-      height: 400,
-      fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
-    });
-    img.set({ effects: Effects.posterize(32) });
-    this.add(img);
+export default createScene(function* (stage) {
+  const img = new Rect({
+    width: 600,
+    height: 400,
+    fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+  });
+  img.set({ effects: Effects.posterize(32) });
+  stage.add(img);
 
-    yield* tween(1.5, (t) => {
-      img.set({ effects: Effects.posterize(lerpNumber(32, 3, easeInOut(t))) });
-    });
-  }
-}
+  yield* tween(1.5, (t) => {
+    img.set({ effects: Effects.posterize(lerpNumber(32, 3, easeInOut(t))) });
+  });
+});
 ```
 
 ## Stacking with other effects

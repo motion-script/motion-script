@@ -13,27 +13,25 @@ Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-wri
 ## Usage
 
 ```tsx
-import { Scene, Path } from '@motion-script/core';
+import { createScene, Path } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    // Triangle from an SVG d string
-    this.add(
-      <Path
-        d="M 0 -60 L 52 40 L -52 40 Z"
-        fill="#6990DD"
-      />
-    );
+export default createScene(function* (stage) {
+  // Triangle from an SVG d string
+  stage.add(
+    <Path
+      d="M 0 -60 L 52 40 L -52 40 Z"
+      fill="#6990DD"
+    />
+  );
 
-    // Heart outline drawn with a stroke
-    this.add(
-      <Path
-        d="M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z"
-        stroke={{ fill: '#6990DD', weight: 8 }}
-      />
-    );
-  }
-}
+  // Heart outline drawn with a stroke
+  stage.add(
+    <Path
+      d="M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z"
+      stroke={{ fill: '#6990DD', weight: 8 }}
+    />
+  );
+});
 ```
 
 ## Props
@@ -67,28 +65,26 @@ type PathCommand =
 Animate `start`/`end` to draw on or erase the path:
 
 ```tsx
-import { Scene, Path, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Path, createRef, easeInOut } from '@motion-script/core';
 
-export class MyScene extends Scene {
-  *build() {
-    const shape = createRef<Path>();
+export default createScene(function* (stage) {
+  const shape = createRef<Path>();
 
-    this.add(
-      <Path
-        ref={shape}
-        d="M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z"
-        stroke={{ fill: '#6990DD', weight: 8 }}
-        end={0}
-      />
-    );
+  stage.add(
+    <Path
+      ref={shape}
+      d="M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z"
+      stroke={{ fill: '#6990DD', weight: 8 }}
+      end={0}
+    />
+  );
 
-    // Draw the path on
-    yield* shape().to({ end: 1 }, 1.5, easeInOut);
+  // Draw the path on
+  yield* shape().to({ end: 1 }, 1.5, easeInOut);
 
-    // Erase it back off
-    yield* shape().to({ end: 0 }, 1.5, easeInOut);
-  }
-}
+  // Erase it back off
+  yield* shape().to({ end: 0 }, 1.5, easeInOut);
+});
 ```
 
 Animate any other node prop normally with `.to()`:
