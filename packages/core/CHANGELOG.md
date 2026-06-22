@@ -1,5 +1,11 @@
 # @motion-script/core
 
+## 2.6.0
+
+### Minor Changes
+
+- refactor stage and fills
+
 ## 2.3.0
 
 ### Minor Changes

@@ -1,5 +1,16 @@
 # @motion-script/player
 
+## 2.6.0
+
+### Minor Changes
+
+- refactor stage and fills
+
+### Patch Changes
+
+- Updated dependencies
+  - @motion-script/canvaskit@2.6.0
+
 ## 2.3.0
 
 ### Minor Changes
