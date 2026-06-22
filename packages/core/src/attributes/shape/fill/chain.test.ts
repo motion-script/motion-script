@@ -3,12 +3,12 @@ import { Fills, resolveChainFill } from '@/attributes/shape/fill/chain';
 
 describe('Fills builders', () => {
     it('color produces a single solid fill', () => {
-        expect([...Fills.color('red')]).toEqual([{ type: 'color', color: 'red' }]);
+        expect([...Fills.color('red')]).toEqual([{ type: 'solid', color: 'red' }]);
     });
 
     it('color carries opacity and blend options', () => {
         expect([...Fills.color('red', { opacity: 0.3, blend: 'overlay' })]).toEqual([
-            { type: 'color', color: 'red', opacity: 0.3, blend: 'overlay' },
+            { type: 'solid', color: 'red', opacity: 0.3, blend: 'overlay' },
         ]);
     });
 
@@ -19,7 +19,7 @@ describe('Fills builders', () => {
     });
 
     it('omits undefined option keys so props stay minimal', () => {
-        expect([...Fills.color('red')]).toEqual([{ type: 'color', color: 'red' }]);
+        expect([...Fills.color('red')]).toEqual([{ type: 'solid', color: 'red' }]);
         expect(Object.keys([...Fills.color('red')][0])).toEqual(['type', 'color']);
     });
 
@@ -36,7 +36,7 @@ describe('FillChain', () => {
         const extended = base.color('red', { opacity: 0.3 });
         expect(base.list).toHaveLength(1);
         expect(extended.list).toHaveLength(2);
-        expect(extended.list[1]).toEqual({ type: 'color', color: 'red', opacity: 0.3 });
+        expect(extended.list[1]).toEqual({ type: 'solid', color: 'red', opacity: 0.3 });
     });
 
     it('matches the example from the request', () => {
@@ -44,14 +44,14 @@ describe('FillChain', () => {
             .color('red', { opacity: 0.3 });
         expect([...chain]).toEqual([
             { type: 'image', src: './background.jpg', blend: 'overlay', opacity: 0.2 },
-            { type: 'color', color: 'red', opacity: 0.3 },
+            { type: 'solid', color: 'red', opacity: 0.3 },
         ]);
     });
 
     it('is iterable for spreading into an array', () => {
         const arr = [...Fills.color('red').color('blue')];
         expect(arr).toHaveLength(2);
-        expect(arr[0]).toEqual({ type: 'color', color: 'red' });
+        expect(arr[0]).toEqual({ type: 'solid', color: 'red' });
     });
 
     it('toJSON returns the raw fill list', () => {
@@ -71,12 +71,12 @@ describe('resolveChainFill', () => {
     });
 
     it('passes a plain array through (as a flat copy)', () => {
-        const arr = [{ type: 'color', color: 'red' } as const];
+        const arr = [{ type: 'solid', color: 'red' } as const];
         expect(resolveChainFill(arr)).toEqual(arr);
     });
 
     it('wraps a single fill into an array', () => {
-        expect(resolveChainFill({ type: 'color', color: 'red' })).toEqual([{ type: 'color', color: 'red' }]);
+        expect(resolveChainFill({ type: 'solid', color: 'red' })).toEqual([{ type: 'solid', color: 'red' }]);
     });
 
     it('wraps a plain string fill into an array', () => {
@@ -95,7 +95,7 @@ describe('resolveChainFill', () => {
         expect(resolveChainFill(['#e8c584', chain, 'blue'])).toEqual([
             '#e8c584',
             { type: 'image', src: 'bg.jpg', opacity: 0.2 },
-            { type: 'color', color: 'red' },
+            { type: 'solid', color: 'red' },
             'blue',
         ]);
     });

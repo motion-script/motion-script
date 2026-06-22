@@ -17,7 +17,7 @@ interface FillRendererEntry {
 /** Dispatches a resolved fill to its renderer by `fill.type`, keyed in `list`. */
 export class FillRenderRegistry {
     private static readonly list: FillRendererEntry[] = [
-        { name: "color", renderer: new SolidFillRenderer() },
+        { name: "solid", renderer: new SolidFillRenderer() },
         { name: "linear-gradient", renderer: new LinearGradientFillRenderer() },
         { name: "radial-gradient", renderer: new RadialGradientFillRenderer() },
         { name: "conic-gradient", renderer: new ConicGradientFillRenderer() },

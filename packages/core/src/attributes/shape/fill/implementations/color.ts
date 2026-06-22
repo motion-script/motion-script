@@ -4,14 +4,14 @@ import type { FillData } from '../registry';
 import { lerpNumber } from '@/tween/lerp';
 
 export interface SolidFillProp {
-    type: 'color';
+    type: 'solid';
     color: Color;
     opacity?: number;
     blend?: BlendMode;
 }
 
 export interface SolidFillResolved {
-    type: 'color';
+    type: 'solid';
     color: NormalizedColor;
     opacity?: number;
     blend?: BlendMode;
@@ -19,7 +19,7 @@ export interface SolidFillResolved {
 
 export const colorFill: FillData<SolidFillResolved> = {
     resolve: (prop: SolidFillProp) => ({
-        type: 'color',
+        type: 'solid',
         color: Array.isArray(prop.color)
             ? (prop.color as NormalizedColor)
             : parseColor(prop.color as string),

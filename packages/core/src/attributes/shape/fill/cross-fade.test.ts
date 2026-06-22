@@ -6,7 +6,7 @@ const RED: [number, number, number, number] = [1, 0, 0, 1];
 const BLUE: [number, number, number, number] = [0, 0, 1, 1];
 
 function color(c = RED, opacity?: number): FillResolved {
-    return resolveFill({ type: 'color', color: c, opacity });
+    return resolveFill({ type: 'solid', color: c, opacity });
 }
 
 function image(src = './a.png', opacity?: number): FillResolved {

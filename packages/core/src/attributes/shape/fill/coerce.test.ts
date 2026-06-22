@@ -9,7 +9,7 @@ const RED: [number, number, number, number] = [1, 0, 0, 1];
 const BLUE: [number, number, number, number] = [0, 0, 1, 1];
 
 function color(c = RED): FillResolved {
-    return resolveFill({ type: 'color', color: c });
+    return resolveFill({ type: 'solid', color: c });
 }
 
 function linear(colors = [RED, BLUE]): FillResolved {
@@ -86,7 +86,7 @@ describe('cross-type fill lerp guards', () => {
 
     it('preserves same-type behavior for two solid colors', () => {
         const out = lerpFill(color(RED), color(BLUE), 0.5) as SolidFillResolved;
-        expect(out.type).toBe('color');
+        expect(out.type).toBe('solid');
         expect(out.color).toEqual([0.5, 0, 0.5, 1]);
     });
 });

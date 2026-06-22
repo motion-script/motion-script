@@ -880,7 +880,7 @@ export class Code extends Node<CodeProps> {
                         y: centerY,
                         align: 'left',
                     })
-                    .fill([{ type: "color", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]));
+                    .fill([{ type: "solid", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]));
             }
 
             let x = startX;
@@ -911,7 +911,7 @@ export class Code extends Node<CodeProps> {
                             y: centerY + offsetY,
                             align: 'left',
                         })
-                        .fill([{ type: "color", color, opacity }]));
+                        .fill([{ type: "solid", color, opacity }]));
                 }
 
                 x += tokWidth * widthScale;

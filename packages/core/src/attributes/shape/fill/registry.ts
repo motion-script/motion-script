@@ -30,7 +30,7 @@ export interface FillData<T extends FillResolved> {
 }
 
 const FILLS = new Map<string, FillData<FillResolved>>([
-    ["color", colorFill as FillData<FillResolved>],
+    ["solid", colorFill as FillData<FillResolved>],
     ["linear-gradient", linearGradientFill as FillData<FillResolved>],
     ["radial-gradient", radialGradientFill as FillData<FillResolved>],
     ["conic-gradient", conicGradientFill as FillData<FillResolved>],
@@ -47,7 +47,7 @@ function get(name: string): FillData<FillResolved> {
 }
 
 export function resolveFill(prop: FillProp): FillResolved {
-    if (typeof prop === "string") return resolveFill({ type: "color", color: prop });
+    if (typeof prop === "string") return resolveFill({ type: "solid", color: prop });
     const resolved = get(prop.type).resolve(prop);
     // `space` is a cross-cutting rendering directive (like `blend`); carry it
     // through generically so each fill `resolve()` doesn't have to know about it.

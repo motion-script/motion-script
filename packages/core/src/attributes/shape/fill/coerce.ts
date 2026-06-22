@@ -62,8 +62,8 @@ export function isGradientType(type: FillResolved["type"]): boolean {
  * pairs are handled by the registry directly and never reach coercion.)
  */
 export function canCoerce(a: FillResolved, b: FillResolved): boolean {
-    const aColorish = a.type === "color" || isGradientType(a.type);
-    const bColorish = b.type === "color" || isGradientType(b.type);
+    const aColorish = a.type === "solid" || isGradientType(a.type);
+    const bColorish = b.type === "solid" || isGradientType(b.type);
     if (!aColorish || !bColorish) return false;
     // At least one gradient — color↔color is same-type and never reaches here.
     return isGradientType(a.type) || isGradientType(b.type);
@@ -132,8 +132,8 @@ function retypeGradient(
  * Caller must have checked {@link canCoerce} first.
  */
 export function coercePair(a: FillResolved, b: FillResolved): [FillResolved, FillResolved] {
-    const aIsColor = a.type === "color";
-    const bIsColor = b.type === "color";
+    const aIsColor = a.type === "solid";
+    const bIsColor = b.type === "solid";
 
     // color → gradient: expand the color to match the gradient's type.
     if (aIsColor && !bIsColor) {

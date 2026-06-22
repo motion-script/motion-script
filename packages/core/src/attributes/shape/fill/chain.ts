@@ -61,7 +61,7 @@ export class FillChain {
 
     /** Append a solid color fill. A CSS string or normalized `[r,g,b,a]`. */
     color(color: Color, options?: FillOptions) {
-        return new FillChain([...this.list, withOptions({ type: 'color' as const, color }, options)]);
+        return new FillChain([...this.list, withOptions({ type: 'solid' as const, color }, options)]);
     }
 
     /** Append an image fill from `src`. */
