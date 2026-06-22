@@ -94,6 +94,48 @@ describe('StateEvaluator – backward seek', () => {
     });
 });
 
+describe('StateEvaluator – abortable seek', () => {
+    it('stops the replay loop early and does not advance currentFrame when cancelled', () => {
+        const { scene, evaluator } = single(60);
+        // Cancel once 3 frames have been advanced (resetSlot ellapse(0) + 3 steps).
+        let advanced = 0;
+        evaluator.stateAt(50, () => {
+            // Predicate is polled at the top of each iteration, before the step.
+            return advanced++ >= 3;
+        });
+        // ellapse(0) from resetSlot, then frames 1,2,3 advanced before the 4th
+        // poll tripped the cancel → 4 ellapse calls total, loop bailed at frame 3.
+        expect(scene.ellapseCalls).toEqual([0, 0.25, 0.5, 0.75]);
+        // currentFrame must NOT have moved to 50 — the seek was abandoned.
+        expect(evaluator.currentFrame).toBe(0);
+    });
+
+    it('completes the seek when the predicate never cancels', () => {
+        const { evaluator } = single(60);
+        evaluator.stateAt(50, () => false);
+        expect(evaluator.currentFrame).toBe(50);
+    });
+
+    it('replays cleanly to a backward target after a prior seek was aborted', () => {
+        const { scene, evaluator } = single(60);
+        // Land fully on frame 40 first.
+        evaluator.stateAt(40, () => false);
+        expect(evaluator.currentFrame).toBe(40);
+        const buildsAfterFirst = scene.buildCount;
+
+        // Abort a backward seek to 5 partway through its replay-from-zero.
+        let advanced = 0;
+        evaluator.stateAt(5, () => advanced++ >= 2);
+        expect(evaluator.currentFrame).toBe(40); // unchanged — aborted
+        // The abort reset the slot (backward seek), so a build happened…
+        expect(scene.buildCount).toBe(buildsAfterFirst + 1);
+
+        // A fresh, uncancelled backward seek to 10 must land exactly on 10.
+        evaluator.stateAt(10, () => false);
+        expect(evaluator.currentFrame).toBe(10);
+    });
+});
+
 describe('StateEvaluator – multi-scene timeline', () => {
     function pair() {
         const a = new FakeScene({ id: 'a', yieldCount: 10 });

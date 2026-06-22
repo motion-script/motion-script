@@ -6,6 +6,13 @@ import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
 
+/**
+ * Returns `true` when the in-progress seek has been superseded and the replay
+ * loop should stop. Checked between advanced frames so a slow backward seek
+ * (which replays from frame 0) can be abandoned the moment a newer seek arrives.
+ */
+export type SeekCancel = () => boolean;
+
 /** Per-scene generator state, kept alive so we never replay a finished scene. */
 type SceneSlot = {
     scene: Scene;
@@ -165,9 +172,19 @@ export class StateEvaluator {
      * - If the target belongs to a different scene, that slot is entered
      *   (resetting it if necessary) and advanced to the local target frame.
      *
+     * If `isCancelled` returns true mid-replay, the loop bails *without*
+     * advancing `_currentFrame`, leaving the slot at a partial local frame. The
+     * partial work is intentionally discarded: a later backward seek resets and
+     * replays cleanly, and a later forward seek simply resumes advancing from the
+     * partial frame (the generator is mid-scene but internally consistent). Since
+     * `_currentFrame` is untouched, the early-return guard below won't mistake the
+     * partial position for a completed seek.
+     *
      * @param frame Global frame index (float accepted; fractional part ignored).
+     * @param isCancelled Optional predicate polled between advanced frames; when it
+     *                    returns true the replay stops early (see above).
      */
-    stateAt(frame: number): void {
+    stateAt(frame: number, isCancelled?: SeekCancel): void {
         const clampedFrame = Math.max(0, Math.floor(frame));
 
         if (clampedFrame === this._currentFrame && this.slotAt(clampedFrame)?.generator !== null) return;
@@ -191,6 +208,10 @@ export class StateEvaluator {
         // so running it on every advanced frame — not just rendered ones — keeps
         // velocity-derived effects (motion blur) correct after a scrub/rewind.
         while (targetSlot.localFrame < localTarget) {
+            // A newer seek superseded this one — abandon the replay. We leave
+            // _currentFrame untouched (the slot is at a partial localFrame); the
+            // next stateAt resets or resumes from there cleanly.
+            if (isCancelled?.()) return;
             targetSlot.localFrame++;
             const globalTime = (targetSlot.startFrame + targetSlot.localFrame) * dt;
             this.bindAssets();

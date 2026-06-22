@@ -10,5 +10,6 @@ import audioProject from './projects/audio/audio-project';
 import videoProject from './projects/video/video-project';
 import shapesProject from './projects/shapes/shapes-project';
 import nodesProject from './projects/nodes/nodes-project';
-export default audioProject;
+import expensiveProject from './projects/expensive/expensive-project';
+export default expensiveProject;
 

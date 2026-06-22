@@ -1,7 +1,7 @@
 import { AssetManager } from "../assets/manager";
 import { MeasureScope } from "../render/measure-scope";
 import { RenderContext } from "../render/render-context";
-import { StateEvaluator } from "./state-evaluator";
+import { StateEvaluator, SeekCancel } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
@@ -135,7 +135,7 @@ export class PlaybackController {
             await this.assetManager.loadAt(frame);
             if (!this.isCurrent(gen)) return;
             this.audioDevice.syncTo(currentTime);
-            this.renderAt(frame);
+            this.renderAt(frame, this.cancelAfter(gen));
             this.assetManager.prefetch(frame);
         });
     }
@@ -175,17 +175,33 @@ export class PlaybackController {
     }
 
     /**
+     * A {@link SeekCancel} that trips once `gen` is no longer the latest pass.
+     * Passed into `renderAt` so the evaluator's frame-by-frame replay loop aborts
+     * the moment a newer seek/tick bumps `seekGeneration` (or the controller is
+     * disposed) — the synchronous counterpart to the post-await `isCurrent` guards.
+     */
+    private cancelAfter(gen: number): SeekCancel {
+        return () => !this.isCurrent(gen);
+    }
+
+    /**
      * Evaluate scene state, lay out nodes, and render `frame` to the render
      * context. Called on every clock tick and also directly by `seek` /
      * `screenshot` to ensure the surface is up-to-date.
+     *
+     * `isCancelled` is forwarded into the evaluator's replay loop so a backward
+     * seek (which replays from frame 0) can be abandoned the instant a newer seek
+     * supersedes it. If it trips, we skip layout/render too — the partial state is
+     * stale and a newer pass is already rendering.
      */
-    private renderAt(frame: number): void {
+    private renderAt(frame: number, isCancelled?: SeekCancel): void {
         // A disposed controller's render context has had its CanvasKit surface
         // freed. An in-flight async seek() (StrictMode double-mount / HMR) can
         // resolve after dispose() and try to render into the dead surface, which
         // throws "Cannot pass deleted object as a pointer of type Surface*".
         if (this.disposed) return;
-        this.stateEvaluator.stateAt(frame);
+        this.stateEvaluator.stateAt(frame, isCancelled);
+        if (isCancelled?.()) return;
         this.stateEvaluator.layout(this.measureScope);
         this.renderContext.execute(() => {
             this.stateEvaluator.render(this.renderContext);
@@ -210,14 +226,14 @@ export class PlaybackController {
         // loadAt is async — this seek may have been superseded (or the controller
         // disposed) while awaiting.
         if (!this.isCurrent(gen)) return;
-        this.renderAt(clamped);
+        this.renderAt(clamped, this.cancelAfter(gen));
         // A cold seek can land on a video timestamp the window hadn't decoded yet;
         // warm the exact frame(s) the render requested and re-render so the still
         // is frame-accurate. Bounded — decoding is monotonic, so this settles fast.
         for (let pass = 0; pass < 3; pass++) {
             if (!(await this.storageAdapter.warmPendingVideo())) break;
             if (!this.isCurrent(gen)) return;
-            this.renderAt(clamped);
+            this.renderAt(clamped, this.cancelAfter(gen));
         }
         if (!this.isCurrent(gen)) return;
         this.assetManager.prefetch(clamped);
@@ -256,8 +272,8 @@ export class PlaybackController {
         // Repaint the current frame against the edited scene. Bumping the seek
         // generation invalidates any in-flight async render so it can't stamp a
         // stale frame over the reloaded scene.
-        ++this.seekGeneration;
-        this.renderAt(this.currentFrame);
+        const gen = ++this.seekGeneration;
+        this.renderAt(this.currentFrame, this.cancelAfter(gen));
         return index;
     }
 
