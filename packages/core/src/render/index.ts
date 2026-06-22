@@ -14,7 +14,7 @@ export * from './descriptors/line';
 export * from './descriptors/image';
 export * from './descriptors/polygon';
 export * from './descriptors/polygram';
-export { BuildStage } from './build-stage';
+export { Stage } from './build-stage';
 
 export { Graphics } from './graphics';
 export type { GraphicsOp, GraphicsShapeOp, GraphicsTransform } from './graphics';

@@ -1,6 +1,6 @@
 import { Node, NodeClock } from "./node";
 import { FrameGenerator } from "@/tween/generator";
-import { BuildStage, SceneContext } from "@/render/build-stage";
+import { Stage, SceneContext } from "@/render/build-stage";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
@@ -12,7 +12,7 @@ import { MeasureScope } from "@/render/measure-scope";
 import { RenderContext } from "@/render/render-context";
 
 /**
- * The context a scene generator is given. It is the {@link BuildStage} (canvas
+ * The context a scene generator is given. It is the {@link Stage} (canvas
  * `viewport`, `fps`, seeded `random`/`noise`) augmented with the scene-authoring
  * surface, all typed precisely:
  *
@@ -22,11 +22,11 @@ import { RenderContext } from "@/render/render-context";
  *     yield* stage.playSound('x.mp3');
  *   });
  *
- * At runtime this is a single `BuildStage` instance with the current scene bound
+ * At runtime this is a single `Stage` instance with the current scene bound
  * onto it; the precise method signatures here override the structural ones the
  * stage declares so authors get real types.
  */
-export type SceneStage = Omit<BuildStage, 'add' | 'set' | 'startSound' | 'stopSound' | 'playSound' | 'clock' | 'assets'> & {
+export type SceneStage = Omit<Stage, 'add' | 'set' | 'startSound' | 'stopSound' | 'playSound' | 'clock' | 'assets'> & {
     /** Add a node (or array of nodes) to the scene's root container. */
     add(node: Node | Node[]): void;
     /** Set one or more reactive props on the scene's root container. */
@@ -66,7 +66,7 @@ export type SceneGenerator = (stage: SceneStage) => FrameGenerator;
  *
  * The runtime drives a scene through `reset → bindAssets → ellapse → build →
  * layout → render → prepareAssets → dispose`, each forwarding to the root.
- * The scene also implements {@link SceneContext} so a {@link BuildStage} can
+ * The scene also implements {@link SceneContext} so a {@link Stage} can
  * bind it and route `add`/`set`/sounds back here.
  */
 export class Scene implements SceneContext {
@@ -114,7 +114,7 @@ export class Scene implements SceneContext {
         this._viewport = { width: size.width, height: size.height };
     }
 
-    // ─── Authoring surface (SceneContext — bound onto the BuildStage) ─────────
+    // ─── Authoring surface (SceneContext — bound onto the Stage) ─────────
 
     /** Add a node (or array of nodes) as a child of the scene's root. */
     add(node: Node | Node[]): void {
@@ -192,7 +192,7 @@ export class Scene implements SceneContext {
      * Produce this scene's frame generator. Binds this scene onto the stage (so
      * `stage.add`/`set`/sounds forward here), then runs the authored generator.
      */
-    build(stage: BuildStage): FrameGenerator {
+    build(stage: Stage): FrameGenerator {
         stage.bindScene(this);
         return this.generator(stage as unknown as SceneStage);
     }

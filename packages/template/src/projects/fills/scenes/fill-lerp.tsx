@@ -1,4 +1,4 @@
-import { createScene, BuildStage, createRef, Text, Image, easeInOutQuad, Fills, FrameGenerator, parallel, Rect, wait } from "@motion-script/core";
+import { createScene, Stage, createRef, Text, Image, easeInOutQuad, Fills, FrameGenerator, parallel, Rect, wait } from "@motion-script/core";
 import { ShapeDemoScene, ShapeDemoSpec } from "./shape-demo";
 
 /**

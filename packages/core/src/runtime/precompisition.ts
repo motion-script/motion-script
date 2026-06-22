@@ -1,5 +1,5 @@
 import { AudioRequest } from "@/attributes/audio/request";
-import { BuildStage } from "@/render/build-stage";
+import { Stage } from "@/render/build-stage";
 import { MeasureScope } from "../render/measure-scope";
 import { AssetRecord } from "@/assets/record";
 import { Scene } from "@/nodes/base/scene-node";
@@ -207,7 +207,7 @@ export class Precomp {
         // own frame 0, so the pass is independent of where the scene sits on the
         // global timeline. assembleTimeline shifts these into absolute frames.
         const registry = new AssetTracker(this.assets);
-        const stage = new BuildStage(this.viewport, this.fps);
+        const stage = new Stage(this.viewport, this.fps);
 
         scene.reset();
         scene.set({ width: this.viewport.width, height: this.viewport.height });

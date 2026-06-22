@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, Rect, wait, BuildStage, parallel, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait, Stage, parallel, easeOutQuad } from "@motion-script/core";
 
 export default createScene(function* (stage) {
         stage.set({ fill: "bg", padding: 80 });

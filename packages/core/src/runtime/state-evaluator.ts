@@ -3,7 +3,7 @@ import { Scene } from "@/nodes/base/scene-node";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetCatalog } from "@/assets/catalog";
 import { FrameGenerator } from "@/tween/generator";
-import { BuildStage } from "@/render/build-stage";
+import { Stage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
 
 /**
@@ -53,7 +53,7 @@ export class StateEvaluator {
         return this._currentFrame;
     }
 
-    private readonly stage: BuildStage;
+    private readonly stage: Stage;
 
     /**
      * @param scenes  Scene list in timeline order.
@@ -69,7 +69,7 @@ export class StateEvaluator {
         this.viewport = viewport;
         this.scenes = scenes;
         this.assets = assets;
-        this.stage = new BuildStage(viewport, fps);
+        this.stage = new Stage(viewport, fps);
 
         for (const s of scenes) {
             s.set({ width: viewport.width, height: viewport.height });

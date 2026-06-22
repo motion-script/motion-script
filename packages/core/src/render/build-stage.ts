@@ -3,12 +3,12 @@ import { SeedGenerator } from "@/util/random";
 import { FrameGenerator } from "@/tween/generator";
 
 /**
- * The scene-authoring surface a {@link Scene} binds onto its {@link BuildStage}
+ * The scene-authoring surface a {@link Scene} binds onto its {@link Stage}
  * for the duration of a build pass. Kept as a structural interface (rather than
  * importing `Scene`/`Node`/`Sound`) so `@/render` doesn't depend on `@/nodes`,
  * which would be circular. The concrete types are supplied by the Scene that
  * binds it; callers in scene generators get the real signatures via the
- * `BuildStage` re-declarations below.
+ * `Stage` re-declarations below.
  */
 export interface SceneContext {
     add(node: unknown): void;
@@ -24,7 +24,7 @@ export interface SceneContext {
  * Per-scene authoring + evaluation context handed to a scene's generator.
  *
  * A scene generator (`createScene(function* (stage) { … })`) receives a
- * `BuildStage`. It exposes two things:
+ * `Stage`. It exposes two things:
  *
  * - **Authoring** — `add`, `set`, `startSound`/`playSound`/`stopSound`, `clock`,
  *   `assets`: these forward to the scene currently being built (bound via
@@ -35,7 +35,7 @@ export interface SceneContext {
  * `reset()` is called before each timeline replay so every run produces
  * identical results for the same seed.
  */
-export class BuildStage {
+export class Stage {
     /** Canvas dimensions in pixels. */
     readonly viewport: Size2D;
 
@@ -64,7 +64,7 @@ export class BuildStage {
 
     private get scene(): SceneContext {
         if (!this._scene) {
-            throw new Error("BuildStage has no bound scene — add()/set()/sounds are only available inside a scene generator.");
+            throw new Error("Stage has no bound scene — add()/set()/sounds are only available inside a scene generator.");
         }
         return this._scene;
     }
