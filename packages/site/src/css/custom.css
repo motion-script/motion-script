@@ -460,6 +460,20 @@ body:has(.editor-page) .main-wrapper > main {
   box-shadow: none !important;
 }
 
+/* Mobile sidebar fix: the slide-in menu (`.navbar-sidebar`) and its backdrop are
+   rendered as children of `.navbar` and rely on `position: fixed` anchoring to
+   the VIEWPORT (top/bottom: 0; full height). But `backdrop-filter` on `.navbar`
+   makes it a containing block for its fixed descendants, so the sidebar instead
+   resolved against the ~60px-tall navbar box — leaving it clipped to the top
+   strip and offset ("behind the screen" with a stray right margin).
+   Docusaurus toggles `.navbar-sidebar--show` on `.navbar` while the menu is
+   open; drop the blur in that state so the children anchor to the viewport
+   again. The top bar is fully covered by the open menu, so there's nothing left
+   to blur — the effect is purely cosmetic for the closed navbar. */
+.navbar.navbar-sidebar--show {
+  backdrop-filter: none !important;
+}
+
 /* Brand wordmark: two-tone "Motion Script" matching the landing-page Navbar
    (thin serif "Motion" + pixelify medium "Script"). The real title text is
    kept in the DOM for accessibility/SSR but hidden visually; the wordmark is

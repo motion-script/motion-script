@@ -126,7 +126,13 @@ export default function Navbar() {
               </a>
               <Link
                 href="/docs/intro"
-                className="flex items-center justify-center px-4 py-3 text-sm font-medium bg-[var(--foreground)] text-[var(--background)] rounded-lg no-underline hover:no-underline hover:opacity-90"
+                // Inline color: the unlayered `.home-page a { color: inherit }`
+                // reset in custom.css beats Tailwind's layered `text-*` utilities,
+                // so a utility text color would lose and the label would inherit
+                // the white foreground — invisible on this light button. Inline
+                // styles outrank every stylesheet rule, so set the colors here.
+                style={{ backgroundColor: 'var(--foreground)', color: 'var(--background)' }}
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg no-underline hover:no-underline hover:opacity-90"
               >
                 Get Started
               </Link>
