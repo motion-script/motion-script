@@ -5,18 +5,27 @@ import { PlayerApp } from '../src/index'
 import { createProject } from '@motion-script/core'
 import layoutScene from './scenes/shape'
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
+import groupMorph from './scenes/group-morph'
+import rectWithChildren from './scenes/rect-with-children'
 
 const scenes = [
   layoutScene,
+  groupMorph,
+  rectWithChildren
 ];
 
 const project = createProject({
   name: 'My Video',
   scenes,
   viewport: {
-    height: 1920,
-    width: 1080,
-  }
+    height: 1080,
+    width: 1920,
+  },
+  theme: {
+    'bg': '#0D0F15',
+    'card': '#161a21',
+    'primary': '#6990DD'
+  },
 })
 
 createRoot(document.getElementById('root')!).render(
