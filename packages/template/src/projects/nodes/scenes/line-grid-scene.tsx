@@ -30,7 +30,7 @@ export default createScene(function* (stage) {
                             subdivisions={2}
                             fill={Fills.color('bg')}
                             stroke={{ weight: 6, fill: '#6990DD' }}
-                            shadow={{ fill: Fills.color('black', { opacity: 0.4 }), dx: 0, dy: 12, blur: 24 }}
+                            shadow={{ fill: Fills.color('black', { opacity: 0.4 }), offset: { x: 0, y: 12 }, blur: 24 }}
                         />
                         <LineGrid
                             ref={fineRef}
@@ -41,7 +41,7 @@ export default createScene(function* (stage) {
                             fill={Fills.color('bg')}
                             stroke={{ weight: 3, fill: '#C77DFF' }}
                             subStroke={{ weight: 1, fill: '#C77DFF', dash: 6 }}
-                            shadow={{ fill: Fills.color('black', { opacity: 0.4 }), dx: 0, dy: 12, blur: 24 }}
+                            shadow={{ fill: Fills.color('black', { opacity: 0.4 }), offset: { x: 0, y: 12 }, blur: 24 }}
                         />
                     </>
                 ),

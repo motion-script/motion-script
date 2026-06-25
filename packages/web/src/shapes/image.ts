@@ -229,8 +229,8 @@ export class ImageNodeRenderer {
         _strokes: StrokeResolved[],
     ): void {
         const ck = this.canvasKit;
-        const dx = shadow.dx ?? 0;
-        const dy = shadow.dy ?? 0;
+        const dx = shadow.offset?.x ?? 0;
+        const dy = shadow.offset?.y ?? 0;
 
         const layerPaint = new ck.Paint();
         if (shadow.blur > 0) {

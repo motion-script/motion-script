@@ -30,7 +30,7 @@ export default createScene(function* (stage) {
                     subdivisions={3}
                     fill={Fills.color('card')}
                     stroke={{ weight: 8, fill: '#6990DD' }}
-                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
+                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), offset: { x: 0, y: 16 }, blur: 32 }}
                 />
                 {/* explicit subStroke distinct from the major stroke */}
                 <LineGrid
@@ -42,7 +42,7 @@ export default createScene(function* (stage) {
                     fill={Fills.color('card')}
                     stroke={{ weight: 3, fill: '#C77DFF' }}
                     subStroke={{ weight: 1, fill: '#C77DFF', dash: 4 }}
-                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), dx: 0, dy: 16, blur: 32 }}
+                    shadow={{ fill: Fills.color('black', { opacity: 0.5 }), offset: { x: 0, y: 16 }, blur: 32 }}
                 >
                     {/* children stack centred over the grid, like other shapes */}
                     <Rect width={200} height={80} cornerRadius={12} fill={'#C77DFF'} align={{ x: 0, y: 0 }}>

@@ -92,7 +92,7 @@ export default createScene(function* (stage) {
                 height={350}
                 fill={Fills.linearGradient(['red', 'blue'])}
             //  stroke={{ weight: 4, fill: 'red', }}
-            // shadow={{ fill: 'green', blur: 40, dx: 40, dy: -40 }}
+            // shadow={{ fill: 'green', blur: 40, offset: { x: 40, y: -40 } }}
 
             />,
         );

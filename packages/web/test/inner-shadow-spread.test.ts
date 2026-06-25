@@ -76,7 +76,7 @@ describe("inner shadow spread (rendered)", () => {
         // spread 80 on a 120px-half-size rect: contour shrinks well past collapse,
         // so the whole interior should be shadowed — including the top-left corner
         // that previously fell outside the region's padded rect.
-        const shadow = resolveShadow({ blur: 6, fill: "black", spread: 80, dx: 0, dy: 0, inner: true });
+        const shadow = resolveShadow({ blur: 6, fill: "black", spread: 80, offset: { x: 0, y: 0 }, inner: true });
         const at = renderInnerShadow(shadow);
 
         // Just inside the top-left edge (rect starts at 40,40).
@@ -88,7 +88,7 @@ describe("inner shadow spread (rendered)", () => {
     });
 
     it("a modest spread shadows the rim but leaves the centre as fill", () => {
-        const shadow = resolveShadow({ blur: 4, fill: "black", spread: 12, dx: 0, dy: 0, inner: true });
+        const shadow = resolveShadow({ blur: 4, fill: "black", spread: 12, offset: { x: 0, y: 0 }, inner: true });
         const at = renderInnerShadow(shadow);
 
         // Rim is shadowed on all four sides.

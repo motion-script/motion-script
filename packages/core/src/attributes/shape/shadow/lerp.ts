@@ -1,11 +1,11 @@
 import { lerpFillArray } from "../fill/registry";
+import { lerpVector2 } from "@/attributes/layout/vector2";
 import { ShadowResolved } from "./resolver";
 
 function lerpShadow(from: ShadowResolved, to: ShadowResolved, t: number): ShadowResolved {
     return {
         blur: from.blur + (to.blur - from.blur) * t,
-        dx: (from.dx ?? 0) + ((to.dx ?? 0) - (from.dx ?? 0)) * t,
-        dy: (from.dy ?? 0) + ((to.dy ?? 0) - (from.dy ?? 0)) * t,
+        offset: lerpVector2(from.offset ?? { x: 0, y: 0 }, to.offset ?? { x: 0, y: 0 }, t),
         fill: lerpFillArray(from.fill, to.fill, t),
         // inner/outer is a discrete kind — keep the start's until the tween completes.
         inner: t < 1 ? from.inner : to.inner,

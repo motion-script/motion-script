@@ -7,6 +7,6 @@ export default createScene(shapeDemo({
         label: 'Shadow',
         fillFrom: Fills.color('#161a21'),
         fillTo: Fills.color('#161a21'),
-        shadowFrom: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 0, dx: 0, dy: 0 },
-        shadowTo: { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 40, dx: 30, dy: 30 },
+        shadowFrom: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 0, offset: { x: 0, y: 0 } },
+        shadowTo: { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 40, offset: { x: 30, y: 30 } },
     }));

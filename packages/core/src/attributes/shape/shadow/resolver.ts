@@ -1,13 +1,14 @@
 import { resolveFillArray } from '../fill/registry';
 import { FillResolved } from '../fill/union';
 import { Fill } from '../fill/chain';
+import { Vector2 } from '@/attributes/layout/vector2';
 
 // ── Prop (loose) ─────────────────────────────────────────────────────────────
 
 export interface ShadowProp {
     blur?: number;
-    dx?: number;
-    dy?: number;
+    /** Offset of the shadow from the shape, in px. Defaults to `{ x: 0, y: 0 }`. */
+    offset?: Vector2;
     /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
     fill?: Fill;
     /** When true, the shadow is cast inward (inset) instead of as a drop shadow. Defaults to false. */
@@ -27,8 +28,8 @@ export interface ShadowProp {
  */
 export interface ShadowResolved {
     blur: number;
-    dx?: number;
-    dy?: number;
+    /** Offset of the shadow from the shape, in px. */
+    offset?: Vector2;
     /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
     fill: FillResolved[];
     /** When true, the shadow is cast inward (inset) instead of as a drop shadow. */
@@ -53,8 +54,7 @@ export type Shadow =
 export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): ShadowResolved {
     return {
         blur: prop.blur ?? previous?.blur ?? 0,
-        dx: prop.dx ?? previous?.dx,
-        dy: prop.dy ?? previous?.dy,
+        offset: prop.offset ?? previous?.offset,
         fill: prop.fill != null ? resolveFillArray(prop.fill) : (previous?.fill ?? resolveFillArray('transparent')),
         inner: prop.inner ?? previous?.inner ?? false,
         spread: prop.spread ?? previous?.spread ?? 0,

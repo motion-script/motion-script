@@ -645,8 +645,9 @@ export class StrokeHandler {
     ): void {
         const canvas = this.getCanvas();
         const paint = this.getPaint();
-        const dx = shadow.dx ?? 0;
-        const dy = shadow.dy ?? 0;
+        const dx = shadow.offset?.x ?? 0;
+        const dy = shadow.offset?.y ?? 0;
+        console.log('[DEBUG applyDropShadow]', JSON.stringify({ dx, dy, blur: shadow.blur, spread: shadow.spread, fillLen: shadow.fill.length, hasFill, shapesLen: shapes.length }));
 
         // A non-zero spread grows/shrinks the filled silhouette before blur, but
         // only for shapes that can resize their geometry cleanly (ellipse, rect);
@@ -740,10 +741,10 @@ export class StrokeHandler {
 
         const canvas = this.getCanvas();
         const paint = this.getPaint();
-        const dx = shadow.dx ?? 0;
+        const dx = shadow.offset?.x ?? 0;
         // Scene coords are Y-up; the canvas is Y-down, so negate dy to keep a
         // positive dy casting the inset shadow from the top edge downward.
-        const dy = -(shadow.dy ?? 0);
+        const dy = -(shadow.offset?.y ?? 0);
 
         for (const shape of shapes) {
             if (!shape.ckPath) continue;

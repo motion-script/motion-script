@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
         const ref = createRef<Rect>();
 
         stage.add(
-            <Rect ref={ref} fill={'red'} width={400} height={400} cornerRadius={20} shadow={{ fill: Fills.color('black', { opacity: 1 }), dx: 10, dy: 10, blur: 0, spread: 100, inner: true }} >
+            <Rect ref={ref} fill={'red'} width={400} height={400} cornerRadius={20} shadow={{ fill: Fills.color('black', { opacity: 1 }), offset: { x: 10, y: 10 }, blur: 0, spread: 100, inner: true }} >
             </Rect>
         );
 

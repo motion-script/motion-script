@@ -28,11 +28,11 @@ export function layoutCard(opts: {
 }): Node {
     const { label, stage = "stack", gap = 0, children } = opts;
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-            <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}  >
+            <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect
-                width={'fill'} height={'fill'}
-                cornerRadius={32} clip={true}
+                width={'fill'} height={'fill'} shadow={{ blur: 20, fill: 'white', }}
+                cornerRadius={32}
                 group={stage} gap={gap} padding={64}
             >
                 {children}

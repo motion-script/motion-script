@@ -22,14 +22,14 @@ export default createScene(function* (stage) {
                         fontSize={200}
                         fontWeight={800}
                         fill={'white'}
-                        shadow={{ fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 20, dx: 10, dy: 10 }}
+                        shadow={{ fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 20, offset: { x: 10, y: 10 } }}
                     />
                 </Rect>
             </Rect>
         );
 
         // Grow the shadow out: shift hue, soften the blur, and cast it down-right.
-        yield* textRef().to({ shadow: { fill: Fills.color('#E8617C', { opacity: 0.9 }), blur: 48, dx: 24, dy: 24 } }, 2, easeInOutQuad);
+        yield* textRef().to({ shadow: { fill: Fills.color('#E8617C', { opacity: 0.9 }), blur: 48, offset: { x: 24, y: 24 } } }, 2, easeInOutQuad);
         // Pull it back in for a clean loop.
-        yield* textRef().to({ shadow: { fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 0, dx: 0, dy: 0 } }, 2, easeInOutQuad);
+        yield* textRef().to({ shadow: { fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 0, offset: { x: 0, y: 0 } } }, 2, easeInOutQuad);
 });

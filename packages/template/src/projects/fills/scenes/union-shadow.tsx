@@ -21,8 +21,8 @@ export default createScene(function* (stage) {
         ],
         // Two shadows thrown in opposite directions.
         shadow: [
-            { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
-            { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
+            { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, offset: { x: -8, y: -8 } },
+            { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, offset: { x: 8, y: 8 } },
         ],
     });
 
@@ -34,8 +34,8 @@ export default createScene(function* (stage) {
                 { weight: 10, fill: Fills.color('#F5C26B'), align: 'inside' },
             ], 2, { ease: easeInOutQuad }),
             sample().shadowTo([
-                { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 50, dx: -40, dy: -40 },
-                { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 50, dx: 40, dy: 40 },
+                { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 50, offset: { x: -40, y: -40 } },
+                { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 50, offset: { x: 40, y: 40 } },
             ], 2, { ease: easeInOutQuad }),
         ),
         // Settle back so the scene can loop cleanly.
@@ -45,8 +45,8 @@ export default createScene(function* (stage) {
                 { weight: 4, fill: Fills.color('#F5C26B'), align: 'inside' },
             ], 1.6, { ease: easeInOutQuad }),
             sample().shadowTo([
-                { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, dx: -8, dy: -8 },
-                { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, dx: 8, dy: 8 },
+                { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, offset: { x: -8, y: -8 } },
+                { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, offset: { x: 8, y: 8 } },
             ], 1.6, { ease: easeInOutQuad }),
         ),
     );

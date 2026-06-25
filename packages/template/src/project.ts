@@ -11,5 +11,5 @@ import videoProject from './projects/video/video-project';
 import shapesProject from './projects/shapes/shapes-project';
 import nodesProject from './projects/nodes/nodes-project';
 import expensiveProject from './projects/expensive/expensive-project';
-export default layoutProject;
+export default fillsProject;
 

@@ -67,37 +67,37 @@ export default createScene(function* (stage) {
         {cell("Polygon", <>
           <Polygon ref={polygonStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={3} cornerRadius={0} />
           <Polygon ref={polygonFill} width={SIZE} height={SIZE} fill={ACCENT} sides={3} cornerRadius={0} />
-          <Polygon ref={polygonShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={3} cornerRadius={0} />
+          <Polygon ref={polygonShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} sides={3} cornerRadius={0} />
         </>)}
 
         {cell("Polygram", <>
           <Polygram ref={polygramStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} sides={5} ratio={0.5} cornerRadius={0} />
           <Polygram ref={polygramFill} width={SIZE} height={SIZE} fill={ACCENT} sides={5} ratio={0.5} cornerRadius={0} />
-          <Polygram ref={polygramShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} sides={5} ratio={0.5} cornerRadius={0} />
+          <Polygram ref={polygramShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} sides={5} ratio={0.5} cornerRadius={0} />
         </>)}
 
         {cell("Rect", <>
           <Rect ref={rectStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} cornerRadius={0} />
           <Rect ref={rectFill} width={SIZE} height={SIZE} fill={ACCENT} cornerRadius={0} />
-          <Rect ref={rectShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} cornerRadius={0} />
+          <Rect ref={rectShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} cornerRadius={0} />
         </>)}
 
         {cell("Ellipse", <>
           <Ellipse ref={ellipseStroke} width={SIZE} height={SIZE} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} ratio={1} startAngle={0} sweep={360} />
           <Ellipse ref={ellipseFill} width={SIZE} height={SIZE} fill={ACCENT} ratio={1} startAngle={0} sweep={360} />
-          <Ellipse ref={ellipseShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} ratio={1} startAngle={0} sweep={360} />
+          <Ellipse ref={ellipseShadow} width={SIZE} height={SIZE} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} ratio={1} startAngle={0} sweep={360} />
         </>)}
 
         {cell("Path", <>
           <Path ref={pathStroke} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} d={PATH_D} />
           <Path ref={pathFill} fill={ACCENT} d={PATH_D} start={0} end={0} />
-          <Path ref={pathShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} d={PATH_D} />
+          <Path ref={pathShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} d={PATH_D} />
         </>)}
 
         {cell("Line", <>
           <Line ref={lineStroke} stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} points={LINE_POINTS} closed radius={0} />
           <Line ref={lineFill} fill={ACCENT} stroke={{ fill: ACCENT, weight: 6 }} points={LINE_POINTS} closed radius={0} />
-          <Line ref={lineShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, dx: 0, dy: 0 }} points={LINE_POINTS} closed radius={0} />
+          <Line ref={lineShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} points={LINE_POINTS} closed radius={0} />
         </>)}
       </Grid>,
     );
@@ -115,8 +115,8 @@ export default createScene(function* (stage) {
         polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        polygonShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        polygonShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        polygonShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        polygonShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
 
       // ---- Polygram ----
@@ -130,8 +130,8 @@ export default createScene(function* (stage) {
         polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        polygramShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        polygramShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        polygramShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        polygramShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
 
       // ---- Rect ----
@@ -144,8 +144,8 @@ export default createScene(function* (stage) {
         rectStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        rectShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        rectShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        rectShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        rectShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
 
       // ---- Ellipse ----
@@ -159,8 +159,8 @@ export default createScene(function* (stage) {
         ellipseStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        ellipseShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        ellipseShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        ellipseShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        ellipseShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
 
       // ---- Path ----
@@ -173,8 +173,8 @@ export default createScene(function* (stage) {
         pathStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        pathShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        pathShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        pathShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        pathShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
 
       // ---- Line ----
@@ -187,8 +187,8 @@ export default createScene(function* (stage) {
         lineStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
       ),
       sequence(
-        lineShadow().to({ shadow: { fill: SHADOW, blur: 16, dx: 12, dy: 12 } }, 0.8, easeOutQuad),
-        lineShadow().to({ fill: "transparent", shadow: { fill: SHADOW, blur: 16, dx: -12, dy: 12 } }, 0.8, easeOutQuad),
+        lineShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
+        lineShadow().to({ fill: "transparent", shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
       ),
     );
 

@@ -12,6 +12,6 @@ export default createScene(shapeDemo({
         label: 'Spread Shadow',
         fillFrom: Fills.color('#161a21'),
         fillTo: Fills.color('#161a21'),
-        shadowFrom: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, dx: 0, dy: 0, spread: 0 },
-        shadowTo: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, dx: 0, dy: 0, spread: 60 },
+        shadowFrom: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, offset: { x: 0, y: 0 }, spread: 0 },
+        shadowTo: { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 24, offset: { x: 0, y: 0 }, spread: 60 },
     }));
