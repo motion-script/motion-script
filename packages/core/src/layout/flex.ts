@@ -108,7 +108,6 @@ export function measureFlex<C extends FlexChild>(
 
     const gapCount = Math.max(0, entries.length - 1);
     const totalGap = gap === "auto" ? 0 : gap * gapCount;
-    const flexibleCount = entries.filter((e) => e.isFlexibleMain).length;
 
     // Pass 1a: measure fixed-main + fixed-cross children to establish maxCross anchor.
     let fixedMain = 0;
@@ -146,9 +145,13 @@ export function measureFlex<C extends FlexChild>(
     // Pass 2: distribute remaining space to flexible-main children, weighted by
     // each child's flex. The total to divide is the same as before; only how it
     // splits between fill children changes (equal weights → equal split).
-    const distributable = parentIsHugMain
-        ? fixedMain
-        : Math.max(0, innerMain - totalGap - fixedMain);
+    //
+    // When the parent hugs main, there's no real "remaining space" to divide —
+    // mirrors Figma, which disallows "Fill container" on the axis a parent
+    // hugs. A fill-main child here measures unconstrained, like a hug child,
+    // and contributes its own intrinsic size to the hug total instead of an
+    // arbitrary borrowed share.
+    const distributable = Math.max(0, innerMain - totalGap - fixedMain);
     let sumFlex = 0;
     for (const entry of entries) {
         if (entry.isFlexibleMain) sumFlex += entry.flex ?? 1;
@@ -158,13 +161,31 @@ export function measureFlex<C extends FlexChild>(
 
     for (const entry of entries) {
         if (!entry.isFlexibleMain) continue;
+        const crossMode = getMode(entry.child, crossKey);
+        if (parentIsHugMain) {
+            // No real remaining space to give a main-axis fill child here, so
+            // measure its main axis unconstrained (like a hug child) rather
+            // than handing it 0 via a missing/defaulted constraint.
+            const measured = entry.child.measure(
+                mainIsRow
+                    ? { maxWidth: Infinity, maxHeight: innerHeight }
+                    : { maxWidth: innerWidth, maxHeight: Infinity },
+            );
+            if (mainIsRow) {
+                entry.width = measured.width ?? 0;
+                entry.height = crossMode === "fill" ? innerCrossForFillMain : (measured.height ?? 0);
+            } else {
+                entry.width = crossMode === "fill" ? innerCrossForFillMain : (measured.width ?? 0);
+                entry.height = measured.height ?? 0;
+            }
+            continue;
+        }
         const share = sumFlex > 0 ? distributable * ((entry.flex ?? 1) / sumFlex) : 0;
         const measured = entry.child.measure(
             mainIsRow
                 ? { maxWidth: share, maxHeight: innerHeight }
                 : { maxWidth: innerWidth, maxHeight: share },
         );
-        const crossMode = getMode(entry.child, crossKey);
         if (mainIsRow) {
             entry.width = share;
             entry.height = crossMode === "fill" ? innerCrossForFillMain : (measured.height ?? 0);
@@ -183,8 +204,7 @@ export function measureFlex<C extends FlexChild>(
         if (childCross > maxCross) maxCross = childCross;
     }
 
-    const hugMain =
-        parentIsHugMain && flexibleCount > 0 ? fixedMain + totalGap : totalMain + totalGap;
+    const hugMain = totalMain + totalGap;
 
     return mainIsRow
         ? { entries, hugWidth: hugMain, hugHeight: maxCross }

@@ -21,7 +21,7 @@ export default createScene(function* (stage) {
             <Rect ref={boxRef} width={'fill'} height={205} fill={'card'} />
 
 
-            <Text wrap={true} text={'Hello my name is amazing and hope this works'} fontSize={32} fill={'white'} width={'fill'} textAlign={'start'} />
+            <Text wrap={true} height={'fill'} text={'Hello my name is amazing and hope this works'} fontSize={32} fill={'white'} width={'fill'} textAlign={'start'} />
 
         </Rect>
     );

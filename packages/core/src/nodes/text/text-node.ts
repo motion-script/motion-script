@@ -69,7 +69,7 @@ export class Text extends ShapeNode<TextProps> {
         super(props);
         const autofit = props.fontSize === 'autofit';
 
-        this.applyProp("height", props.height ?? (autofit || props.wrap ? "fill" : "hug"));
+        this.applyProp("height", props.height ?? (autofit ? "fill" : "hug"));
         this.applyProp("width", props.width ?? (autofit || props.wrap ? "fill" : "hug"));
     }
 
@@ -111,11 +111,13 @@ export class Text extends ShapeNode<TextProps> {
             : paragraphs.length;
         const intrinsicH = lineCount * lineH;
 
+        // "fill" still reports the intrinsic wrapped height when measuring —
+        // it's layout (not measure) that stretches a fill child to its final
+        // box. This lets a hug ancestor see the text's real content height
+        // instead of an arbitrary borrowed constraint.
         const resolvedH = typeof hm === "number"
             ? hm
-            : hm === "hug"
-                ? intrinsicH
-                : constraints.maxHeight ?? 0;
+            : intrinsicH;
 
         return { width: resolvedW, height: resolvedH };
     }

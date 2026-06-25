@@ -34,6 +34,30 @@ function child(widthMode: SizeInput, heightMode: SizeInput, flex?: number): Flex
     };
 }
 
+/**
+ * Simulates a wrapping {@link Text}-like child: its `fill` axes report a
+ * fixed intrinsic content size regardless of the incoming constraint
+ * (mirroring how `Text.measure()` reports wrapped line height even when
+ * asked to "fill"), rather than echoing back whatever constraint it's given.
+ */
+function intrinsicChild(
+    widthMode: SizeInput,
+    heightMode: SizeInput,
+    intrinsicWidth: number,
+    intrinsicHeight: number,
+    flex?: number,
+): FlexChild {
+    return {
+        widthMode,
+        heightMode,
+        mainFlex: flex,
+        measure: (): Partial<Size2D> => ({
+            width: typeof widthMode === 'number' ? widthMode : intrinsicWidth,
+            height: typeof heightMode === 'number' ? heightMode : intrinsicHeight,
+        }),
+    };
+}
+
 const NO_PAD: PaddingResolved = { left: 0, right: 0, top: 0, bottom: 0 };
 
 function measureInput(over: Partial<FlexMeasureInput> = {}): FlexMeasureInput {
@@ -216,21 +240,23 @@ describe('measureFlex – flex weights', () => {
         expect(result.entries[0].height).toBe(100);
     });
 
-    it('weights hug-main free space and leaves hugWidth unchanged', () => {
+    it('hug-main + fill-main children measure unconstrained, ignoring flex weight', () => {
+        // Figma disallows "Fill container" on the axis a parent hugs, so a
+        // fill-main child here measures like a hug child: its own intrinsic
+        // size, regardless of flex weight (there's no real space to divide).
         const result = measureFlex(
-            [child(80, 50), child('fill', 50, 3), child('fill', 50, 1)],
+            [child(80, 50), intrinsicChild('fill', 50, 60, 50, 3), intrinsicChild('fill', 50, 20, 50, 1)],
             measureInput({ parentWidthMode: 'hug' }),
         );
-        // hug-main: fixedMain (80) split 3:1 → 60 / 20
         expect(result.entries[1].width).toBe(60);
         expect(result.entries[2].width).toBe(20);
-        // hugWidth still only counts fixed-main + gaps (no extra gaps here)
-        expect(result.hugWidth).toBe(80);
+        // hugWidth now includes every child's real measured size (80+60+20)
+        expect(result.hugWidth).toBe(160);
     });
 });
 
 describe('measureFlex – parent hug behavior', () => {
-    it('hugMain only counts fixed-main contributions plus gaps when parent hugs main', () => {
+    it('hugMain counts fixed-main contributions plus gaps when parent hugs main', () => {
         const result = measureFlex(
             [child(100, 50), child(200, 50)],
             measureInput({
@@ -243,14 +269,52 @@ describe('measureFlex – parent hug behavior', () => {
         expect(result.hugWidth).toBe(310);
     });
 
-    it('parent hug main + flex children → distributedMain falls back to fixedMain/flexCount', () => {
-        // When parent hugs main, no "remaining" exists. Strategy assigns
-        // each flex child fixedMain/flexCount. With fixedMain=0 → 0.
+    it('parent hug main + fill-main child measures its own intrinsic size, not a borrowed share', () => {
+        // When parent hugs main, there's no real remaining space — Figma
+        // disallows this combination in the UI. We measure the child like a
+        // hug child instead: its own intrinsic content size, here 30.
+        const result = measureFlex(
+            [intrinsicChild('fill', 50, 30, 50)],
+            measureInput({ parentWidthMode: 'hug' }),
+        );
+        expect(result.entries[0].width).toBe(30);
+        expect(result.hugWidth).toBe(30);
+    });
+
+    it('parent hug main + fill-main child with no intrinsic size measures unconstrained', () => {
+        // A fill-main child with no content-driven intrinsic size (unlike
+        // Text, which always has wrapped/unwrapped line width) measures
+        // against an unconstrained main axis, since there's no real
+        // remaining space for a hug-main parent to hand it.
         const result = measureFlex(
             [child('fill', 50)],
             measureInput({ parentWidthMode: 'hug' }),
         );
-        expect(result.entries[0].width).toBe(0);
+        expect(result.entries[0].width).toBe(Infinity);
+    });
+
+    it('hug-main column with a fixed child and a wrapping fill-height child hugs to both (wrap-bounds regression)', () => {
+        // Mirrors the wrap-bounds.tsx scene: a hug-height column containing a
+        // fixed-height box and a wrapping Text with height: 'fill'. The
+        // column must grow to fit the text's real wrapped content height,
+        // not just the fixed sibling.
+        const result = measureFlex(
+            [
+                child(500, 205),
+                intrinsicChild('fill', 'fill', 500, 77),
+            ],
+            measureInput({
+                direction: 'column',
+                innerWidth: 500,
+                innerHeight: 1000,
+                gap: 10,
+                parentWidthMode: 500,
+                parentHeightMode: 'hug',
+            }),
+        );
+        expect(result.entries[1].height).toBe(77);
+        // hugHeight = 205 (fixed) + 77 (wrapped text) + 10 (gap) = 292
+        expect(result.hugHeight).toBe(292);
     });
 
     it('hug-cross parent anchors fill-cross children to maxCross', () => {
