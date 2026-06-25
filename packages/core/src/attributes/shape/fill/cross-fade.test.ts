@@ -21,7 +21,7 @@ describe('lerpFillArray cross-fade for non-interpolatable fills', () => {
     it('at t=0 emits only the outgoing fill at full opacity', () => {
         const out = lerpFillArray([color()], [image()], 0);
         expect(out).toHaveLength(1);
-        expect(out[0].type).toBe('color');
+        expect(out[0].type).toBe('solid');
         expect(out[0].opacity).toBe(1);
     });
 
@@ -36,7 +36,7 @@ describe('lerpFillArray cross-fade for non-interpolatable fills', () => {
         const out = lerpFillArray([color()], [image()], 0.25);
         expect(out).toHaveLength(2);
         // Outgoing first (painted beneath), incoming on top.
-        expect(out[0].type).toBe('color');
+        expect(out[0].type).toBe('solid');
         expect(out[0].opacity).toBeCloseTo(0.75);
         expect(out[1].type).toBe('image');
         expect(out[1].opacity).toBeCloseTo(0.25);
@@ -74,8 +74,8 @@ describe('lerpFillArray cross-fade for non-interpolatable fills', () => {
         );
         // index 0: color↔image cross-fades into two layers; index 1: color↔color lerps to one.
         expect(out).toHaveLength(3);
-        expect(out[0].type).toBe('color'); // outgoing red
+        expect(out[0].type).toBe('solid'); // outgoing red
         expect(out[1].type).toBe('image'); // incoming image
-        expect(out[2].type).toBe('color'); // blue → red lerp
+        expect(out[2].type).toBe('solid'); // blue → red lerp
     });
 });
