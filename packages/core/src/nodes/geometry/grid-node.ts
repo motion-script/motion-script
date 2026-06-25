@@ -10,7 +10,6 @@ import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
-import { lerpSizeInput } from "@/layout/tweens";
 import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/grid";
 import { RectCornerRadius, CornerRadiusResolved, lerpCornerRadius, resolveCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle, CornerStyleResolved, lerpCornerStyle, resolveCornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -53,11 +52,6 @@ export class Grid extends ShapeNode<GridProps> {
 
     constructor(props: NodeConfig<Grid, GridProps>) {
         super(props);
-
-        const hasChildren = Array.isArray(props.children) ? props.children.length > 0 : !!props.children;
-        const defaultSize = hasChildren ? 'hug' : 'fill';
-        if (props.width === undefined) this.applyProp("width", defaultSize, { tween: lerpSizeInput });
-        if (props.height === undefined) this.applyProp("height", defaultSize, { tween: lerpSizeInput });
 
         // `gap` shorthand: if provided, apply to both axis gaps
         if (props.gap !== undefined) {

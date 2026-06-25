@@ -62,15 +62,14 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
 
     constructor(props: NodeConfig<any, P>) {
         super(props);
-        // A flex container hugs its children by default, so it shrink-wraps the
-        // content unless an explicit size (or `flex`, meaning "fill the parent's
-        // main axis") was given. Mirrors Rect's has-children sizing.
-        if (props.width === undefined && props.flex === undefined) {
-            this.applyProp("width", "hug", { tween: lerpSizeInput });
-        }
-        if (props.height === undefined && props.flex === undefined) {
-            this.applyProp("height", "hug", { tween: lerpSizeInput });
-        }
+    }
+
+    // Row/Column are pure layout primitives (no fill/stroke of their own), so
+    // unlike Rect they always hug — even with no children — rather than
+    // falling back to filling the parent.
+    protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
+        if (!props || props.width === undefined) this.applyProp("width", "hug", { tween: lerpSizeInput });
+        if (!props || props.height === undefined) this.applyProp("height", "hug", { tween: lerpSizeInput });
     }
 
     override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {

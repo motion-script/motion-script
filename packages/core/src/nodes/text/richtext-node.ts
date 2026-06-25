@@ -50,8 +50,13 @@ export class RichText extends ShapeNode<RichTextProps> {
 
     constructor(props: NodeConfig<RichText, RichTextProps>) {
         super(props);
-        this.applyProp("height", props.height ?? "hug");
-        this.applyProp("width", props.width ?? "hug");
+    }
+
+    // RichText always sizes to its own laid-out spans — it has no children
+    // to hug — so it ignores the base has-children default and always hugs.
+    protected override applyDefaultSize(props?: NodeConfig<RichText, RichTextProps>): void {
+        this.applyProp("height", props?.height ?? "hug");
+        this.applyProp("width", props?.width ?? "hug");
     }
 
     prepare(storage: AssetTracker): void {

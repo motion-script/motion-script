@@ -67,10 +67,16 @@ export class Text extends ShapeNode<TextProps> {
 
     constructor(props: NodeConfig<Text, TextProps>) {
         super(props);
-        const autofit = props.fontSize === 'autofit';
+    }
 
-        this.applyProp("height", props.height ?? (autofit ? "fill" : "hug"));
-        this.applyProp("width", props.width ?? (autofit || props.wrap ? "fill" : "hug"));
+    // Text doesn't hug/fill based on children (it has none) — it hugs its own
+    // glyph box by default, filling only when the box needs to be resolved
+    // externally: `autofit` measures glyphs against the allotted box, and
+    // `wrap` needs a width to wrap against.
+    protected override applyDefaultSize(props?: NodeConfig<Text, TextProps>): void {
+        const autofit = props?.fontSize === 'autofit';
+        this.applyProp("height", props?.height ?? (autofit ? "fill" : "hug"));
+        this.applyProp("width", props?.width ?? (autofit || props?.wrap ? "fill" : "hug"));
     }
 
     prepare(storage: AssetTracker): void {

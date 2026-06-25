@@ -31,8 +31,13 @@ export class Path extends ShapeNode<PathProps> {
 
     constructor(props: NodeConfig<Path, PathProps>) {
         super(props);
-        this.applyProp("width", props.width ?? "hug");
-        this.applyProp("height", props.height ?? "hug");
+    }
+
+    // A Path always sizes to its own geometry — it has no children to hug —
+    // so it ignores the base has-children default and always hugs.
+    protected override applyDefaultSize(props?: NodeConfig<Path, PathProps>): void {
+        this.applyProp("width", props?.width ?? "hug");
+        this.applyProp("height", props?.height ?? "hug");
     }
 
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {

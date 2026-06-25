@@ -285,11 +285,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
         // Specifying `flex` signals intent to fill the parent's main axis, so an
         // unspecified width/height defaults to 'fill' (flex is a no-op on a
-        // fixed/hug axis). Subclasses that further refine the default (e.g. Rect
-        // hugging its children) check `flex` too, so this never clobbers them.
+        // fixed/hug axis) and skips the has-children default below.
         if (props && (props as any).flex !== undefined) {
             if (props.width === undefined) this.applyProp("width", "fill", { tween: lerpSizeInput });
             if (props.height === undefined) this.applyProp("height", "fill", { tween: lerpSizeInput });
+        } else {
+            this.applyDefaultSize(props);
         }
 
         // Anchor-based positioning: validate, derive pivot, bind x/y.
@@ -318,6 +319,27 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
                 .filter((c: unknown): c is Node => c instanceof Node);
             if (flat.length > 0) this.addChildren(flat);
         }
+    }
+
+    /**
+     * Figma-style smart default for `width`/`height`: hug-to-content when the
+     * node is given children, fill-the-parent when it's empty — so a plain
+     * `new Rect({ children: [...] })` shrink-wraps like a Figma auto-layout
+     * frame, while an empty one behaves like a background/spacer. Called once
+     * from the constructor (skipped when `flex` is set, since that already
+     * implies 'fill'), so it's the baseline every `Node` gets for free.
+     *
+     * Subclasses with their own sizing convention (`Text` hugs single-line
+     * text but fills when wrapping/autofit; `Path`/`RichText` always hug;
+     * `FlexNode` always hugs) override this — typically a one-line replacement
+     * — instead of duplicating the children-check in their constructor.
+     */
+    protected applyDefaultSize(props?: NodeConfig<any, P>): void {
+        const childProp = props ? (props as any).children : undefined;
+        const hasChildren = Array.isArray(childProp) ? childProp.length > 0 : !!childProp;
+        const defaultSize = hasChildren ? "hug" : "fill";
+        if (!props || props.width === undefined) this.applyProp("width", defaultSize, { tween: lerpSizeInput });
+        if (!props || props.height === undefined) this.applyProp("height", defaultSize, { tween: lerpSizeInput });
     }
 
     // ---- Reactive properties ----------------------------------------------

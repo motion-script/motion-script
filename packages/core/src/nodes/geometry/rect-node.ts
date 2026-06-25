@@ -10,7 +10,6 @@ import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
-import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, GapSize, FlexDirection } from "@/layout/flex";
@@ -108,14 +107,6 @@ export class Rect extends ShapeNode<RectProps> {
     constructor(props: NodeConfig<Rect, RectProps>) {
         super(props);
         this.applyGroupProp(props.group ?? "stack");
-        // Override width/height default based on whether children are present.
-        // An explicit `flex` means "fill the parent's main axis", so it takes
-        // precedence over the hug-when-has-children default (the base Node
-        // constructor has already applied 'fill' in that case — leave it).
-        const hasChildren = Array.isArray(props.children) ? props.children.length > 0 : !!props.children;
-        const defaultSize = hasChildren ? 'hug' : 'fill';
-        if (props.width === undefined && props.flex === undefined) this.applyProp("width", defaultSize, { tween: lerpSizeInput });
-        if (props.height === undefined && props.flex === undefined) this.applyProp("height", defaultSize, { tween: lerpSizeInput });
     }
 
     // group has a closure-based tween that captures _groupBlend, so it can't be
