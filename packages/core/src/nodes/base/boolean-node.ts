@@ -6,7 +6,6 @@ import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
-import { layoutGroupChildren } from "@/layout/group-layout";
 export interface BooleanGroupProps extends ShapeProps {
     op: BooleanOperation;
 }
@@ -36,7 +35,7 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
     // them out stack-style (centered), so child x/y/width behave as authored.
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         super.layout(rect, scope);
-        layoutGroupChildren(this._children, rect, scope);
+        this.layoutChildren(rect, scope);
     }
 
     onRender(ctx: RenderContext): void {

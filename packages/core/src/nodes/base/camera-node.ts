@@ -7,7 +7,6 @@ import { lerpNumber } from "@/tween/lerp";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
-import { layoutGroupChildren } from "@/layout/group-layout";
 import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
@@ -90,7 +89,7 @@ export class Camera extends ShapeNode<CameraProps> {
     // out stack-style (centered); they're then viewed through the camera.
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         super.layout(rect, scope);
-        layoutGroupChildren(this._children, rect, scope);
+        this.layoutChildren(rect, scope);
     }
 
     // ---- Rendering --------------------------------------------------------

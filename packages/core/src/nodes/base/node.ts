@@ -26,6 +26,7 @@ import { lerpEffectArray } from "@/attributes/shape/effects/registry";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
 import { MeasureScope } from "@/render/measure-scope";
 import { nodePath } from "@/project/tree";
+import { layoutGroupChildren } from "@/layout/group-layout";
 
 export interface NodeClock {
     time: number;       // Absolute time since the scene started
@@ -1192,6 +1193,22 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     layout(rect: BoxBounds, _scope: MeasureScope): void {
         this._layoutRect.set(rect);
+    }
+
+    /**
+     * Stack-layout this node's children, centered within `rect`: each child is
+     * measured against `rect` and given a `BoxBounds` centered on it (sized to
+     * its own measured size, capped to the container), offsetting from center
+     * via its own `x`/`y`. For container nodes that don't run `Rect`'s
+     * flex/stack layout (e.g. {@link MaskGroup}, {@link Camera},
+     * {@link BooleanGroup}) — without this their children never get a layout
+     * pass and render at zero size. Call from an `override layout()` after
+     * `super.layout()`; not called by the base `layout()` itself, since most
+     * nodes (leaf shapes, `Rect`) either have no children or lay them out
+     * themselves.
+     */
+    protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
+        layoutGroupChildren(this._children, rect, scope);
     }
 
     measure(constraints: SizeConstraints, _scope: MeasureScope): Partial<Size2D> {
