@@ -251,6 +251,13 @@ export class PlaybackController {
      * frame over the old with no blank flash. Returns the resolved scene index,
      * or -1 if no slot matched (caller can fall back to a full reload).
      *
+     * The edited scene's precomp re-runs a fresh asset pass, so any asset the
+     * edit *added* (a new image/video/font) is now in the global asset map — but
+     * it isn't loaded yet. We repaint synchronously for a no-flash swap of what's
+     * already warm, then kick off an async `loadAt` for the current frame and
+     * re-render once the new assets are ready, so the added asset actually shows
+     * up. The async pass is generation-guarded so a concurrent seek/tick wins.
+     *
      * @param newScene The edited scene instance (carries `__sceneHotId`).
      */
     replaceScene(newScene: Scene): number {
@@ -273,8 +280,40 @@ export class PlaybackController {
         // generation invalidates any in-flight async render so it can't stamp a
         // stale frame over the reloaded scene.
         const gen = ++this.seekGeneration;
-        this.renderAt(this.currentFrame, this.cancelAfter(gen));
+        const frame = this.currentFrame;
+        this.renderAt(frame, this.cancelAfter(gen));
+
+        // Load any newly-tracked assets for this frame and repaint with them.
+        // Fire-and-forget: the synchronous repaint above already showed the warm
+        // state; this fills in assets the edit added. If a seek/tick supersedes
+        // us mid-load, the generation guards bail before painting.
+        void this.loadAndRepaint(frame, gen);
         return index;
+    }
+
+    /**
+     * Await the asset manager's load for `frame`, then repaint — used by
+     * {@link replaceScene} so an asset added by a hot reload is loaded before it
+     * needs to render. Guarded by `gen`: if a newer seek/tick has begun (or the
+     * controller is disposed) we abandon both the post-load render and any video
+     * warm-up so we never stamp a stale frame over the live one.
+     */
+    private async loadAndRepaint(frame: number, gen: number): Promise<void> {
+        try {
+            await this.assetManager.loadAt(frame);
+        } catch (err) {
+            console.error("[PlaybackController] hot-reload asset load failed:", err);
+            return;
+        }
+        if (!this.isCurrent(gen)) return;
+        this.renderAt(frame, this.cancelAfter(gen));
+        // A newly-added video lands on a timestamp the window hasn't decoded yet;
+        // warm the exact frame(s) the render asked for and repaint, as seek does.
+        for (let pass = 0; pass < 3; pass++) {
+            if (!(await this.storageAdapter.warmPendingVideo())) break;
+            if (!this.isCurrent(gen)) return;
+            this.renderAt(frame, this.cancelAfter(gen));
+        }
     }
 
     /** Reposition the clock to `frame` without interrupting playback. */

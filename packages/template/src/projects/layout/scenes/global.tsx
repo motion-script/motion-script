@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Ellipse } from "@motion-script/core";
+import { createScene, createRef, Rect, Ellipse, Image } from "@motion-script/core";
 
 /**
  * Demonstrates `node.global` — a node's position resolved into absolute scene
@@ -13,23 +13,27 @@ import { createScene, createRef, Rect, Ellipse } from "@motion-script/core";
  * root's origin, so no parent compensation is needed.)
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg' });
+    stage.set({ fill: 'bg' });
 
-        const circleA = createRef<Rect>();
-        const circleB = createRef<Rect>();
+    const circleA = createRef<Rect>();
+    const circleB = createRef<Rect>();
 
-        stage.add(
-            <>
-                <Rect x={200} y={40} group={'stack'} rotation={30} >
-                    <Rect ref={circleA} rotation={10} x={0} y={80} width={600} height={400} fill={'card'} stroke={{ weight: 2, fill: 'primary' }} />
-                </Rect>
-                <Rect
-                    ref={circleB}
-                    rotation={() => circleA().global.rotation}
-                    width={100} height={100} fill={'red'}
-                    x={() => circleA().global.topRight.x}
-                    y={() => circleA().global.topRight.y}
-                />
-            </>
-        );
+    stage.add(
+        <>
+            <Rect x={200} y={40} group={'stack'} rotation={30} >
+                <Rect ref={circleA} rotation={10} x={0} y={80} width={600} height={400} fill={'card'} stroke={{ weight: 2, fill: 'primary' }} />
+            </Rect>
+            <Rect
+                ref={circleB}
+                rotation={() => circleA().global.rotation}
+                width={100} height={200} fill={'red'}
+                x={() => circleA().global.topRight.x}
+                y={() => circleA().global.topRight.y}
+            />
+        </>
+    );
+    stage.add(<Image width={200} height={200} src={'cat.jpg'} />);
+
+    yield* circleA().moveTo(200, 300, 2);
 });
+

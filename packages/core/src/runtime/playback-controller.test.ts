@@ -10,6 +10,7 @@ import {
     FakeRenderContext,
     FakeMeasureScope,
     FakeAssetCatalog,
+    asScene,
     asScenes,
     asCatalog,
     asStorage,
@@ -112,6 +113,69 @@ describe('PlaybackController – seek', () => {
 
         expect(rc.renderCount).toBe(rendersAfterCurrentSeek); // no stale frame-5 repaint
         expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);   // playhead stays at the newest target
+    });
+});
+
+describe('PlaybackController – replaceScene (hot reload)', () => {
+    it('loads an asset the edited scene added and repaints with it', async () => {
+        // Initial scene tracks no assets. Hot-reload a scene that now requests a
+        // new image on every frame; the controller must load it (not just swap
+        // the precomp) so the repaint can render it.
+        const { controller, storage, rc } = makeController(10, 10);
+        expect(storage.loadAssetCalls.some(c => c.key === 'new.png')).toBe(false);
+
+        const edited = new FakeScene({
+            id: 'root',
+            name: 'Scene',
+            yieldCount: 10,
+            children: [new FakeNode('child', 'Rect')],
+            onPrepare: (tracker) => tracker.requestImage('new.png', 64, 64),
+        });
+
+        const rendersBefore = rc.renderCount;
+        const index = controller.replaceScene(asScene(edited));
+        expect(index).toBe(0);
+
+        // Synchronous repaint already happened (no-flash swap of warm state)…
+        expect(rc.renderCount).toBeGreaterThan(rendersBefore);
+
+        // …then the async load+repaint runs; flush microtasks/timers for it.
+        await flush();
+        expect(storage.loadAssetCalls.some(c => c.key === 'new.png')).toBe(true);
+    });
+
+    it('a seek that supersedes the hot-reload load wins (no stale repaint)', async () => {
+        // replaceScene fires an async loadAt; if a seek begins before it resolves,
+        // the hot-reload repaint must bail so it can't paint over the seek target.
+        const { controller, clock, storage, rc } = makeController(10, 10);
+
+        // Park ONLY the hot-reload's first load so we can interleave a seek
+        // before it ends; the seek's own loadAt must resolve normally or it hangs.
+        let releaseLoad!: () => void;
+        const gate = new Promise<void>((res) => { releaseLoad = res; });
+        const realLoad = storage.loadAsset.bind(storage);
+        let gated = false;
+        storage.loadAsset = (key, record) => {
+            realLoad(key, record);
+            if (!gated) { gated = true; return gate; }
+            return Promise.resolve();
+        };
+
+        const edited = new FakeScene({
+            id: 'root', name: 'Scene', yieldCount: 10,
+            children: [new FakeNode('child', 'Rect')],
+            onPrepare: (tracker) => tracker.requestImage('new.png', 64, 64),
+        });
+        controller.replaceScene(asScene(edited)); // parks on the gated loadAt
+
+        await controller.seek(2); // newer generation; last to render
+        const rendersAfterSeek = rc.renderCount;
+
+        releaseLoad();           // wake the hot-reload load — it must refuse to repaint
+        await flush();
+
+        expect(rc.renderCount).toBe(rendersAfterSeek);
+        expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);
     });
 });
 
