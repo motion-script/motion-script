@@ -5,8 +5,6 @@ import { lerpNumber } from "@/tween/lerp";
 
 
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
-import { BoxBounds } from "@/attributes/layout/bounds";
-import { MeasureScope } from "@/render/measure-scope";
 import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
@@ -84,13 +82,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // ---- Layout -----------------------------------------------------------
 
-    // No flex/stack layout — the base Node only lays out itself, so the world
-    // (children) needs a layout pass too or it renders at zero size. Lay them
-    // out stack-style (centered); they're then viewed through the camera.
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
-        this.layoutChildren(rect, scope);
-    }
+    // No flex/stack layout — the world (children) is stack-laid-out (centered)
+    // by the base Node.layout default, then viewed through the camera.
 
     // ---- Rendering --------------------------------------------------------
 

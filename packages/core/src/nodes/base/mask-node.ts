@@ -1,8 +1,6 @@
 import { RenderContext } from "@/render/render-context";
 import { Node, NodeConfig, NodeProps } from "./node";
 import { MaskMode } from "@/attributes/mask/mask";
-import { BoxBounds } from "@/attributes/layout/bounds";
-import { MeasureScope } from "@/render/measure-scope";
 
 export interface MaskGroupProps extends NodeProps {
     // How the mask shape determines content visibility:
@@ -33,12 +31,8 @@ export class MaskGroup extends Node<MaskGroupProps> {
         this.applyProp("inverted", props.inverted ?? false);
     }
 
-    // The base Node only lays out itself; mask + content children need a layout
-    // pass too, or they render at zero size. Lay them out stack-style (centered).
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
-        this.layoutChildren(rect, scope);
-    }
+    // Mask + content children are stack-laid-out (centered) by the base
+    // Node.layout default — no override needed here.
 
     onRender(ctx: RenderContext): void {
         // Apply own transform. Children's spaces are nested inside this.

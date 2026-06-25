@@ -14,6 +14,7 @@ import grid from './scenes/grid-scene?scene';
 import image from './scenes/image-scene?scene';
 import video from './scenes/video-scene?scene';
 import path from './scenes/path-scene?scene';
+import customScene from './scenes/custom-scene';
 
 /**
  * One scene per built-in node — used to generate the screenshots and
@@ -44,6 +45,7 @@ export default createProject({
         image,
         video,
         path,
+        customScene
     ],
     theme: {
         bg: '#0D0F15',

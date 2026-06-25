@@ -132,7 +132,7 @@ export class Grid extends ShapeNode<GridProps> {
     }
 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
+        this.setLayoutRect(rect);
 
         const padding = this.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);

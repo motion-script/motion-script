@@ -102,7 +102,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     }
 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
+        this.setLayoutRect(rect);
 
         const pad = this.padding as PaddingResolved;
         const inner = applyPadding(rect.width, rect.height, pad);

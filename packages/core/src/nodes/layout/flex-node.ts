@@ -95,7 +95,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
     }
 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
-        super.layout(rect, scope);
+        this.setLayoutRect(rect);
 
         const padding = this.padding as PaddingResolved;
         const inner = applyPadding(rect.width, rect.height, padding);

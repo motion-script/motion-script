@@ -17,6 +17,7 @@ import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { Matrix2D, applyToPoint, multiply, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
+import { Clip } from "@/render/clip";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
@@ -1134,9 +1135,43 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         ctx.transform(s);
     }
 
+    /**
+     * Hook for custom nodes that draw their own content (raw `Graphics`
+     * commands, etc.) without subclassing {@link ShapeNode}. Called from
+     * `onRender` between the transform push and the children render, the same
+     * slot `ShapeNode.renderSelf` occupies. No-op by default — drawing nothing
+     * here doesn't change the render flow at all.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept as `ctx` (not `_ctx`) so overriders see the real param name
+    protected renderSelf(ctx: RenderContext): void { }
+
+    /**
+     * Hook for custom nodes that want their children clipped to a shape
+     * without subclassing {@link ShapeNode}. Returning `null` (the default)
+     * draws children unclipped, identical to today's `Node.onRender`. Mirrors
+     * `ShapeNode.clipSelf` — see there for the full contract.
+     */
+    protected clipSelf(): Clip | null { return null; }
+
+    /**
+     * Open `clipSelf()`'s outline as a clip scope, confining whatever is drawn
+     * until the matching `ctx.endClip()` to the shape. Returns `true` when a
+     * clip was actually opened (so the caller knows to close it) and `false`
+     * when the node has no outline (the default).
+     */
+    protected applyClip(ctx: RenderContext): boolean {
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return false;
+        ctx.beginClip(clip);
+        return true;
+    }
+
     onRender(ctx: RenderContext) {
         this.applyTransform(ctx);
+        this.renderSelf(ctx);
+        const clipped = this.applyClip(ctx);
         this.renderChildren(ctx);
+        if (clipped) ctx.endClip();
     }
 
     renderChildren(ctx: RenderContext): void {
@@ -1191,21 +1226,33 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     private readonly _measuredSize: Partial<Size2D> = {};
 
-    layout(rect: BoxBounds, _scope: MeasureScope): void {
+    /** Record this node's allocated bounds without touching children. Used by subclasses that run their own child-layout pass (e.g. `Rect`'s flex/stack) and so skip {@link layoutChildren}. */
+    protected setLayoutRect(rect: BoxBounds): void {
         this._layoutRect.set(rect);
+    }
+
+    /**
+     * Default layout: record `rect`, then stack-layout children (see
+     * {@link layoutChildren}). This is what makes a plain `Node` — and any
+     * `ShapeNode` leaf (`Ellipse`, `Polygon`, …) that doesn't override
+     * `layout` — able to nest children out of the box, the same way `Image`
+     * (via `Rect`) does, just with simple centered stacking instead of
+     * flex/stack. Subclasses with their own child-layout (`Rect`,
+     * `MaskGroup`, `Camera`, `BooleanGroup`) override this and call
+     * {@link setLayoutRect} instead, so children aren't laid out twice.
+     */
+    layout(rect: BoxBounds, scope: MeasureScope): void {
+        this.setLayoutRect(rect);
+        this.layoutChildren(rect, scope);
     }
 
     /**
      * Stack-layout this node's children, centered within `rect`: each child is
      * measured against `rect` and given a `BoxBounds` centered on it (sized to
      * its own measured size, capped to the container), offsetting from center
-     * via its own `x`/`y`. For container nodes that don't run `Rect`'s
-     * flex/stack layout (e.g. {@link MaskGroup}, {@link Camera},
-     * {@link BooleanGroup}) — without this their children never get a layout
-     * pass and render at zero size. Call from an `override layout()` after
-     * `super.layout()`; not called by the base `layout()` itself, since most
-     * nodes (leaf shapes, `Rect`) either have no children or lay them out
-     * themselves.
+     * via its own `x`/`y`. Called by the default {@link layout}; nodes that run
+     * their own child-layout (`Rect`'s flex/stack, `Camera`'s viewport, …)
+     * override `layout` instead and don't call this.
      */
     protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
         layoutGroupChildren(this._children, rect, scope);

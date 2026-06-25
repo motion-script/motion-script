@@ -117,7 +117,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
-    protected abstract renderSelf(ctx: RenderContext): void;
+    protected abstract override renderSelf(ctx: RenderContext): void;
 
     /**
      * This shape's outline as a {@link Clip} command list — the single source of
@@ -128,21 +128,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
      * compound clip); the default `null` means the shape has no clip outline, so
      * it renders unclipped and gets no backdrop effects.
      */
-    protected clipSelf(): Clip | null { return null; }
-
-    /**
-     * Push this shape's `clipSelf()` outline as a clip scope, confining whatever
-     * is drawn until the matching `endClip()` to the shape. Returns `true` when a
-     * clip was actually opened (so the caller knows to close it) and `false` when
-     * the shape has no outline. Not overridable — the outline is defined once in
-     * `clipSelf()`.
-     */
-    private applyClip(ctx: RenderContext): boolean {
-        const clip = this.clipSelf();
-        if (!clip || clip.isEmpty()) return false;
-        ctx.beginClip(clip);
-        return true;
-    }
+    protected override clipSelf(): Clip | null { return null; }
 
     /**
      * Does `effect` target the backdrop (the content painted beneath this node)
