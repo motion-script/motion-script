@@ -32,8 +32,8 @@ export default createScene(function* (stage) {
             />
         </>
     );
-    stage.add(<Image width={200} height={200} src={'cat.jpg'} />);
-
+    circleA().save();
     yield* circleA().moveTo(200, 300, 2);
+    yield* circleA().restore(2);
 });
 

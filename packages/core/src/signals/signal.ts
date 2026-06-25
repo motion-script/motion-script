@@ -1,6 +1,18 @@
 import type { Subscriber, Unsubscribe } from "./subscriber";
 
 /**
+ * A captured reactive state of a {@link Signal}. Either the cell was bound to a
+ * computation (`bound: true`, with the `fn` to re-bind and the resolved `value`
+ * at capture time) or it held a plain `value`. Produced by {@link Signal.snapshot}
+ * and consumed by {@link Signal.restoreFrom}.
+ */
+export interface SignalSnapshot<T> {
+    bound: boolean;
+    value: T;
+    fn?: () => T;
+}
+
+/**
  * Reactive cell that stores a value and tracks dependencies.
  *
  * A cell can be a plain value (set/get) or bound to a computation fn.
@@ -96,6 +108,31 @@ export class Signal<T> {
 
     isBound(): boolean {
         return this._fn !== null;
+    }
+
+    /**
+     * Capture this cell's current reactive state so it can be reapplied later
+     * with {@link restoreFrom} — the backing primitive for node `save()`.
+     *
+     * A bound cell records its computation fn (so the binding, not just its
+     * resolved value, is preserved); a plain cell records its value. Reading
+     * is done via {@link peek}, so taking a snapshot never creates a tracking
+     * dependency on this cell.
+     */
+    snapshot(): SignalSnapshot<T> {
+        return this._fn
+            ? { bound: true, fn: this._fn, value: this.peek() }
+            : { bound: false, value: this._value };
+    }
+
+    /**
+     * Reapply a snapshot taken by {@link snapshot}. A bound snapshot re-binds
+     * the recorded computation; a plain snapshot sets the recorded value. Used
+     * by node `restore()` to roll a cell back to a saved state.
+     */
+    restoreFrom(snap: SignalSnapshot<T>): void {
+        if (snap.bound) this.bind(snap.fn!);
+        else this.set(snap.value);
     }
 
     subscribe(fn: Subscriber<T>): Unsubscribe {

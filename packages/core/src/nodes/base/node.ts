@@ -1,4 +1,4 @@
-import { Signal } from "@/signals/signal";
+import { Signal, SignalSnapshot } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
 import { EaseFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
@@ -606,6 +606,94 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     *scaleTo(scale: number, duration: number, ease?: EaseFunction): FrameGenerator {
         return yield* this.to({ scale } as Partial<P>, duration, ease);
+    }
+
+    // ---- State stack (save / restore) -------------------------------------
+    // A per-node LIFO stack of property snapshots, mirroring Motion Canvas's
+    // node.save()/restore(). `save()` pushes a snapshot of every reactive prop;
+    // `restore()` pops the most recent one and either snaps to it (no duration)
+    // or tweens the numeric props back to it over `duration`.
+
+    private _stateStack: Map<string, SignalSnapshot<any>>[] = [];
+
+    /**
+     * Push a snapshot of this node's current state onto its save stack.
+     *
+     * Every reactive prop (`x`, `y`, `scale`, `opacity`, `fill`, …) is captured,
+     * preserving reactive bindings — a prop bound to `() => other().x` is saved
+     * as the binding, not just its resolved value, so {@link restore} re-binds
+     * it rather than freezing the value. Calls stack: each `save()` pushes a new
+     * layer, and each {@link restore} pops the most recent one.
+     *
+     * @example
+     * node.save();
+     * yield* node.moveTo(200, 0, 1);
+     * yield* node.restore(1);   // animate back to where it was saved
+     */
+    save(): void {
+        const signals = this.__signals;
+        if (!signals) return;
+        const layer = new Map<string, SignalSnapshot<any>>();
+        for (const [key, cell] of signals) {
+            layer.set(key, cell.snapshot());
+        }
+        this._stateStack.push(layer);
+    }
+
+    /**
+     * Pop the most recent {@link save} snapshot and roll this node back to it.
+     *
+     * Called with no `duration` (or `0`), every prop is reapplied instantly —
+     * plain values are set, reactive bindings are re-bound. Called with a
+     * positive `duration`, the numeric props (and any with a custom `tween`)
+     * animate toward their saved values over that many seconds; once the tween
+     * finishes the full snapshot is reapplied, which re-binds any reactive props
+     * and snaps non-tweenable props (e.g. strings) to their saved values.
+     *
+     * A no-op (returns immediately) if there is nothing on the stack.
+     *
+     * @param duration Seconds to animate the rollback over. Omit for an instant restore.
+     * @param easing   Optional easing for the animated restore.
+     */
+    restore(): void;
+    restore(duration: number, easing?: EaseFunction): FrameGenerator;
+    restore(duration?: number, easing?: EaseFunction): void | FrameGenerator {
+        const layer = this._stateStack.pop();
+        if (duration === undefined || duration <= 0) {
+            if (layer) this._applySnapshotLayer(layer);
+            return;
+        }
+        return this._restoreAnimated(layer, duration, easing);
+    }
+
+    /** Instantly reapply a saved snapshot layer to every captured cell. */
+    private _applySnapshotLayer(layer: Map<string, SignalSnapshot<any>>): void {
+        const signals = this.__signals;
+        if (!signals) return;
+        for (const [key, snap] of layer) {
+            signals.get(key)?.restoreFrom(snap);
+        }
+    }
+
+    private *_restoreAnimated(
+        layer: Map<string, SignalSnapshot<any>> | undefined,
+        duration: number,
+        easing?: EaseFunction,
+    ): FrameGenerator {
+        if (!layer) { yield* this._toGen({} as Partial<P>, duration, easing); return; }
+
+        // Tween the numeric / custom-tweenable props toward their saved
+        // resolved values. `to()` reads the snapshot's resolved `value` (correct
+        // even for a bound cell), so the node animates to where it *was*.
+        const target: Record<string, unknown> = {};
+        for (const [key, snap] of layer) {
+            target[key] = snap.value;
+        }
+        yield* this._toGen(target as Partial<P>, duration, easing);
+
+        // Reapply the full snapshot so reactive bindings are restored (not left
+        // frozen at the value the tween landed on) and non-tweened props snap.
+        this._applySnapshotLayer(layer);
     }
 
     // ---- Clock ------------------------------------------------------------
