@@ -1,5 +1,19 @@
 # @motion-script/vite-plugin
 
+## 2.7.0
+
+### Minor Changes
+
+- f038380: Bug fixes around text layouts and default self rendering methods for base nodes.
+
+### Patch Changes
+
+- Updated dependencies [f038380]
+  - @motion-script/canvaskit@2.7.0
+  - @motion-script/core@2.7.0
+  - @motion-script/player@2.7.0
+  - @motion-script/web@2.7.0
+
 ## 2.6.0
 
 ### Minor Changes
