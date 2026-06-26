@@ -40,8 +40,10 @@ export interface FakeSceneOptions {
     children?: FakeNode[];
     properties?: Record<string, unknown>;
     /**
-     * Hook invoked on each prepareAssets() call so a test can register assets or
-     * audio with the tracker. `frame` is the prepareAssets call index (0-based).
+     * Hook invoked on each prepareRenderAssets() call so a test can register
+     * assets or audio with the tracker. `frame` is the call index (0-based).
+     * Both fonts and image/video assets can be registered here — the tracker is
+     * phase-agnostic, and assertions read its resulting state, not the phase.
      */
     onPrepare?: (tracker: AssetTracker, frame: number) => void;
 }
@@ -69,6 +71,7 @@ export class FakeScene {
     bindAssetsCalls: unknown[] = [];
     ellapseCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
+    prepareLayoutCount = 0;
     prepareCount = 0;
     sampleCount = 0;
 
@@ -116,7 +119,10 @@ export class FakeScene {
     sample(): void {
         this.sampleCount++;
     }
-    prepareAssets(tracker: AssetTracker): void {
+    prepareLayoutAssets(_tracker: AssetTracker): void {
+        this.prepareLayoutCount++;
+    }
+    prepareRenderAssets(tracker: AssetTracker): void {
         this.onPrepare?.(tracker, this.prepareCount);
         this.prepareCount++;
     }

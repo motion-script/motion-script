@@ -79,7 +79,11 @@ export class Text extends ShapeNode<TextProps> {
         this.applyProp("width", props?.width ?? (autofit || props?.wrap ? "fill" : "hug"));
     }
 
-    prepare(storage: AssetTracker): void {
+    // The typeface must be loaded before layout so the paragraph is measured
+    // with the real font metrics rather than a fallback face — hence
+    // prepareLayout, not prepareRender. (Any image/gradient fill paint is still
+    // registered after layout by ShapeNode.prepareRender.)
+    prepareLayout(storage: AssetTracker): void {
         storage.requestFont(this.fontFamily, this.fontWeight.toString());
     }
 

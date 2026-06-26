@@ -182,8 +182,8 @@ export class Video extends Rect {
         this._sound?.tick(time);
     }
 
-    override prepare(tracker: AssetTracker): void {
-        super.prepare(tracker);
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
         if (!this.src) return;
         this.syncVideo();
 
@@ -206,7 +206,7 @@ export class Video extends Rect {
 
         // Resolve the full-length default for trimEnd against the *video*'s
         // duration (getMediaDuration falls back to the video manifest), then
-        // start the clip once and let prepare() push its request each frame.
+        // start the clip once and let prepareRender() push its request each frame.
         if (sound.trimEnd === Infinity && !sound.loop) {
             sound.trimEnd = tracker.catalog.getMediaDuration(this.src);
         }

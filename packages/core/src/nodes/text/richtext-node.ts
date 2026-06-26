@@ -59,8 +59,11 @@ export class RichText extends ShapeNode<RichTextProps> {
         this.applyProp("width", props?.width ?? "hug");
     }
 
-    prepare(storage: AssetTracker): void {
-        super.prepare(storage);
+    // Each run's typeface must be loaded before layout so spans are measured
+    // with their real metrics — hence prepareLayout. Fill/stroke paint is still
+    // registered after layout via the inherited ShapeNode.prepareRender.
+    prepareLayout(storage: AssetTracker): void {
+        super.prepareLayout(storage);
         const seen = new Set<string>();
         for (const run of this.runs()) {
             const key = `${run.fontFamily}@${run.fontWeight}`;

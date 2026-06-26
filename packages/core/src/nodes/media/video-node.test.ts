@@ -27,7 +27,7 @@ function prepareOnce(video: Video, time = 0): AssetTracker {
     video.ellapse(time); // drives tick() → syncSound/syncVideo
     const tracker = new AssetTracker(catalog);
     tracker.start(0);
-    video.prepare(tracker);
+    video.prepareRender(tracker);
     tracker.end();
     return tracker;
 }
@@ -82,8 +82,8 @@ describe('Video node – audio from a video file', () => {
         video.ellapse(0);
         const tracker = new AssetTracker(catalog);
         tracker.start(0);
-        // prepareAssets stamps ownerPath via withOwnerPath; a bare prepare() does not.
-        video.prepareAssets(tracker, '0.1');
+        // prepareRenderAssets stamps ownerPath via withOwnerPath; a bare prepareRender() does not.
+        video.prepareRenderAssets(tracker, '0.1');
         tracker.end();
         expect(tracker.audioRequests[0].ownerPath).toBe('0.1');
     });

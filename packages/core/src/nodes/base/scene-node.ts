@@ -65,7 +65,10 @@ export type SceneGenerator = (stage: SceneStage) => FrameGenerator;
  *   });
  *
  * The runtime drives a scene through `reset → bindAssets → ellapse → build →
- * layout → render → prepareAssets → dispose`, each forwarding to the root.
+ * prepareLayoutAssets → layout → prepareRenderAssets → render → dispose`, each
+ * forwarding to the root. Asset collection is split around layout: fonts are
+ * gathered first (text measurement needs their metrics), then images/video/paint
+ * after layout (those size their decodes against each node's `layoutRect`).
  * The scene also implements {@link SceneContext} so a {@link Stage} can
  * bind it and route `add`/`set`/sounds back here.
  */
@@ -238,9 +241,22 @@ export class Scene implements SceneContext {
         this.root.render(context);
     }
 
-    /** Collect this scene's asset requests (nodes + managed sounds). */
-    prepareAssets(tracker: AssetTracker): void {
-        this.root.prepareAssets(tracker);
+    /**
+     * Collect the scene's **pre-layout** asset requests (fonts). Called before
+     * {@link layout} so text/code can be measured with real font metrics.
+     */
+    prepareLayoutAssets(tracker: AssetTracker): void {
+        this.root.prepareLayoutAssets(tracker);
+    }
+
+    /**
+     * Collect the scene's **pre-render** asset requests (images, video, paint,
+     * and managed sounds). Called after {@link layout} so nodes can size their
+     * decodes against their `layoutRect`. Managed sounds have no layout
+     * dependency, so they're prepared here alongside the render-phase nodes.
+     */
+    prepareRenderAssets(tracker: AssetTracker): void {
+        this.root.prepareRenderAssets(tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
     }
 

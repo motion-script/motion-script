@@ -36,8 +36,8 @@ export class Image extends Rect {
         super(props as NodeConfig<Rect, RectProps>);
     }
 
-    override prepare(tracker: AssetTracker): void {
-        super.prepare(tracker);
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
         if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
     }
 

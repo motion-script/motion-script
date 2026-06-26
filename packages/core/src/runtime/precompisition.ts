@@ -150,8 +150,9 @@ export class Precomp {
      * Execute a build pass over every scene and assemble the complete result.
      *
      * Each scene's generator is driven through its full loop: `build()` yields
-     * once per frame, and each tick calls `layout`, `prepareAssets`, and
-     * `recordLifespans` before advancing the clock. A scene that throws is
+     * once per frame, and each tick collects fonts, lays out, collects
+     * image/video/paint assets, and records lifespans before advancing the
+     * clock (see {@link precompScene}). A scene that throws is
      * recorded in `buildErrors` rather than aborting the whole pass, so other
      * scenes still precomp.
      */
@@ -226,12 +227,19 @@ export class Precomp {
             generator.next(dt);
 
             while (true) {
-                // layout before prepare — layout gives nodes their layoutRect,
-                // which prepare uses to determine decode resolution.
-                scene.layout(layoutBounds, this.measureScope);
-
                 registry.start(localFrame);
-                scene.prepareAssets(registry);
+
+                // Two-phase asset prep around layout. Fonts are gathered first
+                // (prepareLayoutAssets) because text/code measurement needs the
+                // real typeface metrics — collecting them after layout would
+                // measure against a fallback face. layout() then resolves every
+                // node's layoutRect, which the render-phase prep
+                // (prepareRenderAssets: images/video/paint) reads to size its
+                // decodes.
+                scene.prepareLayoutAssets(registry);
+                scene.layout(layoutBounds, this.measureScope);
+                scene.prepareRenderAssets(registry);
+
                 registry.end();
 
                 // Record which nodes are alive this frame so the timeline can draw

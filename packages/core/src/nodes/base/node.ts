@@ -785,18 +785,55 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         for (const child of this._children) child.bindAssets(context);
     }
 
-    prepare(_storage: AssetTracker): void {
+    /**
+     * Register the assets this node needs resolved **before layout** — chiefly
+     * fonts, whose metrics text measurement depends on. Runs in the precomp pass
+     * ahead of {@link layout}, so the node cannot read its `layoutRect` here (it
+     * hasn't been laid out yet). No-op by default; {@link Text}/{@link RichText}
+     * (and `Code`) override it to request their typefaces.
+     */
+    prepareLayout(_storage: AssetTracker): void {
 
     }
 
-    prepareAssets(storage: AssetTracker, path: string = ""): void {
+    /**
+     * Register the assets this node needs resolved **before render** — images,
+     * video, audio, and fill/stroke/shadow paint. Runs *after* {@link layout},
+     * so the node can read its `layoutRect` to size decodes (image/video
+     * resolution, gradient extents). No-op by default; {@link ShapeNode},
+     * {@link Image}, and {@link Video} override it.
+     */
+    prepareRender(_storage: AssetTracker): void {
+
+    }
+
+    /**
+     * Walk the subtree registering each node's **pre-layout** assets (fonts).
+     * Run before {@link layout} so text can be measured with the correct metrics.
+     * Mirrors {@link prepareRenderAssets} but drives {@link prepareLayout}.
+     */
+    prepareLayoutAssets(storage: AssetTracker, path: string = ""): void {
+        storage.withOwnerPath(path, () => this.prepareLayout(storage));
+        const children = this._children;
+        for (let i = 0; i < children.length; i++) {
+            children[i].prepareLayoutAssets(storage, nodePath(path, i));
+        }
+    }
+
+    /**
+     * Walk the subtree registering each node's **pre-render** assets (images,
+     * video, audio, paint). Run after {@link layout} so each node's `layoutRect`
+     * is available to size its decodes. Mirrors {@link prepareLayoutAssets} but
+     * drives {@link prepareRender}.
+     */
+    prepareRenderAssets(storage: AssetTracker, path: string = ""): void {
         // Stamp the owning node's structural path onto any audio requests this
         // node emits, so the timeline can draw each clip on its own bar. Purely
         // for display — playback ignores ownerPath.
-        storage.withOwnerPath(path, () => this.prepare(storage));
+        storage.withOwnerPath(path, () => this.prepareRender(storage));
         const children = this._children;
         for (let i = 0; i < children.length; i++) {
-            children[i].prepareAssets(storage, nodePath(path, i));
+            children[i].prepareRenderAssets(storage, nodePath(path, i));
         }
     }
 

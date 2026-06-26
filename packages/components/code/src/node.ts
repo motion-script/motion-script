@@ -100,7 +100,7 @@ export class Code extends Node<CodeProps> {
 
         // Best-effort: kick off loading this node's actual language/theme so a
         // highlighter rendered outside the asset pipeline still upgrades to full
-        // highlighting. The authoritative load runs on the timeline via prepare().
+        // highlighting. The authoritative load runs on the timeline via prepareLayout().
         // We deliberately don't await — tokenize() falls back to plain text until
         // the language is ready, and onRender re-tokenizes once it loads.
         // (Theme is a synchronous color style; only the language parser loads.)
@@ -125,7 +125,12 @@ export class Code extends Node<CodeProps> {
 
 
 
-    prepare(storage: AssetTracker): void {
+    // Code measures token advance widths during layout, so its typeface must be
+    // resolved beforehand — hence prepareLayout. The language parser is tracked
+    // here too; it only affects tokenization (re-run on the next render once it
+    // loads), so the phase is immaterial for it, but co-locating both keeps the
+    // node's asset surface in one place.
+    prepareLayout(storage: AssetTracker): void {
         // Request the typeface so CanvasKit actually loads it; otherwise the
         // family resolves to a fallback face. We measure and draw with a single
         // fontFamily and no per-token weight, so weight 400 matches what we use.

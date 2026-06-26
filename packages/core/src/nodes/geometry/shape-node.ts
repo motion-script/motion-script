@@ -108,8 +108,8 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         this.set({ fill: fills.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
     }
 
-    prepare(tracker: AssetTracker): void {
-        super.prepare(tracker);
+    prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
         [
             ...(this.fill as FillResolved[]),
             ...(this.stroke as StrokeResolved[]).flatMap(s => s.fill),

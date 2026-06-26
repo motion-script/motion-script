@@ -168,8 +168,8 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         }
     }
 
-    prepare(tracker: AssetTracker): void {
-        super.prepare(tracker);
+    prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
         if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
     }
 
