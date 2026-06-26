@@ -134,6 +134,8 @@ export interface NodeProps {
     effects: Effect;
     /** Inner spacing between this node's edges and its content/children. */
     padding: Padding;
+    /** When true, content drawn outside this node's outline is clipped away (see {@link Node.clipSelf}). */
+    clip: boolean;
     children: Node | Node[];
 
     /** Pivot point for rotation and scale. (0,0)=center, (-1,1)=top-left, (1,-1)=bottom-right. Set automatically when an anchor prop is used. */
@@ -256,6 +258,9 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
     @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly pivot: Vector2;
+
+    /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
+    @property({ default: false }) declare clip: boolean;
 
     @property({ default: 1 }) declare flex: number;
     @property({ default: undefined }) declare column: number | undefined;
@@ -1205,12 +1210,26 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     protected renderSelf(ctx: RenderContext): void { }
 
     /**
-     * Hook for custom nodes that want their children clipped to a shape
-     * without subclassing {@link ShapeNode}. Returning `null` (the default)
-     * draws children unclipped, identical to today's `Node.onRender`. Mirrors
-     * `ShapeNode.clipSelf` — see there for the full contract.
+     * This node's outline as a {@link Clip} command list — the single source of
+     * truth for every clip the node needs: its `clip` boundary (when `clip` is
+     * true) and the silhouette its backdrop effects (backdrop-flagged filters,
+     * magnify) are confined to. Returning `null` (the default) means the node has
+     * no clip outline, so its children render unclipped and it gets no backdrop
+     * effects. Nodes with a definite box (shapes via {@link ShapeNode}, layout
+     * containers like {@link FlexNode}) override this to describe their geometry —
+     * and so behave the same way for `clip` and effect area.
      */
     protected clipSelf(): Clip | null { return null; }
+
+    /**
+     * An optional clip path that cuts through this node's *own* content **and**
+     * its children — unlike {@link clip}, which only confines children to the
+     * node's outline and leaves the node's own fill/stroke untouched. Returning
+     * `null` (the default) applies no such cut. Media nodes (Image, Video) expose
+     * this as an author-facing `clipPath` prop so a path can carve the painted
+     * frame and everything stacked on it as one.
+     */
+    protected clipPathSelf(): Clip | null { return null; }
 
     /**
      * Open `clipSelf()`'s outline as a clip scope, confining whatever is drawn
@@ -1225,12 +1244,120 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         return true;
     }
 
-    onRender(ctx: RenderContext) {
+    /**
+     * Does `effect` target the backdrop (the content painted beneath this node)
+     * rather than the node's own content? `magnify` and backdrop-mode `sksl`
+     * always do; everything else opts in via the `backdrop` flag (the filter
+     * effects and posterize). The renderer decides per effect whether to express
+     * it as an ImageFilter or a shader — callers only pick the target.
+     */
+    private static isBackdropEffect(effect: SceneEffect): boolean {
+        if (effect.type === "magnify") return true;
+        if (effect.type === "sksl") return effect.mode === "backdrop";
+        return "backdrop" in effect && effect.backdrop === true;
+    }
+
+    /**
+     * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
+     * grayscale, …; plus magnify and backdrop SkSL) beneath this node, clipped to
+     * its silhouette, before the node's own content is drawn — so the content
+     * underneath is filtered/warped while the node's own edges stay sharp. One
+     * backdrop effect scope, confined to the silhouette clip, runs the lot; the
+     * renderer routes each effect to a filter or shader pass. A no-op for nodes
+     * without a {@link clipSelf} outline (there's no silhouette to confine to).
+     */
+    private applyBackdropEffects(ctx: RenderContext): void {
+        const backdropEffects = (this.effects as SceneEffect[]).filter(Node.isBackdropEffect);
+        if (backdropEffects.length === 0) return;
+
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return;
+
+        const w = this.layoutRect?.width ?? 0;
+        const h = this.layoutRect?.height ?? 0;
+
+        // Clip to the silhouette first so the backdrop passes are confined to the
+        // node; the renderer opens its backdrop layers within that clip.
+        ctx.beginClip(clip);
+        ctx.beginEffectScope(backdropEffects, "backdrop", w, h);
+        ctx.endEffectScope();
+        ctx.endClip();
+    }
+
+    /**
+     * Effects that warp/band this node's *own* content (self + children), in the
+     * order they should compose: posterize wraps bulge, so it comes first and the
+     * renderer applies bulge inside it (mirroring how blur-style content effects
+     * nest). `backdrop`-flagged posterize bands the backdrop instead (see
+     * {@link applyBackdropEffects}), so it's excluded here.
+     */
+    private foregroundShaderEffects(): SceneEffect[] {
+        const effects = this.effects as SceneEffect[];
+        const posterize = effects.find((e) => e.type === "posterize" && e.backdrop !== true);
+        const bulge = effects.find((e) => e.type === "bulge");
+        const out: SceneEffect[] = [];
+        if (posterize) out.push(posterize);
+        if (bulge) out.push(bulge);
+        return out;
+    }
+
+    /**
+     * Run `body` (this node's own painting + children) inside the node's effect
+     * and clip-path scopes — the shared content-rendering envelope every node
+     * uses so effects behave identically regardless of how a node draws. The
+     * caller is expected to have already pushed the node's transform
+     * ({@link applyTransform}). The envelope, outermost-first:
+     *
+     *  1. {@link applyBackdropEffects} — filters/warps the backdrop beneath the
+     *     node, confined to its {@link clipSelf} silhouette.
+     *  2. A `foreground` effect scope (posterize wrapping bulge) capturing
+     *     everything `body` paints, so those shader effects warp/band the lot.
+     *  3. A {@link clipPathSelf} clip cutting through both the node's own paint
+     *     and its children.
+     *
+     * Nodes with a bespoke `onRender` (boolean, mask, …) call this with their
+     * custom body to gain the same effect support as a standard shape, instead
+     * of duplicating the scope bookkeeping.
+     */
+    protected renderContentWithEffects(ctx: RenderContext, body: () => void): void {
+        this.applyBackdropEffects(ctx);
+
+        const w = this.layoutRect?.width ?? 0;
+        const h = this.layoutRect?.height ?? 0;
+
+        // Capture everything this node paints — its own content and its children —
+        // so the foreground shader effects (posterize wrapping bulge) warp/band the
+        // lot, mirroring how blur-style content effects compose.
+        const foreground = this.foregroundShaderEffects();
+        const hasForeground = foreground.length > 0;
+        if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
+
+        // A clipPath cuts through this node's own paint *and* its children, so it
+        // wraps the whole body. Opened first, the node's own content is clipped
+        // too — distinct from `clip`, which only confines children. Skipped when
+        // the path is empty so endClip() balances.
+        const clipPath = this.clipPathSelf();
+        const pathClipped = clipPath != null && !clipPath.isEmpty();
+        if (pathClipped) ctx.beginClip(clipPath);
+
+        body();
+
+        if (pathClipped) ctx.endClip();
+
+        if (hasForeground) ctx.endEffectScope();
+    }
+
+    onRender(ctx: RenderContext): void {
         this.applyTransform(ctx);
-        this.renderSelf(ctx);
-        const clipped = this.applyClip(ctx);
-        this.renderChildren(ctx);
-        if (clipped) ctx.endClip();
+        this.renderContentWithEffects(ctx, () => {
+            this.renderSelf(ctx);
+            // Confine children to this node's outline. Built once from clipSelf();
+            // skipped when the node has no outline (clipped === false) so the
+            // endClip() below stays balanced.
+            const clipped = this.clip && this.applyClip(ctx);
+            this.renderChildren(ctx);
+            if (clipped) ctx.endClip();
+        });
     }
 
     renderChildren(ctx: RenderContext): void {

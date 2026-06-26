@@ -21,7 +21,7 @@ export default createScene(function* (stage) {
     stage.add(
         <>
             <Rect x={200} y={40} group={'stack'} rotation={30} >
-                <Rect ref={circleA} rotation={10} x={0} y={80} width={600} height={400} fill={'card'} stroke={{ weight: 2, fill: 'primary' }} />
+                <Rect ref={circleA} rotation={20} x={0} y={80} width={600} height={400} fill={'card'} stroke={{ weight: 2, fill: 'primary' }} />
             </Rect>
             <Rect
                 ref={circleB}

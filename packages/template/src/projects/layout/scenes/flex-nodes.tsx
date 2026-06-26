@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Row, Column, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, Row, Column, easeInOutQuad, parallel, Effects } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -13,36 +13,36 @@ import { layoutCard, tile } from "./layout-card";
  * without the box.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg' });
+    stage.set({ fill: 'bg' });
 
-        const middle = [createRef<Rect>(), createRef<Rect>()];
-        const colors = ['#6990DD', '#E8617C', '#F5C26B'];
+    const middle = [createRef<Rect>(), createRef<Rect>()];
+    const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
-        stage.add(
-            layoutCard({
-                label: 'Row + Column nodes',
-                // The card's own stage just centers the (hugging) Row.
-                stage: 'stack',
-                children: (
-                    <Row gap={48}>
-                        {colors.map((color, c) => (
-                            <Column gap={48}>
-                                {[0, 1].map((r) =>
-                                    tile({
-                                        ref: c === 1 ? middle[r] : undefined,
-                                        color,
-                                        width: 200,
-                                        height: 200,
-                                    })
-                                )}
-                            </Column>
-                        ))}
-                    </Row>
-                ),
-            })
-        );
+    stage.add(
+        layoutCard({
+            label: 'Row + Column nodes',
+            // The card's own stage just centers the (hugging) Row.
+            stage: 'stack',
+            children: (
+                <Row gap={48} >
+                    {colors.map((color, c) => (
+                        <Column gap={48} fill={'red'} >
+                            {[0, 1].map((r) =>
+                                tile({
+                                    ref: c === 1 ? middle[r] : undefined,
+                                    color,
+                                    width: 200,
+                                    height: 200,
+                                })
+                            )}
+                        </Column>
+                    ))}
+                </Row>
+            ),
+        })
+    );
 
-        // Grow then shrink the middle column's tiles; the Row/Column reflow.
-        yield* parallel(...middle.map((ref) => ref().to({ width: 320 }, 1.5, easeInOutQuad)));
-        yield* parallel(...middle.map((ref) => ref().to({ width: 200 }, 1.5, easeInOutQuad)));
+    // Grow then shrink the middle column's tiles; the Row/Column reflow.
+    yield* parallel(...middle.map((ref) => ref().to({ width: 320 }, 1.5, easeInOutQuad)));
+    yield* parallel(...middle.map((ref) => ref().to({ width: 200 }, 1.5, easeInOutQuad)));
 });

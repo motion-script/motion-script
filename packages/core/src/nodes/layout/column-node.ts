@@ -7,9 +7,10 @@ export interface ColumnProps extends FlexProps { }
 
 /**
  * Lays its children out top-to-bottom in a vertical flex column, honouring
- * `gap`, `align`, and `padding`. A convenience wrapper around the same flex
- * layout {@link Rect} performs with `group="column"`, minus the drawn box — use
- * it when you want layout without a visible container.
+ * `gap`, `align`, and `padding`. Like {@link Rect} with `group="column"` it's
+ * also a full shape — `fill`, `stroke`, `shadow`, `cornerRadius`, `clip`, and
+ * `effects` all apply — but defaults to an invisible box, so it doubles as a
+ * pure layout container until you give it paint.
  */
 export class Column extends FlexNode<ColumnProps> {
     protected readonly direction: FlexDirection = "column";

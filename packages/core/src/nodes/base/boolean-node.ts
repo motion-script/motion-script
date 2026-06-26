@@ -32,20 +32,23 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
     // the base Node.layout default, so child x/y/width behave as authored.
 
     onRender(ctx: RenderContext): void {
-        // Apply only this node's own transform. We deliberately bypass
-        // ShapeNode's onRender (which would draw the shape and then render
-        // children directly) — we want children to feed into the boolean
-        // collection instead of drawing themselves.
+        // Apply only this node's own transform. We deliberately bypass the
+        // default body (which would draw the shape and then render children
+        // directly) — we want children to feed into the boolean collection
+        // instead of drawing themselves. We still run inside the shared effect /
+        // clip-path envelope so a BooleanGroup honours `effects` and `clipPath`
+        // like any other shape node, banding/warping the combined silhouette.
         this.applyTransform(ctx);
-
-        ctx.beginBoolean(this.op);
-        for (const child of this._children) child.render(ctx);
-        // endBoolean leaves the combined path as the active surface; a paint-only
-        // Graphics (no shape ops) then paints it with this node's shadow/fill/stroke.
-        ctx.endBoolean();
-        ctx.draw(new Graphics()
-            .shadow(this.shadow)
-            .fill(this.fill)
-            .stroke(this.stroke));
+        this.renderContentWithEffects(ctx, () => {
+            ctx.beginBoolean(this.op);
+            for (const child of this._children) child.render(ctx);
+            // endBoolean leaves the combined path as the active surface; a paint-only
+            // Graphics (no shape ops) then paints it with this node's shadow/fill/stroke.
+            ctx.endBoolean();
+            ctx.draw(new Graphics()
+                .shadow(this.shadow)
+                .fill(this.fill)
+                .stroke(this.stroke));
+        });
     }
 }

@@ -5,18 +5,25 @@ import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { PaddingResolved } from "@/attributes/layout/padding";
+import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node, NodeConfig } from "../base/node";
+import { ShapeNode, ShapeProps } from "../geometry/shape-node";
+import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
+import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
 
 
 export type { FlexDirection, GapSize } from "@/layout/flex";
 
 
-export interface FlexProps extends NodeProps {
+export interface FlexProps extends ShapeProps {
     /** Spacing between children along the main axis. */
     gap: GapSize;
     /**
@@ -25,6 +32,10 @@ export interface FlexProps extends NodeProps {
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
     align: AlignInput;
+    /** Corner radius in pixels — uniform, per-corner, or per-axis. */
+    cornerRadius: RectCornerRadius;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: RectCornerStyle;
 }
 
 
@@ -37,39 +48,86 @@ interface FlexMeasureCache {
 
 
 /**
- * Base for the {@link Row} and {@link Column} convenience containers. A pure
- * flex-layout node: it measures and positions its children along a fixed main
- * axis (set by the subclass via {@link direction}) honouring `gap`, `align`,
- * and `padding`, but draws nothing itself.
+ * Base for the {@link Row} and {@link Column} convenience containers. A flex
+ * container that, like {@link Rect}, is also a full shape: it measures and
+ * positions its children along a fixed main axis (set by the subclass via
+ * {@link direction}) honouring `gap`, `align`, and `padding`, and draws itself
+ * as a (by default invisible) rounded rect behind them with the inherited
+ * `fill`, `stroke`, `shadow`, `cornerRadius`, `clip`, and `effects` props.
  *
- * It is the layout half of {@link Rect} without the shape — no fill, stroke,
- * shadow, border-radius, or `stack` mode. Reach for `Rect` when you want a
- * visible box that also lays out children; reach for `Row`/`Column` when you
- * only need the layout.
+ * It is the single-direction half of {@link Rect} (no `stack`/`group` mode) and
+ * always hugs its content by default. Reach for `Rect` when you want to switch
+ * between row/column/stack; reach for `Row`/`Column` for a fixed direction.
  */
-export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> {
+export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNode<P> {
 
     @property({ default: 0 }) declare readonly gap: GapSize;
     // Stored resolved as a per-axis `Vector2` pivot; the loose `AlignInput`
     // declared type covers both named-string assignment and reads. See Rect.
     @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
     declare align: AlignInput;
+    // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
+    // covers both assignment and reads; the accessor stores the resolved value. See Rect.
+    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    declare cornerRadius: RectCornerRadius;
+    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    declare cornerStyle: RectCornerStyle;
 
     /** Main axis this container lays its children along. */
     protected abstract readonly direction: FlexDirection;
 
     private _cachedMeasure: FlexMeasureCache | null = null;
 
-    constructor(props: NodeConfig<any, P>) {
-        super(props);
+    // ---- Drawing ----------------------------------------------------------
+
+    // The box behind the laid-out children. Invisible by default (empty fill),
+    // but honours fill/stroke/shadow/corners when set — just like Rect.
+    protected renderSelf(draw: RenderContext): void {
+        draw.draw(new Graphics()
+            .rect({
+                width: this.layoutRect.width,
+                height: this.layoutRect.height,
+                cornerRadius: this.cornerRadius,
+                cornerStyle: this.cornerStyle,
+                start: this.start,
+                end: this.end,
+            })
+            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
     }
 
-    // Row/Column are pure layout primitives (no fill/stroke of their own), so
-    // unlike Rect they always hug — even with no children — rather than
-    // falling back to filling the parent.
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+        });
+    }
+
+    // Row/Column lay out around their content, so — unlike Rect, whose empty
+    // form fills the parent — they always hug, even with no children, rather
+    // than stretching to fill.
     protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
         if (!props || props.width === undefined) this.applyProp("width", "hug", { tween: lerpSizeInput });
         if (!props || props.height === undefined) this.applyProp("height", "hug", { tween: lerpSizeInput });
+    }
+
+    // Children must sit inside the stroke (drawn at the layout-rect edge), so the
+    // intruding portion of any stroke is added to the content padding — same rule
+    // as Rect.effectivePadding. The intrusion of a stroke is weight·(1 - align)/2:
+    // inside strokes (align -1) intrude their full weight, centered (align 0) half,
+    // outside (align +1) none.
+    private effectivePadding(): PaddingResolved {
+        const p = this.padding as PaddingResolved;
+        const strokes = this.stroke as StrokeResolved[];
+        if (!strokes || !(Symbol.iterator in Object(strokes))) return p;
+        let extra = 0;
+        for (const s of strokes) {
+            const intrusion = s.weight * (1 - s.align) / 2;
+            if (intrusion > extra) extra = intrusion;
+        }
+        if (extra === 0) return p;
+        return { left: p.left + extra, right: p.right + extra, top: p.top + extra, bottom: p.bottom + extra };
     }
 
     override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
@@ -80,7 +138,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
         const heightIsHug = this.height === "hug";
         const outerW = widthIsHug ? maxWidth : resolveSize(this.width, maxWidth, 0);
         const outerH = heightIsHug ? maxHeight : resolveSize(this.height, maxHeight, 0);
-        const padding = this.padding as PaddingResolved;
+        const padding = this.effectivePadding();
         const inner = applyPadding(outerW, outerH, padding);
 
         const m = this.computeMeasure(inner.width, inner.height, scope);
@@ -96,7 +154,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends Node<P> 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         this.setLayoutRect(rect);
 
-        const padding = this.padding as PaddingResolved;
+        const padding = this.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
 
         const measure = this._cachedMeasure ?? this.computeMeasure(inner.width, inner.height, scope);

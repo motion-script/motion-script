@@ -41,19 +41,24 @@ export class MaskGroup extends Node<MaskGroupProps> {
 
         if (this._children.length === 0) return;
 
-        const [mask, ...content] = this._children;
+        // Run the mask through the shared effect / clip-path envelope so a
+        // MaskGroup honours `effects` and `clipPath` like any other node — the
+        // foreground shader effects warp/band the masked result as one.
+        this.renderContentWithEffects(ctx, () => {
+            const [mask, ...content] = this._children;
 
-        if (content.length === 0) {
-            // Nothing to clip — render the mask child as-is so authors can
-            // wire up the tree before adding content.
+            if (content.length === 0) {
+                // Nothing to clip — render the mask child as-is so authors can
+                // wire up the tree before adding content.
+                mask.render(ctx);
+                return;
+            }
+
+            ctx.beginMask({ mode: this.mode, inverted: this.inverted });
             mask.render(ctx);
-            return;
-        }
-
-        ctx.beginMask({ mode: this.mode, inverted: this.inverted });
-        mask.render(ctx);
-        ctx.applyMask();
-        for (const child of content) child.render(ctx);
-        ctx.endMask();
+            ctx.applyMask();
+            for (const child of content) child.render(ctx);
+            ctx.endMask();
+        });
     }
 }

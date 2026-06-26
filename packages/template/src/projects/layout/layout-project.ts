@@ -1,6 +1,6 @@
 import { createProject } from '@motion-script/core';
 
-import global from './scenes/global?scene';
+import global from './scenes/global';
 import camera from './scenes/camera?scene';
 import row from './scenes/row?scene';
 import column from './scenes/column?scene';
@@ -11,6 +11,7 @@ import rectWithoutChildren from './scenes/rect-without-children?scene';
 import nested from './scenes/nested?scene';
 import grid from './scenes/grid?scene';
 import flexNodes from './scenes/flex-nodes?scene';
+import titleLayout from './scenes/title-layout?scene';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -33,6 +34,7 @@ export default createProject({
         global,
         camera,
         row,
+        titleLayout,
         column,
         stack,
         groupMorph,

@@ -8,11 +8,9 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 
 import { RenderContext } from "@/render/render-context";
-import { Clip } from "@/render/clip";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
-import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
 import { FrameGenerator } from "@/tween/generator";
@@ -42,8 +40,6 @@ export interface ShapeProps extends NodeProps {
     shadow?: Shadow;
     start?: number;
     end?: number;
-    /** When true, content drawn outside this shape's outline is clipped away. */
-    clip?: boolean;
 }
 
 
@@ -69,9 +65,6 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
 
     @property({ default: 1 })
     declare end: number;
-
-    @property({ default: false })
-    declare clip: boolean;
 
     // Cached: does any current fill need a per-frame update() (e.g. video)?
     // Static fills (solid, gradients, noise, image) have an identity update, so
@@ -118,118 +111,6 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     }
 
     protected abstract override renderSelf(ctx: RenderContext): void;
-
-    /**
-     * This shape's outline as a {@link Clip} command list — the single source of
-     * truth for every clip the node needs: its `clip` boundary (when `clip` is
-     * true) and the silhouette its backdrop effects (backdrop-flagged filters,
-     * magnify) are confined to. Concrete shapes with a fillable outline override this to
-     * describe their geometry (and can compose multiple shapes / `cut()`s for a
-     * compound clip); the default `null` means the shape has no clip outline, so
-     * it renders unclipped and gets no backdrop effects.
-     */
-    protected override clipSelf(): Clip | null { return null; }
-
-    /**
-     * An optional clip path that cuts through this node's *own* content **and**
-     * its children — unlike {@link clip}, which only confines children to the
-     * shape's outline and leaves the node's own fill/stroke untouched. Returning
-     * `null` (the default) applies no such cut. Media nodes (Image, Video) expose
-     * this as an author-facing `clipPath` prop so a path can carve the painted
-     * frame and everything stacked on it as one.
-     */
-    protected clipPathSelf(): Clip | null { return null; }
-
-    /**
-     * Does `effect` target the backdrop (the content painted beneath this node)
-     * rather than the node's own content? `magnify` and backdrop-mode `sksl`
-     * always do; everything else opts in via the `backdrop` flag (the filter
-     * effects and posterize). The renderer decides per effect whether to express
-     * it as an ImageFilter or a shader — callers only pick the target.
-     */
-    private static isBackdropEffect(effect: SceneEffect): boolean {
-        if (effect.type === "magnify") return true;
-        if (effect.type === "sksl") return effect.mode === "backdrop";
-        return "backdrop" in effect && effect.backdrop === true;
-    }
-
-    /**
-     * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
-     * grayscale, …; plus magnify and backdrop SkSL) beneath this shape, clipped
-     * to its silhouette, before the shape's own fill/stroke are drawn — so the
-     * content underneath is filtered/warped while the shape's own edges stay
-     * sharp. One backdrop effect scope, confined to the silhouette clip, runs the
-     * lot; the renderer routes each effect to a filter or shader pass.
-     */
-    private applyBackdropEffects(ctx: RenderContext): void {
-        const backdropEffects = (this.effects as SceneEffect[]).filter(ShapeNode.isBackdropEffect);
-        if (backdropEffects.length === 0) return;
-
-        const clip = this.clipSelf();
-        if (!clip || clip.isEmpty()) return;
-
-        const w = this.layoutRect?.width ?? 0;
-        const h = this.layoutRect?.height ?? 0;
-
-        // Clip to the silhouette first so the backdrop passes are confined to the
-        // shape; the renderer opens its backdrop layers within that clip.
-        ctx.beginClip(clip);
-        ctx.beginEffectScope(backdropEffects, "backdrop", w, h);
-        ctx.endEffectScope();
-        ctx.endClip();
-    }
-
-    /**
-     * Effects that warp/band this node's *own* content (self + children), in the
-     * order they should compose: posterize wraps bulge, so it comes first and the
-     * renderer applies bulge inside it (mirroring how blur-style content effects
-     * nest). `backdrop`-flagged posterize bands the backdrop instead (see
-     * {@link applyBackdropEffects}), so it's excluded here.
-     */
-    private foregroundEffects(): SceneEffect[] {
-        const effects = this.effects as SceneEffect[];
-        const posterize = effects.find((e) => e.type === "posterize" && e.backdrop !== true);
-        const bulge = effects.find((e) => e.type === "bulge");
-        const out: SceneEffect[] = [];
-        if (posterize) out.push(posterize);
-        if (bulge) out.push(bulge);
-        return out;
-    }
-
-    onRender(ctx: RenderContext): void {
-        this.applyTransform(ctx);
-        this.applyBackdropEffects(ctx);
-
-        const w = this.layoutRect?.width ?? 0;
-        const h = this.layoutRect?.height ?? 0;
-
-        // Capture everything this node paints — its fill/stroke and its children —
-        // so the foreground effects (posterize wrapping bulge) warp/band the lot,
-        // mirroring how blur-style content effects compose.
-        const foreground = this.foregroundEffects();
-        const hasForeground = foreground.length > 0;
-        if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
-
-        // A clipPath cuts through this node's own paint *and* its children, so it
-        // wraps both renderSelf and renderChildren. Opened before renderSelf, the
-        // node's fill/stroke are clipped too — distinct from `clip`, which only
-        // confines children. Skipped when the path is empty so endClip() balances.
-        const clipPath = this.clipPathSelf();
-        const pathClipped = clipPath != null && !clipPath.isEmpty();
-        if (pathClipped) ctx.beginClip(clipPath);
-
-        this.renderSelf(ctx);
-        // Confine children to this shape's outline. Built once from clipSelf();
-        // skipped when the shape has no outline (clipped === false) so the
-        // endClip() below stays balanced.
-        const clipped = this.clip && this.applyClip(ctx);
-        this.renderChildren(ctx);
-        if (clipped) ctx.endClip();
-
-        if (pathClipped) ctx.endClip();
-
-        if (hasForeground) ctx.endEffectScope();
-    }
 
     *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
