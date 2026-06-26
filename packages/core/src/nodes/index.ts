@@ -3,6 +3,7 @@
 // Base
 export * from "./base/node";
 export * from "./base/scene-node";
+export * from "./base/root-node";
 export * from "./base/camera-node";
 export * from "./base/boolean-node";
 export * from "./base/mask-node";

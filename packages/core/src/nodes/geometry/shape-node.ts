@@ -89,10 +89,13 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         fillCell.subscribe(refresh);
     }
 
-    protected override reinitProps(): void {
-        if (this.__signals) return;
-        super.reinitProps();
-        this.watchFillForDynamic();
+    protected override reinitProps(force = false): void {
+        // Recreating disposed signals needs a fresh subscription; a forced reset
+        // of live signals already has one, so don't double-subscribe.
+        const recreating = !this.__signals;
+        if (this.__signals && !force) return;
+        super.reinitProps(force);
+        if (recreating) this.watchFillForDynamic();
     }
 
     public tick(time: number): void {

@@ -68,7 +68,7 @@ type NodeMeasureResult = FlexNodeMeasure | StackNodeMeasure;
  * (row | column | stack), `gap`, `align`, and `padding`, then draws
  * itself as a rounded rect behind them.
  */
-export class Rect extends ShapeNode<RectProps> {
+export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> {
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
@@ -104,7 +104,7 @@ export class Rect extends ShapeNode<RectProps> {
         this._cachedMeasureFrom = null;
     }
 
-    constructor(props: NodeConfig<Rect, RectProps>) {
+    constructor(props: NodeConfig<Rect<P>, P>) {
         super(props);
         this.applyGroupProp(props.group ?? "stack");
     }
@@ -137,9 +137,9 @@ export class Rect extends ShapeNode<RectProps> {
     // Re-apply Rect's constructor-specific prop defaults after the base class
     // re-creates its signals. Only runs when signals were disposed; the explicit
     // values get re-set when the scene is rebuilt, so defaults are a fine baseline.
-    protected override reinitProps(): void {
-        if (this.__signals) return;
-        super.reinitProps();
+    protected override reinitProps(force = false): void {
+        if (this.__signals && !force) return;
+        super.reinitProps(force);
         this.applyGroupProp("row");
     }
 

@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    SceneGenerator, SceneStage, createRef, Reference, Text, Rect, Ellipse, Image,
+    SceneGenerator, Stage, createRef, Reference, Text, Rect, Ellipse, Image,
     EffectChain, SceneEffect, easeOut, parallel,
     Node,
 } from "@motion-script/core";
@@ -77,7 +77,7 @@ export const effectDemo = (spec: EffectDemoSpec): SceneGenerator => function* (s
 };
 
 /** Single centred card: the effect applied directly to a cat.jpg image. */
-function* buildDirect(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+function* buildDirect(stage: Stage, label: string, from: EffectChain, to: EffectChain, duration: number) {
     const imgRef: Reference<any> = createRef<Node>();
 
     stage.add(
@@ -97,7 +97,7 @@ function* buildDirect(stage: SceneStage, label: string, from: EffectChain, to: E
      * so backdrop-reading effects (blur backdrop, magnify) have visible content
      * beneath the affected node.
      */
-function* buildBackground(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+function* buildBackground(stage: Stage, label: string, from: EffectChain, to: EffectChain, duration: number) {
     const overlayRef: Reference<any> = createRef<Node>();
 
     stage.add(
@@ -118,7 +118,7 @@ function* buildBackground(stage: SceneStage, label: string, from: EffectChain, t
      * to the node's content (left) and to the backdrop beneath the node (right),
      * both animating from → to in lock-step.
      */
-function* buildComparison(stage: SceneStage, label: string, from: EffectChain, to: EffectChain, duration: number) {
+function* buildComparison(stage: Stage, label: string, from: EffectChain, to: EffectChain, duration: number) {
     const directRef: Reference<any> = createRef<Node>();
     const backdropFrom = toBackdrop(from);
     const backdropTo = toBackdrop(to);

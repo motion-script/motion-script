@@ -12,6 +12,7 @@ import nested from './scenes/nested?scene';
 import grid from './scenes/grid?scene';
 import flexNodes from './scenes/flex-nodes?scene';
 import titleLayout from './scenes/title-layout?scene';
+import stage from './scenes/stage';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -31,6 +32,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        stage,
         global,
         camera,
         row,

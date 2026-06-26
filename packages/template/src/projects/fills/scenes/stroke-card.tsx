@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createRef, Reference, SceneStage, Text, Rect, Fill, Stroke, Shadow } from "@motion-script/core";
+import { createRef, Reference, Stage, Text, Rect, Fill, Stroke, Shadow } from "@motion-script/core";
 
 /** Initial paint for the single sample rect {@link strokeCard} builds. */
 export interface SampleProps {
@@ -26,7 +26,7 @@ export interface SampleProps {
  *     yield* sample().strokeTo(…);
  *   });
  */
-export function strokeCard(stage: SceneStage, label: string, initial: SampleProps = {}): Reference<Rect> {
+export function strokeCard(stage: Stage, label: string, initial: SampleProps = {}): Reference<Rect> {
     stage.set({ fill: 'bg' });
     const sampleRef = createRef<Rect>();
 

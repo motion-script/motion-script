@@ -360,14 +360,22 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * disposed signals, so reading e.g. `this.stroke` returns undefined and
      * `effectivePadding()` crashes on the next measure.
      *
-     * Calling this restores the signals to their `@property`-default baseline. It
-     * is a no-op when signals already exist (the common, non-disposed case), so
-     * it's safe to call unconditionally before a rebuild. Subclasses that apply
-     * constructor-specific prop defaults (e.g. {@link Rect}) override this to
-     * re-apply those after calling `super.reinitProps()`.
+     * Calling this restores the signals to their `@property`-default baseline.
+     *
+     * - Without `force` it is a no-op when signals already exist (the common,
+     *   non-disposed case), so it's safe to call unconditionally before a rebuild
+     *   to recover from a prior `dispose()`.
+     * - With `force` it re-applies every default **even when signals are live**,
+     *   restoring values without recreating the signal cells. A scene root that
+     *   was tweened in one pass (e.g. precomp measuring duration) is left at its
+     *   end-state; `reset()` forces a default restore so the next build's tweens
+     *   snapshot the right `from` instead of the stale end value.
+     *
+     * Subclasses that apply constructor-specific prop defaults (e.g. {@link Rect})
+     * override this to re-apply those after calling `super.reinitProps(force)`.
      */
-    protected reinitProps(): void {
-        if (this.__signals) return;
+    protected reinitProps(force = false): void {
+        if (this.__signals && !force) return;
         for (const meta of getPropertyMeta(this)) {
             this.applyProp(meta.key, meta.default, meta.options);
         }
@@ -377,10 +385,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * Public entry point to {@link reinitProps}. A {@link Scene} owns its root
      * node by composition (it no longer *is* a node), so it can't reach the
      * protected `reinitProps` directly — it calls this on its root before a
-     * rebuild to restore default-baseline signals after a prior dispose.
+     * rebuild to restore default-baseline signals after a prior dispose, and with
+     * `force` to also reset live-but-tweened props back to their defaults.
      */
-    public reinit(): void {
-        this.reinitProps();
+    public reinit(force = false): void {
+        this.reinitProps(force);
     }
 
     /**

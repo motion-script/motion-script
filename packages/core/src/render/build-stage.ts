@@ -1,41 +1,20 @@
 import { Size2D } from "@/attributes/layout/size";
 import { SeedGenerator } from "@/util/random";
-import { FrameGenerator } from "@/tween/generator";
 
 /**
- * The scene-authoring surface a {@link Scene} binds onto its {@link Stage}
- * for the duration of a build pass. Kept as a structural interface (rather than
- * importing `Scene`/`Node`/`Sound`) so `@/render` doesn't depend on `@/nodes`,
- * which would be circular. The concrete types are supplied by the Scene that
- * binds it; callers in scene generators get the real signatures via the
- * `Stage` re-declarations below.
+ * The determinism + scene-binding machinery a {@link Scene} runs its generator
+ * against. One `BuildStage` is created per build pass and re-bound to each scene
+ * in turn (see {@link bindScene}); the scene-authoring surface (`add`/`set`/
+ * sounds/`to`/camera/paint commands) is supplied by the bound {@link Scene}
+ * itself, and the precise author-facing type is the `Stage` alias in
+ * `@/nodes` (a `BuildStage` merged with the scene's authoring methods).
+ *
+ * `@/render` must not import `@/nodes` (that would be circular), so `BuildStage`
+ * is generic over its bound scene type `S` rather than importing `Scene`. The
+ * runtime constructs `new BuildStage<Scene>(...)`; the `S` flows back out via
+ * {@link scene} so the merged `Stage` type stays fully typed.
  */
-export interface SceneContext {
-    add(node: unknown): void;
-    set(props: Record<string, unknown>): void;
-    startSound(src: unknown, opts?: unknown): unknown;
-    stopSound(sound: unknown): void;
-    playSound(src: unknown, opts?: unknown): FrameGenerator;
-    readonly clock: unknown;
-    readonly assets: unknown;
-}
-
-/**
- * Per-scene authoring + evaluation context handed to a scene's generator.
- *
- * A scene generator (`createScene(function* (stage) { … })`) receives a
- * `Stage`. It exposes two things:
- *
- * - **Authoring** — `add`, `set`, `startSound`/`playSound`/`stopSound`, `clock`,
- *   `assets`: these forward to the scene currently being built (bound via
- *   {@link bindScene} by the runtime before driving the generator).
- * - **Determinism** — the canvas `viewport`, target `fps`, a seeded `random`,
- *   and value `noise`, so randomness is reproducible across timeline replays.
- *
- * `reset()` is called before each timeline replay so every run produces
- * identical results for the same seed.
- */
-export class Stage {
+export class BuildStage<S = unknown> {
     /** Canvas dimensions in pixels. */
     readonly viewport: Size2D;
 
@@ -43,7 +22,7 @@ export class Stage {
     readonly fps: number;
 
     /** The scene this stage is currently bound to (see {@link bindScene}). */
-    private _scene: SceneContext | null = null;
+    private _scene: S | null = null;
 
     constructor(viewport: Size2D, fps: number) {
         this.viewport = viewport;
@@ -53,58 +32,29 @@ export class Stage {
     // ─── Scene binding ────────────────────────────────────────────────────────
 
     /**
-     * Bind the scene whose generator is about to run, so the authoring methods
-     * (`add`, `set`, sounds, `clock`, `assets`) forward to it. The runtime calls
-     * this before driving each scene's generator; one stage is reused across all
-     * scenes in a pass, re-bound per scene.
+     * Bind the scene whose generator is about to run, so its authoring methods
+     * are reachable for the duration of the build. The runtime calls this before
+     * driving each scene's generator; one stage is reused across all scenes in a
+     * pass, re-bound per scene.
      */
-    bindScene(scene: SceneContext | null): void {
+    bindScene(scene: S | null): void {
         this._scene = scene;
     }
 
-    private get scene(): SceneContext {
+    /**
+     * The scene currently bound to this stage. The author-facing `Stage` type
+     * merges the bound scene's authoring methods onto the stage, so generators
+     * call `stage.add(...)`/`stage.zoomTo(...)` directly; internally those resolve
+     * through here.
+     */
+    protected get scene(): S {
         if (!this._scene) {
-            throw new Error("Stage has no bound scene — add()/set()/sounds are only available inside a scene generator.");
+            throw new Error("Stage has no bound scene — authoring methods are only available inside a scene generator.");
         }
         return this._scene;
     }
 
-    // ─── Authoring surface (forwards to the bound scene) ──────────────────────
-
-    /** Add a node (or array of nodes) to the scene's root container. */
-    add(node: unknown): void {
-        this.scene.add(node);
-    }
-
-    /** Set one or more reactive props on the scene's root container. */
-    set(props: Record<string, unknown>): void {
-        this.scene.set(props);
-    }
-
-    /** Start a non-blocking sound on the scene's audio timeline. */
-    startSound(src: unknown, opts?: unknown): unknown {
-        return this.scene.startSound(src, opts);
-    }
-
-    /** Stop a sound started via {@link startSound}. */
-    stopSound(sound: unknown): void {
-        this.scene.stopSound(sound);
-    }
-
-    /** Play a sound, blocking the generator for the clip's duration. */
-    playSound(src: unknown, opts?: unknown): FrameGenerator {
-        return this.scene.playSound(src, opts);
-    }
-
-    /** The scene's clock (scene-relative time). */
-    get clock(): unknown {
-        return this.scene.clock;
-    }
-
-    /** The asset catalog bound to the scene. */
-    get assets(): unknown {
-        return this.scene.assets;
-    }
+    // ─── Determinism ──────────────────────────────────────────────────────────
 
     /**
      * Sets the RNG seed for this stage.

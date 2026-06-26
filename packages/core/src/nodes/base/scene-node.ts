@@ -1,8 +1,15 @@
 import { Node, NodeClock } from "./node";
+import { AnimationBuilder } from "@/tween/animation-builder";
 import { FrameGenerator } from "@/tween/generator";
-import { Stage, SceneContext } from "@/render/build-stage";
-import { Rect, RectProps } from "../geometry/rect-node";
+import { BuildStage } from "@/render/build-stage";
+import { RootNode, RootProps } from "./root-node";
 import { Fill } from "@/attributes/shape/fill/chain";
+import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { Shadow, ShadowResolved } from "@/attributes/shape/shadow/resolver";
+import { FillResolved } from "@/attributes/shape/fill/union";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { EasingFunction } from "@/tween/ease/type";
+import { TweenOptions } from "@/tween/lerp";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
@@ -12,39 +19,32 @@ import { MeasureScope } from "@/render/measure-scope";
 import { RenderContext } from "@/render/render-context";
 
 /**
- * The context a scene generator is given. It is the {@link Stage} (canvas
- * `viewport`, `fps`, seeded `random`/`noise`) augmented with the scene-authoring
- * surface, all typed precisely:
+ * The object a scene generator is handed. It merges the build-time determinism
+ * surface ({@link BuildStage}: `viewport`, `fps`, seeded `random`/`noise`,
+ * `seed`) with the {@link Scene}'s own authoring surface (`add`, `set`, sounds,
+ * and the root commands `to`/`fillTo`/`zoomTo`/… plus `root`):
  *
  *   export default createScene(function* (stage) {
  *     stage.set({ fill: 'bg' });
  *     stage.add(<Rect … />);
- *     yield* stage.playSound('x.mp3');
+ *     yield* stage.zoomTo(2, 1);
  *   });
  *
- * At runtime this is a single `Stage` instance with the current scene bound
- * onto it; the precise method signatures here override the structural ones the
- * stage declares so authors get real types.
+ * No re-declaration: the authoring methods are the real {@link Scene} members
+ * and the determinism methods are the real {@link BuildStage} members. At
+ * runtime the generator is given one object that is both (see {@link Scene.build}).
+ *
+ * `Pick<T, keyof T>` strips each class down to its **public** surface — `keyof`
+ * omits `private`/`protected` members, which TS treats nominally and which would
+ * otherwise make `Stage` satisfiable only by a real subclass instance rather
+ * than the merged view the generator actually receives.
  */
-export type SceneStage = Omit<Stage, 'add' | 'set' | 'startSound' | 'stopSound' | 'playSound' | 'clock' | 'assets'> & {
-    /** Add a node (or array of nodes) to the scene's root container. */
-    add(node: Node | Node[]): void;
-    /** Set one or more reactive props on the scene's root container. */
-    set(props: { [K in keyof RectProps]?: RectProps[K] | (() => RectProps[K]) }): void;
-    /** Start a non-blocking sound on the scene's audio timeline. */
-    startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound;
-    /** Stop a sound started via {@link startSound}. */
-    stopSound(sound: Sound): void;
-    /** Play a sound, blocking the generator for the clip's duration. */
-    playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator;
-    /** The scene's clock (scene-relative time). */
-    readonly clock: Readonly<NodeClock>;
-    /** The asset catalog bound to the scene. */
-    readonly assets: AssetCatalog;
-};
+export type Stage =
+    & Pick<BuildStage<Scene>, keyof BuildStage<Scene>>
+    & Pick<Scene, keyof Scene>;
 
-/** A scene's body: a generator factory given the {@link SceneStage}. */
-export type SceneGenerator = (stage: SceneStage) => FrameGenerator;
+/** A scene's body: a generator factory given the {@link Stage}. */
+export type SceneGenerator = (stage: Stage) => FrameGenerator;
 
 /**
  * A self-contained unit of a project's timeline.
@@ -69,13 +69,16 @@ export type SceneGenerator = (stage: SceneStage) => FrameGenerator;
  * forwarding to the root. Asset collection is split around layout: fonts are
  * gathered first (text measurement needs their metrics), then images/video/paint
  * after layout (those size their decodes against each node's `layoutRect`).
- * The scene also implements {@link SceneContext} so a {@link Stage} can
- * bind it and route `add`/`set`/sounds back here.
+ *
+ * The scene's authoring methods (`add`/`set`/`to`/camera/paint/sounds) all act
+ * on its {@link RootNode} `root`. They're merged with a {@link BuildStage} into
+ * the {@link Stage} a generator receives — see {@link Scene.build}.
  */
-export class Scene implements SceneContext {
+export class Scene {
 
-    /** The world container this scene builds into. Viewport-sized, top-level. */
-    readonly root: Rect;
+    /** The world container this scene builds into. Viewport-sized, top-level.
+     *  A {@link RootNode}: a layouting Rect that also acts as the scene camera. */
+    readonly root: RootNode;
 
     /** The generator body supplied to {@link createScene}. */
     private readonly generator: SceneGenerator;
@@ -102,7 +105,9 @@ export class Scene implements SceneContext {
         this.generator = generator;
         // The root keeps the historical scene defaults: it fills the viewport and
         // stacks its children. A scene generator overrides these with set(...).
-        this.root = new Rect({ width: 'fill', height: 'fill', group: 'stack' });
+        // It's a RootNode, so the scene can also drive the camera (zoom/origin/
+        // heading) from the same root via set(...) or root.zoomTo(...).
+        this.root = new RootNode({ width: 'fill', height: 'fill', group: 'stack' });
     }
 
     // ─── Viewport ─────────────────────────────────────────────────────────────
@@ -117,7 +122,12 @@ export class Scene implements SceneContext {
         this._viewport = { width: size.width, height: size.height };
     }
 
-    // ─── Authoring surface (SceneContext — bound onto the Stage) ─────────
+    // ─── Authoring surface (the methods merged onto the Stage) ──────────────────
+    // These all act on the scene's `root` ({@link RootNode}). They're exposed
+    // here so a generator can author the whole root through `stage` directly —
+    // `stage.add(...)`, `stage.set({ fill, zoom })`, `stage.zoomTo(...)` — without
+    // reaching for `stage.root`. For anything not forwarded, `stage.root` is the
+    // full node.
 
     /** Add a node (or array of nodes) as a child of the scene's root. */
     add(node: Node | Node[]): void {
@@ -129,8 +139,47 @@ export class Scene implements SceneContext {
     }
 
     /** Set one or more reactive props on the root container. */
-    set(props: { [K in keyof RectProps]?: RectProps[K] | (() => RectProps[K]) }): void {
+    set(props: { [K in keyof RootProps]?: RootProps[K] | (() => RootProps[K]) }): void {
         this.root.set(props);
+    }
+
+    /** Animate any root props in one call — `yield* stage.to({ zoom: 2, fill: 'red' }, 1)`. */
+    to(props: Partial<RootProps>, duration: number, easing?: EasingFunction): AnimationBuilder<RootProps> {
+        return this.root.to(props, duration, easing);
+    }
+
+    // ── Camera commands (forward to the root) ──
+
+    /** Animate the camera magnification (`zoom`). > 1 zooms in; < 1 zooms out. */
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): FrameGenerator {
+        return this.root.zoomTo(zoom, duration, ease);
+    }
+
+    /** Animate the camera focus point (`origin`) — the world point at viewport centre. */
+    originTo(origin: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
+        return this.root.originTo(origin, duration, ease);
+    }
+
+    /** Animate the camera view rotation (`heading`) in degrees. */
+    headingTo(heading: number, duration: number, ease?: EasingFunction): FrameGenerator {
+        return this.root.headingTo(heading, duration, ease);
+    }
+
+    // ── Paint commands (forward to the root) ──
+
+    /** Animate the root `fill`. */
+    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        return this.root.fillTo(to, duration, options);
+    }
+
+    /** Animate the root `stroke`. */
+    strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
+        return this.root.strokeTo(to, duration, options);
+    }
+
+    /** Animate the root `shadow`. */
+    shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
+        return this.root.shadowTo(to, duration, options);
     }
 
     /** The root's fill. */
@@ -192,12 +241,19 @@ export class Scene implements SceneContext {
     // ─── Build ────────────────────────────────────────────────────────────────
 
     /**
-     * Produce this scene's frame generator. Binds this scene onto the stage (so
-     * `stage.add`/`set`/sounds forward here), then runs the authored generator.
+     * Produce this scene's frame generator. The generator is handed a single
+     * {@link Stage} object that exposes both surfaces: this scene's authoring
+     * methods (`add`/`set`/`to`/`zoomTo`/sounds/…) and the build stage's
+     * determinism (`viewport`/`fps`/`random`/`noise`/`seed`).
+     *
+     * The merge is a view created with the scene as its prototype (so authoring
+     * resolves to real `Scene` members) overlaid with the stage's own properties
+     * and its methods bound to the stage (so determinism keeps the stage's
+     * `this`). One view is built per build pass.
      */
-    build(stage: Stage): FrameGenerator {
+    build(stage: BuildStage<Scene>): FrameGenerator {
         stage.bindScene(this);
-        return this.generator(stage as unknown as SceneStage);
+        return this.generator(mergeStage(stage, this));
     }
 
     // ─── Runtime lifecycle (forwarders to the root) ───────────────────────────
@@ -205,10 +261,14 @@ export class Scene implements SceneContext {
     /** Clear all dynamically-added children and managed sounds, and reset the clock. */
     reset(): void {
         // A scene instance is owned by the project config and reused across
-        // playback controllers (StrictMode double-mount, HMR). A prior
-        // controller's dispose() frees the root's signals; restore them from
-        // defaults before rebuilding so reads like `this.fill` stay valid.
-        this.root.reinit();
+        // playback controllers (StrictMode double-mount, HMR) and across passes
+        // (precomp measures duration by running the generator to completion, which
+        // leaves the root at its end-state). Force a default restore — not just
+        // the disposed-signal recovery — so the root's own animatable props
+        // (padding/zoom/heading/fill/…) start each build from their defaults
+        // rather than a prior pass's end value, which would make the generator's
+        // tweens snapshot `from` === target and visibly do nothing.
+        this.root.reinit(true);
         for (const child of this.root.children) child.dispose();
         this.root.clearChildren();
         for (const s of this._managedSounds) s.dispose();
@@ -265,6 +325,33 @@ export class Scene implements SceneContext {
         for (const s of this._managedSounds) s.dispose();
         this._managedSounds.length = 0;
     }
+}
+
+/**
+ * Build the single {@link Stage} object handed to a scene generator: a view
+ * that exposes the {@link Scene}'s authoring surface and the {@link BuildStage}'s
+ * determinism surface at once.
+ *
+ * A Proxy (rather than a copy) so each access routes to whichever object owns
+ * the member and methods keep their own `this` — the scene's `add`/`set`/sounds
+ * run with the scene as receiver (reaching `root`/`_managedSounds`), and the
+ * stage's `random`/`noise`/`seed` run with the stage as receiver (reaching its
+ * `seeder`). The scene wins on name clashes; nothing currently clashes.
+ */
+function mergeStage(stage: BuildStage<Scene>, scene: Scene): Stage {
+    return new Proxy(scene, {
+        get(target, prop, receiver) {
+            if (prop in target) {
+                const value = Reflect.get(target, prop, receiver);
+                return typeof value === "function" ? value.bind(target) : value;
+            }
+            const value = Reflect.get(stage as object, prop, stage);
+            return typeof value === "function" ? value.bind(stage) : value;
+        },
+        has(target, prop) {
+            return prop in target || prop in (stage as object);
+        },
+    }) as unknown as Stage;
 }
 
 /**
