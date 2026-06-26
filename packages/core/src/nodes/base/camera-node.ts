@@ -2,6 +2,8 @@ import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
+import { EaseFunction } from "@/tween/ease/type";
+import { FrameGenerator } from "@/tween/generator";
 
 
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
@@ -53,6 +55,41 @@ export class Camera extends ShapeNode<CameraProps> {
         this.applyProp("zoom", props.zoom ?? 1, { tween: lerpNumber });
         this.applyProp("origin", props.origin ?? { x: 0, y: 0 }, { tween: lerpVector2 });
         this.applyProp("heading", props.heading ?? 0, { tween: lerpNumber });
+    }
+
+    // ---- Camera motion helpers --------------------------------------------
+    // Mirror the base Node `moveTo`/`rotateTo` family for the camera's own
+    // viewport props (`zoom`, `origin`, `heading`).
+
+    /**
+     * Animate the magnification factor (`zoom`). Values > 1 zoom in; < 1 zoom out.
+     *
+     * @example
+     * yield* camera.zoomTo(2, 0.5, ease.outCubic);
+     */
+    *zoomTo(zoom: number, duration: number, ease?: EaseFunction): FrameGenerator {
+        return yield* this.to({ zoom } as Partial<CameraProps>, duration, ease);
+    }
+
+    /**
+     * Animate the world-space focus point (`origin`) — the point that maps to
+     * the centre of the camera viewport.
+     *
+     * @example
+     * yield* camera.originTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
+     */
+    *originTo(origin: Vector2, duration: number, ease?: EaseFunction): FrameGenerator {
+        return yield* this.to({ origin } as Partial<CameraProps>, duration, ease);
+    }
+
+    /**
+     * Animate the view rotation (`heading`) in degrees (clockwise).
+     *
+     * @example
+     * yield* camera.headingTo(45, 0.4);
+     */
+    *headingTo(heading: number, duration: number, ease?: EaseFunction): FrameGenerator {
+        return yield* this.to({ heading } as Partial<CameraProps>, duration, ease);
     }
 
     // ---- Drawing ----------------------------------------------------------
