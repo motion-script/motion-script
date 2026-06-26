@@ -1,5 +1,11 @@
 # @motion-script/latex
 
+## 2.7.0
+
+### Minor Changes
+
+- f038380: Bug fixes around text layouts and default self rendering methods for base nodes.
+
 ## 2.6.0
 
 ### Minor Changes
