@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOutElastic, FX, easeOutQuad, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -72,7 +72,9 @@ class GridCell extends ShapeNode<ShapeProps> {
             width: r.width + left + right,
             height: r.height + top + bottom,
         }));
-        ctx.draw(new Graphics().image({ x: -r.x, y: -r.y, width: W, height: H, src: this.grid.src, mode: "fill" }));
+        ctx.draw(new Graphics()
+            .rect({ x: -r.x, y: -r.y, width: W, height: H })
+            .fill(Fills.image(this.grid.src, { fit: "fill" })));
         ctx.endClip();
 
         // Stroke on top of the slice.

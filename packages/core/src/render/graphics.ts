@@ -6,7 +6,6 @@ import type { PolygonState } from "./descriptors/polygon";
 import type { PolygramState } from "./descriptors/polygram";
 import type { TextState } from "./descriptors/text";
 import type { RichTextState } from "./descriptors/richtext";
-import type { ImageState } from "./descriptors/image";
 import { PathBuilder } from "./descriptors/path-builder";
 import type { Fill } from "@/attributes/shape/fill/chain";
 import type { Stroke } from "@/attributes/shape/stroke/mapper";
@@ -40,8 +39,7 @@ export type GraphicsShapeOp =
     | { kind: "polygon"; state: Partial<PolygonState> }
     | { kind: "polygram"; state: Partial<PolygramState> }
     | { kind: "text"; state: Partial<TextState> }
-    | { kind: "richText"; state: Partial<RichTextState> }
-    | { kind: "image"; state: Partial<ImageState> };
+    | { kind: "richText"; state: Partial<RichTextState> };
 
 /**
  * A single recorded operation in a {@link Graphics} command list. Shape ops
@@ -60,7 +58,7 @@ export type GraphicsOp =
     | { kind: "endMask" };
 
 const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
-    "rect", "ellipse", "path", "line", "polygon", "polygram", "text", "richText", "image",
+    "rect", "ellipse", "path", "line", "polygon", "polygram", "text", "richText",
 ]);
 
 /**
@@ -149,11 +147,6 @@ export class Graphics {
 
     richText(state: Partial<RichTextState>): this {
         this._ops.push({ kind: "richText", state });
-        return this;
-    }
-
-    image(state: Partial<ImageState>): this {
-        this._ops.push({ kind: "image", state });
         return this;
     }
 

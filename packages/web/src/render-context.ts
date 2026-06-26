@@ -14,7 +14,6 @@ import {
     type Fill,
     type FillResolved,
     type FillSpace,
-    type ImageState,
     type Shadow,
     type ShadowResolved,
     type Stroke,
@@ -40,7 +39,6 @@ import {
     type EffectTarget,
     type NodeBlendMode,
 
-    withImageDescriptor,
     withRichTextDescriptor,
     resolveFillArray,
     resolveStrokeArray,
@@ -53,7 +51,6 @@ import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun } from "./shapes/paragraph-layout";
 import { measureTextCached } from "./shapes/paragraph-cache";
 import { layoutTextSegments, runCenter } from "./shapes/text-segments";
-import { ImageNodeRenderer } from "./shapes/image";
 import { RectShape } from "./shapes/rect";
 import { EllipseShape } from "./shapes/ellipse";
 import { PolygonShape } from "./shapes/polygon";
@@ -157,17 +154,11 @@ export class WebRenderContext extends RenderContext {
     private fillHandler!: FillHandler;
     private strokeHandler!: StrokeHandler;
     private shapeHandler!: ShapeHandler;
-    private imageRenderer!: ImageNodeRenderer;
 
     // Per-mask-scope deferred paint calls (filled by stroke/fill when apply filtering is active).
     // Each entry on the stack corresponds to one active mask scope.
     private deferredPaintsStack: DeferredPaintCall[][] = [];
 
-    // Pending image state collected by `image()` until paint methods are called.
-    private pendingImage: Partial<ImageState> | null = null;
-    private pendingImageShadows: ShadowResolved[] = [];
-    private pendingImageFills: FillResolved[] = [];
-    private pendingImageStrokes: StrokeResolved[] = [];
     // Initialized in init() once CanvasKit is loaded.
     storageAdapter!: WebStorageAdapter;
 
@@ -222,31 +213,6 @@ export class WebRenderContext extends RenderContext {
             getPaint,
             this.fillHandler,
         );
-
-        this.imageRenderer = new ImageNodeRenderer(
-            this.canvasKit,
-            getCanvas,
-            getPaint,
-            this.storageAdapter,
-            this.fillHandler,
-            this.shapeHandler,
-            this.strokeHandler,
-        );
-    }
-
-    private flushPendingImage(): void {
-        if (!this.pendingImage) return;
-        const state = withImageDescriptor(this.pendingImage);
-        this.imageRenderer.draw(
-            state,
-            this.pendingImageShadows,
-            this.pendingImageFills,
-            this.pendingImageStrokes,
-        );
-        this.pendingImage = null;
-        this.pendingImageShadows = [];
-        this.pendingImageFills = [];
-        this.pendingImageStrokes = [];
     }
 
     pixelRatio: number = 1;
@@ -286,7 +252,6 @@ export class WebRenderContext extends RenderContext {
         if (!this.currentCanvas) {
             throw new Error("end() must be called within the draw() method.");
         }
-        this.flushPendingImage();
         const extraLayers = this.effectLayerStack.pop() ?? 0;
         for (let i = 0; i < extraLayers; i++) {
             this.currentCanvas.restore();
@@ -484,9 +449,6 @@ export class WebRenderContext extends RenderContext {
         for (const op of graphics.ops()) {
             this.applyOp(op);
         }
-        // Flush any pending image declared by the last image op without a trailing
-        // paint call (mirrors end()'s flush; harmless if nothing is pending).
-        this.flushPendingImage();
 
         if (pushedTransform) this.currentCanvas.restore();
         this.worldAlpha = prevWorldAlpha;
@@ -514,7 +476,7 @@ export class WebRenderContext extends RenderContext {
                 case "line": this.shapeHandler.line(op.state); break;
                 case "polygon": this.shapeHandler.polygon(op.state); break;
                 case "polygram": this.shapeHandler.polygram(op.state); break;
-                // Paint/compositing/text/image ops don't change the union bbox used
+                // Paint/compositing/text ops don't change the union bbox used
                 // for the pivot, so they're skipped during measurement.
             }
         }
@@ -534,7 +496,6 @@ export class WebRenderContext extends RenderContext {
             case "polygram": this._polygram(op.state); break;
             case "text": this._text(op.state); break;
             case "richText": this._richText(op.state); break;
-            case "image": this._image(op.state); break;
             case "fill": this._fill(op.fills); break;
             case "stroke": this._stroke(op.strokes); break;
             case "shadow": this._shadow(op.shadows); break;
@@ -693,44 +654,37 @@ export class WebRenderContext extends RenderContext {
     }
 
     private _rect(state: Partial<RectState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.rect(state);
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
     }
 
     private _ellipse(state: Partial<EllipseState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.ellipse(state);
     }
 
     private _path(state: Partial<PathState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.path(state);
     }
 
     private _line(state: Partial<LineState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.line(state);
     }
 
     private _polygon(state: Partial<PolygonState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.polygon(state);
     }
 
     private _polygram(state: Partial<PolygramState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         this.shapeHandler.polygram(state);
     }
 
     private _text(state: Partial<TextState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
         if (state.segments && state.segments.length > 0) {
             this._segmentedText(state);
@@ -794,7 +748,6 @@ export class WebRenderContext extends RenderContext {
 
     /** Lays out spans/runs and paints each run's fill/stroke immediately (rich text carries per-span paint, bypassing the usual fill/stroke ops). */
     private _richText(state: Partial<RichTextState>): void {
-        this.flushPendingImage();
         if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
 
         const fullState = withRichTextDescriptor(state);
@@ -831,25 +784,9 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    /** Defers drawing until a following fill/stroke/shadow op or the next shape op flushes via {@link flushPendingImage} — lets images share the same accumulation as other shapes. */
-    private _image(state: Partial<ImageState>): void {
-        this.flushPendingImage();
-        if (this.shapeHandler.paintApplied) this.shapeHandler.reset();
-        this.pendingImage = state;
-        this.pendingImageShadows = [];
-        this.pendingImageFills = [];
-        this.pendingImageStrokes = [];
-    }
-
     private _fill(fills: Fill): void {
         const resolved = resolveFillArray(fills);
         if (resolved.length === 0) return;
-        // A fill following an image op styles that pending image, mirroring the
-        // old image paint-context routing.
-        if (this.pendingImage) {
-            if (resolved.length > 0) this.pendingImageFills.push(...resolved);
-            return;
-        }
         if (this.shapeHandler.isCollectingPaths()) {
             this.shapeHandler.paintApplied = true;
             return;
@@ -906,11 +843,6 @@ export class WebRenderContext extends RenderContext {
     private _stroke(strokes: Stroke): void {
         const resolved = resolveStrokeArray(strokes);
         if (resolved.length === 0) return;
-        // A stroke following an image op styles that pending image.
-        if (this.pendingImage) {
-            if (resolved.length > 0) this.pendingImageStrokes.push(...resolved);
-            return;
-        }
         if (this.shapeHandler.isCollectingPaths()) {
             this.shapeHandler.paintApplied = true;
             return;
@@ -943,11 +875,6 @@ export class WebRenderContext extends RenderContext {
     private _shadow(shadows: Shadow): void {
         const resolved = resolveShadowArray(shadows);
         if (resolved.length === 0) return;
-        // A shadow following an image op styles that pending image.
-        if (this.pendingImage) {
-            if (resolved.length > 0) this.pendingImageShadows.push(...resolved);
-            return;
-        }
         if (this.shapeHandler.isCollectingPaths()) return;
         this.shapeHandler.storePendingShadows(resolved);
     }

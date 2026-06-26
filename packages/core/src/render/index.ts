@@ -11,7 +11,6 @@ export * from './descriptors/shape';
 export * from './descriptors/path';
 export * from './descriptors/path-builder';
 export * from './descriptors/line';
-export * from './descriptors/image';
 export * from './descriptors/polygon';
 export * from './descriptors/polygram';
 export { Stage } from './build-stage';

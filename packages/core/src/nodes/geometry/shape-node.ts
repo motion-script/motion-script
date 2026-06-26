@@ -131,6 +131,16 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     protected override clipSelf(): Clip | null { return null; }
 
     /**
+     * An optional clip path that cuts through this node's *own* content **and**
+     * its children — unlike {@link clip}, which only confines children to the
+     * shape's outline and leaves the node's own fill/stroke untouched. Returning
+     * `null` (the default) applies no such cut. Media nodes (Image, Video) expose
+     * this as an author-facing `clipPath` prop so a path can carve the painted
+     * frame and everything stacked on it as one.
+     */
+    protected clipPathSelf(): Clip | null { return null; }
+
+    /**
      * Does `effect` target the backdrop (the content painted beneath this node)
      * rather than the node's own content? `magnify` and backdrop-mode `sksl`
      * always do; everything else opts in via the `backdrop` flag (the filter
@@ -200,6 +210,14 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const hasForeground = foreground.length > 0;
         if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
 
+        // A clipPath cuts through this node's own paint *and* its children, so it
+        // wraps both renderSelf and renderChildren. Opened before renderSelf, the
+        // node's fill/stroke are clipped too — distinct from `clip`, which only
+        // confines children. Skipped when the path is empty so endClip() balances.
+        const clipPath = this.clipPathSelf();
+        const pathClipped = clipPath != null && !clipPath.isEmpty();
+        if (pathClipped) ctx.beginClip(clipPath);
+
         this.renderSelf(ctx);
         // Confine children to this shape's outline. Built once from clipSelf();
         // skipped when the shape has no outline (clipped === false) so the
@@ -207,6 +225,8 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const clipped = this.clip && this.applyClip(ctx);
         this.renderChildren(ctx);
         if (clipped) ctx.endClip();
+
+        if (pathClipped) ctx.endClip();
 
         if (hasForeground) ctx.endEffectScope();
     }
