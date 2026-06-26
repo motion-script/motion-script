@@ -70,10 +70,16 @@ jobs:
         run: pnpm test
 
       - name: Create Release PR or Publish to npm
+        id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm version-packages
           publish: pnpm release
+          # All packages are version-locked (see .changeset/config.json `linked`),
+          # so `changeset publish` emits 10 per-package tags and the action would
+          # otherwise create 10 near-identical GitHub Releases. Disable that and
+          # cut a single consolidated `v<version>` release in the next step.
+          createGithubReleases: false
           commit: "ci: release packages"
           title: "ci: release packages"
         env:
@@ -82,3 +88,20 @@ jobs:
           # NPM_TOKEN is needed. This env var makes `changeset publish` attach
           # provenance without having to pass --provenance in the release script.
           NPM_CONFIG_PROVENANCE: "true"
+
+      # Cut ONE GitHub Release per version instead of one per package. Because the
+      # packages are linked, they all share a version and an identical changelog
+      # entry, so core's CHANGELOG is the release notes for the whole set. Runs
+      # only on the publish leg (when `changeset publish` actually released).
+      - name: Create consolidated GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          # Grab the top `## <version>` block from core's changelog (from the
+          # first `## ` heading up to, but not including, the next one).
+          NOTES=$(awk '/^## /{if(p)exit; p=1} p' packages/core/CHANGELOG.md)
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "$NOTES"
