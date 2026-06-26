@@ -1,6 +1,5 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { Clip } from "@/render/clip";
 import { VideoFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaFilter, VideoMediaFilter } from "@/attributes/shape/filters/union";
@@ -41,14 +40,7 @@ export interface VideoProps extends RectProps {
     muted?: boolean;
     /** Audio filters applied to the video's sound track (gain, eq, echo, …). */
     audioFilters?: ChainableAfx;
-    /**
-     * A clip path that cuts through the painted video frame **and** its children —
-     * the frame and everything stacked on it are confined to this outline as one.
-     * Unlike `clip` (which only confines children to the node's rect), `clipPath`
-     * carves the picture itself. Build it with the {@link Clip} builder, composing
-     * shapes and `cut()`s for a compound silhouette.
-     */
-    clipPath?: Clip;
+
 }
 
 /**
@@ -84,7 +76,6 @@ export class Video extends Rect {
     @property({ default: false }) declare muted: boolean;
     @property({ default: [], mapper: resolveAudioFilters })
     declare audioFilters?: AudioFilter[];
-    @property() declare clipPath?: Clip;
 
     /**
      * The live `video` fill state, advanced each tick by the fill's own dynamic
@@ -225,9 +216,6 @@ export class Video extends Rect {
         sound.prepare(tracker);
     }
 
-    protected override clipPathSelf(): Clip | null {
-        return this.clipPath ?? null;
-    }
 
     protected override renderSelf(draw: RenderContext): void {
         this.syncVideo();

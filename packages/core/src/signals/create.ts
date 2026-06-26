@@ -1,8 +1,10 @@
 import { Signal } from "@/signals/signal";
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { linear } from "@/tween/ease/constants";
 import { tween as tweenGenerator } from "@/tween/tween";
 import { FrameGenerator } from "@/tween/generator";
+
+const DEFAULT_EASE = linear();
 
 type LerpFn<T> = (from: T, to: T, t: number) => T;
 
@@ -13,11 +15,11 @@ type LerpFn<T> = (from: T, to: T, t: number) => T;
 export interface ReactiveSignal<T> {
     (): T;
     (next: T | ((prev: T) => T) | (() => T)): void;
-    (next: T, duration: number, easing?: EaseFunction, lerp?: LerpFn<T>): FrameGenerator;
+    (next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): FrameGenerator;
     get(): T;
     set(next: T | ((prev: T) => T) | (() => T)): void;
     subscribe: Signal<T>["subscribe"];
-    tween(next: T, duration: number, easing?: EaseFunction, lerp?: LerpFn<T>): FrameGenerator;
+    tween(next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): FrameGenerator;
 }
 
 export type SignalInput<T> = T | ReactiveSignal<T> | (() => T);
@@ -111,7 +113,7 @@ export function createSignal<T>(
         duration: number,
         easing?: (t: number) => number,
         lerp?: LerpFn<T>
-    ) => tweenRunner(next, duration, easing ?? linear, lerp ?? defaultLerp);
+    ) => tweenRunner(next, duration, easing ?? DEFAULT_EASE, lerp ?? defaultLerp);
 
     return signal;
 }

@@ -1,7 +1,7 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
 import {
-    SceneGenerator, createRef, Rect, parallel, easeInOutQuad,
+    SceneGenerator, createRef, Rect, parallel, easeInOut,
 } from "@motion-script/core";
 
 /**
@@ -77,7 +77,7 @@ export const expensive = (opts: {
     // backward scrub has to replay from frame 0.
     for (let i = 0; i < legs; i++) {
         yield* parallel(
-            ...refs.map((ref) => ref().to(pose(), legDuration, easeInOutQuad)),
+            ...refs.map((ref) => ref().to(pose(), legDuration, easeInOut('quad'))),
         );
     }
 };

@@ -2,7 +2,7 @@
 
 import {
     createScene, createRef, Text, Rect, Ellipse, BooleanGroup,
-    Fills, BooleanOperation, easeInOutQuad, parallel,
+    Fills, BooleanOperation, easeInOut, parallel,
 } from "@motion-script/core";
 
 /** One labelled cell: a named boolean op applied to two overlapping circles. */
@@ -84,8 +84,8 @@ export default createScene(function* (stage) {
         const wide = spread + 90;
         const animate = (x: number) => parallel(
             ...cellRefs.flatMap(({ left, right }) => [
-                left().to({ x: -x }, 2, easeInOutQuad),
-                right().to({ x }, 2, easeInOutQuad),
+                left().to({ x: -x }, 2, easeInOut('quad')),
+                right().to({ x }, 2, easeInOut('quad')),
             ]),
         );
 

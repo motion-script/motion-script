@@ -1,6 +1,6 @@
 import { Signal, SignalSnapshot } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { AnimationBuilder } from "@/tween/animation-builder";
 import { prepareNumericCellTween } from "@/tween/prepare";
@@ -476,7 +476,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         }
     }
 
-    to(to: Partial<P>, duration: number, easing?: EaseFunction): AnimationBuilder<P> {
+    to(to: Partial<P>, duration: number, easing?: EasingFunction): AnimationBuilder<P> {
         return new AnimationBuilder<P>(this, { to, duration, easing });
     }
 
@@ -486,7 +486,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * once here, then `advance(dt)` is allocation-free. Used by both the
      * generator path (`_toGen`) and the batched `parallel` path.
      */
-    _prepareStep(to: Partial<P>, duration: number, easing?: EaseFunction): TweenStepper {
+    _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         validateAnchorProps(to as Record<string, unknown>);
 
         // If an anchor key is in the tween target, resolve it to x/y targets and set pivot.
@@ -562,7 +562,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         };
     }
 
-    *_toGen(to: Partial<P>, duration: number, easing?: EaseFunction): FrameGenerator {
+    *_toGen(to: Partial<P>, duration: number, easing?: EasingFunction): FrameGenerator {
         const step = this._prepareStep(to, duration, easing);
         step.seek(0);
         let done = false;
@@ -580,7 +580,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveTo(200, 100, 0.5, ease.outCubic);
      */
-    *moveTo(x: number, y: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *moveTo(x: number, y: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ x, y } as Partial<P>, duration, ease);
     }
 
@@ -590,7 +590,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveX(300, 0.4);
      */
-    *moveX(x: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *moveX(x: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ x } as Partial<P>, duration, ease);
     }
 
@@ -600,7 +600,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveY(-50, 0.4);
      */
-    *moveY(y: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *moveY(y: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ y } as Partial<P>, duration, ease);
     }
 
@@ -612,7 +612,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.fadeTo(0, 0.3);   // fade out
      * yield* node.fadeTo(1, 0.3);   // fade in
      */
-    *fadeTo(opacity: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *fadeTo(opacity: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ opacity } as Partial<P>, duration, ease);
     }
 
@@ -622,7 +622,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.rotateTo(180, 0.6, ease.inOutQuad);
      */
-    *rotateTo(rotation: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *rotateTo(rotation: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ rotation } as Partial<P>, duration, ease);
     }
 
@@ -633,7 +633,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.scaleTo(1.5, 0.4);   // grow
      * yield* node.scaleTo(0,   0.3);   // shrink to nothing
      */
-    *scaleTo(scale: number, duration: number, ease?: EaseFunction): FrameGenerator {
+    *scaleTo(scale: number, duration: number, ease?: EasingFunction): FrameGenerator {
         return yield* this.to({ scale } as Partial<P>, duration, ease);
     }
 
@@ -685,8 +685,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @param easing   Optional easing for the animated restore.
      */
     restore(): void;
-    restore(duration: number, easing?: EaseFunction): FrameGenerator;
-    restore(duration?: number, easing?: EaseFunction): void | FrameGenerator {
+    restore(duration: number, easing?: EasingFunction): FrameGenerator;
+    restore(duration?: number, easing?: EasingFunction): void | FrameGenerator {
         const layer = this._stateStack.pop();
         if (duration === undefined || duration <= 0) {
             if (layer) this._applySnapshotLayer(layer);
@@ -707,7 +707,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     private *_restoreAnimated(
         layer: Map<string, SignalSnapshot<any>> | undefined,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         if (!layer) { yield* this._toGen({} as Partial<P>, duration, easing); return; }
 
@@ -1063,8 +1063,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     addChildAt(child: Node, index: number): void;
-    addChildAt(child: Node, index: number, duration: number, easing?: EaseFunction): FrameGenerator;
-    addChildAt(child: Node, index: number, duration?: number, easing?: EaseFunction): void | FrameGenerator {
+    addChildAt(child: Node, index: number, duration: number, easing?: EasingFunction): FrameGenerator;
+    addChildAt(child: Node, index: number, duration?: number, easing?: EasingFunction): void | FrameGenerator {
         if (duration === undefined) {
             this._children.splice(index, 0, child);
             child._parent = this;
@@ -1076,8 +1076,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     removeChildAt(index: number): Node | null;
-    removeChildAt(index: number, duration: number, easing?: EaseFunction): FrameGenerator;
-    removeChildAt(index: number, duration?: number, easing?: EaseFunction): (Node | null) | FrameGenerator {
+    removeChildAt(index: number, duration: number, easing?: EasingFunction): FrameGenerator;
+    removeChildAt(index: number, duration?: number, easing?: EasingFunction): (Node | null) | FrameGenerator {
         if (duration === undefined) {
             if (index < 0 || index >= this._children.length) return null;
             const [removed] = this._children.splice(index, 1);
@@ -1457,8 +1457,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Reparenting ------------------------------------------------------
 
     reparent(newParent: Node): void;
-    reparent(newParent: Node, duration: number, easing?: EaseFunction): FrameGenerator;
-    reparent(newParent: Node, duration?: number, easing?: EaseFunction): void | FrameGenerator {
+    reparent(newParent: Node, duration: number, easing?: EasingFunction): FrameGenerator;
+    reparent(newParent: Node, duration?: number, easing?: EasingFunction): void | FrameGenerator {
         if (duration === undefined) {
             const old = this.parent;
             if (old) old.removeChild(this);
@@ -1468,7 +1468,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         return this._reparentAnimated(newParent, duration, easing);
     }
 
-    private *_reparentAnimated(newParent: Node, duration: number, easing?: EaseFunction): FrameGenerator {
+    private *_reparentAnimated(newParent: Node, duration: number, easing?: EasingFunction): FrameGenerator {
         const half = duration / 2;
         const targetOpacity = this.opacity;
 
@@ -1493,7 +1493,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         yield* this.to(enterProps as Partial<P>, half, easing);
     }
 
-    private *_addChildAtAnimated(child: Node, index: number, duration: number, easing?: EaseFunction): FrameGenerator {
+    private *_addChildAtAnimated(child: Node, index: number, duration: number, easing?: EasingFunction): FrameGenerator {
         const targetOpacity = child.opacity;
         const isNumericW = typeof child.width === 'number';
         const isNumericH = typeof child.height === 'number';
@@ -1517,7 +1517,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         yield* child.to(toProps as Partial<NodeProps>, duration, easing);
     }
 
-    private *_removeChildAtAnimated(index: number, duration: number, easing?: EaseFunction): FrameGenerator {
+    private *_removeChildAtAnimated(index: number, duration: number, easing?: EasingFunction): FrameGenerator {
         if (index < 0 || index >= this._children.length) return;
         const child = this._children[index];
         // Pin to current rendered size so the shrink reflows siblings in the parent layout.

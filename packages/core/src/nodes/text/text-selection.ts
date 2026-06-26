@@ -1,4 +1,4 @@
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { TweenStepper } from "@/tween/stepper";
 import { AnimationBuilder, AnimationTarget } from "@/tween/animation-builder";
@@ -109,7 +109,7 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
     to(
         to: Partial<TextSelectionProps>,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): AnimationBuilder<TextSelectionProps> {
         return new AnimationBuilder<TextSelectionProps>(this, { to, duration, easing });
     }
@@ -123,7 +123,7 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
     _prepareStep(
         to: Partial<TextSelectionProps>,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): TweenStepper {
         const o = this.overrides;
         const numeric: Array<{ key: keyof SelectionOverrides; from: number; to: number }> = [];
@@ -173,7 +173,7 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
     *_toGen(
         to: Partial<TextSelectionProps>,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         const step = this._prepareStep(to, duration, easing);
         step.seek(0);

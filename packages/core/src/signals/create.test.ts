@@ -69,13 +69,13 @@ describe('createSignal – tween', () => {
 
     it('reaches the target value when driven to completion', () => {
         const s = createSignal(0);
-        runToEnd(s.tween(10, 1, linear), 1);
+        runToEnd(s.tween(10, 1, linear()), 1);
         expect(s.get()).toBe(10);
     });
 
     it('interpolates partway through the tween', () => {
         const s = createSignal(0);
-        const gen = s.tween(100, 1, linear);
+        const gen = s.tween(100, 1, linear());
         gen.next();      // prime: applies t=0 → still 0
         gen.next(0.5);   // advance halfway
         expect(s.get()).toBeCloseTo(50, 5);
@@ -83,7 +83,7 @@ describe('createSignal – tween', () => {
 
     it('is callable in tween form: signal(value, duration)', () => {
         const s = createSignal(0);
-        const gen = s(10, 1, linear) as Generator<void, void, number | undefined>;
+        const gen = s(10, 1, linear()) as Generator<void, void, number | undefined>;
         runToEnd(gen, 1);
         expect(s.get()).toBe(10);
     });

@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect,
-    ChainableAfx, easeInOutQuad, parallel, wait,
+    ChainableAfx, easeInOut, parallel, wait,
 } from "@motion-script/core";
 
 /**
@@ -65,7 +65,7 @@ export const audioDemo = (spec: AudioDemoSpec): SceneGenerator => function* (sta
     // playSound() already divides by the speed multiplier for us.
     yield* parallel(
         stage.playSound(src, { duration: clip, filters }),
-        bar().to({ width: 'fill' } as any, estimateLength(clip, filters), easeInOutQuad),
+        bar().to({ width: 'fill' } as any, estimateLength(clip, filters), easeInOut('quad')),
     );
     yield* wait(0.4);
 };

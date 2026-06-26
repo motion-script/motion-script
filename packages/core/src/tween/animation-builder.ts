@@ -1,9 +1,9 @@
 import { FrameGenerator } from "@/tween/generator";
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { Steppable, TweenStepper } from "@/tween/stepper";
 
 /** A single step in an {@link AnimationBuilder} chain. */
-type ToStep<P> = { to: Partial<P>; duration: number; easing?: EaseFunction };
+type ToStep<P> = { to: Partial<P>; duration: number; easing?: EasingFunction };
 
 /**
  * Interface that a node must implement to be driven by {@link AnimationBuilder}.
@@ -14,8 +14,8 @@ type ToStep<P> = { to: Partial<P>; duration: number; easing?: EaseFunction };
  *   by the fast path inside {@link parallel}).
  */
 export interface AnimationTarget<P> {
-    _toGen(props: Partial<P>, duration: number, easing?: EaseFunction): FrameGenerator;
-    _prepareStep(props: Partial<P>, duration: number, easing?: EaseFunction): TweenStepper;
+    _toGen(props: Partial<P>, duration: number, easing?: EasingFunction): FrameGenerator;
+    _prepareStep(props: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper;
 }
 
 /**
@@ -60,7 +60,7 @@ export class AnimationBuilder<P> implements Steppable {
      * @param easing   - Optional easing function (identity / linear if omitted).
      * @returns `this` for further chaining.
      */
-    to(props: Partial<P>, duration: number, easing?: EaseFunction): this {
+    to(props: Partial<P>, duration: number, easing?: EasingFunction): this {
         this.steps.push({ to: props, duration, easing });
         return this;
     }

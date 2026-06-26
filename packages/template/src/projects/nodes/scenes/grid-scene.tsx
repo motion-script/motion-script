@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Grid, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -41,8 +41,8 @@ export default createScene(function* (stage) {
             })
         );
 
-        yield* gridRef().to({ gap: 40 }, 1.0, easeInOutQuad);
-        yield* gridRef().to({ columns: 2 }, 1.2, easeInOutQuad);
-        yield* gridRef().to({ columns: 3, gap: 20 }, 1.2, easeInOutQuad);
+        yield* gridRef().to({ gap: 40 }, 1.0, easeInOut('quad'));
+        yield* gridRef().to({ columns: 2 }, 1.2, easeInOut('quad'));
+        yield* gridRef().to({ columns: 3, gap: 20 }, 1.2, easeInOut('quad'));
         yield* wait(0.5);
 });

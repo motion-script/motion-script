@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AFX, fadeIn, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, AFX, fadeIn, easeInOut, wait } from "@motion-script/core";
 
 /**
  * Cross-scene audio (part 1 of 2). Starts a music bed with `startSound` and never
@@ -25,6 +25,6 @@ export default createScene(function* (stage) {
         // Start the bed and DON'T stop it — it spills into the next scene.
         stage.startSound('song.mp3', { volume: 0.8, filters: AFX.volume(fadeIn(1)) });
 
-        yield* bar().to({ width: 'fill' } as any, 3, easeInOutQuad);
+        yield* bar().to({ width: 'fill' } as any, 3, easeInOut('quad'));
         yield* wait(0.4);
 });

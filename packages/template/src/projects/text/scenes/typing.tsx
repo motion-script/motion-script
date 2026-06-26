@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, wait, sequence, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, wait, sequence, easeInOut } from "@motion-script/core";
 import { textCard, textCell } from "./text-card";
 
 const CREAM = '#F5ECD7';
@@ -44,9 +44,9 @@ export default createScene(function* (stage) {
 
     // Shared prefix "I like " and divergent middle "cats"/"dogs" — only the
     // middle erases and retypes, the prefix stays put the whole time.
-    yield* rewritten().to({ text: 'I like dogs' }, 1.2, easeInOutQuad);
+    yield* rewritten().to({ text: 'I like dogs' }, 1.2, easeInOut('quad'));
     yield* wait(0.3);
-    yield* rewritten().to({ text: 'I really like dogs a lot' }, 1.4, easeInOutQuad);
+    yield* rewritten().to({ text: 'I really like dogs a lot' }, 1.4, easeInOut('quad'));
 
     yield* wait(1);
 });

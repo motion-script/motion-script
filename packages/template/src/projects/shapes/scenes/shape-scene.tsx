@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect,
-    Fill, easeInOutQuad, parallel, wait,
+    Fill, easeInOut, parallel, wait,
 } from "@motion-script/core";
 
 /**
@@ -114,8 +114,8 @@ export const shapeScene = (spec: ShapeSceneSpec, buildShape: BuildShape): SceneG
 
             if (fillShape && strokeShape) {
                 yield* parallel(
-                    fillShape.to({ [anim.prop]: anim.to } as any, dur, easeInOutQuad),
-                    strokeShape.to({ [anim.prop]: anim.to } as any, dur, easeInOutQuad),
+                    fillShape.to({ [anim.prop]: anim.to } as any, dur, easeInOut('quad')),
+                    strokeShape.to({ [anim.prop]: anim.to } as any, dur, easeInOut('quad')),
                 );
             }
 

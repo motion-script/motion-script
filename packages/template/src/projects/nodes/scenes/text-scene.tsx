@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, easeInOutQuad, sequence, wait, parallel } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, easeInOut, sequence, wait, parallel } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -60,14 +60,14 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        labelRef().append('Hello, world!', 1.4, easeInOutQuad),
+        labelRef().append('Hello, world!', 1.4, easeInOut('quad')),
         sequence(
             wait(0.3),
-            sizeRef().to({ fontSize: 96 }, 1.2, easeInOutQuad),
+            sizeRef().to({ fontSize: 96 }, 1.2, easeInOut('quad')),
         ),
         sequence(
             wait(0.6),
-            weightRef().to({ fontWeight: 900 }, 1.2, easeInOutQuad),
+            weightRef().to({ fontWeight: 900 }, 1.2, easeInOut('quad')),
         ),
     );
 

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AFX, easeInOutQuad, easeOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, AFX, easeInOut, easeOut, wait } from "@motion-script/core";
 
 /**
  * `this.startSound(...)` / `this.stopSound(...)` — the non-blocking form. The
@@ -25,11 +25,11 @@ export default createScene(function* (stage) {
     const handle = stage.startSound('song.mp3', { volume: 0.9, filters: AFX.echo(0.25, 0.4, 0.4) });
 
     // Animate while it plays — startSound doesn't block.
-    yield* dot().to({ scale: 1.6, fill: '#e8c84a' } as any, 1.2, easeInOutQuad);
-    yield* dot().to({ scale: 1, fill: 'primary' } as any, 1.2, easeInOutQuad);
+    yield* dot().to({ scale: 1.6, fill: '#e8c84a' } as any, 1.2, easeInOut('quad'));
+    yield* dot().to({ scale: 1, fill: 'primary' } as any, 1.2, easeInOut('quad'));
 
     // Stop the sound explicitly, then let the visual settle.
     stage.stopSound(handle);
-    yield* dot().to({ scale: 0.6, fill: '#e0664a' } as any, 0.5, easeOutQuad);
+    yield* dot().to({ scale: 0.6, fill: '#e0664a' } as any, 0.5, easeOut('quad'));
     yield* wait(0.6);
 });

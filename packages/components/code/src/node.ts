@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EaseFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -292,7 +292,7 @@ export class Code extends Node<CodeProps> {
         this.drawSelf(ctx);
     }
 
-    *append(code: string, duration: number, easing?: EaseFunction): FrameGenerator {
+    *append(code: string, duration: number, easing?: EasingFunction): FrameGenerator {
         const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
         this.tokenLines = [...this.tokenLines, ...newLines];
         this.bumpStructure();
@@ -314,7 +314,7 @@ export class Code extends Node<CodeProps> {
         yield* this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
     }
 
-    *prepend(code: string, duration: number, easing?: EaseFunction): FrameGenerator {
+    *prepend(code: string, duration: number, easing?: EasingFunction): FrameGenerator {
         const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
         this.tokenLines = [...newLines, ...this.tokenLines];
         this.bumpStructure();
@@ -344,7 +344,7 @@ export class Code extends Node<CodeProps> {
     *highlight(
         codeRange: CodeRange,
         duration: number = 0.4,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
         opacity: number = 0.4,
     ): FrameGenerator {
         const matchIds = this.tokenIdsInRange(codeRange);
@@ -384,7 +384,7 @@ export class Code extends Node<CodeProps> {
      * Fade all dimmed tokens back to opacity 1 and clear the persistent
      * highlight state.
      */
-    *resetHighlight(duration: number = 0.4, easing?: EaseFunction): FrameGenerator {
+    *resetHighlight(duration: number = 0.4, easing?: EasingFunction): FrameGenerator {
         if (this.highlightDimOpacity === null) {
             yield* tween(duration, () => { });
             return;
@@ -421,7 +421,7 @@ export class Code extends Node<CodeProps> {
         codeRange: CodeRange,
         next: string,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         const span = this.rangeToTokenSpan(codeRange);
         if (!span) {
@@ -503,7 +503,7 @@ export class Code extends Node<CodeProps> {
         position: [number, number],
         code: string,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         if (this.tokenLines.length === 0) {
             this.tokenLines = [makeIdLine([])];
@@ -625,7 +625,7 @@ export class Code extends Node<CodeProps> {
     *remove(
         codeRange: CodeRange,
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         const span = this.rangeToTokenSpan(codeRange);
         if (!span) {
@@ -737,7 +737,7 @@ export class Code extends Node<CodeProps> {
     private *runTransition(
         partial: { tokens: AnimToken[]; lineHeightScales?: Map<number, { values: number[]; keys: number[] }>; introducedIds?: Set<number> },
         duration: number,
-        easing?: EaseFunction,
+        easing?: EasingFunction,
     ): FrameGenerator {
         const transition: Transition = {
             tokens: partial.tokens,

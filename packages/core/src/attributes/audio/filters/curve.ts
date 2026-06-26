@@ -1,6 +1,8 @@
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { linear } from "@/tween/ease/constants";
 import { lerpNumber } from "@/tween/lerp";
+
+const DEFAULT_EASE = linear();
 
 /**
  * Time-varying automation for a single numeric filter param.
@@ -34,7 +36,7 @@ export interface CurveSegment {
      */
     duration?: number;
     /** Segment easing; defaults to {@link linear}. */
-    ease?: EaseFunction;
+    ease?: EasingFunction;
 }
 
 /** A segment resolved against a concrete clip duration: absolute relative-time keyframe pair. */
@@ -45,7 +47,7 @@ export interface ResolvedSegment {
     endTime: number;
     from: number;
     to: number;
-    ease: EaseFunction;
+    ease: EasingFunction;
     /** True when `ease` is the identity {@link linear} — lets the renderer use a cheap `linearRamp`. */
     isLinear: boolean;
 }
@@ -55,7 +57,7 @@ export class Curve {
     constructor(public readonly segments: readonly CurveSegment[] = []) { }
 
     /** Append a ramp from `from` to `to` over `duration` seconds. */
-    ramp(from: number, to: number, duration: number, opts?: { ease?: EaseFunction }): Curve {
+    ramp(from: number, to: number, duration: number, opts?: { ease?: EasingFunction }): Curve {
         return new Curve([...this.segments, { from, to, duration, ease: opts?.ease }]);
     }
 
@@ -69,12 +71,12 @@ export class Curve {
     }
 
     /** Append a fade from 0 up over `duration` seconds, anchored at the clip start. */
-    fadeIn(duration: number, opts?: { ease?: EaseFunction }): Curve {
+    fadeIn(duration: number, opts?: { ease?: EasingFunction }): Curve {
         return new Curve([...this.segments, { from: 0, to: 1, duration, ease: opts?.ease }]);
     }
 
     /** Append a fade down to 0 over `duration` seconds, anchored to the clip end. */
-    fadeOut(duration: number, opts?: { ease?: EaseFunction }): Curve {
+    fadeOut(duration: number, opts?: { ease?: EasingFunction }): Curve {
         return new Curve([...this.segments, { to: 0, duration, ease: opts?.ease }]);
     }
 
@@ -139,7 +141,7 @@ export class Curve {
             if (autoFillCount === 0 && i === autoFillIndex && slack > 0) {
                 const gapStart = Math.min(cursor, clip);
                 const gapEnd = Math.min(cursor + slack, clip);
-                out.push({ startTime: gapStart, endTime: gapEnd, from: prevValue, to: prevValue, ease: linear, isLinear: true });
+                out.push({ startTime: gapStart, endTime: gapEnd, from: prevValue, to: prevValue, ease: DEFAULT_EASE, isLinear: true });
                 cursor += slack;
             }
 
@@ -157,8 +159,8 @@ export class Curve {
 
             const startTime = Math.min(cursor, clip);
             const endTime = Math.min(cursor + dur, clip);
-            const ease = s.ease ?? linear;
-            out.push({ startTime, endTime, from, to, ease, isLinear: ease === linear });
+            const ease = s.ease ?? DEFAULT_EASE;
+            out.push({ startTime, endTime, from, to, ease, isLinear: ease === DEFAULT_EASE });
 
             cursor += dur;
             prevValue = to;
@@ -192,7 +194,7 @@ export class Curve {
 // ─── Free-function constructors (each returns a one-segment Curve, so they chain) ─
 
 /** A ramp from `from` to `to` over `duration` seconds. */
-export function ramp(from: number, to: number, duration: number, opts?: { ease?: EaseFunction }): Curve {
+export function ramp(from: number, to: number, duration: number, opts?: { ease?: EasingFunction }): Curve {
     return new Curve().ramp(from, to, duration, opts);
 }
 
@@ -202,12 +204,12 @@ export function hold(duration?: number): Curve {
 }
 
 /** A fade from 0 up over `duration` seconds, anchored at the clip start. */
-export function fadeIn(duration: number, opts?: { ease?: EaseFunction }): Curve {
+export function fadeIn(duration: number, opts?: { ease?: EasingFunction }): Curve {
     return new Curve().fadeIn(duration, opts);
 }
 
 /** A fade down to 0 over `duration` seconds, anchored to the clip end. */
-export function fadeOut(duration: number, opts?: { ease?: EaseFunction }): Curve {
+export function fadeOut(duration: number, opts?: { ease?: EasingFunction }): Curve {
     return new Curve().fadeOut(duration, opts);
 }
 

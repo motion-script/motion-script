@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, wait, parallel, sequence, easeOutQuad, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, wait, parallel, sequence, easeOut, easeInOut } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -30,31 +30,31 @@ export default createScene(function* (stage) {
     const a = overlap().find('overlapping selections');
     const b = overlap().find('selections stack');
     yield* parallel(
-        a.to({ opacity: 0.6, y: -12, fill: BLUE }, 1.2, easeOutQuad),
-        b.to({ opacity: 0.6, y: 10, fill: COPPER }, 1.2, easeOutQuad),
+        a.to({ opacity: 0.6, y: -12, fill: BLUE }, 1.2, easeOut('quad')),
+        b.to({ opacity: 0.6, y: 10, fill: COPPER }, 1.2, easeOut('quad')),
     );
 
     yield* wait(0.6);
 
     yield* parallel(
-        a.to({ opacity: 1, y: 0 }, 1, easeInOutQuad),
-        b.to({ opacity: 1, y: 0 }, 1, easeInOutQuad),
+        a.to({ opacity: 1, y: 0 }, 1, easeInOut('quad')),
+        b.to({ opacity: 1, y: 0 }, 1, easeInOut('quad')),
     );
 
     yield* wait(0.3);
 
     // words() returns every word as one selection covering disjoint ranges, so
     // a single .to() lifts them all together...
-    yield* stagger().words().to({ y: -16, fill: BLUE }, 0.6, easeOutQuad);
+    yield* stagger().words().to({ y: -16, fill: BLUE }, 0.6, easeOut('quad'));
     yield* wait(0.2);
-    yield* stagger().words().to({ y: 0, fill: CREAM }, 0.6, easeOutQuad);
+    yield* stagger().words().to({ y: 0, fill: CREAM }, 0.6, easeOut('quad'));
 
     yield* wait(0.3);
 
     // ...while indexing word(n) one at a time gives a manual per-word stagger.
     const words = stagger().text.split(' ').map((_, i) => stagger().word(i));
     yield* sequence(
-        ...words.map(w => w.to({ y: -16, fill: COPPER }, 0.35, easeOutQuad)),
+        ...words.map(w => w.to({ y: -16, fill: COPPER }, 0.35, easeOut('quad'))),
     );
 
     yield* wait(1);

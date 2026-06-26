@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AFX, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, AFX, easeInOut, parallel, wait } from "@motion-script/core";
 
 /**
  * Two clips playing at once. `startSound` layers a looping bed (`song.mp3`)
@@ -33,8 +33,8 @@ export default createScene(function* (stage) {
         // Both bars sweep together; the glitch one-shot plays over the bed.
         yield* parallel(
             stage.playSound('glitch.mp3', { volume: 1, filters: AFX.gain(1.2) }),
-            bed().to({ width: 'fill' } as any, 4, easeInOutQuad),
-            shot().to({ width: 'fill' } as any, 4, easeInOutQuad),
+            bed().to({ width: 'fill' } as any, 4, easeInOut('quad')),
+            shot().to({ width: 'fill' } as any, 4, easeInOut('quad')),
         );
 
         stage.stopSound(bedHandle);

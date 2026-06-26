@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, wait, parallel, easeInOutQuad, easeOutQuad, PathBuilder } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeInOut, easeOut, PathBuilder } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -46,15 +46,15 @@ export default createScene(function* (stage) {
     yield* wait(0.4);
 
     yield* parallel(
-        ring().to({ rotation: 360 }, 5, easeInOutQuad),
-        ring().to({ letterSpacing: 6 }, 1.2, easeOutQuad),
+        ring().to({ rotation: 360 }, 5, easeInOut('quad')),
+        ring().to({ letterSpacing: 6 }, 1.2, easeOut('quad')),
     );
 
     // Swap the underlying path while the node keeps spinning — the glyphs
     // re-flow onto the new contour instantly, no tween between shapes.
     ring().set({ path: arc(260, Math.PI * 1.2), text: 'swapped to a half-arc baseline' });
 
-    yield* ring().to({ rotation: 720 }, 4, easeInOutQuad);
+    yield* ring().to({ rotation: 720 }, 4, easeInOut('quad'));
 
     yield* wait(1);
 });

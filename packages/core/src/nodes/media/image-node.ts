@@ -1,6 +1,5 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { Clip } from "@/render/clip";
 import { ImageFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
@@ -18,14 +17,6 @@ export interface ImageProps extends RectProps {
     transform?: ImageTransform;
     scaling?: number;
     filters?: ImageFilter;
-    /**
-     * A clip path that cuts through the painted image **and** its children — the
-     * frame and everything stacked on it are confined to this outline as one.
-     * Unlike `clip` (which only confines children to the node's rect), `clipPath`
-     * carves the image itself. Build it with the {@link Clip} builder, composing
-     * shapes and `cut()`s for a compound silhouette.
-     */
-    clipPath?: Clip;
 }
 
 /**
@@ -43,7 +34,6 @@ export class Image extends Rect {
     @property() declare scaling?: number;
     @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
     declare filters?: MediaFilter[];
-    @property() declare clipPath?: Clip;
 
     constructor(props: NodeConfig<Image, ImageProps>) {
         super(props as NodeConfig<Rect, RectProps>);
@@ -52,10 +42,6 @@ export class Image extends Rect {
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
         if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
-    }
-
-    protected override clipPathSelf(): Clip | null {
-        return this.clipPath ?? null;
     }
 
     /** The resolved `image` fill painted in place of the rect's fill, or `null`

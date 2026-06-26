@@ -11,9 +11,7 @@ import {
     Text,
     createRef,
     createScene,
-    easeOutBack,
-    easeOutQuad,
-    easeOutQuart,
+    easeOut,
     parallel,
     wait,
 } from "@motion-script/core";

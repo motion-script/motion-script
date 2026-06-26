@@ -12,7 +12,7 @@ import {
     integrateSpeedToSceneTime,
     sourceTimeAtSceneElapsed,
 } from '@/attributes/audio/filters/curve';
-import { easeInOutQuad } from '@/tween/ease/constants';
+import { easeInOut } from '@/tween/ease/constants';
 
 describe('Curve builders', () => {
     it('chains segments fluently', () => {
@@ -70,9 +70,10 @@ describe('Curve.resolve', () => {
     });
 
     it('marks linear segments and carries a custom ease', () => {
-        const resolved = ramp(0, 1, 1, { ease: easeInOutQuad }).resolve(1, 0);
+        const customEase = easeInOut('quad');
+        const resolved = ramp(0, 1, 1, { ease: customEase }).resolve(1, 0);
         expect(resolved[0].isLinear).toBe(false);
-        expect(resolved[0].ease).toBe(easeInOutQuad);
+        expect(resolved[0].ease).toBe(customEase);
 
         const lin = ramp(0, 1, 1).resolve(1, 0);
         expect(lin[0].isLinear).toBe(true);

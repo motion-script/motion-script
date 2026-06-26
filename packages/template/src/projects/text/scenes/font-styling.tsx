@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, wait, parallel, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, wait, parallel, easeInOut } from "@motion-script/core";
 import { textCard, textCell } from "./text-card";
 
 const CREAM = '#F5ECD7';
@@ -55,17 +55,17 @@ export default createScene(function* (stage) {
     style().set({ fontStyle: 'italic' });
 
     yield* parallel(
-        weight().to({ fontWeight: 900 }, 1.6, easeInOutQuad),
-        tracking().to({ letterSpacing: 18 }, 1.6, easeInOutQuad),
-        leading().to({ lineHeight: 2.2 }, 1.6, easeInOutQuad),
+        weight().to({ fontWeight: 900 }, 1.6, easeInOut('quad')),
+        tracking().to({ letterSpacing: 18 }, 1.6, easeInOut('quad')),
+        leading().to({ lineHeight: 2.2 }, 1.6, easeInOut('quad')),
     );
 
     style().set({ fontStyle: 'normal' });
 
     yield* parallel(
-        weight().to({ fontWeight: 200 }, 1.4, easeInOutQuad),
-        tracking().to({ letterSpacing: 2 }, 1.4, easeInOutQuad),
-        leading().to({ lineHeight: 1.2 }, 1.4, easeInOutQuad),
+        weight().to({ fontWeight: 200 }, 1.4, easeInOut('quad')),
+        tracking().to({ letterSpacing: 2 }, 1.4, easeInOut('quad')),
+        leading().to({ lineHeight: 1.2 }, 1.4, easeInOut('quad')),
     );
 
     yield* wait(1);

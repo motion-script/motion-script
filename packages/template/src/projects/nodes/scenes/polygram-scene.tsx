@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Polygram, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Polygram, Rect, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -48,12 +48,12 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        leftRef().to({ ratio: 0.35 }, 1.5, easeInOutQuad),
-        rightRef().to({ cornerRadius: 18 }, 1.2, easeInOutQuad),
+        leftRef().to({ ratio: 0.35 }, 1.5, easeInOut('quad')),
+        rightRef().to({ cornerRadius: 18 }, 1.2, easeInOut('quad')),
     );
     yield* parallel(
-        leftRef().to({ sides: 8, ratio: 0.6 }, 1.5, easeInOutQuad),
-        rightRef().to({ sides: 4, ratio: 0.4 }, 1.5, easeInOutQuad),
+        leftRef().to({ sides: 8, ratio: 0.6 }, 1.5, easeInOut('quad')),
+        rightRef().to({ sides: 4, ratio: 0.4 }, 1.5, easeInOut('quad')),
     );
     yield* wait(0.8);
 });

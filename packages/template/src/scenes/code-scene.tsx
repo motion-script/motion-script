@@ -1,4 +1,4 @@
-import { createScene, createRef, wait, easeOutQuad, Rect, Fills, Ellipse } from "@motion-script/core";
+import { createScene, createRef, wait, easeOut, Rect, Fills, Ellipse } from "@motion-script/core";
 import { Code, lines, word } from "@motion-script/code";
 
 export default createScene(function* (stage) {
@@ -44,7 +44,7 @@ export default createScene(function* (stage) {
         yield* wait(0.3);
 
         // Replace a token
-        yield* code().replace(word(1, 22, 6), 'string', 0.3, easeOutQuad);
+        yield* code().replace(word(1, 22, 6), 'string', 0.3, easeOut('quad'));
         yield* wait(0.5);
 
         // Remove a line

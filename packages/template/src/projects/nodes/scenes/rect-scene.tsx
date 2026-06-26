@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -52,13 +52,13 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        containerRef().to({ group: 'column' }, 1.2, easeInOutQuad),
-        cornerRef().to({ cornerRadius: 64 }, 1.0, easeInOutQuad),
+        containerRef().to({ group: 'column' }, 1.2, easeInOut('quad')),
+        cornerRef().to({ cornerRadius: 64 }, 1.0, easeInOut('quad')),
     );
 
     yield* parallel(
-        containerRef().to({ group: 'row' }, 1.2, easeInOutQuad),
-        cornerRef().to({ cornerStyle: 'angled' }, 0.8, easeInOutQuad),
+        containerRef().to({ group: 'row' }, 1.2, easeInOut('quad')),
+        cornerRef().to({ cornerStyle: 'angled' }, 0.8, easeInOut('quad')),
     );
 
     yield* wait(0.8);

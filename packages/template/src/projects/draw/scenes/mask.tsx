@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, easeInOutQuad, sequence } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, easeInOut, sequence } from "@motion-script/core";
 import { DrawnMask } from "../nodes/drawn-mask";
 
 /**
@@ -30,7 +30,7 @@ export default createScene(function* (stage) {
         // Slide the stripes a full colour cycle under the static mask, then back,
         // for a seamless loop.
         yield* sequence(
-            maskRef().to({ offset: cycle } as any, 3, easeInOutQuad),
-            maskRef().to({ offset: 0 } as any, 3, easeInOutQuad),
+            maskRef().to({ offset: cycle } as any, 3, easeInOut('quad')),
+            maskRef().to({ offset: 0 } as any, 3, easeInOut('quad')),
         );
 });

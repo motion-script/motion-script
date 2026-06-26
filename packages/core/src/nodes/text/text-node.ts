@@ -8,7 +8,7 @@ import { AssetTracker } from "@/assets/tracker";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
 import { Size2D } from "@/attributes/layout/size";
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
@@ -132,11 +132,11 @@ export class Text extends ShapeNode<TextProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    *append(text: string, duration: number, easing?: EaseFunction): FrameGenerator {
+    *append(text: string, duration: number, easing?: EasingFunction): FrameGenerator {
         yield* this.to({ text: this.text + text }, duration, easing);
     }
 
-    *prepend(text: string, duration: number, easing?: EaseFunction): FrameGenerator {
+    *prepend(text: string, duration: number, easing?: EasingFunction): FrameGenerator {
         yield* this.to({ text: text + this.text }, duration, easing);
     }
 

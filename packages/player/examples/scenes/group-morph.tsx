@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, easeInOut, wait } from "@motion-script/core";
 import { tile } from "./layout-card";
 
 /**
@@ -40,11 +40,11 @@ export default createScene(function* (stage) {
 
     yield* wait(hold);
     // row → stack: the horizontal line collapses into a centered pile.
-    yield* container().to({ group: 'stack' }, 2, easeInOutQuad);
+    yield* container().to({ group: 'stack' }, 2, easeInOut('quad'));
     yield* wait(hold);
     // stack → column: the pile fans out downward into a vertical stack.
-    yield* container().to({ group: 'column' }, 2, easeInOutQuad);
+    yield* container().to({ group: 'column' }, 2, easeInOut('quad'));
     yield* wait(hold);
     // column → row: close the loop back to where we started.
-    yield* container().to({ group: 'row' }, 2, easeInOutQuad);
+    yield* container().to({ group: 'row' }, 2, easeInOut('quad'));
 });

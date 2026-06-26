@@ -1,4 +1,4 @@
-import { EaseFunction } from "./ease/type";
+import { EasingFunction } from "./ease/type";
 
 /**
  * Linearly interpolates between two numbers.
@@ -14,4 +14,4 @@ export function lerpNumber(from: number, to: number, t: number): number {
 }
 
 export type LerpFunction<T> = (from: T, to: T, t: number) => T;
-export type TweenOptions<T> = { ease?: EaseFunction, lerp?: LerpFunction<T>, delay?: number };
+export type TweenOptions<T> = { ease?: EasingFunction, lerp?: LerpFunction<T>, delay?: number };

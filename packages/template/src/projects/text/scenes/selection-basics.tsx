@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, wait, parallel, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, wait, parallel, easeOut } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -37,12 +37,12 @@ export default createScene(function* (stage) {
     yield* wait(0.4);
 
     yield* parallel(
-        find().find('pieces of text').to({ fill: COPPER, y: -10 }, 1, easeOutQuad),
-        word().word(2).to({ fill: BLUE, scale: 1.3 }, 1, easeOutQuad),
-        match().match(/[0-9]+/).to({ opacity: 0.2 }, 1, easeOutQuad),
-        lineSel().line(1).to({ fill: COPPER, x: 16 }, 1, easeOutQuad),
-        slice().slice(0, 5).to({ fill: BLUE, rotation: -6 }, 1, easeOutQuad),
-        filter().filter(c => 'aeiouAEIOU'.includes(c)).to({ fill: COPPER, scale: 1.2 }, 1, easeOutQuad),
+        find().find('pieces of text').to({ fill: COPPER, y: -10 }, 1, easeOut('quad')),
+        word().word(2).to({ fill: BLUE, scale: 1.3 }, 1, easeOut('quad')),
+        match().match(/[0-9]+/).to({ opacity: 0.2 }, 1, easeOut('quad')),
+        lineSel().line(1).to({ fill: COPPER, x: 16 }, 1, easeOut('quad')),
+        slice().slice(0, 5).to({ fill: BLUE, rotation: -6 }, 1, easeOut('quad')),
+        filter().filter(c => 'aeiouAEIOU'.includes(c)).to({ fill: COPPER, scale: 1.2 }, 1, easeOut('quad')),
     );
 
     yield* wait(1);

@@ -1,4 +1,4 @@
-import { createScene, Fills, sequence, parallel, easeInOutQuad } from "@motion-script/core";
+import { createScene, Fills, sequence, parallel, easeInOut } from "@motion-script/core";
 import { strokeCard } from "./stroke-card";
 
 /**
@@ -32,22 +32,22 @@ export default createScene(function* (stage) {
             sample().strokeTo([
                 { weight: 28, fill: Fills.color('#6990DD'), align: 'outside' },
                 { weight: 10, fill: Fills.color('#F5C26B'), align: 'inside' },
-            ], 2, { ease: easeInOutQuad }),
+            ], 2, { ease: easeInOut('quad') }),
             sample().shadowTo([
                 { fill: Fills.color('#6990DD', { opacity: 0.8 }), blur: 50, offset: { x: -40, y: -40 } },
                 { fill: Fills.color('#E8617C', { opacity: 0.8 }), blur: 50, offset: { x: 40, y: 40 } },
-            ], 2, { ease: easeInOutQuad }),
+            ], 2, { ease: easeInOut('quad') }),
         ),
         // Settle back so the scene can loop cleanly.
         parallel(
             sample().strokeTo([
                 { weight: 8, fill: Fills.color('#6990DD'), align: 'outside' },
                 { weight: 4, fill: Fills.color('#F5C26B'), align: 'inside' },
-            ], 1.6, { ease: easeInOutQuad }),
+            ], 1.6, { ease: easeInOut('quad') }),
             sample().shadowTo([
                 { fill: Fills.color('#6990DD', { opacity: 0.6 }), blur: 8, offset: { x: -8, y: -8 } },
                 { fill: Fills.color('#E8617C', { opacity: 0.6 }), blur: 8, offset: { x: 8, y: 8 } },
-            ], 1.6, { ease: easeInOutQuad }),
+            ], 1.6, { ease: easeInOut('quad') }),
         ),
     );
 });

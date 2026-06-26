@@ -1,6 +1,6 @@
-import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOutQuad, easeOutBack, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOut, easeOut } from "@motion-script/core";
 
-const easeBack = easeOutBack();
+const easeBack = easeOut('back');
 
 const CARD = "#1e2430";
 const ACCENT = "#5ea8d8";
@@ -107,88 +107,88 @@ export default createScene(function* (stage) {
     yield* parallel(
       // ---- Polygon ----
       sequence(
-        polygonFill().to({ sides: 8 }, 0.8, easeInOutQuad),
+        polygonFill().to({ sides: 8 }, 0.8, easeInOut('quad')),
         polygonFill().to({ cornerRadius: 24 }, 0.6, easeBack),
       ),
       sequence(
-        polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        polygonStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        polygonShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        polygonShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        polygonShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        polygonShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
 
       // ---- Polygram ----
       sequence(
-        polygramFill().to({ sides: 8 }, 0.8, easeInOutQuad),
-        polygramFill().to({ ratio: 0.25 }, 0.6, easeInOutQuad),
+        polygramFill().to({ sides: 8 }, 0.8, easeInOut('quad')),
+        polygramFill().to({ ratio: 0.25 }, 0.6, easeInOut('quad')),
         polygramFill().to({ cornerRadius: 12 }, 0.6, easeBack),
       ),
       sequence(
-        polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        polygramStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        polygramShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        polygramShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        polygramShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        polygramShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
 
       // ---- Rect ----
       sequence(
         rectFill().to({ cornerRadius: 30 }, 0.8, easeBack),
-        rectFill().to({ rotation: 180 }, 0.8, easeInOutQuad),
+        rectFill().to({ rotation: 180 }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        rectStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        rectStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        rectStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        rectStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        rectShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        rectShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        rectShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        rectShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
 
       // ---- Ellipse ----
       sequence(
-        ellipseFill().to({ ratio: 0.4 }, 0.8, easeInOutQuad),
-        ellipseFill().to({ sweep: 270 }, 0.6, easeInOutQuad),
-        ellipseFill().to({ startAngle: 360 }, 0.8, easeInOutQuad),
+        ellipseFill().to({ ratio: 0.4 }, 0.8, easeInOut('quad')),
+        ellipseFill().to({ sweep: 270 }, 0.6, easeInOut('quad')),
+        ellipseFill().to({ startAngle: 360 }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        ellipseStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        ellipseStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        ellipseStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        ellipseStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        ellipseShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        ellipseShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        ellipseShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        ellipseShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
 
       // ---- Path ----
       sequence(
-        pathFill().to({ end: 1 }, 1, easeInOutQuad),
-        pathFill().to({ start: 0.3 }, 0.6, easeInOutQuad),
+        pathFill().to({ end: 1 }, 1, easeInOut('quad')),
+        pathFill().to({ start: 0.3 }, 0.6, easeInOut('quad')),
       ),
       sequence(
-        pathStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        pathStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        pathStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        pathStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        pathShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        pathShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        pathShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        pathShadow().to({ fill: "transparent", stroke: { fill: ACCENT, weight: 6 }, shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
 
       // ---- Line ----
       sequence(
         lineFill().to({ radius: 24 }, 0.8, easeBack),
-        lineFill().to({ scale: 1.2 }, 0.6, easeInOutQuad),
+        lineFill().to({ scale: 1.2 }, 0.6, easeInOut('quad')),
       ),
       sequence(
-        lineStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOutQuad),
-        lineStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOutQuad),
+        lineStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: -1 } }, 1.2, easeInOut('quad')),
+        lineStroke().to({ stroke: { fill: ACCENT, weight: 6, dash: [12, 8], dashOffset: -40, align: 1 } }, 0.8, easeInOut('quad')),
       ),
       sequence(
-        lineShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOutQuad),
-        lineShadow().to({ fill: "transparent", shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOutQuad),
+        lineShadow().to({ shadow: { fill: SHADOW, blur: 16, offset: { x: 12, y: 12 } } }, 0.8, easeOut('quad')),
+        lineShadow().to({ fill: "transparent", shadow: { fill: SHADOW, blur: 16, offset: { x: -12, y: 12 } } }, 0.8, easeOut('quad')),
       ),
     );
 

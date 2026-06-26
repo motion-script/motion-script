@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, SceneStage, createRef, Reference, Text, Rect, Ellipse, Image,
-    EffectChain, SceneEffect, easeOutQuad, parallel,
+    EffectChain, SceneEffect, easeOut, parallel,
     Node,
 } from "@motion-script/core";
 
@@ -89,7 +89,7 @@ function* buildDirect(stage: SceneStage, label: string, from: EffectChain, to: E
             </Rect>
         );
 
-        yield* imgRef().to({ effects: to }, duration, easeOutQuad);
+        yield* imgRef().to({ effects: to }, duration, easeOut('quad'));
     }
 
     /**
@@ -110,7 +110,7 @@ function* buildBackground(stage: SceneStage, label: string, from: EffectChain, t
             </Rect>
         );
 
-        yield* overlayRef().to({ effects: to }, duration, easeOutQuad);
+        yield* overlayRef().to({ effects: to }, duration, easeOut('quad'));
     }
 
     /**
@@ -152,7 +152,7 @@ function* buildComparison(stage: SceneStage, label: string, from: EffectChain, t
         );
 
         yield* parallel(
-            directRef().to({ effects: to }, duration, easeOutQuad),
-            //backdropRef().to({ effects: backdropTo }, duration, easeOutQuad),
+            directRef().to({ effects: to }, duration, easeOut('quad')),
+            //backdropRef().to({ effects: backdropTo }, duration, easeOut('quad')),
         );
 }

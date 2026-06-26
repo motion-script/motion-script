@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect, Fills, FillSpace, Node,
-    easeInOutQuad, sequence,
+    easeInOut, sequence,
 } from "@motion-script/core";
 import { DrawnShape } from "../nodes/drawn-shape";
 
@@ -102,8 +102,8 @@ export const drawDemo = (opts: DrawDemoOpts): SceneGenerator => function* (stage
         // the only variable: `local` stays put-looking as it slides, while
         // `parent`/`global` reveal the static field they sit in.
         yield* sequence(
-            shapeRef().to({ x: -360 } as any, 2, easeInOutQuad),
-            shapeRef().to({ x: 360 } as any, 3, easeInOutQuad),
-            shapeRef().to({ x: 0 } as any, 2, easeInOutQuad),
+            shapeRef().to({ x: -360 } as any, 2, easeInOut('quad')),
+            shapeRef().to({ x: 360 } as any, 3, easeInOut('quad')),
+            shapeRef().to({ x: 0 } as any, 2, easeInOut('quad')),
         );
 };

@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect,
-    Fill, Shadow, easeInOutQuad, parallel,
+    Fill, Shadow, easeInOut, parallel,
 } from "@motion-script/core";
 
 /**
@@ -73,12 +73,12 @@ export const shapeDemo = (spec: ShapeDemoSpec): SceneGenerator => function* (sta
         );
 
         const animations: any[] = [
-            fillRef().to({ fill: fillTo } as any, duration, easeInOutQuad),
-            strokeRef().to({ stroke: { weight: strokeWeight, fill: strokeTo } } as any, duration, easeInOutQuad),
+            fillRef().to({ fill: fillTo } as any, duration, easeInOut('quad')),
+            strokeRef().to({ stroke: { weight: strokeWeight, fill: strokeTo } } as any, duration, easeInOut('quad')),
         ];
         if (shadowTo) {
-            animations.push(fillRef().to({ shadow: shadowTo } as any, duration, easeInOutQuad));
-            animations.push(strokeRef().to({ shadow: shadowTo } as any, duration, easeInOutQuad));
+            animations.push(fillRef().to({ shadow: shadowTo } as any, duration, easeInOut('quad')));
+            animations.push(strokeRef().to({ shadow: shadowTo } as any, duration, easeInOut('quad')));
         }
 
         yield* parallel(...animations);

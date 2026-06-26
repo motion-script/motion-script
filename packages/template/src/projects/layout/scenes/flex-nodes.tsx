@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Row, Column, easeInOutQuad, parallel, Effects } from "@motion-script/core";
+import { createScene, createRef, Rect, Row, Column, easeInOut, parallel, Effects } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -26,7 +26,7 @@ export default createScene(function* (stage) {
             children: (
                 <Row gap={48} >
                     {colors.map((color, c) => (
-                        <Column gap={48} fill={'red'} >
+                        <Column gap={48}  >
                             {[0, 1].map((r) =>
                                 tile({
                                     ref: c === 1 ? middle[r] : undefined,
@@ -43,6 +43,6 @@ export default createScene(function* (stage) {
     );
 
     // Grow then shrink the middle column's tiles; the Row/Column reflow.
-    yield* parallel(...middle.map((ref) => ref().to({ width: 320 }, 1.5, easeInOutQuad)));
-    yield* parallel(...middle.map((ref) => ref().to({ width: 200 }, 1.5, easeInOutQuad)));
+    yield* parallel(...middle.map((ref) => ref().to({ width: 320 }, 1.5, easeInOut('quad'))));
+    yield* parallel(...middle.map((ref) => ref().to({ width: 200 }, 1.5, easeInOut('quad'))));
 });

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, wait, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, easeInOut } from "@motion-script/core";
 
 const BG = '#0D0F15';
 
@@ -39,18 +39,18 @@ export default createScene(function* (stage) {
     yield* wait(0.4);
 
     // More text, same box: the font shrinks line by line to keep wrapping inside it.
-    yield* textRef().to({ text: 'Shrinks to fit. Keep adding text and the font size keeps stepping down to stay inside the box.' }, 1.8, easeInOutQuad);
+    yield* textRef().to({ text: 'Shrinks to fit. Keep adding text and the font size keeps stepping down to stay inside the box.' }, 1.8, easeInOut('quad'));
     yield* wait(0.4);
 
     // Same text, shrinking box: autofit reacts to less room just the same way.
-    yield* boxRef().to({ width: 480, height: 320 }, 1.6, easeInOutQuad);
+    yield* boxRef().to({ width: 480, height: 320 }, 1.6, easeInOut('quad'));
     yield* wait(0.4);
 
     // Hits minFontSize: the box keeps shrinking but the text can't shrink further,
     // so it starts overflowing instead.
-    yield* boxRef().to({ width: 260, height: 200 }, 1.4, easeInOutQuad);
+    yield* boxRef().to({ width: 260, height: 200 }, 1.4, easeInOut('quad'));
     yield* wait(0.6);
 
-    yield* boxRef().to({ width: 900, height: 500 }, 1.2, easeInOutQuad);
+    yield* boxRef().to({ width: 900, height: 500 }, 1.2, easeInOut('quad'));
     yield* wait(1);
 });

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOut, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -31,11 +31,11 @@ export default createScene(function* (stage) {
 
         // Fan the pile out via per-child offsets, then collapse it back.
         yield* parallel(
-            back().to({ x: -260, y: -120 }, 1.5, easeInOutQuad),
-            front().to({ x: 260, y: 120 }, 1.5, easeInOutQuad),
+            back().to({ x: -260, y: -120 }, 1.5, easeInOut('quad')),
+            front().to({ x: 260, y: 120 }, 1.5, easeInOut('quad')),
         );
         yield* parallel(
-            back().to({ x: 0, y: 0 }, 1.5, easeInOutQuad),
-            front().to({ x: 0, y: 0 }, 1.5, easeInOutQuad),
+            back().to({ x: 0, y: 0 }, 1.5, easeInOut('quad')),
+            front().to({ x: 0, y: 0 }, 1.5, easeInOut('quad')),
         );
 });

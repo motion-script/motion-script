@@ -65,12 +65,12 @@ export default createScene(function* (stage) {
 A plain animation moves at a constant speed, which can look robotic. An **easing** function changes the pacing, like starting slow and speeding up. Pass one as the third argument to `.to()`.
 
 ```tsx
-import { easeOutBack } from '@motion-script/core';
+import { easeOut } from '@motion-script/core';
 
-yield* box().to({ x: 400 }, 1, easeOutBack);
+yield* box().to({ x: 400 }, 1, easeOut('back'));
 ```
 
-`easeOutBack` overshoots slightly and settles back, giving the motion a bit of life. There are many to choose from, such as `easeInOut`, `easeOut`, and the springy `easeOutElastic`. Try swapping them in and out to see how the feel changes.
+`easeOut('back')` overshoots slightly and settles back, giving the motion a bit of life. `easeOut`, `easeIn`, and `easeInOut` each take the name of a curve — `'quad'`, `'cubic'`, `'back'`, `'elastic'`, and more. Try swapping them in and out to see how the feel changes.
 
 ## Pause between moves
 
@@ -79,9 +79,9 @@ To hold for a moment, use `wait`:
 ```tsx
 import { wait } from '@motion-script/core';
 
-yield* box().to({ x: 400 }, 1, easeOutBack);
+yield* box().to({ x: 400 }, 1, easeOut('back'));
 yield* wait(0.5);          // hold for half a second
-yield* box().to({ x: 0 }, 1, easeOutBack);  // slide back
+yield* box().to({ x: 0 }, 1, easeOut('back'));  // slide back
 ```
 
 Animations written one after another play **in sequence**, each starting when the last one ends. That ordering is exactly what `yield*` gives you.

@@ -16,7 +16,7 @@ const SNIPPET = `export default createScene(function* (stage) {
   // The execution of your code defines the animation
   yield* wait(0.5);
   yield* sequence(
-    card().to({ cornerRadius: 60 }, 0.8, easeOutBack()),
+    card().to({ cornerRadius: 60 }, 0.8, easeOut('back')),
     card().to({ rotation: 360 }, 0.8),
   );
 });`;

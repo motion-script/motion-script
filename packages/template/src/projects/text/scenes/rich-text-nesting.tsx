@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, RichText, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, RichText, Rect, Text, easeInOut, wait } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const BLUE = '#6990DD';
@@ -54,7 +54,7 @@ export default createScene(function* (stage) {
         </Rect>
     );
 
-    yield* ref().to({ fontSize: 56 }, 1.2, easeInOutQuad);
-    yield* ref().to({ fontSize: 40 }, 1, easeInOutQuad);
+    yield* ref().to({ fontSize: 56 }, 1.2, easeInOut('quad'));
+    yield* ref().to({ fontSize: 40 }, 1, easeInOut('quad'));
     yield* wait(1);
 });

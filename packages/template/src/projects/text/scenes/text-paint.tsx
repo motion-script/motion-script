@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, Fills, wait, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, Fills, wait, easeInOut } from "@motion-script/core";
 
 const BG = '#0D0F15';
 
@@ -38,14 +38,14 @@ export default createScene(function* (stage) {
         fill: Fills.linearGradient(['#F5C26B', '#29EC71'], { start: { x: -1, y: 1 }, end: { x: 1, y: -1 } }),
         stroke: { fill: '#0D0F15', weight: 6 },
         shadow: { fill: Fills.color('#29EC71', { opacity: 0.5 }), blur: 36, offset: { x: 16, y: 16 } },
-    } as any, 2, easeInOutQuad);
+    } as any, 2, easeInOut('quad'));
 
     yield* wait(0.4);
 
     yield* textRef().to({
         fill: Fills.linearGradient(['#6990DD', '#E8617C'], { start: { x: -1, y: -1 }, end: { x: 1, y: 1 } }),
         shadow: { fill: Fills.color('#000000', { opacity: 0.6 }), blur: 0, offset: { x: 0, y: 0 } },
-    } as any, 2, easeInOutQuad);
+    } as any, 2, easeInOut('quad'));
 
     yield* wait(1);
 });

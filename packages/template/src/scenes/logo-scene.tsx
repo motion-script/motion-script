@@ -1,4 +1,4 @@
-import { createScene, createRef, wait, parallel, Rect, Fills, Text, easeOutQuad, easeInQuad, easeOutBack, Effects } from "@motion-script/core";
+import { createScene, createRef, wait, parallel, Rect, Fills, Text, easeOut, easeIn, Effects } from "@motion-script/core";
 
 export default createScene(function* (stage) {
     stage.set({
@@ -65,8 +65,8 @@ export default createScene(function* (stage) {
 
     // --- Sleek title intro: rise, settle, and bloom into view. -------------
     yield* parallel(
-        title().to({ opacity: 1, effects: Effects.chromaticAberration(0, 0).blur(0) }, 0.7, easeOutQuad),
-        title().to({ y: 0, scale: 1 }, 0.9, easeOutBack(1.2)),
+        title().to({ opacity: 1, effects: Effects.chromaticAberration(0, 0).blur(0) }, 0.7, easeOut('quad')),
+        title().to({ y: 0, scale: 1 }, 0.9, easeOut({ type: 'back', overshoot: 1.2 })),
     );
     yield* wait(0.4);
 
@@ -79,9 +79,9 @@ export default createScene(function* (stage) {
 
         // Settle the current phrase into focus from below.
         yield* parallel(
-            wheel().to({ y: 0 }, 0.4, easeOutQuad),
-            wheel().to({ opacity: isLast ? 1 : 0.6 }, 0.35, easeOutQuad),
-            wheel().to({ effects: Effects.blur(0) }, 0.55, easeOutQuad),
+            wheel().to({ y: 0 }, 0.4, easeOut('quad')),
+            wheel().to({ opacity: isLast ? 1 : 0.6 }, 0.35, easeOut('quad')),
+            wheel().to({ effects: Effects.blur(0) }, 0.55, easeOut('quad')),
         );
 
         // The final phrase stays on screen — glitch it instead of carrying
@@ -92,9 +92,9 @@ export default createScene(function* (stage) {
 
         // Carry it up and out of focus.
         yield* parallel(
-            wheel().to({ y: EXIT_TO }, 0.55, easeInQuad),
-            wheel().to({ opacity: 0 }, 0.45, easeInQuad),
-            wheel().to({ effects: Effects.blur(BLUR) }, 0.55, easeInQuad),
+            wheel().to({ y: EXIT_TO }, 0.55, easeIn('quad')),
+            wheel().to({ opacity: 0 }, 0.45, easeIn('quad')),
+            wheel().to({ effects: Effects.blur(BLUR) }, 0.55, easeIn('quad')),
         );
 
         // Swap in the next phrase and snap back below the focus line.
@@ -111,12 +111,12 @@ export default createScene(function* (stage) {
         wheel().to({ effects: Effects.chromaticAberration(8, 0) }, 0.05),
     );
     yield* parallel(
-        title().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOutQuad),
-        wheel().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOutQuad),
+        title().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOut('quad')),
+        wheel().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOut('quad')),
     );
     yield* parallel(
-        title().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOutQuad),
-        wheel().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOutQuad),
+        title().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOut('quad')),
+        wheel().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOut('quad')),
     );
     stage.stopSound(glitch);
 

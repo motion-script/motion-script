@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, easeInOutQuad, parallel, sequence, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOut, parallel, sequence, wait } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -53,9 +53,9 @@ export default createScene(function* (stage) {
             ...cells.map(({ ref, diag }) =>
                 sequence(
                     wait(diag * 0.12),
-                    ref().to({ cornerRadius: 160 }, 1.2, easeInOutQuad),
+                    ref().to({ cornerRadius: 160 }, 1.2, easeInOut('quad')),
                 )
             ),
         );
-        yield* parallel(...cells.map(({ ref }) => ref().to({ cornerRadius: 24 }, 1, easeInOutQuad)));
+        yield* parallel(...cells.map(({ ref }) => ref().to({ cornerRadius: 24 }, 1, easeInOut('quad'))));
 });

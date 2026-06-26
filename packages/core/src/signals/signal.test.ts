@@ -131,25 +131,25 @@ describe('createSignal – subscribe', () => {
 describe('createSignal – tween', () => {
     it('returns a FrameGenerator from tween()', () => {
         const s = createSignal(0);
-        const gen = s.tween(10, 0.1, linear);
+        const gen = s.tween(10, 0.1, linear());
         expect(typeof gen.next).toBe('function');
     });
 
     it('arity ≥ 2 with numeric duration via call form delegates to tween', () => {
         const s = createSignal(0);
-        const gen = s(10 as any, 0.1, linear);
+        const gen = s(10 as any, 0.1, linear());
         expect(typeof (gen as any).next).toBe('function');
     });
 
     it('tween advances numeric value to target by the end', () => {
         const s = createSignal(0);
-        drive(s.tween(100, 0.2, linear));
+        drive(s.tween(100, 0.2, linear()));
         expect(s.get()).toBe(100);
     });
 
     it('intermediate value is between from and to', () => {
         const s = createSignal(0);
-        const gen = s.tween(100, 0.5, linear);
+        const gen = s.tween(100, 0.5, linear());
         gen.next();
         gen.next(0.1);
         expect(s.get()).toBeGreaterThan(0);
@@ -174,7 +174,7 @@ describe('createSignal – tween', () => {
             x: from.x + (to.x - from.x) * t,
         });
         const s = createSignal<Pair>({ x: 0 }, lerp);
-        drive(s.tween({ x: 100 }, 0.1, linear));
+        drive(s.tween({ x: 100 }, 0.1, linear()));
         expect(s.get().x).toBe(100);
     });
 
@@ -185,26 +185,26 @@ describe('createSignal – tween', () => {
             captured.push(t);
             return from + (to - from) * t;
         };
-        drive(s.tween(10, 0.05, linear, lerp));
+        drive(s.tween(10, 0.05, linear(), lerp));
         expect(captured.length).toBeGreaterThan(0);
         expect(s.get()).toBe(10);
     });
 
     it('non-numeric values without lerp snap at t=1', () => {
         const s = createSignal<string>('a');
-        drive(s.tween('b', 0.05, linear));
+        drive(s.tween('b', 0.05, linear()));
         expect(s.get()).toBe('b');
     });
 
     it('lerpNullable handles initial null', () => {
         const s = createSignal<number | null>(null);
-        drive(s.tween(50, 0.1, linear));
+        drive(s.tween(50, 0.1, linear()));
         expect(s.get()).toBe(50);
     });
 
     it('lerpNullable handles null target (returns from)', () => {
         const s = createSignal<number | null>(10);
-        drive(s.tween(null, 0.1, linear));
+        drive(s.tween(null, 0.1, linear()));
         expect(s.get()).toBe(10);
     });
 });

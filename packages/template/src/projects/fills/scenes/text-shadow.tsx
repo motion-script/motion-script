@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, Fills, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, Fills, easeInOut } from "@motion-script/core";
 
 /**
  * A {@link Text} node with a drop shadow that animates its color, blur radius
@@ -29,7 +29,7 @@ export default createScene(function* (stage) {
         );
 
         // Grow the shadow out: shift hue, soften the blur, and cast it down-right.
-        yield* textRef().to({ shadow: { fill: Fills.color('#E8617C', { opacity: 0.9 }), blur: 48, offset: { x: 24, y: 24 } } }, 2, easeInOutQuad);
+        yield* textRef().to({ shadow: { fill: Fills.color('#E8617C', { opacity: 0.9 }), blur: 48, offset: { x: 24, y: 24 } } }, 2, easeInOut('quad'));
         // Pull it back in for a clean loop.
-        yield* textRef().to({ shadow: { fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 0, offset: { x: 0, y: 0 } } }, 2, easeInOutQuad);
+        yield* textRef().to({ shadow: { fill: Fills.color('#6990DD', { opacity: 0.9 }), blur: 0, offset: { x: 0, y: 0 } } }, 2, easeInOut('quad'));
 });

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Path, Rect, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Path, Rect, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -52,15 +52,15 @@ export default createScene(function* (stage) {
         );
 
         yield* parallel(
-            triRef().to({ end: 1 }, 1.2, easeInOutQuad),
-            waveRef().to({ end: 1 }, 1.6, easeInOutQuad),
-            heartRef().to({ end: 1 }, 1.4, easeInOutQuad),
+            triRef().to({ end: 1 }, 1.2, easeInOut('quad')),
+            waveRef().to({ end: 1 }, 1.6, easeInOut('quad')),
+            heartRef().to({ end: 1 }, 1.4, easeInOut('quad')),
         );
         yield* wait(0.8);
         yield* parallel(
-            triRef().to({ end: 0 }, 1.0, easeInOutQuad),
-            waveRef().to({ end: 0 }, 1.2, easeInOutQuad),
-            heartRef().to({ end: 0 }, 1.0, easeInOutQuad),
+            triRef().to({ end: 0 }, 1.0, easeInOut('quad')),
+            waveRef().to({ end: 0 }, 1.2, easeInOut('quad')),
+            heartRef().to({ end: 0 }, 1.0, easeInOut('quad')),
         );
         yield* wait(0.3);
 });

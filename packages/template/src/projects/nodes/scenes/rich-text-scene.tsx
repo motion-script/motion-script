@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, RichText, Rect, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, RichText, Rect, easeInOut, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -34,7 +34,7 @@ export default createScene(function* (stage) {
             })
         );
 
-        yield* ref().to({ fontSize: 64 }, 1.2, easeInOutQuad);
-        yield* ref().to({ fontSize: 40 }, 0.8, easeInOutQuad);
+        yield* ref().to({ fontSize: 64 }, 1.2, easeInOut('quad'));
+        yield* ref().to({ fontSize: 40 }, 0.8, easeInOut('quad'));
         yield* wait(1);
 });

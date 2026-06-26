@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, easeInOutQuad } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOut } from "@motion-script/core";
 import { layoutCard } from "./layout-card";
 
 /**
@@ -31,6 +31,6 @@ export default createScene(function* (stage) {
         );
 
         // A childless rect is just a shape: tween its size, rounding, and fill.
-        yield* box().to({ width: 560, height: 560, cornerRadius: 280, fill: '#E8617C' }, 2, easeInOutQuad);
-        yield* box().to({ width: 300, height: 300, cornerRadius: 24, fill: '#6990DD' }, 2, easeInOutQuad);
+        yield* box().to({ width: 560, height: 560, cornerRadius: 280, fill: '#E8617C' }, 2, easeInOut('quad'));
+        yield* box().to({ width: 300, height: 300, cornerRadius: 24, fill: '#6990DD' }, 2, easeInOut('quad'));
 });

@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, Rect, wait, Stage, parallel, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait, Stage, parallel, easeOut } from "@motion-script/core";
 
 export default createScene(function* (stage) {
         stage.set({ fill: "bg", padding: 80 });
@@ -26,18 +26,18 @@ export default createScene(function* (stage) {
             </>,
         );
         yield* parallel(
-            colA().to({ flex: 2 }, 0.5, easeOutQuad),
+            colA().to({ flex: 2 }, 0.5, easeOut('quad')),
 
-            colB().to({ flex: 1 }, 0.5, easeOutQuad),
+            colB().to({ flex: 1 }, 0.5, easeOut('quad')),
 
         );
-        yield* rowA().to({ flex: 1 }, 0.5, easeOutQuad);
+        yield* rowA().to({ flex: 1 }, 0.5, easeOut('quad'));
         yield* parallel(
-            colA().to({ flex: 1 }, 0.5, easeOutQuad),
+            colA().to({ flex: 1 }, 0.5, easeOut('quad')),
 
-            colB().to({ flex: 2 }, 0.5, easeOutQuad),
+            colB().to({ flex: 2 }, 0.5, easeOut('quad')),
 
         );
 
-        yield* rowA().to({ flex: 2 }, 0.5, easeOutQuad);
+        yield* rowA().to({ flex: 2 }, 0.5, easeOut('quad'));
 });

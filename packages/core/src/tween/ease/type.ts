@@ -1,2 +1,2 @@
-export type EaseFunction = (t: number) => number;
+export type EasingFunction = (t: number) => number;
 

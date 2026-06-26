@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, NumberNode, Rect, easeOutQuart, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, NumberNode, Rect, easeOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -67,9 +67,9 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        currencyRef().countTo(1299.99, 1.8, easeOutQuart),
-        percentRef().countTo(0.876, 1.8, easeOutQuart),
-        numberRef().countTo(1_250_000, 1.8, easeOutQuart),
+        currencyRef().countTo(1299.99, 1.8, easeOut('quart')),
+        percentRef().countTo(0.876, 1.8, easeOut('quart')),
+        numberRef().countTo(1_250_000, 1.8, easeOut('quart')),
     );
 
     yield* wait(1);

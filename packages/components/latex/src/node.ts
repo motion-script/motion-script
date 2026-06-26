@@ -1,4 +1,4 @@
-import { RenderContext, Graphics, EaseFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, PaddingResolved, property, resolvePadding, lerpEdgeInset, FillResolved, AnimationBuilder } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, PaddingResolved, property, resolvePadding, lerpEdgeInset, FillResolved, AnimationBuilder } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
 import { AnimatedToken, tweenLatex } from "./tween";
@@ -83,11 +83,11 @@ export class Latex extends ShapeNode<LatexProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    override to(to: Partial<LatexProps>, duration: number, easing?: EaseFunction): AnimationBuilder<LatexProps> {
+    override to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): AnimationBuilder<LatexProps> {
         return new AnimationBuilder<LatexProps>(this, { to, duration, easing });
     }
 
-    override *_toGen(to: Partial<LatexProps>, duration: number, easing?: EaseFunction): FrameGenerator {
+    override *_toGen(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): FrameGenerator {
         const fromTokens: LatexToken[] = this._tokens.map(t => ({ token: t.token, path: t.path }));
         const fromFontSize = this.fontSize;
         const toFontSize = to.fontSize !== undefined ? to.fontSize : this.fontSize;

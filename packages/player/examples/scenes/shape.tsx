@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Ellipse, Rect, parallel, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Ellipse, Rect, parallel, easeOut } from "@motion-script/core";
 
 export default createScene(function* (stage) {
   stage.set({ fill: "#0D0F15", padding: 80 });
@@ -25,13 +25,13 @@ export default createScene(function* (stage) {
     </>,
   );
   yield* parallel(
-    colA().to({ flex: 2 }, 0.5, easeOutQuad),
-    colB().to({ flex: 1 }, 0.5, easeOutQuad),
+    colA().to({ flex: 2 }, 0.5, easeOut('quad')),
+    colB().to({ flex: 1 }, 0.5, easeOut('quad')),
   );
-  yield* rowA().to({ flex: 1 }, 0.5, easeOutQuad);
+  yield* rowA().to({ flex: 1 }, 0.5, easeOut('quad'));
   yield* parallel(
-    colA().to({ flex: 1 }, 0.5, easeOutQuad),
-    colB().to({ flex: 2 }, 0.5, easeOutQuad),
+    colA().to({ flex: 1 }, 0.5, easeOut('quad')),
+    colB().to({ flex: 2 }, 0.5, easeOut('quad')),
   );
-  yield* rowA().to({ flex: 2 }, 0.5, easeOutQuad);
+  yield* rowA().to({ flex: 2 }, 0.5, easeOut('quad'));
 });

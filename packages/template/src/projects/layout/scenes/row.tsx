@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOut, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -27,6 +27,6 @@ export default createScene(function* (stage) {
         );
 
         // Each tile swells in turn; the row reflows its siblings around it.
-        yield* parallel(...refs.map((ref) => ref().to({ width: 360 }, 1.5, easeInOutQuad)));
-        yield* parallel(...refs.map((ref) => ref().to({ width: 240 }, 1.5, easeInOutQuad)));
+        yield* parallel(...refs.map((ref) => ref().to({ width: 360 }, 1.5, easeInOut('quad'))));
+        yield* parallel(...refs.map((ref) => ref().to({ width: 240 }, 1.5, easeInOut('quad'))));
 });

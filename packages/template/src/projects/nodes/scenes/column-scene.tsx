@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Column, Rect, Text, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Column, Rect, Text, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -43,14 +43,14 @@ export default createScene(function* (stage) {
         })
     );
 
-    yield* colRef().to({ gap: 48 }, 1.0, easeInOutQuad);
+    yield* colRef().to({ gap: 48 }, 1.0, easeInOut('quad'));
     yield* parallel(
-        colRef().to({ align: { x: -1, y: 0 } }, 0.8, easeInOutQuad),
-        tileRefs[1]().to({ width: 360 }, 0.8, easeInOutQuad),
+        colRef().to({ align: { x: -1, y: 0 } }, 0.8, easeInOut('quad')),
+        tileRefs[1]().to({ width: 360 }, 0.8, easeInOut('quad')),
     );
     yield* parallel(
-        colRef().to({ align: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOutQuad),
-        tileRefs[1]().to({ width: 240 }, 0.8, easeInOutQuad),
+        colRef().to({ align: { x: 0, y: 0 }, gap: 24 }, 1.0, easeInOut('quad')),
+        tileRefs[1]().to({ width: 240 }, 0.8, easeInOut('quad')),
     );
     yield* wait(0.5);
 });

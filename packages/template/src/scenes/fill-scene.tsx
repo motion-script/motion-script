@@ -1,4 +1,4 @@
-import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOutQuad, easeOutBack, easeOutQuad, Fills } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOut, easeOut, Fills } from "@motion-script/core";
 
 
 

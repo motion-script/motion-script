@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, easeInOut, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -50,11 +50,11 @@ export default createScene(function* (stage) {
 
         // Slide the two body panels' flex ratio so the divider sweeps across.
         yield* parallel(
-            left().to({ flex: 3 }, 2, easeInOutQuad),
-            right().to({ flex: 1 }, 2, easeInOutQuad),
+            left().to({ flex: 3 }, 2, easeInOut('quad')),
+            right().to({ flex: 1 }, 2, easeInOut('quad')),
         );
         yield* parallel(
-            left().to({ flex: 1 }, 2, easeInOutQuad),
-            right().to({ flex: 3 }, 2, easeInOutQuad),
+            left().to({ flex: 1 }, 2, easeInOut('quad')),
+            right().to({ flex: 3 }, 2, easeInOut('quad')),
         );
 });

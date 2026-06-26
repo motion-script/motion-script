@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Ellipse, Rect, easeInOutQuad, parallel, wait, Fills } from "@motion-script/core";
+import { createScene, createRef, Ellipse, Rect, easeInOut, parallel, wait, Fills } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -46,13 +46,13 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        ringRef().to({ sweep: 360 }, 2.0, easeInOutQuad),
-        circleRef().to({ sweep: 220 }, 1.5, easeInOutQuad),
+        ringRef().to({ sweep: 360 }, 2.0, easeInOut('quad')),
+        circleRef().to({ sweep: 220 }, 1.5, easeInOut('quad')),
     );
     yield* wait(0.5);
     yield* parallel(
-        ringRef().to({ sweep: 0 }, 1.2, easeInOutQuad),
-        circleRef().to({ sweep: 360 }, 1.0, easeInOutQuad),
+        ringRef().to({ sweep: 0 }, 1.2, easeInOut('quad')),
+        circleRef().to({ sweep: 360 }, 1.0, easeInOut('quad')),
     );
 
     yield* wait(0.3);

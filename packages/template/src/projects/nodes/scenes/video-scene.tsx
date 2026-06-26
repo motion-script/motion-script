@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Video, Rect, Text, easeInOutQuad, wait } from "@motion-script/core";
+import { createScene, createRef, Video, Rect, Text, easeInOut, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link Video} node.
@@ -40,8 +40,8 @@ export default createScene(function* (stage) {
         );
 
         yield* wait(1.0);
-        yield* videoRef().to({ cornerRadius: 48 }, 1.2, easeInOutQuad);
+        yield* videoRef().to({ cornerRadius: 48 }, 1.2, easeInOut('quad'));
         yield* wait(2.0);
-        yield* videoRef().to({ cornerRadius: 0 }, 0.8, easeInOutQuad);
+        yield* videoRef().to({ cornerRadius: 0 }, 0.8, easeInOut('quad'));
         yield* wait(0.5);
 });

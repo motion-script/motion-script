@@ -1,5 +1,5 @@
 
-import { createScene, createRef, Text, Rect, wait, parallel, easeOutQuart, easeOutQuad, tween, FX } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeOut, tween, FX } from "@motion-script/core";
 
 const CREAM = '#F5ECD7';
 const COPPER = '#C07840';
@@ -27,7 +27,7 @@ export function* incrementText(
     end: number,
     duration: number,
     padLength: number = 3,
-    timingFunc: (t: number) => number = easeOutQuad
+    timingFunc: (t: number) => number = easeOut('quad')
 ) {
     yield* tween(duration, (value) => {
         const progress = timingFunc(value);
@@ -88,12 +88,12 @@ export default createScene(function* (stage) {
         yield* wait(0.3);
 
         // Smoothly animate the text using the extracted tween function
-        yield* incrementText(mainNumber(), 0, 244, 2.5, 3, easeOutQuad);
+        yield* incrementText(mainNumber(), 0, 244, 2.5, 3, easeOut('quad'));
 
         yield* wait(0.1);
 
         yield* parallel(
-            pagesLabel().to({ opacity: 1, y: 0 }, 0.6, easeOutQuad),
+            pagesLabel().to({ opacity: 1, y: 0 }, 0.6, easeOut('quad')),
             ...ghostRefs.map((ref, i) =>
                 ref().to({ opacity: GHOSTS[i].opacity }, 0.2 + i * 0.01)
             ),

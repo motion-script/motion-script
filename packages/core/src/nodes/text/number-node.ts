@@ -1,4 +1,4 @@
-import { EaseFunction } from "@/tween/ease/type";
+import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { AnimationBuilder } from "@/tween/animation-builder";
 import { property } from "@/attributes/properties/decorator";
@@ -102,14 +102,14 @@ export class NumberNode extends Text {
     }
 
     /** Animate {@link value} to `to`, counting through the formatted display. */
-    *countTo(to: number, duration: number, easing?: EaseFunction): FrameGenerator {
+    *countTo(to: number, duration: number, easing?: EasingFunction): FrameGenerator {
         yield* this.to({ value: to } as Partial<TextProps>, duration, easing);
     }
 
     // Widen the inherited typings so authors get `value` (and the format props)
     // in `to()`/`set()` autocomplete. The runtime is key-driven and already
     // writes any registered signal, so only the static types need broadening.
-    override to(to: Partial<NumberProps>, duration: number, easing?: EaseFunction): AnimationBuilder<NumberProps> {
+    override to(to: Partial<NumberProps>, duration: number, easing?: EasingFunction): AnimationBuilder<NumberProps> {
         return super.to(to as Partial<TextProps>, duration, easing) as unknown as AnimationBuilder<NumberProps>;
     }
 

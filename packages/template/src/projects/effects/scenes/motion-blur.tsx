@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOut, parallel } from "@motion-script/core";
 
 /**
  * Motion blur is velocity-driven, so a static card can't show it — this scene
@@ -28,12 +28,12 @@ export default createScene(function* (stage) {
         // node tracks the same path without blur.
         for (let i = 0; i < 2; i++) {
             yield* parallel(
-                blurred().moveX(560, 0.5, easeInOutQuad),
-                sharp().moveX(560, 0.5, easeInOutQuad),
+                blurred().moveX(560, 0.5, easeInOut('quad')),
+                sharp().moveX(560, 0.5, easeInOut('quad')),
             );
             yield* parallel(
-                blurred().moveX(-560, 0.5, easeInOutQuad),
-                sharp().moveX(-560, 0.5, easeInOutQuad),
+                blurred().moveX(-560, 0.5, easeInOut('quad')),
+                sharp().moveX(-560, 0.5, easeInOut('quad')),
             );
         }
 });

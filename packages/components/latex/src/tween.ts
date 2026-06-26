@@ -1,5 +1,5 @@
 
-import { EaseFunction, FrameGenerator, lerpNumber, tween } from "@motion-script/core";
+import { EasingFunction, FrameGenerator, lerpNumber, tween } from "@motion-script/core";
 import { LatexToken } from "./geometry";
 
 export interface AnimatedToken {
@@ -77,7 +77,7 @@ export function* tweenLatex(
     to: LatexToken[],
     duration: number,
     onFrame: (tokens: AnimatedToken[]) => void,
-    easing?: EaseFunction,
+    easing?: EasingFunction,
 ): FrameGenerator {
     const { matched, deleted, added } = matchTokens(from, to);
 

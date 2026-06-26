@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOut, parallel, wait } from "@motion-script/core";
 
 /**
  * Showcases the {@link Camera} node.
@@ -44,9 +44,9 @@ export default createScene(function* (stage) {
             </Rect>
         );
 
-        yield* camRef().to({ zoom: 1, origin: { x: 30000, y: 1050 } }, 5.0, easeInOutQuad);
-        yield* camRef().to({ heading: 20 }, 1.0, easeInOutQuad);
-        yield* camRef().to({ origin: { x: -400, y: -200 } }, 1.5, easeInOutQuad);
-        yield* camRef().to({ zoom: 1, origin: { x: 0, y: 0 }, heading: 0 }, 1.8, easeInOutQuad);
+        yield* camRef().to({ zoom: 1, origin: { x: 30000, y: 1050 } }, 5.0, easeInOut('quad'));
+        yield* camRef().to({ heading: 20 }, 1.0, easeInOut('quad'));
+        yield* camRef().to({ origin: { x: -400, y: -200 } }, 1.5, easeInOut('quad'));
+        yield* camRef().to({ zoom: 1, origin: { x: 0, y: 0 }, heading: 0 }, 1.8, easeInOut('quad'));
         yield* wait(0.5);
 });

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, easeInOutQuad, parallel } from "@motion-script/core";
+import { createScene, createRef, Rect, easeInOut, parallel } from "@motion-script/core";
 import { layoutCard, tile } from "./layout-card";
 
 /**
@@ -35,6 +35,6 @@ export default createScene(function* (stage) {
         );
 
         // Grow then shrink the middle tile; the hugging wrapper resizes with it.
-        yield* parallel(middle().to({ width: 380, height: 320 }, 2, easeInOutQuad));
-        yield* parallel(middle().to({ width: 200, height: 200 }, 2, easeInOutQuad));
+        yield* parallel(middle().to({ width: 380, height: 320 }, 2, easeInOut('quad')));
+        yield* parallel(middle().to({ width: 200, height: 200 }, 2, easeInOut('quad')));
 });

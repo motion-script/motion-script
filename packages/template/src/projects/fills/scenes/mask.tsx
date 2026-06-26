@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, Ellipse, Image, MaskGroup, easeInOutQuad, parallel, sequence } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, Ellipse, Image, MaskGroup, easeInOut, parallel, sequence } from "@motion-script/core";
 
 /**
  * Shows a {@link MaskGroup} clipping content with an animated mask shape.
@@ -36,19 +36,19 @@ export default createScene(function* (stage) {
         // is always moving. The final leg returns to the start for a clean loop.
         yield* sequence(
             parallel(
-                maskRef().to({ x: -400 }, 1.6, easeInOutQuad),
-                maskRef().to({ width: size * 0.6, height: size * 0.6 }, 1.6, easeInOutQuad),
+                maskRef().to({ x: -400 }, 1.6, easeInOut('quad')),
+                maskRef().to({ width: size * 0.6, height: size * 0.6 }, 1.6, easeInOut('quad')),
             ),
             parallel(
-                maskRef().to({ x: 400 }, 2.4, easeInOutQuad),
+                maskRef().to({ x: 400 }, 2.4, easeInOut('quad')),
                 sequence(
-                    maskRef().to({ width: size * 1.3, height: size * 1.3 }, 1.2, easeInOutQuad),
-                    maskRef().to({ width: size * 0.6, height: size * 0.6 }, 1.2, easeInOutQuad),
+                    maskRef().to({ width: size * 1.3, height: size * 1.3 }, 1.2, easeInOut('quad')),
+                    maskRef().to({ width: size * 0.6, height: size * 0.6 }, 1.2, easeInOut('quad')),
                 ),
             ),
             parallel(
-                maskRef().to({ x: 0 }, 1.6, easeInOutQuad),
-                maskRef().to({ width: size, height: size }, 1.6, easeInOutQuad),
+                maskRef().to({ x: 0 }, 1.6, easeInOut('quad')),
+                maskRef().to({ width: size, height: size }, 1.6, easeInOut('quad')),
             ),
         );
 });

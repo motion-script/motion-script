@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect, Image, Vector2,
-    Fills, BlendMode, easeInOutQuad, parallel, sequence, wait,
+    Fills, BlendMode, easeInOut, parallel, sequence, wait,
     Ellipse,
 } from "@motion-script/core";
 /**
@@ -96,7 +96,7 @@ export const blendDemo = (opts: BlendDemoOpts): SceneGenerator => function* (sta
             );
 
         yield* sequence(
-            parallel(...refs.map(ref => ref().to({ opacity: 1 }, duration, easeInOutQuad))),
+            parallel(...refs.map(ref => ref().to({ opacity: 1 }, duration, easeInOut('quad')))),
             wait(hold),
         );
 };

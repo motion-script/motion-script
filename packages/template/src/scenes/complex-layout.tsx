@@ -1,6 +1,6 @@
 
 
-import { createScene, createRef, Text, easeOutQuad, NormalizedColor, Rect, Grid, Stage, RichText, FX } from "@motion-script/core";
+import { createScene, createRef, Text, easeOut, NormalizedColor, Rect, Grid, Stage, RichText, FX } from "@motion-script/core";
 
 
 

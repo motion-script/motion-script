@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, wait, parallel, easeOutQuad, easeInOutQuad, PathBuilder } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeOut, easeInOut, PathBuilder } from "@motion-script/core";
 
 const BG = '#0D0F15';
 const CREAM = '#F5ECD7';
@@ -95,14 +95,14 @@ export default createScene(function* (stage) {
         // The `path` itself isn't animatable (v1), but everything else is: spin
         // the ring, breathe the wave's tracking, and lift the baseline copy.
         yield* parallel(
-            ring().to({ rotation: 360 }, 6, easeInOutQuad),
-            flex().to({ letterSpacing: 6 }, 1.4, easeOutQuad),
-            base().to({ y: -20, opacity: 0.85 }, 1.4, easeOutQuad),
+            ring().to({ rotation: 360 }, 6, easeInOut('quad')),
+            flex().to({ letterSpacing: 6 }, 1.4, easeOut('quad')),
+            base().to({ y: -20, opacity: 0.85 }, 1.4, easeOut('quad')),
         );
 
         yield* parallel(
-            flex().to({ letterSpacing: 0 }, 1.4, easeOutQuad),
-            base().to({ y: 0, opacity: 1 }, 1.4, easeOutQuad),
+            flex().to({ letterSpacing: 0 }, 1.4, easeOut('quad')),
+            base().to({ y: 0, opacity: 1 }, 1.4, easeOut('quad')),
         );
 
         yield* wait(1);

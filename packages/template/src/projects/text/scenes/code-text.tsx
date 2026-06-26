@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, wait, easeOutQuad } from "@motion-script/core";
+import { createScene, createRef, Rect, Text, wait, easeOut } from "@motion-script/core";
 import { Code } from "@motion-script/code";
 
 /**
@@ -36,7 +36,7 @@ export default createScene(function* (stage) {
     yield* wait(0.5);
 
     // Splice a guard clause in at the top of the function body.
-    yield* code().insert([2, 3], 'if (a < 0) return b;\n  ', 1, easeOutQuad);
+    yield* code().insert([2, 3], 'if (a < 0) return b;\n  ', 1, easeOut('quad'));
     yield* wait(0.5);
 
     yield* code().prepend('// add two numbers safely\n', 1);

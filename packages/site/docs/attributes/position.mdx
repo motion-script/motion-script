@@ -78,7 +78,7 @@ Rotation happens around the `pivot` point (center by default).
 ### `.to()` — tween position
 
 ```tsx
-import { createScene, Rect, createRef, easeOutBack } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();
@@ -86,7 +86,7 @@ export default createScene(function* (stage) {
   stage.add(<Rect ref={box} width={120} height={120} fill="royalblue" />);
 
   // Move to x=300
-  yield* box().to({ x: 300 }, 0.8, easeOutBack);
+  yield* box().to({ x: 300 }, 0.8, easeOut('back'));
 
   // Move both axes at once
   yield* box().to({ x: -200, y: 150 }, 0.6);
@@ -96,7 +96,7 @@ export default createScene(function* (stage) {
 ### `.moveTo()` — convenience helper
 
 ```tsx
-yield* box().moveTo(300, 100, 0.6, easeOutBack);
+yield* box().moveTo(300, 100, 0.6, easeOut('back'));
 ```
 
 ### `.moveX()` / `.moveY()` — single-axis
@@ -109,7 +109,7 @@ yield* box().moveY(-200, 0.5);
 ### `.rotateTo()` — animate rotation
 
 ```tsx
-yield* box().rotateTo(180, 0.8, easeInOut);
+yield* box().rotateTo(180, 0.8, easeInOut('quad'));
 ```
 
 ### `.scaleTo()` — animate scale
@@ -126,7 +126,7 @@ yield* box().scaleTo(1, 0.4);
 Animate an anchor prop to move a node so a specific corner or edge lands at a target point:
 
 ```tsx
-yield* box().to({ topLeft: { x: -400, y: 300 } }, 0.8, easeOutBack);
+yield* box().to({ topLeft: { x: -400, y: 300 } }, 0.8, easeOut('back'));
 ```
 
 ---

@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, LineGrid, Rect, Fills, easeInOutQuad, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, LineGrid, Rect, Fills, easeInOut, parallel, wait } from "@motion-script/core";
 import { nodeCard } from "./node-card";
 
 /**
@@ -49,12 +49,12 @@ export default createScene(function* (stage) {
         );
 
         yield* parallel(
-            panRef().to({ origin: { x: 120, y: 120 } }, 2.0, easeInOutQuad),
-            fineRef().to({ subdivisions: 5 }, 2.0, easeInOutQuad),
+            panRef().to({ origin: { x: 120, y: 120 } }, 2.0, easeInOut('quad')),
+            fineRef().to({ subdivisions: 5 }, 2.0, easeInOut('quad')),
         );
         yield* parallel(
-            panRef().to({ origin: { x: 0, y: 0 } }, 1.5, easeInOutQuad),
-            fineRef().to({ subdivisions: 1 }, 1.5, easeInOutQuad),
+            panRef().to({ origin: { x: 0, y: 0 } }, 1.5, easeInOut('quad')),
+            fineRef().to({ subdivisions: 1 }, 1.5, easeInOut('quad')),
         );
         yield* wait(0.5);
 });
