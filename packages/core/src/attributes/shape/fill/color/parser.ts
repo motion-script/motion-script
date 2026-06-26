@@ -8,6 +8,7 @@
  *  - `hsl()` / `hsla()`
  *  - `lab()`, `lch()`
  *  - `oklab()`, `oklch()`
+ *  - Tailwind-style opacity suffix: `"white/10"`, `"primary/90"` (percent 0–100)
  *
  * All output values are in the linear 0–1 range suitable for WebGL uniforms.
  * Named-color lookup is O(1); all other formats are parsed with lightweight
@@ -214,18 +215,40 @@ function oklabToNormalized(L: number, a: number, b: number, alpha: number): Norm
     );
 }
 
+// ── Opacity suffix ─────────────────────────────────────────────────────────────
+
+/**
+ * Splits a Tailwind-style opacity suffix (`"white/10"`, `"primary/90"`) off the
+ * end of a color string. The suffix is a slash followed by a number (optionally
+ * with a `%`) interpreted as a percentage 0–100.
+ *
+ * Only a trailing slash that sits *outside* any parentheses is treated as an
+ * opacity modifier, so the internal slash-alpha syntax of `rgb()` / `hsl()`
+ * (e.g. `rgb(0 0 255 / 0.25)`) is left untouched.
+ *
+ * @returns the bare color string and the opacity fraction (1 when absent).
+ */
+function splitOpacitySuffix(str: string): { color: string; opacity: number } {
+    if (str.includes('(')) return { color: str, opacity: 1 };
+    const m = str.match(/^(.*[^/])\/\s*([\d.]+)%?$/);
+    if (!m) return { color: str, opacity: 1 };
+    const pct = parseFloat(m[2]);
+    if (!Number.isFinite(pct)) return { color: str, opacity: 1 };
+    return { color: m[1].trim(), opacity: Math.max(0, Math.min(1, pct / 100)) };
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 /**
  * Parses a CSS color string into a normalized `[R, G, B, A]` array (0.0–1.0).
  *
  * Supported formats: named colors (CSS + theme), hex, rgb/rgba, hsl/hsla,
- * lab, lch, oklab, oklch. Falls back to opaque black and logs a warning for
- * unrecognised input.
+ * lab, lch, oklab, oklch, plus a Tailwind-style opacity suffix (`"white/10"`).
+ * Falls back to opaque black and logs a warning for unrecognised input.
  */
 export function parseColor(cssStr: string): NormalizedColor {
-    const str = cssStr.trim().toLowerCase();
-    return (
+    const { color: str, opacity } = splitOpacitySuffix(cssStr.trim().toLowerCase());
+    const parsed =
         parseNamedColor(str) ??
         parseHex(str) ??
         parseRgb(str) ??
@@ -234,6 +257,8 @@ export function parseColor(cssStr: string): NormalizedColor {
         parseLch(str) ??
         parseOklab(str) ??
         parseOklch(str) ??
-        (console.warn(`[Motion Engine] Unsupported color format: "${cssStr}". Defaulting to black.`), [0, 0, 0, 1])
-    );
+        (console.warn(`[Motion Engine] Unsupported color format: "${cssStr}". Defaulting to black.`), [0, 0, 0, 1] as NormalizedColor);
+    // Clone before applying opacity: named/theme lookups return cached tuples.
+    if (opacity !== 1) return [parsed[0], parsed[1], parsed[2], parsed[3] * opacity];
+    return parsed;
 }

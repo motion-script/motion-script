@@ -93,12 +93,55 @@ describe('parseColor – fallback', () => {
     });
 });
 
+describe('parseColor – opacity suffix', () => {
+    it('applies a percentage opacity to a named color', () => {
+        expectColor(parseColor('white/10'), [1, 1, 1, 0.1]);
+    });
+
+    it('applies opacity to a CSS named color', () => {
+        expectColor(parseColor('red/30'), [1, 0, 0, 0.3]);
+    });
+
+    it('applies opacity to a hex color', () => {
+        expectColor(parseColor('#00ff00/50'), [0, 1, 0, 0.5]);
+    });
+
+    it('composes opacity with an existing alpha channel', () => {
+        // #00ff0080 has alpha 0.5; /50 scales it to 0.25.
+        expectColor(parseColor('#00ff0080/50'), [0, 1, 0, 128 / 255 * 0.5]);
+    });
+
+    it('clamps opacity above 100% to 1', () => {
+        expectColor(parseColor('red/150'), [1, 0, 0, 1]);
+    });
+
+    it('tolerates a trailing percent sign', () => {
+        expectColor(parseColor('red/30%'), [1, 0, 0, 0.3]);
+    });
+
+    it('does not treat the internal slash-alpha of rgb() as an opacity suffix', () => {
+        expectColor(parseColor('rgb(0 0 255 / 0.25)'), [0, 0, 1, 0.25]);
+    });
+
+    it('combines a theme color with an opacity suffix', () => {
+        setTheme({ primary: '#0000ff' });
+        expectColor(parseColor('primary/90'), [0, 0, 1, 0.9]);
+        setTheme();
+    });
+});
+
 describe('setTheme', () => {
     afterEach(() => setTheme()); // clear theme entries between tests
 
     it('registers a named theme color resolvable by name', () => {
         setTheme({ brand: '#ff0000' });
         expectColor(parseColor('brand'), [1, 0, 0, 1]);
+    });
+
+    it('does not corrupt a cached theme color when opacity is applied', () => {
+        setTheme({ brand: '#ff0000' });
+        parseColor('brand/20');
+        expectColor(parseColor('brand'), [1, 0, 0, 1]); // still fully opaque
     });
 
     it('accepts a pre-normalized tuple', () => {
