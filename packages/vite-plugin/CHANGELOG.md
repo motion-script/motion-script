@@ -1,5 +1,21 @@
 # @motion-script/vite-plugin
 
+## 2.8.0
+
+### Minor Changes
+
+- 7d86215: Add prepareLayout and clipPath for media nodes
+- f9442b6: Add number node and clean up github release action bundle
+
+### Patch Changes
+
+- Updated dependencies [7d86215]
+- Updated dependencies [f9442b6]
+  - @motion-script/canvaskit@2.8.0
+  - @motion-script/core@2.8.0
+  - @motion-script/player@2.8.0
+  - @motion-script/web@2.8.0
+
 ## 2.7.0
 
 ### Minor Changes

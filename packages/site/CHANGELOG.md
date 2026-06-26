@@ -1,5 +1,12 @@
 # @motion-script/site
 
+## 0.6.0
+
+### Minor Changes
+
+- 7d86215: Add prepareLayout and clipPath for media nodes
+- f9442b6: Add number node and clean up github release action bundle
+
 ## 0.5.0
 
 ### Minor Changes
