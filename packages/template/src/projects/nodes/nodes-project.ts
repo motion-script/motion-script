@@ -2,6 +2,7 @@ import { createProject } from '@motion-script/core';
 
 import text from './scenes/text-scene?scene';
 import richText from './scenes/rich-text-scene?scene';
+import number from './scenes/number-scene?scene';
 import rect from './scenes/rect-scene?scene';
 import ellipse from './scenes/ellipse-scene?scene';
 import polygon from './scenes/polygon-scene?scene';
@@ -33,6 +34,7 @@ export default createProject({
     scenes: [
         text,
         richText,
+        number,
         rect,
         ellipse,
         polygon,

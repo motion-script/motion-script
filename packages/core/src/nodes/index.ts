@@ -20,6 +20,7 @@ export * from "./geometry/viewport-pattern-node";
 export * from "./geometry/grid-pattern-node";
 export * from "./text/richtext-node";
 export * from "./text/text-node";
+export * from "./text/number-node";
 export * from "./text/text-selection";
 
 export * from "./geometry/grid-node";
