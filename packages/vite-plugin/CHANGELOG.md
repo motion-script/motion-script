@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.9.2
+
+### Patch Changes
+
+- 5dbf7d4: fix default layout from row to stack as it was supposed to
+- Updated dependencies [5dbf7d4]
+  - @motion-script/core@2.9.2
+  - @motion-script/canvaskit@2.9.2
+  - @motion-script/player@2.9.2
+  - @motion-script/web@2.9.2
+
 ## 2.9.1
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @motion-script/create
 
+## 2.9.2
+
+### Patch Changes
+
+- 5dbf7d4: fix default layout from row to stack as it was supposed to
+
 ## 2.9.1
 
 ### Patch Changes
