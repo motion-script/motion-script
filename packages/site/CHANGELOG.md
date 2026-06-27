@@ -1,5 +1,11 @@
 # @motion-script/site
 
+## 0.7.1
+
+### Patch Changes
+
+- 9b0cee6: make all easing functions parameters optional
+
 ## 0.7.0
 
 ### Minor Changes

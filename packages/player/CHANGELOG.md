@@ -1,5 +1,13 @@
 # @motion-script/player
 
+## 2.9.1
+
+### Patch Changes
+
+- 9b0cee6: make all easing functions parameters optional
+- Updated dependencies [9b0cee6]
+  - @motion-script/canvaskit@2.9.1
+
 ## 2.9.0
 
 ### Minor Changes

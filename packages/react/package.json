@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/react",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "type": "module",
   "description": "React bindings for Motion Script.",
   "repository": {

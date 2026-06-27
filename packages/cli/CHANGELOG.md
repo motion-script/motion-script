@@ -1,5 +1,11 @@
 # @motion-script/cli
 
+## 2.9.1
+
+### Patch Changes
+
+- 9b0cee6: make all easing functions parameters optional
+
 ## 2.9.0
 
 ### Minor Changes
