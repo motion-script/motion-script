@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.9.1
+
+### Patch Changes
+
+- 9b0cee6: make all easing functions parameters optional
+- Updated dependencies [9b0cee6]
+  - @motion-script/core@2.9.1
+  - @motion-script/canvaskit@2.9.1
+  - @motion-script/player@2.9.1
+  - @motion-script/web@2.9.1
+
 ## 2.9.0
 
 ### Minor Changes
