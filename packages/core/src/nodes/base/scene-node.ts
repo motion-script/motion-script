@@ -4,10 +4,12 @@ import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { RootNode, RootProps } from "./root-node";
 import { Fill } from "@/attributes/shape/fill/chain";
-import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { Shadow, ShadowResolved } from "@/attributes/shape/shadow/resolver";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Vector2 } from "@/attributes/layout/vector2";
+import { LayoutMode } from "@/layout/group-engine";
+import { GapSize } from "@/layout/flex";
+import { AlignInput } from "@/attributes/layout/align";
+import { Padding } from "@/attributes/layout/padding";
 import { EasingFunction } from "@/tween/ease/type";
 import { TweenOptions } from "@/tween/lerp";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
@@ -167,24 +169,54 @@ export class Scene {
 
     // ── Paint commands (forward to the root) ──
 
-    /** Animate the root `fill`. */
+    /** Animate the root `fill` (the scene-wide background). */
     fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         return this.root.fillTo(to, duration, options);
     }
 
-    /** Animate the root `stroke`. */
-    strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
-        return this.root.strokeTo(to, duration, options);
+    /** Animate the root `overlay` (painted over fill + children, viewport-wide). */
+    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        return this.root.overlayTo(to, duration, options);
     }
 
-    /** Animate the root `shadow`. */
-    shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
-        return this.root.shadowTo(to, duration, options);
-    }
-
-    /** The root's fill. */
+    /** The root's background fill. */
     get fill(): Fill { return this.root.fill; }
     set fill(value: Fill) { this.root.fill = value; }
+
+    /** The root's overlay. */
+    get overlay(): Fill { return this.root.overlay; }
+    set overlay(value: Fill) { this.root.overlay = value; }
+
+    // ── Layout container (forward to the root) ──
+
+    /** The root's layout mode for children: `row` / `column` / `stack`. */
+    get group(): LayoutMode { return this.root.group; }
+    set group(value: LayoutMode) { this.root.group = value; }
+
+    /** Spacing between the root's children along the layout's main axis. Set via `stage.set({ gap })`. */
+    get gap(): GapSize { return this.root.gap; }
+
+    /** Alignment of the root's children within the viewport. */
+    get align(): AlignInput { return this.root.align; }
+    set align(value: AlignInput) { this.root.align = value; }
+
+    /** Inner spacing between the viewport edges and the root's children. */
+    get padding(): Padding { return this.root.padding; }
+    set padding(value: Padding) { this.root.padding = value; }
+
+    // ── Camera (forward to the root) ──
+
+    /** Camera magnification factor. > 1 zooms in; < 1 zooms out. */
+    get zoom(): number { return this.root.zoom; }
+    set zoom(value: number) { this.root.zoom = value; }
+
+    /** World-space point that maps to the centre of the viewport. */
+    get origin(): Vector2 { return this.root.origin; }
+    set origin(value: Vector2) { this.root.origin = value; }
+
+    /** Camera view rotation in degrees (clockwise). */
+    get heading(): number { return this.root.heading; }
+    set heading(value: number) { this.root.heading = value; }
 
     /** Internal timing state of the root (scene-relative clock). */
     get clock(): Readonly<NodeClock> {

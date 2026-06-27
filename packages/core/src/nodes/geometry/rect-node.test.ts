@@ -21,10 +21,12 @@ describe('Rect – dispose then reuse (reinitProps)', () => {
         expect(Array.isArray(stroke)).toBe(true);
         // Back to the @property default, not the disposed undefined.
         expect(stroke).toEqual([]);
-        // Rect's constructor-specific props are restored too.
-        expect((rect as any).group).toBe('row');
+        // Rect's constructor-specific props are restored to the default — `stack`
+        // (overlapping children), the same default the constructor uses. (It must
+        // not silently flip to `row` on reinit, which it did before.)
+        expect((rect as any).group).toBe('stack');
         // The group tween closure works again (no throw, blends through).
-        expect(() => rect.set({ group: 'stack' })).not.toThrow();
+        expect(() => rect.set({ group: 'row' })).not.toThrow();
     });
 
     it('reinitProps is a no-op when signals are still live', () => {
@@ -40,7 +42,7 @@ describe('Rect – dispose then reuse (reinitProps)', () => {
         const rect = new Rect({ stroke: { weight: 6, align: -1 } });
         rect.dispose();
         (rect as any).reinitProps();
-        // effectivePadding is private; reach it via measure which calls it.
+        // effectivePadding reads the reinitialised stroke signal; it must not throw.
         expect(() => (rect as any).effectivePadding()).not.toThrow();
     });
 });

@@ -1,12 +1,50 @@
 import { RenderContext } from "@/render/render-context";
-import { lerpNumber } from "@/tween/lerp";
+import { Graphics } from "@/render/graphics";
+import { Clip } from "@/render/clip";
+import { TweenOptions } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
+import { wait } from "@/tween/wait";
+import { tween } from "@/tween/tween";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
-import { Rect, RectProps } from "../geometry/rect-node";
-import { NodeConfig } from "./node";
+import { SizeConstraints } from "@/attributes/layout/constraints";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { Size2D } from "@/attributes/layout/size";
+import { PaddingResolved } from "@/attributes/layout/padding";
+import { MeasureScope } from "@/render/measure-scope";
+import { AssetTracker } from "@/assets/tracker";
+import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { GapSize } from "@/layout/flex";
+import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
+import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
+import { FillResolved } from "@/attributes/shape/fill/union";
+import { Fill } from "@/attributes/shape/fill/chain";
+import { Node, NodeConfig, NodeProps } from "./node";
+import { property } from "@/attributes/properties/decorator";
 
-export interface RootProps extends RectProps {
+export interface RootProps extends NodeProps {
+    /**
+     * Background fill layer(s). Each item can be a CSS color string, a fill
+     * prop object, an already-resolved fill, or a {@link FillChain} from the
+     * `Fills` builder. Painted behind the scene's children.
+     */
+    fill: Fill;
+    /**
+     * Overlay layer(s) — same loose values as {@link fill}, but painted *over*
+     * the fill **and** the children (clipped to the viewport). Use for textures
+     * laid across the whole scene, e.g. a VHS-grain image or video.
+     */
+    overlay: Fill;
+    /** Layout mode for children: flex `row` / `column`, or overlapping `stack`. */
+    group: LayoutMode;
+    /** Spacing between children along the layout's main axis. */
+    gap: GapSize;
+    /**
+     * Alignment of children within the content box: a named position
+     * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
+     * (x: -1 left … +1 right, y: -1 bottom … +1 top).
+     */
+    align: AlignInput;
     /** Camera magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
     /** World-space point that maps to the centre of the viewport. */
@@ -18,48 +56,104 @@ export interface RootProps extends RectProps {
 /**
  * The single root container every {@link Scene} builds into.
  *
- * A `RootNode` is a {@link Rect} — so it lays its children out (flex `row`/
- * `column` or `stack`, with `gap`, `align`, `padding`) and paints itself
- * (`fill`, `stroke`, `shadow`, corners) — *and* a camera: it views those
- * laid-out children through a viewport transform (`zoom`, `origin`, `heading`).
+ * A `RootNode` is a plain {@link Node} that doubles as the scene's layout frame
+ * and camera. It lays its children out (flex `row`/`column` or `stack`, with
+ * `gap`, `align`, `padding`) and paints a scene-wide background (`fill`) and
+ * `overlay` — *and* views those laid-out children through a viewport transform
+ * (`zoom`, `origin`, `heading`).
  *
- * Folding both roles into one node makes it the natural place to hang
- * scene-wide concerns: fills/padding/group/gap for layouting, plus camera
- * control, without the author wiring up a separate {@link Camera}. Because the
- * whole scene shares one root, rendering, layout, and asset preparation each
- * walk a single tree.
+ * Unlike a {@link Rect} it is **not a shape**: it has no stroke, shadow, corner,
+ * or `start`/`end` props. It carries only the scene-wide concerns — background
+ * paint, child layout, and camera — so `stage.fill`, `stage.group`, etc. read
+ * the root directly without exposing per-shape geometry the scene root never has.
  *
- * It inherits the paint commands `fillTo`/`strokeTo`/`shadowTo` from
- * {@link Rect}/`ShapeNode`, and adds the camera commands `zoomTo`,
- * `originTo`, and `headingTo`.
+ * The flex/stack child layout (including the cross-mode `group` blend) is the
+ * same {@link GroupLayout} engine {@link Rect} uses; this node implements
+ * {@link GroupHost} so the engine can read it.
  */
-export class RootNode extends Rect<RootProps> {
+export class RootNode extends Node<RootProps> implements GroupHost {
 
+    // ---- Background paint -------------------------------------------------
+    // Author-facing paint props. Like Rect, the declared type is the loose
+    // `Fill` so assignment (`this.fill = 'red'`) and reads share one type; the
+    // @property accessor stores the *resolved* value via the mapper.
+    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    declare fill: Fill;
+    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    declare overlay: Fill;
+
+    // ---- Layout container -------------------------------------------------
+    @property({ default: 0 }) declare readonly gap: GapSize;
+    // Declared loose as `AlignInput` (covers `this.align = 'center'`); the
+    // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
+    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
+    declare align: AlignInput;
+    // `group` has a closure-based tween (the engine captures the in-flight
+    // blend), so it's applied via applyProp rather than a static @property.
+    declare group: LayoutMode;
+
+    // ---- Camera -----------------------------------------------------------
     /** Camera magnification factor (default: 1). */
-    declare zoom: number;
+    @property({ default: 1 }) declare zoom: number;
     /** World-space focus point (default: {x:0, y:0}). */
-    declare origin: Vector2;
+    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare origin: Vector2;
     /** Camera view rotation in degrees (default: 0). */
-    declare heading: number;
+    @property({ default: 0 }) declare heading: number;
+
+    // Flex/stack child layout (including the `group` blend) lives in the shared
+    // engine so Rect and RootNode don't each carry a copy.
+    private readonly _groupLayout = new GroupLayout(this);
+
+    // Does the current fill / overlay need a per-frame update() (e.g. video)?
+    private _hasDynamicFill = false;
+    private _hasDynamicOverlay = false;
 
     constructor(props: NodeConfig<RootNode, RootProps>) {
-        // `ref` is invariant on the node type, so the NodeConfig is cast for the
-        // super call only — a RootNode is a Rect<RootProps> at runtime.
-        super(props as NodeConfig<Rect<RootProps>, RootProps>);
-        this.applyProp("zoom", props.zoom ?? 1, { tween: lerpNumber });
-        this.applyProp("origin", props.origin ?? { x: 0, y: 0 }, { tween: lerpVector2 });
-        this.applyProp("heading", props.heading ?? 0, { tween: lerpNumber });
+        super(props);
+        this.applyGroupProp(props.group ?? "stack");
+        this.watchFillForDynamic();
     }
 
-    // Re-apply the camera prop defaults after the base class re-creates its
-    // signals (a disposed-then-reused root keeps the same camera binding), or
-    // when `force` resets live-but-tweened camera props back to their defaults.
+    // group's tween captures the engine's in-flight blend, so it can't be a
+    // static @property decorator. Shared by the constructor and reinitProps so a
+    // disposed-then-reused root keeps the same binding. Defaults to "stack".
+    private applyGroupProp(initial: LayoutMode | (() => LayoutMode)): void {
+        this.applyProp<LayoutMode>("group", initial, { tween: this._groupLayout.groupTween });
+    }
+
+    // Track whether the current fill / overlay needs per-frame updates. Re-run
+    // after the signals are re-created (reinitProps) so a reused scene root keeps
+    // a live subscription rather than a stale one pointing at a disposed cell.
+    private watchFillForDynamic(): void {
+        const watch = (key: "fill" | "overlay", set: (dynamic: boolean) => void) => {
+            const cell = this.__signals?.get(key);
+            if (!cell) return;
+            const refresh = () => set(hasDynamicFill(cell.get() as FillResolved[]));
+            refresh();
+            cell.subscribe(refresh);
+        };
+        watch("fill", d => { this._hasDynamicFill = d; });
+        watch("overlay", d => { this._hasDynamicOverlay = d; });
+    }
+
+    // Re-apply the constructor-specific prop defaults after the base class
+    // re-creates its signals (disposed-then-reused root), or — with `force` —
+    // resets live-but-tweened props back to their defaults before a rebuild.
     protected override reinitProps(force = false): void {
+        // Recreating disposed signals needs a fresh fill subscription; a forced
+        // reset of live signals already has one, so don't double-subscribe.
+        const recreating = !this.__signals;
         if (this.__signals && !force) return;
         super.reinitProps(force);
-        this.applyProp("zoom", 1, { tween: lerpNumber });
-        this.applyProp("origin", { x: 0, y: 0 }, { tween: lerpVector2 });
-        this.applyProp("heading", 0, { tween: lerpNumber });
+        this.applyGroupProp("stack");
+        if (recreating) this.watchFillForDynamic();
+    }
+
+    // ---- GroupHost --------------------------------------------------------
+
+    // The root has no stroke, so effective padding is just the resolved padding.
+    effectivePadding(): PaddingResolved {
+        return this.padding as PaddingResolved;
     }
 
     // ---- Camera motion commands -------------------------------------------
@@ -96,12 +190,105 @@ export class RootNode extends Rect<RootProps> {
         return yield* this.to({ heading } as Partial<RootProps>, duration, ease);
     }
 
+    // ---- Paint commands ---------------------------------------------------
+
+    *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.fill as FillResolved[];
+        const target = resolveFillArray(to);
+        const lerp = options?.lerp ?? lerpFillArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ fill: lerp(from, target, ease ? ease(t) : t) });
+        });
+    }
+
+    *overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.overlay as FillResolved[];
+        const target = resolveFillArray(to);
+        const lerp = options?.lerp ?? lerpFillArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ overlay: lerp(from, target, ease ? ease(t) : t) });
+        });
+    }
+
+    // ---- Asset / per-frame paint ------------------------------------------
+
+    public override tick(time: number): void {
+        if (!this._hasDynamicFill && !this._hasDynamicOverlay) return;
+        const patch: Partial<RootProps> = {};
+        if (this._hasDynamicFill) {
+            const fills = this.fill as FillResolved[];
+            patch.fill = fills.map(fill => updateFill(fill, time, this.assets)) as Fill;
+        }
+        if (this._hasDynamicOverlay) {
+            const overlays = this.overlay as FillResolved[];
+            patch.overlay = overlays.map(fill => updateFill(fill, time, this.assets)) as Fill;
+        }
+        this.set(patch);
+    }
+
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        [
+            ...(this.fill as FillResolved[]),
+            ...(this.overlay as FillResolved[]),
+        ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
+    }
+
+    // ---- Measure / layout -------------------------------------------------
+    // Delegated to the shared GroupLayout engine, which reads this node through
+    // the GroupHost interface.
+
+    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+        return this._groupLayout.measure(constraints, scope);
+    }
+
+    override layout(rect: BoxBounds, scope: MeasureScope): void {
+        this.setLayoutRect(rect);
+        this._groupLayout.layout(rect, scope);
+    }
+
+    // ---- Drawing ----------------------------------------------------------
+
+    // The viewport-sized background box behind the children.
+    private shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+        });
+    }
+
+    protected override renderSelf(draw: RenderContext): void {
+        const fill = this.fill as FillResolved[];
+        if (fill.length === 0) return;
+        draw.draw(this.shapeGraphics().fill(fill));
+    }
+
+    // Overlay over fill + children, clipped to the viewport silhouette.
+    protected override renderOverlay(ctx: RenderContext): void {
+        const overlay = this.overlay as FillResolved[];
+        if (overlay.length === 0) return;
+        ctx.draw(this.shapeGraphics().fill(overlay));
+    }
+
+    // The viewport outline — used for `clip` and as the area backdrop effects
+    // are confined to.
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+        });
+    }
+
     // ---- Rendering --------------------------------------------------------
 
-    // Children are laid out by Rect's flex/stack pass; here we view that
-    // laid-out world through the camera viewport transform, the same way the
-    // Camera node does. When the camera is at rest (zoom 1, no heading, origin
-    // at 0) this is the identity, so a plain layout root pays nothing extra.
+    // Children are laid out by the group engine; here we view that laid-out
+    // world through the camera viewport transform, the same way the Camera node
+    // does. When the camera is at rest (zoom 1, no heading, origin at 0) this is
+    // the identity, so a plain layout root pays nothing extra.
     override renderChildren(ctx: RenderContext): void {
         if (this.zoom === 1 && this.heading === 0 && this.origin.x === 0 && this.origin.y === 0) {
             super.renderChildren(ctx);
