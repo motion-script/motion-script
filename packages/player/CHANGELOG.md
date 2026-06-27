@@ -1,5 +1,16 @@
 # @motion-script/player
 
+## 2.9.0
+
+### Minor Changes
+
+- dd2b8a4: Add overlay to nodes, add opacity string syntax colors, add many new easing functions
+
+### Patch Changes
+
+- Updated dependencies [dd2b8a4]
+  - @motion-script/canvaskit@2.9.0
+
 ## 2.8.0
 
 ### Minor Changes

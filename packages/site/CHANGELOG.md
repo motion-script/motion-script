@@ -1,5 +1,11 @@
 # @motion-script/site
 
+## 0.7.0
+
+### Minor Changes
+
+- dd2b8a4: Add overlay to nodes, add opacity string syntax colors, add many new easing functions
+
 ## 0.6.0
 
 ### Minor Changes
