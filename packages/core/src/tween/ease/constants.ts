@@ -5,8 +5,12 @@ export type StandardEase =
     | 'sine' | 'quad' | 'cubic' | 'quart' | 'quint'
     | 'expo' | 'circ' | 'back' | 'elastic' | 'bounce';
 
+/** Default ease family used when no `type` is specified. */
+export const DEFAULT_EASE: StandardEase = 'quad';
+
 export interface EaseConfig {
-    type: StandardEase;
+    /** Standard ease family (default: 'quad'). */
+    type?: StandardEase;
     /** Used by 'back' (default: 1.70158). */
     overshoot?: number;
     /** Used by 'elastic' (default: 1). */
@@ -19,8 +23,13 @@ export type EaseParams = StandardEase | EaseConfig;
 
 const PI = Math.PI;
 
-const parseConfig = (params: EaseParams): EaseConfig =>
-    typeof params === 'string' ? { type: params } : params;
+type ResolvedConfig = EaseConfig & { type: StandardEase };
+
+const parseConfig = (params?: EaseParams): ResolvedConfig => {
+    if (params === undefined) return { type: DEFAULT_EASE };
+    if (typeof params === 'string') return { type: params };
+    return { ...params, type: params.type ?? DEFAULT_EASE };
+};
 
 // "Ease in" curve for each standard family, parameterized by an EaseConfig.
 // easeOut/easeInOut are derived from this via reflection, matching the
@@ -59,23 +68,23 @@ const inMath: Record<StandardEase, (t: number, config: EaseConfig) => number> = 
 
 export const linear = (): EasingFunction => (t) => clamp01(t);
 
-export const easeIn = (params: EaseParams): EasingFunction => {
+export const easeIn = (params?: EaseParams): EasingFunction => {
     const config = parseConfig(params);
     return (t) => inMath[config.type](clamp01(t), config);
 };
 
-export const easeOut = (params: EaseParams): EasingFunction => {
+export const easeOut = (params?: EaseParams): EasingFunction => {
     const config = parseConfig(params);
     return (t) => 1 - inMath[config.type](1 - clamp01(t), config);
 };
 
-export const easeInOut = (params: EaseParams): EasingFunction => {
+export const easeInOut = (params?: EaseParams): EasingFunction => {
     const config = parseConfig(params);
     // 'back' and 'elastic' need different default tuning at the midpoint than
     // their easeIn/easeOut counterparts (the classic Penner in-out variants
     // scale overshoot and default period differently), so resolve those here
     // rather than reusing the easeIn/easeOut defaults verbatim.
-    const inOutConfig: EaseConfig = config.type === 'back'
+    const inOutConfig: ResolvedConfig = config.type === 'back'
         ? { ...config, overshoot: (config.overshoot ?? 1.70158) * 1.525 }
         : config.type === 'elastic'
             ? { ...config, period: config.period ?? 0.45 }
