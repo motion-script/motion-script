@@ -13,6 +13,7 @@ import grid from './scenes/grid?scene';
 import flexNodes from './scenes/flex-nodes?scene';
 import titleLayout from './scenes/title-layout?scene';
 import stage from './scenes/stage';
+import overlayVerify from './scenes/overlay-verify?scene';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -32,6 +33,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        overlayVerify,
         stage,
         global,
         camera,

@@ -300,7 +300,11 @@ export class Text extends ShapeNode<TextProps> {
         return segments;
     }
 
-    protected override renderSelf(ctx: RenderContext): void {
+    // The bare text op as a Graphics (no paint), plus whether selection segments
+    // are active. Text has no single fillable silhouette path, so the generic
+    // ShapeNode.shapeGraphics() stays null and Text drives its own overlay/stroke
+    // passes off this builder instead.
+    private textOpGraphics(): { g: Graphics; segments: boolean } {
         // Text-on-path and selection segments are mutually exclusive in v1: when a
         // path is set we lay out the single string along the path and skip segments.
         const segments = this.path == null ? this._buildSegments() : null;
@@ -320,15 +324,39 @@ export class Text extends ShapeNode<TextProps> {
             segments: segments ?? undefined,
             path: this.path,
         });
+        return { g, segments: segments != null };
+    }
+
+    protected override renderSelf(ctx: RenderContext): void {
+        const { g, segments } = this.textOpGraphics();
         g.shadow(this.shadow);
         // With segments the renderer paints each run eagerly with the segment's
         // own fill/stroke (so per-selection overrides apply), so the node-level
         // fill/stroke ops are omitted to avoid double-painting. Text-on-path uses
-        // the normal deferred path, so its fill/stroke ops apply here as usual.
+        // the normal deferred path, so its node-level fill applies here; its stroke
+        // is deferred to renderStroke (drawn after children + overlay).
         if (!segments) {
-            g.fill(this.fill).stroke(this.stroke);
+            g.fill(this.fill);
         }
         ctx.draw(g);
+    }
+
+    // Overlay and stroke only apply to the non-segment / text-on-path case; the
+    // segmented branch paints its own fill/stroke per run in renderSelf.
+    protected override renderOverlay(ctx: RenderContext): void {
+        const overlay = this.overlay as FillResolved[];
+        if (overlay.length === 0) return;
+        const { g, segments } = this.textOpGraphics();
+        if (segments) return;
+        ctx.draw(g.fill(overlay));
+    }
+
+    protected override renderStroke(ctx: RenderContext): void {
+        const stroke = this.stroke as StrokeResolved[];
+        if (stroke.length === 0) return;
+        const { g, segments } = this.textOpGraphics();
+        if (segments) return;
+        ctx.draw(g.stroke(stroke));
     }
 }
 

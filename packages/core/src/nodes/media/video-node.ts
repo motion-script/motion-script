@@ -217,23 +217,27 @@ export class Video extends Rect {
     }
 
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected override renderSelf(draw: RenderContext): void {
         this.syncVideo();
         // Paint the video fill first (so it sits behind any user-supplied `fill`
         // layers — a tint or vignette over the frame), styled as the rect's fill.
+        // Stroke is deferred to renderStroke (drawn after children + overlay), so
+        // an overlay texture lands over the video and under the frame.
         const fills: FillProp[] = this._video ? [this._video as FillProp] : [];
         fills.push(...(this.fill as unknown as FillProp[]));
 
-        draw.draw(new Graphics()
-            .rect({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                cornerRadius: this.cornerRadius,
-                cornerStyle: this.cornerStyle,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(fills).stroke(this.stroke));
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(fills));
     }
 
     override dispose(): void {

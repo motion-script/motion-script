@@ -8,6 +8,7 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 
 import { RenderContext } from "@/render/render-context";
+import { Graphics } from "@/render/graphics";
 import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
@@ -26,6 +27,13 @@ export interface ShapeProps extends NodeProps {
      * - A {@link FillChain} from the `Fills` builder (e.g. `Fills.color('red')`)
      */
     fill?: Fill;
+    /**
+     * Overlay layer(s) — the same loose values as {@link fill}, but painted
+     * *over* this node's fill **and** its children (clipped to the node's
+     * silhouette) while still sitting **under** the stroke. Use for textures
+     * laid across the whole subtree, e.g. a VHS-grain image or video.
+     */
+    overlay?: Fill;
     /**
      * Stroke layer(s): a single {@link StrokeProp}, an array of them, or an
      * already-resolved stroke. `fill` inside each stroke accepts the same loose
@@ -54,6 +62,11 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
     declare fill: Fill;
 
+    // Same paint type/mapper/tween as `fill`; differs only in draw order —
+    // painted over fill + children and under the stroke (see renderOverlay).
+    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    declare overlay: Fill;
+
     @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
     declare stroke: Stroke;
 
@@ -66,27 +79,30 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     @property({ default: 1 })
     declare end: number;
 
-    // Cached: does any current fill need a per-frame update() (e.g. video)?
-    // Static fills (solid, gradients, noise, image) have an identity update, so
-    // there's nothing to recompute each frame and tick() can skip entirely.
+    // Cached: does any current fill / overlay need a per-frame update() (e.g.
+    // video)? Static fills (solid, gradients, noise, image) have an identity
+    // update, so there's nothing to recompute each frame and tick() can skip.
     private _hasDynamicFill = false;
+    private _hasDynamicOverlay = false;
 
     constructor(props: NodeConfig<any, P>) {
         super(props);
         this.watchFillForDynamic();
     }
 
-    // Track whether the current fill needs per-frame updates. Re-run after the
-    // signals are re-created (reinitProps) so a reused scene root keeps a live
-    // subscription rather than a stale one pointing at a disposed cell.
+    // Track whether the current fill / overlay needs per-frame updates. Re-run
+    // after the signals are re-created (reinitProps) so a reused scene root keeps
+    // a live subscription rather than a stale one pointing at a disposed cell.
     private watchFillForDynamic(): void {
-        const fillCell = this.__signals?.get("fill");
-        if (!fillCell) return;
-        const refresh = () => {
-            this._hasDynamicFill = hasDynamicFill(fillCell.get() as FillResolved[]);
+        const watch = (key: "fill" | "overlay", set: (dynamic: boolean) => void) => {
+            const cell = this.__signals?.get(key);
+            if (!cell) return;
+            const refresh = () => set(hasDynamicFill(cell.get() as FillResolved[]));
+            refresh();
+            cell.subscribe(refresh);
         };
-        refresh();
-        fillCell.subscribe(refresh);
+        watch("fill", d => { this._hasDynamicFill = d; });
+        watch("overlay", d => { this._hasDynamicOverlay = d; });
     }
 
     protected override reinitProps(force = false): void {
@@ -99,21 +115,61 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     }
 
     public tick(time: number): void {
-        if (!this._hasDynamicFill) return;
-        const fills = this.fill as FillResolved[];
-        this.set({ fill: fills.map(fill => updateFill(fill, time, this.assets)) } as Partial<P>);
+        if (!this._hasDynamicFill && !this._hasDynamicOverlay) return;
+        const patch: Partial<P> = {};
+        if (this._hasDynamicFill) {
+            const fills = this.fill as FillResolved[];
+            (patch as { fill?: FillResolved[] }).fill = fills.map(fill => updateFill(fill, time, this.assets));
+        }
+        if (this._hasDynamicOverlay) {
+            const overlays = this.overlay as FillResolved[];
+            (patch as { overlay?: FillResolved[] }).overlay = overlays.map(fill => updateFill(fill, time, this.assets));
+        }
+        this.set(patch);
     }
 
     prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
         [
             ...(this.fill as FillResolved[]),
+            ...(this.overlay as FillResolved[]),
             ...(this.stroke as StrokeResolved[]).flatMap(s => s.fill),
             ...(this.shadow as ShadowResolved[]).flatMap(s => s.fill),
         ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
     protected abstract override renderSelf(ctx: RenderContext): void;
+
+    /**
+     * The node's bare silhouette as a {@link Graphics} with **no** paint ops.
+     * `renderSelf` appends shadow + fill; {@link renderOverlay} appends the
+     * overlay fill; {@link renderStroke} appends the stroke. Sharing one builder
+     * keeps each shape's geometry defined in a single place.
+     *
+     * Returns `null` for nodes that have no single fillable silhouette (text,
+     * boolean groups, grids) — those override the paint hooks themselves or opt
+     * out of the generic overlay/stroke passes.
+     */
+    protected shapeGraphics(): Graphics | null {
+        return null;
+    }
+
+    // Overlay over fill + children, under stroke. Painted as a fill of the
+    // node's silhouette, so it's clipped to the outline exactly like `fill`.
+    protected override renderOverlay(ctx: RenderContext): void {
+        const overlay = this.overlay as FillResolved[];
+        if (overlay.length === 0) return;
+        const g = this.shapeGraphics();
+        if (g) ctx.draw(g.fill(overlay));
+    }
+
+    // Deferred stroke, painted last so it frames the children + overlay.
+    protected override renderStroke(ctx: RenderContext): void {
+        const stroke = this.stroke as StrokeResolved[];
+        if (stroke.length === 0) return;
+        const g = this.shapeGraphics();
+        if (g) ctx.draw(g.stroke(stroke));
+    }
 
     *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
         if (options?.delay) yield* wait(options.delay);
@@ -123,6 +179,17 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         const ease = options?.ease;
         yield* tween(duration, t => {
             this.set({ fill: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
+        });
+    }
+
+    *overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+        if (options?.delay) yield* wait(options.delay);
+        const from = this.overlay as FillResolved[];
+        const target = resolveFillArray(to);
+        const lerp = options?.lerp ?? lerpFillArray;
+        const ease = options?.ease;
+        yield* tween(duration, t => {
+            this.set({ overlay: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
         });
     }
 

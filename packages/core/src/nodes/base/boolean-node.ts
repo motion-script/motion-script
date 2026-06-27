@@ -4,6 +4,7 @@ import { Graphics } from "@/render/graphics";
 import { NodeConfig } from "./node";
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
 import { BooleanOperation } from "@/attributes/mask/boolean";
+import { FillResolved } from "@/attributes/shape/fill/union";
 export interface BooleanGroupProps extends ShapeProps {
     op: BooleanOperation;
 }
@@ -42,13 +43,16 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
         this.renderContentWithEffects(ctx, () => {
             ctx.beginBoolean(this.op);
             for (const child of this._children) child.render(ctx);
-            // endBoolean leaves the combined path as the active surface; a paint-only
-            // Graphics (no shape ops) then paints it with this node's shadow/fill/stroke.
+            // endBoolean leaves the combined path as the active surface; paint-only
+            // Graphics (no shape ops) then style that surface in order. Paint-only
+            // Graphics don't reset the shape accumulator, so each paints the active
+            // boolean silhouette. Order matches every ShapeNode: shadow+fill, then
+            // overlay over the fill, then stroke on top.
             ctx.endBoolean();
-            ctx.draw(new Graphics()
-                .shadow(this.shadow)
-                .fill(this.fill)
-                .stroke(this.stroke));
+            ctx.draw(new Graphics().shadow(this.shadow).fill(this.fill));
+            const overlay = this.overlay as FillResolved[];
+            if (overlay.length > 0) ctx.draw(new Graphics().fill(overlay));
+            ctx.draw(new Graphics().stroke(this.stroke));
         });
     }
 }

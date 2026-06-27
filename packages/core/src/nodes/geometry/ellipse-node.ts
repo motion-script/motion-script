@@ -21,18 +21,21 @@ export class Ellipse extends ShapeNode<EllipseProps> {
         super(props);
     }
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().ellipse({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            startAngle: this.startAngle,
+            sweep: this.sweep,
+            ratio: this.ratio,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .ellipse({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                startAngle: this.startAngle,
-                sweep: this.sweep,
-                ratio: this.ratio,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
+        // Stroke is deferred to renderStroke (drawn after children + overlay).
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {

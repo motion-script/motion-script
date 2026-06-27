@@ -94,18 +94,21 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // ---- Drawing ----------------------------------------------------------
 
-    // The card behind the world — the camera's viewport frame.
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
+    // The card behind the world — the camera's viewport frame. Stroke is
+    // deferred to renderStroke so it frames the world (children) and overlay.
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .rect({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                cornerRadius: this.cornerRadius,
-                cornerStyle: this.cornerStyle,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {

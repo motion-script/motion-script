@@ -1219,6 +1219,26 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     protected renderSelf(ctx: RenderContext): void { }
 
     /**
+     * Paint the node's `overlay` layer — over its own fill *and* its children,
+     * but under the stroke — clipped to the node's silhouette. Called from
+     * `onRender` after children render and before {@link renderStroke}. No-op by
+     * default; {@link ShapeNode} paints the resolved overlay as a fill of its
+     * silhouette so a texture (e.g. VHS grain) sits over the whole subtree.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept as `ctx` so overriders see the real param name
+    protected renderOverlay(ctx: RenderContext): void { }
+
+    /**
+     * Paint the node's stroke last — over its fill, children, and overlay.
+     * Deferred out of {@link renderSelf} (which now draws only shadow+fill) so
+     * the stroke frames the whole subtree and sits above any overlay. Called
+     * from `onRender` after {@link renderOverlay}. No-op by default; {@link
+     * ShapeNode} strokes its silhouette.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept as `ctx` so overriders see the real param name
+    protected renderStroke(ctx: RenderContext): void { }
+
+    /**
      * This node's outline as a {@link Clip} command list — the single source of
      * truth for every clip the node needs: its `clip` boundary (when `clip` is
      * true) and the silhouette its backdrop effects (backdrop-flagged filters,
@@ -1359,6 +1379,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     onRender(ctx: RenderContext): void {
         this.applyTransform(ctx);
         this.renderContentWithEffects(ctx, () => {
+            // renderSelf draws shadow + fill only; the stroke is deferred to
+            // renderStroke so it frames the children and overlay (see below).
             this.renderSelf(ctx);
             // Confine children to this node's outline. Built once from clipSelf();
             // skipped when the node has no outline (clipped === false) so the
@@ -1366,6 +1388,13 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             const clipped = this.clip && this.applyClip(ctx);
             this.renderChildren(ctx);
             if (clipped) ctx.endClip();
+            // Overlay paints over fill + children, clipped to the silhouette
+            // (it's drawn as a fill of the shape). Stroke paints last, over
+            // everything, at the layout-rect edge. Both stay inside the
+            // foreground effect / clipPath scope opened by renderContentWithEffects,
+            // but outside the children-confine clip closed just above.
+            this.renderOverlay(ctx);
+            this.renderStroke(ctx);
         });
     }
 

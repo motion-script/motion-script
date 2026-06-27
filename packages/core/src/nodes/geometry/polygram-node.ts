@@ -37,19 +37,22 @@ export class Polygram extends ShapeNode<PolygramProps> {
         super(props);
     }
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().polygram({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            sides: this.sides,
+            ratio: this.ratio,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .polygram({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                sides: this.sides,
-                ratio: this.ratio,
-                cornerRadius: this.cornerRadius,
-                cornerStyle: this.cornerStyle,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
+        // Stroke is deferred to renderStroke (drawn after children + overlay).
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {

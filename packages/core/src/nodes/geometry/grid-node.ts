@@ -62,17 +62,20 @@ export class Grid extends ShapeNode<GridProps> {
 
     // ---- Drawing -------------------------------------------------------------
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .rect({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                cornerRadius: this.cornerRadius,
-                cornerStyle: this.cornerStyle,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(this.fill).stroke(this.stroke));
+        // Stroke is deferred to renderStroke (drawn after children + overlay).
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {

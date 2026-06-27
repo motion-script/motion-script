@@ -66,13 +66,16 @@ export class Path extends ShapeNode<PathProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().path({
+            d: this.d,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .path({
-                d: this.d,
-                start: this.start,
-                end: this.end,
-            })
-            .fill(this.fill).stroke(this.stroke));
+        // Stroke is deferred to renderStroke (drawn after children + overlay).
+        draw.draw(this.shapeGraphics().fill(this.fill));
     }
 }

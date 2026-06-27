@@ -23,17 +23,18 @@ export class Line extends ShapeNode<LineProps> {
         super(props);
     }
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().line({
+            points: this.points,
+            radius: this.radius,
+            closed: this.closed,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected renderSelf(draw: RenderContext): void {
-        draw.draw(new Graphics()
-            .line({
-                points: this.points,
-                radius: this.radius,
-                closed: this.closed,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow)
-            .fill(this.fill)
-            .stroke(this.stroke));
+        // Stroke is deferred to renderStroke (drawn after children + overlay).
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 }

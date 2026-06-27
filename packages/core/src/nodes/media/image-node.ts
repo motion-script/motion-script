@@ -59,22 +59,26 @@ export class Image extends Rect {
         return resolveFill(prop as FillProp) as ImageFillResolved;
     }
 
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
     protected override renderSelf(draw: RenderContext): void {
         // Paint the image fill first (so it sits behind any user-supplied `fill`
         // layers — a tint or vignette over the picture), styled as the rect's fill.
+        // Stroke is deferred to renderStroke (drawn after children + overlay), so
+        // an overlay texture lands over the photo and under the frame.
         const image = this.imageFill();
         const fills: FillProp[] = image ? [image as FillProp] : [];
         fills.push(...(this.fill as unknown as FillProp[]));
 
-        draw.draw(new Graphics()
-            .rect({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
-                cornerRadius: this.cornerRadius,
-                cornerStyle: this.cornerStyle,
-                start: this.start,
-                end: this.end,
-            })
-            .shadow(this.shadow).fill(fills).stroke(this.stroke));
+        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(fills));
     }
 }
