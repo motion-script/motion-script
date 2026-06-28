@@ -7,6 +7,7 @@ import { prepareNumericCellTween } from "@/tween/prepare";
 import { TweenStepper } from "@/tween/stepper";
 import { Reference } from "@/util/reference";
 import { Context, ContextMap } from "@/util/context";
+import { Random } from "@/util/random";
 import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
@@ -257,6 +258,18 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     useContext<T>(ctx: Context<T>): T {
         return this._context.get(ctx);
     }
+
+    /**
+     * Per-node seeded randomness, available to every subclass without threading a
+     * `Random` in from the stage. Defaults to seed `0`; re-seed inside {@link init}
+     * with `this.random.reset(seed)` or `this.random.seed = seed` (e.g. from
+     * `this.useContext(SeedToken)`).
+     *
+     * The base {@link init} rewinds this each playback pass, so draws are
+     * reproducible across scrub/precomp/HMR out of the box — the same determinism
+     * guarantee `stage.reset()` gives `stage.random` sources.
+     */
+    readonly random: Random = new Random(0);
 
     readonly id: string = crypto.randomUUID();
 
@@ -843,10 +856,18 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * inherited values on top. Override to read {@link useContext}, apply
      * context-derived props (`this.fontSize = …`), or `this.addChild(…)`.
      *
-     * Base is a no-op. Idempotent by contract: it must produce the same result
-     * each pass, since cells are reset to defaults before every call.
+     * The base implementation rewinds {@link random} so per-node draws reproduce
+     * identically each pass. A subclass that overrides `init` and draws from
+     * `this.random` should either call `super.init(props)` or rewind the source
+     * itself (`this.random.reset(seed)` doubles as the re-seed) — otherwise the
+     * source keeps advancing across passes and draws stop being reproducible.
+     *
+     * Idempotent by contract: it must produce the same result each pass, since
+     * cells (and `random`) are reset before every call.
      */
-    protected init(_props?: NodeConfig<any, P>): void { }
+    protected init(_props?: NodeConfig<any, P>): void {
+        this.random.reset();
+    }
 
     /**
      * Providers override this to attach their token(s) to the {@link ContextMap}

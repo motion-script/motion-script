@@ -66,15 +66,16 @@ export class BuildStage<S = unknown> {
      * The seed lives on the returned source, not on the stage, so determinism is
      * scoped per source: several `random(...)` calls with distinct seeds give
      * independent reproducible streams. A string seed is djb2-hashed; omit the
-     * seed to get a stable default (a wall-clock value fixed when this stage was
-     * constructed) so cold scenes still vary without an explicit seed.
+     * seed to get the fixed default `0` (matching `Node.random`), so an unseeded
+     * source is stable rather than time-varying — the stage keeps no seed of its
+     * own.
      *
      * Sources are cached by seed for the life of the stage and rewound by
      * {@link reset} before each timeline replay — so a scene that re-runs its
      * generator (scrub, precomp, HMR) draws the identical sequence every pass,
      * whether or not it named a seed.
      */
-    random(seed: string | number = this._defaultSeed): Random {
+    random(seed: string | number = 0): Random {
         let source = this._sources.get(seed);
         if (!source) {
             source = new Random(seed);
@@ -82,11 +83,6 @@ export class BuildStage<S = unknown> {
         }
         return source;
     }
-
-    // Default seed: the wall-clock time at construction, so a `stage.random()`
-    // with no explicit seed still varies between cold runs but stays stable
-    // across replays of THIS stage (reset() rewinds to it, not to a fresh time).
-    private readonly _defaultSeed: number = Date.now();
 
     /** Every {@link Random} handed out this pass, keyed by seed, so {@link reset}
      *  can rewind them all to the start of their sequences. */

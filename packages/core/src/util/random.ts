@@ -56,11 +56,14 @@ const UINT32_RANGE = 4294967296;
  *    waves). No distribution draw can reproduce that smoothness.
  */
 export class Random {
-    /** The seed this source was created with; what {@link reset} rewinds to. */
-    private readonly seed: string | number;
+    /** The seed this source rewinds to; reassign via {@link seed} or
+     * {@link reset}. Set by {@link adopt} (definitely assigned via the
+     * constructor's `adopt` call). */
+    private _seed!: string | number;
 
-    /** Numeric form of {@link seed}, used to mix `noise`'s lattice. */
-    private readonly numericSeed: number;
+    /** Numeric form of {@link _seed}, used to mix `noise`'s lattice. Kept in
+     * lockstep with `_seed` through {@link adopt}. */
+    private numericSeed!: number;
 
     private readonly gen: SeedGenerator;
 
@@ -68,11 +71,38 @@ export class Random {
     private spareGauss: number | null = null;
 
     constructor(seed: string | number) {
-        this.seed = seed;
-        this.numericSeed = typeof seed === 'string'
+        this.gen = new SeedGenerator(seed);
+        this.adopt(seed);
+    }
+
+    /** The seed this source rewinds to. Assigning a new value re-anchors the
+     * source (same effect as `reset(seed)`): the next draws reproduce the
+     * sequence for that seed, and `noise`'s lattice shifts to match. */
+    get seed(): string | number {
+        return this._seed;
+    }
+    set seed(seed: string | number) {
+        this.adopt(seed);
+    }
+
+    /** Numeric form of a seed: string seeds are hashed (the same djb2-style mix
+     * the generator uses), numbers pass through. Shared so the constructor, the
+     * {@link seed} setter, and {@link reset} all derive `numericSeed` identically. */
+    private static toNumeric(seed: string | number): number {
+        return typeof seed === 'string'
             ? seed.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)
             : seed;
-        this.gen = new SeedGenerator(seed);
+    }
+
+    /** Take `seed` as the new origin and rewind to it: store it, recompute the
+     * `noise` lattice anchor, reset the generator, and drop any spare gauss. The
+     * single seed-adoption path behind the constructor, {@link seed}, and a
+     * seeded {@link reset}. */
+    private adopt(seed: string | number): void {
+        this._seed = seed;
+        this.numericSeed = Random.toNumeric(seed);
+        this.gen.setSeed(seed);
+        this.spareGauss = null;
     }
 
     /**
@@ -157,13 +187,16 @@ export class Random {
     }
 
     /**
-     * Rewind this source to its original seed so the next draws reproduce the
-     * identical sequence. Called by the runtime before each timeline replay, and
-     * usable by authors to repeat a sequence within a scene.
+     * Rewind this source so the next draws reproduce a sequence from the start.
+     *
+     * With no argument, rewinds to the current {@link seed} — what the runtime
+     * calls before each timeline replay, and what authors call to repeat a
+     * sequence within a scene. Pass a `seed` to adopt it as the new origin first
+     * (equivalent to assigning {@link seed}), so the source both re-seeds and
+     * rewinds in one call — convenient inside a node's `init()`.
      */
-    reset(): void {
-        this.gen.setSeed(this.seed);
-        this.spareGauss = null;
+    reset(seed: string | number = this._seed): void {
+        this.adopt(seed);
     }
 
     /**

@@ -7,6 +7,7 @@ import { Provider } from "./provider-node";
 import { ThemeProvider } from "./theme-provider-node";
 import { DefaultTextStyle } from "./default-text-style-node";
 import { ThemeToken, DataToken, SeedToken } from "@/runtime/builtin-context";
+import { Random } from "@/util/random";
 
 /** Assemble a tree and run the start-of-pass bind walk, the way precomp does. */
 function bind(root: Node): void {
@@ -95,6 +96,53 @@ describe("ThemeProvider built-in tokens", () => {
         expect(leaf.useContext(ThemeToken)).toEqual({ brand: "#0f0", muted: "#888" }); // brand from inner, muted from outer
         expect(leaf.useContext(DataToken)).toEqual({ n: 5 });
         expect(leaf.useContext(SeedToken)).toBe("abc");
+    });
+});
+
+describe("Node.random", () => {
+    /** A custom node that records a draw taken in init() — the documented author
+     * pattern. Base init() rewinds this.random, so the draw is the head of the
+     * seed's sequence every pass. */
+    class Draws extends Rect {
+        drawn = 0;
+        protected override init(): void {
+            super.init(); // rewinds this.random
+            this.drawn = this.random.nextFloat();
+        }
+    }
+
+    it("defaults to seed 0 and is independent per node", () => {
+        const a = new Draws({ width: 1, height: 1 });
+        const b = new Draws({ width: 1, height: 1 });
+        const root = new Rect({ children: [a, b] });
+        bind(root);
+        // Same default seed → same head draw; each node has its own source.
+        expect(a.drawn).toBe(b.drawn);
+        expect(a.drawn).toBe(new Random(0).nextFloat());
+    });
+
+    it("base init() rewinds the source, so draws reproduce each pass", () => {
+        const node = new Draws({ width: 1, height: 1 });
+        const root = new Rect({ children: [node] });
+        bind(root);
+        const first = node.drawn;
+        // A second bind walk simulates the next playback pass.
+        bind(root);
+        expect(node.drawn).toBe(first);
+    });
+
+    it("re-seeding in init() via reset(seed) changes the draw deterministically", () => {
+        class Seeded extends Rect {
+            drawn = 0;
+            protected override init(): void {
+                this.random.reset(123); // re-seed + rewind in one call
+                this.drawn = this.random.nextFloat();
+            }
+        }
+        const node = new Seeded({ width: 1, height: 1 });
+        const root = new Rect({ children: [node] });
+        bind(root);
+        expect(node.drawn).toBe(new Random(123).nextFloat());
     });
 });
 

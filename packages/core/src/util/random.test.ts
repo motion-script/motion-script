@@ -143,4 +143,32 @@ describe('Random', () => {
         r.reset();
         expect(r.nextFloat()).toBe(before);
     });
+
+    it('seed setter re-anchors to the new seed', () => {
+        const r = new Random(0);
+        r.seed = 5;
+        expect(r.seed).toBe(5);
+        const fresh = new Random(5);
+        for (let i = 0; i < 10; i++) expect(r.nextFloat()).toBe(fresh.nextFloat());
+    });
+
+    it('reset(seed) re-seeds and rewinds; reset() rewinds to the last-set seed', () => {
+        const r = new Random(0);
+        r.nextFloat(); // advance off the head first
+        // reset(7) adopts 7 as the new origin and rewinds to it.
+        r.reset(7);
+        const sevenHead = new Random(7).floatArray(5);
+        expect(r.floatArray(5)).toEqual(sevenHead);
+        // A bare reset() now rewinds to 7 (the last-set seed), not the original 0.
+        r.reset();
+        expect(r.floatArray(5)).toEqual(sevenHead);
+    });
+
+    it('noise re-anchors after a re-seed (lattice follows the new seed)', () => {
+        const r = new Random(0);
+        r.seed = 5;
+        const reseeded = r.noise(0.3, 4);
+        expect(reseeded).toBe(new Random(5).noise(0.3, 4));
+        expect(reseeded).not.toBe(new Random(0).noise(0.3, 4));
+    });
 });

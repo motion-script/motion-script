@@ -7,6 +7,7 @@ import drawMask from './scenes/mask?scene';
 import drawPivot from './scenes/pivot?scene';
 import drawPivotText from './scenes/pivot-text?scene';
 import drawShapePivot from './scenes/shape-pivot?scene';
+import randomNode from './scenes/random-node?scene';
 
 /**
  * A project that exercises the draw-command API. Every scene paints one complex
@@ -42,6 +43,7 @@ export default createProject({
         drawPivot,
         drawPivotText,
         drawShapePivot,
+        randomNode,
     ],
     theme: {
         'bg': '#0D0F15',
