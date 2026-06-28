@@ -15,9 +15,9 @@ type AnyFilter = MediaFilter | VideoMediaFilter;
  * (`ImageFilter` vs `VideoFilter`), mirroring how `Fill` is structured.
  *
  * @example
- * const mx = MX.blur(4).grayscale(0.5);
- * node.filters = mx; // assign directly
- * node.filters = [...mx, { type: 'alpha', value: 0.5 }]; // spread into array
+ * const chain = ImageFilters.blur(4).grayscale(0.5);
+ * node.filters = chain; // assign directly
+ * node.filters = [...chain, { type: 'alpha', value: 0.5 }]; // spread into array
  */
 export class FilterChain {
   constructor(public list: AnyFilter[] = []) { }
@@ -67,7 +67,7 @@ export class FilterChain {
     return new FilterChain([...this.list, { type: 'echo', ...settings }]);
   }
 
-  /** Allows spreading the chain into an array: `[...MX.blur(5)]`. */
+  /** Allows spreading the chain into an array: `[...ImageFilters.blur(5)]`. */
   *[Symbol.iterator]() {
     yield* this.list;
   }
@@ -96,13 +96,8 @@ export type VideoFilter =
 
 const createChain = (list: AnyFilter[] = []): FilterChain => new FilterChain(list);
 
-/**
- * Entry points for building media-filter chains fluently.
- *
- * @example
- * node.filters = MX.blur(8).grayscale(1);
- */
-export const MX = {
+/** Shared pixel-filter builders used by both `ImageFilters` and `VideoFilters`. */
+const pixelBuilders = {
   blur: (radius: number) => createChain([{ type: 'blur', value: radius }]),
   grayscale: (amount: number) => createChain([{ type: 'grayscale', value: amount }]),
   alpha: (value: number) => createChain([{ type: 'alpha', value }]),
@@ -112,6 +107,29 @@ export const MX = {
   colorMatrix: (matrix: number[]) => createChain([{ type: 'colorMatrix', matrix }]),
   curves: (points: [number, number][], channel?: CurvesChannel) =>
     createChain([{ type: 'curves', points, channel }]),
+};
+
+/**
+ * Entry points for building **image** filter chains fluently.
+ * Contains only pixel filters — video-only filters (`posterizeTime`, `echo`) are
+ * excluded because image fills cannot use them.
+ *
+ * @example
+ * node.filters = ImageFilters.blur(8).grayscale(1);
+ */
+export const ImageFilters = { ...pixelBuilders };
+
+/**
+ * Entry points for building **video** filter chains fluently.
+ * Contains all pixel filters plus the video-only temporal filters
+ * (`posterizeTime`, `echo`).
+ *
+ * @example
+ * node.filters = VideoFilters.posterizeTime(6);
+ * node.filters = VideoFilters.grayscale(1).blur(6);
+ */
+export const VideoFilters = {
+  ...pixelBuilders,
   posterizeTime: (fps: number) => createChain([{ type: 'posterizeTime', fps }]),
   echo: (settings: Omit<VideoEchoFilter, 'type'>) => createChain([{ type: 'echo', ...settings }]),
 };

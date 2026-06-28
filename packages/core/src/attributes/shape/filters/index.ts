@@ -10,7 +10,7 @@ export type { PosterizeTimeFilter } from './implementations/posterize-time';
 export type { VideoEchoFilter } from './implementations/echo';
 
 /** Chainable filter builder API, chain class, and the loose author-facing unions. */
-export { MX, FilterChain, resolveChainFilters } from './chain';
+export { ImageFilters, VideoFilters, FilterChain, resolveChainFilters } from './chain';
 export type { ImageFilter, VideoFilter } from './chain';
 
 /** Unions of concrete filter types: pixel (`MediaFilter`) and video-only. */

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Sound } from '@/attributes/audio/sound';
-import { AFX } from '@/attributes/audio/filters/chain';
+import { AudioFilters } from '@/attributes/audio/filters/chain';
 import { ramp } from '@/attributes/audio/filters/curve';
 import { AssetTracker } from '@/assets/tracker';
 import { AssetCatalog } from '@/assets/catalog';
@@ -37,7 +37,7 @@ function emit(sound: Sound, startTime: number, stopTime?: number): AudioRequest 
 
 describe('Sound filters', () => {
     it('carries resolved filters onto the emitted AudioRequest', () => {
-        const sound = new Sound({ src: SRC, filters: AFX.gain(2).lowpass(800), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.gain(2).lowpass(800), trimEnd: 4 });
         const req = emit(sound, 0, 4);
         expect(req.filters).toEqual([
             { type: 'gain', value: 2 },
@@ -58,25 +58,25 @@ describe('Sound.effectiveSpeed', () => {
     });
 
     it('returns the product of all speed filters', () => {
-        expect(new Sound({ src: SRC, filters: AFX.speed(2).speed(1.5) }).effectiveSpeed()).toBe(3);
+        expect(new Sound({ src: SRC, filters: AudioFilters.speed(2).speed(1.5) }).effectiveSpeed()).toBe(3);
     });
 
     it('ignores non-positive speeds', () => {
-        expect(new Sound({ src: SRC, filters: AFX.speed(0) }).effectiveSpeed()).toBe(1);
+        expect(new Sound({ src: SRC, filters: AudioFilters.speed(0) }).effectiveSpeed()).toBe(1);
     });
 });
 
 describe('SpeedFilter timing', () => {
     it('shrinks endAt for a faster clip (explicit trimEnd)', () => {
         // 4s of source at 2x => 2s of scene time.
-        const sound = new Sound({ src: SRC, filters: AFX.speed(2), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(2), trimEnd: 4 });
         const req = emit(sound, 0);
         expect(req.endAt).toBeCloseTo(2);
     });
 
     it('grows endAt for a slower clip', () => {
         // 4s of source at 0.5x => 8s of scene time.
-        const sound = new Sound({ src: SRC, filters: AFX.speed(0.5), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(0.5), trimEnd: 4 });
         const req = emit(sound, 0);
         expect(req.endAt).toBeCloseTo(8);
     });
@@ -86,7 +86,7 @@ describe('SpeedFilter timing', () => {
         // (endAt unresolved) and carries the speed-adjusted source length so
         // assembleTimeline can bound it against the project total. (Old behavior
         // pre-resolved endAt to fullLength/speed here.)
-        const sound = new Sound({ src: SRC, filters: AFX.speed(2) });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(2) });
         const req = emit(sound, 0);
         expect(req.open).toBe(true);
         expect(req.endAt).toBe(Infinity);
@@ -103,7 +103,7 @@ describe('SpeedFilter timing', () => {
     it('integrates a speed CURVE to compute scene duration', () => {
         // Constant 2× expressed as a curve: 4s of source → 2s of scene time, same
         // as the scalar case but via the integral path.
-        const sound = new Sound({ src: SRC, filters: AFX.speed(ramp(2, 2, 4)), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(ramp(2, 2, 4)), trimEnd: 4 });
         const req = emit(sound, 0);
         expect(req.endAt).toBeCloseTo(2, 1);
     });
@@ -160,12 +160,12 @@ describe('Sound.play duration', () => {
     });
 
     it('blocks for half as long at 2x speed', () => {
-        const sound = new Sound({ src: SRC, filters: AFX.speed(2), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(2), trimEnd: 4 });
         expect(runPlay(sound)).toBeCloseTo(2, 1);
     });
 
     it('blocks for twice as long at 0.5x speed', () => {
-        const sound = new Sound({ src: SRC, filters: AFX.speed(0.5), trimEnd: 4 });
+        const sound = new Sound({ src: SRC, filters: AudioFilters.speed(0.5), trimEnd: 4 });
         expect(runPlay(sound)).toBeCloseTo(8, 1);
     });
 });

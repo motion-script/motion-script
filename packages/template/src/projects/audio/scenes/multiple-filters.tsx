@@ -1,4 +1,4 @@
-import { AFX } from "@motion-script/core";
+import { AudioFilters } from "@motion-script/core";
 import { createScene } from "@motion-script/core";
 import { audioDemo } from "./audio-demo";
 
@@ -8,5 +8,5 @@ import { audioDemo } from "./audio-demo";
  */
 export default createScene(audioDemo({
         label: 'Gain + Low-pass + Echo',
-        filters: AFX.gain(1.5).lowpass(800).echo(0.3, 0.4, 0.4),
+        filters: AudioFilters.gain(1.5).lowpass(800).echo(0.3, 0.4, 0.4),
     }));

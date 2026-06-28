@@ -14,7 +14,7 @@ const DEFAULT_EASE = linear();
  *
  * @example
  * const swell = ramp(0, 1, 0.5).hold().ramp(1, 0, 1); // up | auto-hold | down
- * AFX.volume(swell).speed(swell); // reusable across params and clips
+ * AudioFilters.volume(swell).speed(swell); // reusable across params and clips
  *
  * Segments chain fluently (`ramp().hold().ramp()`) — that *is* sequencing; there
  * is intentionally no `seq`/`par`. Parallelism is just multiple filters in a chain.

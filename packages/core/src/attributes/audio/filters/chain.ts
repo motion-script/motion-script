@@ -12,9 +12,9 @@ import { Param } from "./curve";
  * {@link Param} curve (see `ramp`/`fadeIn`/`fadeOut`), so any filter can animate:
  *
  * @example
- * const afx = AFX.gain(1.5).lowpass(800).echo(0.3, 0.4);
- * this.playSound('song.mp3', { filters: afx }); // assign directly
- * this.playSound('song.mp3', { filters: AFX.volume(fadeIn(0.5).fadeOut(1)) }); // animated
+ * const chain = AudioFilters.gain(1.5).lowpass(800).echo(0.3, 0.4);
+ * this.playSound('song.mp3', { filters: chain }); // assign directly
+ * this.playSound('song.mp3', { filters: AudioFilters.volume(fadeIn(0.5).fadeOut(1)) }); // animated
  */
 export class AudioFilterChain {
   constructor(public list: AudioFilter[] = []) { }
@@ -54,7 +54,7 @@ export class AudioFilterChain {
     return new AudioFilterChain([...this.list, { type: 'echo', delay, feedback, mix }]);
   }
 
-  /** Allows spreading the chain into an array: `[...AFX.gain(2)]`. */
+  /** Allows spreading the chain into an array: `[...AudioFilters.gain(2)]`. */
   *[Symbol.iterator]() {
     yield* this.list;
   }
@@ -77,11 +77,11 @@ const createChain = (list: AudioFilter[] = []): AudioFilterChain => new AudioFil
  * Entry points for building audio-filter chains fluently.
  *
  * @example
- * this.playSound('song.mp3', { filters: AFX.gain(1.5).lowpass(800) });
+ * this.playSound('song.mp3', { filters: AudioFilters.gain(1.5).lowpass(800) });
  */
-export const AFX = {
+export const AudioFilters = {
   gain: (value: Param) => createChain([{ type: 'gain', value }]),
-  /** Alias for {@link AFX.gain}; reads naturally for volume automation. */
+  /** Alias for {@link AudioFilters.gain}; reads naturally for volume automation. */
   volume: (value: Param) => createChain([{ type: 'gain', value }]),
   highpass: (frequency: Param, q?: Param) => createChain([{ type: 'highpass', frequency, q }]),
   lowpass: (frequency: Param, q?: Param) => createChain([{ type: 'lowpass', frequency, q }]),

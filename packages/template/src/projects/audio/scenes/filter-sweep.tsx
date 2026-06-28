@@ -1,4 +1,4 @@
-import { AFX, ramp } from "@motion-script/core";
+import { AudioFilters, ramp } from "@motion-script/core";
 import { createScene } from "@motion-script/core";
 import { audioDemo } from "./audio-demo";
 
@@ -9,6 +9,6 @@ import { audioDemo } from "./audio-demo";
  */
 export default createScene(audioDemo({
         label: 'High-pass sweep',
-        filters: AFX.highpass(ramp(200, 4000, 2).hold()),
+        filters: AudioFilters.highpass(ramp(200, 4000, 2).hold()),
         clip: 4,
     }));

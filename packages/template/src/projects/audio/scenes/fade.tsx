@@ -1,4 +1,4 @@
-import { AFX, fadeIn, fadeOut } from "@motion-script/core";
+import { AudioFilters, fadeIn, fadeOut } from "@motion-script/core";
 import { createScene } from "@motion-script/core";
 import { audioDemo } from "./audio-demo";
 
@@ -11,5 +11,5 @@ export default createScene(audioDemo({
     label: 'Fade in / out',
     clip: 8,
     // Longer fades are easier to hear on the 8s demo clip: in over 1.5s, out over 2s.
-    filters: AFX.volume(fadeIn(1.5).fadeOut(2)),
+    filters: AudioFilters.volume(fadeIn(1.5).fadeOut(2)),
 }));

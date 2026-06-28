@@ -1,6 +1,6 @@
 /** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AFX, easeInOut, parallel, wait } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, parallel, wait } from "@motion-script/core";
 
 /**
  * `yield* this.playSound(...)` — the blocking form. The generator pauses for the
@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
 
         // The sweep runs alongside the blocking sound; both finish together.
         yield* parallel(
-            stage.playSound('song.mp3', { duration: 4, filters: AFX.lowpass(1200) }),
+            stage.playSound('song.mp3', { duration: 4, filters: AudioFilters.lowpass(1200) }),
             bar().to({ width: 'fill' } as any, 4, easeInOut('quad')),
         );
 

@@ -4,7 +4,7 @@ import {
     Ellipse,
     Fills,
     Image,
-    MX,
+    ImageFilters,
     Polygon,
     Rect,
     SceneGenerator,

@@ -1,4 +1,4 @@
-import { AFX } from "@motion-script/core";
+import { AudioFilters } from "@motion-script/core";
 import { createScene } from "@motion-script/core";
 import { audioDemo } from "./audio-demo";
 
@@ -8,5 +8,5 @@ import { audioDemo } from "./audio-demo";
  */
 export default createScene(audioDemo({
         label: 'Speed ×2',
-        filters: AFX.speed(2),
+        filters: AudioFilters.speed(2),
     }));

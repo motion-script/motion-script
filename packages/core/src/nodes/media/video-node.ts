@@ -13,7 +13,7 @@ import { resolveFill, updateFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
 import { Sound } from "@/attributes/audio/sound";
 import { AudioFilter } from "@/attributes/audio/filters/union";
-import { ChainableAfx, resolveAudioFilters, AFX } from "@/attributes/audio/filters/chain";
+import { ChainableAfx, resolveAudioFilters, AudioFilters } from "@/attributes/audio/filters/chain";
 
 export interface VideoProps extends RectProps {
     src?: string;
@@ -140,7 +140,7 @@ export class Video extends Rect {
 
     /**
      * The audio clip's trimmed source length combined with `speed` collapses into
-     * an `AFX.speed` filter on the Sound, so its timeline length matches the
+     * an `AudioFilters.speed` filter on the Sound, so its timeline length matches the
      * picture. Looping the picture loops the sound; a non-looping clip stops at
      * `trimEnd` (or the source's full duration, resolved in {@link prepare}).
      */
@@ -160,7 +160,7 @@ export class Video extends Rect {
 
         this._soundKey = key;
         const filters: AudioFilter[] = [];
-        if (speed !== 1) filters.push(...resolveAudioFilters(AFX.speed(speed)));
+        if (speed !== 1) filters.push(...resolveAudioFilters(AudioFilters.speed(speed)));
         filters.push(...this.audioFilters!);
 
         this._sound = new Sound({

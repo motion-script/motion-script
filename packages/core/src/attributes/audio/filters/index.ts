@@ -17,7 +17,7 @@ export type { SpeedFilter } from './implementations/speed';
 export type { EchoFilter } from './implementations/echo';
 
 /** Chainable filter builder API, chain class, and union input type. */
-export { AFX, AudioFilterChain, resolveAudioFilters } from './chain';
+export { AudioFilters, AudioFilterChain, resolveAudioFilters } from './chain';
 export type { ChainableAfx } from './chain';
 
 /** Time-varying param curves: builders, the Curve type, and param helpers. */

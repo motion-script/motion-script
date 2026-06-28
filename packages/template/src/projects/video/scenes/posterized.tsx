@@ -1,4 +1,4 @@
-import { Fills, MX } from "@motion-script/core";
+import { Fills, VideoFilters } from "@motion-script/core";
 import { createScene } from "@motion-script/core";
 import { videoFill, SAMPLE_VIDEO } from "./video-fill";
 
@@ -13,6 +13,6 @@ export default createScene(videoFill({
         fill: Fills.video(SAMPLE_VIDEO, {
             fit: 'fill',
             loop: 'forward',
-            filters: MX.posterizeTime(6),
+            filters: VideoFilters.posterizeTime(6),
         }),
     }));
