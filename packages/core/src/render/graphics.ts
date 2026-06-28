@@ -6,24 +6,27 @@ import type { PolygonState } from "./descriptors/polygon";
 import type { PolygramState } from "./descriptors/polygram";
 import type { TextState } from "./descriptors/text";
 import type { RichTextState } from "./descriptors/richtext";
+import type { ShapeAnchorInput } from "./descriptors/shape";
 import { PathBuilder } from "./descriptors/path-builder";
 import type { Fill } from "@/attributes/shape/fill/chain";
 import type { Stroke } from "@/attributes/shape/stroke/mapper";
 import type { Shadow } from "@/attributes/shape/shadow/resolver";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { type Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
-import type { Vector2 } from "@/attributes/layout/vector2";
+import type { PivotInput } from "@/attributes/layout/align";
 import type { MaskOptions } from "@/attributes/mask/mask";
 
 /**
  * A union-level rotate/scale applied to the whole drawn silhouette. `center` is
- * the pivot in the graphics' local coordinate space; when omitted the renderer
- * pivots about the centre of the union's bounding box.
+ * the pivot the union turns about: either an explicit {@link Vector2} in the
+ * graphics' local coordinate space, or a **named anchor** (`'center'`,
+ * `'topRight'`, …) the renderer resolves against the union's bounding box. When
+ * omitted the renderer pivots about the centre of that bounding box.
  */
 export interface GraphicsTransform {
     rotation: number;
     scale: number;
-    center?: Vector2;
+    center?: PivotInput;
 }
 
 /**
@@ -32,14 +35,14 @@ export interface GraphicsTransform {
  * accepted.
  */
 export type GraphicsShapeOp =
-    | { kind: "rect"; state: Partial<RectState> }
-    | { kind: "ellipse"; state: Partial<EllipseState> }
+    | { kind: "rect"; state: Partial<RectState> & ShapeAnchorInput }
+    | { kind: "ellipse"; state: Partial<EllipseState> & ShapeAnchorInput }
     | { kind: "path"; state: Partial<PathState> }
     | { kind: "line"; state: Partial<LineState> }
-    | { kind: "polygon"; state: Partial<PolygonState> }
-    | { kind: "polygram"; state: Partial<PolygramState> }
-    | { kind: "text"; state: Partial<TextState> }
-    | { kind: "richText"; state: Partial<RichTextState> };
+    | { kind: "polygon"; state: Partial<PolygonState> & ShapeAnchorInput }
+    | { kind: "polygram"; state: Partial<PolygramState> & ShapeAnchorInput }
+    | { kind: "text"; state: Partial<TextState> & ShapeAnchorInput }
+    | { kind: "richText"; state: Partial<RichTextState> & ShapeAnchorInput };
 
 /**
  * A single recorded operation in a {@link Graphics} command list. Shape ops
@@ -104,16 +107,16 @@ export class Graphics {
     private _effects: SceneEffect[] = [];
     private _rotation: number = 0;
     private _scale: number = 1;
-    private _transformCenter?: Vector2;
+    private _transformCenter?: PivotInput;
 
     // ─── Shapes ──────────────────────────────────────────────────────────────
 
-    rect(state: Partial<RectState>): this {
+    rect(state: Partial<RectState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "rect", state });
         return this;
     }
 
-    ellipse(state: Partial<EllipseState>): this {
+    ellipse(state: Partial<EllipseState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "ellipse", state });
         return this;
     }
@@ -130,22 +133,22 @@ export class Graphics {
         return this;
     }
 
-    polygon(state: Partial<PolygonState>): this {
+    polygon(state: Partial<PolygonState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "polygon", state });
         return this;
     }
 
-    polygram(state: Partial<PolygramState>): this {
+    polygram(state: Partial<PolygramState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "polygram", state });
         return this;
     }
 
-    text(state: Partial<TextState>): this {
+    text(state: Partial<TextState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "text", state });
         return this;
     }
 
-    richText(state: Partial<RichTextState>): this {
+    richText(state: Partial<RichTextState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "richText", state });
         return this;
     }
@@ -224,23 +227,26 @@ export class Graphics {
     }
 
     /**
-     * Rotate the whole union of shapes (degrees) about `center` (default: the
-     * union's bounding-box centre). Unlike a per-shape `rotation` passed inside a
-     * shape's params, this mutates the combined silhouette — every shape turns
-     * together as one figure.
+     * Rotate the whole union of shapes (degrees) about `center` — either an
+     * explicit {@link Vector2} in local space or a **named anchor** (`'topRight'`,
+     * `'bottomCenter'`, …) resolved against the union's bounding box (default: the
+     * box's centre). Unlike a per-shape `rotation` passed inside a shape's params,
+     * this mutates the combined silhouette — every shape turns together as one
+     * figure.
      */
-    rotation(rotation: number, center?: Vector2): this {
+    rotation(rotation: number, center?: PivotInput): this {
         this._rotation = rotation;
         if (center !== undefined) this._transformCenter = center;
         return this;
     }
 
     /**
-     * Scale the whole union of shapes about `center` (default: the union's
-     * bounding-box centre). Like {@link rotation}, this transforms the combined
+     * Scale the whole union of shapes about `center` — an explicit {@link Vector2}
+     * or a **named anchor** resolved against the union's bounding box (default:
+     * the box's centre). Like {@link rotation}, this transforms the combined
      * silhouette rather than a single shape.
      */
-    scale(scale: number, center?: Vector2): this {
+    scale(scale: number, center?: PivotInput): this {
         this._scale = scale;
         if (center !== undefined) this._transformCenter = center;
         return this;

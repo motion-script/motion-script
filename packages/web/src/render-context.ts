@@ -23,7 +23,10 @@ import {
     type PathState,
     type PolygonState,
     type PolygramState,
+    type PathCommand,
+    type PathBounds,
     type RectState,
+    type ShapeAnchorInput,
     Graphics,
     type GraphicsOp,
     RenderContext,
@@ -33,6 +36,7 @@ import {
     type TextState,
     type TransformState,
     type Vector2,
+    type PivotInput,
     type MotionBlurEffect,
     type FontStyle,
     type SceneEffect,
@@ -43,6 +47,10 @@ import {
     resolveFillArray,
     resolveStrokeArray,
     resolveShadowArray,
+    resolvePivot,
+    resolveShapeAnchor,
+    stripShapeAnchorKeys,
+    ShapeState,
 
 } from "@motion-script/core";
 
@@ -74,6 +82,142 @@ import { getCanvasKitBlendMode } from "./blend";
 type DeferredPaintCall =
     | { kind: 'fill'; shapes: CurrentShape[]; fills: FillResolved[]; shadows: ShadowResolved[] | null }
     | { kind: 'stroke'; shapes: CurrentShape[]; strokes: StrokeResolved[]; shadows: ShadowResolved[] | null };
+
+// ─── y-up → canvas-y flip ────────────────────────────────────────────────────
+// Per-shape descriptor coordinates are authored y-UP (y=100 is 100px ABOVE the
+// origin, matching node x/y and the pivot/anchor vocabulary). The canvas the
+// shapes are drawn into is y-DOWN. Rather than scatter `-y` through the
+// descriptor resolvers or every computeGeometry, the renderer owns the mapping:
+// each shape op's y is negated here, once, as it enters the paint/measure pass.
+//
+// Negating a shape's *center* y (rect/ellipse/poly/text) moves the whole shape;
+// its geometry is rebuilt symmetrically about the new center, so symmetric shapes
+// are correct with nothing more. Vertically-asymmetric features must also be
+// reflected so the shape isn't mirrored: a rect's per-corner radii/styles swap
+// top↔bottom, and a partial ellipse's arc reverses (negate startAngle + sweep).
+// Line points and path commands carry their own per-point y, negated individually.
+
+/** Negate a scalar y, treating undefined as 0 (the descriptor default). */
+const negY = (y: number | undefined): number => -(y ?? 0);
+
+/**
+ * Collapse any cardinal-anchor positioning into a concrete y-up centre `x`/`y`
+ * and `pivot`, *then* negate that centre's y to canvas space. Anchor resolution
+ * (`resolveShapeAnchor`) is done entirely in y-up (target y-up → centre y-up,
+ * pivot y-up); only the final centre y is flipped here. The resolved x/y/pivot
+ * replace the op's positioning inputs and the anchor keys are stripped, so the
+ * later `with*Descriptor` sees a plain canvas-space centre and no anchor.
+ */
+function flipPositionY<T extends Partial<ShapeState> & ShapeAnchorInput>(
+    state: T, width: number, height: number,
+): T {
+    const { x, y, pivot } = resolveShapeAnchor(state, width, height);
+    return { ...stripShapeAnchorKeys(state), x, y: -y, pivot } as T;
+}
+
+/** Swap the top and bottom entries of a per-corner value (a vertical mirror). */
+function swapCornersTopBottom<T>(c: { topLeft: T; topRight: T; bottomRight: T; bottomLeft: T }) {
+    return { topLeft: c.bottomLeft, topRight: c.bottomRight, bottomRight: c.topRight, bottomLeft: c.topLeft };
+}
+
+type RectInput = Partial<RectState> & ShapeAnchorInput;
+type EllipseInput = Partial<EllipseState> & ShapeAnchorInput;
+type PolygonInput = Partial<PolygonState> & ShapeAnchorInput;
+type PolygramInput = Partial<PolygramState> & ShapeAnchorInput;
+type TextInput = Partial<TextState> & ShapeAnchorInput;
+type RichTextInput = Partial<RichTextState> & ShapeAnchorInput;
+
+function flipRectY(state: RectInput): RectInput {
+    const out: RectInput = flipPositionY(state, state.width ?? 0, state.height ?? 0);
+    // Per-corner radii/styles are labelled top/bottom; a vertical flip must swap
+    // them so the visual top keeps its authored top corners. A uniform radius (a
+    // plain number) is mirror-invariant and passes through untouched.
+    if (state.cornerRadius != null && typeof state.cornerRadius === "object") {
+        out.cornerRadius = swapCornersTopBottom(state.cornerRadius as any) as any;
+    }
+    if (state.cornerStyle != null && typeof state.cornerStyle === "object") {
+        out.cornerStyle = swapCornersTopBottom(state.cornerStyle as any) as any;
+    }
+    return out;
+}
+
+function flipEllipseY(state: EllipseInput): EllipseInput {
+    const out: EllipseInput = flipPositionY(state, state.width ?? 0, state.height ?? 0);
+    // A partial arc is defined by startAngle/sweep measured in y-down space; under
+    // a vertical flip the arc must sweep the mirrored direction and start at the
+    // mirrored angle, so it traces the same visual wedge. (Full ellipses: no-op.)
+    if (state.startAngle != null) out.startAngle = -state.startAngle;
+    if (state.sweep != null) out.sweep = -state.sweep;
+    return out;
+}
+
+function flipPolygonY(state: PolygonInput): PolygonInput {
+    // Vertices are cy + ry*sin(a); flipping the center mirrors them vertically.
+    // Polygon/polygram have no startAngle field (their orientation is fixed by
+    // `sides`), and a regular polygon's vertical mirror is itself for the default
+    // orientation, so flipping the resolved centre y is sufficient.
+    return flipPositionY(state, state.width ?? 0, state.height ?? 0);
+}
+
+function flipPolygramY(state: PolygramInput): PolygramInput {
+    return flipPositionY(state, state.width ?? 0, state.height ?? 0);
+}
+
+function flipLineY(state: Partial<LineState>): Partial<LineState> {
+    const points = state.points ? state.points.map((p) => ({ x: p.x, y: -p.y })) : state.points;
+    return { ...state, y: negY(state.y), points };
+}
+
+function flipTextY(state: TextInput): TextInput {
+    // Only the text's position flips; glyphs stay upright (we negate the origin y,
+    // not the glyph orientation). Text-on-path follows its path verbatim.
+    return flipPositionY(state, state.width ?? 0, state.height ?? 0);
+}
+
+function flipRichTextY(state: RichTextInput): RichTextInput {
+    return flipPositionY(state, state.width ?? 0, state.height ?? 0);
+}
+
+/** Negate the y of a single PathCommand, mirroring it vertically. Arc commands
+ *  also flip their sweep flag, since a vertical mirror reverses arc winding;
+ *  `largeArc` and the arc rotation are unaffected. */
+function flipPathCommandY(cmd: PathCommand): PathCommand {
+    switch (cmd.type) {
+        case "M": case "m": case "L": case "l": case "T": case "t":
+            return { ...cmd, y: -cmd.y };
+        case "V": case "v":
+            return { ...cmd, y: -cmd.y };
+        case "H": case "h":
+            return cmd; // no y component
+        case "C": case "c":
+            return { ...cmd, y1: -cmd.y1, y2: -cmd.y2, y: -cmd.y };
+        case "S": case "s":
+            return { ...cmd, y2: -cmd.y2, y: -cmd.y };
+        case "Q": case "q":
+            return { ...cmd, y1: -cmd.y1, y: -cmd.y };
+        case "A": case "a":
+            return { ...cmd, y: -cmd.y, sweep: (cmd.sweep === 1 ? 0 : 1) };
+        case "Z": case "z":
+            return cmd;
+    }
+}
+
+function flipPathY(state: Partial<PathState>): Partial<PathState> {
+    const out: Partial<PathState> = { ...state, y: negY(state.y) };
+    // PathCommand[] is authored y-up — mirror every command. A raw SVG `d` string
+    // is interpreted in its own coordinate space (the path self-centers on its
+    // bbox), so it is left untouched; use a command array for y-up authoring.
+    if (Array.isArray(state.d)) {
+        out.d = state.d.map(flipPathCommandY);
+    }
+    // centerBounds is [minX, minY, maxX, maxY]; a vertical flip negates and swaps
+    // the y extents so the explicit frame still matches the mirrored commands.
+    if (state.centerBounds) {
+        const [minX, minY, maxX, maxY] = state.centerBounds;
+        out.centerBounds = [minX, -maxY, maxX, -minY] as PathBounds;
+    }
+    return out;
+}
 
 /**
  * A foreground shader effect mid-flight: drawing is redirected into `offscreen`
@@ -432,7 +576,7 @@ export class WebRenderContext extends RenderContext {
         const groupTransform = graphics.groupTransform();
         let pushedTransform = false;
         if (groupTransform) {
-            const center = groupTransform.center ?? this.measureUnionCenter(graphics);
+            const center = this.resolveGroupCenter(graphics, groupTransform.center);
             const cx = center.x;
             const cy = center.y;
             this.currentCanvas.save();
@@ -459,23 +603,38 @@ export class WebRenderContext extends RenderContext {
     }
 
     /**
-     * Size the union of a Graphics' shapes in a throwaway measurement pass and
-     * return the centre of its bounding box — the default pivot for a
-     * graphics-level rotation/scale. Builds the shape ops (skipping paint and
-     * compositing ops) into a suspended-cache scope so the real paint pass that
-     * follows is unaffected. Falls back to the local origin when there are no
-     * path-backed shapes (e.g. text only).
+     * Resolve a graphics-level rotate/scale `center` into a concrete local-space
+     * pivot point.
+     *
+     *  - An explicit {@link Vector2} is already in local space — passed straight
+     *    through, with no measurement pass.
+     *  - A **named anchor** (`'topRight'`, …) or `undefined` (default) is resolved
+     *    against the union's bounding box, sized in a throwaway measurement pass:
+     *    `undefined` → the box centre; a name → the corresponding box corner/edge.
+     *
+     * The box is sized by building only the shape ops (skipping paint/compositing/
+     * text) into a suspended-cache scope so the real paint pass is unaffected.
+     * Falls back to the local origin when there are no path-backed shapes (e.g.
+     * text only).
      */
-    private measureUnionCenter(graphics: Graphics): Vector2 {
+    private resolveGroupCenter(graphics: Graphics, center: PivotInput | undefined): Vector2 {
+        // Explicit pixel pivot — no need to size the union.
+        if (center !== undefined && typeof center !== "string") {
+            return { x: center.x, y: center.y };
+        }
+
         this.shapeHandler.beginMeasure();
         for (const op of graphics.ops()) {
+            // Measure in the same y-up→canvas-flipped space the paint pass draws
+            // in (see flip* helpers / applyOp), so the union bbox the pivot is
+            // resolved against matches the rendered geometry.
             switch (op.kind) {
-                case "rect": this.shapeHandler.rect(op.state); break;
-                case "ellipse": this.shapeHandler.ellipse(op.state); break;
-                case "path": this.shapeHandler.path(op.state); break;
-                case "line": this.shapeHandler.line(op.state); break;
-                case "polygon": this.shapeHandler.polygon(op.state); break;
-                case "polygram": this.shapeHandler.polygram(op.state); break;
+                case "rect": this.shapeHandler.rect(flipRectY(op.state)); break;
+                case "ellipse": this.shapeHandler.ellipse(flipEllipseY(op.state)); break;
+                case "path": this.shapeHandler.path(flipPathY(op.state)); break;
+                case "line": this.shapeHandler.line(flipLineY(op.state)); break;
+                case "polygon": this.shapeHandler.polygon(flipPolygonY(op.state)); break;
+                case "polygram": this.shapeHandler.polygram(flipPolygramY(op.state)); break;
                 // Paint/compositing/text ops don't change the union bbox used
                 // for the pivot, so they're skipped during measurement.
             }
@@ -483,19 +642,31 @@ export class WebRenderContext extends RenderContext {
         const bounds = this.shapeHandler.measureUnionBounds();
         this.shapeHandler.endMeasure();
         if (!bounds) return { x: 0, y: 0 };
-        return { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
+
+        const cx = (bounds.left + bounds.right) / 2;
+        const cy = (bounds.top + bounds.bottom) / 2;
+        // Default (undefined) pivots about the box centre.
+        if (center === undefined) return { x: cx, y: cy };
+
+        // Named anchor: normalised [-1,1] (y-up) scaled onto the box, y flipped
+        // to the renderer's y-down local space — so 'topRight' lands at the box's
+        // top-right corner. Matches how node/per-shape pivots map onto their box.
+        const a = resolvePivot(center);
+        const halfW = (bounds.right - bounds.left) / 2;
+        const halfH = (bounds.bottom - bounds.top) / 2;
+        return { x: cx + a.x * halfW, y: cy - a.y * halfH };
     }
 
     private applyOp(op: GraphicsOp): void {
         switch (op.kind) {
-            case "rect": this._rect(op.state); break;
-            case "ellipse": this._ellipse(op.state); break;
-            case "path": this._path(op.state); break;
-            case "line": this._line(op.state); break;
-            case "polygon": this._polygon(op.state); break;
-            case "polygram": this._polygram(op.state); break;
-            case "text": this._text(op.state); break;
-            case "richText": this._richText(op.state); break;
+            case "rect": this._rect(flipRectY(op.state)); break;
+            case "ellipse": this._ellipse(flipEllipseY(op.state)); break;
+            case "path": this._path(flipPathY(op.state)); break;
+            case "line": this._line(flipLineY(op.state)); break;
+            case "polygon": this._polygon(flipPolygonY(op.state)); break;
+            case "polygram": this._polygram(flipPolygramY(op.state)); break;
+            case "text": this._text(flipTextY(op.state)); break;
+            case "richText": this._richText(flipRichTextY(op.state)); break;
             case "fill": this._fill(op.fills); break;
             case "stroke": this._stroke(op.strokes); break;
             case "shadow": this._shadow(op.shadows); break;
@@ -969,13 +1140,15 @@ export class WebRenderContext extends RenderContext {
     private buildClipShapeOp(op: ClipOp): RectShape | EllipseShape | PolygonShape | PolygramShape | PathShape | LineShape | null {
         const ck = this.canvasKit;
         const canvas = () => this.currentCanvas;
+        // Clip shapes are authored y-up like every other descriptor; flip y to
+        // canvas so a clip outline lines up with the (also-flipped) content it clips.
         switch (op.kind) {
-            case "rect": return new RectShape(ck, canvas, op.state);
-            case "ellipse": return new EllipseShape(ck, canvas, op.state);
-            case "polygon": return new PolygonShape(ck, canvas, op.state);
-            case "polygram": return new PolygramShape(ck, canvas, op.state);
-            case "path": return new PathShape(ck, canvas, op.state);
-            case "line": return new LineShape(ck, canvas, op.state);
+            case "rect": return new RectShape(ck, canvas, flipRectY(op.state));
+            case "ellipse": return new EllipseShape(ck, canvas, flipEllipseY(op.state));
+            case "polygon": return new PolygonShape(ck, canvas, flipPolygonY(op.state));
+            case "polygram": return new PolygramShape(ck, canvas, flipPolygramY(op.state));
+            case "path": return new PathShape(ck, canvas, flipPathY(op.state));
+            case "line": return new LineShape(ck, canvas, flipLineY(op.state));
             case "cut": return null;
         }
     }

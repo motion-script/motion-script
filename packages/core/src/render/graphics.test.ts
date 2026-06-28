@@ -64,6 +64,15 @@ describe('Graphics', () => {
         expect(g.groupTransform()).toEqual({ rotation: 45, scale: 1, center: { x: 10, y: 20 } });
     });
 
+    it('rotation/scale accept a named-anchor center pivot (resolved later by the renderer)', () => {
+        const g = new Graphics()
+            .rect({ width: 1, height: 1 })
+            .rotation(90, 'topRight');
+        // The anchor name is carried through verbatim; the renderer resolves it
+        // against the union's bounding box at paint time.
+        expect(g.groupTransform()).toEqual({ rotation: 90, scale: 1, center: 'topRight' });
+    });
+
     it('groupTransform is null when rotation/scale are identity', () => {
         expect(new Graphics().rect({ width: 1, height: 1 }).opacity(0.2).groupTransform()).toBeNull();
     });

@@ -77,12 +77,12 @@ export abstract class ViewportPattern<P extends ShapeProps = ShapeProps> extends
             bh = hw * sin + hh * cos;
         }
 
-        // The camera maps world `origin` to the viewport centre via
-        // `translate(-origin.x, +origin.y)` in y-down canvas space, so a child at
-        // scene y appears at canvas y = -y. We draw in that same canvas space, so
-        // the visible region centres on (origin.x, -origin.y).
+        // The visible region centres on the camera `origin`, returned in y-UP
+        // world space (matching the descriptor convention; the renderer applies
+        // the single y-up→canvas flip when the pattern's shapes are drawn). A
+        // y-down consumer would have wanted -origin.y; we hand back the y-up value.
         const origin = camera.origin;
-        return { x: origin.x, y: -origin.y, width: bw * 2, height: bh * 2 };
+        return { x: origin.x, y: origin.y, width: bw * 2, height: bh * 2 };
     }
 
     /** Nearest ancestor {@link Camera}, or `null` when rendered outside one. */

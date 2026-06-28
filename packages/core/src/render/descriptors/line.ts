@@ -1,5 +1,5 @@
 import { Vector2 } from "@/attributes/layout/vector2";
-import { ShapeState } from "./shape";
+import { ShapeState, resolveShapePivot } from "./shape";
 
 export interface LineState extends ShapeState {
     points: Vector2[];
@@ -18,7 +18,7 @@ export function withLineDescriptor(descriptor: Partial<LineState>): LineState {
         end: descriptor.end ?? 1,
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
-        pivot: descriptor.pivot ?? { x: 0, y: 0 },
+        pivot: resolveShapePivot(descriptor.pivot),
 
         points: descriptor.points ?? [],
         radius: descriptor.radius ?? 0,

@@ -3,7 +3,7 @@ import { FontStyle } from "@/attributes/text/span";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { PathData } from "./path";
-import { ShapeState } from "./shape";
+import { ShapeAnchorInput, ShapeState, resolveShapeAnchor, resolveShapePivot, stripShapeAnchorKeys } from "./shape";
 
 /**
  * One contiguous piece of a Text node split at selection boundaries. Pieces
@@ -59,17 +59,20 @@ export interface TextState extends ShapeState {
 }
 
 
-export function withTextDescriptor(descriptor: Partial<TextState>): TextState {
+export function withTextDescriptor(descriptor: Partial<TextState> & ShapeAnchorInput): TextState {
+    const width = descriptor.width ?? 0;
+    const height = descriptor.height ?? 0;
+    const { x, y, pivot } = resolveShapeAnchor(descriptor, width, height);
     return {
-        ...descriptor,
+        ...stripShapeAnchorKeys(descriptor),
         opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
-        x: descriptor.x ?? 0,
-        y: descriptor.y ?? 0,
+        x,
+        y,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        pivot: descriptor.pivot ?? { x: 0, y: 0 },
+        pivot: resolveShapePivot(pivot),
         text: descriptor.text ?? "",
         fontSize: descriptor.fontSize ?? 16,
         fontFamily: descriptor.fontFamily ?? "Arial",

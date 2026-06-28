@@ -4,6 +4,7 @@ import type { PathState } from "./descriptors/path";
 import type { LineState } from "./descriptors/line";
 import type { PolygonState } from "./descriptors/polygon";
 import type { PolygramState } from "./descriptors/polygram";
+import type { ShapeAnchorInput } from "./descriptors/shape";
 import { PathBuilder } from "./descriptors/path-builder";
 
 /**
@@ -12,12 +13,12 @@ import { PathBuilder } from "./descriptors/path-builder";
  * Each carries the partial descriptor state for that shape.
  */
 export type ClipShapeOp =
-    | { kind: "rect"; state: Partial<RectState> }
-    | { kind: "ellipse"; state: Partial<EllipseState> }
+    | { kind: "rect"; state: Partial<RectState> & ShapeAnchorInput }
+    | { kind: "ellipse"; state: Partial<EllipseState> & ShapeAnchorInput }
     | { kind: "path"; state: Partial<PathState> }
     | { kind: "line"; state: Partial<LineState> }
-    | { kind: "polygon"; state: Partial<PolygonState> }
-    | { kind: "polygram"; state: Partial<PolygramState> };
+    | { kind: "polygon"; state: Partial<PolygonState> & ShapeAnchorInput }
+    | { kind: "polygram"; state: Partial<PolygramState> & ShapeAnchorInput };
 
 /**
  * A single recorded op in a {@link Clip}. Shape ops add geometry to the clip
@@ -53,12 +54,12 @@ export class Clip {
 
     // ─── Shapes ──────────────────────────────────────────────────────────────
 
-    rect(state: Partial<RectState>): this {
+    rect(state: Partial<RectState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "rect", state });
         return this;
     }
 
-    ellipse(state: Partial<EllipseState>): this {
+    ellipse(state: Partial<EllipseState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "ellipse", state });
         return this;
     }
@@ -75,12 +76,12 @@ export class Clip {
         return this;
     }
 
-    polygon(state: Partial<PolygonState>): this {
+    polygon(state: Partial<PolygonState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "polygon", state });
         return this;
     }
 
-    polygram(state: Partial<PolygramState>): this {
+    polygram(state: Partial<PolygramState> & ShapeAnchorInput): this {
         this._ops.push({ kind: "polygram", state });
         return this;
     }

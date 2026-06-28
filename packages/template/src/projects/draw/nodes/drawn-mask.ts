@@ -36,20 +36,21 @@ export class DrawnMask extends ShapeNode<DrawnMaskProps> {
         const e = this.extent;
         const frame: [number, number, number, number] = [-e, -e, e, e];
 
+        // Authored y-up (the renderer flips y to canvas); same figure as DrawnShape.
         const wing = new PathBuilder()
-            .moveTo(e * 0.1, -e * 0.55)
-            .bezierCurveTo(e * 0.95, -e * 0.7, e * 1.0, e * 0.2, e * 0.35, e * 0.7)
-            .bezierCurveTo(e * 0.2, e * 0.45, e * 0.2, e * 0.0, e * 0.1, -e * 0.55)
+            .moveTo(e * 0.1, e * 0.55)
+            .bezierCurveTo(e * 0.95, e * 0.7, e * 1.0, -e * 0.2, e * 0.35, -e * 0.7)
+            .bezierCurveTo(e * 0.2, -e * 0.45, e * 0.2, -e * 0.0, e * 0.1, e * 0.55)
             .close();
 
         const g = new Graphics().mask({ mode: 'alpha' });
 
         // ── Mask: the complex drawn silhouette (same figure as DrawnShape) ────
         g.rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })
-            .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.9, height: e * 0.9 })
+            .ellipse({ x: -e * 0.45, y: e * 0.55, width: e * 0.9, height: e * 0.9 })
             .path(wing.toPathState({ centerBounds: frame }))
             // Eye hole punched out of the mask, so content shows through it.
-            .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.3, height: e * 0.3 })
+            .ellipse({ x: -e * 0.45, y: e * 0.55, width: e * 0.3, height: e * 0.3 })
             .cut()
             .fill('white');
 

@@ -1,4 +1,4 @@
-import { ShapeState } from "./shape";
+import { ShapeState, resolveShapePivot } from "./shape";
 
 export type PathCommand =
     | { type: "M"; x: number; y: number }
@@ -74,7 +74,7 @@ export function withPathDescriptor(descriptor: Partial<PathState>): PathState {
         end: descriptor.end ?? 1,
         width: descriptor.width ?? 0,
         height: descriptor.height ?? 0,
-        pivot: descriptor.pivot ?? { x: 0, y: 0 },
+        pivot: resolveShapePivot(descriptor.pivot),
 
         d: descriptor.d ?? "",
         centerBounds: descriptor.centerBounds,

@@ -58,27 +58,28 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
         // as the rect/ellipse offsets rather than self-centering on their bbox.
         const frame: [number, number, number, number] = [-e, -e, e, e];
 
-        // The wing: a closed bezier blob to the right, authored in the centred frame.
+        // The wing: a closed bezier blob to the right, authored y-up in the
+        // centred frame (the renderer flips y to canvas).
         const wing = new PathBuilder()
-            .moveTo(e * 0.1, -e * 0.55)
-            .bezierCurveTo(e * 0.95, -e * 0.7, e * 1.0, e * 0.2, e * 0.35, e * 0.7)
-            .bezierCurveTo(e * 0.2, e * 0.45, e * 0.2, e * 0.0, e * 0.1, -e * 0.55)
+            .moveTo(e * 0.1, e * 0.55)
+            .bezierCurveTo(e * 0.95, e * 0.7, e * 1.0, -e * 0.2, e * 0.35, -e * 0.7)
+            .bezierCurveTo(e * 0.2, -e * 0.45, e * 0.2, -e * 0.0, e * 0.1, e * 0.55)
             .close();
 
         const g = new Graphics()
-            // ── Solid body, accumulated as one surface ───────────────────────
+            // ── Solid body, accumulated as one surface (y-up: +y is up) ───────
             // Outer rounded rect — the main mass.
-            .rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })
+            .rect({ x: -e * 0.15, y: -20, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })
             // Ellipse lobe — a head bulging off the top-left.
-            .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.9, height: e * 0.9 })
+            .ellipse({ x: -e * 0.45, y: e * 0.55, width: e * 0.9, height: e * 0.9 })
             // Bezier wing path, sharing the body's frame.
             .path(wing.toPathState({ centerBounds: frame }))
             // ── Holes ────────────────────────────────────────────────────────
             // Eye hole: an ellipse drawn then cut from everything before it.
-            .ellipse({ x: -e * 0.45, y: -e * 0.55, width: e * 0.3, height: e * 0.3 })
+            .ellipse({ x: -e * 0.45, y: e * 0.55, width: e * 0.3, height: e * 0.3 })
             .cut()
             // Slot hole: a rounded rect notch cut lower in the body.
-            .rect({ x: -e * 0.15, y: e * 0.45, width: e * 0.55, height: e * 0.18, cornerRadius: e * 0.09, scale: 1 })
+            .rect({ x: -e * 0.15, y: -e * 0.45, width: e * 0.55, height: e * 0.18, cornerRadius: e * 0.09, scale: 1 })
             .cut()
             // ── Paint the whole union with the space-tagged fill ─────────────
             .shadow(this.shadow)

@@ -78,6 +78,10 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
         const halfH = bounds.height / 2;
         // The clip (set by ViewportPattern) confines drawing to `bounds`; here we
         // draw in this node's local space, where bounds are centred on (x, y).
+        // Descriptor coordinates are y-UP and the renderer flips them to canvas y
+        // (see flip* in render-context). `visibleBounds()` already gives this
+        // node's centre in y-up world space, so the fill rect's y and the y-axis
+        // extents below are authored y-up and the renderer applies the single flip.
         const left = bounds.x - halfW;
         const right = bounds.x + halfW;
         const top = bounds.y - halfH;

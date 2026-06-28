@@ -1,4 +1,4 @@
-import { ShapeState } from "./shape";
+import { ShapeAnchorInput, ShapeState, resolveShapeAnchor, resolveShapePivot, stripShapeAnchorKeys } from "./shape";
 export interface EllipseState extends ShapeState {
     width: number;
     height: number;
@@ -7,20 +7,23 @@ export interface EllipseState extends ShapeState {
     startAngle: number;
 }
 
-export function withEllipseDescriptor(descriptor: Partial<EllipseState>): EllipseState {
+export function withEllipseDescriptor(descriptor: Partial<EllipseState> & ShapeAnchorInput): EllipseState {
+    const width = descriptor.width ?? 0;
+    const height = descriptor.height ?? 0;
+    const { x, y, pivot } = resolveShapeAnchor(descriptor, width, height);
     return {
-        ...descriptor,
+        ...stripShapeAnchorKeys(descriptor),
         opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
-        x: descriptor.x ?? 0,
-        y: descriptor.y ?? 0,
+        x,
+        y,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        pivot: descriptor.pivot ?? { x: 0, y: 0 },
+        pivot: resolveShapePivot(pivot),
 
-        width: descriptor.width ?? 0,
-        height: descriptor.height ?? 0,
+        width,
+        height,
         ratio: descriptor.ratio ?? 1,
         sweep: descriptor.sweep ?? 360,
         startAngle: descriptor.startAngle ?? 0,

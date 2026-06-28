@@ -47,4 +47,25 @@ export function resolveAlign(value: AlignInput): Vector2 {
     return { x: value.x, y: value.y };
 }
 
+/**
+ * Accepted pivot input for a rotation/scale transform: a **named anchor**
+ * (`'center'`, `'topRight'`, `'bottomLeft'`, …) sharing the node `align`
+ * vocabulary, or an explicit per-axis {@link Vector2}.
+ *
+ * Pivots live in **normalised** space — `(0,0)` = centre, x ∈ `[-1, 1]` (left→
+ * right), y ∈ `[-1, 1]` (bottom→top, y-up) — so a named anchor maps straight onto
+ * the same `[-1, 1]` pivot a node/shape transform already uses, with no scaling.
+ * This is the input type for node `pivot`, per-shape `pivot`, and the
+ * graphics-level rotate/scale `center`.
+ */
+export type PivotInput = AlignInput;
+
+/**
+ * Resolve a {@link PivotInput} into a normalised pivot {@link Vector2} (the
+ * `[-1, 1]` space used by node and per-shape transforms). A named anchor goes
+ * through {@link resolveAlign}; an explicit {@link Vector2} passes through. Alias
+ * of {@link resolveAlign} — named so call sites read as pivot resolution.
+ */
+export const resolvePivot: (value: PivotInput) => Vector2 = resolveAlign;
+
 export { lerpVector2 as lerpAlign };

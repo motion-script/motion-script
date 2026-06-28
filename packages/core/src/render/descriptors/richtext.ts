@@ -1,6 +1,6 @@
 import { TextAlign } from "@/attributes/text/align";
 import { ResolvedTextSpan } from "@/attributes/text/span";
-import { ShapeState } from "./shape";
+import { ShapeAnchorInput, ShapeState, resolveShapeAnchor, resolveShapePivot, stripShapeAnchorKeys } from "./shape";
 
 export interface RichTextState extends ShapeState {
     spans: ResolvedTextSpan[];
@@ -10,21 +10,24 @@ export interface RichTextState extends ShapeState {
     height: number;
 }
 
-export function withRichTextDescriptor(descriptor: Partial<RichTextState>): RichTextState {
+export function withRichTextDescriptor(descriptor: Partial<RichTextState> & ShapeAnchorInput): RichTextState {
+    const width = descriptor.width ?? 0;
+    const height = descriptor.height ?? 0;
+    const { x, y, pivot } = resolveShapeAnchor(descriptor, width, height);
     return {
-        ...descriptor,
+        ...stripShapeAnchorKeys(descriptor),
         opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
-        x: descriptor.x ?? 0,
-        y: descriptor.y ?? 0,
+        x,
+        y,
         start: descriptor.start ?? 0,
         end: descriptor.end ?? 1,
-        pivot: descriptor.pivot ?? { x: 0, y: 0 },
+        pivot: resolveShapePivot(pivot),
         spans: descriptor.spans ?? [],
         lineHeight: descriptor.lineHeight ?? 1.2,
         align: descriptor.align ?? 'center',
-        width: descriptor.width ?? 0,
-        height: descriptor.height ?? 0,
+        width,
+        height,
     };
 }

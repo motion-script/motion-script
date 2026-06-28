@@ -14,6 +14,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
+import { PivotInput, resolvePivot } from "@/attributes/layout/align";
 import { Matrix2D, applyToPoint, multiply, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
@@ -122,8 +123,8 @@ function validateAnchorProps(props: Record<string, unknown>): void {
 }
 
 export interface NodeProps {
-    x: number;
-    y: number;
+    x: number; // 0 is center, negative is left, positive is right
+    y: number; // 0 is center, negative is down, positive is up
     width: SizeInput;
     height: SizeInput;
     scale: number;
@@ -138,8 +139,13 @@ export interface NodeProps {
     clip: boolean;
     children: Node | Node[];
 
-    /** Pivot point for rotation and scale. (0,0)=center, (-1,1)=top-left, (1,-1)=bottom-right. Set automatically when an anchor prop is used. */
-    pivot: Vector2;
+    /**
+     * Pivot point for rotation and scale. Either a **named anchor** (`'center'`,
+     * `'topRight'`, `'bottomLeft'`, … — the node `align` vocabulary) or an explicit
+     * {@link Vector2}: `(0,0)`=center, `(-1,1)`=top-left, `(1,-1)`=bottom-right. Set
+     * automatically when an anchor *positioning* prop is used.
+     */
+    pivot: PivotInput;
 
     // ---- Anchor-based positioning -----------------------------------------
     // Pass any one of these instead of (or in addition to) x/y.
@@ -257,7 +263,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // consumers that need the resolved shape cast at the read site.
     @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
     @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
-    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare readonly pivot: Vector2;
+    // Declared loose as `PivotInput` (covers `this.pivot = 'topRight'`); the
+    // accessor stores the resolved normalised `Vector2` via the mapper, so
+    // internal reads cast back to Vector2.
+    @property({ default: { x: 0, y: 0 }, mapper: (v: PivotInput) => resolvePivot(v), tween: lerpVector2 })
+    declare readonly pivot: PivotInput;
 
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
     @property({ default: false }) declare clip: boolean;
@@ -941,7 +951,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         const r = this.layoutRect;
         const cx = (r?.x ?? 0) + this.x;
         const cy = (r?.y ?? 0) - this.y;
-        const pivot = this.pivot;
+        // The accessor stores the resolved normalised pivot via the mapper.
+        const pivot = this.pivot as Vector2;
         const pivotX = pivot.x * ((r?.width ?? 0) / 2);
         const pivotY = -pivot.y * ((r?.height ?? 0) / 2);
         return nodeLocalMatrix(cx, cy, this.rotation, this.scale, pivotX, pivotY);
@@ -1204,7 +1215,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         s.opacity = this.opacity;
         s.blend = this.blend;
         s.effects = this.effects as SceneEffect[];
-        s.pivot = this.pivot;
+        s.pivot = this.pivot as Vector2;
         ctx.transform(s);
     }
 
