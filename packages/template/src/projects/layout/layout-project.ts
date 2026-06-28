@@ -12,6 +12,8 @@ import nested from './scenes/nested?scene';
 import grid from './scenes/grid?scene';
 import flexNodes from './scenes/flex-nodes?scene';
 import titleLayout from './scenes/title-layout?scene';
+import random from './scenes/random?scene';
+import context from './scenes/context?scene';
 import stage from './scenes/stage';
 import overlayVerify from './scenes/overlay-verify?scene';
 
@@ -39,6 +41,8 @@ export default createProject({
         camera,
         row,
         titleLayout,
+        random,
+        context,
         column,
         stack,
         groupMorph,

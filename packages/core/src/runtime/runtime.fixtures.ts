@@ -107,6 +107,10 @@ export class FakeScene {
     bindAssets(catalog: unknown): void {
         this.bindAssetsCalls.push(catalog);
     }
+    bindContextCalls: unknown[] = [];
+    bindContext(context: unknown, runInit: boolean): void {
+        this.bindContextCalls.push({ context, runInit });
+    }
     ellapse(time: number): void {
         this.ellapseCalls.push(time);
     }

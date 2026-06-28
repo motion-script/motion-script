@@ -19,6 +19,7 @@ import { PathData } from "@/render/descriptors/path";
 import { PathBuilder } from "@/render/descriptors/path-builder";
 import { measurePathData } from "@/attributes/shape/path/bounds";
 import { TextRange, TextSelection } from "./text-selection";
+import { applyTextDefaults } from "@/runtime/builtin-context";
 
 
 export interface TextProps extends ShapeProps {
@@ -67,6 +68,14 @@ export class Text extends ShapeNode<TextProps> {
 
     constructor(props: NodeConfig<Text, TextProps>) {
         super(props);
+    }
+
+    // Inherit text-style defaults from the nearest ancestor <DefaultTextStyle>
+    // for any style prop the author didn't set. Runs after the tree + context
+    // exist and re-runs each pass (see Node.init); writing through _writeProp
+    // applies each field's own mapper (e.g. `fill`'s color resolver) once.
+    protected override init(props?: NodeConfig<Text, TextProps>): void {
+        applyTextDefaults(this, props as Record<string, unknown> | undefined);
     }
 
     // Text doesn't hug/fill based on children (it has none) — it hugs its own

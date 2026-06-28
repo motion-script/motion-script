@@ -12,6 +12,7 @@ import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { FontStyle, ResolvedTextSpan, TextSpan } from "@/attributes/text/span";
+import { applyTextDefaults } from "@/runtime/builtin-context";
 
 
 export interface RichTextProps extends ShapeProps {
@@ -50,6 +51,13 @@ export class RichText extends ShapeNode<RichTextProps> {
 
     constructor(props: NodeConfig<RichText, RichTextProps>) {
         super(props);
+    }
+
+    // Inherit text-style defaults from the nearest ancestor <DefaultTextStyle>
+    // for any default the author didn't set; runs() then folds these node-level
+    // defaults into each span. See Node.init / Text.init.
+    protected override init(props?: NodeConfig<RichText, RichTextProps>): void {
+        applyTextDefaults(this, props as Record<string, unknown> | undefined);
     }
 
     // RichText always sizes to its own laid-out spans — it has no children

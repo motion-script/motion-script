@@ -6,6 +6,7 @@ import { Scene } from "@/nodes/base/scene-node";
 import { Node } from "@/nodes/base/node";
 import { nodePath } from "@/project/tree";
 import { AssetCatalog } from "@/assets/catalog";
+import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetTracker } from "@/assets/tracker";
 
@@ -214,6 +215,10 @@ export class Precomp {
         scene.set({ width: this.viewport.width, height: this.viewport.height });
         scene.setViewport(this.viewport);
         scene.bindAssets(this.assets);
+        // Mark the root context-bound (after reset restored defaults) so nodes the
+        // generator adds below inherit context and run their init() on add. runInit
+        // here fires init() for any nodes already present (e.g. config children).
+        scene.bindContext(ContextMap.EMPTY, true);
         stage.reset();
 
         let localFrame = 0;
@@ -249,6 +254,9 @@ export class Precomp {
 
                 localFrame++;
                 scene.bindAssets(this.assets);
+                // Structural re-push only (runInit=false): refresh context on any
+                // subtree added this frame without re-firing init mid-tween.
+                scene.bindContext(ContextMap.EMPTY, false);
                 scene.ellapse(localFrame * dt);
 
                 const result = generator.next(dt);

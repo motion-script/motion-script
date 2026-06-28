@@ -7,6 +7,7 @@ const ExpensiveScene = createScene(function* (stage) {
     const count = 200;
     const w = stage.viewport.width;
     const h = stage.viewport.height;
+    const random = stage.random("expensive");
     // randomly place #count rects on the screen and then animate their position and rotation.
     const rects = Array.from({ length: count }, () => createRef<Rect>());
     stage.add(
@@ -16,10 +17,10 @@ const ExpensiveScene = createScene(function* (stage) {
                     ref={ref}
                     width={20}
                     height={20}
-                    fill={`hsl(${stage.random(0, 360)}, 70%, 60%)`}
-                    x={stage.random(-w / 2, w / 2)}
-                    y={stage.random(-h / 2, h / 2)}
-                    rotation={stage.random() * 360}
+                    fill={`hsl(${random.nextFloat(0, 360)}, 70%, 60%)`}
+                    x={random.nextFloat(-w / 2, w / 2)}
+                    y={random.nextFloat(-h / 2, h / 2)}
+                    rotation={random.nextFloat() * 360}
                 />
             ))}
         </>
@@ -29,9 +30,9 @@ const ExpensiveScene = createScene(function* (stage) {
         ...rects.map((ref) =>
             ref().to(
                 {
-                    x: stage.random(-w / 2, w / 2),
-                    y: stage.random(-h / 2, h / 2),
-                    rotation: stage.random() * 360,
+                    x: random.nextFloat(-w / 2, w / 2),
+                    y: random.nextFloat(-h / 2, h / 2),
+                    rotation: random.nextFloat() * 360,
                 },
                 8,
             ),

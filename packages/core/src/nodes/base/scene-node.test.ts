@@ -35,8 +35,8 @@ describe("Scene.build merged stage", () => {
     it("exposes the BuildStage determinism surface (viewport/fps/random)", () => {
         let seen: { viewport?: unknown; fps?: unknown; rand?: unknown } = {};
         drive(function* (stage) {
-            stage.seed("fixed");
-            seen = { viewport: stage.viewport, fps: stage.fps, rand: stage.random() };
+            const random = stage.random("fixed");
+            seen = { viewport: stage.viewport, fps: stage.fps, rand: random.nextFloat() };
             yield;
         });
         expect(seen.viewport).toEqual(VIEWPORT);

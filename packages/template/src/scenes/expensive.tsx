@@ -33,7 +33,7 @@ export const expensive = (opts: {
 } = {}): SceneGenerator => function* (stage) {
     const { count = 1200, seed = "expensive", fill = "#e8c584", legDuration = 2.5, legs = 4 } = opts;
 
-    stage.seed(seed);
+    const random = stage.random(seed);
     stage.set({ fill });
 
     const { width, height } = stage.viewport;
@@ -43,10 +43,10 @@ export const expensive = (opts: {
 
     // A random pose within the viewport.
     const pose = () => ({
-        x: stage.random(-halfW, halfW),
-        y: stage.random(-halfH, halfH),
-        rotation: stage.random(0, 360),
-        scale: stage.random(0.4, 1.6),
+        x: random.nextFloat(-halfW, halfW),
+        y: random.nextFloat(-halfH, halfH),
+        rotation: random.nextFloat(0, 360),
+        scale: random.nextFloat(0.4, 1.6),
     });
 
     const refs = Array.from({ length: count }, () => createRef<Rect>());
@@ -61,7 +61,7 @@ export const expensive = (opts: {
                         width={size}
                         height={size}
                         cornerRadius={4}
-                        fill={`hsl(${stage.random(0, 360)}, 70%, 60%)`}
+                        fill={`hsl(${random.nextFloat(0, 360)}, 70%, 60%)`}
                         x={start.x}
                         y={start.y}
                         rotation={start.rotation}

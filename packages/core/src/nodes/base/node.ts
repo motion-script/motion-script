@@ -6,6 +6,7 @@ import { AnimationBuilder } from "@/tween/animation-builder";
 import { prepareNumericCellTween } from "@/tween/prepare";
 import { TweenStepper } from "@/tween/stepper";
 import { Reference } from "@/util/reference";
+import { Context, ContextMap } from "@/util/context";
 import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
@@ -238,6 +239,25 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         return this._assets;
     }
 
+    // ---- Inherited context (createContext / Provider / useContext) --------
+    // The token→value map pushed down from ancestor providers. Bound after the
+    // tree is assembled (and re-bound from addChild for late-added subtrees),
+    // mirroring `bindAssets`. Reads resolve the nearest provider's value.
+    private _context: ContextMap = ContextMap.EMPTY;
+    /** True once a bind walk has reached this node — gates pushing context to
+     * children added afterwards (mirrors `tryAssets()` being non-null). */
+    private _contextBound = false;
+
+    /** The props this node was constructed with, retained so {@link init} can
+     * re-run each playback pass (the constructor's prop application is one-shot;
+     * `reinitProps` resets cells to defaults, then `init` re-layers on top). */
+    protected _props?: NodeConfig<any, P>;
+
+    /** Read the nearest ancestor provider's value for `ctx` (or its default). */
+    useContext<T>(ctx: Context<T>): T {
+        return this._context.get(ctx);
+    }
+
     readonly id: string = crypto.randomUUID();
 
     __signals?: Map<string, Signal<any>>;
@@ -287,6 +307,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     protected _children: Node[] = [];
 
     constructor(props?: NodeConfig<any, P>) {
+        // Retain for init() re-runs each pass (see _props doc). Captured before
+        // any default application so it reflects exactly what the author passed.
+        this._props = props;
+
         if (props?.ref) {
             props.ref(this as any);
         }
@@ -809,6 +833,55 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         for (const child of this._children) child.bindAssets(context);
     }
 
+    // ---- Context lifecycle ------------------------------------------------
+
+    /**
+     * Recommended hook for context-aware setup. Runs **after** the parent link
+     * and inherited context exist (unlike the constructor, which runs before
+     * either), and **re-runs every playback pass** — `reset()` restores props to
+     * their defaults, then the context walk re-invokes `init` to re-layer
+     * inherited values on top. Override to read {@link useContext}, apply
+     * context-derived props (`this.fontSize = …`), or `this.addChild(…)`.
+     *
+     * Base is a no-op. Idempotent by contract: it must produce the same result
+     * each pass, since cells are reset to defaults before every call.
+     */
+    protected init(_props?: NodeConfig<any, P>): void { }
+
+    /**
+     * Providers override this to attach their token(s) to the {@link ContextMap}
+     * handed to descendants. Base passes the parent's map through unchanged.
+     */
+    protected provideContext(parent: ContextMap): ContextMap {
+        return parent;
+    }
+
+    /**
+     * Push inherited context down this subtree, mirroring {@link bindAssets}.
+     *
+     * `runInit` separates the two responsibilities the walk has:
+     * - `true` (start-of-pass / a freshly-added child): also invoke {@link init},
+     *   which may write prop cells and add children. Children added during a
+     *   parent's `init` are reached by the recursion below.
+     * - `false` (per-frame structural re-push): only refresh `_context` so
+     *   subtrees added this frame inherit it — must **not** re-fire `init`, which
+     *   would clobber an in-flight tween's value every frame.
+     */
+    bindContext(parent: ContextMap, runInit: boolean): void {
+        const next = this.provideContext(parent);
+        this._context = next;
+        this._contextBound = true;
+        if (runInit) this.init(this._props);
+        for (const child of this._children) child.bindContext(next, runInit);
+    }
+
+    /** Push this node's current context onto a newly-added child (and run its
+     * `init`), but only if this node has itself been bound — so children added
+     * before the first bind walk are left for that walk to reach. */
+    private bindChildContext(child: Node): void {
+        if (this._contextBound) child.bindContext(this._context, true);
+    }
+
     /**
      * Register the assets this node needs resolved **before layout** — chiefly
      * fonts, whose metrics text measurement depends on. Runs in the precomp pass
@@ -1060,6 +1133,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         child._parent = this;
         const assets = this.tryAssets();
         if (assets) child.bindAssets(assets);
+        this.bindChildContext(child);
     }
 
     removeChild(child: Node): Node | null {
@@ -1075,6 +1149,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         for (const child of children) child._parent = this;
         const assets = this.tryAssets();
         if (assets) for (const child of children) child.bindAssets(assets);
+        for (const child of children) this.bindChildContext(child);
     }
 
     clearChildren(): void {
@@ -1090,6 +1165,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             child._parent = this;
             const assets = this.tryAssets();
             if (assets) child.bindAssets(assets);
+            this.bindChildContext(child);
             return;
         }
         return this._addChildAtAnimated(child, index, duration, easing);
@@ -1559,6 +1635,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         child._parent = this;
         const assets = this.tryAssets();
         if (assets) child.bindAssets(assets);
+        this.bindChildContext(child);
 
         const toProps: Partial<NodeProps> = { opacity: targetOpacity };
         if (isNumericW) toProps.width = targetW;
@@ -1596,5 +1673,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         this.__tweens = undefined;
         this.__mappers = undefined;
         this._assets = null;
+        // Drop inherited context so a reused instance re-derives it from the next
+        // bind walk rather than serving a stale map. `_props` is authored identity
+        // and is deliberately retained for init() re-runs.
+        this._context = ContextMap.EMPTY;
+        this._contextBound = false;
     }
 }

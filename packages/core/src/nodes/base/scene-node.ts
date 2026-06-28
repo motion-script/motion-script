@@ -15,6 +15,7 @@ import { TweenOptions } from "@/tween/lerp";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
+import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
@@ -22,8 +23,8 @@ import { RenderContext } from "@/render/render-context";
 
 /**
  * The object a scene generator is handed. It merges the build-time determinism
- * surface ({@link BuildStage}: `viewport`, `fps`, seeded `random`/`noise`,
- * `seed`) with the {@link Scene}'s own authoring surface (`add`, `set`, sounds,
+ * surface ({@link BuildStage}: `viewport`, `fps`, and `random(seed)` → a seeded
+ * `Random` source) with the {@link Scene}'s own authoring surface (`add`, `set`, sounds,
  * and the root commands `to`/`fillTo`/`zoomTo`/… plus `root`):
  *
  *   export default createScene(function* (stage) {
@@ -310,6 +311,16 @@ export class Scene {
     /** Bind the asset catalog to the scene's whole node subtree. */
     bindAssets(context: AssetCatalog): void {
         this.root.bindAssets(context);
+    }
+
+    /**
+     * Push inherited context (theme/data/seed/text-style and user tokens) down
+     * the scene's whole subtree. `runInit` true at start-of-pass (also fires each
+     * node's `init`); false for the per-frame structural re-push. Mirrors
+     * {@link bindAssets}. See `Node.bindContext`.
+     */
+    bindContext(context: ContextMap, runInit: boolean): void {
+        this.root.bindContext(context, runInit);
     }
 
     /** Advance the scene's clock and per-frame sampling for the whole subtree. */

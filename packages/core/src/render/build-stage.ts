@@ -1,5 +1,5 @@
 import { Size2D } from "@/attributes/layout/size";
-import { SeedGenerator } from "@/util/random";
+import { Random } from "@/util/random";
 
 /**
  * The determinism + scene-binding machinery a {@link Scene} runs its generator
@@ -57,74 +57,51 @@ export class BuildStage<S = unknown> {
     // ─── Determinism ──────────────────────────────────────────────────────────
 
     /**
-     * Sets the RNG seed for this stage.
+     * Get a seeded {@link Random} source for this build.
      *
-     * Accepts either a numeric seed directly or a string, which is hashed
-     * into a 32-bit integer using a djb2-style hash so that human-readable
-     * names ("bounce", "sparkle") can be used as stable seeds.
+     *   const random = stage.random("sparkle");
+     *   const xs = random.floatArray(40, -100, 100);
+     *   const drift = random.noise(t, 6);
+     *
+     * The seed lives on the returned source, not on the stage, so determinism is
+     * scoped per source: several `random(...)` calls with distinct seeds give
+     * independent reproducible streams. A string seed is djb2-hashed; omit the
+     * seed to get a stable default (a wall-clock value fixed when this stage was
+     * constructed) so cold scenes still vary without an explicit seed.
+     *
+     * Sources are cached by seed for the life of the stage and rewound by
+     * {@link reset} before each timeline replay — so a scene that re-runs its
+     * generator (scrub, precomp, HMR) draws the identical sequence every pass,
+     * whether or not it named a seed.
      */
-    seed(value: string | number): void {
-        this._currentSeed = typeof value === 'string'
-            ? value.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)
-            : value;
-        this.seeder.setSeed(this._currentSeed);
+    random(seed: string | number = this._defaultSeed): Random {
+        let source = this._sources.get(seed);
+        if (!source) {
+            source = new Random(seed);
+            this._sources.set(seed, source);
+        }
+        return source;
     }
+
+    // Default seed: the wall-clock time at construction, so a `stage.random()`
+    // with no explicit seed still varies between cold runs but stays stable
+    // across replays of THIS stage (reset() rewinds to it, not to a fresh time).
+    private readonly _defaultSeed: number = Date.now();
+
+    /** Every {@link Random} handed out this pass, keyed by seed, so {@link reset}
+     *  can rewind them all to the start of their sequences. */
+    private _sources: Map<string | number, Random> = new Map();
 
     /**
-     * Returns the next pseudo-random number in `[min, max)`.
+     * Rewind all stateful generators so the next replay is identical to the
+     * first. Called by the runtime before each `scene.build(...)`.
      *
-     * Defaults to `[0, 1)` when called without arguments. The sequence is
-     * fully determined by the current seed, so the same seed always produces
-     * the same sequence across replays.
+     * Each cached {@link Random} is reset to its seed (rather than dropped) so a
+     * generator that re-calls `random(seed)` on replay gets back the same source
+     * at the head of its sequence — preserving determinism even for the
+     * unseeded default source.
      */
-    random(min: number = 0, max: number = 1): number {
-        return this.seeder.next() * (max - min) + min;
-    }
-
-    /**
-     * Generates a deterministic float in `[0, 1)` for a given integer lattice
-     * point `x`, mixed with the current seed via `sin`.
-     */
-    private _seededValue(x: number): number {
-        const h = Math.sin(x + this._currentSeed) * 10000;
-        return h - Math.floor(h);
-    }
-
-    /**
-     * Smooth 1-D value noise in `[0, 1]`.
-     *
-     * Samples two adjacent lattice points around `time * frequency`, then
-     * interpolates with a smoothstep curve (`3t² - 2t³`) to avoid the
-     * linear kinks of plain lerp. Useful for organic, continuously varying
-     * motion (camera shake, drift, etc.).
-     *
-     * @param time      Normalized timeline position, typically in `[0, 1]`.
-     * @param frequency Scales `time` before sampling; higher values produce
-     *                  faster oscillation.
-     */
-    noise(time: number, frequency: number = 1): number {
-        const t = time * frequency;
-        const i = Math.floor(t);
-        const f = t - i;
-        // Smoothstep: maps f through 3f²-2f³ to ease in/out between lattice points
-        const curve = f * f * (3 - 2 * f);
-        const r1 = this._seededValue(i);
-        const r2 = this._seededValue(i + 1);
-        return r1 + (r2 - r1) * curve;
-    }
-
-    /** Reseeds the RNG back to `_currentSeed`. Called before each timeline replay. */
-    resetSeed(): void {
-        this.seeder.setSeed(this._currentSeed);
-    }
-
-    // Seed defaults to the wall-clock time at construction so cold scenes
-    // still exhibit variety without an explicit seed() call.
-    private _currentSeed: number = Date.now();
-    private seeder: SeedGenerator = new SeedGenerator(this._currentSeed);
-
-    /** Resets all stateful generators so the next replay is identical to the first. */
     reset() {
-        this.resetSeed();
+        for (const source of this._sources.values()) source.reset();
     }
 }

@@ -2,6 +2,7 @@ import { RenderContext } from "@/render/render-context";
 import { Scene } from "@/nodes/base/scene-node";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetCatalog } from "@/assets/catalog";
+import { ContextMap } from "@/util/context";
 import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
@@ -115,6 +116,12 @@ export class StateEvaluator {
         }
     }
 
+    private bindContext(runInit: boolean) {
+        for (const s of this.scenes) {
+            s.bindContext(ContextMap.EMPTY, runInit);
+        }
+    }
+
     private ellapse(time: number) {
         for (const s of this.scenes) {
             s.ellapse(time);
@@ -138,6 +145,7 @@ export class StateEvaluator {
     private resetSlot(slot: SceneSlot): void {
         slot.scene.reset();
         slot.scene.bindAssets(this.assets);
+        slot.scene.bindContext(ContextMap.EMPTY, true);
         slot.scene.ellapse(0);
         this.stage.reset();
         const gen = slot.scene.build(this.stage);
@@ -215,6 +223,7 @@ export class StateEvaluator {
             targetSlot.localFrame++;
             const globalTime = (targetSlot.startFrame + targetSlot.localFrame) * dt;
             this.bindAssets();
+            this.bindContext(false);
             this.ellapse(globalTime);
             targetSlot.generator!.next(dt);
         }

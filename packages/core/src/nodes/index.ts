@@ -7,6 +7,9 @@ export * from "./base/root-node";
 export * from "./base/camera-node";
 export * from "./base/boolean-node";
 export * from "./base/mask-node";
+export * from "./base/provider-node";
+export * from "./base/theme-provider-node";
+export * from "./base/default-text-style-node";
 
 // Geometry
 export * from "./geometry/shape-node";
