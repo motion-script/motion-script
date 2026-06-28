@@ -1,7 +1,7 @@
 export { BlendModes as BLEND_MODES_LIST, NodeBlendModes, getBlendModeHash } from './blend';
 export type { BlendMode, NodeBlendMode } from './blend';
 
-export { setTheme, parseColor } from './color/parser';
+export { setTheme, parseColor, getTypographyPreset } from './color/parser';
 export type { NormalizedColor, Color } from './color/parser';
 
 export type { FillProp, FillResolved, FillSpace, FillCommon } from './union';

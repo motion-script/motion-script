@@ -23,11 +23,12 @@ export default createScene(function* (stage) {
             children: (
                 <>
                     <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                        {/* `variant` pulls fontSize/fontWeight from theme.typography.header
+                            (96 / 700); fill stays an explicit prop, which always wins. */}
                         <Text
                             ref={labelRef}
                             text={''}
-                            fontSize={52}
-                            fontWeight={400}
+                            variant={'header'}
                             fill={'white'}
                             textAlign={'center'}
                         />

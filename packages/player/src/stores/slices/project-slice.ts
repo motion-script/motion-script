@@ -1,4 +1,4 @@
-import type { AssetManifest, Color, ProjectConfig, Scene, Size2D } from "@motion-script/core";
+import type { AssetManifest, ProjectConfig, Scene, Size2D, Theme, Variables } from "@motion-script/core";
 
 import type { SliceCreator } from "./types";
 
@@ -12,7 +12,8 @@ import type { SliceCreator } from "./types";
 export type ProjectSlice = {
     scenes: Scene[];
     projectName: string;
-    theme: Record<string, Color>;
+    theme: Theme;
+    variables: Variables;
     viewport: Size2D;
     fps: number;
     assets: AssetManifest;
@@ -41,6 +42,7 @@ export const createProjectSlice = (
     viewport: config.viewport,
     fps: config.fps,
     theme: config.theme ?? {},
+    variables: config.variables ?? {},
     assets,
 
     _pendingSceneIndex: null,
@@ -93,6 +95,7 @@ export const createProjectSlice = (
             viewport: newConfig.viewport,
             fps: newConfig.fps,
             theme: newConfig.theme ?? {},
+            variables: newConfig.variables ?? {},
             currentFrame: 0,
             currentTime: 0,
             duration: 0,

@@ -36,8 +36,10 @@ export default createProject({
         videoBlended,
     ],
     theme: {
-        'bg': '#0D0F15',
-        'card': '#161a21',
-        'primary': '#6990DD',
+        colors: {
+            'bg': '#0D0F15',
+            'card': '#161a21',
+            'primary': '#6990DD',
+        },
     },
 });

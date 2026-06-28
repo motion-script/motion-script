@@ -30,6 +30,13 @@ export interface RichTextProps extends ShapeProps {
     /** Line height multiplier applied to each run's font size. */
     lineHeight: number;
     textAlign: TextAlign;
+    /**
+     * Name of a typography preset from `theme.typography` (e.g. `"body"`).
+     * Supplies any node-level default (fontSize, fontWeight, …) not set
+     * explicitly here, which `runs()` then folds into each span. An explicit prop
+     * wins over the preset; the preset wins over an inherited `<DefaultTextStyle>`.
+     */
+    variant: string;
 }
 
 export class RichText extends ShapeNode<RichTextProps> {
@@ -48,6 +55,7 @@ export class RichText extends ShapeNode<RichTextProps> {
     @property({ default: 0 }) declare readonly letterSpacing: number;
     @property({ default: 1.2 }) declare readonly lineHeight: number;
     @property({ default: 'center' }) declare readonly textAlign: TextAlign;
+    @property({ default: undefined }) declare readonly variant?: string;
 
     constructor(props: NodeConfig<RichText, RichTextProps>) {
         super(props);

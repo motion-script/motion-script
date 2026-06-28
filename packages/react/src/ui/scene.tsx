@@ -4,9 +4,11 @@ import {
     AssetCatalog,
     PlaybackController,
     setTheme,
+    setVariables,
     type AssetManifest,
     type BuildError,
-    type Color,
+    type Theme,
+    type Variables,
     type Scene,
     type NodeState,
     type Size2D,
@@ -37,8 +39,11 @@ type Props = {
     scenes: Scene[];
     /** Manifest describing the media assets referenced by `scenes`. */
     assets: AssetManifest;
-    /** Theme color overrides applied globally before the player mounts. */
-    theme?: Record<string, Color>;
+    /** Project theme (colors, typography) applied globally before the player mounts. */
+    theme?: Theme;
+    /** Project variables applied globally before the player mounts; read in scene
+     *  generators via `stage.variables(...)`. */
+    variables?: Variables;
     /** Playback rate multiplier passed to the controller. Defaults to `1`. */
     speed?: number;
     /** Whether audio output is muted. Defaults to `false`. */
@@ -94,6 +99,7 @@ export function MotionPlayer({
     scenes,
     assets,
     theme,
+    variables,
     speed = 1,
     muted = false,
     onLoadingChange,
@@ -125,6 +131,7 @@ export function MotionPlayer({
         const canvas = canvasRef.current;
         if (!canvas || !canvasKit) return;
         setTheme(theme);
+        setVariables(variables);
         const catalog = new AssetCatalog(assets);
         const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
         const measure = new WebMeasureScope(storage);
@@ -165,7 +172,7 @@ export function MotionPlayer({
             pc.dispose();
             renderContext.dispose();
         };
-    }, [canvasKit, assets, viewport, fps, scenes, theme]);
+    }, [canvasKit, assets, viewport, fps, scenes, theme, variables]);
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.

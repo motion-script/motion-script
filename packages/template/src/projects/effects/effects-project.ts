@@ -50,8 +50,10 @@ export default createProject({
         motionBlur,
     ],
     theme: {
-        'bg': '#0D0F15',
-        'card': '#1e232b',
-        'primary': '#6990DD'
+        colors: {
+            'bg': '#0D0F15',
+            'card': '#1e232b',
+            'primary': '#6990DD'
+        },
     },
 });

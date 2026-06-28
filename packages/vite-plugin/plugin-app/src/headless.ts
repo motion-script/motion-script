@@ -1,7 +1,7 @@
 import config from '~user-project'
 import assets from '~asset-manifest'
 import { exportScenesAsVideo, exportScreenshot, type FrameSpec, type ScreenshotFormat } from '@motion-script/web'
-import { setTheme, type Scene } from '@motion-script/core'
+import { setTheme, setVariables, type Scene } from '@motion-script/core'
 
 /**
  * Headless export bridge.
@@ -155,12 +155,13 @@ export function installHeadlessBridge(): void {
                 throw new Error('No scenes to export.');
             }
 
-            // Register the project's named theme colors into the global color
-            // map before rendering, exactly as the live player does (see
+            // Register the project's theme colors and variables into their global
+            // registries before rendering, exactly as the live player does (see
             // @motion-script/react scene.tsx). Without this, color tokens like
-            // `bg`/`card` from the project config resolve to nothing during a
-            // headless export and scenes render with wrong/default fills.
+            // `bg`/`card` and `stage.variables(...)` lookups resolve to nothing
+            // during a headless export and scenes render with wrong/default values.
             setTheme(config.theme);
+            setVariables(config.variables);
 
             const common = {
                 viewport: config.viewport,
@@ -206,9 +207,11 @@ export function installHeadlessBridge(): void {
                 throw new Error('No scenes to screenshot.');
             }
 
-            // Same theme setup as export() — without it, theme color tokens
-            // resolve to nothing and the still renders with wrong fills.
+            // Same theme + variables setup as export() — without it, color tokens
+            // and stage.variables(...) lookups resolve to nothing and the still
+            // renders with wrong values.
             setTheme(config.theme);
+            setVariables(config.variables);
 
             const result = await exportScreenshot({
                 scenes,

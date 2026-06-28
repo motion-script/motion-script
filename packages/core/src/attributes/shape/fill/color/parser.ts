@@ -72,22 +72,82 @@ const _g = globalThis as Record<string, unknown>;
 if (!_g.__msThemeMap) _g.__msThemeMap = new Map<string, NormalizedColor>();
 const THEME_COLOR_MAP = _g.__msThemeMap as Map<string, NormalizedColor>;
 
+// Typography presets ride the same shared-global pattern as the color map, so
+// the prebuilt player bundle and the user's Vite-compiled code read one registry
+// — `setTheme` (called once per build at the player/headless entry points)
+// populates both before any scene generator runs.
+if (!_g.__msTypographyMap) _g.__msTypographyMap = new Map<string, Record<string, unknown>>();
+const TYPOGRAPHY_MAP = _g.__msTypographyMap as Map<string, Record<string, unknown>>;
+
+// Structural mirror of `@/project/config`'s `Theme` (and its color token shape),
+// declared locally so this module stays a leaf — `config.ts` imports `Color`
+// from here, so importing `Theme` back would be a cycle. The project's `Theme`
+// is structurally compatible, so `setTheme(config.theme)` just works.
+// `typography` presets are stored opaquely (the parser never reads their fields),
+// so the value type is the loose `object` — this stays assignable from `Theme`'s
+// `TypographyPreset` (a `TextDefaults` interface, which lacks an implicit string
+// index signature and so is not a `Record<string, unknown>`).
+type ColorTokenInput = Color | { [key: string]: ColorTokenInput };
+interface ThemeInput {
+    colors?: Record<string, ColorTokenInput>;
+    typography?: Record<string, object>;
+}
+
 /**
- * Registers named theme colors that can be referenced by name in any color string.
+ * Recursively flatten nested color groups into dash-joined, lowercased keys
+ * (`{ brand: { 500: '#…' } }` → `brand-500`), parsing each leaf to a normalized
+ * color. Arrays are leaves (a pre-normalized `[R,G,B,A]` tuple); strings are
+ * leaves; only plain objects recurse.
+ */
+function flattenColors(
+    tokens: Record<string, ColorTokenInput> | undefined,
+    prefix: string,
+    out: Map<string, NormalizedColor>,
+): void {
+    if (!tokens) return;
+    for (const [name, token] of Object.entries(tokens)) {
+        const key = prefix ? `${prefix}-${name}` : name;
+        if (token != null && !Array.isArray(token) && typeof token === 'object') {
+            flattenColors(token as Record<string, ColorTokenInput>, key, out);
+        } else {
+            const color = token as Color;
+            out.set(key.toLowerCase(), Array.isArray(color) ? (color as NormalizedColor) : parseColor(color));
+        }
+    }
+}
+
+/**
+ * Registers a project theme: named colors (referenceable by name in any color
+ * string) and typography presets (selected via a `Text`/`RichText` `variant`).
  *
- * Theme entries take precedence over CSS named colors. Call with no argument
- * (or an empty object) to clear all theme entries.
+ * Color entries take precedence over CSS named colors; nested color groups are
+ * flattened to dash-joined names (`{ brand: { 500: … } }` → `brand-500`). Call
+ * with no argument (or an empty object) to clear both registries.
  *
  * @example
- * setTheme({ brand: "#ff6b35", accent: "oklch(70% 0.2 145)" });
- * // Later: fill: { type: "color", color: "brand" }
+ * setTheme({
+ *   colors: { brand: "#ff6b35", accent: { 500: "oklch(70% 0.2 145)" } },
+ *   typography: { header: { fontSize: 96, fontWeight: 700 } },
+ * });
+ * // Later: fill="brand", fill="accent-500", <Text variant="header" />
  */
-export function setTheme(theme: Record<string, Color> = {}): void {
+export function setTheme(theme: ThemeInput = {}): void {
     THEME_COLOR_MAP.clear();
-    for (const [name, color] of Object.entries(theme)) {
-        const normalized = Array.isArray(color) ? (color as NormalizedColor) : parseColor(color);
-        THEME_COLOR_MAP.set(name.toLowerCase(), normalized);
+    TYPOGRAPHY_MAP.clear();
+    flattenColors(theme.colors, '', THEME_COLOR_MAP);
+    if (theme.typography) {
+        for (const [name, preset] of Object.entries(theme.typography)) {
+            // Stored opaquely; `applyTextDefaults` reads fields by key. The `object`
+            // preset is widened to the readable record shape at this boundary only.
+            TYPOGRAPHY_MAP.set(name.toLowerCase(), preset as Record<string, unknown>);
+        }
     }
+}
+
+/** Looks up a registered typography preset by variant name (case-insensitive);
+ *  `undefined` if none is registered. */
+export function getTypographyPreset(name: string): Record<string, unknown> | undefined {
+    return TYPOGRAPHY_MAP.get(name.toLowerCase());
 }
 
 /** Looks up a color name in the theme map first, then the CSS named-color table. */

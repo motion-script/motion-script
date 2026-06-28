@@ -1,5 +1,6 @@
 import { Size2D } from "@/attributes/layout/size";
 import { Random } from "@/util/random";
+import { getVariable } from "@/project/variables";
 
 /**
  * The determinism + scene-binding machinery a {@link Scene} runs its generator
@@ -27,6 +28,28 @@ export class BuildStage<S = unknown> {
     constructor(viewport: Size2D, fps: number) {
         this.viewport = viewport;
         this.fps = fps;
+    }
+
+    // ─── Project variables ──────────────────────────────────────────────────────
+
+    /**
+     * Read a project variable by its (flat) name, e.g.
+     *
+     *   <Rect cornerRadius={stage.variables<number>('rounded-lg')} />
+     *
+     * Variables are the project's `variables` map (registered globally before the
+     * build) — arbitrary constants like corner radii, durations, counts, or flags
+     * that, unlike colors and typography, have no string-resolution channel of
+     * their own. The type parameter asserts the expected value type and defaults
+     * to `number` (the common case); it is an unchecked assertion of whatever the
+     * project declared, not validation. Lookup is case-insensitive.
+     *
+     * Returns `fallback` when the variable is absent, or `undefined` when no
+     * fallback is given — so an author can `stage.variables('x') ?? default` too.
+     */
+    variables<T = number>(key: string, fallback?: T): T | undefined {
+        const value = getVariable(key);
+        return value === undefined ? fallback : (value as T);
     }
 
     // ─── Scene binding ────────────────────────────────────────────────────────

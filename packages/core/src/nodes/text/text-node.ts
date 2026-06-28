@@ -34,6 +34,13 @@ export interface TextProps extends ShapeProps {
     wrap: boolean;
     minFontSize: number;
     /**
+     * Name of a typography preset from `theme.typography` (e.g. `"header"`).
+     * Supplies any text-style prop (fontSize, fontWeight, …) not set explicitly
+     * here. An explicit prop always wins over the preset; the preset wins over an
+     * inherited `<DefaultTextStyle>`.
+     */
+    variant: string;
+    /**
      * Wrap the text around a path (text-on-path). Accepts the same value shapes
      * as the {@link Path} node's `d`: an SVG path string, a `PathCommand[]`, or a
      * {@link PathBuilder}. When set, `wrap` and multi-line (`\n`) are ignored
@@ -63,6 +70,7 @@ export class Text extends ShapeNode<TextProps> {
     @property({ default: 'center' }) declare readonly textAlign: TextAlign;
     @property({ default: false }) declare readonly wrap: boolean;
     @property({ default: 12 }) declare readonly minFontSize: number;
+    @property({ default: undefined }) declare readonly variant?: string;
     @property({ default: null, mapper: resolveTextPath })
     declare readonly path: PathData | null;
 

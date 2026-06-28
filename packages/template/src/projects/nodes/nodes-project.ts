@@ -50,8 +50,34 @@ export default createProject({
         customScene
     ],
     theme: {
-        bg: '#0D0F15',
-        card: '#1e232b',
-        primary: '#6990DD',
+        colors: {
+            bg: '#0D0F15',
+            card: '#1e232b',
+            primary: '#6990DD',
+            // Nested group → flattened to brand-100 … brand-900, e.g. fill="brand-500".
+            brand: {
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+            },
+        },
+        // Named text presets selected via a Text/RichText `variant`.
+        typography: {
+            small: { fontSize: 28 },
+            body: { fontSize: 32, lineHeight: 1.4 },
+            header: { fontSize: 96, fontWeight: 700 },
+        },
+    },
+    // Arbitrary project constants read in scene generators via stage.variables(...).
+    variables: {
+        'rounded-sm': 8,
+        'rounded-md': 16,
+        'rounded-lg': 32,
     },
 });

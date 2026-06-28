@@ -42,6 +42,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const currentFrame = useEditorStore(s => s.currentFrame);
     const isPlaying = useEditorStore(s => s.isPlaying);
     const theme = useEditorStore(s => s.theme);
+    const variables = useEditorStore(s => s.variables);
     const playbackSpeed = useEditorStore(s => s.playbackSpeed);
     const isMuted = useEditorStore(s => s.isMuted);
     const loopMode = useEditorStore(s => s.loopMode);
@@ -369,6 +370,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
                         isPlaying={isPlaying}
                         fps={fps}
                         theme={theme}
+                        variables={variables}
                         viewport={viewport}
                         scenes={scenes}
                         assets={assets}

@@ -20,8 +20,20 @@ describe('createProject', () => {
     });
 
     it('passes the theme through when provided', () => {
-        const theme = { brand: '#ff0000' };
+        const theme = {
+            colors: { brand: '#ff0000' },
+            typography: { header: { fontSize: 96 } },
+        };
         expect(createProject({ name: 'Test', theme }).theme).toBe(theme);
+    });
+
+    it('passes variables through when provided', () => {
+        const variables = { 'rounded-lg': 32, ease: 'easeInOut' };
+        expect(createProject({ name: 'Test', variables }).variables).toBe(variables);
+    });
+
+    it('leaves variables undefined when omitted', () => {
+        expect(createProject({ name: 'Test' }).variables).toBeUndefined();
     });
 
     it('uses the provided name', () => {

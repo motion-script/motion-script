@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { parseColor, setTheme } from '@/attributes/shape/fill/color/parser';
+import { parseColor, setTheme, getTypographyPreset } from '@/attributes/shape/fill/color/parser';
 
 /** Asserts an RGBA tuple matches expected channels within float tolerance. */
 function expectColor(actual: number[], expected: number[], precision = 2) {
@@ -124,41 +124,87 @@ describe('parseColor – opacity suffix', () => {
     });
 
     it('combines a theme color with an opacity suffix', () => {
-        setTheme({ primary: '#0000ff' });
+        setTheme({ colors: { primary: '#0000ff' } });
         expectColor(parseColor('primary/90'), [0, 0, 1, 0.9]);
         setTheme();
     });
 });
 
-describe('setTheme', () => {
+describe('setTheme – colors', () => {
     afterEach(() => setTheme()); // clear theme entries between tests
 
     it('registers a named theme color resolvable by name', () => {
-        setTheme({ brand: '#ff0000' });
+        setTheme({ colors: { brand: '#ff0000' } });
         expectColor(parseColor('brand'), [1, 0, 0, 1]);
     });
 
     it('does not corrupt a cached theme color when opacity is applied', () => {
-        setTheme({ brand: '#ff0000' });
+        setTheme({ colors: { brand: '#ff0000' } });
         parseColor('brand/20');
         expectColor(parseColor('brand'), [1, 0, 0, 1]); // still fully opaque
     });
 
     it('accepts a pre-normalized tuple', () => {
-        setTheme({ accent: [0, 0, 1, 1] });
+        setTheme({ colors: { accent: [0, 0, 1, 1] } });
         expectColor(parseColor('accent'), [0, 0, 1, 1]);
     });
 
     it('takes precedence over a CSS named color', () => {
-        setTheme({ red: '#0000ff' });
+        setTheme({ colors: { red: '#0000ff' } });
         expectColor(parseColor('red'), [0, 0, 1, 1]);
     });
 
     it('clears entries when called with no argument', () => {
-        setTheme({ brand: '#ff0000' });
+        setTheme({ colors: { brand: '#ff0000' } });
         setTheme();
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         expect(parseColor('brand')).toEqual([0, 0, 0, 1]);
         warn.mockRestore();
+    });
+
+    it('flattens a nested color group to dash-joined names', () => {
+        setTheme({ colors: { brand: { 500: '#0ea5e9' } } });
+        expectColor(parseColor('brand-500'), parseColor('#0ea5e9'));
+    });
+
+    it('flattens numeric group keys and supports an opacity suffix on them', () => {
+        setTheme({ colors: { brand: { 100: '#ff0000', 900: '#0000ff' } } });
+        expectColor(parseColor('brand-100'), [1, 0, 0, 1]);
+        expectColor(parseColor('brand-900/50'), [0, 0, 1, 0.5]);
+    });
+
+    it('flattens arbitrarily deep nesting', () => {
+        setTheme({ colors: { a: { b: { c: '#00ff00' } } } });
+        expectColor(parseColor('a-b-c'), [0, 1, 0, 1]);
+    });
+
+    it('lowercases keys (camelCase resolves only in lowercased form)', () => {
+        setTheme({ colors: { brandPrimary: '#ff0000' } });
+        expectColor(parseColor('brandprimary'), [1, 0, 0, 1]);
+    });
+});
+
+describe('setTheme – typography', () => {
+    afterEach(() => setTheme());
+
+    it('registers a preset resolvable by variant name', () => {
+        setTheme({ typography: { header: { fontSize: 96, fontWeight: 700 } } });
+        expect(getTypographyPreset('header')).toEqual({ fontSize: 96, fontWeight: 700 });
+    });
+
+    it('looks up case-insensitively', () => {
+        setTheme({ typography: { Header: { fontSize: 96 } } });
+        expect(getTypographyPreset('HEADER')).toEqual({ fontSize: 96 });
+    });
+
+    it('returns undefined for an unregistered variant', () => {
+        setTheme({ typography: { header: { fontSize: 96 } } });
+        expect(getTypographyPreset('missing')).toBeUndefined();
+    });
+
+    it('clears presets when called with no argument', () => {
+        setTheme({ typography: { header: { fontSize: 96 } } });
+        setTheme();
+        expect(getTypographyPreset('header')).toBeUndefined();
     });
 });

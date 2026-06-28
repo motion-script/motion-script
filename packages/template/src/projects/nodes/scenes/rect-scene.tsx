@@ -27,7 +27,7 @@ export default createScene(function* (stage) {
                         width={'fill'}
                         height={'fill'}
                         fill={'bg'}
-                        cornerRadius={24}
+                        cornerRadius={stage.variables<number>('rounded-lg')}
                         group={'row'}
                         gap={24}
                         padding={32}

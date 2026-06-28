@@ -1,5 +1,6 @@
 import { createContext } from "@/util/context";
 import { Fill } from "@/attributes/shape/fill/chain";
+import { getTypographyPreset } from "@/attributes/shape/fill/color/parser";
 import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import type { Node } from "@/nodes/base/node";
@@ -51,21 +52,34 @@ export const DataToken = createContext<Record<string, unknown>>({}, "data");
 export const SeedToken = createContext<string | number | undefined>(undefined, "seed");
 
 /**
- * Apply inherited {@link TextStyleToken} defaults to a text node, for each style
- * key the author didn't pass. Shared by `Text` and `RichText`'s `init`.
+ * Apply text-style defaults to a text node, for each style key the author didn't
+ * pass explicitly. Shared by `Text` and `RichText`'s `init`.
+ *
+ * Precedence per key, highest to lowest:
+ *   1. explicit author prop (present in `props`) — never overridden;
+ *   2. the node's `variant` typography preset, from `theme.typography` (registered
+ *      by {@link setTheme}, looked up via {@link getTypographyPreset});
+ *   3. the inherited {@link TextStyleToken} default from an ancestor
+ *      `<DefaultTextStyle>`;
+ *   (4. the node's own `@property` default — already applied by the constructor.)
  *
  * Assignment goes through the node's property setter, which runs the field's
- * registered mapper (so an inherited `fill: 'red'` is resolved exactly as if the
- * author had written it). `props` is the node's own constructor props — a key
- * present there means the author set it explicitly and must not be overridden.
+ * registered mapper (so a preset/inherited `fill: 'brand-500'` is resolved
+ * exactly as if the author had written it). `props` is the node's own
+ * constructor props.
  */
 export function applyTextDefaults(node: Node, props?: Record<string, unknown>): void {
-    const defaults = node.useContext(TextStyleToken);
+    const inherited = node.useContext(TextStyleToken);
+    const variant = props?.variant as string | undefined;
+    const preset = variant ? getTypographyPreset(variant) : undefined;
     const target = node as unknown as Record<string, unknown>;
     for (const key of TEXT_STYLE_KEYS) {
-        if (props && props[key] !== undefined) continue; // author wins
-        const value = defaults[key as keyof TextDefaults];
-        if (value === undefined) continue;               // no provider set it
+        if (props && props[key] !== undefined) continue;        // 1. author wins
+        const fromVariant = preset ? preset[key] : undefined;   // 2. variant preset
+        const value = fromVariant !== undefined
+            ? fromVariant
+            : inherited[key as keyof TextDefaults];             // 3. inherited default
+        if (value === undefined) continue;                      // nothing set it
         target[key] = value;
     }
 }
