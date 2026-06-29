@@ -62,6 +62,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # The default `docker` buildx driver can't export GHA cache (cache-to:
+      # type=gha needs a driver with its own build backend). docker-container
+      # gives us that while still supporting `load: true` below.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       # Build the harness image. Build context is the repo root (the Dockerfile
       # builds the whole workspace). GHA layer caching keeps the heavy base image
       # + pnpm install warm across runs.
