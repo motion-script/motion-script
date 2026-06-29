@@ -14,62 +14,62 @@ function runTween(gen: Generator<void, unknown, number>, duration: number, steps
     while (!res.done) res = gen.next(dt);
 }
 
-describe('Path – d is a reactive property', () => {
-    it('exposes the constructor d value', () => {
-        const path = new Path({ d: square });
-        expect(path.d).toBe(square);
+describe('Path – data is a reactive property', () => {
+    it('exposes the constructor data value', () => {
+        const path = new Path({ data: square });
+        expect(path.data).toBe(square);
     });
 
-    it('defaults d to an empty string', () => {
+    it('defaults data to an empty string', () => {
         const path = new Path({});
-        expect(path.d).toBe('');
+        expect(path.data).toBe('');
     });
 
-    it('updates d via set()', () => {
-        const path = new Path({ d: square });
-        path.set({ d: triangle });
-        expect(path.d).toBe(triangle);
+    it('updates data via set()', () => {
+        const path = new Path({ data: square });
+        path.set({ data: triangle });
+        expect(path.data).toBe(triangle);
     });
 });
 
-describe('Path – animating d (morph)', () => {
-    it('morphs d from the source toward the target during the tween', () => {
-        const path = new Path({ d: square });
-        const step = (path as any)._prepareStep({ d: triangle }, 1);
+describe('Path – animating data (morph)', () => {
+    it('morphs data from the source toward the target during the tween', () => {
+        const path = new Path({ data: square });
+        const step = (path as any)._prepareStep({ data: triangle }, 1);
 
-        // Midway, d should be a command array (an in-between morph), not a string.
+        // Midway, data should be a command array (an in-between morph), not a string.
         step.seek(0.5);
-        const mid = path.d;
+        const mid = path.data;
         expect(Array.isArray(mid)).toBe(true);
         const moves = (mid as PathCommand[]).filter((c) => c.type === 'M');
         expect(moves).toHaveLength(1);
     });
 
     it('lands exactly on the target shape at the end of the tween', () => {
-        const path = new Path({ d: square });
-        const gen = (path as any)._toGen({ d: triangle }, 1) as Generator<void, unknown, number>;
+        const path = new Path({ data: square });
+        const gen = (path as any)._toGen({ data: triangle }, 1) as Generator<void, unknown, number>;
         runTween(gen, 1, 10);
         // The string-snap path restores the exact target at t=1.
-        expect(path.d).toBe(triangle);
+        expect(path.data).toBe(triangle);
     });
 
     it('keeps the source shape at t=0', () => {
-        const path = new Path({ d: square });
-        const step = (path as any)._prepareStep({ d: triangle }, 1);
+        const path = new Path({ data: square });
+        const step = (path as any)._prepareStep({ data: triangle }, 1);
         step.seek(0);
-        expect(path.d).toBe(square);
+        expect(path.data).toBe(square);
     });
 
     it('accepts a command array as the animation target', () => {
-        const path = new Path({ d: square });
+        const path = new Path({ data: square });
         const target: PathCommand[] = [
             { type: 'M', x: 0, y: 0 },
             { type: 'L', x: 10, y: 0 },
             { type: 'L', x: 5, y: 10 },
             { type: 'Z' },
         ];
-        const step = (path as any)._prepareStep({ d: target }, 1);
+        const step = (path as any)._prepareStep({ data: target }, 1);
         step.seek(0.5);
-        expect(Array.isArray(path.d)).toBe(true);
+        expect(Array.isArray(path.data)).toBe(true);
     });
 });

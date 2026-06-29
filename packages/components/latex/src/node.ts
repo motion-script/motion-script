@@ -168,7 +168,7 @@ export class Latex extends ShapeNode<LatexProps> {
 
             ctx.draw(new Graphics()
                 .path({
-                    d: pathStr,
+                    data: pathStr,
                     start: this.start,
                     end: this.end,
                     // All tokens share one center frame so they keep their relative

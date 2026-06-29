@@ -89,9 +89,9 @@ export default createScene(function* (stage) {
         </>)}
 
         {cell("Path", <>
-          <Path ref={pathStroke} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} d={PATH_D} />
-          <Path ref={pathFill} fill={ACCENT} d={PATH_D} start={0} end={0} />
-          <Path ref={pathShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} d={PATH_D} />
+          <Path ref={pathStroke} fill="transparent" stroke={{ fill: ACCENT, weight: 6, dash: [12, 8], align: -1 }} data={PATH_D} />
+          <Path ref={pathFill} fill={ACCENT} data={PATH_D} start={0} end={0} />
+          <Path ref={pathShadow} fill={ACCENT} stroke={{ fill: "transparent", weight: 6 }} shadow={{ fill: SHADOW, blur: 0, offset: { x: 0, y: 0 } }} data={PATH_D} />
         </>)}
 
         {cell("Line", <>

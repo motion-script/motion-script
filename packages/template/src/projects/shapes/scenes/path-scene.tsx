@@ -14,16 +14,16 @@ const PATHS = [
     'M 80 0 L 160 80 L 80 160 L 0 80 Z',
 ];
 
-/** Showcase for Path morphing: tween the `d` data between silhouettes. */
+/** Showcase for Path morphing: tween the `data` between silhouettes. */
 const spec: ShapeSceneSpec = {
     label: 'Path',
     fill: Fills.color('#C77DFF'),
     stroke: Fills.color('#FF9F1C'),
     anims: [
-        { label: 'Data', prop: 'd', from: PATHS[0], to: PATHS[1], duration: 2 },
-        { label: 'Data', prop: 'd', from: PATHS[1], to: PATHS[2], duration: 2 },
-        { label: 'Data', prop: 'd', from: PATHS[2], to: PATHS[3], duration: 2 },
-        { label: 'Data', prop: 'd', from: PATHS[3], to: PATHS[0], duration: 2 },
+        { label: 'Data', prop: 'data', from: PATHS[0], to: PATHS[1], duration: 2 },
+        { label: 'Data', prop: 'data', from: PATHS[1], to: PATHS[2], duration: 2 },
+        { label: 'Data', prop: 'data', from: PATHS[2], to: PATHS[3], duration: 2 },
+        { label: 'Data', prop: 'data', from: PATHS[3], to: PATHS[0], duration: 2 },
     ],
 };
 
@@ -33,7 +33,7 @@ export default createScene(shapeScene(spec, (container, props) => {
             width={320} height={320}
             fill={props.fill}
             stroke={props.stroke}
-            d={props.d ?? ""}
+            data={props.data ?? ""}
         />
     );
 }));

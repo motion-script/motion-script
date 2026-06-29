@@ -23,8 +23,8 @@ describe('Graphics', () => {
 
         const op = g.ops()[0] as GraphicsShapeOp;
         expect(op.kind).toBe('path');
-        // toPathState() stores the command list under `d`.
-        expect((op.state as any).d).toEqual(builder.toCommands());
+        // toPathState() stores the command list under `data`.
+        expect((op.state as any).data).toEqual(builder.toCommands());
     });
 
     it('rotation/scale/opacity/effects are graphics-level modifiers, not shape ops', () => {

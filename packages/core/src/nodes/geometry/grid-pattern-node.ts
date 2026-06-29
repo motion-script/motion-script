@@ -149,22 +149,22 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
 
         if (cycle <= 0) {
             // Solid: one union path for the whole group.
-            const d: PathCommand[] = [];
-            for (const px of verticals) d.push({ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom });
-            for (const py of horizontals) d.push({ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py });
-            if (d.length > 0) draw.draw(new Graphics().path({ d, centerBounds }).stroke(stroke));
+            const data: PathCommand[] = [];
+            for (const px of verticals) data.push({ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom });
+            for (const py of horizontals) data.push({ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py });
+            if (data.length > 0) draw.draw(new Graphics().path({ data, centerBounds }).stroke(stroke));
             return;
         }
 
         // Dashed: one path per line, with the dash phase anchored to the line's
         // world coordinate along its run (top for verticals, left for horizontals).
         for (const px of verticals) {
-            const d: PathCommand[] = [{ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom }];
-            draw.draw(new Graphics().path({ d, centerBounds }).stroke(phaseShift(stroke, g.top)));
+            const data: PathCommand[] = [{ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom }];
+            draw.draw(new Graphics().path({ data, centerBounds }).stroke(phaseShift(stroke, g.top)));
         }
         for (const py of horizontals) {
-            const d: PathCommand[] = [{ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py }];
-            draw.draw(new Graphics().path({ d, centerBounds }).stroke(phaseShift(stroke, g.left)));
+            const data: PathCommand[] = [{ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py }];
+            draw.draw(new Graphics().path({ data, centerBounds }).stroke(phaseShift(stroke, g.left)));
         }
     }
 }

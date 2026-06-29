@@ -38,7 +38,7 @@ export class PathBuilder {
         return [...this.cmds];
     }
 
-    toPathState(partial: Omit<Partial<PathState>, "d"> = {}): Partial<PathState> {
-        return { ...partial, d: this.cmds };
+    toPathState(partial: Omit<Partial<PathState>, "data"> = {}): Partial<PathState> {
+        return { ...partial, data: this.cmds };
     }
 }

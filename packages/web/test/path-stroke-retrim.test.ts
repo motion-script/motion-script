@@ -48,7 +48,7 @@ describe("PathShape stroke path under retrim (start/end tween)", () => {
         // Build at end:0.3 (a first frame), then scrub forward via retrim — the
         // path cache's trim-only fast path. The stroke path must track each new
         // range, not freeze at the construction-time trim.
-        const shape = new PathShape(ck, getCanvas, { d: TRI, start: 0, end: 0.3 });
+        const shape = new PathShape(ck, getCanvas, { data: TRI, start: 0, end: 0.3 });
         shape.ensurePath();
 
         const lenAt = (end: number) => {
@@ -71,7 +71,7 @@ describe("PathShape stroke path under retrim (start/end tween)", () => {
     });
 
     it("keeps the stroke contour open (no closing chord) across the whole tween", () => {
-        const shape = new PathShape(ck, getCanvas, { d: TRI, start: 0, end: 0.5 });
+        const shape = new PathShape(ck, getCanvas, { data: TRI, start: 0, end: 0.5 });
         shape.ensurePath();
         for (const end of [0.5, 0.75, 1.0]) {
             shape.retrim(0, end);
@@ -81,7 +81,7 @@ describe("PathShape stroke path under retrim (start/end tween)", () => {
     });
 
     it("at end:1 the open stroke contour is shorter than the closed fill contour (chord dropped)", () => {
-        const shape = new PathShape(ck, getCanvas, { d: TRI, start: 0, end: 1 });
+        const shape = new PathShape(ck, getCanvas, { data: TRI, start: 0, end: 1 });
         shape.ensurePath();
         const fillLen = totalLength(shape.ckPath!);
         const strokeLen = totalLength(shape.strokePath()!);

@@ -6,7 +6,7 @@ import { PathCanvas } from '@site/src/components/docs/node-scenes';
 
 # Path
 
-Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-written SVG. The node auto-measures its bounding box from the path data and defaults to `width: 'hug'`, `height: 'hug'`.
+Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-written SVG via the `data` prop. The node auto-measures its bounding box from the path data and defaults to `width: 'hug'`, `height: 'hug'`.
 
 <PathCanvas />
 
@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
   // Triangle from an SVG d string
   stage.add(
     <Path
-      d="M 0 -60 L 52 40 L -52 40 Z"
+      data="M 0 -60 L 52 40 L -52 40 Z"
       fill="#6990DD"
     />
   );
@@ -27,7 +27,7 @@ export default createScene(function* (stage) {
   // Heart outline drawn with a stroke
   stage.add(
     <Path
-      d="M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z"
+      data="M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z"
       stroke={{ fill: '#6990DD', weight: 8 }}
     />
   );
@@ -38,7 +38,7 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `d` | `string \| PathCommand[]` | — | SVG path data string, or an array of path commands |
+| `data` | `string \| PathCommand[]` | — | SVG path data string, or an array of path commands |
 
 `Path` inherits all standard `ShapeNode` props (`fill`, `stroke`, `shadow`, `start`, `end`, `opacity`, etc.).
 
@@ -73,7 +73,7 @@ export default createScene(function* (stage) {
   stage.add(
     <Path
       ref={shape}
-      d="M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z"
+      data="M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z"
       stroke={{ fill: '#6990DD', weight: 8 }}
       end={0}
     />
@@ -97,5 +97,5 @@ yield* shape().to({ opacity: 0, scale: 0.5 }, 0.6, easeInOut);
 ## Notes
 
 - Path coordinates are in the path's own local space. The node auto-centers the bounding box at its origin.
-- Copy the `d` attribute directly from an SVG file or Figma's "Copy as SVG" export.
+- Copy the `d` attribute directly from an SVG file or Figma's "Copy as SVG" export into the `data` prop.
 - Paths with only a `stroke` (no `fill`) work well with `start`/`end` animation for line-drawing effects.

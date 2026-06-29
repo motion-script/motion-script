@@ -4,7 +4,7 @@ import { createScene, createRef, Path, easeInOut } from '@motion-script/core';
 import { holdTail } from './_lib';
 
 /**
- * {@link Path.d} morphing: animating `to({ d })` smoothly reconciles a
+ * {@link Path.data} morphing: animating `to({ data })` smoothly reconciles a
  * 4-point square outline into an 8-point star, despite the differing point
  * counts.
  */
@@ -15,9 +15,9 @@ export default createScene(function* (stage) {
     const star =
         'M 0 -150 L 35 -50 L 140 -50 L 55 15 L 85 120 L 0 55 L -85 120 L -55 15 L -140 -50 L -35 -50 Z';
     stage.add(
-        <Path ref={shape} d={square} fill={'primary'} center={() => stage.root.center} />,
+        <Path ref={shape} data={square} fill={'primary'} center={() => stage.root.center} />,
     );
 
-    yield* shape().to({ d: star }, 1.5, easeInOut('quad'));
+    yield* shape().to({ data: star }, 1.5, easeInOut('quad'));
     yield* holdTail(1.5);
 });

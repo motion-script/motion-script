@@ -207,8 +207,8 @@ function flipPathY(state: Partial<PathState>): Partial<PathState> {
     // PathCommand[] is authored y-up — mirror every command. A raw SVG `d` string
     // is interpreted in its own coordinate space (the path self-centers on its
     // bbox), so it is left untouched; use a command array for y-up authoring.
-    if (Array.isArray(state.d)) {
-        out.d = state.d.map(flipPathCommandY);
+    if (Array.isArray(state.data)) {
+        out.data = state.data.map(flipPathCommandY);
     }
     // centerBounds is [minX, minY, maxX, maxY]; a vertical flip negates and swaps
     // the y extents so the explicit frame still matches the mirrored commands.

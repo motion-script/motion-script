@@ -148,13 +148,13 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         // Minor (subdivision) lines first so the major lines sit on top of them.
         if (subdivisions > 1 && minorStroke.length > 0 && minorLines.length > 0) {
             draw.draw(new Graphics()
-                .path({ d: minorLines, centerBounds })
+                .path({ data: minorLines, centerBounds })
                 .stroke(minorStroke));
         }
         // Major (division) lines on top.
         if (majorLines.length > 0) {
             draw.draw(new Graphics()
-                .path({ d: majorLines, centerBounds })
+                .path({ data: majorLines, centerBounds })
                 .stroke(major));
         }
         draw.endClip();

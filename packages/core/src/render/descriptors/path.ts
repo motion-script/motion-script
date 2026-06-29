@@ -47,7 +47,7 @@ export function toPathString(d: PathData): string {
 export type PathBounds = readonly [number, number, number, number];
 
 export interface PathState extends ShapeState {
-    d: PathData;
+    data: PathData;
     /**
      * Explicit frame to center the path against, as [minX, minY, maxX, maxY] in
      * the path's own coordinate space. When set, the path is shifted so this
@@ -76,7 +76,7 @@ export function withPathDescriptor(descriptor: Partial<PathState>): PathState {
         height: descriptor.height ?? 0,
         pivot: resolveShapePivot(descriptor.pivot),
 
-        d: descriptor.d ?? "",
+        data: descriptor.data ?? "",
         centerBounds: descriptor.centerBounds,
     };
 }

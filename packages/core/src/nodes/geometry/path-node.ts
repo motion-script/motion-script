@@ -13,7 +13,7 @@ import { lerpPath } from "@/attributes/shape/path/morph";
 import { measurePathData } from "@/attributes/shape/path/bounds";
 
 export interface PathProps extends ShapeProps {
-    d: PathData;
+    data: PathData;
 }
 
 export class Path extends ShapeNode<PathProps> {
@@ -21,13 +21,13 @@ export class Path extends ShapeNode<PathProps> {
     /**
      * The path geometry, as an SVG `d` string or a {@link PathCommand} array.
      *
-     * Animatable: `to({ d })` morphs smoothly between arbitrary shapes via
+     * Animatable: `to({ data })` morphs smoothly between arbitrary shapes via
      * {@link lerpPath}, which reconciles differing command/subpath counts, point
      * order, and winding before interpolating. Strings and command arrays may be
      * freely mixed as the source and target.
      */
     @property({ default: "", tween: lerpPath })
-    declare readonly d: PathData;
+    declare readonly data: PathData;
 
     constructor(props: NodeConfig<Path, PathProps>) {
         super(props);
@@ -48,7 +48,7 @@ export class Path extends ShapeNode<PathProps> {
             return super.measure(constraints, scope);
         }
 
-        const intrinsic = measurePathData(this.d);
+        const intrinsic = measurePathData(this.data);
         const pad = this.padding as PaddingResolved;
 
         const resolvedW = typeof wm === "number"
@@ -68,7 +68,7 @@ export class Path extends ShapeNode<PathProps> {
 
     protected override shapeGraphics(): Graphics {
         return new Graphics().path({
-            d: this.d,
+            data: this.data,
             start: this.start,
             end: this.end,
         });

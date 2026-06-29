@@ -37,7 +37,7 @@ export class PathShape extends BaseShape<PathState, PathGeo> {
     protected computeGeometry(): PathGeo {
         // SVG string is known eagerly; centering offset requires the ck path bounds
         // and is filled in by ensurePath() after path construction.
-        return { svgString: toPathString(this.fullState.d), offsetX: 0, offsetY: 0 };
+        return { svgString: toPathString(this.fullState.data), offsetX: 0, offsetY: 0 };
     }
 
     protected buildSVGPath(geo: PathGeo): string {
