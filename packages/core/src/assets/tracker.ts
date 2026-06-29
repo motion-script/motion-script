@@ -89,6 +89,10 @@ export class AssetTracker {
             this.requestVideo(src, existing.width, existing.height, existing.trimStart, existing.trimEnd);
             return;
         }
+        // Validate the src exists in the manifest (audio file, or a video clip
+        // whose audio track is being played). Throws here during precomp — caught
+        // and surfaced as a BuildError — instead of silently no-op'ing at playback.
+        this._catalog.getMediaDuration(src);
         this.upsertAsset(src, (frame) => ({
             type: 'audio',
             src,
@@ -143,8 +147,20 @@ export class AssetTracker {
 
     // ─── Public request API ───────────────────────────────────────────────────
 
-    /** Register an image asset needed at the current frame, tracking the maximum rendered size. */
+    /**
+     * Register an image asset needed at the current frame, tracking the maximum
+     * rendered size.
+     *
+     * Validates that `src` exists in the manifest. A missing asset (e.g. a
+     * deleted/renamed file, or a typo in `src`) throws here during the precomp
+     * build pass, where {@link precompScene} records it as a `BuildError` that
+     * surfaces in the player's errors panel — rather than silently failing to
+     * paint at playback time. This mirrors {@link requestVideo}, which already
+     * throws via `getVideoDuration` on an unknown src.
+     */
     requestImage(src: string, width: number = 0, height: number = 0): void {
+        // Throws "No image metadata for src: <src>" if the asset is unknown.
+        this._catalog.getImageMeta(src);
         const frame = this.ensureFrame();
         const entry = this.requestedAssets.get(src);
         if (entry && entry.type === 'image') {

@@ -160,8 +160,25 @@ export class FakeMeasureScope extends MeasureScope {
 }
 
 export class FakeAssetCatalog {
-    constructor(private videoDurations: Record<string, number> = {}) {}
+    /**
+     * @param videoDurations Per-src video durations (defaults to 10s for any src).
+     * @param missing        Srcs that should be treated as absent from the manifest
+     *                       so image/audio/media lookups throw, mirroring the real
+     *                       catalog's missing-asset error (see `requestImage`).
+     */
+    constructor(
+        private videoDurations: Record<string, number> = {},
+        private missing: ReadonlySet<string> = new Set(),
+    ) {}
     getVideoDuration(src: string): number {
+        return this.videoDurations[src] ?? 10;
+    }
+    getImageMeta(src: string): { width: number; height: number; sizeBytes: number; src: string } {
+        if (this.missing.has(src)) throw new Error(`Image asset not found: "${src}".`);
+        return { src, width: 0, height: 0, sizeBytes: 0 };
+    }
+    getMediaDuration(src: string): number {
+        if (this.missing.has(src)) throw new Error(`Audio asset not found: "${src}".`);
         return this.videoDurations[src] ?? 10;
     }
 }

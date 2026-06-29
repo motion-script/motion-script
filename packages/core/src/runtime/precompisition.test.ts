@@ -272,6 +272,47 @@ describe('Precomp – asset map (image)', () => {
     });
 });
 
+describe('Precomp – missing assets surface as build errors', () => {
+    it('records a build error when an image src is absent from the manifest', () => {
+        const catalog = new FakeAssetCatalog({}, new Set(['gone.png']));
+        const scene = new FakeScene({
+            name: 'broken',
+            yieldCount: 3,
+            onPrepare: (tracker) => tracker.requestImage('gone.png', 512, 512),
+        });
+
+        const result = run([scene], 10, catalog);
+
+        expect(result.buildErrors).toHaveLength(1);
+        expect(result.buildErrors[0].sceneName).toBe('broken');
+        expect(result.buildErrors[0].message).toContain('gone.png');
+        // The broken asset must not leak a track onto the timeline.
+        expect(result.assets.has('gone.png')).toBe(false);
+    });
+
+    it('records a build error when an audio src is absent from the manifest', () => {
+        const catalog = new FakeAssetCatalog({}, new Set(['gone.mp3']));
+        const scene = new FakeScene({
+            name: 'broken-audio',
+            yieldCount: 3,
+            onPrepare: (tracker) => tracker.requestAudio('gone.mp3'),
+        });
+
+        const result = run([scene], 10, catalog);
+
+        expect(result.buildErrors).toHaveLength(1);
+        expect(result.buildErrors[0].message).toContain('gone.mp3');
+    });
+
+    it('does not error for a present image src', () => {
+        const scene = new FakeScene({
+            yieldCount: 3,
+            onPrepare: (tracker) => tracker.requestImage('ok.png', 512, 512),
+        });
+        expect(run([scene]).buildErrors).toHaveLength(0);
+    });
+});
+
 describe('Precomp – asset map (font & video)', () => {
     it('always caches fonts at frame 0 and never discards them', () => {
         const scene = new FakeScene({

@@ -28,7 +28,7 @@ export class AssetCatalog {
      */
     getImageMeta(src: string): ImageMeta {
         const meta = this.manifest.image[src];
-        if (!meta) throw new Error(`No image metadata for src: ${src}`);
+        if (!meta) throw new Error(`Image asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
 
@@ -40,7 +40,7 @@ export class AssetCatalog {
      */
     getVideoMeta(src: string): VideoMeta {
         const meta = this.manifest.video[src];
-        if (!meta) throw new Error(`No video metadata for src: ${src}`);
+        if (!meta) throw new Error(`Video asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
 
@@ -113,7 +113,7 @@ export class AssetCatalog {
         if (audio) return audio.duration;
         const video = this.manifest.video[src];
         if (video) return video.duration;
-        throw new Error(`No audio or video metadata for src: ${src}`);
+        throw new Error(`Audio asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
     }
 
     /**
