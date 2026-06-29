@@ -31,7 +31,19 @@ import { MaskHandler } from "./mask";
  */
 export interface CurrentShape {
     draw: (paint: Paint) => void;
+    // Draw used by the stroke pass's centered fallback. Equals `draw` for closed
+    // shapes; for freeform paths it draws an *open* copy so a stroke never paints
+    // the closing edge. Always present (defaults to `draw`'s behavior).
+    strokeDraw?: (paint: Paint) => void;
     ckPath?: CKPath;
+    // The path the stroke pass should stroke. Equals `ckPath` for closed shapes;
+    // for a freeform Path it's an open copy (trailing close removed) so the stroke
+    // omits the closing chord while the fill keeps using the closed `ckPath`.
+    strokePath?: CKPath;
+    // True when this shape is start/end-trimmed (its contour may be open). Lets
+    // the stroke-union path avoid a boolean union (a closed-region op that breaks
+    // on open/animated contours) and concatenate contours instead.
+    trimmed?: boolean;
     // A closed clip region for aligned (inside/outside) strokes when `ckPath` is
     // an open contour (e.g. an ellipse arc). Lets the stroke handler offset the
     // band radially even though the stroked curve bounds no region itself.
@@ -413,6 +425,12 @@ export class ShapeHandler {
     // Returns null when there are fewer than two path shapes (caller strokes the
     // shapes directly) or text is involved (no path to union). The caller owns
     // the returned shape's ckPath and must delete() it. Does not mutate `shapes`.
+    //
+    // `ckPath` is the *closed* boolean union (used as the align-clip interior and
+    // for bounds). `strokePath`/`strokeDraw` expose a separate stroke contour:
+    // the per-shape *open* stroke paths concatenated (not boolean-unioned, which
+    // is ill-defined on open contours), so a stroked freeform Path never draws
+    // its closing chord even when its node accumulates a fill + stroke pair.
     unionStrokeShape(): CurrentShape | null {
         if (this.shapes.some(s => s.isText)) return null;
         const withPaths = this.shapes.filter(s => s.ckPath);
@@ -424,10 +442,31 @@ export class ShapeHandler {
         );
         if (!combined) return null;
 
+        // The stroke contour. A boolean union (`combined`) hides seams between
+        // overlapping *closed* fills, but it is a closed-region op: applied to an
+        // open or trimmed contour it changes topology discontinuously frame to
+        // frame (the start/end-tween "jumps"). So whenever any shape is open
+        // (a freeform path's open stroke variant) or trimmed, stroke a plain
+        // concatenation of the per-shape stroke contours (`strokePath ?? ckPath`)
+        // instead — `addPath` preserves each contour's openness and order, with no
+        // boolean reshaping. Only fully-closed, untrimmed shapes keep using the
+        // boolean union for seam-free stroking.
+        const needsConcat = withPaths.some(
+            s => (s.strokePath && s.strokePath !== s.ckPath) || s.trimmed,
+        );
+        let strokeUnion: CKPath | undefined;
+        if (needsConcat) {
+            const builder = new this.canvasKit.PathBuilder();
+            for (const s of withPaths) builder.addPath(s.strokePath ?? s.ckPath!);
+            strokeUnion = builder.detachAndDelete();
+        }
+
         const canvas = this.getCanvas();
         return {
             draw: (paint: Paint) => { canvas.drawPath(combined, paint); },
+            strokeDraw: (paint: Paint) => { canvas.drawPath(strokeUnion ?? combined, paint); },
             ckPath: combined,
+            strokePath: strokeUnion,
         };
     }
 

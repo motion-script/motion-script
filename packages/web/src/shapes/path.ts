@@ -1,8 +1,20 @@
-import type { Paint } from "@motion-script/canvaskit";
+import type { Paint, Path as CKPath } from "@motion-script/canvaskit";
 import { PathState, toPathString, withPathDescriptor } from "@motion-script/core";
 import { BaseShape } from "./base";
 import { trimPath } from "./trim";
 export { trimPath } from "./trim";
+
+/**
+ * Returns the SVG `d` string with a trailing close (`Z`/`z`) removed so the
+ * contour is left open. Stripping the close from the *source* string (rather
+ * than from CanvasKit's normalized output) is what actually opens the contour:
+ * CanvasKit's `toSVGString()` synthesizes an explicit `L` back to the start
+ * *before* the `Z`, so removing only the `Z` there would leave that closing
+ * line — the visible chord. The source has no such synthesized line.
+ */
+function openSvgString(svg: string): string {
+    return svg.replace(/\s*[Zz]\s*$/, "");
+}
 
 type PathGeo = {
     svgString: string;
@@ -32,12 +44,71 @@ export class PathShape extends BaseShape<PathState, PathGeo> {
         return geo.svgString;
     }
 
+    // Strokes on a freeform path follow the *open* outline: a stroke never draws
+    // the contour's closing chord back to the start (e.g. a `…z`-terminated
+    // heart). The fill keeps using the closed `ckPath`, so a filled region is
+    // unaffected — this splits stroke vs fill behavior.
+    //
+    // The open path is built from the *source* `d` with its trailing close
+    // stripped, then put through the SAME centering offset + transform + trim as
+    // `ckPath` — NOT derived from `ckPath`. CanvasKit's normalized output adds an
+    // explicit `L` back to the start before the `Z`, so opening it after the fact
+    // would leave that line (the chord); the source has no such line. Reusing the
+    // stored `geo.offsetX/Y` (computed from the closed path's bounds in
+    // ensurePath) keeps the stroke aligned with the fill. Returns undefined when
+    // the source has no trailing close, so genuinely open paths reuse `ckPath`.
+    protected override buildStrokePath(_built: CKPath): CKPath | undefined {
+        const geo = this.geometry;
+        const openSvg = openSvgString(geo.svgString);
+        if (openSvg === geo.svgString) return undefined;
+        return this.buildCenteredTransformedTrimmed(openSvg, geo.offsetX, geo.offsetY, false);
+    }
+
     protected needsTrim(): boolean {
         return this.fullState.start !== 0 || this.fullState.end !== 1;
     }
 
     protected getTrimRange() {
         return { start: this.fullState.start, end: this.fullState.end };
+    }
+
+    // Parse `svgString`, bake the centering `offset`, bake the per-shape
+    // rotation/scale, then trim. Shared by ensurePath() (closed fill path, which
+    // also records the base path for retrim) and buildStrokePath() (open stroke
+    // path). Returns null on parse failure. The caller owns the result.
+    private buildCenteredTransformedTrimmed(
+        svgString: string,
+        ox: number,
+        oy: number,
+        setBaseOnTrim: boolean,
+    ): CKPath | undefined {
+        const rawPath = this.canvasKit.Path.MakeFromSVGString(svgString);
+        if (!rawPath) {
+            console.warn("PathShape: failed to parse SVG path string:", svgString);
+            return undefined;
+        }
+
+        // Bake the centering translation into the path so draw/clip need no save/restore.
+        const builder = new this.canvasKit.PathBuilder(rawPath);
+        builder.offset(ox, oy);
+        const centeredPath = builder.detachAndDelete();
+        rawPath.delete();
+
+        // Bake per-shape rotation/scale about the now-centred origin (no-op when
+        // both are identity), so `.path({ rotation, scale })` works like the
+        // other shapes.
+        const transformed = this.applyShapeTransform(centeredPath, { x: 0, y: 0 });
+
+        if (this.needsTrim()) {
+            if (setBaseOnTrim) this._setBasePath(transformed);
+            const { start, end } = this.getTrimRange();
+            const trimmed = trimPath(this.canvasKit, transformed, start, end);
+            // When we keep `transformed` as the base for retrim it must stay alive;
+            // otherwise (stroke path) it's transient and freed here.
+            if (!setBaseOnTrim && trimmed !== transformed) transformed.delete();
+            return trimmed;
+        }
+        return transformed;
     }
 
     // Override ensurePath to bake the centering offset directly into the path.
@@ -52,33 +123,15 @@ export class PathShape extends BaseShape<PathState, PathGeo> {
 
         // Center against an explicit shared frame when provided (so paths that
         // share one layout frame keep their relative positions); otherwise fall
-        // back to the path's own bbox center.
+        // back to the path's own bbox center. Computed once here from the closed
+        // path's bounds and reused by buildStrokePath so the stroke stays aligned.
         const cb = this.fullState.centerBounds;
         const [minX, minY, maxX, maxY] = cb ?? rawPath.getBounds();
-        const ox = -(minX + (maxX - minX) / 2);
-        const oy = -(minY + (maxY - minY) / 2);
-        // Store for computeBounds() usage; no longer needed for draw/clip.
-        geo.offsetX = ox;
-        geo.offsetY = oy;
-
-        // Bake the centering translation into the path so draw/clip need no save/restore.
-        const builder = new this.canvasKit.PathBuilder(rawPath);
-        builder.offset(ox, oy);
-        const centeredPath = builder.detachAndDelete();
+        geo.offsetX = -(minX + (maxX - minX) / 2);
+        geo.offsetY = -(minY + (maxY - minY) / 2);
         rawPath.delete();
 
-        // Bake per-shape rotation/scale about the now-centred origin (no-op when
-        // both are identity), so `.path({ rotation, scale })` works like the
-        // other shapes.
-        const transformed = this.applyShapeTransform(centeredPath, { x: 0, y: 0 });
-
-        if (this.needsTrim()) {
-            this._setBasePath(transformed);
-            const { start, end } = this.getTrimRange();
-            this.ckPath = trimPath(this.canvasKit, transformed, start, end);
-        } else {
-            this.ckPath = transformed;
-        }
+        this.ckPath = this.buildCenteredTransformedTrimmed(geo.svgString, geo.offsetX, geo.offsetY, true);
     }
 
     override draw(paint: Paint, _isolated: boolean): void {

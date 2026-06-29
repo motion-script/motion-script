@@ -11,7 +11,8 @@
     "screenshot": "tsx scripts/shoot.ts",
     "compare": "tsx scripts/compare.ts",
     "test:e2e": "tsx scripts/run.ts",
-    "clean": "rimraf out stable .turbo"
+    "clean": "rimraf out .turbo",
+    "clear-stable": "rimraf out stable"
   },
   "dependencies": {
     "@motion-script/code": "workspace:*",

@@ -59,6 +59,15 @@ export abstract class BaseShape<S, G = unknown> {
     // The closed clip region for aligned strokes on this shape, or undefined when
     // the shape has none (the stroked ckPath is already closed, or the shape kind
     // doesn't define one). Built once and cached; owned by this instance.
+    //
+    // When the shape is trimmed, the *trimmed* ckPath is an open contour, so the
+    // stroke handler can't use it as the inside/outside clip region — the band
+    // would collapse to centered while the stroke draws on. The untrimmed base
+    // path (`_basePath`) is the full closed silhouette, so we hand that back as
+    // the interior: a partial stroke then still aligns inside/outside relative to
+    // the complete shape. Falls through to the subclass-defined interior (an
+    // ellipse arc's wedge) and then to undefined (open sources like a polyline,
+    // which have no inside — centered is correct there).
     strokeAlignInterior(): CKPath | undefined {
         if (!this._alignInteriorBuilt) {
             this._alignInteriorBuilt = true;
@@ -70,7 +79,9 @@ export abstract class BaseShape<S, G = unknown> {
                     : undefined;
             }
         }
-        return this._alignInterior;
+        // Prefer a subclass interior; otherwise, for a trimmed shape, use the
+        // untrimmed closed base path so alignment survives the start/end tween.
+        return this._alignInterior ?? (this.needsTrim() ? this._basePath : undefined);
     }
 
     // SVG for the silhouette grown (positive) or shrunk (negative) by `spread`
@@ -192,8 +203,46 @@ export abstract class BaseShape<S, G = unknown> {
     retrim(start: number, end: number): void {
         const base = this._basePath;
         if (!base) return;
+        // Keep fullState's trim range current. A subclass stroke path (PathShape)
+        // rebuilds from getTrimRange()/needsTrim(), which read fullState — without
+        // this update it would rebuild at the *construction-time* trim, freezing
+        // the stroke at a stale frame while ckPath advances (the start/end-tween
+        // "jumps to a different state").
+        const ts = this.fullState as unknown as { start?: number; end?: number };
+        ts.start = start;
+        ts.end = end;
         this.ckPath?.delete();
         this.ckPath = trimPath(this.canvasKit, base, start, end);
+        // ckPath changed — drop the cached open stroke path so it rebuilds.
+        this._strokePath?.delete();
+        this._strokePath = undefined;
+        this._strokePathBuilt = false;
+    }
+
+    // An open (un-closed) variant of `ckPath` used for *stroking* only, so a
+    // stroke never draws the contour's closing edge. Returns undefined when the
+    // shape has no distinct stroke path — the stroke then uses `ckPath` directly.
+    // Only freeform paths (PathShape) override buildStrokePath(); genuinely
+    // closed shapes (rect, ellipse, polygon) keep stroking their closed outline.
+    // Built lazily off the final ckPath and cached; owned by this instance.
+    private _strokePath: CKPath | undefined;
+    private _strokePathBuilt = false;
+
+    strokePath(): CKPath | undefined {
+        if (!this._strokePathBuilt) {
+            this._strokePathBuilt = true;
+            this.ensurePath();
+            this._strokePath = this.ckPath ? this.buildStrokePath(this.ckPath) : undefined;
+        }
+        return this._strokePath;
+    }
+
+    // Subclasses that want strokes drawn along an *open* contour return an open
+    // copy of `built` here (e.g. PathShape strips a trailing close). Returning
+    // undefined (the default) means "stroke the closed ckPath as-is". The caller
+    // (this class) owns and frees the returned path.
+    protected buildStrokePath(_built: CKPath): CKPath | undefined {
+        return undefined;
     }
 
     // Release CanvasKit resources. Called by shape cache on eviction.
@@ -205,11 +254,22 @@ export abstract class BaseShape<S, G = unknown> {
         this._alignInterior?.delete();
         this._alignInterior = undefined;
         this._alignInteriorBuilt = false;
+        this._strokePath?.delete();
+        this._strokePath = undefined;
+        this._strokePathBuilt = false;
     }
 
     draw(paint: Paint, _isolated: boolean): void {
         this.ensurePath();
         if (this.ckPath) this.canvas.drawPath(this.ckPath, paint);
+    }
+
+    // Draw for stroking: uses the open stroke path when the shape defines one,
+    // else the normal closed path. Mirrors `draw()` for the centered-stroke
+    // fallback in StrokeHandler so it, too, omits the closing edge.
+    strokeDraw(paint: Paint): void {
+        const path = this.strokePath() ?? this.ckPath;
+        if (path) this.canvas.drawPath(path, paint);
     }
 
     clip(_isolated: boolean): void {
@@ -233,8 +293,11 @@ export abstract class BaseShape<S, G = unknown> {
         const shape = this;
         return {
             draw: (paint: Paint) => shape.draw(paint, isolated),
+            strokeDraw: (paint: Paint) => shape.strokeDraw(paint),
             get ckPath() { return shape.ckPath; },
+            get strokePath() { return shape.strokePath(); },
             get alignInterior() { return shape.strokeAlignInterior(); },
+            trimmed: this.needsTrim(),
             bounds: this.computeBounds(this.geometry),
             spreadPath: this.supportsSpread() ? (spread: number) => shape.spreadPath(spread) : undefined,
         };

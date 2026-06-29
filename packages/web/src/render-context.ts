@@ -957,7 +957,17 @@ export class WebRenderContext extends RenderContext {
 
     private _fill(fills: Fill): void {
         const resolved = resolveFillArray(fills);
-        if (resolved.length === 0) return;
+        if (resolved.length === 0) {
+            // An empty fill paints nothing, but the shapes it was applied to were
+            // still "consumed" by this draw() — mark the pass applied so the next
+            // `_path` resets and starts a fresh shape set. Without this a fill-less
+            // node (e.g. a stroke-only Path, whose renderSelf still emits an empty
+            // fill) leaves its silhouette accumulated, so the later stroke pass
+            // sees a *duplicate* shape and unions/concats two copies — distorting
+            // the stroked outline.
+            this.shapeHandler.paintApplied = true;
+            return;
+        }
         if (this.shapeHandler.isCollectingPaths()) {
             this.shapeHandler.paintApplied = true;
             return;
@@ -1001,12 +1011,20 @@ export class WebRenderContext extends RenderContext {
     // any transient union path. `space` is accepted for call-site symmetry with
     // the fill path but no longer changes the grouping.
     private strokeShapesForSpace(_space: FillSpace): {
-        shapes: Array<{ draw: (p: any) => void; ckPath?: any; spreadPath?: (spread: number) => any }>;
+        shapes: Array<{ draw: (p: any) => void; strokeDraw?: (p: any) => void; ckPath?: any; strokePath?: any; spreadPath?: (spread: number) => any }>;
         dispose: () => void;
     } {
         const union = this.shapeHandler.unionStrokeShape();
         if (union) {
-            return { shapes: [union], dispose: () => union.ckPath?.delete() };
+            return {
+                shapes: [union],
+                dispose: () => {
+                    union.ckPath?.delete();
+                    // The concatenated open stroke contour is a separate synthesized
+                    // path; free it too (it's distinct from ckPath when present).
+                    if (union.strokePath && union.strokePath !== union.ckPath) union.strokePath.delete();
+                },
+            };
         }
         return { shapes: this.shapeHandler.shapes, dispose: () => { } };
     }

@@ -276,7 +276,7 @@ export class StrokeHandler {
     /** Paints each resolved stroke over every shape: resolves device-px stroke width (with thin-stroke snapping), builds the fill shader per shape via the registry, then draws through {@link drawStroke}. Each fill layer in `stroke.fill` is drawn as its own pass, bottom-to-top. */
     applyStrokes(
         strokes: StrokeResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath }>,
+        shapes: Array<{ draw: (p: Paint) => void; strokeDraw?: (p: Paint) => void; ckPath?: CKPath; strokePath?: CKPath; alignInterior?: CKPath }>,
         resolveBounds?: (
             fill: FillResolved,
             shape: { ckPath?: CKPath },
@@ -344,7 +344,7 @@ export class StrokeHandler {
     private drawStroke(
         canvas: Canvas,
         paint: Paint,
-        shape: { draw: (p: Paint) => void; ckPath?: CKPath; alignInterior?: CKPath; isText?: boolean },
+        shape: { draw: (p: Paint) => void; strokeDraw?: (p: Paint) => void; ckPath?: CKPath; strokePath?: CKPath; alignInterior?: CKPath; isText?: boolean },
         stroke: StrokeResolved,
         logicalWidth: number,
         intDeviceWidth: number,
@@ -360,11 +360,17 @@ export class StrokeHandler {
             return;
         }
 
+        // The contour actually stroked. For freeform paths this is the *open*
+        // copy (no closing chord); for closed shapes it's just `ckPath`. The
+        // centered fallback uses `strokeDraw`, which draws the same open path.
+        const strokeCkPath = shape.strokePath ?? shape.ckPath;
+        const strokeDraw = shape.strokeDraw ?? shape.draw;
+
         const hasDash = !!(stroke.dash && stroke.dash.length > 0);
         // Measure dash fit once; pass to both buildDashedPath and makeUniformDashEffect
         // so the contour iteration runs only once per dashed shape.
-        const dashFit = hasDash && shape.ckPath
-            ? this.measureDashFit(shape.ckPath, stroke.dash!)
+        const dashFit = hasDash && strokeCkPath
+            ? this.measureDashFit(strokeCkPath, stroke.dash!)
             : null;
 
         const align = stroke.align ?? 0;
@@ -372,15 +378,17 @@ export class StrokeHandler {
         // stroked path itself; for an open contour with a defined interior (an
         // ellipse arc → its pie wedge / sector) it's that interior, so the band
         // still offsets radially instead of silently collapsing to centered.
+        // Uses the *closed* ckPath: alignment needs a region to clip against, so
+        // an open stroke path must still clip against the closed silhouette.
         const interior = shape.alignInterior ?? shape.ckPath;
 
-        if (intDeviceWidth > 0 && shape.ckPath) {
+        if (intDeviceWidth > 0 && strokeCkPath) {
             const source = hasDash
-                ? this.buildDashedPath(shape.ckPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined)
-                : shape.ckPath;
+                ? this.buildDashedPath(strokeCkPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined)
+                : strokeCkPath;
             if (source) {
                 const filled = this.alignedStrokeBand(source, logicalWidth, align, interior, stroke);
-                if (source !== shape.ckPath) source.delete();
+                if (source !== strokeCkPath) source.delete();
                 if (filled) {
                     paint.setStyle(this.canvasKit.PaintStyle.Fill);
                     canvas.drawPath(filled, paint);
@@ -393,8 +401,8 @@ export class StrokeHandler {
 
         // Thick, non-dashed strokes with alignment: build the filled band and
         // draw it as a fill (the centered Skia stroke can't be aligned).
-        if (align !== 0 && !hasDash && shape.ckPath) {
-            const band = this.alignedStrokeBand(shape.ckPath, logicalWidth, align, interior, stroke);
+        if (align !== 0 && !hasDash && strokeCkPath) {
+            const band = this.alignedStrokeBand(strokeCkPath, logicalWidth, align, interior, stroke);
             if (band) {
                 paint.setStyle(this.canvasKit.PaintStyle.Fill);
                 canvas.drawPath(band, paint);
@@ -405,8 +413,8 @@ export class StrokeHandler {
         }
 
         // Fallback for thick strokes or when makeStroked/dashing failed.
-        if (hasDash && shape.ckPath) {
-            const effect = this.makeUniformDashEffect(shape.ckPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined);
+        if (hasDash && strokeCkPath) {
+            const effect = this.makeUniformDashEffect(strokeCkPath, stroke.dash!, stroke.dashOffset ?? 0, dashFit ?? undefined);
             if (effect) {
                 paint.setPathEffect(effect);
                 // An aligned dashed stroke shifts off-center by clipping the
@@ -414,16 +422,16 @@ export class StrokeHandler {
                 // Needs a closed region to clip against: the stroked path when
                 // it's closed, or an open arc's interior wedge/sector when not.
                 if (align !== 0 && intDeviceWidth <= 0 && interior && this.isClosedPath(interior)) {
-                    this.drawAlignedDashedStroke(canvas, paint, shape.ckPath, interior, align);
+                    this.drawAlignedDashedStroke(canvas, paint, strokeCkPath, interior, align);
                 } else {
-                    canvas.drawPath(shape.ckPath, paint);
+                    canvas.drawPath(strokeCkPath, paint);
                 }
                 paint.setPathEffect(null);
                 effect.delete();
                 return;
             }
         }
-        shape.draw(paint);
+        strokeDraw(paint);
     }
 
     // Build a filled stroke band placed by `align` (-1 inside, 0 center,
@@ -569,7 +577,7 @@ export class StrokeHandler {
      */
     applyShadows(
         shadows: ShadowResolved[],
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
+        shapes: Array<{ draw: (p: Paint) => void; strokeDraw?: (p: Paint) => void; ckPath?: CKPath; strokePath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         fills: FillResolved[],
         strokes: StrokeResolved[],
         resolveBounds?: (
@@ -636,7 +644,7 @@ export class StrokeHandler {
     /** Outer drop shadow: for each fill layer, offsets and optionally blurs a silhouette layer (filled shapes and/or strokes recolored to that fill layer), composited beneath the real paint via `saveLayer`. */
     private applyDropShadow(
         shadow: ShadowResolved,
-        shapes: Array<{ draw: (p: Paint) => void; ckPath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
+        shapes: Array<{ draw: (p: Paint) => void; strokeDraw?: (p: Paint) => void; ckPath?: CKPath; strokePath?: CKPath; spreadPath?: (spread: number) => CKPath | null }>,
         hasFill: boolean,
         hasStrokes: boolean,
         strokes: StrokeResolved[],
@@ -647,7 +655,6 @@ export class StrokeHandler {
         const paint = this.getPaint();
         const dx = shadow.offset?.x ?? 0;
         const dy = shadow.offset?.y ?? 0;
-        console.log('[DEBUG applyDropShadow]', JSON.stringify({ dx, dy, blur: shadow.blur, spread: shadow.spread, fillLen: shadow.fill.length, hasFill, shapesLen: shapes.length }));
 
         // A non-zero spread grows/shrinks the filled silhouette before blur, but
         // only for shapes that can resize their geometry cleanly (ellipse, rect);
