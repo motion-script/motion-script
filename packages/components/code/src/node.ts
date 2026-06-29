@@ -238,7 +238,10 @@ export class Code extends Node<CodeProps> {
             blockWidth,
             blockHeight,
             startX: -blockWidth / 2 + pad.left + gutter,
-            startY: -blockHeight / 2 + pad.top,
+            // y-up author space: the first line sits at the TOP of the block, so
+            // startY is the top edge (+half height, minus top padding) and the
+            // per-line cursor steps DOWNWARD by subtracting each line's height.
+            startY: blockHeight / 2 - pad.top,
         };
 
         // Only persist on static frames: a geometry computed mid-transition must
@@ -861,7 +864,9 @@ export class Code extends Node<CodeProps> {
             // Passing lineHeight makes the token block's height deterministic
             // (fontSize * lineHeight) rather than the font's natural metrics, so
             // the vertical center lands exactly on the slot center.
-            const centerY = yCursor + lineHeights[lineIdx] / 2;
+            // y-up space: yCursor is the top of the slot, so the slot center sits
+            // half a line height BELOW it (subtract).
+            const centerY = yCursor - lineHeights[lineIdx] / 2;
 
             if (this.showLineNumbers) {
                 const label = String(lineIdx + 1);
@@ -922,7 +927,8 @@ export class Code extends Node<CodeProps> {
                 x += tokWidth * widthScale;
             }
 
-            yCursor += lineHeights[lineIdx];
+            // Advance the cursor downward (y-up: subtract) to the next line's top.
+            yCursor -= lineHeights[lineIdx];
         }
     }
 

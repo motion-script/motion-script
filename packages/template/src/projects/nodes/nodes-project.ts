@@ -15,6 +15,8 @@ import grid from './scenes/grid-scene?scene';
 import image from './scenes/image-scene?scene';
 import video from './scenes/video-scene?scene';
 import path from './scenes/path-scene?scene';
+import latex from './scenes/latex-scene?scene';
+import code from './scenes/code-scene?scene';
 import customScene from './scenes/custom-scene';
 
 /**
@@ -47,6 +49,8 @@ export default createProject({
         image,
         video,
         path,
+        latex,
+        code,
         customScene
     ],
     theme: {
