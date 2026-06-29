@@ -72,7 +72,7 @@ describe('Row/Column clip and effect area (rectangle parity)', () => {
             });
 
             it('confines a backdrop effect to its own outline', () => {
-                const node = new Container({ effects: [{ type: 'blur', blur: 8, backdrop: true }] });
+                const node = new Container({ effects: [{ type: 'blur', blur: 8, mode: 'backdrop' }] });
                 setLayout(node, RECT);
                 const ctx = new RecorderContext();
                 node.onRender(ctx.asCtx());

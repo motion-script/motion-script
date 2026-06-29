@@ -1,7 +1,7 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { BackdropCapable, EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
-export interface ChromaticAberrationEffect extends BackdropCapable {
+export interface ChromaticAberrationEffect extends ModedEffect {
     type: "chromaticAberration";
     /** Pixel offset distance for the R/B channel fringe. */
     amount: number;
@@ -14,7 +14,7 @@ export const chromaticAberrationEffect: EffectData<ChromaticAberrationEffect> = 
         type: "chromaticAberration",
         amount: lerpNumber(from.amount, to.amount, t),
         angle: lerpNumber(from.angle, to.angle, t),
-        backdrop: t < 0.5 ? from.backdrop : to.backdrop,
+        mode: t < 0.5 ? from.mode : to.mode,
     }),
-    equals: (a, b) => a.amount === b.amount && a.angle === b.angle && a.backdrop === b.backdrop,
+    equals: (a, b) => a.amount === b.amount && a.angle === b.angle && a.mode === b.mode,
 };

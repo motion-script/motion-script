@@ -1,5 +1,5 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
 /** A single uniform value: a float or a flat array for vec2/vec3/vec4. */
 export type SkSLUniformValue = number | number[];
@@ -10,28 +10,26 @@ export interface SkSLUniform {
 }
 
 /**
- * Custom SkSL effect. Two modes:
+ * Custom SkSL effect, classified by the shared {@link EffectMode}:
  *
  * - `'backdrop'`: The shader receives `uniform shader u_backdrop` (a snapshot of the
  *   canvas content beneath the node). Use this for magnification, distortion, ripple, etc.
  *   Works identically to the built-in magnify/bulge effects — the result replaces the backdrop
  *   within the node's silhouette clip.
  *
- * - `'layer'`: The shader is applied as an overlay/modifier on the node's own layer via
- *   `ImageFilter.MakeShader`. The shader generates a colour from uniforms/position and is
- *   Screen-blended onto the layer. Useful for procedural overlays (noise, gradients, glows).
- *   Use `blendMode` to change how the shader composites onto the layer content.
+ * - `'foreground'` (the default): The shader is applied as an overlay/modifier on the node's
+ *   own layer via `ImageFilter.MakeShader`. The shader generates a colour from uniforms/position
+ *   and is composited onto the layer using {@link blendMode} (default Screen). Useful for
+ *   procedural overlays (noise, gradients, glows).
  */
-export interface SkSLEffect {
+export interface SkSLEffect extends ModedEffect {
     type: "sksl";
     /** SkSL shader source code. */
     shader: string;
     /** Uniform values passed to the shader in declaration order. Values lerp component-wise. */
     uniforms: SkSLUniform[];
-    /** How the effect is applied. */
-    mode: "layer" | "backdrop";
     /**
-     * Blend mode used when `mode === 'layer'`. Defaults to `'screen'` so the
+     * Blend mode used when `mode` is `'foreground'`. Defaults to `'screen'` so the
      * generated shader overlay composites additively onto the layer.
      *
      * Any CSS blend-mode name that CanvasKit supports is valid

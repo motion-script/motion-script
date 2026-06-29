@@ -6,19 +6,19 @@ describe('FX builders', () => {
         expect([...Effects.blur(4)]).toEqual([{ type: 'blur', blur: 4 }]);
     });
 
-    it('blur with { backdrop: true } flags the effect as a backdrop filter', () => {
-        expect([...Effects.blur(12, { backdrop: true })]).toEqual([
-            { type: 'blur', blur: 12, backdrop: true },
+    it('blur with { mode: "backdrop" } flags the effect as a backdrop filter', () => {
+        expect([...Effects.blur(12, { mode: "backdrop" })]).toEqual([
+            { type: 'blur', blur: 12, mode: "backdrop" },
         ]);
     });
 
-    it('grayscale carries the backdrop flag too', () => {
-        expect([...Effects.grayscale(1, { backdrop: true })]).toEqual([
-            { type: 'grayscale', amount: 1, backdrop: true },
+    it('grayscale carries the mode flag too', () => {
+        expect([...Effects.grayscale(1, { mode: "backdrop" })]).toEqual([
+            { type: 'grayscale', amount: 1, mode: "backdrop" },
         ]);
     });
 
-    it('omitting opts leaves backdrop unset (foreground effect)', () => {
+    it('omitting opts leaves mode unset (foreground effect)', () => {
         expect([...Effects.blur(12)]).toEqual([{ type: 'blur', blur: 12 }]);
     });
 

@@ -17,10 +17,13 @@ export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementation
 
 /** Chainable effect builder API, chain class, and union input type. */
 export { Effects as Effects, ChainableFx, EffectChain } from './chain';
-export type { PixelateOptions, BackdropOptions } from './chain';
+export type { PixelateOptions, ModeOptions } from './chain';
 
-export type { EffectData, BackdropCapable } from './effect-data';
+export type { EffectData, EffectMode, ModedEffect } from './effect-data';
 export { lerpEffect, lerpEffectArray } from './registry';
+
+/** Backdrop/foreground classification helpers. */
+export { isBackdropEffect, backdropEffects, foregroundShaderEffects } from './backdrop';
 
 /** Union of all concrete effect types accepted by scene nodes. */
 export { SceneEffect } from './union';

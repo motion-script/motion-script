@@ -16,7 +16,11 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
-import { PivotInput, resolvePivot } from "@/attributes/layout/align";
+import { ALIGN_KEYS, PivotInput, resolvePivot } from "@/attributes/layout/align";
+import type { WorldTransform } from "@/attributes/layout/world-transform";
+import type { PropInputs } from "@/attributes/properties/inputs";
+import type { NodeClock } from "./node-clock";
+import { backdropEffects, foregroundShaderEffects } from "@/attributes/shape/effects/backdrop";
 import { Matrix2D, applyToPoint, multiply, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
@@ -32,90 +36,25 @@ import { MeasureScope } from "@/render/measure-scope";
 import { nodePath } from "@/project/tree";
 import { layoutGroupChildren } from "@/layout/group-layout";
 
-export interface NodeClock {
-    time: number;       // Absolute time since the scene started
-    creation: number;   // The absolute time when this specific node was born
-    elapsed: number;    // How long this node has existed (time - creation)
-    initialized: boolean; // Whether the node has been initialized
-}
+// NodeClock, WorldTransform, PropInput, and PropInputs now live in dedicated
+// modules (see imports above) and are re-exported below so existing
+// `from ".../node"` imports keep resolving.
+export type { NodeClock } from "./node-clock";
+export type { WorldTransform } from "@/attributes/layout/world-transform";
+export type { PropInput, PropInputs } from "@/attributes/properties/inputs";
 
 export interface NodeMetadata<T extends Node> {
     ref?: Reference<T>;
 }
 
-export type PropInput<T> = T | (() => T);
-
-export type PropInputs<P> = {
-    [K in keyof P]?: P[K] | (() => P[K]);
-};
-
 export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
 
-/** Keys for anchor-based positioning props. */
-export type AnchorKey =
-    | 'center' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
-    | 'topCenter' | 'bottomCenter' | 'leftCenter' | 'rightCenter';
-
 /**
- * A node's resolved transform in global (world / scene-root) space. Unlike the
- * per-node `x`/`y` and anchor getters — which are relative to the node's parent
- * — every field here is folded through the full ancestor chain, so two nodes
- * under different parents can be compared or aligned directly.
- *
- * Positions use the same y-up convention as `x`/`y` (positive y is up). Read
- * inside a reactive callback (`x: () => other().global.topRight.x`) they track
- * changes to this node's *and* every ancestor's layout/transform.
+ * Validate a node's anchor-positioning props: at most one named anchor, and an
+ * anchor cannot be combined with an explicit `pivot` (the anchor derives one).
  */
-export interface WorldTransform {
-    /** World position of the node's center (its `x`/`y` origin). */
-    readonly x: number;
-    readonly y: number;
-    readonly center: Vector2;
-    readonly topLeft: Vector2;
-    readonly topRight: Vector2;
-    readonly bottomLeft: Vector2;
-    readonly bottomRight: Vector2;
-    readonly topCenter: Vector2;
-    readonly bottomCenter: Vector2;
-    readonly leftCenter: Vector2;
-    readonly rightCenter: Vector2;
-    /** Sum of this node's and all ancestors' rotations, in degrees clockwise. */
-    readonly rotation: number;
-    /** Product of this node's and all ancestors' scale factors. */
-    readonly scale: number;
-    /**
-     * Product of this node's and all ancestors' opacities, in `[0, 1]` — the
-     * effective alpha the node renders at. Matches the renderer's pass-through
-     * fold: an ancestor at half opacity halves everything beneath it.
-     */
-    readonly opacity: number;
-}
-
-/**
- * Fractional offsets (0–1) of each anchor within the node's bounding box.
- * `wx` = fraction of width, `hy` = fraction of height.
- */
-const ANCHOR_OFFSETS: Record<AnchorKey, { wx: number; hy: number }> = {
-    topLeft: { wx: 0, hy: 0 },
-    topCenter: { wx: 0.5, hy: 0 },
-    topRight: { wx: 1, hy: 0 },
-    leftCenter: { wx: 0, hy: 0.5 },
-    center: { wx: 0.5, hy: 0.5 },
-    rightCenter: { wx: 1, hy: 0.5 },
-    bottomLeft: { wx: 0, hy: 1 },
-    bottomCenter: { wx: 0.5, hy: 1 },
-    bottomRight: { wx: 1, hy: 1 },
-};
-
-const ANCHOR_KEYS = Object.keys(ANCHOR_OFFSETS) as AnchorKey[];
-
-/** Convert ANCHOR_OFFSETS fractions to a normalised pivot: wx=0→-1, wx=1→+1; hy=0→+1, hy=1→-1 */
-function anchorToPivot(offset: { wx: number; hy: number }): Vector2 {
-    return { x: (offset.wx - 0.5) * 2, y: -(offset.hy - 0.5) * 2 };
-}
-
 function validateAnchorProps(props: Record<string, unknown>): void {
-    const presentAnchors = ANCHOR_KEYS.filter(k => props[k] !== undefined);
+    const presentAnchors = ALIGN_KEYS.filter(k => props[k] !== undefined);
     if (presentAnchors.length > 1) {
         throw new Error(`Cannot set multiple anchor props at once: ${presentAnchors.join(', ')}`);
     }
@@ -348,19 +287,22 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // Anchor-based positioning: validate, derive pivot, bind x/y.
         if (props) {
             validateAnchorProps(props as Record<string, unknown>);
-            const anchorKey = ANCHOR_KEYS.find(k => (props as any)[k] !== undefined);
+            const anchorKey = ALIGN_KEYS.find(k => (props as any)[k] !== undefined);
             if (anchorKey) {
                 const raw = (props as any)[anchorKey] as Vector2 | (() => Vector2);
                 const getTarget: () => Vector2 = typeof raw === 'function' ? raw : () => raw;
-                const offset = ANCHOR_OFFSETS[anchorKey];
-                this._writeProp('pivot', anchorToPivot(offset));
+                // The named anchor resolves to a normalised pivot `a` in [-1,1]
+                // (y-up); the centre that lands the anchor on `target` is
+                // `target - a·(size/2)` (mirrors shape.ts resolveShapeAnchor).
+                const a = resolvePivot(anchorKey);
+                this._writeProp('pivot', a);
                 this._writeProp('x', () => {
                     const r = this._layoutRect.get();
-                    return getTarget().x + (0.5 - offset.wx) * r.width;
+                    return getTarget().x - a.x * (r.width / 2);
                 });
                 this._writeProp('y', () => {
                     const r = this._layoutRect.get();
-                    return getTarget().y - (0.5 - offset.hy) * r.height;
+                    return getTarget().y - a.y * (r.height / 2);
                 });
             }
         }
@@ -546,14 +488,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         validateAnchorProps(to as Record<string, unknown>);
 
         // If an anchor key is in the tween target, resolve it to x/y targets and set pivot.
-        const anchorKey = ANCHOR_KEYS.find(k => (to as any)[k] !== undefined);
+        const anchorKey = ALIGN_KEYS.find(k => (to as any)[k] !== undefined);
         if (anchorKey) {
             const raw = (to as any)[anchorKey] as Vector2;
-            const offset = ANCHOR_OFFSETS[anchorKey];
+            const a = resolvePivot(anchorKey);
             const r = this._layoutRect.get();
-            this._writeProp('pivot', anchorToPivot(offset));
-            (to as any).x = raw.x + (0.5 - offset.wx) * r.width;
-            (to as any).y = raw.y - (0.5 - offset.hy) * r.height;
+            this._writeProp('pivot', a);
+            (to as any).x = raw.x - a.x * (r.width / 2);
+            (to as any).y = raw.y - a.y * (r.height / 2);
         }
 
         // Numeric, mapper-free props (x/y/scale/rotation/opacity) write straight
@@ -1382,30 +1324,17 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
-     * Does `effect` target the backdrop (the content painted beneath this node)
-     * rather than the node's own content? `magnify` and backdrop-mode `sksl`
-     * always do; everything else opts in via the `backdrop` flag (the filter
-     * effects and posterize). The renderer decides per effect whether to express
-     * it as an ImageFilter or a shader — callers only pick the target.
-     */
-    private static isBackdropEffect(effect: SceneEffect): boolean {
-        if (effect.type === "magnify") return true;
-        if (effect.type === "sksl") return effect.mode === "backdrop";
-        return "backdrop" in effect && effect.backdrop === true;
-    }
-
-    /**
-     * Apply backdrop effects (any `backdrop`-flagged filter effect — blur,
-     * grayscale, …; plus magnify and backdrop SkSL) beneath this node, clipped to
-     * its silhouette, before the node's own content is drawn — so the content
+     * Apply backdrop effects (any `mode: "backdrop"` effect — blur, grayscale, …;
+     * plus magnify and backdrop SkSL) beneath this node, clipped to its
+     * silhouette, before the node's own content is drawn — so the content
      * underneath is filtered/warped while the node's own edges stay sharp. One
      * backdrop effect scope, confined to the silhouette clip, runs the lot; the
      * renderer routes each effect to a filter or shader pass. A no-op for nodes
      * without a {@link clipSelf} outline (there's no silhouette to confine to).
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        const backdropEffects = (this.effects as SceneEffect[]).filter(Node.isBackdropEffect);
-        if (backdropEffects.length === 0) return;
+        const backdrop = backdropEffects(this.effects as SceneEffect[]);
+        if (backdrop.length === 0) return;
 
         const clip = this.clipSelf();
         if (!clip || clip.isEmpty()) return;
@@ -1416,26 +1345,9 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // Clip to the silhouette first so the backdrop passes are confined to the
         // node; the renderer opens its backdrop layers within that clip.
         ctx.beginClip(clip);
-        ctx.beginEffectScope(backdropEffects, "backdrop", w, h);
+        ctx.beginEffectScope(backdrop, "backdrop", w, h);
         ctx.endEffectScope();
         ctx.endClip();
-    }
-
-    /**
-     * Effects that warp/band this node's *own* content (self + children), in the
-     * order they should compose: posterize wraps bulge, so it comes first and the
-     * renderer applies bulge inside it (mirroring how blur-style content effects
-     * nest). `backdrop`-flagged posterize bands the backdrop instead (see
-     * {@link applyBackdropEffects}), so it's excluded here.
-     */
-    private foregroundShaderEffects(): SceneEffect[] {
-        const effects = this.effects as SceneEffect[];
-        const posterize = effects.find((e) => e.type === "posterize" && e.backdrop !== true);
-        const bulge = effects.find((e) => e.type === "bulge");
-        const out: SceneEffect[] = [];
-        if (posterize) out.push(posterize);
-        if (bulge) out.push(bulge);
-        return out;
     }
 
     /**
@@ -1465,7 +1377,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // Capture everything this node paints — its own content and its children —
         // so the foreground shader effects (posterize wrapping bulge) warp/band the
         // lot, mirroring how blur-style content effects compose.
-        const foreground = this.foregroundShaderEffects();
+        const foreground = foregroundShaderEffects(this.effects as SceneEffect[]);
         const hasForeground = foreground.length > 0;
         if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
 

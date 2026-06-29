@@ -1,6 +1,6 @@
 import { lerpNumber } from "@/tween/lerp";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
-import type { EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
 /**
  * Per-axis scale applied to the node's velocity before the smear is computed.
@@ -15,7 +15,7 @@ export type MotionBlurAxis = "x" | "y" | "both" | Vector2;
  * per-frame motion (sampled by the renderer), modelled on After Effects' shutter
  * angle (`length`) and shutter phase (`alignment`). A static node renders sharp.
  */
-export interface MotionBlurEffect {
+export interface MotionBlurEffect extends ModedEffect {
     type: "motionBlur";
     /**
      * Shutter "openness" as a percentage, the user-friendly form of a shutter
@@ -71,13 +71,15 @@ export const motionBlurEffect: EffectData<MotionBlurEffect> = {
         samples: lerpNumber(from.samples, to.samples, t),
         strength: lerpNumber(from.strength, to.strength, t),
         axis: lerpVector2(resolveMotionBlurAxis(from.axis), resolveMotionBlurAxis(to.axis), t),
+        mode: t < 0.5 ? from.mode : to.mode,
     }),
     equals: (a, b) =>
         a.length === b.length &&
         resolveMotionBlurAlignment(a.alignment) === resolveMotionBlurAlignment(b.alignment) &&
         a.samples === b.samples &&
         a.strength === b.strength &&
-        sameAxis(a.axis, b.axis),
+        sameAxis(a.axis, b.axis) &&
+        a.mode === b.mode,
 };
 
 function sameAxis(a: MotionBlurAxis, b: MotionBlurAxis): boolean {

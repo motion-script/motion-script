@@ -35,6 +35,11 @@ const ALIGN_NAMES: Record<AlignName, Vector2> = {
     bottomRight: { x: 1, y: -1 },
 };
 
+/** The nine named anchor keys, in a stable order. Shared by node and shape
+ * anchor-positioning (mirrors `SHAPE_ANCHOR_KEYS`) so call sites can detect which
+ * anchor prop, if any, an author passed. */
+export const ALIGN_KEYS = Object.keys(ALIGN_NAMES) as AlignName[];
+
 /** Resolves an {@link AlignInput} into a per-axis pivot {@link Vector2}. */
 export function resolveAlign(value: AlignInput): Vector2 {
     if (typeof value === "string") {

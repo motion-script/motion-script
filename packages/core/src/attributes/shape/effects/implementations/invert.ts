@@ -1,5 +1,5 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { BackdropCapable, EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
 /**
  * Which channel(s) / colour space component the invert is applied to.
@@ -19,7 +19,7 @@ export type InvertChannel =
     | "hue"
     | "luminance";
 
-export interface InvertEffect extends BackdropCapable {
+export interface InvertEffect extends ModedEffect {
     type: "invert";
     /** Which channel(s) / colour component to invert. */
     channel: InvertChannel;
@@ -32,7 +32,7 @@ export const invertEffect: EffectData<InvertEffect> = {
         type: "invert",
         channel: t < 0.5 ? from.channel : to.channel,
         strength: lerpNumber(from.strength, to.strength, t),
-        backdrop: t < 0.5 ? from.backdrop : to.backdrop,
+        mode: t < 0.5 ? from.mode : to.mode,
     }),
-    equals: (a, b) => a.channel === b.channel && a.strength === b.strength && a.backdrop === b.backdrop,
+    equals: (a, b) => a.channel === b.channel && a.strength === b.strength && a.mode === b.mode,
 };

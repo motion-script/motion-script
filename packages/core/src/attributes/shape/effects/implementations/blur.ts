@@ -1,12 +1,12 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { BackdropCapable, EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
-export interface BlurEffect extends BackdropCapable {
+export interface BlurEffect extends ModedEffect {
     type: "blur";
     blur: number;
 }
 
 export const blurEffect: EffectData<BlurEffect> = {
-    lerp: (from, to, t) => ({ type: "blur", blur: lerpNumber(from.blur, to.blur, t), backdrop: t < 0.5 ? from.backdrop : to.backdrop }),
-    equals: (a, b) => a.blur === b.blur && a.backdrop === b.backdrop,
+    lerp: (from, to, t) => ({ type: "blur", blur: lerpNumber(from.blur, to.blur, t), mode: t < 0.5 ? from.mode : to.mode }),
+    equals: (a, b) => a.blur === b.blur && a.mode === b.mode,
 };

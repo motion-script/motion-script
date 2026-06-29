@@ -4,4 +4,5 @@ export { Matrix2D, identity, translation, multiply, applyToPoint, nodeLocalMatri
 export { Padding, PaddingProps, PaddingResolved, resolvePadding } from './padding';
 export { Size2D } from './size';
 export { Vector2 } from './vector2';
-export { AlignInput, AlignName, resolveAlign, PivotInput, resolvePivot } from './align';
+export { WorldTransform } from './world-transform';
+export { AlignInput, AlignName, ALIGN_KEYS, resolveAlign, PivotInput, resolvePivot } from './align';

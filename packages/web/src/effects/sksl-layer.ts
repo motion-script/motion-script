@@ -31,8 +31,9 @@ export class SkSLLayerEffect extends CanvasKitEffect<SkSLEffect> {
     }
 
     makeImageFilter(effect: SkSLEffect, ck: CanvasKit): any {
-        // Backdrop-mode SkSL is handled by beginBackdropSkSL in the render context.
-        if (effect.mode !== "layer") return null;
+        // Backdrop-mode SkSL is handled by beginBackdropSkSL in the render context;
+        // every other (foreground) SkSL is composited onto the node's own layer here.
+        if (effect.mode === "backdrop") return null;
 
         const rte = getOrCompileSkSL(effect.shader, ck);
         if (!rte) return null;

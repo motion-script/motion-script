@@ -1,5 +1,5 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { BackdropCapable, EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
 /**
  * After Effects-style Posterize.
@@ -10,7 +10,7 @@ import type { BackdropCapable, EffectData } from "../effect-data";
  * channel, higher values keep more detail. Below 2 there is nothing to band, so
  * the effect is a no-op.
  */
-export interface PosterizeEffect extends BackdropCapable {
+export interface PosterizeEffect extends ModedEffect {
     type: "posterize";
     /** Number of brightness levels per channel (AE "Level", ≥ 2). */
     level: number;
@@ -20,7 +20,7 @@ export const posterizeEffect: EffectData<PosterizeEffect> = {
     lerp: (from, to, t) => ({
         type: "posterize",
         level: lerpNumber(from.level, to.level, t),
-        backdrop: t < 0.5 ? from.backdrop : to.backdrop,
+        mode: t < 0.5 ? from.mode : to.mode,
     }),
-    equals: (a, b) => a.level === b.level && a.backdrop === b.backdrop,
+    equals: (a, b) => a.level === b.level && a.mode === b.mode,
 };

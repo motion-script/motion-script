@@ -1,15 +1,18 @@
 /**
- * Mixin for effects that can run on the **backdrop** — the content already painted
- * beneath the node — instead of the node's own content. When `backdrop` is `true`,
- * the effect's filter is applied to whatever lies underneath the node and clipped to
- * the node's silhouette, so the node's own edges stay sharp (Figma-style). Defaults
- * to `false` (the effect applies to the node's own content, the foreground).
- *
- * Only filter-expressible effects mix this in (blur, grayscale, …). `magnify` and the
- * backdrop variant of `sksl` address the backdrop through their own dedicated paths.
+ * Which layer an effect runs on: the node's own content (`"foreground"`, the
+ * default) or the **backdrop** — the content already painted beneath the node.
+ * A backdrop effect is applied to whatever lies underneath the node and clipped
+ * to the node's silhouette, so the node's own edges stay sharp (Figma-style).
  */
-export interface BackdropCapable {
-    backdrop?: boolean;
+export type EffectMode = "foreground" | "backdrop";
+
+/**
+ * Mixin: every effect declares the layer it targets via {@link EffectMode}.
+ * Omitted is treated as `"foreground"`. A single uniform field across all effects
+ * means the backdrop/foreground classifier never has to branch on `type`.
+ */
+export interface ModedEffect {
+    mode?: EffectMode;
 }
 
 export interface EffectData<T> {

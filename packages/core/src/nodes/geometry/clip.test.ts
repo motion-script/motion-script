@@ -189,7 +189,7 @@ describe('ShapeNode.applyClip (private) — pushes only a real outline', () => {
 
 describe('ShapeNode backdrop effects clip to clipSelf()', () => {
     it('a backdrop-blur shape clips its backdrop to its own outline', () => {
-        const rect = new Rect({ effects: [{ type: 'blur', blur: 8, backdrop: true }] });
+        const rect = new Rect({ effects: [{ type: 'blur', blur: 8, mode: 'backdrop' }] });
         setLayout(rect, RECT);
 
         const ctx = new ClipRecorderContext();

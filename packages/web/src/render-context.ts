@@ -550,9 +550,9 @@ export class WebRenderContext extends RenderContext {
         let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
-            // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+            // Backdrop-mode effects run on the backdrop layer (applyBackdropEffects),
             // not the node's own content — exclude them from the foreground filter chain.
-            const effects = graphics.groupEffects().filter((e) => !("backdrop" in e && e.backdrop));
+            const effects = graphics.groupEffects().filter((e) => e.mode !== "backdrop");
             if (effects.length > 0) {
                 const w = this.surface.width();
                 const h = this.surface.height();
@@ -713,9 +713,9 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.scale(scale, scale);
         this.currentCanvas.translate(-pivotX, -pivotY);
 
-        // Backdrop-flagged effects run on the backdrop layer (applyBackdropEffects),
+        // Backdrop-mode effects run on the backdrop layer (applyBackdropEffects),
         // not the node's own content — exclude them from the foreground filter chain.
-        const foregroundEffects = effects.filter((e) => !("backdrop" in e && e.backdrop));
+        const foregroundEffects = effects.filter((e) => e.mode !== "backdrop");
         let effectFilter: any = null;
         if (foregroundEffects.length > 0) {
             // Motion blur needs the node's live velocity, which static effect data

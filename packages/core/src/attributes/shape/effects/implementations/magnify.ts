@@ -1,8 +1,8 @@
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { lerpNumber } from "@/tween/lerp";
-import type { EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
-export interface MagnifyEffect {
+export interface MagnifyEffect extends ModedEffect {
     type: "magnify";
     /** Magnify centre in 0–1 normalised layer coordinates ({ x: 0.5, y: 0.5 } = middle). */
     center: Vector2;
@@ -18,9 +18,11 @@ export const magnifyEffect: EffectData<MagnifyEffect> = {
         type: "magnify",
         center: lerpVector2(from.center, to.center, t),
         scale: lerpNumber(from.scale, to.scale, t),
+        mode: t < 0.5 ? from.mode : to.mode,
     }),
     equals: (a, b) =>
         a.center.x === b.center.x &&
         a.center.y === b.center.y &&
-        a.scale === b.scale,
+        a.scale === b.scale &&
+        a.mode === b.mode,
 };

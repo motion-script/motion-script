@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={16} align={{ x: 0, y: 1 }}>
                     <Image
                         ref={refs[i]}
-                        src={'kingfisher2.jpg'}
+                        src={'kingfisher.jpg'}
                         fit={fit}
                         width={'fill'}
                         height={'fill'}

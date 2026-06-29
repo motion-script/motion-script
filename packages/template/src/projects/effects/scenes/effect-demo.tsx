@@ -4,6 +4,7 @@ import {
     SceneGenerator, Stage, createRef, Reference, Text, Rect, Ellipse, Image,
     EffectChain, SceneEffect, easeOut, parallel,
     Node,
+    Effects,
 } from "@motion-script/core";
 
 /**
@@ -47,12 +48,12 @@ export interface EffectDemoSpec {
 }
 
 /**
- * Re-flag every effect in `chain` as a backdrop effect (the right-side variant).
- * Only called on backdrop-capable chains, so the `backdrop` flag is always valid
- * on the underlying effect — the cast just collapses the per-member spread union.
+ * Re-flag every effect in `chain` as a backdrop effect (the right-side variant)
+ * by setting the shared `mode` to `"backdrop"` — the cast just collapses the
+ * per-member spread union.
  */
 function toBackdrop(chain: EffectChain): EffectChain {
-    return new EffectChain(chain.list.map((e) => ({ ...e, backdrop: true }) as SceneEffect));
+    return new EffectChain(chain.list.map((e) => ({ ...e, mode: "backdrop" }) as SceneEffect));
 }
 
 /**
@@ -81,43 +82,43 @@ function* buildDirect(stage: Stage, label: string, from: EffectChain, to: Effect
     const imgRef: Reference<any> = createRef<Node>();
 
     stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
-                <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} align={'center'} />
-                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20}>
-                    <Image ref={imgRef} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
-                </Rect>
+        <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
+            <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} textAlign={'center'} />
+            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} effects={Effects.blur(2, { mode: 'backdrop' })}>
+                <Image ref={imgRef} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
             </Rect>
-        );
+        </Rect>
+    );
 
-        yield* imgRef().to({ effects: to }, duration, easeOut('quad'));
-    }
+    yield* imgRef().to({ effects: to }, duration, easeOut('quad'));
+}
 
-    /**
-     * Backdrop-mode card: a cat.jpg behind an Ellipse that carries the effect,
-     * so backdrop-reading effects (blur backdrop, magnify) have visible content
-     * beneath the affected node.
-     */
+/**
+ * Backdrop-mode card: a cat.jpg behind an Ellipse that carries the effect,
+ * so backdrop-reading effects (blur backdrop, magnify) have visible content
+ * beneath the affected node.
+ */
 function* buildBackground(stage: Stage, label: string, from: EffectChain, to: EffectChain, duration: number) {
     const overlayRef: Reference<any> = createRef<Node>();
 
     stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
-                <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} align={'center'} />
-                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
-                    <Image src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} />
-                    <Ellipse ref={overlayRef} width={400} height={400} effects={from} />
-                </Rect>
+        <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
+            <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} textAlign={'center'} />
+            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
+                <Image src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} />
+                <Ellipse ref={overlayRef} width={400} height={400} effects={from} />
             </Rect>
-        );
+        </Rect>
+    );
 
-        yield* overlayRef().to({ effects: to }, duration, easeOut('quad'));
-    }
+    yield* overlayRef().to({ effects: to }, duration, easeOut('quad'));
+}
 
-    /**
-     * Two side-by-side cells over the same `cat.jpg`: the effect applied directly
-     * to the node's content (left) and to the backdrop beneath the node (right),
-     * both animating from → to in lock-step.
-     */
+/**
+ * Two side-by-side cells over the same `cat.jpg`: the effect applied directly
+ * to the node's content (left) and to the backdrop beneath the node (right),
+ * both animating from → to in lock-step.
+ */
 function* buildComparison(stage: Stage, label: string, from: EffectChain, to: EffectChain, duration: number) {
     const directRef: Reference<any> = createRef<Node>();
     const backdropFrom = toBackdrop(from);
@@ -125,34 +126,34 @@ function* buildComparison(stage: Stage, label: string, from: EffectChain, to: Ef
     void backdropFrom; void backdropTo;
 
     stage.add(
-            <Rect width={'fill'} height={'fill'} group={'row'} padding={120} gap={120}>
-                {/* Left — effect applied directly to the node's own content. */}
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={24}>
-                    <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
-                        <Image src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
-                    </Rect>
-                    <Text text={`Without ${label}`} fontSize={36} fill={'#5a4a3a'} />
+        <Rect width={'fill'} height={'fill'} group={'row'} padding={120} gap={120}>
+            {/* Left — effect applied directly to the node's own content. */}
+            <Rect width={'fill'} height={'fill'} group={'column'} gap={24}>
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
+                    <Image src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
                 </Rect>
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={24}>
-                    <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
-                        <Image ref={directRef} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
-                    </Rect>
-                    <Text text={`With ${label}`} fontSize={36} fill={'#5a4a3a'} />
+                <Text text={`Without ${label}`} fontSize={36} fill={'#5a4a3a'} />
+            </Rect>
+            <Rect width={'fill'} height={'fill'} group={'column'} gap={24}>
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} group={'stack'}>
+                    <Image ref={directRef} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
                 </Rect>
-                {/* Right — same effect applied to the backdrop beneath an inset,
+                <Text text={`With ${label}`} fontSize={36} fill={'#5a4a3a'} />
+            </Rect>
+            {/* Right — same effect applied to the backdrop beneath an inset,
                         centred rect, so the effect is confined to its silhouette and the
                         sharp surround makes the difference from the direct version legible. */}
-                {/* <Rect width={'fill'} height={'fill'} clip={true} group={'stack'} cornerRadius={20}>
+            {/* <Rect width={'fill'} height={'fill'} clip={true} group={'stack'} cornerRadius={20}>
                     <Image src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'}>
                         <Rect ref={backdropRef} effects={backdropFrom} width={360} height={360} stroke={{ weight: 1, fill: 'white' }} />
                     </Image>
                 </Rect> */}
-            </Rect>
+        </Rect>
 
-        );
+    );
 
-        yield* parallel(
-            directRef().to({ effects: to }, duration, easeOut('quad')),
-            //backdropRef().to({ effects: backdropTo }, duration, easeOut('quad')),
-        );
+    yield* parallel(
+        directRef().to({ effects: to }, duration, easeOut('quad')),
+        //backdropRef().to({ effects: backdropTo }, duration, easeOut('quad')),
+    );
 }

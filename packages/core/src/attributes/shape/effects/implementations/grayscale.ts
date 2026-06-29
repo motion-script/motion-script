@@ -1,12 +1,12 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { BackdropCapable, EffectData } from "../effect-data";
+import type { ModedEffect, EffectData } from "../effect-data";
 
-export interface GrayScaleEffect extends BackdropCapable {
+export interface GrayScaleEffect extends ModedEffect {
     type: "grayscale";
     amount: number;
 }
 
 export const grayscaleEffect: EffectData<GrayScaleEffect> = {
-    lerp: (from, to, t) => ({ type: "grayscale", amount: lerpNumber(from.amount, to.amount, t), backdrop: t < 0.5 ? from.backdrop : to.backdrop }),
-    equals: (a, b) => a.amount === b.amount && a.backdrop === b.backdrop,
+    lerp: (from, to, t) => ({ type: "grayscale", amount: lerpNumber(from.amount, to.amount, t), mode: t < 0.5 ? from.mode : to.mode }),
+    equals: (a, b) => a.amount === b.amount && a.mode === b.mode,
 };
