@@ -122,6 +122,14 @@ export interface NodeProps {
     colSpan: number;
     /** How many grid rows this child spans. Default 1. */
     rowSpan: number;
+
+    /**
+     * Origin seed for this node's {@link Node.random} source. Defaults to `0`.
+     * Set it to give the node a reproducible-but-distinct random stream without
+     * re-seeding inside `init`. The base `init` rewinds `random` to this seed
+     * each playback pass, so draws stay reproducible across scrub/precomp/HMR.
+     */
+    seed: string | number;
 }
 
 /**
@@ -200,8 +208,9 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /**
      * Per-node seeded randomness, available to every subclass without threading a
-     * `Random` in from the stage. Defaults to seed `0`; re-seed inside {@link init}
-     * with `this.random.reset(seed)` or `this.random.seed = seed` (e.g. from
+     * `Random` in from the stage. Defaults to seed `0`; set the origin via the
+     * {@link NodeProps.seed} prop, or re-seed inside {@link init} with
+     * `this.random.reset(seed)` or `this.random.seed = seed` (e.g. from
      * `this.useContext(SeedToken)`).
      *
      * The base {@link init} rewinds this each playback pass, so draws are
@@ -265,6 +274,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
         if (props?.ref) {
             props.ref(this as any);
+        }
+
+        // Adopt the configured seed as `random`'s origin (default 0). The base
+        // `init` rewinds to it each pass via `this.random.reset()`, so draws stay
+        // reproducible without the author re-seeding inside `init`. `seed` is a
+        // construction-time config, not a reactive prop, so a callback form is
+        // ignored.
+        if (props?.seed !== undefined && typeof props.seed !== "function") {
+            this.random.reset(props.seed);
         }
 
         // Apply all @property()-decorated fields, reading initial values from props.
