@@ -1,0 +1,28 @@
+# Keep the Docker build context lean and deterministic. Anything installed or
+# generated locally is rebuilt inside the image, so excluding it avoids shipping
+# stale artifacts (and a huge context).
+**/node_modules
+**/dist
+**/.turbo
+**/*.tsbuildinfo
+
+# e2e generated artifacts — the container regenerates these from scratch.
+# stable/tarballs/*.tgz IS kept: CI runs pack-stable.js --from-tarballs, which
+# reads the committed baseline tarballs rather than repacking, so they must be
+# present in the build context. Everything else under stable/ is regenerated.
+packages/e2e/out
+packages/e2e/stable/*
+!packages/e2e/stable/tarballs
+packages/e2e/stable/tarballs/*
+!packages/e2e/stable/tarballs/*.tgz
+
+# Docs site build output.
+packages/site/build
+packages/site/.docusaurus
+
+# VCS / editor / OS noise.
+.git
+.github
+**/.DS_Store
+**/.vscode
+**/.idea

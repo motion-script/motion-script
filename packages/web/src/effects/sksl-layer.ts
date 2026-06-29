@@ -42,6 +42,10 @@ export class SkSLLayerEffect extends CanvasKitEffect<SkSLEffect> {
         );
 
         const shader = rte.makeShader(flat);
+        // makeShader returns null on a uniform-buffer mismatch (e.g. a uniform
+        // declared in the SkSL but not supplied in `effect.uniforms`) — drop the
+        // effect rather than crash on the .delete() below.
+        if (!shader) return null;
         const shaderIF = ck.ImageFilter.MakeShader(shader);
         shader.delete();
 

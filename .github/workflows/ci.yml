@@ -1,0 +1,106 @@
+# Main CI gate for Motion Script.
+#
+# Runs on every pull request targeting main and on every push to main, so a
+# branch can't merge (and main itself never sits) in a broken state. Two
+# independent jobs:
+#   - unit-tests:  `pnpm test` (pnpm -r test) across every package.
+#   - e2e-visual:  renders every scene in packages/e2e against the committed
+#     "stable" tarball baseline and the branch's "lib" build, and pixel-diffs
+#     them — see packages/e2e/Dockerfile / scripts/pack-stable.js for the why.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # One run per ref; a new push cancels an in-flight run for the same branch.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # @motion-script/web runs its tests in a real headless Chromium via
+      # @vitest/browser-playwright, so the browser (and its Linux system deps)
+      # must be installed on the runner before `pnpm test`.
+      - name: Install Playwright Chromium
+        run: pnpm --filter @motion-script/web exec playwright install --with-deps chromium
+
+      # The web tests import the built `@motion-script/core` (its package
+      # `exports` point at `dist/`), so the libraries must be compiled before
+      # `pnpm test` — a fresh checkout has no `dist/` yet. `build:lib` builds
+      # every package except the `site` app in topological order.
+      - name: Build libraries
+        run: pnpm build:lib
+
+      - name: Run unit tests
+        run: pnpm test
+
+  e2e-visual:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Build the harness image. Build context is the repo root (the Dockerfile
+      # builds the whole workspace). GHA layer caching keeps the heavy base image
+      # + pnpm install warm across runs.
+      - name: Build e2e Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/e2e/Dockerfile
+          tags: motion-script-e2e:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Run the full pipeline inside the container:
+      #   - build the stable project from the COMMITTED tarballs (--from-tarballs),
+      #     so the baseline is exactly what's in git (not a repack of this commit),
+      #   - render both variants, pixel-diff, write out/ to the mounted host dir.
+      # The container exits non-zero on any diff, which fails this step.
+      - name: Render + compare (stable vs lib)
+        run: |
+          mkdir -p packages/e2e/out
+          docker run --rm \
+            --shm-size=1gb \
+            -e MS_SOFTWARE_RENDER=1 \
+            -v "${{ github.workspace }}/packages/e2e/out:/repo/packages/e2e/out" \
+            --entrypoint sh \
+            motion-script-e2e:ci \
+            -c "node scripts/pack-stable.js --from-tarballs && pnpm --filter @motion-script/e2e run test:e2e"
+
+      # Always publish the report + screenshots, pass or fail, so a regression can
+      # be inspected from the run page.
+      - name: Upload visual report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-visual-report
+          path: |
+            packages/e2e/out/report.html
+            packages/e2e/out/compare-summary.json
+            packages/e2e/out/diff
+          if-no-files-found: warn
+          retention-days: 14

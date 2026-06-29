@@ -1,0 +1,32 @@
+/** @jsxImportSource @motion-script/core/jsx */
+
+import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { holdTail } from './_lib';
+
+/**
+ * Drop shadow whose OFFSET sweeps from up-left to down-right while blur stays
+ * fixed, so the moving offset is the only visible variable.
+ */
+export default createScene(function* (stage) {
+    stage.set({ fill: 'bg' });
+    const card = createRef<Rect>();
+    stage.add(
+        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+            <Rect
+                ref={card}
+                width={300}
+                height={300}
+                cornerRadius={28}
+                fill={'card'}
+                shadow={{ blur: 18, offset: { x: -40, y: -40 }, fill: Fills.color('#000000', { opacity: 0.7 }) }}
+            />
+        </Rect>,
+    );
+
+    yield* card().to(
+        { shadow: { blur: 18, offset: { x: 40, y: 40 }, fill: Fills.color('#000000', { opacity: 0.7 }) } },
+        1.4,
+        easeInOut('sine'),
+    );
+    yield* holdTail(1.4);
+});

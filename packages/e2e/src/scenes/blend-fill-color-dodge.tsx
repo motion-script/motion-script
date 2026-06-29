@@ -1,0 +1,27 @@
+/** @jsxImportSource @motion-script/core/jsx */
+
+import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { holdTail } from './_lib';
+
+/** Fill-level `blend`: a circle's *fill* (not the node) blends against the card beneath it via `'color-dodge'`, brightening the overlap based on the circle's color. */
+export default createScene(function* (stage) {
+    stage.set({ fill: '#0d0f15' });
+    const circle = createRef<Rect>();
+    stage.add(
+        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+            <Rect width={360} height={360} fill={'#1f5f8b'} center={{ x: -60, y: 0 }} />
+            <Rect
+                ref={circle}
+                width={300}
+                height={300}
+                cornerRadius={150}
+                fill={Fills.color('#8b1f5f', { blend: 'normal' })}
+                center={{ x: 60, y: 0 }}
+            />
+        </Rect>,
+    );
+
+    yield* wait(0.3);
+    yield* circle().to({ fill: Fills.color('#8b1f5f', { blend: 'color-dodge' }) }, 0.9, undefined);
+    yield* holdTail(1.2);
+});

@@ -1,0 +1,25 @@
+/** @jsxImportSource @motion-script/core/jsx */
+
+import { createScene, createRef, Rect, Fills, Effects, easeInOut } from '@motion-script/core';
+import { holdTail } from './_lib';
+
+/** {@link Effects.posterize}: a smooth gradient flattens into bands as `level` drops from many levels to just a few. */
+export default createScene(function* (stage) {
+    stage.set({ fill: 'bg' });
+    const card = createRef<Rect>();
+    stage.add(
+        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+            <Rect
+                ref={card}
+                width={360}
+                height={240}
+                cornerRadius={20}
+                fill={Fills.linearGradient(['#0d0f15', '#f4f6ff'])}
+                effects={Effects.posterize(64)}
+            />
+        </Rect>,
+    );
+
+    yield* card().to({ effects: Effects.posterize(3) }, 1.2, easeInOut('quad'));
+    yield* holdTail(1.2);
+});

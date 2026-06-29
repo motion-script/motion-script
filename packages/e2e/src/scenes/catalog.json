@@ -1,0 +1,1400 @@
+[
+  {
+    "id": "rect-basic",
+    "name": "RectBasic",
+    "section": "Geometry",
+    "description": "Rect with fixed width/height, solid fill"
+  },
+  {
+    "id": "rect-corner-radius",
+    "name": "RectCornerRadius",
+    "section": "Geometry",
+    "description": "Rect with uniform corner radius (rounded style)"
+  },
+  {
+    "id": "rect-corner-radius-per-corner",
+    "name": "RectCornerRadiusPerCorner",
+    "section": "Geometry",
+    "description": "Rect with 4 different corner radii"
+  },
+  {
+    "id": "rect-corner-style-angled",
+    "name": "RectCornerStyleAngled",
+    "section": "Geometry",
+    "description": "Rect with angled/chamfer corner style"
+  },
+  {
+    "id": "ellipse-circle",
+    "name": "EllipseCircle",
+    "section": "Geometry",
+    "description": "Ellipse at 1:1 ratio (circle)"
+  },
+  {
+    "id": "ellipse-arc",
+    "name": "EllipseArc",
+    "section": "Geometry",
+    "description": "Ellipse with partial sweep and startAngle"
+  },
+  {
+    "id": "ellipse-pie",
+    "name": "EllipsePie",
+    "section": "Geometry",
+    "description": "Ellipse sweep creating a pie/wedge shape"
+  },
+  {
+    "id": "ellipse-ratio",
+    "name": "EllipseRatio",
+    "section": "Geometry",
+    "description": "Ellipse with non-1 ratio (ring/donut)"
+  },
+  {
+    "id": "polygon-triangle",
+    "name": "PolygonTriangle",
+    "section": "Geometry",
+    "description": "3-sided polygon"
+  },
+  {
+    "id": "polygon-pentagon",
+    "name": "PolygonPentagon",
+    "section": "Geometry",
+    "description": "5-sided polygon"
+  },
+  {
+    "id": "polygon-hexagon",
+    "name": "PolygonHexagon",
+    "section": "Geometry",
+    "description": "6-sided polygon"
+  },
+  {
+    "id": "polygon-corner-radius",
+    "name": "PolygonCornerRadius",
+    "section": "Geometry",
+    "description": "Polygon with rounded corners"
+  },
+  {
+    "id": "polygon-corner-angled",
+    "name": "PolygonCornerAngled",
+    "section": "Geometry",
+    "description": "Polygon with angled corners"
+  },
+  {
+    "id": "polygram-star-5",
+    "name": "PolygramStar5",
+    "section": "Geometry",
+    "description": "5-point star (polygram, default ratio)"
+  },
+  {
+    "id": "polygram-star-6",
+    "name": "PolygramStar6",
+    "section": "Geometry",
+    "description": "6-point star"
+  },
+  {
+    "id": "polygram-star-ratio",
+    "name": "PolygramStarRatio",
+    "section": "Geometry",
+    "description": "Star with low ratio (sharper points)"
+  },
+  {
+    "id": "polygram-rounded",
+    "name": "PolygramRounded",
+    "section": "Geometry",
+    "description": "Star with rounded inner/outer corners"
+  },
+  {
+    "id": "path-svg-string",
+    "name": "PathSvgString",
+    "section": "Geometry",
+    "description": "Path from SVG `d` string"
+  },
+  {
+    "id": "path-morph",
+    "name": "PathMorph",
+    "section": "Geometry",
+    "description": "Animated path morph between two shapes"
+  },
+  {
+    "id": "line-open",
+    "name": "LineOpen",
+    "section": "Geometry",
+    "description": "Open multi-point line"
+  },
+  {
+    "id": "line-closed",
+    "name": "LineClosed",
+    "section": "Geometry",
+    "description": "Closed multi-point line (polygon via line)"
+  },
+  {
+    "id": "line-rounded",
+    "name": "LineRounded",
+    "section": "Geometry",
+    "description": "Line with rounded joins"
+  },
+  {
+    "id": "rect-layout-row",
+    "name": "RectLayoutRow",
+    "section": "Layout",
+    "description": "Rect in row layout mode with child rects"
+  },
+  {
+    "id": "rect-layout-column",
+    "name": "RectLayoutColumn",
+    "section": "Layout",
+    "description": "Rect in column layout mode with child rects"
+  },
+  {
+    "id": "rect-layout-stack",
+    "name": "RectLayoutStack",
+    "section": "Layout",
+    "description": "Rect in stack layout mode (overlapping children)"
+  },
+  {
+    "id": "rect-layout-gap",
+    "name": "RectLayoutGap",
+    "section": "Layout",
+    "description": "Row/column with explicit gap"
+  },
+  {
+    "id": "rect-layout-padding",
+    "name": "RectLayoutPadding",
+    "section": "Layout",
+    "description": "Rect with uniform padding around children"
+  },
+  {
+    "id": "rect-layout-padding-per-side",
+    "name": "RectLayoutPaddingPerSide",
+    "section": "Layout",
+    "description": "Rect with different padding on each side"
+  },
+  {
+    "id": "rect-size-fill",
+    "name": "RectSizeFill",
+    "section": "Layout",
+    "description": "Child using `\"fill\"` size inside parent"
+  },
+  {
+    "id": "rect-size-hug",
+    "name": "RectSizeHug",
+    "section": "Layout",
+    "description": "Parent using `\"hug\"` size around children"
+  },
+  {
+    "id": "rect-size-max-constraints",
+    "name": "RectSizeMaxConstraints",
+    "section": "Layout",
+    "description": "Child constrained by `maxWidth`/`maxHeight`"
+  },
+  {
+    "id": "flex-align",
+    "name": "FlexAlign",
+    "section": "Layout",
+    "description": "Flex container with various alignment combinations"
+  },
+  {
+    "id": "flex-main-flex",
+    "name": "FlexMainFlex",
+    "section": "Layout",
+    "description": "Children with different `mainFlex` weights distributing free space"
+  },
+  {
+    "id": "grid-basic",
+    "name": "GridBasic",
+    "section": "Layout",
+    "description": "Grid with explicit columns and uniform children"
+  },
+  {
+    "id": "grid-colspan",
+    "name": "GridColspan",
+    "section": "Layout",
+    "description": "Grid with colSpan and rowSpan variants"
+  },
+  {
+    "id": "text-basic",
+    "name": "TextBasic",
+    "section": "Text",
+    "description": "Single-line text, default style"
+  },
+  {
+    "id": "text-multiline-wrap",
+    "name": "TextMultilineWrap",
+    "section": "Text",
+    "description": "Text with wrap and constrained width"
+  },
+  {
+    "id": "text-align-variants",
+    "name": "TextAlignVariants",
+    "section": "Text",
+    "description": "Left/center/right/justify alignment in one scene"
+  },
+  {
+    "id": "text-font-weight",
+    "name": "TextFontWeight",
+    "section": "Text",
+    "description": "Multiple weights of same font family"
+  },
+  {
+    "id": "text-letter-spacing",
+    "name": "TextLetterSpacing",
+    "section": "Text",
+    "description": "Positive and negative letterSpacing"
+  },
+  {
+    "id": "text-line-height",
+    "name": "TextLineHeight",
+    "section": "Text",
+    "description": "Multiline text with custom lineHeight"
+  },
+  {
+    "id": "text-autofit",
+    "name": "TextAutofit",
+    "section": "Text",
+    "description": "Text with `\"autofit\"` size scaling to bounds"
+  },
+  {
+    "id": "text-on-path",
+    "name": "TextOnPath",
+    "section": "Text",
+    "description": "Text laid along a circular/curved SVG path"
+  },
+  {
+    "id": "text-fill-gradient",
+    "name": "TextFillGradient",
+    "section": "Text",
+    "description": "Text with a gradient fill instead of solid color"
+  },
+  {
+    "id": "richtext-basic",
+    "name": "RichtextBasic",
+    "section": "Text",
+    "description": "RichText with nested spans, each a different style"
+  },
+  {
+    "id": "richtext-inline-stroke",
+    "name": "RichtextInlineStroke",
+    "section": "Text",
+    "description": "RichText span with stroke applied to one word"
+  },
+  {
+    "id": "number-node-integer",
+    "name": "NumberNodeInteger",
+    "section": "Text",
+    "description": "NumberNode counting from 0 to 1000"
+  },
+  {
+    "id": "number-node-currency",
+    "name": "NumberNodeCurrency",
+    "section": "Text",
+    "description": "NumberNode formatted as currency"
+  },
+  {
+    "id": "number-node-percent",
+    "name": "NumberNodePercent",
+    "section": "Text",
+    "description": "NumberNode formatted as percentage"
+  },
+  {
+    "id": "image-fit-fill",
+    "name": "ImageFitFill",
+    "section": "Media",
+    "description": "Image with `fill` fit mode"
+  },
+  {
+    "id": "image-fit-fit",
+    "name": "ImageFitFit",
+    "section": "Media",
+    "description": "Image with `fit` fit mode"
+  },
+  {
+    "id": "image-fit-tile",
+    "name": "ImageFitTile",
+    "section": "Media",
+    "description": "Image with `tile` fit mode"
+  },
+  {
+    "id": "image-fit-stretch",
+    "name": "ImageFitStretch",
+    "section": "Media",
+    "description": "Image with `stretch` fit mode"
+  },
+  {
+    "id": "video-playback",
+    "name": "VideoPlayback",
+    "section": "Media",
+    "description": "Video node playing, with trim start/end"
+  },
+  {
+    "id": "video-speed",
+    "name": "VideoSpeed",
+    "section": "Media",
+    "description": "Video node at 2× speed"
+  },
+  {
+    "id": "video-loop",
+    "name": "VideoLoop",
+    "section": "Media",
+    "description": "Video node looping over a short clip"
+  },
+  {
+    "id": "camera-zoom",
+    "name": "CameraZoom",
+    "section": "Camera",
+    "description": "Camera zooming in on a scene"
+  },
+  {
+    "id": "camera-pan",
+    "name": "CameraPan",
+    "section": "Camera",
+    "description": "Camera panning (origin offset) across objects"
+  },
+  {
+    "id": "camera-heading",
+    "name": "CameraHeading",
+    "section": "Camera",
+    "description": "Camera rotating (heading) around viewport center"
+  },
+  {
+    "id": "camera-combined",
+    "name": "CameraCombined",
+    "section": "Camera",
+    "description": "Zoom + pan + heading all animated together"
+  },
+  {
+    "id": "mask-alpha",
+    "name": "MaskAlpha",
+    "section": "Control Nodes",
+    "description": "Mask in alpha mode (soft edge via gradient)"
+  },
+  {
+    "id": "mask-vector",
+    "name": "MaskVector",
+    "section": "Control Nodes",
+    "description": "Mask in vector mode (hard geometric clip)"
+  },
+  {
+    "id": "mask-luminance",
+    "name": "MaskLuminance",
+    "section": "Control Nodes",
+    "description": "Mask in luminance mode (grayscale as transparency)"
+  },
+  {
+    "id": "mask-invert",
+    "name": "MaskInvert",
+    "section": "Control Nodes",
+    "description": "Inverted mask (shows where mask is NOT)"
+  },
+  {
+    "id": "mask-apply-fill",
+    "name": "MaskApplyFill",
+    "section": "Control Nodes",
+    "description": "Mask with `apply: \"fill\"` (only fill layer is masked, stroke shows through)"
+  },
+  {
+    "id": "mask-apply-stroke",
+    "name": "MaskApplyStroke",
+    "section": "Control Nodes",
+    "description": "Mask with `apply: \"stroke\"` (only stroke layer is masked)"
+  },
+  {
+    "id": "boolean-toggle",
+    "name": "BooleanToggle",
+    "section": "Control Nodes",
+    "description": "Boolean node toggling child visibility at midpoint"
+  },
+  {
+    "id": "provider-theme",
+    "name": "ProviderTheme",
+    "section": "Control Nodes",
+    "description": "Provider + ThemeProvider supplying custom theme colors"
+  },
+  {
+    "id": "default-text-style",
+    "name": "DefaultTextStyle",
+    "section": "Control Nodes",
+    "description": "DefaultTextStyle node overriding font family for subtree"
+  },
+  {
+    "id": "line-grid-basic",
+    "name": "LineGridBasic",
+    "section": "Grid / Pattern",
+    "description": "LineGrid with major divisions only"
+  },
+  {
+    "id": "line-grid-subdivisions",
+    "name": "LineGridSubdivisions",
+    "section": "Grid / Pattern",
+    "description": "LineGrid with major and minor subdivisions"
+  },
+  {
+    "id": "grid-pattern-basic",
+    "name": "GridPatternBasic",
+    "section": "Grid / Pattern",
+    "description": "GridPattern (infinite world-space) with default cell size"
+  },
+  {
+    "id": "grid-pattern-subdivisions",
+    "name": "GridPatternSubdivisions",
+    "section": "Grid / Pattern",
+    "description": "GridPattern with sub-grid lines"
+  },
+  {
+    "id": "code-basic",
+    "name": "CodeBasic",
+    "section": "Component Nodes",
+    "description": "Code node with TypeScript snippet, default theme"
+  },
+  {
+    "id": "code-theme-github-dark",
+    "name": "CodeThemeGithubDark",
+    "section": "Component Nodes",
+    "description": "Code node with `github-dark` theme"
+  },
+  {
+    "id": "code-theme-github-light",
+    "name": "CodeThemeGithubLight",
+    "section": "Component Nodes",
+    "description": "Code node with `github-light` theme"
+  },
+  {
+    "id": "code-theme-vscode-dark",
+    "name": "CodeThemeVscodeDark",
+    "section": "Component Nodes",
+    "description": "Code node with `vscode-dark` theme"
+  },
+  {
+    "id": "code-theme-vscode-light",
+    "name": "CodeThemeVscodeLight",
+    "section": "Component Nodes",
+    "description": "Code node with `vscode-light` theme"
+  },
+  {
+    "id": "code-line-numbers",
+    "name": "CodeLineNumbers",
+    "section": "Component Nodes",
+    "description": "Code node with `showLineNumbers: true`"
+  },
+  {
+    "id": "code-padding",
+    "name": "CodePadding",
+    "section": "Component Nodes",
+    "description": "Code node with explicit padding on all sides"
+  },
+  {
+    "id": "code-append",
+    "name": "CodeAppend",
+    "section": "Component Nodes",
+    "description": "Code node using `append()` to add lines with animated height reveal"
+  },
+  {
+    "id": "code-prepend",
+    "name": "CodePrepend",
+    "section": "Component Nodes",
+    "description": "Code node using `prepend()` to insert lines at top"
+  },
+  {
+    "id": "code-insert",
+    "name": "CodeInsert",
+    "section": "Component Nodes",
+    "description": "Code node using `insert()` at a specific line/column"
+  },
+  {
+    "id": "code-remove",
+    "name": "CodeRemove",
+    "section": "Component Nodes",
+    "description": "Code node using `remove()` on a range of lines"
+  },
+  {
+    "id": "code-replace",
+    "name": "CodeReplace",
+    "section": "Component Nodes",
+    "description": "Code node using `replace()` swapping one token for another"
+  },
+  {
+    "id": "code-highlight",
+    "name": "CodeHighlight",
+    "section": "Component Nodes",
+    "description": "Code node using `highlight()` to dim non-highlighted tokens"
+  },
+  {
+    "id": "code-highlight-reset",
+    "name": "CodeHighlightReset",
+    "section": "Component Nodes",
+    "description": "Code node calling `resetHighlight()` to un-dim all tokens"
+  },
+  {
+    "id": "latex-basic",
+    "name": "LatexBasic",
+    "section": "Component Nodes",
+    "description": "Latex node rendering a simple formula (e.g. `E = mc^2`)"
+  },
+  {
+    "id": "latex-complex",
+    "name": "LatexComplex",
+    "section": "Component Nodes",
+    "description": "Latex node rendering a complex expression (fraction, sum, integral)"
+  },
+  {
+    "id": "latex-morph",
+    "name": "LatexMorph",
+    "section": "Component Nodes",
+    "description": "Latex node morphing between two formulas via `to()`"
+  },
+  {
+    "id": "latex-fill-gradient",
+    "name": "LatexFillGradient",
+    "section": "Component Nodes",
+    "description": "Latex node with a gradient fill applied to glyphs"
+  },
+  {
+    "id": "latex-stroke",
+    "name": "LatexStroke",
+    "section": "Component Nodes",
+    "description": "Latex node with stroke outline on glyphs"
+  },
+  {
+    "id": "fill-solid",
+    "name": "FillSolid",
+    "section": "Fills",
+    "description": "Solid color fill (static and animated color)"
+  },
+  {
+    "id": "fill-linear-gradient",
+    "name": "FillLinearGradient",
+    "section": "Fills",
+    "description": "Linear gradient, horizontal then animated angle"
+  },
+  {
+    "id": "fill-radial-gradient",
+    "name": "FillRadialGradient",
+    "section": "Fills",
+    "description": "Radial gradient centered on shape"
+  },
+  {
+    "id": "fill-conic-gradient",
+    "name": "FillConicGradient",
+    "section": "Fills",
+    "description": "Conic gradient full sweep"
+  },
+  {
+    "id": "fill-image",
+    "name": "FillImage",
+    "section": "Fills",
+    "description": "Image fill on a rect"
+  },
+  {
+    "id": "fill-video",
+    "name": "FillVideo",
+    "section": "Fills",
+    "description": "Video fill on a rect"
+  },
+  {
+    "id": "fill-noise",
+    "name": "FillNoise",
+    "section": "Fills",
+    "description": "Noise fill, varying density and size"
+  },
+  {
+    "id": "fill-stripe",
+    "name": "FillStripe",
+    "section": "Fills",
+    "description": "Stripe fill, varying angle and gap"
+  },
+  {
+    "id": "fill-space-local",
+    "name": "FillSpaceLocal",
+    "section": "Fills",
+    "description": "Fill pinned to shape's own bounds (default)"
+  },
+  {
+    "id": "fill-space-parent",
+    "name": "FillSpaceParent",
+    "section": "Fills",
+    "description": "Fill mapped to parent bounds; shape moves across it"
+  },
+  {
+    "id": "fill-space-global",
+    "name": "FillSpaceGlobal",
+    "section": "Fills",
+    "description": "Fill anchored to viewport; node moves over it"
+  },
+  {
+    "id": "fill-layered",
+    "name": "FillLayered",
+    "section": "Fills",
+    "description": "Multiple fill layers stacked on one shape (solid + gradient + noise)"
+  },
+  {
+    "id": "overlay-basic",
+    "name": "OverlayBasic",
+    "section": "Fills",
+    "description": "Overlay fill painted over children but under stroke (grain texture over a rect with child rects)"
+  },
+  {
+    "id": "overlay-video",
+    "name": "OverlayVideo",
+    "section": "Fills",
+    "description": "Video overlay across an entire subtree"
+  },
+  {
+    "id": "stroke-align-inside",
+    "name": "StrokeAlignInside",
+    "section": "Strokes",
+    "description": "Stroke aligned inside shape boundary"
+  },
+  {
+    "id": "stroke-align-center",
+    "name": "StrokeAlignCenter",
+    "section": "Strokes",
+    "description": "Stroke centered on shape boundary"
+  },
+  {
+    "id": "stroke-align-outside",
+    "name": "StrokeAlignOutside",
+    "section": "Strokes",
+    "description": "Stroke aligned outside shape boundary"
+  },
+  {
+    "id": "stroke-cap-butt",
+    "name": "StrokeCapButt",
+    "section": "Strokes",
+    "description": "Line ends with butt cap"
+  },
+  {
+    "id": "stroke-cap-round",
+    "name": "StrokeCapRound",
+    "section": "Strokes",
+    "description": "Line ends with round cap"
+  },
+  {
+    "id": "stroke-cap-square",
+    "name": "StrokeCapSquare",
+    "section": "Strokes",
+    "description": "Line ends with square cap"
+  },
+  {
+    "id": "stroke-join-miter",
+    "name": "StrokeJoinMiter",
+    "section": "Strokes",
+    "description": "Corner joins with miter style"
+  },
+  {
+    "id": "stroke-join-round",
+    "name": "StrokeJoinRound",
+    "section": "Strokes",
+    "description": "Corner joins with round style"
+  },
+  {
+    "id": "stroke-join-bevel",
+    "name": "StrokeJoinBevel",
+    "section": "Strokes",
+    "description": "Corner joins with bevel style"
+  },
+  {
+    "id": "stroke-dash-uniform",
+    "name": "StrokeDashUniform",
+    "section": "Strokes",
+    "description": "Stroke with uniform dash pattern"
+  },
+  {
+    "id": "stroke-dash-pair",
+    "name": "StrokeDashPair",
+    "section": "Strokes",
+    "description": "Stroke with `[on, off]` dash pair"
+  },
+  {
+    "id": "stroke-dash-animated",
+    "name": "StrokeDashAnimated",
+    "section": "Strokes",
+    "description": "Animated dashOffset (marching ants)"
+  },
+  {
+    "id": "stroke-gradient-fill",
+    "name": "StrokeGradientFill",
+    "section": "Strokes",
+    "description": "Stroke using a linear gradient fill"
+  },
+  {
+    "id": "stroke-layered",
+    "name": "StrokeLayered",
+    "section": "Strokes",
+    "description": "Multiple strokes stacked on one shape"
+  },
+  {
+    "id": "stroke-miter-limit",
+    "name": "StrokeMiterLimit",
+    "section": "Strokes",
+    "description": "High miterLimit vs low miterLimit on a sharp-angle polygon"
+  },
+  {
+    "id": "shadow-drop-basic",
+    "name": "ShadowDropBasic",
+    "section": "Shadows",
+    "description": "Basic drop shadow (blur + offset)"
+  },
+  {
+    "id": "shadow-drop-offset",
+    "name": "ShadowDropOffset",
+    "section": "Shadows",
+    "description": "Shadow with large x/y offset"
+  },
+  {
+    "id": "shadow-drop-blur",
+    "name": "ShadowDropBlur",
+    "section": "Shadows",
+    "description": "Shadow with high blur, zero offset (glow-like)"
+  },
+  {
+    "id": "shadow-inner",
+    "name": "ShadowInner",
+    "section": "Shadows",
+    "description": "Inner shadow on rect"
+  },
+  {
+    "id": "shadow-spread-positive",
+    "name": "ShadowSpreadPositive",
+    "section": "Shadows",
+    "description": "Shadow with positive spread (expanded)"
+  },
+  {
+    "id": "shadow-spread-negative",
+    "name": "ShadowSpreadNegative",
+    "section": "Shadows",
+    "description": "Shadow with negative spread (contracted)"
+  },
+  {
+    "id": "shadow-fill-gradient",
+    "name": "ShadowFillGradient",
+    "section": "Shadows",
+    "description": "Shadow using a gradient fill color"
+  },
+  {
+    "id": "shadow-layered",
+    "name": "ShadowLayered",
+    "section": "Shadows",
+    "description": "Multiple shadows stacked (inner + outer)"
+  },
+  {
+    "id": "effect-blur",
+    "name": "EffectBlur",
+    "section": "Effects",
+    "description": "Gaussian blur on a rect"
+  },
+  {
+    "id": "effect-blur-backdrop",
+    "name": "EffectBlurBackdrop",
+    "section": "Effects",
+    "description": "Gaussian blur reading backdrop (frosted glass)"
+  },
+  {
+    "id": "effect-directional-blur",
+    "name": "EffectDirectionalBlur",
+    "section": "Effects",
+    "description": "Motion blur along 45° axis"
+  },
+  {
+    "id": "effect-directional-blur-backdrop",
+    "name": "EffectDirectionalBlurBackdrop",
+    "section": "Effects",
+    "description": "Directional blur on backdrop"
+  },
+  {
+    "id": "effect-grayscale",
+    "name": "EffectGrayscale",
+    "section": "Effects",
+    "description": "Full desaturation of shape"
+  },
+  {
+    "id": "effect-grayscale-backdrop",
+    "name": "EffectGrayscaleBackdrop",
+    "section": "Effects",
+    "description": "Desaturate backdrop content beneath shape"
+  },
+  {
+    "id": "effect-pixelate",
+    "name": "EffectPixelate",
+    "section": "Effects",
+    "description": "Mosaic pixelation on a shape (`sharpColors: false`, smooth blocks)"
+  },
+  {
+    "id": "effect-pixelate-sharp",
+    "name": "EffectPixelateSharp",
+    "section": "Effects",
+    "description": "Pixelate with `sharpColors: true` (solid-color blocks)"
+  },
+  {
+    "id": "effect-pixelate-backdrop",
+    "name": "EffectPixelateBackdrop",
+    "section": "Effects",
+    "description": "Pixelate backdrop (censoring effect)"
+  },
+  {
+    "id": "effect-bulge-barrel",
+    "name": "EffectBulgeBarrel",
+    "section": "Effects",
+    "description": "Barrel distortion (positive strength)"
+  },
+  {
+    "id": "effect-bulge-pincushion",
+    "name": "EffectBulgePincushion",
+    "section": "Effects",
+    "description": "Pincushion distortion (negative strength)"
+  },
+  {
+    "id": "effect-magnify",
+    "name": "EffectMagnify",
+    "section": "Effects",
+    "description": "Magnify a portion of backdrop"
+  },
+  {
+    "id": "effect-bloom",
+    "name": "EffectBloom",
+    "section": "Effects",
+    "description": "Bloom/glow from bright regions"
+  },
+  {
+    "id": "effect-vintage",
+    "name": "EffectVintage",
+    "section": "Effects",
+    "description": "Sepia + warmth tone"
+  },
+  {
+    "id": "effect-chromatic-aberration",
+    "name": "EffectChromaticAberration",
+    "section": "Effects",
+    "description": "RGB channel fringing"
+  },
+  {
+    "id": "effect-invert",
+    "name": "EffectInvert",
+    "section": "Effects",
+    "description": "RGB inversion"
+  },
+  {
+    "id": "effect-scatter-horizontal",
+    "name": "EffectScatterHorizontal",
+    "section": "Effects",
+    "description": "Scatter with `direction: \"horizontal\"`"
+  },
+  {
+    "id": "effect-scatter-vertical",
+    "name": "EffectScatterVertical",
+    "section": "Effects",
+    "description": "Scatter with `direction: \"vertical\"`"
+  },
+  {
+    "id": "effect-scatter-both",
+    "name": "EffectScatterBoth",
+    "section": "Effects",
+    "description": "Scatter with `direction: \"both\"`"
+  },
+  {
+    "id": "effect-posterize",
+    "name": "EffectPosterize",
+    "section": "Effects",
+    "description": "Color banding at low level count"
+  },
+  {
+    "id": "effect-sksl-custom",
+    "name": "EffectSkslCustom",
+    "section": "Effects",
+    "description": "Custom SkSL shader as layer effect"
+  },
+  {
+    "id": "effect-sksl-backdrop",
+    "name": "EffectSkslBackdrop",
+    "section": "Effects",
+    "description": "Custom SkSL shader processing backdrop"
+  },
+  {
+    "id": "filter-exposure",
+    "name": "FilterExposure",
+    "section": "Image Filters",
+    "description": "Exposure boost and reduction"
+  },
+  {
+    "id": "filter-blur-image",
+    "name": "FilterBlurImage",
+    "section": "Image Filters",
+    "description": "Gaussian blur on an image"
+  },
+  {
+    "id": "filter-grayscale-image",
+    "name": "FilterGrayscaleImage",
+    "section": "Image Filters",
+    "description": "Desaturation of an image"
+  },
+  {
+    "id": "filter-alpha-image",
+    "name": "FilterAlphaImage",
+    "section": "Image Filters",
+    "description": "Alpha multiplier fading an image out"
+  },
+  {
+    "id": "filter-color-matrix",
+    "name": "FilterColorMatrix",
+    "section": "Image Filters",
+    "description": "Arbitrary 4×5 color matrix transform"
+  },
+  {
+    "id": "filter-curves",
+    "name": "FilterCurves",
+    "section": "Image Filters",
+    "description": "Tone curve on RGB channel"
+  },
+  {
+    "id": "filter-curves-per-channel",
+    "name": "FilterCurvesPerChannel",
+    "section": "Image Filters",
+    "description": "Separate tone curves for R, G, B"
+  },
+  {
+    "id": "filter-color-adjustment",
+    "name": "FilterColorAdjustment",
+    "section": "Image Filters",
+    "description": "Brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, vignette all animated"
+  },
+  {
+    "id": "filter-video-exposure",
+    "name": "FilterVideoExposure",
+    "section": "Video Filters",
+    "description": "Exposure on video"
+  },
+  {
+    "id": "filter-video-grayscale",
+    "name": "FilterVideoGrayscale",
+    "section": "Video Filters",
+    "description": "Grayscale on video"
+  },
+  {
+    "id": "filter-video-color-adjustment",
+    "name": "FilterVideoColorAdjustment",
+    "section": "Video Filters",
+    "description": "Color adjustment on video"
+  },
+  {
+    "id": "filter-video-posterize-time",
+    "name": "FilterVideoPosterizeTime",
+    "section": "Video Filters",
+    "description": "Frame rate reduction (posterize time)"
+  },
+  {
+    "id": "filter-video-echo",
+    "name": "FilterVideoEcho",
+    "section": "Video Filters",
+    "description": "Multi-frame echo/trail effect"
+  },
+  {
+    "id": "blend-node-multiply",
+    "name": "BlendNodeMultiply",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-screen",
+    "name": "BlendNodeScreen",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-overlay",
+    "name": "BlendNodeOverlay",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-darken",
+    "name": "BlendNodeDarken",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-lighten",
+    "name": "BlendNodeLighten",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-color-dodge",
+    "name": "BlendNodeColorDodge",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-color-burn",
+    "name": "BlendNodeColorBurn",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-hard-light",
+    "name": "BlendNodeHardLight",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-soft-light",
+    "name": "BlendNodeSoftLight",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-difference",
+    "name": "BlendNodeDifference",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-exclusion",
+    "name": "BlendNodeExclusion",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-hue",
+    "name": "BlendNodeHue",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-saturation",
+    "name": "BlendNodeSaturation",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-color",
+    "name": "BlendNodeColor",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-luminosity",
+    "name": "BlendNodeLuminosity",
+    "section": "Node Blend Modes",
+    "description": ""
+  },
+  {
+    "id": "blend-node-pass-through",
+    "name": "BlendNodePassThrough",
+    "section": "Node Blend Modes",
+    "description": "`\"pass-through\"` vs `\"normal\"` isolation with semi-transparent children"
+  },
+  {
+    "id": "blend-fill-multiply",
+    "name": "BlendFillMultiply",
+    "section": "Fill Blend Modes",
+    "description": "Second fill layer blending with `\"multiply\"` over first"
+  },
+  {
+    "id": "blend-fill-screen",
+    "name": "BlendFillScreen",
+    "section": "Fill Blend Modes",
+    "description": "Screen blend between two fill layers"
+  },
+  {
+    "id": "blend-fill-overlay",
+    "name": "BlendFillOverlay",
+    "section": "Fill Blend Modes",
+    "description": "Overlay blend between two fill layers"
+  },
+  {
+    "id": "blend-fill-difference",
+    "name": "BlendFillDifference",
+    "section": "Fill Blend Modes",
+    "description": "Difference blend to invert where fills overlap"
+  },
+  {
+    "id": "blend-fill-color-dodge",
+    "name": "BlendFillColorDodge",
+    "section": "Fill Blend Modes",
+    "description": "Color-dodge brightening effect between fill layers"
+  },
+  {
+    "id": "blend-fill-luminosity",
+    "name": "BlendFillLuminosity",
+    "section": "Fill Blend Modes",
+    "description": "Luminosity blend preserving luma from top fill"
+  },
+  {
+    "id": "blend-fill-layered-stack",
+    "name": "BlendFillLayeredStack",
+    "section": "Fill Blend Modes",
+    "description": "Three fill layers each with different blend modes stacked"
+  },
+  {
+    "id": "blend-stroke-screen",
+    "name": "BlendStrokeScreen",
+    "section": "Stroke Blend Modes",
+    "description": "Stroke fill using `\"screen\"` blend over the shape fill"
+  },
+  {
+    "id": "blend-stroke-multiply",
+    "name": "BlendStrokeMultiply",
+    "section": "Stroke Blend Modes",
+    "description": "Stroke fill using `\"multiply\"` blend"
+  },
+  {
+    "id": "blend-stroke-difference",
+    "name": "BlendStrokeDifference",
+    "section": "Stroke Blend Modes",
+    "description": "Stroke fill using `\"difference\"` blend (inverts where stroke crosses fill)"
+  },
+  {
+    "id": "blend-shadow-screen",
+    "name": "BlendShadowScreen",
+    "section": "Shadow Blend Modes",
+    "description": "Drop shadow using `\"screen\"` blend (lightening glow)"
+  },
+  {
+    "id": "blend-shadow-multiply",
+    "name": "BlendShadowMultiply",
+    "section": "Shadow Blend Modes",
+    "description": "Drop shadow using `\"multiply\"` blend (darkening shadow)"
+  },
+  {
+    "id": "blend-shadow-color-dodge",
+    "name": "BlendShadowColorDodge",
+    "section": "Shadow Blend Modes",
+    "description": "Drop shadow using `\"color-dodge\"` (bloom-like outer glow)"
+  },
+  {
+    "id": "transform-position",
+    "name": "TransformPosition",
+    "section": "Transforms",
+    "description": "Rect animating x, y position"
+  },
+  {
+    "id": "transform-rotation",
+    "name": "TransformRotation",
+    "section": "Transforms",
+    "description": "Shape spinning full rotation"
+  },
+  {
+    "id": "transform-scale-uniform",
+    "name": "TransformScaleUniform",
+    "section": "Transforms",
+    "description": "Uniform scale animation"
+  },
+  {
+    "id": "transform-scale-xy",
+    "name": "TransformScaleXy",
+    "section": "Transforms",
+    "description": "Independent scaleX and scaleY (squash and stretch)"
+  },
+  {
+    "id": "transform-opacity",
+    "name": "TransformOpacity",
+    "section": "Transforms",
+    "description": "Opacity fade in/out"
+  },
+  {
+    "id": "transform-pivot-center",
+    "name": "TransformPivotCenter",
+    "section": "Transforms",
+    "description": "Rotation around center pivot"
+  },
+  {
+    "id": "transform-pivot-corner",
+    "name": "TransformPivotCorner",
+    "section": "Transforms",
+    "description": "Rotation around top-left corner pivot"
+  },
+  {
+    "id": "transform-pivot-custom",
+    "name": "TransformPivotCustom",
+    "section": "Transforms",
+    "description": "Rotation around arbitrary custom pivot point"
+  },
+  {
+    "id": "transform-combined",
+    "name": "TransformCombined",
+    "section": "Transforms",
+    "description": "Position + rotation + scale all animated simultaneously"
+  },
+  {
+    "id": "ease-sine",
+    "name": "EaseSine",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-quad",
+    "name": "EaseQuad",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-cubic",
+    "name": "EaseCubic",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-quart",
+    "name": "EaseQuart",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-quint",
+    "name": "EaseQuint",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-expo",
+    "name": "EaseExpo",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-circ",
+    "name": "EaseCirc",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-back",
+    "name": "EaseBack",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-elastic",
+    "name": "EaseElastic",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "ease-bounce",
+    "name": "EaseBounce",
+    "section": "Easing Functions",
+    "description": ""
+  },
+  {
+    "id": "cardinal-node-topleft",
+    "name": "CardinalNodeTopleft",
+    "section": "Cardinal Coordinates",
+    "description": "Anchoring/measuring from topLeft of a node"
+  },
+  {
+    "id": "cardinal-node-topcenter",
+    "name": "CardinalNodeTopcenter",
+    "section": "Cardinal Coordinates",
+    "description": "topCenter"
+  },
+  {
+    "id": "cardinal-node-topright",
+    "name": "CardinalNodeTopright",
+    "section": "Cardinal Coordinates",
+    "description": "topRight"
+  },
+  {
+    "id": "cardinal-node-leftcenter",
+    "name": "CardinalNodeLeftcenter",
+    "section": "Cardinal Coordinates",
+    "description": "leftCenter"
+  },
+  {
+    "id": "cardinal-node-center",
+    "name": "CardinalNodeCenter",
+    "section": "Cardinal Coordinates",
+    "description": "center"
+  },
+  {
+    "id": "cardinal-node-rightcenter",
+    "name": "CardinalNodeRightcenter",
+    "section": "Cardinal Coordinates",
+    "description": "rightCenter"
+  },
+  {
+    "id": "cardinal-node-bottomleft",
+    "name": "CardinalNodeBottomleft",
+    "section": "Cardinal Coordinates",
+    "description": "bottomLeft"
+  },
+  {
+    "id": "cardinal-node-bottomcenter",
+    "name": "CardinalNodeBottomcenter",
+    "section": "Cardinal Coordinates",
+    "description": "bottomCenter"
+  },
+  {
+    "id": "cardinal-node-bottomright",
+    "name": "CardinalNodeBottomright",
+    "section": "Cardinal Coordinates",
+    "description": "bottomRight"
+  },
+  {
+    "id": "cardinal-graphics-points",
+    "name": "CardinalGraphicsPoints",
+    "section": "Cardinal Coordinates",
+    "description": "Cardinal points used in a graphics/drawable context"
+  },
+  {
+    "id": "shape-start-end-rect",
+    "name": "ShapeStartEndRect",
+    "section": "Shape Start / End",
+    "description": "Rect animated from `start=0,end=0` to `end=1` (draws itself in)"
+  },
+  {
+    "id": "shape-start-end-ellipse",
+    "name": "ShapeStartEndEllipse",
+    "section": "Shape Start / End",
+    "description": "Ellipse revealing arc from start to end"
+  },
+  {
+    "id": "shape-start-end-polygon",
+    "name": "ShapeStartEndPolygon",
+    "section": "Shape Start / End",
+    "description": "Polygon drawing its perimeter progressively"
+  },
+  {
+    "id": "shape-start-end-line",
+    "name": "ShapeStartEndLine",
+    "section": "Shape Start / End",
+    "description": "Line animating `start` and `end` to trim both ends"
+  },
+  {
+    "id": "morph-triangle-to-star",
+    "name": "MorphTriangleToStar",
+    "section": "Path Morphing",
+    "description": "Triangle shape morphing into 5-point star"
+  },
+  {
+    "id": "morph-circle-to-rect",
+    "name": "MorphCircleToRect",
+    "section": "Path Morphing",
+    "description": "Ellipse morphing into rectangle path"
+  },
+  {
+    "id": "morph-complex-shapes",
+    "name": "MorphComplexShapes",
+    "section": "Path Morphing",
+    "description": "Two arbitrary SVG paths morphing together"
+  },
+  {
+    "id": "opacity-node",
+    "name": "OpacityNode",
+    "section": "Opacity & Visibility",
+    "description": "Node-level opacity animated"
+  },
+  {
+    "id": "opacity-fill",
+    "name": "OpacityFill",
+    "section": "Opacity & Visibility",
+    "description": "Fill-level opacity animated independently of node"
+  },
+  {
+    "id": "opacity-stroke",
+    "name": "OpacityStroke",
+    "section": "Opacity & Visibility",
+    "description": "Stroke-level opacity animated"
+  },
+  {
+    "id": "opacity-passthrough-vs-normal",
+    "name": "OpacityPassthroughVsNormal",
+    "section": "Opacity & Visibility",
+    "description": "Pass-through vs normal node blend isolation with semi-transparent children"
+  }
+]

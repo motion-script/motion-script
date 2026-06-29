@@ -1,0 +1,62 @@
+/** @jsxImportSource @motion-script/core/jsx */
+
+import {
+    SceneGenerator,
+    FrameGenerator,
+    Rect,
+    Text,
+    wait,
+} from '@motion-script/core';
+
+/**
+ * Every e2e scene runs for the same fixed wall-clock duration so the screenshot
+ * harness can address "first / mid / last" as deterministic frame indices
+ * (0, floor(total/2), total-1) without probing each scene's length first.
+ *
+ * 2 seconds at the project's 30 fps == 60 frames. Authored scenes should fill
+ * roughly this window (animate, then {@link hold} out the remainder) so the mid
+ * frame lands somewhere visually interesting rather than on a static pose.
+ */
+export const SCENE_SECONDS = 2;
+
+/** Pad the tail of a scene so its total runtime is exactly {@link SCENE_SECONDS}. */
+export function* holdTail(usedSeconds: number): FrameGenerator {
+    const remaining = SCENE_SECONDS - usedSeconds;
+    if (remaining > 0) yield* wait(remaining);
+}
+
+/**
+ * Placeholder generator for a not-yet-authored checkbox. Renders the scene id
+ * centered on the standard background so the screenshot pipeline still produces
+ * a valid, uniquely-identifiable frame for every TESTS.md entry — a stub scene
+ * is a *passing* scene (stable and lib render the same placeholder), it just
+ * doesn't exercise the feature yet. Replace the file with a real scene to cover
+ * the checkbox.
+ */
+export const placeholder = (id: string): SceneGenerator =>
+    function* (stage) {
+        stage.set({ fill: '#11141b' });
+        stage.add(
+            <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+                <Rect
+                    width={820}
+                    height={120}
+                    fill={'#1b2030'}
+                    stroke={{ weight: 2, fill: '#2c3344' }}
+                    cornerRadius={16}
+                    group={'stack'}
+                    align={{ x: 0, y: 0 }}
+                >
+                    <Text
+                        text={id}
+                        fontFamily={'Inter'}
+                        fontSize={40}
+                        fill={'#9aa4bf'}
+                        width={'fill'}
+                        textAlign={'center'}
+                    />
+                </Rect>
+            </Rect>,
+        );
+        yield* holdTail(0);
+    };

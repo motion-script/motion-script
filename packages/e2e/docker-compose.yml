@@ -1,0 +1,25 @@
+# Run the Motion Script visual e2e harness in a reproducible container.
+#
+#   docker compose -f packages/e2e/docker-compose.yml run --rm e2e
+#
+# The build context is the repo root (..//.. relative to this file) so the whole
+# workspace is available to build and pack. The container renders both the
+# stable (packed tarballs) and lib (live build) variants, pixel-diffs them, and
+# writes the report + screenshots to packages/e2e/out on the host via the mount.
+services:
+  e2e:
+    build:
+      # Repo root, two levels up from packages/e2e/.
+      context: ../..
+      dockerfile: packages/e2e/Dockerfile
+    image: motion-script-e2e
+    # Chromium under SwiftShader can use a lot of /dev/shm; bump it so large
+    # frames don't crash the renderer.
+    shm_size: "1gb"
+    environment:
+      # Software WebGL (no GPU in the container). Already set in the image, but
+      # repeated here so it's visible/overridable at run time.
+      MS_SOFTWARE_RENDER: "1"
+    volumes:
+      # Surface the screenshots, diffs, and report.html back to the host.
+      - ./out:/repo/packages/e2e/out
