@@ -6,7 +6,7 @@ import remarkFrontmatter from 'remark-frontmatter'
 import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
 
-import { getAllDocSlugs, getDocSlugsForVersion, getDocContent, extractTocEntries, getBreadcrumbs, docExistsInVersion } from '@/lib/docs'
+import { getAllDocSlugs, getDocSlugsForVersion, getDocContent, extractTocEntries, getBreadcrumbs, docExistsInVersion, getDocSourcePath } from '@/lib/docs'
 import { resolveVersionFromSlug, versionPrefix, LATEST_VERSION, versionedHref } from '@/lib/versions'
 import { preprocessMdx } from '@/lib/preprocess-mdx'
 import { getMDXComponents } from '@/components/docs/mdx-components'
@@ -36,6 +36,10 @@ export default async function DocsPage({ params }: Props) {
   if (!doc) notFound()
 
   const tocEntries = extractTocEntries(doc.content)
+  const sourcePath = getDocSourcePath(slug)
+  const editUrl = sourcePath
+    ? `https://github.com/motion-script/motion-script/edit/main/${sourcePath}`
+    : null
   const processedSource = preprocessMdx(doc.content)
 
   const code = await compile(processedSource, {
@@ -74,7 +78,7 @@ export default async function DocsPage({ params }: Props) {
 
   return (
     <>
-      <TocPortal entries={tocEntries} />
+      <TocPortal entries={tocEntries} editUrl={editUrl} />
       <Breadcrumbs entries={breadcrumbs} />
       {isOldVersion && (
         <VersionWarning

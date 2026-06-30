@@ -188,6 +188,18 @@ export function docExistsInVersion(version: DocVersion, docSlug: string[]): bool
   return fs.existsSync(docFilePath(version, docSlug))
 }
 
+// Repo-root-relative path to a doc's source file, used to build the
+// "Edit this page on GitHub" link. Returns null when the file doesn't exist.
+export function getDocSourcePath(slug: string[]): string | null {
+  const { version, docSlug } = resolveVersionFromSlug(slug)
+  if (docSlug.length === 0) return null
+  const filePath = docFilePath(version, docSlug)
+  if (!fs.existsSync(filePath)) return null
+  // process.cwd() is the packages/site root; the repo root is two levels up.
+  const repoRoot = path.join(process.cwd(), "..", "..")
+  return path.relative(repoRoot, filePath).split(path.sep).join("/")
+}
+
 export interface TocEntry {
   id: string
   text: string
