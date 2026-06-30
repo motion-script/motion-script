@@ -2,7 +2,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "experimentalDecorators": true,
-    "jsxImportSource": "@motion-script/core/jsx",
+    "jsxImportSource": "motion-script",
     "module": "preserve",
     "moduleResolution": "bundler",
     "lib": [

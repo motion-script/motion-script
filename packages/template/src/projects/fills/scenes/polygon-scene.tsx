@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, Polygon, wait, Fills } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Text, Polygon, wait, Fills } from "motion-script";
 
 /**
  * A {@link Text} node with `fontSize: 'autofit'` that re-fits its size to the

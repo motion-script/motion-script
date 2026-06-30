@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Node-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'soft-light'`, a gentler overlay variant driven by the circle's color. */

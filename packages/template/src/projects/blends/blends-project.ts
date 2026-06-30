@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import multiply from './scenes/multiply?scene';
 import screen from './scenes/screen?scene';

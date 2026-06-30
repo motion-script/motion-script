@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Grid, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Grid, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Effects.magnify}: a lens magnifies the backdrop beneath the node, scaling up from no zoom to a strong 3x. */

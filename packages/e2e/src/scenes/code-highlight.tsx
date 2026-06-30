@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
-import { Code, lines } from '@motion-script/code';
+import { createScene, createRef, Rect, wait } from 'motion-script';
+import { Code, lines } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Code.highlight}: the rest of the snippet dims so a single line stands out. */

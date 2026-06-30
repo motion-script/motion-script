@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import blur from './scenes/blur?scene';
 import directionalBlur from './scenes/directional-blur?scene';

@@ -1,9 +1,9 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, createRef, Text, Rect,
     Fill, easeInOut, parallel, wait,
-} from "@motion-script/core";
+} from "motion-script";
 
 /**
  * Mounts the concrete shape into a container with merged current props. Called

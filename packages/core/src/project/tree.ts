@@ -5,10 +5,12 @@
  * build is deterministic, so the same structural slot maps to the same path in
  * both the precomp pass and playback.
  */
+/** @internal */
 export function nodePath(parentPath: string, childIndex: number): string {
     return parentPath === "" ? String(childIndex) : `${parentPath}.${childIndex}`;
 }
 
+/** @internal */
 export interface NodeState {
     id: string;
     type: string;
@@ -23,6 +25,7 @@ export interface NodeState {
  * scene seconds; `src` is the (fetchable) audio source path. Nodes that own
  * audio — e.g. a Scene with managed sounds — report one entry per play range.
  */
+/** @internal */
 export interface WaveformInfo {
     /** Fetchable audio source path / URL. */
     src: string;
@@ -32,6 +35,7 @@ export interface WaveformInfo {
     endTime: number | null;
 }
 
+/** @internal */
 export interface TreeState {
     id: string;
     type: string;

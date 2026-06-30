@@ -1,10 +1,10 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, createRef, Text, Rect, Image, Vector2,
     Fills, BlendMode, easeInOut, parallel, sequence, wait,
     Ellipse,
-} from "@motion-script/core";
+} from "motion-script";
 /**
  * Generates the center coordinates for a 3-circle Venn/color diagram.
  * Assumes (0,0) is the center of the grid.

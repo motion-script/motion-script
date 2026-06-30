@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Fill-level `blend`: a magenta circle's *fill* (not the node) blends against the cyan card beneath it via `'screen'`, while the node itself stays un-isolated. */

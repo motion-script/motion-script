@@ -1,7 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
     AlignName, Vector2, property,
-} from "@motion-script/core";
+} from "motion-script";
 
 export interface DrawnShapePivotProps extends ShapeProps {
     /** Half-width of the design box the figure is authored in. */

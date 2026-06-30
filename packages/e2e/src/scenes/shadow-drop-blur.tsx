@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Drop shadow `blur` alone sharpening from a soft, wide haze down to a crisp, tight edge. */

@@ -22,6 +22,7 @@ import { backdropEffects, foregroundShaderEffects } from "@/attributes/shape/eff
  * are not folded in — the rect is the axis-aligned parent box, which is what
  * gradients expect. Returns `{}` for a root node (no parent).
  */
+/** @internal */
 export function computeSpaceRects(
     parentRect: BoxBounds | undefined,
     thisRect: BoxBounds,
@@ -49,6 +50,7 @@ export function computeSpaceRects(
  * filtered/warped while the node's own edges stay sharp. A no-op when there are
  * no backdrop effects or no silhouette `clip` to confine them to.
  */
+/** @internal */
 export function applyBackdropEffects(
     ctx: RenderContext,
     effects: SceneEffect[],
@@ -77,6 +79,7 @@ export function applyBackdropEffects(
  *  2. a `clipPath` cut through both the node's own paint and its children.
  * Both scopes are balanced and skipped when empty so the begin/end calls match.
  */
+/** @internal */
 export function applyContentEffectScope(
     ctx: RenderContext,
     effects: SceneEffect[],

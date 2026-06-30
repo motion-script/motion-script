@@ -1,7 +1,7 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { SceneGenerator, Rect, Text, Fills, wait } from "@motion-script/core";
-import type { ImageFillMode } from "@motion-script/core";
+
+import { SceneGenerator, Rect, Text, Fills, wait } from "motion-script";
+import type { ImageFillMode } from "motion-script";
 
 /**
  * A labelled card holding one `Rect` whose fill is a *playing* video. The video

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Ellipse, easeOut } from '@motion-script/core';
+import { createScene, createRef, Ellipse, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A ball dropping with an easeOut('bounce') landing — the classic bounce curve. */

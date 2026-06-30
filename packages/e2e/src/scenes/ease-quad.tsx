@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeInOut}`('quad')`: a card slides across with the gentlest of the power curves — a mild ease in and out. */

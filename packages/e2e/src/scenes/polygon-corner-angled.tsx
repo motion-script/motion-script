@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygon, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Polygon.cornerStyle} `'angled'`: a rounded hexagon chamfers into flat-cut corners mid-tween. */

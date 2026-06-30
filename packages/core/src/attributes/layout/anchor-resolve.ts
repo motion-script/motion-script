@@ -18,6 +18,7 @@ import { Vector2 } from "./vector2";
  * Validate a node's anchor-positioning props: at most one named anchor, and an
  * anchor cannot be combined with an explicit `pivot` (the anchor derives one).
  */
+/** @internal */
 export function validateAnchorProps(props: Record<string, unknown>): void {
     const presentAnchors = ALIGN_KEYS.filter(k => props[k] !== undefined);
     if (presentAnchors.length > 1) {
@@ -28,7 +29,7 @@ export function validateAnchorProps(props: Record<string, unknown>): void {
     }
 }
 
-/** The first named anchor key present in `props`, or `undefined` if none. */
+/** @internal The first named anchor key present in `props`, or `undefined` if none. */
 export function findAnchorKey(props: Record<string, unknown>): AlignName | undefined {
     return ALIGN_KEYS.find(k => props[k] !== undefined);
 }
@@ -38,6 +39,7 @@ export function findAnchorKey(props: Record<string, unknown>): AlignName | undef
  * concrete layout rect. Used by the one-shot `to()` path: returns the pivot to
  * apply plus the absolute `x`/`y` the node's centre must move to.
  */
+/** @internal */
 export function resolveAnchorTargetOnce(
     anchorKey: AlignName,
     rect: BoxBounds,
@@ -57,6 +59,7 @@ export function resolveAnchorTargetOnce(
  * to write plus `x`/`y` binding callbacks that re-evaluate whenever the target
  * or the node's layout changes. The caller writes these via its prop machinery.
  */
+/** @internal */
 export function bindAnchorTarget(
     anchorKey: AlignName,
     getTarget: () => Vector2,

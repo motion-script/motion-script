@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Text } from "@motion-script/core";
+
+import { createScene, Rect, Text } from "motion-script";
 
 /**
  * A {@link Text} node with `wrap` enabled and `fontSize: 'autofit'`, so a long

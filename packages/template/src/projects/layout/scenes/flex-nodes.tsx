@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Row, Column, easeInOut, parallel, Effects } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Row, Column, easeInOut, parallel, Effects } from "motion-script";
 import { layoutCard, tile } from "./layout-card";
 
 /**

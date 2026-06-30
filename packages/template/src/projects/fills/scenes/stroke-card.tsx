@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createRef, Reference, Stage, Text, Rect, Fill, Stroke, Shadow } from "@motion-script/core";
+
+import { createRef, Reference, Stage, Text, Rect, Fill, Stroke, Shadow } from "motion-script";
 
 /** Initial paint for the single sample rect {@link strokeCard} builds. */
 export interface SampleProps {

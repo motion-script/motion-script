@@ -1,5 +1,5 @@
 
-import { createScene, createRef, Text, Rect, wait, parallel, easeOut, tween, FX } from "@motion-script/core";
+import { createScene, createRef, Text, Rect, wait, parallel, easeOut, tween, FX } from "motion-script";
 
 const CREAM = '#F5ECD7';
 const COPPER = '#C07840';

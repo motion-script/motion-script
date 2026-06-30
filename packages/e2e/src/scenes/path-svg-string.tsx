@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Path, easeOut } from '@motion-script/core';
+
+import { createScene, createRef, Path, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Path.data} as a raw SVG path string: a heart shape popping into view. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ImageFilters.curves}: a linear (no-op) RGB tone curve bends into a high-contrast S-curve, deepening shadows and lifting highlights. */

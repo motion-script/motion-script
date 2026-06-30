@@ -6,6 +6,7 @@ import type { Subscriber, Unsubscribe } from "./subscriber";
  * at capture time) or it held a plain `value`. Produced by {@link Signal.snapshot}
  * and consumed by {@link Signal.restoreFrom}.
  */
+/** @internal */
 export interface SignalSnapshot<T> {
     bound: boolean;
     value: T;

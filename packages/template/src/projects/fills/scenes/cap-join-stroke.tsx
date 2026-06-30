@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Fills, Rect, Line } from "@motion-script/core";
+
+import { createScene, Fills, Rect, Line } from "motion-script";
 
 /**
  * Shows `cap` and `join` side by side.

@@ -1,12 +1,10 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
 import {
     SceneGenerator,
     FrameGenerator,
     Rect,
     Text,
     wait,
-} from '@motion-script/core';
+} from 'motion-script';
 
 /**
  * Every e2e scene runs for the same fixed wall-clock duration so the screenshot

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, NumberNode, easeOut } from '@motion-script/core';
+import { createScene, createRef, NumberNode, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link NumberNode} `format={'number'}` with grouping: a counter ticking up to a large integer. */

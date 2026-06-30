@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygram, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Polygram.cornerRadius}: a sharp 5-point star rounding both its inner and outer vertices. */

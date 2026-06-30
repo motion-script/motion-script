@@ -9,9 +9,7 @@
     "export": "ms export"
   },
   "dependencies": {
-    "@motion-script/core": "workspace:*",
-    "@motion-script/latex": "workspace:*",
-    "@motion-script/code": "workspace:*"
+    "motion-script": "workspace:*"
   },
   "devDependencies": {
     "@motion-script/cli": "workspace:*",

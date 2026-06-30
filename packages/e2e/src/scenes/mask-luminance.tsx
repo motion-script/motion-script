@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, MaskGroup, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, MaskGroup, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link MaskGroup} in `'luminance'` mode: the mask's brightness (not alpha) drives content visibility — a grayscale gradient mask reveals content brightest where the gradient is white, hides it where the gradient is black. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A basic drop shadow whose blur + offset grow as the card lifts off the surface. */

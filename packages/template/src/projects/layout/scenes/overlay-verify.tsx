@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Camera, Row, Column, Fills } from "@motion-script/core";
+
+import { createScene, Rect, Camera, Row, Column, Fills } from "motion-script";
 
 /**
  * TEMPORARY verification scene for the `overlay` paint layer.

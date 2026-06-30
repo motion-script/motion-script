@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import original from './scenes/original?scene';
 import gain from './scenes/gain?scene';

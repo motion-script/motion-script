@@ -1,9 +1,9 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, createRef, Text, Rect, Fills, FillSpace, Node,
     easeInOut, sequence,
-} from "@motion-script/core";
+} from "motion-script";
 import { DrawnShape } from "../nodes/drawn-shape";
 
 /** Gradient colours shared by every scene's figure (and its backdrop). */

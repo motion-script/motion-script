@@ -1,7 +1,7 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, wait, easeOut } from "@motion-script/core";
-import { Code } from "@motion-script/code";
+
+import { createScene, createRef, Rect, Text, wait, easeOut } from "motion-script";
+import { Code } from "motion-script";
 
 /**
  * The {@link Code} node is a specialized text renderer with its own

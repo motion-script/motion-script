@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Fills.video}: a playing video clip used as a shape's fill, growing into frame. */

@@ -18,6 +18,7 @@ import { getPropertyMeta, PropOptions } from "@/attributes/properties/decorator"
  * on `Node`; the helpers call back through them so subclass behaviour and the
  * inline hot path are preserved.
  */
+/** @internal */
 export interface ReactiveHost extends SignalHost {
     _writeProp(field: string, value: unknown): void;
     _toGen(to: Record<string, unknown>, duration: number, easing?: EasingFunction): FrameGenerator;
@@ -31,6 +32,7 @@ export interface ReactiveHost extends SignalHost {
  * getter/setter on `host` so reads track the cell and writes route through
  * `host._writeProp` (mapper-aware, binding-aware).
  */
+/** @internal */
 export function registerProp<Int>(host: ReactiveHost, field: string, options?: PropOptions<any, Int>): void {
     const cell = new Signal<Int>(undefined as unknown as Int);
     if (!host.__signals) host.__signals = new Map();
@@ -60,6 +62,7 @@ export function registerProp<Int>(host: ReactiveHost, field: string, options?: P
  * override a parent default without losing the cell or its bindings), then
  * writes the value. Extracted from `Node.applyProp`.
  */
+/** @internal */
 export function applyProp<Ext, Int = Ext>(
     host: ReactiveHost,
     field: string,
@@ -88,6 +91,7 @@ export function applyProp<Ext, Int = Ext>(
  * restoring values. Drives `Node.reinitProps`; the method keeps the
  * `if (__signals && !force) return` guard and the `super` seam.
  */
+/** @internal */
 export function reapplyDefaults(host: ReactiveHost): void {
     for (const meta of getPropertyMeta(host)) {
         applyProp(host, meta.key, meta.default, meta.options);
@@ -95,6 +99,7 @@ export function reapplyDefaults(host: ReactiveHost): void {
 }
 
 /** Snapshot every registered prop's current value/binding into a plain object. */
+/** @internal */
 export function collectProperties(host: ReactiveHost): Record<string, any> {
     const result: Record<string, any> = {};
     if (host.__upgraders) {
@@ -108,6 +113,7 @@ export function collectProperties(host: ReactiveHost): Record<string, any> {
 // ---- State stack (save / restore) -----------------------------------------
 
 /** Push a snapshot of every reactive cell (value or binding) onto the stack. */
+/** @internal */
 export function saveState(host: ReactiveHost): void {
     const signals = host.__signals;
     if (!signals) return;
@@ -119,11 +125,13 @@ export function saveState(host: ReactiveHost): void {
 }
 
 /** Pop the top snapshot layer, or `undefined` if the stack is empty. */
+/** @internal */
 export function popState(host: ReactiveHost): Map<string, SignalSnapshot<any>> | undefined {
     return host._stateStack.pop();
 }
 
 /** Instantly reapply a snapshot layer to every captured cell. */
+/** @internal */
 export function applySnapshotLayer(host: ReactiveHost, layer: Map<string, SignalSnapshot<any>>): void {
     const signals = host.__signals;
     if (!signals) return;
@@ -138,6 +146,7 @@ export function applySnapshotLayer(host: ReactiveHost, layer: Map<string, Signal
  * restored (not frozen at the tween's landing value) and non-tweened props snap.
  * Extracted from `Node._restoreAnimated`.
  */
+/** @internal */
 export function* restoreAnimated(
     host: ReactiveHost,
     layer: Map<string, SignalSnapshot<any>> | undefined,

@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
-import { Code } from '@motion-script/code';
+import { createScene, createRef, Rect, wait } from 'motion-script';
+import { Code } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Code.showLineNumbers}: a gutter of line numbers appears alongside the snippet. */

@@ -1,5 +1,5 @@
-import { AudioFilters } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { AudioFilters } from "motion-script";
+import { createScene } from "motion-script";
 import { audioDemo } from "./audio-demo";
 
 /** GainFilter: scales the clip's volume by a linear factor. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link VideoFilters.exposure}: a playing video brightens, sweeping from dim to blown-out. */

@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Video, Text, wait } from "@motion-script/core";
+
+import { createScene, Video, Text, wait } from "motion-script";
 import { SAMPLE_VIDEO } from "./video-fill";
 
 /**

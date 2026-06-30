@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link MaskGroup} in `'vector'` mode: a fast hard clip using only the mask's outline — no soft gradient falloff, just a crisp geometric boundary, here a growing circular window. */

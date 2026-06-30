@@ -34,12 +34,14 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["sksl", skslEffect as EffectData<SceneEffect>],
 ]);
 
+/** @internal */
 export function lerpEffect(from: SceneEffect, to: SceneEffect, t: number): SceneEffect {
     if (from.type !== to.type) return t < 0.5 ? from : to;
     const data = EFFECTS.get(from.type);
     return data ? data.lerp(from, to, t) : (t < 0.5 ? from : to);
 }
 
+/** @internal */
 export function lerpEffectArray(from: SceneEffect[], to: SceneEffect[], t: number): SceneEffect[] {
     if (from === to) return from;
     const maxLen = Math.max(from.length, to.length);

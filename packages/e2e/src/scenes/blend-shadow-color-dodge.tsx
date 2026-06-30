@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Shadow-level `blend`: a card's drop shadow *fill* blends against the backdrop beneath it via `'color-dodge'`, brightening the overlap based on the shadow's color. */

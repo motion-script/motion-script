@@ -1,9 +1,9 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, createRef, Text, Rect,
     Fill, Shadow, easeInOut, parallel,
-} from "@motion-script/core";
+} from "motion-script";
 
 /**
  * Shared scaffolding for the per-fill/stroke/shadow showcase scenes.

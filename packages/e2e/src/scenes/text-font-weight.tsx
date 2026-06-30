@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Text, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Text.fontWeight}: the same word thickening from a thin 200 weight to a heavy 900. */

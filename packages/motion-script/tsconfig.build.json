@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // Co-locate the incremental buildinfo inside dist/ so turbo's existing
+        // `dist/**` output globs cache it as a unit with the emitted .js/.d.ts.
+        // Caching dist without its buildinfo causes stale-declaration bugs on
+        // cache restore. See the build-orchestration convention in the README.
+        "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+    },
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/*.fixtures.ts",
+        "tests"
+    ]
+}

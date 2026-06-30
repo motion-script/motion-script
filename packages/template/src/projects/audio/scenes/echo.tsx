@@ -1,5 +1,5 @@
-import { AudioFilters } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { AudioFilters } from "motion-script";
+import { createScene } from "motion-script";
 import { audioDemo } from "./audio-demo";
 
 /** EchoFilter: adds a delayed, fading repeat of the signal. */

@@ -1,5 +1,5 @@
-import { createScene, createRef, wait, Rect } from "@motion-script/core";
-import { Latex } from "@motion-script/latex";
+import { createScene, createRef, wait, Rect } from "motion-script";
+import { Latex } from "motion-script";
 
 export default createScene(function* (stage) {
         stage.set({ fill: 'bg', group: 'column', gap: 60 });

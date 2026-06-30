@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `shadow.inner: true` casts the shadow inward (inset) instead of as a drop shadow, deepening as blur grows. */

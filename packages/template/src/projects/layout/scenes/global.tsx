@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Ellipse, Image } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Ellipse, Image } from "motion-script";
 
 /**
  * Demonstrates `node.global` — a node's position resolved into absolute scene

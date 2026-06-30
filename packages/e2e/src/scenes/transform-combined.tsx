@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Position, rotation, and scale all animating together on one node in a single tween. */

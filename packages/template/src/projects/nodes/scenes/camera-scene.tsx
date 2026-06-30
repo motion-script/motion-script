@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOut, parallel, wait } from "@motion-script/core";
+
+import { createScene, createRef, Camera, Rect, GridPattern, Text, Fills, easeInOut, parallel, wait } from "motion-script";
 
 /**
  * Showcases the {@link Camera} node.

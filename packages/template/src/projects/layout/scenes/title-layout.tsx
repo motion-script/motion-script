@@ -14,7 +14,7 @@ import {
     easeOut,
     parallel,
     wait,
-} from "@motion-script/core";
+} from "motion-script";
 
 
 /** Colour tokens for a chapter title card. All optional — sensible defaults match the Catan deck. */

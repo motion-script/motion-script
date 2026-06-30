@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Ellipse, Fills } from "@motion-script/core";
+
+import { createScene, Ellipse, Fills } from "motion-script";
 import { shapeScene, ShapeSceneSpec } from "./shape-scene";
 
 /** Showcase for Ellipse-specific properties: sweep, startAngle, and ratio. */

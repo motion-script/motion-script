@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Effects.posterize}: a smooth gradient flattens into bands as `level` drops from many levels to just a few. */

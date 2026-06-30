@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygon, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Polygon}'s `start`/`end` trim props (0..1) sweeping a stroked hexagon's outline from a single point into a complete loop. */

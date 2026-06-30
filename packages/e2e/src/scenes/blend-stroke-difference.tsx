@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Stroke-level `blend`: a thick circle outline's stroke *fill* blends against the card beneath it via `'difference'`, subtracting colors where the stroke overlaps the backdrop. */

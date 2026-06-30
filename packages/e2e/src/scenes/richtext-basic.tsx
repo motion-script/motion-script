@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, RichText, easeOut } from '@motion-script/core';
+import { createScene, createRef, RichText, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link RichText} `spans`: a sentence mixing default, bold/accent, and italic runs in one node, fading in. */

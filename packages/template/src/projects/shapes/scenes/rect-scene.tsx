@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Fills } from "@motion-script/core";
+
+import { createScene, Rect, Fills } from "motion-script";
 import { shapeScene, ShapeSceneSpec } from "./shape-scene";
 
 /** Showcase for Rect-specific properties: cornerRadius and cornerStyle. */

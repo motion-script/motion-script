@@ -1,7 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
     PivotInput, resolvePivot, property,
-} from "@motion-script/core";
+} from "motion-script";
 
 export interface DrawnPivotTextProps extends ShapeProps {
     /** The word/phrase to draw. */

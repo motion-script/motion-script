@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A shadow's `fill` is the same loose {@link Fill} type as a node's `fill` — here a colored gradient instead of a flat black. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ImageFilters.alpha}: an image fill's opacity filter fading the image out from fully opaque to nearly transparent. */

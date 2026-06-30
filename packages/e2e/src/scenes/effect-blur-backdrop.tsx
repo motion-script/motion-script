@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `Effects.blur(radius, {backdrop: true})`: blurs the content *beneath* the node, clipped to its silhouette, while the node's own edges stay sharp. */

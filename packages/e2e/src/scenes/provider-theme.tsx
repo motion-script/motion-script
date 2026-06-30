@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, ThemeProvider, Rect, Text, wait } from '@motion-script/core';
+import { createScene, ThemeProvider, Rect, Text, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ThemeProvider} merging custom color tokens onto the ambient theme: descendants referencing `'brand'`/`'brandText'` by name resolve to the values supplied here rather than the project's default theme. */

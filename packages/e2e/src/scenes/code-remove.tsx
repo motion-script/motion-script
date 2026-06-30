@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
-import { Code, lines } from '@motion-script/code';
+import { createScene, createRef, Rect, wait } from 'motion-script';
+import { Code, lines } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Code.remove}: a debug line is deleted from the snippet, collapsing the surrounding lines. */

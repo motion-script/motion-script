@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOut, parallel } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOut, parallel } from "motion-script";
 
 /**
  * Motion blur is velocity-driven, so a static card can't show it — this scene

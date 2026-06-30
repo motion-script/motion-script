@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Video, Rect, Text, easeInOut, wait } from "@motion-script/core";
+
+import { createScene, createRef, Video, Rect, Text, easeInOut, wait } from "motion-script";
 
 /**
  * Showcases the {@link Video} node.

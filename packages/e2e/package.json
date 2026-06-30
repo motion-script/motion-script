@@ -15,9 +15,7 @@
     "clear-stable": "rimraf out stable"
   },
   "dependencies": {
-    "@motion-script/code": "workspace:*",
-    "@motion-script/core": "workspace:*",
-    "@motion-script/latex": "workspace:*"
+    "motion-script": "workspace:*"
   },
   "devDependencies": {
     "@motion-script/cli": "workspace:*",

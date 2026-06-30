@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, Rect, wait } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, Rect, wait } from "motion-script";
 
 export default createScene(function* (stage) {
         stage.set({ fill: "bg" })

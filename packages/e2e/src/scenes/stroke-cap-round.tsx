@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `cap: 'round'`: an open stroke's ends extend into a semicircle past the path's terminal points, growing more visible as the weight thickens. */

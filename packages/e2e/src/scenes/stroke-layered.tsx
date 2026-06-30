@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A node's `stroke` accepts an array: a thick outer band plus a thin inner accent line, stacked bottom-to-top, both thickening together. */

@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AudioFilters, fadeIn, easeInOut, wait } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, AudioFilters, fadeIn, easeInOut, wait } from "motion-script";
 
 /**
  * Cross-scene audio (part 1 of 2). Starts a music bed with `startSound` and never

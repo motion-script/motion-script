@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Text, wait } from "@motion-script/core";
+
+import { createScene, Rect, Text, wait } from "motion-script";
 
 /** A bold {@link Text} node outlined with a colored stroke. */
 export default createScene(function* (stage) {

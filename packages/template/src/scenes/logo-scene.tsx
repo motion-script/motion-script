@@ -1,4 +1,4 @@
-import { createScene, createRef, wait, parallel, Rect, Fills, Text, easeOut, easeIn, Effects } from "@motion-script/core";
+import { createScene, createRef, wait, parallel, Rect, Fills, Text, easeOut, easeIn, Effects } from "motion-script";
 
 export default createScene(function* (stage) {
     stage.set({

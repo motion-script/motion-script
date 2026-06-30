@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Ellipse, easeOut } from '@motion-script/core';
+import { createScene, createRef, Ellipse, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Ellipse at a 1:1 ratio (a circle), popping in with a scale. */

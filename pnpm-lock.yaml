@@ -265,15 +265,9 @@ importers:
 
   packages/e2e:
     dependencies:
-      '@motion-script/code':
+      motion-script:
         specifier: workspace:*
-        version: link:../components/code
-      '@motion-script/core':
-        specifier: workspace:*
-        version: link:../core
-      '@motion-script/latex':
-        specifier: workspace:*
-        version: link:../components/latex
+        version: link:../motion-script
     devDependencies:
       '@motion-script/cli':
         specifier: workspace:*
@@ -305,6 +299,46 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.16(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+
+  packages/motion-script:
+    dependencies:
+      '@motion-script/code':
+        specifier: workspace:^
+        version: link:../components/code
+      '@motion-script/core':
+        specifier: workspace:^
+        version: link:../core
+      '@motion-script/latex':
+        specifier: workspace:^
+        version: link:../components/latex
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.4
+      concurrently:
+        specifier: 'catalog:'
+        version: 9.2.3
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.4(jiti@2.7.0)
+      eslint-import-resolver-typescript:
+        specifier: 'catalog:'
+        version: 4.4.5(eslint-plugin-import-x@4.16.2(@typescript-eslint/utils@8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import-x:
+        specifier: 'catalog:'
+        version: 4.16.2(@typescript-eslint/utils@8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0))
+      tsc-alias:
+        specifier: 'catalog:'
+        version: 1.8.17
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@types/node@25.9.4)(@vitest/browser-playwright@4.1.9)(vite@8.0.16(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/player:
     dependencies:
@@ -556,15 +590,9 @@ importers:
 
   packages/template:
     dependencies:
-      '@motion-script/code':
+      motion-script:
         specifier: workspace:*
-        version: link:../components/code
-      '@motion-script/core':
-        specifier: workspace:*
-        version: link:../core
-      '@motion-script/latex':
-        specifier: workspace:*
-        version: link:../components/latex
+        version: link:../motion-script
     devDependencies:
       '@motion-script/cli':
         specifier: workspace:*

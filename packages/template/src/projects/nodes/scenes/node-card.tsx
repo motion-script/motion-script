@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { Node, Rect, Text } from "@motion-script/core";
+
+import { Node, Rect, Text } from "motion-script";
 
 /**
  * Shared chrome for every node showcase scene.

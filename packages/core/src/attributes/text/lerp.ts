@@ -4,6 +4,7 @@
  * it back as the middle of `to`. Degenerates to a single phase for pure
  * append/prepend/truncate cases.
  */
+/** @internal */
 export function lerpText(from: string, to: string, t: number): string {
     if (t <= 0) return from;
     if (t >= 1) return to;

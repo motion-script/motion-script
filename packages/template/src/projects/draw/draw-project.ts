@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import localSpace from './scenes/local-space?scene';
 import parentSpace from './scenes/parent-space?scene';

@@ -8,6 +8,7 @@
  * can drive a batch of steppers in one tight loop with zero generator resumes
  * per item, which matters when hundreds of node tweens run simultaneously.
  */
+/** @internal */
 export interface TweenStepper {
     /**
      * Jump to the value corresponding to `elapsed` seconds from the start.

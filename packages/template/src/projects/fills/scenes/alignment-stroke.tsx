@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Fills, Rect } from "@motion-script/core";
+
+import { createScene, Fills, Rect } from "motion-script";
 
 /**
  * Sweeps a thick stroke's `align` across its full range so you can see where

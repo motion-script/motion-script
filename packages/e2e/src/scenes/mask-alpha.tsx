@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link MaskGroup} in `'alpha'` mode: the mask shape's rendered alpha — here a radial gradient fading to transparent — drives the content's visibility, producing a soft-edged reveal instead of a hard clip. */

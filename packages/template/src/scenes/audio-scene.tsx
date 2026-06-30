@@ -1,4 +1,4 @@
-import { createScene, Scene, createRef, Rect, Text, Grid, wait } from "@motion-script/core";
+import { createScene, Scene, createRef, Rect, Text, Grid, wait } from "motion-script";
 
 const COLORS = ["#e07b54", "#5ea8d8", "#6bcc8a", "#c97dd4", "#e8c84a", "#d45e6e"];
 

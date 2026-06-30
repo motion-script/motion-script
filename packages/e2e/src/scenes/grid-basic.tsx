@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Grid, Rect, easeOut } from '@motion-script/core';
+import { createScene, createRef, Grid, Rect, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Basic {@link Grid}: six cells auto-placed into 3 equal-width columns, popping in together. */

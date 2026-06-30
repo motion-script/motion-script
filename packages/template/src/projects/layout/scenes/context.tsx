@@ -1,9 +1,7 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
 import {
     createScene, createRef, createContext, Rect, Text, Provider,
     DefaultTextStyle, easeInOut,
-} from "@motion-script/core";
+} from "motion-script";
 import { layoutCard } from "./layout-card";
 
 /**

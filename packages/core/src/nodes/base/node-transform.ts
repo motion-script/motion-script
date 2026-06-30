@@ -13,6 +13,7 @@ import { Matrix2D, applyToPoint, nodeLocalMatrix } from "@/attributes/layout/mat
  * translate by the node's `(x, y)`, giving a parent-relative anchor point. Fast
  * path for the un-rotated case. Drives the local anchor getters.
  */
+/** @internal */
 export function rotateOffset(x: number, y: number, rotationDeg: number, ox: number, oy: number): Vector2 {
     if (rotationDeg === 0) return { x: x + ox, y: y + oy };
     const rad = (rotationDeg * Math.PI) / 180;
@@ -31,6 +32,7 @@ export function rotateOffset(x: number, y: number, rotationDeg: number, ox: numb
  * renderer pushes in `applyTransform`. `cx`/`cy` are the positioned centre
  * (`layoutRect + x`, `layoutRect - y`); `pivot` is the resolved normalised pivot.
  */
+/** @internal */
 export function localMatrix(
     cx: number,
     cy: number,
@@ -46,6 +48,7 @@ export function localMatrix(
 }
 
 /** The nine world-space anchor points produced by mapping centered y-up offsets through `m`. */
+/** @internal */
 export interface WorldAnchors {
     center: Vector2;
     topLeft: Vector2;
@@ -64,6 +67,7 @@ export interface WorldAnchors {
  * space, so y is flipped in and back out. `halfW`/`halfH` are half the node's
  * layout size.
  */
+/** @internal */
 export function worldAnchors(m: Matrix2D, halfW: number, halfH: number): WorldAnchors {
     const at = (ox: number, oy: number): Vector2 => {
         const p = applyToPoint(m, { x: ox, y: -oy });

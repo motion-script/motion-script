@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, wait, sequence } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, wait, sequence } from "motion-script";
 import { textCard } from "./text-card";
 
 const BG = '#0D0F15';

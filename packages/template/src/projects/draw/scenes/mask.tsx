@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, easeInOut, sequence } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, easeInOut, sequence } from "motion-script";
 import { DrawnMask } from "../nodes/drawn-mask";
 
 /**

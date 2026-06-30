@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, linear } from '@motion-script/core';
+import { createScene, createRef, Rect, linear } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Default pivot (the node's center): rotation spins the card in place around its own midpoint. */

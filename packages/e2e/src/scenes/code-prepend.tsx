@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
-import { Code } from '@motion-script/code';
+import { createScene, createRef, Rect, wait } from 'motion-script';
+import { Code } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Code.prepend}: an import line is typed in above the existing snippet, pushing it down. */

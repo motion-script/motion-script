@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, LineGrid, Text, Fills, wait } from "@motion-script/core";
+
+import { createScene, createRef, Rect, LineGrid, Text, Fills, wait } from "motion-script";
 
 /**
  * Showcases the {@link LineGrid} node. Two grids sit side by side. `stroke`

@@ -14,6 +14,7 @@ import type { Signal } from "@/signals/signal";
  * @returns A function `(t: number) => void` that writes `lerp(from, to, t)`
  *          for each key. `t` must already be eased by the caller.
  */
+/** @internal */
 export function prepareNumericTween<T extends object>(
     target: T,
     to: Partial<Record<keyof T, number>>,
@@ -48,6 +49,7 @@ export function prepareNumericTween<T extends object>(
  * The arrays are captured by the returned closure and reused each step, so the
  * per-frame cost is one `cell.set(number)` per property with no allocation.
  */
+/** @internal */
 export function prepareNumericCellTween(
     cells: Signal<number>[],
     from: number[],

@@ -1,4 +1,4 @@
-import { createProject, createScene } from '@motion-script/core';
+import { createProject, createScene } from 'motion-script';
 
 import { expensive } from '../../scenes/expensive';
 

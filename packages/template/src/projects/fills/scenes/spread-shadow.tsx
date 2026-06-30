@@ -1,5 +1,5 @@
-import { Fills } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { Fills } from "motion-script";
+import { createScene } from "motion-script";
 import { shapeDemo } from "./shape-demo";
 
 /**

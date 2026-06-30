@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 import { scenes } from './scenes/catalog';
 
 /**

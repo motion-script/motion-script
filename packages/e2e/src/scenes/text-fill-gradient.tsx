@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Text, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Text} `fill` as a linear gradient, sweeping its angle across the glyphs. */

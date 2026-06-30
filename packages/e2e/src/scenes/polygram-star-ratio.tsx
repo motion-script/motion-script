@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygram, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Polygram.ratio}: a sharp-pointed star blunting toward a near-regular polygon as ratio approaches 1. */

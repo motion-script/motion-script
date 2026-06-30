@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Node-level `blend`: a magenta circle isolates and blends against a grayscale backdrop via `'color'`, taking the circle's hue and saturation while keeping the backdrop's luminosity. */

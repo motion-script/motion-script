@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Text, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Text.letterSpacing}: glyphs spread apart from tight (0) to loose (16). */

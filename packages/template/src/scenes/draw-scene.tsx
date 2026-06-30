@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "@motion-script/core";
+import { createScene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "motion-script";
 export interface CustomShapeProps extends ShapeProps {
     ratio: number;
     sweep: number;

@@ -11,6 +11,7 @@ import { Vector2 } from "@/attributes/layout/vector2";
  */
 
 /** Largest frame delta we trust for a velocity estimate (seconds). Larger gaps (scrub/seek) read as "unknown". */
+/** @internal */
 export const MAX_MOTION_DT = 0.2;
 
 /**
@@ -18,6 +19,7 @@ export const MAX_MOTION_DT = 0.2;
  * Allocated once with the node (mirrors the reused `_renderState` scratch), then
  * mutated in place by {@link sampleMotion} each frame.
  */
+/** @internal */
 export interface MotionHistory {
     prevPos: Vector2 | null;
     prevTime: number;
@@ -26,11 +28,13 @@ export interface MotionHistory {
 }
 
 /** Create the zeroed history holder a node keeps for its lifetime. */
+/** @internal */
 export function createMotionHistory(): MotionHistory {
     return { prevPos: null, prevTime: 0, prevRotation: 0, prevScale: 1 };
 }
 
 /** Advance a node's clock to `totalTime`, seeding `creation` on first tick. */
+/** @internal */
 export function advanceClock(clock: NodeClock, totalTime: number): void {
     if (!clock.initialized) {
         clock.creation = totalTime;
@@ -50,6 +54,7 @@ export function advanceClock(clock: NodeClock, totalTime: number): void {
  * resolved from `layoutRect + x` / `layoutRect - y`. Layout-dependent fields
  * (`rects`/`elapsed`) are filled in later by `beforeRender`.
  */
+/** @internal */
 export function sampleMotion(
     state: NodeRenderState,
     history: MotionHistory,

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ImageFilters.curves} stacked per-channel: separate R, G, and B tone curves layered on one image fill, each animating independently to push a teal-and-orange grade. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ImageFilters.grayscale}: an image fill's own pixel filter desaturating the image as `amount` ramps from 0 to 1. */

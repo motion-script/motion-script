@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygon, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A regular hexagon (`sides={6}`) spinning into view. */

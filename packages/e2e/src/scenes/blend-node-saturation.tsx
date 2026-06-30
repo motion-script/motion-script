@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Node-level `blend`: a saturated circle isolates and blends against a desaturated backdrop via `'saturation'`, taking the circle's saturation while keeping the backdrop's hue and luminosity. */

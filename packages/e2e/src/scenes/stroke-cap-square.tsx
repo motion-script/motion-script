@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `cap: 'square'`: an open stroke's ends extend by half the weight past the path's terminal points, like `'butt'` but squared off further out. */

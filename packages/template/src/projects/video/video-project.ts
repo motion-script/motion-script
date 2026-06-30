@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import videoBasic from './scenes/basic?scene';
 import videoFit from './scenes/fit-mode?scene';

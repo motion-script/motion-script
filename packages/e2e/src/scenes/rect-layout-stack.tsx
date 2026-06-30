@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Rect} `group={'stack'}`: three children centered and overlapping, popping in from largest to smallest. */

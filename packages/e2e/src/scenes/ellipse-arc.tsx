@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Ellipse, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Ellipse arc stroke: `sweep` animating from a quarter-turn to a near-full circle. */

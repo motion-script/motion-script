@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 
 import effectsProject from './projects/effects/effects-project';
@@ -12,5 +12,5 @@ import shapesProject from './projects/shapes/shapes-project';
 import nodesProject from './projects/nodes/nodes-project';
 import expensiveProject from './projects/expensive/expensive-project';
 import textProject from './projects/text/text-project';
-export default nodesProject;
+export default expensiveProject;
 

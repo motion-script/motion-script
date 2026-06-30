@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Text, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Text.lineHeight}: a wrapped paragraph's row spacing loosens from tight (0.9) to airy (2). */

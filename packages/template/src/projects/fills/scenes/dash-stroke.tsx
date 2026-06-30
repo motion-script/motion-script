@@ -1,4 +1,4 @@
-import { createScene, Fills, sequence, easeInOut, linear } from "@motion-script/core";
+import { createScene, Fills, sequence, easeInOut, linear } from "motion-script";
 import { strokeCard } from "./stroke-card";
 
 /**

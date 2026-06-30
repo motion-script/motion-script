@@ -1,5 +1,5 @@
-import { Effects as FX } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { Effects as FX } from "motion-script";
+import { createScene } from "motion-script";
 import { effectDemo } from "./effect-demo";
 
 /** Composed look: vintage grade + chromatic aberration fringe. */

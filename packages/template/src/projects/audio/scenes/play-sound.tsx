@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, parallel, wait } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, parallel, wait } from "motion-script";
 
 /**
  * `yield* this.playSound(...)` — the blocking form. The generator pauses for the

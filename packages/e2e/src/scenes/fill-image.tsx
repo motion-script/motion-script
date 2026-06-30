@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Fills.image}: an image fill layer scaling up inside a rounded frame. */

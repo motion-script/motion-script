@@ -1,4 +1,4 @@
-import { createScene } from "@motion-script/core";
+import { createScene } from "motion-script";
 import { blendDemo } from "./blend-demo";
 
 /** `saturation` blend mode fading in over the photo. */

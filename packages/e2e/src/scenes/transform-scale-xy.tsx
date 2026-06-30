@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Independent horizontal/vertical scale (as opposed to uniform `scale`): a card stretches wide and flattens by tweening `width`/`height` independently, then squeezes narrow and tall. */

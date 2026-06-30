@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, MaskGroup, Ellipse, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, MaskGroup, Ellipse, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link MaskGroup} clipping a card's combined fill and stroke down to a growing circular window. */

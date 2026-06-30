@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Grid, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Grid, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Grid} child `colSpan`: the accent cell grows from spanning 1 column to spanning all 3. */

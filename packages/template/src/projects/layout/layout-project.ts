@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import global from './scenes/global';
 import camera from './scenes/camera?scene';

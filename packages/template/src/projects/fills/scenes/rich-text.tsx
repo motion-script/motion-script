@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Text, RichText } from "@motion-script/core";
+
+import { createScene, Rect, Text, RichText } from "motion-script";
 
 /**
  * A {@link RichText} node mixing per-span fill, weight, size and stroke so a

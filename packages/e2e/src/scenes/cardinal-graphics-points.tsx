@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Text, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Text, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A card's resolved cardinal points (`topLeft`, `topCenter`, ..., `bottomRight`) tracked live by a marker that hops between them as the card rotates and scales. */

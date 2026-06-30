@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Polygon, Fills } from "@motion-script/core";
+
+import { createScene, Polygon, Fills } from "motion-script";
 import { shapeScene, ShapeSceneSpec } from "./shape-scene";
 
 /** Showcase for Polygon-specific properties: sides, cornerRadius, and cornerStyle. */

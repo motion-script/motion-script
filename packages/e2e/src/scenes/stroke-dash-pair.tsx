@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `dash: [on, off]`: an explicit two-number pair gives uneven dash/gap lengths, here animating from short dashes/long gaps to long dashes/short gaps. */

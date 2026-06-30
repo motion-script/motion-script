@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Line.radius}: a sharp-cornered zig-zag rounding its vertices into smooth arcs. */

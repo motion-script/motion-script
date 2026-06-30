@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeInOut}`('circ')`: a card slides across with the circular-curve's distinctively steep, near-instant middle transition. */

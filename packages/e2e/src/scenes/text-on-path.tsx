@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Text, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Text.path}: a single line of text follows an arcing path instead of a straight baseline. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, Video, wait } from '@motion-script/core';
+import { createScene, Video, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Video}'s `loop: 'forward'` repeating a short trimmed clip continuously, restarting from `trimStart` once it reaches `trimEnd` rather than stopping on the last frame. */

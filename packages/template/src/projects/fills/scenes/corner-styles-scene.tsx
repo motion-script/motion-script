@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Rect, Polygon, Polygram, wait } from "@motion-script/core";
+
+import { createScene, Rect, Polygon, Polygram, wait } from "motion-script";
 
 /**
  * Visual showcase for corner styles: a circular `rounded` corner and an

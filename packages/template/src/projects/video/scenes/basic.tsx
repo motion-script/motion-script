@@ -1,5 +1,5 @@
-import { Fills } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { Fills } from "motion-script";
+import { createScene } from "motion-script";
 import { videoFill, SAMPLE_VIDEO } from "./video-fill";
 
 /** Plain looping video fill — the clip plays and loops as the scene holds. */

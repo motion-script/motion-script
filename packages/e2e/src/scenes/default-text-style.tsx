@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, DefaultTextStyle, Rect, Text, wait } from '@motion-script/core';
+import { createScene, DefaultTextStyle, Rect, Text, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link DefaultTextStyle} setting `fontFamily`/`fill` for every {@link Text} beneath it — descendants that don't set their own font inherit it, while one that overrides `fontFamily` locally keeps its own. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Camera, Rect, Ellipse, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Camera, Rect, Ellipse, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A camera zooming in on a small scene of shapes. */

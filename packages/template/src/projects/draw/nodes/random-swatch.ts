@@ -1,4 +1,4 @@
-import { Rect, RectProps, type NodeConfig, property } from "@motion-script/core";
+import { Rect, RectProps, type NodeConfig, property } from "motion-script";
 
 export interface RandomSwatchProps extends RectProps {
     /**

@@ -1,7 +1,7 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
     property,
-} from "@motion-script/core";
+} from "motion-script";
 
 export interface DrawnMaskProps extends ShapeProps {
     /** Half-width of the design box the commands are authored in. */

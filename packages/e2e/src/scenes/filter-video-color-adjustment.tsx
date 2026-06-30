@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link VideoFilters.colorAdjustment}: a full color-grade sweep (contrast, saturation, temperature, vignette) applied live to a playing video. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeInOut}`('cubic')`: a card slides across with a moderate, balanced acceleration/deceleration curve. */

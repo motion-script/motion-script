@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygon, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** An equilateral triangle (`sides={3}`) spinning into view. */

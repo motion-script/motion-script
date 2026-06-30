@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Line}'s `start`/`end` trim props (0..1) drawing a zigzag path on progressively from nothing to fully traced. */

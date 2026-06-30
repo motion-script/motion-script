@@ -1,30 +1,11 @@
-export {
-    Corners,
-    CornersInput,
-    resolveCorners,
-    lerpCorners,
-    isUniformCorners,
-} from "./per-corner";
+export type { Corners, CornersInput } from "./per-corner";
+/** @internal */ export { resolveCorners, lerpCorners, isUniformCorners } from "./per-corner";
 
-export {
-    CornerRadiusResolved,
-    RectCornerRadius,
-    isUniformCornerRadiusInput,
-    isUniformCornerRadius,
-    getUniformCornerRadius,
-    isZeroCornerRadius,
-    resolveCornerRadius,
-    lerpCornerRadius,
-} from "./corner-radius";
+/** @internal */ export type { CornerRadiusResolved, RectCornerRadius } from "./corner-radius";
+/** @internal */ export { isUniformCornerRadiusInput, isUniformCornerRadius, getUniformCornerRadius, isZeroCornerRadius, resolveCornerRadius, lerpCornerRadius } from "./corner-radius";
 
-export {
-    CornerStyle,
-    CornerStyleResolved,
-    RectCornerStyle,
-    resolveCornerStyle,
-    lerpCornerStyle,
-} from "./corner-style";
+export type { CornerStyle } from "./corner-style";
+/** @internal */ export type { CornerStyleResolved, RectCornerStyle } from "./corner-style";
+/** @internal */ export { resolveCornerStyle, lerpCornerStyle } from "./corner-style";
 
-export {
-    lerpCornerScalarStyle,
-} from "./corner-scalar";
+/** @internal */ export { lerpCornerScalarStyle } from "./corner-scalar";

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Open {@link Line}: an unclosed zig-zag polyline, revealed end-to-end via `end`. */

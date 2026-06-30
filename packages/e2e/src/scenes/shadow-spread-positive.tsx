@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Positive `shadow.spread` grows the shadow's silhouette before it is offset and blurred, like CSS `box-shadow` spread, pushing the glow past the shape's edge. */

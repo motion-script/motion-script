@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Effects.grayscale}: a colorful card desaturates as `amount` ramps from 0 to 1. */

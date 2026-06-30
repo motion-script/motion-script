@@ -1,9 +1,7 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
 import {
     createScene, createRef, Text, Rect, Fills, PivotInput,
     easeInOut, sequence, parallel,
-} from "@motion-script/core";
+} from "motion-script";
 import { DrawnPivotText } from "../nodes/drawn-pivot-text";
 
 /** Gradient shared by every word so only the pivot differs between them. */

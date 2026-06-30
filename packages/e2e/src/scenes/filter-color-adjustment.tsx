@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link ImageFilters.colorAdjustment}: brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, and vignette all animating together for a full color-grade sweep. */

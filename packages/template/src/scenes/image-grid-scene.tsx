@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "@motion-script/core";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;

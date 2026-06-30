@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `Effects.grayscale(amount, {backdrop: true})`: desaturates the content beneath the node, clipped to its silhouette, while the node's own fill/stroke stays untouched. */

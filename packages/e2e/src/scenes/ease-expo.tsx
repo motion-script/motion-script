@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeInOut}`('expo')`: a card slides across with an exponential curve — near-stationary at the edges, extremely fast through the middle. */

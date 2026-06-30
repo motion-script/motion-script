@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, Video, wait } from '@motion-script/core';
+import { createScene, Video, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Video} playing a trimmed window (`trimStart`/`trimEnd`) of the source clip at normal speed, muted so the e2e harness stays deterministic. */

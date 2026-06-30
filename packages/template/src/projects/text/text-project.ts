@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import typing from './scenes/typing?scene';
 import fontStyling from './scenes/font-styling?scene';

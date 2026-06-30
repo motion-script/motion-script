@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `Effects.pixelate(blocks, {backdrop: true})`: mosaics the content beneath the node, clipped to its silhouette, while the node's own edges stay sharp. */

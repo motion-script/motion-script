@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Polygram, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A 5-point star (polygram, default ratio) spinning into view. */

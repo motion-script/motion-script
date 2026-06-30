@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import text from './scenes/text-scene?scene';
 import richText from './scenes/rich-text-scene?scene';

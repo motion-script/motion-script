@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import colorFill from './scenes/color-fill?scene';
 import linearGradient from './scenes/linear-gradient?scene';

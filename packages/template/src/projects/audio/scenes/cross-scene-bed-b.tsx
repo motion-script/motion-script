@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, easeInOut, wait } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, easeInOut, wait } from "motion-script";
 
 /**
  * Cross-scene audio (part 2 of 2). This scene starts no sound of its own — yet the

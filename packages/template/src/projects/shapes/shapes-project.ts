@@ -1,4 +1,4 @@
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 import rect from './scenes/rect-scene?scene';
 import ellipse from './scenes/ellipse-scene?scene';

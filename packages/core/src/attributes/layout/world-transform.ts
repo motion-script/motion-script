@@ -10,6 +10,7 @@ import { Vector2 } from "./vector2";
  * inside a reactive callback (`x: () => other().global.topRight.x`) they track
  * changes to this node's *and* every ancestor's layout/transform.
  */
+/** @internal */
 export interface WorldTransform {
     /** World position of the node's center (its `x`/`y` origin). */
     readonly x: number;

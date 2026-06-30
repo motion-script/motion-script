@@ -1,11 +1,11 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, Stage, createRef, Reference, Text, Rect, Ellipse, Image,
     EffectChain, SceneEffect, easeOut, parallel,
     Node,
     Effects,
-} from "@motion-script/core";
+} from "motion-script";
 
 /**
  * Shared scaffolding for the per-effect showcase scenes.

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, linear } from '@motion-script/core';
+import { createScene, createRef, Rect, linear } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Rect.pivot} set to a corner (`{x:0, y:1}` in unit space — top-left): rotation now swings the card around that corner instead of its center, like a page turning. */

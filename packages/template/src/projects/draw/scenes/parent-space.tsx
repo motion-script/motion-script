@@ -1,4 +1,4 @@
-import { createScene } from "@motion-script/core";
+import { createScene } from "motion-script";
 import { drawDemo } from "./draw-demo";
 
 /**

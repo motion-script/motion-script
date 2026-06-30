@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, Fills, easeInOut } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Text, Fills, easeInOut } from "motion-script";
 
 /**
  * A single {@link Text} node cycling through every fill type — solid color,

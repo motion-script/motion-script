@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, easeOut, wait } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, easeOut, wait } from "motion-script";
 
 /**
  * `this.startSound(...)` / `this.stopSound(...)` — the non-blocking form. The

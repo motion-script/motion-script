@@ -12,6 +12,7 @@ packages:
   - "packages/e2e"
   - "packages/components/code"
   - "packages/components/latex"
+  - "packages/motion-script"
 
 allowBuilds:
   '@swc/core': false

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Line, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Line, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `cap: 'butt'` (the default): an open stroke's ends are flush, with no extension past the path's terminal points. The weight thickens so the flat-cut ends read clearly. */

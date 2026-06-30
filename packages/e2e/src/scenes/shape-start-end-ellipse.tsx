@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Ellipse, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Ellipse}'s `start`/`end` trim props (0..1) sweeping a stroked ring open from a single point into a full circle. */

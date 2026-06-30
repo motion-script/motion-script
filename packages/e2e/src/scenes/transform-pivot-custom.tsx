@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, linear } from '@motion-script/core';
+import { createScene, createRef, Rect, linear } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Rect.pivot} set to an arbitrary off-shape point, far outside the card's own bounds: rotation now orbits the card around that distant point instead of swinging in place. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeInOut}`('sine')`: a card slides across with the subtlest curve of all — a smooth, near-linear sinusoidal glide. */

@@ -1,8 +1,7 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
 import {
     SceneGenerator, createRef, Rect, parallel, easeInOut,
-} from "@motion-script/core";
+} from "motion-script";
 
 /**
  * A deliberately heavy scene: ~`count` independently-animated rects, each

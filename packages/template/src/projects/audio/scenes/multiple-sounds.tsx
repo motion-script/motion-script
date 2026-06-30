@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, parallel, wait } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, AudioFilters, easeInOut, parallel, wait } from "motion-script";
 
 /**
  * Two clips playing at once. `startSound` layers a looping bed (`song.mp3`)

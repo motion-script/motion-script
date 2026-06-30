@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { Node, Rect, Text, Reference } from "@motion-script/core";
+
+import { Node, Rect, Text, Reference } from "motion-script";
 
 /**
  * Shared scaffolding for the layout showcase scenes.

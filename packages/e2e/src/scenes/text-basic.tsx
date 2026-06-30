@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Text, easeOut } from '@motion-script/core';
+import { createScene, createRef, Text, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Single-line text in the default style, fading + rising into place. */

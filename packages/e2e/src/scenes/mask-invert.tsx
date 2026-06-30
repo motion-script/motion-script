@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, MaskGroup, Ellipse, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link MaskGroup}'s `inverted` flag flipping the mask to subtract mode: content shows everywhere the mask shape is NOT, so a growing circle now punches a hole instead of opening a window. */

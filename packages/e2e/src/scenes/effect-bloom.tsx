@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Text, Effects, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Effects.bloom}: bright areas bleed soft light outward as `intensity` ramps up. */

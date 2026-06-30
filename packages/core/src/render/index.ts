@@ -1,27 +1,27 @@
-export * from './descriptors/ellipse';
-export * from './descriptors/rect';
+/** @internal */ export * from './descriptors/ellipse';
+/** @internal */ export * from './descriptors/rect';
 
-export * from './descriptors/text';
-export * from './descriptors/richtext';
+/** @internal */ export * from './descriptors/text';
+/** @internal */ export * from './descriptors/richtext';
 
 
-export * from './descriptors/transform';
-export * from './descriptors/shape';
+/** @internal */ export * from './descriptors/transform';
+/** @internal */ export * from './descriptors/shape';
 
-export * from './descriptors/path';
-export * from './descriptors/path-builder';
-export * from './descriptors/line';
-export * from './descriptors/polygon';
-export * from './descriptors/polygram';
-export { BuildStage } from './build-stage';
+/** @internal */ export * from './descriptors/path';
+/** @internal */ export * from './descriptors/path-builder';
+/** @internal */ export * from './descriptors/line';
+/** @internal */ export * from './descriptors/polygon';
+/** @internal */ export * from './descriptors/polygram';
+/** @internal */ export { BuildStage } from './build-stage';
 
-export { Graphics } from './graphics';
-export type { GraphicsOp, GraphicsShapeOp, GraphicsTransform } from './graphics';
+/** @internal */ export { Graphics } from './graphics';
+/** @internal */ export type { GraphicsOp, GraphicsShapeOp, GraphicsTransform } from './graphics';
 
-export { Clip } from './clip';
-export type { ClipOp, ClipShapeOp } from './clip';
+/** @internal */ export { Clip } from './clip';
+/** @internal */ export type { ClipOp, ClipShapeOp } from './clip';
 
-export { RenderContext, Render2DContext } from './render-context';
-export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget } from './render-context';
-export { MeasureScope } from './measure-scope';
+/** @internal */ export { RenderContext, Render2DContext } from './render-context';
+/** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget } from './render-context';
+/** @internal */ export { MeasureScope } from './measure-scope';
 

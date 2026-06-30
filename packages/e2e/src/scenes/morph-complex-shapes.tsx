@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Path, easeInOut } from '@motion-script/core';
+
+import { createScene, createRef, Path, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 // A blob with two disjoint subpaths (an outer ring and a separate inner hole-like

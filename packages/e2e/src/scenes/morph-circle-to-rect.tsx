@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Path, easeInOut } from '@motion-script/core';
+
+import { createScene, createRef, Path, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 const CIRCLE = 'M 90 0 A 90 90 0 1 1 -90 0 A 90 90 0 1 1 90 0 Z';

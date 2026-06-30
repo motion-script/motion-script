@@ -1,4 +1,4 @@
-export * from './playback-controller';
-export * from './state-evaluator';
-export * from './precompisition';
-export * from './builtin-context';
+/** @internal */ export * from './playback-controller';
+/** @internal */ export * from './state-evaluator';
+/** @internal */ export * from './precompisition';
+/** @internal */ export * from './builtin-context';

@@ -17,6 +17,7 @@ import { resolveStrokeArray, StrokeProp, StrokeResolved } from "@/attributes/sha
  */
 
 /** A grid extent on one axis: lines tile within `[min, max]` about 0. */
+/** @internal */
 export interface GridAxis {
     /** Minimum coordinate (typically negative; the lines centre on 0). */
     min: number;
@@ -32,6 +33,7 @@ export interface GridAxis {
  * sit at x = `verticalX[i]` and run from `top` to `bottom`; horizontal lines sit
  * at y = `horizontalY[i]` and run from `left` to `right`. Positions are split
  * into major (division) and minor (subdivision) lines. */
+/** @internal */
 export interface GridLines {
     /** y-extent every vertical line spans. */
     top: number;
@@ -59,6 +61,7 @@ export interface GridLines {
  * length and the renderer's per-path dash-fit becomes a no-op (no per-frame
  * resizing of the dashes as lines enter and leave view).
  */
+/** @internal */
 export function gridLines(
     x: GridAxis,
     y: GridAxis,
@@ -95,6 +98,7 @@ export function gridLines(
  * this is the path for solid strokes; dashed strokes that must stay world-locked
  * draw per line from {@link gridLines} instead.
  */
+/** @internal */
 export function gridLinePaths(
     x: GridAxis,
     y: GridAxis,
@@ -133,6 +137,7 @@ function snapSpan(pos: number, step: number, offset: number, cycle: number, roun
  * is taken relative to the un-panned centred grid (offset folded out) to keep
  * classification stable as it scrolls.
  */
+/** @internal */
 export function addTiledLines(
     min: number,
     max: number,
@@ -160,6 +165,7 @@ export function addTiledLines(
 
 /** Largest stroke weight across the layers of a resolved stroke array. Used to
  * overscan the tiling so a thick line stays drawn until fully off the area. */
+/** @internal */
 export function maxWeight(strokes: StrokeResolved[]): number {
     let max = 0;
     for (const s of strokes) if (s.weight > max) max = s.weight;
@@ -171,6 +177,7 @@ export function maxWeight(strokes: StrokeResolved[]): number {
  * meaningless — they always straddle their position. (Open paths are already
  * stroked centered by the renderer; this makes the intent explicit and ignores
  * any author `align`.) */
+/** @internal */
 export function centered(strokes: StrokeResolved[]): StrokeResolved[] {
     return strokes.map(s => (s.align === 0 ? s : { ...s, align: 0 }));
 }
@@ -178,6 +185,7 @@ export function centered(strokes: StrokeResolved[]): StrokeResolved[] {
 /** Copy a resolved stroke array with every fill layer's opacity scaled by
  * `factor`. Used to derive the default minor-line stroke from the major one.
  * Every resolved fill carries an `opacity` field, so this is type-uniform. */
+/** @internal */
 export function dimStroke(strokes: StrokeResolved[], factor: number): StrokeResolved[] {
     return resolveStrokeArray(strokes.map(s => ({
         ...s,

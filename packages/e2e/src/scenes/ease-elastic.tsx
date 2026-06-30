@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeOut, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, easeOut, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link easeOut}`('elastic')`: a card springs to its target, oscillating like a rubber band before settling. */

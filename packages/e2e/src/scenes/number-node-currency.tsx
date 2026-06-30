@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, NumberNode, easeOut } from '@motion-script/core';
+import { createScene, createRef, NumberNode, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link NumberNode} `format={'currency'}`: a dollar amount counting up from 0. */

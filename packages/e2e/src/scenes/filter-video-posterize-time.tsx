@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link VideoFilters.posterizeTime}: snaps the video playhead to a coarser frame rate, dropping from a smooth 30fps to a choppy stop-motion 4fps. */

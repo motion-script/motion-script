@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, Ellipse, Image, MaskGroup, easeInOut, parallel, sequence } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, Ellipse, Image, MaskGroup, easeInOut, parallel, sequence } from "motion-script";
 
 /**
  * Shows a {@link MaskGroup} clipping content with an animated mask shape.

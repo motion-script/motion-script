@@ -1,8 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
 import {
     createScene, createRef, Rect, Text, easeInOut, sequence,
-} from "@motion-script/core";
+} from "motion-script";
 import { RandomSwatch } from "../nodes/random-swatch";
 
 /**

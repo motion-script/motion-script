@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link Rect.overlay}: a playing video washes over an entire subtree of child rects, sitting above them but under the stroke. */

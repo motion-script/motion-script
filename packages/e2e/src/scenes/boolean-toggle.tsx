@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, BooleanGroup, Rect, Ellipse, wait } from '@motion-script/core';
+import { createScene, createRef, BooleanGroup, Rect, Ellipse, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link BooleanGroup}'s `op` toggling between `'union'` and `'subtract'` at the midpoint — the combined silhouette of a rect and an overlapping circle switches from a merged blob to a rect with a circular bite taken out. */

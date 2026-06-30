@@ -22,6 +22,7 @@ import { Fill } from "@/attributes/shape/fill/chain";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 
+/** @internal */
 export interface RootProps extends NodeProps {
     /**
      * Background fill layer(s). Each item can be a CSS color string, a fill
@@ -71,6 +72,7 @@ export interface RootProps extends NodeProps {
  * same {@link GroupLayout} engine {@link Rect} uses; this node implements
  * {@link GroupHost} so the engine can read it.
  */
+/** @internal */
 export class RootNode extends Node<RootProps> implements GroupHost {
 
     // ---- Background paint -------------------------------------------------

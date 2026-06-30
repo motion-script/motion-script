@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** A node's `fill` accepts an array: solid base + gradient wash + noise grain, painted bottom-to-top. */

@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Row, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Row, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /**

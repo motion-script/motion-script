@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `align: 'center'` (0) straddles the shape's edge — half the weight sits inside, half outside, so the silhouette grows on both sides as the stroke thickens. */

@@ -20,6 +20,7 @@ const VARIABLES_MAP = _g.__msVariablesMap as Map<string, unknown>;
  * Register the project's variables, keyed by their (lowercased) name. Call with
  * no argument (or an empty object) to clear the registry.
  */
+/** @internal */
 export function setVariables(variables: Record<string, unknown> = {}): void {
     VARIABLES_MAP.clear();
     for (const [key, value] of Object.entries(variables)) {
@@ -27,8 +28,11 @@ export function setVariables(variables: Record<string, unknown> = {}): void {
     }
 }
 
-/** Looks up a registered variable by name (case-insensitive); `undefined` if
- *  none is registered. Backs `stage.variables(...)`. */
+/**
+ * @internal
+ * Looks up a registered variable by name (case-insensitive); `undefined` if
+ * none is registered. Backs `stage.variables(...)`.
+ */
 export function getVariable(key: string): unknown {
     return VARIABLES_MAP.get(key.toLowerCase());
 }

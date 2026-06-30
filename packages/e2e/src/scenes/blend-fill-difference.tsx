@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Fill-level `blend`: a circle's *fill* (not the node) blends against the card beneath it via `'difference'`, subtracting colors in the overlap. */

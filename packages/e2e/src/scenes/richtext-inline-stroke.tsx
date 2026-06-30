@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, RichText, easeOut } from '@motion-script/core';
+import { createScene, createRef, RichText, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link RichText} per-span `stroke`: one word in a sentence gets its own outline, distinct from its plain-fill neighbors. */

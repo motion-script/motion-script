@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, Rect, wait, easeInOut } from "@motion-script/core";
+
+import { createScene, createRef, Text, Rect, wait, easeInOut } from "motion-script";
 
 const BG = '#0D0F15';
 

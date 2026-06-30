@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeOut } from '@motion-script/core';
-import { Latex } from '@motion-script/latex';
+import { createScene, createRef, Rect, easeOut } from 'motion-script';
+import { Latex } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Latex node rendering a more complex multi-symbol formula (an integral), fading in. */

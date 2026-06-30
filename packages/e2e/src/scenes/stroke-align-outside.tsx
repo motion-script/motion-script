@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** `align: 'outside'` (+1) keeps the whole stroke band outside the shape's measured bounds, so the inner fill area (350x350) never changes — only the outer silhouette grows. */

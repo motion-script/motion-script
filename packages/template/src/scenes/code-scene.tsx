@@ -1,5 +1,5 @@
-import { createScene, createRef, wait, easeOut, Rect, Fills, Ellipse } from "@motion-script/core";
-import { Code, lines, word } from "@motion-script/code";
+import { createScene, createRef, wait, easeOut, Rect, Fills, Ellipse } from "motion-script";
+import { Code, lines, word } from "motion-script";
 
 export default createScene(function* (stage) {
         stage.set({ fill: Fills.image('background.jpg', { fit: 'fill' }).color('#0f121a', { opacity: 0.24 }), padding: 120 });

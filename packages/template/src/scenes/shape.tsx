@@ -1,4 +1,4 @@
-import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOut, easeOut } from "@motion-script/core";
+import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, Line, Text, parallel, sequence, wait, easeInOut, easeOut } from "motion-script";
 
 const easeBack = easeOut('back');
 

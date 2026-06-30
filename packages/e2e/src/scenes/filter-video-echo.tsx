@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** {@link VideoFilters.echo}: a motion-trail effect compositing the current video frame with several delayed, decaying past frames, growing from a single tap to a long trail. */

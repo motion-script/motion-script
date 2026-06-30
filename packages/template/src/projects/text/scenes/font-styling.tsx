@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Text, wait, parallel, easeInOut } from "@motion-script/core";
+
+import { createScene, createRef, Text, wait, parallel, easeInOut } from "motion-script";
 import { textCard, textCell } from "./text-card";
 
 const CREAM = '#F5ECD7';

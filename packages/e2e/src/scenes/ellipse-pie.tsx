@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Ellipse, easeInOut } from '@motion-script/core';
+import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Ellipse pie slice: a filled wedge with `sweep` opening from a sliver to a near-full circle. */

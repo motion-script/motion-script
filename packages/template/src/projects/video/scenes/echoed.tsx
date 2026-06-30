@@ -1,5 +1,5 @@
-import { Fills, VideoFilters } from "@motion-script/core";
-import { createScene } from "@motion-script/core";
+import { Fills, VideoFilters } from "motion-script";
+import { createScene } from "motion-script";
 import { videoFill, SAMPLE_VIDEO } from "./video-fill";
 
 /**

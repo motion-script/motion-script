@@ -1,8 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
 import {
     createScene, Text, Rect, Fills, AlignName,
-} from "@motion-script/core";
+} from "motion-script";
 import { DrawnShapePivot } from "../nodes/drawn-shape-pivot";
 
 /** Gradient shared by every rect so only the anchor differs between cells. */

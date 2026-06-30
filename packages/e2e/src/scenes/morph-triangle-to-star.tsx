@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Path, easeInOut } from '@motion-script/core';
+
+import { createScene, createRef, Path, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
 const TRIANGLE = 'M 0 -110 L 95 70 L -95 70 Z';

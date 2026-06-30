@@ -1,7 +1,5 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, easeInOut } from '@motion-script/core';
-import { Latex } from '@motion-script/latex';
+import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { Latex } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Latex `fill` as a linear gradient, sweeping its angle across the formula. */

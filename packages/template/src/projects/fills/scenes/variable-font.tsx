@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Text } from "motion-script";
 
 /**
  * Animates a {@link Text} node's `fontWeight` along a variable font's weight

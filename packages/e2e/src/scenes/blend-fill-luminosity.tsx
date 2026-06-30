@@ -1,6 +1,4 @@
-/** @jsxImportSource @motion-script/core/jsx */
-
-import { createScene, createRef, Rect, Fills, wait } from '@motion-script/core';
+import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** Fill-level `blend`: a bright circle's *fill* (not the node) blends against the colorful card beneath it via `'luminosity'`, taking the circle's luminosity while keeping the card's hue and saturation. */

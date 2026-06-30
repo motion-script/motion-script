@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, Polygram, Fills } from "@motion-script/core";
+
+import { createScene, Polygram, Fills } from "motion-script";
 import { shapeScene, ShapeSceneSpec } from "./shape-scene";
 
 /** Showcase for Polygram-specific properties: sides, ratio, cornerRadius, and cornerStyle. */

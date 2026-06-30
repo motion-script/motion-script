@@ -1,9 +1,9 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     createScene, createRef, Text, Rect, Ellipse, BooleanGroup,
     Fills, BooleanOperation, easeInOut, parallel,
-} from "@motion-script/core";
+} from "motion-script";
 
 /** One labelled cell: a named boolean op applied to two overlapping circles. */
 interface OpSpec {

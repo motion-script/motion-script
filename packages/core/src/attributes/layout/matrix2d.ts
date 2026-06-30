@@ -14,16 +14,17 @@ import { Vector2 } from "@/attributes/layout/vector2";
  * column-order convention CanvasKit/DOM use, so matrices compose in draw order:
  * `parent.multiply(child)` is the world transform of `child`.
  */
+/** @internal */
 export interface Matrix2D {
     a: number; b: number; c: number; d: number; e: number; f: number;
 }
 
-/** The identity transform — maps every point to itself. */
+/** @internal The identity transform — maps every point to itself. */
 export function identity(): Matrix2D {
     return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 }
 
-/** Pure translation by (tx, ty). */
+/** @internal Pure translation by (tx, ty). */
 export function translation(tx: number, ty: number): Matrix2D {
     return { a: 1, b: 0, c: 0, d: 1, e: tx, f: ty };
 }
@@ -33,6 +34,7 @@ export function translation(tx: number, ty: number): Matrix2D {
  * ancestor with a descendant (`ancestor.multiply(descendant)`) yields the
  * descendant's world transform.
  */
+/** @internal */
 export function multiply(m1: Matrix2D, m2: Matrix2D): Matrix2D {
     return {
         a: m1.a * m2.a + m1.c * m2.b,
@@ -44,7 +46,7 @@ export function multiply(m1: Matrix2D, m2: Matrix2D): Matrix2D {
     };
 }
 
-/** Map a point through the transform. */
+/** @internal Map a point through the transform. */
 export function applyToPoint(m: Matrix2D, p: Vector2): Vector2 {
     return {
         x: m.a * p.x + m.c * p.y + m.e,
@@ -64,6 +66,7 @@ export function applyToPoint(m: Matrix2D, p: Vector2): Vector2 {
  * @param pivotX   Pivot offset in pixels, x.
  * @param pivotY   Pivot offset in pixels, y (canvas y-down).
  */
+/** @internal */
 export function nodeLocalMatrix(
     cx: number, cy: number, rotation: number, scale: number, pivotX: number, pivotY: number,
 ): Matrix2D {

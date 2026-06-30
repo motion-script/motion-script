@@ -1,9 +1,9 @@
-/** @jsxImportSource @motion-script/core/jsx */
+
 
 import {
     SceneGenerator, createRef, Text, Rect,
     ChainableAfx, easeInOut, parallel, wait,
-} from "@motion-script/core";
+} from "motion-script";
 
 /**
  * Shared scaffolding for the per-filter audio showcase scenes.

@@ -1,6 +1,6 @@
-/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene, createRef, Rect, Text, Fills, easeInOut } from "@motion-script/core";
+
+import { createScene, createRef, Rect, Text, Fills, easeInOut } from "motion-script";
 
 /**
  * A {@link Text} node with a drop shadow that animates its color, blur radius
