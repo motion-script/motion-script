@@ -182,7 +182,11 @@ function stateAt(time: number): State {
   return { idType, lineHLAmt, wordHL, removeAmt };
 }
 
-function drawScene(
+// Scene-space dimensions, the loop length, and the painter are exported so the
+// docs "Code" node demo can reuse this exact editor animation (see node-scenes).
+export const CODE_SCENE = { W: SCENE_W, H: SCENE_H, LOOP } as const
+
+export function drawScene(
   ctx: CanvasRenderingContext2D,
   time: number,
   bg: HTMLImageElement | null,

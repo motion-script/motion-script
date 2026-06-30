@@ -168,6 +168,66 @@
   padding: 0 !important;
 }
 
+/* Scrub slider for SceneCanvas transport — flat track (gradient set inline).
+   The thumb is a larger pill whose body matches the progress fill (--primary)
+   with a soft (low-contrast) border and a small royalblue dot at its center,
+   drawn with a radial gradient so the dot sits inside the handle. Both engines. */
+.scene-scrub {
+  outline: none;
+}
+/* Anchor the track height so the thumb's centering offset is deterministic
+   (Chrome otherwise derives it from the thumb, which throws off margin-top). */
+.scene-scrub::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+}
+.scene-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box; /* include the border in the 17px so margin-top stays exact */
+  width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    royalblue 0 4px,
+    var(--primary, #6990dd) 4px 100%
+  );
+  border: 1.5px solid color-mix(in srgb, currentColor 22%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  /* center 17px thumb on 6px track: (6 - 17) / 2 */
+  margin-top: -5.5px;
+  transition: transform 0.1s ease;
+}
+.scene-scrub::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.scene-scrub::-webkit-slider-thumb:active {
+  transform: scale(1.18);
+}
+.scene-scrub::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    royalblue 0 4px,
+    var(--primary, #6990dd) 4px 100%
+  );
+  border: 1.5px solid color-mix(in srgb, currentColor 22%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.scene-scrub::-moz-range-thumb:hover {
+  transform: scale(1.12);
+}
+.scene-scrub::-moz-range-track {
+  background: transparent;
+}
+
 /* GitHub Dark syntax colors, scoped to the dark theme. The base github.css
    import (light) handles light mode; these override token colors under .dark. */
 .dark .hljs {

@@ -1,11 +1,21 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
+import { CodePanel } from './SceneCode'
+import { SceneTransport } from './SceneTransport'
 
 const SCENE_W = 1920
-const SCENE_H = 1080
-const BG = '#0a0a0f'
+// Theme-aware canvas backgrounds. The accent palette (blue/pink/gold) reads on
+// both, so only the backdrop swaps. Callers may still override via `bg`/`bgLight`.
+// Dark bg is deliberately a soft charcoal (not near-black) so the card sits
+// gently above the page rather than punching a black hole into it.
+const BG_DARK = '#1b1b24'
+const BG_LIGHT = '#f4f4f7'
 export const FONT = '"DM Sans Variable", ui-sans-serif, system-ui, sans-serif'
+
+const STEP = 0.1 // seconds per step-forward/back
+export type SceneMode = 'animation' | 'split' | 'code'
 
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t))
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -115,36 +125,118 @@ const helpers: Helpers = {
 
 export type DrawFn = (ctx: CanvasRenderingContext2D, t: number, h: Helpers) => void
 
+// A DOM-based renderer for demos that can't be drawn on a 2D canvas (e.g. KaTeX
+// math). It receives the current playback time and theme and returns a React
+// node laid over the demo area. Shares the same transport / clock as `draw`.
+export type RenderFn = (info: { t: number; loop: number; dark: boolean }) => React.ReactNode
+
 interface Props {
-  draw: DrawFn
+  /** Canvas painter. Omit when using `render` (a DOM demo) instead. */
+  draw?: DrawFn
+  /** DOM demo renderer — an alternative to `draw` for non-canvas content. */
+  render?: RenderFn
   loop: number
   caption?: string
+  /** Dark-mode background. Defaults to BG_DARK. */
   bg?: string
+  /** Light-mode background. Defaults to BG_LIGHT. */
+  bgLight?: string
   aspect?: string
+  /** Motion Script snippet. When present the hover overlay can show code / split / animation views. */
+  code?: string
 }
 
-export default function SceneCanvas({ draw, loop, caption, bg = BG, aspect }: Props) {
+// Three-way view toggle that appears in the card's top-right corner on hover.
+function ViewModeOverlay({
+  mode,
+  onChange,
+}: {
+  mode: SceneMode
+  onChange: (m: SceneMode) => void
+}) {
+  const opts: Array<{ value: SceneMode; label: string; title: string }> = [
+    { value: 'animation', label: 'Demo', title: 'Animation only' },
+    { value: 'split', label: 'Split', title: 'Code + animation' },
+    { value: 'code', label: 'Code', title: 'Code only' },
+  ]
+  return (
+    <div className="pointer-events-none absolute right-2 top-2 z-20 flex gap-0.5 rounded-md border border-border/70 bg-background/80 p-0.5 opacity-0 backdrop-blur-sm transition-opacity group-hover/scene:pointer-events-auto group-hover/scene:opacity-100 dark:bg-[#15151c]/90">
+      {opts.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          title={o.title}
+          aria-pressed={mode === o.value}
+          className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+            mode === o.value
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export default function SceneCanvas({
+  draw,
+  render,
+  loop,
+  caption,
+  bg = BG_DARK,
+  bgLight = BG_LIGHT,
+  aspect,
+  code,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const drawRef = useRef(draw)
-  drawRef.current = draw
-  const bgRef = useRef(bg)
-  bgRef.current = bg
+  const { resolvedTheme } = useTheme()
+  const dark = resolvedTheme !== 'light'
 
+  const [mode, setMode] = useState<SceneMode>('animation')
+  const [playing, setPlaying] = useState(true)
+  const [time, setTime] = useState(0)
+
+  // Latest draw fn, resolved background, and play state are mirrored into refs
+  // so the long-lived rAF loop reads them without re-subscribing each render.
+  const drawRef = useRef(draw)
+  const bgRef = useRef(bg)
+  const playingRef = useRef(playing)
+  const timeRef = useRef(0)
   useEffect(() => {
-    const canvas = canvasRef.current
+    drawRef.current = draw
+    bgRef.current = resolvedTheme === 'light' ? bgLight : bg
+    playingRef.current = playing
+  })
+
+  const showCanvas = mode !== 'code'
+  const showCode = code != null && mode !== 'animation'
+
+  const seek = (t: number) => {
+    const clamped = ((t % loop) + loop) % loop
+    timeRef.current = clamped
+    setTime(clamped)
+  }
+
+  // Single rAF loop: advances the shared clock (so DOM `render` demos animate
+  // too) and paints the canvas when a `draw` painter is present.
+  useEffect(() => {
+    if (!showCanvas) return
     const wrapper = wrapperRef.current
-    if (!canvas || !wrapper) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!wrapper) return
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d') ?? null
 
     if (document.fonts?.load) document.fonts.load(`700 80px ${FONT}`)
 
     let raf = 0
-    let visible = true
-    let start = performance.now()
+    let onScreen = true
+    let last = performance.now()
 
     const resize = () => {
+      if (!canvas) return
       const dpr = window.devicePixelRatio || 1
       const rect = wrapper.getBoundingClientRect()
       canvas.width = Math.max(1, Math.round(rect.width * dpr))
@@ -152,19 +244,27 @@ export default function SceneCanvas({ draw, loop, caption, bg = BG, aspect }: Pr
     }
     resize()
 
-    const render = (now: number) => {
-      const t = ((((now - start) / 1000) % loop) + loop) % loop
-      const scale = canvas.width / SCENE_W
+    const frame = (now: number) => {
+      const dt = (now - last) / 1000
+      last = now
+      if (playingRef.current) {
+        let t = timeRef.current + dt
+        t = ((t % loop) + loop) % loop
+        timeRef.current = t
+        setTime(t)
+      }
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.fillStyle = bgRef.current
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      if (canvas && ctx && drawRef.current) {
+        const scale = canvas.width / SCENE_W
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.fillStyle = bgRef.current
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.setTransform(scale, 0, 0, -scale, canvas.width / 2, canvas.height / 2)
+        ctx.globalAlpha = 1
+        drawRef.current(ctx, timeRef.current, helpers)
+      }
 
-      ctx.setTransform(scale, 0, 0, -scale, canvas.width / 2, canvas.height / 2)
-      ctx.globalAlpha = 1
-      drawRef.current(ctx, t, helpers)
-
-      raf = visible ? requestAnimationFrame(render) : 0
+      raf = onScreen ? requestAnimationFrame(frame) : 0
     }
 
     const ro = new ResizeObserver(resize)
@@ -172,12 +272,12 @@ export default function SceneCanvas({ draw, loop, caption, bg = BG, aspect }: Pr
 
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !visible) {
-          visible = true
-          start = performance.now()
-          raf = requestAnimationFrame(render)
+        if (entry.isIntersecting && !onScreen) {
+          onScreen = true
+          last = performance.now()
+          raf = requestAnimationFrame(frame)
         } else if (!entry.isIntersecting) {
-          visible = false
+          onScreen = false
           if (raf) cancelAnimationFrame(raf)
           raf = 0
         }
@@ -186,27 +286,75 @@ export default function SceneCanvas({ draw, loop, caption, bg = BG, aspect }: Pr
     )
     io.observe(wrapper)
 
-    raf = requestAnimationFrame(render)
+    raf = requestAnimationFrame(frame)
 
     return () => {
       if (raf) cancelAnimationFrame(raf)
       ro.disconnect()
       io.disconnect()
     }
-  }, [loop])
+    // Re-run when the demo area mounts (mode toggles it) or loop changes.
+  }, [loop, showCanvas])
 
   return (
-    <figure style={{ margin: '0 0 1.5rem' }}>
-      <div
-        ref={wrapperRef}
-        className={`w-full overflow-hidden rounded-xl${aspect ? '' : ' aspect-video'}`}
-        style={{
-          border: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-          ...(aspect ? { aspectRatio: aspect } : null),
-        }}
-      >
-        <canvas ref={canvasRef} className="block h-full w-full" />
+    <figure className="group/scene relative" style={{ margin: '0 0 1.5rem' }}>
+      {/* The outer card owns the border + rounding + clipping, so the stacked
+          canvas / transport / code panels read as one connected card. */}
+      <div className="relative overflow-hidden rounded-xl border border-border">
+        {code != null && <ViewModeOverlay mode={mode} onChange={setMode} />}
+
+        {showCanvas && (
+          <div
+            ref={wrapperRef}
+            className={`relative w-full overflow-hidden${aspect ? '' : ' aspect-video'}${
+              render ? ' bg-[var(--demo-bg-light)] dark:bg-[var(--demo-bg)]' : ''
+            }`}
+            style={{
+              // These vars are static (from props), so they're identical on
+              // server and client — the theme choice is made by the `.dark`
+              // class (set by next-themes pre-hydration), avoiding a mismatch.
+              ...(aspect ? { aspectRatio: aspect } : null),
+              ...(render
+                ? ({ '--demo-bg': bg, '--demo-bg-light': bgLight } as React.CSSProperties)
+                : null),
+            }}
+          >
+            {render ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                {render({ t: time, loop, dark })}
+              </div>
+            ) : (
+              <canvas ref={canvasRef} className="block h-full w-full" />
+            )}
+          </div>
+        )}
+
+        {showCanvas && (
+          <SceneTransport
+            playing={playing}
+            time={time}
+            loop={loop}
+            onPlayPause={() => setPlaying((p) => !p)}
+            onStepBack={() => {
+              setPlaying(false)
+              seek(timeRef.current - STEP)
+            }}
+            onStepForward={() => {
+              setPlaying(false)
+              seek(timeRef.current + STEP)
+            }}
+            onSeek={(t) => {
+              setPlaying(false)
+              seek(t)
+            }}
+          />
+        )}
+
+        {showCode && code != null && (
+          <CodePanel code={code} className={showCanvas ? 'border-t border-border' : ''} />
+        )}
       </div>
+
       {caption && (
         <figcaption className="mt-2 text-center text-sm text-muted-foreground">{caption}</figcaption>
       )}

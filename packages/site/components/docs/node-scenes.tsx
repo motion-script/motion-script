@@ -1,11 +1,11 @@
 'use client'
 
-import SceneCanvas, { easings, ramp, lerp, FONT, type DrawFn } from './SceneCanvas'
+import SceneCanvas, { easings, ramp, lerp, FONT, type DrawFn, type RenderFn } from './SceneCanvas'
+import { LatexMorph } from './LatexMorph'
 
 const BLUE = '#6990DD'
 const PINK = '#E8617C'
 const GOLD = '#F5C26B'
-const BG = '#0a090e'
 const PALETTE = [BLUE, PINK, GOLD]
 
 function tint(hex: string, alpha: number) {
@@ -19,8 +19,20 @@ function tint(hex: string, alpha: number) {
 const TAU = Math.PI * 2
 const rad = (deg: number) => (deg * Math.PI) / 180
 
-function NodeCanvas({ draw, loop = 4 }: { draw: DrawFn; loop?: number }) {
-  return <SceneCanvas draw={draw} loop={loop} bg={BG} aspect="5 / 2" />
+function NodeCanvas({
+  draw,
+  render,
+  loop = 4,
+  code,
+  aspect = '5 / 2',
+}: {
+  draw?: DrawFn
+  render?: RenderFn
+  loop?: number
+  code?: string
+  aspect?: string
+}) {
+  return <SceneCanvas draw={draw} render={render} loop={loop} aspect={aspect} code={code} />
 }
 
 function pingPong(t: number, loop: number, lead: number, from: number, to: number, ease = easings.easeInOut) {
@@ -58,10 +70,22 @@ function tracePolygon(ctx: CanvasRenderingContext2D, pts: Array<[number, number]
 const FULL = 'Motion Script'
 const drawText: DrawFn = (ctx, t, h) => {
   const chars = Math.round(ramp(t, 0.2, 2.0, 0, FULL.length, easings.linear))
-  h.text(ctx, { cx: 0, cy: 0, text: FULL.slice(0, chars), size: 130, weight: 800, fill: '#ffffff' })
+  h.text(ctx, { cx: 0, cy: 0, text: FULL.slice(0, chars), size: 130, weight: 800, fill: BLUE })
 }
+const textCode = `import { createScene, Text } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <Text
+      text="Motion Script"
+      fontSize={130}
+      fontWeight={800}
+      fill="white"
+    />
+  );
+});`
 export function TextCanvas() {
-  return <NodeCanvas draw={drawText} />
+  return <NodeCanvas draw={drawText} code={textCode} />
 }
 
 const drawRichText: DrawFn = (ctx, t, h) => {
@@ -82,7 +106,7 @@ const drawRichText: DrawFn = (ctx, t, h) => {
     return `rgb(${ch(16)}, ${ch(8)}, ${ch(0)})`
   }
   const parts = [
-    { text: 'Motion ', weight: 400, fill: '#ffffff' },
+    { text: 'Motion ', weight: 400, fill: BLUE },
     { text: 'Script', weight: 800, fill: blend(BLUE, PINK, mix) },
   ]
   let total = 0
@@ -99,8 +123,22 @@ const drawRichText: DrawFn = (ctx, t, h) => {
   }
   ctx.restore()
 }
+const richTextCode = `import { createScene, RichText } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <RichText
+      fontSize={130}
+      fill="white"
+      spans={[
+        { text: 'Motion ' },
+        { text: 'Script', fill: '#6990DD', fontWeight: 800 },
+      ]}
+    />
+  );
+});`
 export function RichTextCanvas() {
-  return <NodeCanvas draw={drawRichText} />
+  return <NodeCanvas draw={drawRichText} code={richTextCode} />
 }
 
 const drawRect: DrawFn = (ctx, t, h) => {
@@ -124,8 +162,25 @@ const drawRect: DrawFn = (ctx, t, h) => {
   h.rect(ctx, { cx: 0, cy: 0, w: boxW, h: boxH, fill: 'transparent', radius: 24, stroke: tint(BLUE, 0.4), strokeWidth: 3 })
   ctx.restore()
 }
+const rectCode = `import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
+
+  stage.add(
+    <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}
+      stroke={{ fill: 'rgba(105, 144, 221, 0.4)', weight: 3 }}>
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
+    </Rect>
+  );
+
+  yield* box().to({ gap: 100 }, 0.6, easeOut);
+  yield* box().to({ group: 'column' }, 0.8, easeOut);
+});`
 export function RectCanvas() {
-  return <NodeCanvas draw={drawRect} />
+  return <NodeCanvas draw={drawRect} code={rectCode} />
 }
 
 const drawEllipse: DrawFn = (ctx, t, h) => {
@@ -146,8 +201,28 @@ const drawEllipse: DrawFn = (ctx, t, h) => {
     ctx.stroke()
   }
 }
+const ellipseCode = `import { createScene, Ellipse, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const ring = createRef<Ellipse>();
+
+  stage.add(
+    <Ellipse
+      ref={ring}
+      width={360}
+      height={360}
+      startAngle={90}
+      sweep={0}
+      stroke={{ fill: '#6990DD', weight: 24, cap: 'round' }}
+    />
+  );
+
+  // Sweep the arc open, then closed
+  yield* ring().to({ sweep: 360 }, 1.6, easeInOut);
+  yield* ring().to({ sweep: 0 }, 1.6, easeInOut);
+});`
 export function EllipseCanvas() {
-  return <NodeCanvas draw={drawEllipse} />
+  return <NodeCanvas draw={drawEllipse} code={ellipseCode} />
 }
 
 function polygonBoundary(sides: number, rx: number, ry: number, samples: number, rotation = -90) {
@@ -183,8 +258,21 @@ const drawPolygon: DrawFn = (ctx, t, h) => {
   ctx.fillStyle = BLUE
   ctx.fill()
 }
+const polygonCode = `import { createScene, Polygon, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const poly = createRef<Polygon>();
+
+  stage.add(
+    <Polygon ref={poly} sides={3} width={370} height={370} fill="#6990DD" />
+  );
+
+  // Morph between vertex counts
+  yield* poly().to({ sides: 6 }, 1.4, easeInOut);
+  yield* poly().to({ sides: 3 }, 1.4, easeInOut);
+});`
 export function PolygonCanvas() {
-  return <NodeCanvas draw={drawPolygon} />
+  return <NodeCanvas draw={drawPolygon} code={polygonCode} />
 }
 
 const drawPolygram: DrawFn = (ctx, t, h) => {
@@ -196,8 +284,21 @@ const drawPolygram: DrawFn = (ctx, t, h) => {
   ctx.fillStyle = GOLD
   ctx.fill()
 }
+const polygramCode = `import { createScene, Polygram, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const star = createRef<Polygram>();
+
+  stage.add(
+    <Polygram ref={star} sides={5} ratio={0.4} width={400} height={400} fill="#F5C26B" />
+  );
+
+  // Pulse the inner radius ratio
+  yield* star().to({ ratio: 0.85 }, 1.4, easeInOut);
+  yield* star().to({ ratio: 0.4 }, 1.4, easeInOut);
+});`
 export function PolygramCanvas() {
-  return <NodeCanvas draw={drawPolygram} />
+  return <NodeCanvas draw={drawPolygram} code={polygramCode} />
 }
 
 const drawLineGrid: DrawFn = (ctx, t, h) => {
@@ -221,8 +322,27 @@ const drawLineGrid: DrawFn = (ctx, t, h) => {
   }
   ctx.stroke()
 }
+const lineGridCode = `import { createScene, LineGrid, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const grid = createRef<LineGrid>();
+
+  stage.add(
+    <LineGrid
+      ref={grid}
+      width={760}
+      height={380}
+      divisions={1}
+      stroke={{ fill: 'rgba(105, 144, 221, 0.55)', weight: 2 }}
+    />
+  );
+
+  // Animate the number of divisions
+  yield* grid().to({ divisions: 8 }, 1.4, easeInOut);
+  yield* grid().to({ divisions: 1 }, 1.4, easeInOut);
+});`
 export function LineGridCanvas() {
-  return <NodeCanvas draw={drawLineGrid} />
+  return <NodeCanvas draw={drawLineGrid} code={lineGridCode} />
 }
 
 const drawCamera: DrawFn = (ctx, t, h) => {
@@ -256,8 +376,27 @@ const drawCamera: DrawFn = (ctx, t, h) => {
   ctx.stroke()
   ctx.restore()
 }
+const cameraCode = `import { createScene, Camera, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const cam = createRef<Camera>();
+
+  stage.add(
+    <Camera ref={cam} width={760} height={380} zoom={1} origin={{ x: 0, y: 0 }}
+      fill="rgba(105, 144, 221, 0.06)" cornerRadius={18}>
+      <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
+      <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
+      <Rect width={130} height={130} fill="#F5C26B" cornerRadius={12} x={240} />
+    </Camera>
+  );
+
+  // Pan across, then zoom into the last box
+  yield* cam().to({ origin: { x: 240, y: 0 } }, 1.3, easeInOut);
+  yield* cam().to({ zoom: 1.8 }, 1.0, easeInOut);
+  yield* cam().to({ zoom: 1, origin: { x: 0, y: 0 } }, 1.4, easeInOut);
+});`
 export function CameraCanvas() {
-  return <NodeCanvas draw={drawCamera} />
+  return <NodeCanvas draw={drawCamera} code={cameraCode} />
 }
 
 const drawRow: DrawFn = (ctx, t, h) => {
@@ -269,8 +408,25 @@ const drawRow: DrawFn = (ctx, t, h) => {
     h.rect(ctx, { cx: x, cy: 0, w: S, h: S, fill, radius: 12 })
   })
 }
+const rowCode = `import { createScene, Row, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const row = createRef<Row>();
+
+  stage.add(
+    <Row ref={row} gap={24} padding={16}>
+      <Rect width={140} height={140} fill="#6990DD" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#E8617C" cornerRadius={12} />
+      <Rect width={140} height={140} fill="#F5C26B" cornerRadius={12} />
+    </Row>
+  );
+
+  // Expand and collapse the gap
+  yield* row().to({ gap: 170 }, 1.4, easeInOut);
+  yield* row().to({ gap: 24 }, 1.4, easeInOut);
+});`
 export function RowCanvas() {
-  return <NodeCanvas draw={drawRow} />
+  return <NodeCanvas draw={drawRow} code={rowCode} />
 }
 
 const drawColumn: DrawFn = (ctx, t, h) => {
@@ -283,8 +439,25 @@ const drawColumn: DrawFn = (ctx, t, h) => {
     h.rect(ctx, { cx: 0, cy: y, w: W, h: Hb, fill, radius: 12 })
   })
 }
+const columnCode = `import { createScene, Column, Rect, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const col = createRef<Column>();
+
+  stage.add(
+    <Column ref={col} gap={16} padding={24}>
+      <Rect width={380} height={90} fill="#6990DD" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#E8617C" cornerRadius={12} />
+      <Rect width={380} height={90} fill="#F5C26B" cornerRadius={12} />
+    </Column>
+  );
+
+  // Expand and collapse the gap
+  yield* col().to({ gap: 90 }, 1.4, easeInOut);
+  yield* col().to({ gap: 16 }, 1.4, easeInOut);
+});`
 export function ColumnCanvas() {
-  return <NodeCanvas draw={drawColumn} />
+  return <NodeCanvas draw={drawColumn} code={columnCode} />
 }
 
 const drawGrid: DrawFn = (ctx, t, h) => {
@@ -309,8 +482,28 @@ const drawGrid: DrawFn = (ctx, t, h) => {
     h.rect(ctx, { cx: x, cy: y, w: cellW, h: cellH, fill: PALETTE[i % 3], radius: 8 })
   }
 }
+const gridCode = `import { createScene, Grid, Rect, createRef, easeInOut } from '@motion-script/core';
+
+const PALETTE = ['#6990DD', '#E8617C', '#F5C26B'];
+
+export default createScene(function* (stage) {
+  const grid = createRef<Grid>();
+
+  stage.add(
+    <Grid ref={grid} columns={4} gap={20} padding={32}
+      fill="rgba(105, 144, 221, 0.06)" cornerRadius={18}>
+      {Array.from({ length: 8 }, (_, i) => (
+        <Rect width="fill" height={130} cornerRadius={8} fill={PALETTE[i % 3]} />
+      ))}
+    </Grid>
+  );
+
+  // Reflow between column counts
+  yield* grid().to({ columns: 2 }, 1.2, easeInOut);
+  yield* grid().to({ columns: 4 }, 1.2, easeInOut);
+});`
 export function GridCanvas() {
-  return <NodeCanvas draw={drawGrid} />
+  return <NodeCanvas draw={drawGrid} code={gridCode} />
 }
 
 const drawImage: DrawFn = (ctx, t, h) => {
@@ -344,8 +537,30 @@ const drawImage: DrawFn = (ctx, t, h) => {
   ctx.fill()
   ctx.restore()
 }
+const imageCode = `import { createScene, Image, createRef, easeOut, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const photo = createRef<Image>();
+
+  stage.add(
+    <Image
+      ref={photo}
+      src="./assets/photo.jpg"
+      fit="fill"
+      width={760}
+      height={380}
+      cornerRadius={0}
+      opacity={0}
+    />
+  );
+
+  // Fade in, then pulse the corner radius
+  yield* photo().to({ opacity: 1 }, 0.8, easeOut);
+  yield* photo().to({ cornerRadius: 56 }, 1.4, easeInOut);
+  yield* photo().to({ cornerRadius: 0 }, 1.4, easeInOut);
+});`
 export function ImageCanvas() {
-  return <NodeCanvas draw={drawImage} />
+  return <NodeCanvas draw={drawImage} code={imageCode} />
 }
 
 const drawVideo: DrawFn = (ctx, t, h) => {
@@ -391,8 +606,24 @@ const drawVideo: DrawFn = (ctx, t, h) => {
   ctx.fill()
   ctx.restore()
 }
+const videoCode = `import { createScene, Video, wait } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <Video
+      src="./assets/clip.mp4"
+      fit="fill"
+      width={760}
+      height={380}
+      cornerRadius={16}
+    />
+  );
+
+  // Play through the clip
+  yield* wait(4);
+});`
 export function VideoCanvas() {
-  return <NodeCanvas draw={drawVideo} />
+  return <NodeCanvas draw={drawVideo} code={videoCode} />
 }
 
 const BLOB: Array<[number, number]> = (() => {
@@ -421,6 +652,213 @@ const drawPath: DrawFn = (ctx, t, h) => {
   ctx.strokeStyle = BLUE
   ctx.stroke()
 }
+const pathCode = `import { createScene, Path, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const blob = createRef<Path>();
+
+  stage.add(
+    <Path
+      ref={blob}
+      data="M 180 0 C 180 99 99 180 0 180 C -99 180 -180 99 -180 0 ..."
+      end={0}
+      stroke={{ fill: '#6990DD', weight: 8, cap: 'round', join: 'round' }}
+    />
+  );
+
+  // Trim-draw the outline on, then off (start/end run 0..1)
+  yield* blob().to({ end: 1 }, 1.6, easeInOut);
+  yield* blob().to({ end: 0 }, 1.6, easeInOut);
+});`
 export function PathCanvas() {
-  return <NodeCanvas draw={drawPath} />
+  return <NodeCanvas draw={drawPath} code={pathCode} />
+}
+
+// --- Latex (optional @motion-script/latex package) ---------------------------
+// Real KaTeX-rendered math (DOM, not canvas) that builds term-by-term so the
+// equation appears to assemble/morph into place. See LatexMorph.
+const latexRender: RenderFn = ({ t, loop, dark }) => <LatexMorph t={t} loop={loop} dark={dark} />
+const latexCode = `import { createScene, Latex, createRef, easeInOut } from '@motion-script/latex';
+
+export default createScene(function* (stage) {
+  const eq = createRef<Latex>();
+
+  // Start with the rest-energy relation, then morph in the momentum term
+  stage.add(<Latex ref={eq} latex="E^2 = (mc^2)^2" fontSize={120} fill="white" />);
+
+  yield* eq().to({ latex: 'E^2 = (mc^2)^2 + (pc)^2' }, 0.6, easeInOut);
+});`
+export function LatexCanvas() {
+  return <NodeCanvas render={latexRender} loop={4} code={latexCode} />
+}
+
+// --- Code (optional @motion-script/code package) -----------------------------
+// A self-contained editor demo: a rounded editor window with traffic-light dots
+// and line-numbered, syntax-colored TypeScript that simply focuses line 2 then
+// clears the focus, on a loop. Focus is conveyed by fading the non-focused code.
+// Unlike the other node demos this paints in a top-left, y-down space (the
+// editor reads naturally that way), so it overrides SceneCanvas's centered /
+// y-flipped transform — but it draws the window *inset* and does not fill the
+// background, so the card's theme backdrop frames it like every other demo.
+const CODE_LOOP = 3.2
+const CODE_W = 1180 // editor window width in the local draw space
+const CODE_COLORS = {
+  win: '#0f121a',
+  titlebar: '#2b2f3a',
+  red: '#ff5252',
+  yellow: '#ffd70a',
+  green: '#29ec71',
+  gutter: '#5c6370',
+  keyword: '#569cd6',
+  fn: '#dcdcaa',
+  type: '#4ec9b0',
+  ident: '#9cdcfe',
+  prop: '#9cdcfe',
+  punct: '#d4d4d4',
+}
+const MONO = '"DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace'
+
+const {
+  keyword: CK,
+  fn: CFN,
+  type: CTY,
+  ident: CID,
+  punct: CPU,
+  prop: CPR,
+} = CODE_COLORS
+const CODE_LINES: Array<Array<{ text: string; color: string }>> = [
+  [
+    { text: 'function ', color: CK },
+    { text: 'getUser', color: CFN },
+    { text: '(', color: CPU },
+    { text: 'id', color: CID },
+    { text: ': ', color: CPU },
+    { text: 'number', color: CTY },
+    { text: ') {', color: CPU },
+  ],
+  [
+    { text: '  const ', color: CK },
+    { text: 'user', color: CID },
+    { text: ' = ', color: CPU },
+    { text: 'db', color: CID },
+    { text: '.', color: CPU },
+    { text: 'find', color: CFN },
+    { text: '(', color: CPU },
+    { text: 'id', color: CID },
+    { text: ');', color: CPU },
+  ],
+  [
+    { text: '  return ', color: CK },
+    { text: 'user', color: CID },
+    { text: '.', color: CPU },
+    { text: 'name', color: CPR },
+    { text: ';', color: CPU },
+  ],
+  [{ text: '}', color: CPU }],
+]
+const FOCUS_LINE = 1 // line 2 (0-indexed) — the one we select / deselect
+
+// Highlight intensity 0→1 over the loop: fade in (select), hold, fade out
+// (deselect), then rest. Mirrors highlight(lines(2)) → resetHighlight().
+const codeFocus = (t: number) => pingPong(t, CODE_LOOP, 0.4, 0, 1, easings.easeInOut)
+
+const drawCode: DrawFn = (ctx, t) => {
+  const cw = ctx.canvas.width
+  const ch = ctx.canvas.height
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  // Scale the local draw space (a ~16:9 frame around the editor) into the
+  // canvas, contain-fit and centered. Drawing a frame larger than the window
+  // leaves a comfortable margin so the card's theme background shows around it.
+  const FRAME_W = CODE_W + 240
+  const FRAME_H = FRAME_W * (9 / 16)
+  const s = Math.min(cw / FRAME_W, ch / FRAME_H)
+  ctx.setTransform(s, 0, 0, s, cw / 2, ch / 2)
+
+  const fontSize = 40
+  const lineH = fontSize * 1.5
+  const titleH = 64
+  const padX = 48
+  const padY = 40
+  ctx.font = `500 ${fontSize}px ${MONO}`
+  ctx.textBaseline = 'top'
+
+  const codeH = CODE_LINES.length * lineH
+  const winH = titleH + padY * 2 + codeH
+  const winX = -CODE_W / 2
+  const winY = -winH / 2
+
+  // Window body + title bar.
+  ctx.beginPath()
+  ctx.roundRect(winX, winY, CODE_W, winH, 22)
+  ctx.fillStyle = CODE_COLORS.win
+  ctx.fill()
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(winX, winY, CODE_W, winH, 22)
+  ctx.clip()
+  ctx.fillStyle = CODE_COLORS.titlebar
+  ctx.fillRect(winX, winY, CODE_W, titleH)
+  ctx.restore()
+
+  // Traffic-light dots.
+  const dotY = winY + titleH / 2
+  ;[CODE_COLORS.red, CODE_COLORS.yellow, CODE_COLORS.green].forEach((c, i) => {
+    ctx.beginPath()
+    ctx.ellipse(winX + 44 + i * 38, dotY, 11, 11, 0, 0, TAU)
+    ctx.fillStyle = c
+    ctx.fill()
+  })
+
+  // Code area — dim every line except the focused one as the highlight rises.
+  const DIM = 0.28
+  const focus = codeFocus(t)
+  const codeX = winX + padX
+  const gutterW = ctx.measureText('0  ').width
+  const textX = codeX + gutterW
+  let y = winY + titleH + padY
+  for (let i = 0; i < CODE_LINES.length; i++) {
+    const emph = i === FOCUS_LINE ? 1 : 1 - focus * (1 - DIM)
+    ctx.globalAlpha = 0.8 * emph
+    ctx.fillStyle = CODE_COLORS.gutter
+    ctx.fillText(String(i + 1), codeX, y)
+
+    let tx = textX
+    for (const tok of CODE_LINES[i]) {
+      ctx.globalAlpha = emph
+      ctx.fillStyle = tok.color
+      ctx.fillText(tok.text, tx, y)
+      tx += ctx.measureText(tok.text).width
+    }
+    y += lineH
+  }
+  ctx.globalAlpha = 1
+  ctx.restore()
+}
+const codeCode = `import { createScene, createRef, wait } from '@motion-script/core';
+import { Code, lines } from '@motion-script/code';
+
+export default createScene(function* (stage) {
+  const ref = createRef<Code>();
+
+  stage.add(
+    <Code
+      ref={ref}
+      code={\`function getUser(id: number) {
+  const user = db.find(id);
+  return user.name;
+}\`}
+      fontSize={32}
+      showLineNumbers={true}
+    />
+  );
+
+  yield* wait(0.4);
+  yield* ref().highlight(lines(2), 0.6);   // select line 2
+  yield* wait(0.8);
+  yield* ref().resetHighlight(0.6);        // deselect
+  yield* wait(0.4);
+});`
+export function CodeCanvas() {
+  return <NodeCanvas draw={drawCode} loop={CODE_LOOP} code={codeCode} aspect="16 / 9" />
 }

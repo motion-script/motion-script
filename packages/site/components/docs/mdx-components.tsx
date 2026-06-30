@@ -27,6 +27,8 @@ import {
   ImageCanvas,
   VideoCanvas,
   PathCanvas,
+  LatexCanvas,
+  CodeCanvas,
 } from './node-scenes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,6 +173,8 @@ export function getMDXComponents(overrides?: MDXComponents): MDXComponents {
     ImageCanvas,
     VideoCanvas,
     PathCanvas,
+    LatexCanvas,
+    CodeCanvas,
 
     // HTML elements
     code: Code,
