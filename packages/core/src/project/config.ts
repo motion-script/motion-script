@@ -1,6 +1,6 @@
 import { Size2D } from "@/attributes/layout/size";
 import { Color } from "@/attributes/shape/fill/color/parser";
-import { Scene } from "@/nodes/base/scene-node";
+import { Scene } from "@/nodes/scene/scene-node";
 import type { TextDefaults } from "@/runtime/builtin-context";
 
 /** A color token: a resolvable {@link Color}, or a nested group of them. Groups

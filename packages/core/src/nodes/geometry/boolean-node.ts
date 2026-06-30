@@ -1,10 +1,10 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 
-import { NodeConfig } from "./node";
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import { FillResolved } from "@/attributes/shape/fill/union";
+import { NodeConfig } from "../base/node";
 export interface BooleanGroupProps extends ShapeProps {
     op: BooleanOperation;
 }

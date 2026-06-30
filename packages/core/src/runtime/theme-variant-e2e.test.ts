@@ -1,12 +1,12 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { createScene } from "@/nodes/base/scene-node";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
-import { DefaultTextStyle } from "@/nodes/base/default-text-style-node";
+import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
 import { setTheme } from "@/attributes/shape/fill/color/parser";
 import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { createScene } from "@/nodes/scene/scene-node";
 
 /** @jsxImportSource @motion-script/core/jsx */
 

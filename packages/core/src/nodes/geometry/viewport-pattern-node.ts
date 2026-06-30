@@ -1,7 +1,7 @@
 import { RenderContext } from "@/render/render-context";
 import { Clip } from "@/render/clip";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { Camera } from "../base/camera-node";
+import { Camera } from "../layout/camera-node";
 import { ShapeNode, ShapeProps } from "./shape-node";
 
 /**

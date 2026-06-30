@@ -2,14 +2,14 @@
 
 // Base
 export * from "./base/node";
-export * from "./base/scene-node";
-export * from "./base/root-node";
-export * from "./base/camera-node";
-export * from "./base/boolean-node";
-export * from "./base/mask-node";
-export * from "./base/provider-node";
-export * from "./base/theme-provider-node";
-export * from "./base/default-text-style-node";
+export * from "./scene/scene-node";
+export * from "./scene/root-node";
+export * from "./layout/camera-node";
+export * from "./geometry/boolean-node";
+export * from "./geometry/mask-node";
+export * from "./scene/provider-node";
+export * from "./scene/theme-provider-node";
+export * from "./text/default-text-style-node";
 
 // Geometry
 export * from "./geometry/shape-node";

@@ -19,7 +19,7 @@ import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
-import { Node, NodeConfig, NodeProps } from "./node";
+import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 
 export interface RootProps extends NodeProps {

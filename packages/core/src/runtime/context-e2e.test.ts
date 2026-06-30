@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { createScene } from "@/nodes/base/scene-node";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
-import { DefaultTextStyle } from "@/nodes/base/default-text-style-node";
-import { ThemeProvider } from "@/nodes/base/theme-provider-node";
+import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
+import { ThemeProvider } from "@/nodes/scene/theme-provider-node";
 import { Text } from "@/nodes/text/text-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { createRef } from "@/util/reference";
 import { ThemeToken } from "@/runtime/builtin-context";
 import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { createScene } from "@/nodes/scene/scene-node";
 
 /** @jsxImportSource @motion-script/core/jsx */
 

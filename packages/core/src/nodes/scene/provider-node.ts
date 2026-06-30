@@ -1,4 +1,4 @@
-import { Node, NodeConfig, NodeProps } from "./node";
+import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 import { Context, ContextMap } from "@/util/context";
 

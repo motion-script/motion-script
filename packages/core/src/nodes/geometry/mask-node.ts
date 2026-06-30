@@ -1,6 +1,6 @@
 import { RenderContext } from "@/render/render-context";
-import { Node, NodeConfig, NodeProps } from "./node";
 import { MaskMode } from "@/attributes/mask/mask";
+import { NodeProps, Node, NodeConfig } from "../base/node";
 
 export interface MaskGroupProps extends NodeProps {
     // How the mask shape determines content visibility:

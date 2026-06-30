@@ -2,13 +2,13 @@ import { AudioRequest } from "@/attributes/audio/request";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "../render/measure-scope";
 import { AssetRecord } from "@/assets/record";
-import { Scene } from "@/nodes/base/scene-node";
 import { Node } from "@/nodes/base/node";
 import { nodePath } from "@/project/tree";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetTracker } from "@/assets/tracker";
+import { Scene } from "@/nodes/scene/scene-node";
 
 // ─── Asset track types ────────────────────────────────────────────────────────
 

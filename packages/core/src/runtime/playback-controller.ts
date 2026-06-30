@@ -6,12 +6,12 @@ import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
 import { Precomp, PrecompResult, NodeLifespan } from "./precompisition";
-import { Scene } from "@/nodes/base/scene-node";
 import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
 import { Node } from "@/nodes/base/node";
+import { Scene } from "@/nodes/scene/scene-node";
 /** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
     renderContext: RenderContext;

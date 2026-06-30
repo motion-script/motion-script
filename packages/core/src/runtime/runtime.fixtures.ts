@@ -13,12 +13,12 @@ import { MasterClock } from "@/platform/master-clock";
 import { MeasureScope } from "@/render/measure-scope";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
-import { Scene } from "@/nodes/base/scene-node";
 import { StorageAdapter } from "@/platform/storage-adapter";
 import { RenderContext } from "@/render/render-context";
 import { AudioRequest } from "@/attributes/audio/request";
 import { AssetRecord } from "@/assets/record";
 import { PrecompResult, AssetTrack, ScenePrecomp } from "@/runtime/precompisition";
+import { Scene } from "@/nodes/scene/scene-node";
 
 // ─── Scene graph fakes ──────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export class FakeNode {
         public name: string,
         public children: FakeNode[] = [],
         public properties: Record<string, unknown> = {},
-    ) {}
+    ) { }
 }
 
 export interface FakeSceneOptions {
@@ -169,7 +169,7 @@ export class FakeAssetCatalog {
     constructor(
         private videoDurations: Record<string, number> = {},
         private missing: ReadonlySet<string> = new Set(),
-    ) {}
+    ) { }
     getVideoDuration(src: string): number {
         return this.videoDurations[src] ?? 10;
     }

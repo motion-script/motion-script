@@ -1,11 +1,11 @@
 import { RenderContext } from "@/render/render-context";
-import { Scene } from "@/nodes/base/scene-node";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
+import { Scene } from "@/nodes/scene/scene-node";
 
 /**
  * Returns `true` when the in-progress seek has been superseded and the replay

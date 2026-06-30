@@ -1,8 +1,6 @@
-import { Node, NodeClock } from "./node";
 import { AnimationBuilder } from "@/tween/animation-builder";
 import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
-import { RootNode, RootProps } from "./root-node";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Vector2 } from "@/attributes/layout/vector2";
@@ -20,6 +18,9 @@ import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { MeasureScope } from "@/render/measure-scope";
 import { RenderContext } from "@/render/render-context";
+import { RootNode, RootProps } from "./root-node";
+import { NodeClock } from "../base/node-clock";
+import { Node } from "../base/node";
 
 /**
  * The object a scene generator is handed. It merges the build-time determinism

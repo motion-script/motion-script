@@ -1,4 +1,4 @@
-import { Node, NodeConfig, NodeProps } from "./node";
+import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 import { ContextMap } from "@/util/context";
 import { TextStyleToken, TextDefaults, TEXT_STYLE_KEYS } from "@/runtime/builtin-context";

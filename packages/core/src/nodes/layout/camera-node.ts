@@ -11,7 +11,7 @@ import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCorner
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
-import { NodeConfig } from "./node";
+import { NodeConfig } from "../base/node";
 
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */

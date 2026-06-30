@@ -11,17 +11,34 @@ import { Random } from "@/util/random";
 import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
+import {
+    applyProp,
+    applySnapshotLayer,
+    collectProperties,
+    popState,
+    reapplyDefaults,
+    restoreAnimated,
+    saveState,
+} from "./node-reactive";
+import { advanceClock, createMotionHistory, MotionHistory, sampleMotion } from "./node-motion";
+import { addChildAtAnimated, removeChildAtAnimated, reparentAnimated } from "./node-lifecycle";
 
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
-import { ALIGN_KEYS, PivotInput, resolvePivot } from "@/attributes/layout/align";
+import { PivotInput, resolvePivot } from "@/attributes/layout/align";
+import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAnchorProps } from "@/attributes/layout/anchor-resolve";
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
 import type { NodeClock } from "./node-clock";
-import { backdropEffects, foregroundShaderEffects } from "@/attributes/shape/effects/backdrop";
-import { Matrix2D, applyToPoint, multiply, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
+import { Matrix2D, multiply } from "@/attributes/layout/matrix2d";
+import { localMatrix, rotateOffset, worldAnchors } from "./node-transform";
+import {
+    applyBackdropEffects as applyBackdropEffectsImpl,
+    applyContentEffectScope,
+    computeSpaceRects,
+} from "./node-render";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { Clip } from "@/render/clip";
@@ -48,20 +65,6 @@ export interface NodeMetadata<T extends Node> {
 }
 
 export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
-
-/**
- * Validate a node's anchor-positioning props: at most one named anchor, and an
- * anchor cannot be combined with an explicit `pivot` (the anchor derives one).
- */
-function validateAnchorProps(props: Record<string, unknown>): void {
-    const presentAnchors = ALIGN_KEYS.filter(k => props[k] !== undefined);
-    if (presentAnchors.length > 1) {
-        throw new Error(`Cannot set multiple anchor props at once: ${presentAnchors.join(', ')}`);
-    }
-    if (presentAnchors.length === 1 && props['pivot'] !== undefined) {
-        throw new Error(`Cannot set both anchor prop '${presentAnchors[0]}' and 'pivot' at the same time`);
-    }
-}
 
 export interface NodeProps {
     x: number; // 0 is center, negative is left, positive is right
@@ -237,16 +240,9 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: 0 }) declare rotation: number;
     @property({ default: 1 }) declare opacity: number;
     @property({ default: 'pass-through' }) declare blend: NodeBlendMode;
-    // Author-facing layout/effect props. Like `fill`, the declared type is the
-    // loose `Effect`/`Padding` so assignment (`this.padding = 3`,
-    // `this.effects = FX.blur(4)`) and reads share one simple type. At runtime
-    // the @property accessor stores the *resolved* value (via the mapper), and
-    // consumers that need the resolved shape cast at the read site.
     @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
     @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
-    // Declared loose as `PivotInput` (covers `this.pivot = 'topRight'`); the
-    // accessor stores the resolved normalised `Vector2` via the mapper, so
-    // internal reads cast back to Vector2.
+
     @property({ default: { x: 0, y: 0 }, mapper: (v: PivotInput) => resolvePivot(v), tween: lerpVector2 })
     declare readonly pivot: PivotInput;
 
@@ -302,26 +298,19 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             this.applyDefaultSize(props);
         }
 
-        // Anchor-based positioning: validate, derive pivot, bind x/y.
+        // Anchor-based positioning: validate, derive pivot, bind x/y. The pivot
+        // and centre offset math lives in anchor-resolve.ts (shared with the
+        // `to()` path); here we use its reactive binding form.
         if (props) {
             validateAnchorProps(props as Record<string, unknown>);
-            const anchorKey = ALIGN_KEYS.find(k => (props as any)[k] !== undefined);
+            const anchorKey = findAnchorKey(props as Record<string, unknown>);
             if (anchorKey) {
                 const raw = (props as any)[anchorKey] as Vector2 | (() => Vector2);
                 const getTarget: () => Vector2 = typeof raw === 'function' ? raw : () => raw;
-                // The named anchor resolves to a normalised pivot `a` in [-1,1]
-                // (y-up); the centre that lands the anchor on `target` is
-                // `target - a·(size/2)` (mirrors shape.ts resolveShapeAnchor).
-                const a = resolvePivot(anchorKey);
-                this._writeProp('pivot', a);
-                this._writeProp('x', () => {
-                    const r = this._layoutRect.get();
-                    return getTarget().x - a.x * (r.width / 2);
-                });
-                this._writeProp('y', () => {
-                    const r = this._layoutRect.get();
-                    return getTarget().y - a.y * (r.height / 2);
-                });
+                const { pivot, x, y } = bindAnchorTarget(anchorKey, getTarget, () => this._layoutRect.get());
+                this._writeProp('pivot', pivot);
+                this._writeProp('x', x);
+                this._writeProp('y', y);
             }
         }
 
@@ -383,9 +372,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     protected reinitProps(force = false): void {
         if (this.__signals && !force) return;
-        for (const meta of getPropertyMeta(this)) {
-            this.applyProp(meta.key, meta.default, meta.options);
-        }
+        reapplyDefaults(this);
     }
 
     /**
@@ -414,46 +401,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         initial: Ext | (() => Ext) | undefined,
         options?: PropOptions<Ext, Int>,
     ): void {
-        const existing = this.__signals?.get(field);
-        if (!existing) {
-            this._registerProp<Ext, Int>(field, options);
-        } else if (options) {
-            // Allow subclasses to refine tween/mapper on an inherited field.
-            if (options.tween) {
-                if (!this.__tweens) this.__tweens = new Map();
-                this.__tweens.set(field, options.tween as TweenFn<any>);
-            }
-            if (options.mapper) {
-                if (!this.__mappers) this.__mappers = new Map();
-                this.__mappers.set(field, options.mapper as (ext: any, prev?: any) => any);
-            }
-        }
-        this._writeProp(field, initial);
+        applyProp(this, field, initial, options);
     }
 
-    private _registerProp<Ext, Int>(field: string, options?: PropOptions<Ext, Int>): void {
-        const cell = new Signal<Int>(undefined as unknown as Int);
-        if (!this.__signals) this.__signals = new Map();
-        this.__signals.set(field, cell);
-        if (!this.__upgraders) this.__upgraders = new Map();
-        this.__upgraders.set(field, () => cell);
-        if (options?.tween) {
-            if (!this.__tweens) this.__tweens = new Map();
-            this.__tweens.set(field, options.tween as TweenFn<any>);
-        }
-        if (options?.mapper) {
-            if (!this.__mappers) this.__mappers = new Map();
-            this.__mappers.set(field, options.mapper as (ext: any, prev?: any) => any);
-        }
-        Object.defineProperty(this, field, {
-            get: () => cell.get(),
-            set: (value: any) => this._writeProp(field, value),
-            enumerable: true,
-            configurable: true,
-        });
-    }
-
-    protected _writeProp(field: string, value: unknown): void {
+    /** @internal Hot-path prop write (mapper- and binding-aware). Public-but-underscored like `_toGen`/`_prepareStep` so reactive companions in this directory can call it; not part of the authoring surface. */
+    _writeProp(field: string, value: unknown): void {
         if (value === undefined) return;
         const cell = this.__signals?.get(field);
         if (!cell) return;
@@ -467,13 +419,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     get properties(): P {
-        const result: Record<string, any> = {};
-        if (this.__upgraders) {
-            for (const key of this.__upgraders.keys()) {
-                result[key] = (this as any)[key];
-            }
-        }
-        return result as P;
+        return collectProperties(this) as P;
     }
 
     get name(): string {
@@ -505,15 +451,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         validateAnchorProps(to as Record<string, unknown>);
 
-        // If an anchor key is in the tween target, resolve it to x/y targets and set pivot.
-        const anchorKey = ALIGN_KEYS.find(k => (to as any)[k] !== undefined);
+        // If an anchor key is in the tween target, resolve it to x/y targets and
+        // set pivot (one-shot form of the shared anchor math in anchor-resolve.ts).
+        const anchorKey = findAnchorKey(to as Record<string, unknown>);
         if (anchorKey) {
             const raw = (to as any)[anchorKey] as Vector2;
-            const a = resolvePivot(anchorKey);
-            const r = this._layoutRect.get();
-            this._writeProp('pivot', a);
-            (to as any).x = raw.x - a.x * (r.width / 2);
-            (to as any).y = raw.y - a.y * (r.height / 2);
+            const { pivot, x, y } = resolveAnchorTargetOnce(anchorKey, this._layoutRect.get(), raw);
+            this._writeProp('pivot', pivot);
+            (to as any).x = x;
+            (to as any).y = y;
         }
 
         // Numeric, mapper-free props (x/y/scale/rotation/opacity) write straight
@@ -659,7 +605,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // `restore()` pops the most recent one and either snaps to it (no duration)
     // or tweens the numeric props back to it over `duration`.
 
-    private _stateStack: Map<string, SignalSnapshot<any>>[] = [];
+    /** @internal LIFO stack of save() snapshot layers. Underscore-internal so the reactive companion can read it; not authoring surface. */
+    _stateStack: Map<string, SignalSnapshot<any>>[] = [];
 
     /**
      * Push a snapshot of this node's current state onto its save stack.
@@ -676,13 +623,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.restore(1);   // animate back to where it was saved
      */
     save(): void {
-        const signals = this.__signals;
-        if (!signals) return;
-        const layer = new Map<string, SignalSnapshot<any>>();
-        for (const [key, cell] of signals) {
-            layer.set(key, cell.snapshot());
-        }
-        this._stateStack.push(layer);
+        saveState(this);
     }
 
     /**
@@ -703,42 +644,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     restore(): void;
     restore(duration: number, easing?: EasingFunction): FrameGenerator;
     restore(duration?: number, easing?: EasingFunction): void | FrameGenerator {
-        const layer = this._stateStack.pop();
+        const layer = popState(this);
         if (duration === undefined || duration <= 0) {
-            if (layer) this._applySnapshotLayer(layer);
+            if (layer) applySnapshotLayer(this, layer);
             return;
         }
-        return this._restoreAnimated(layer, duration, easing);
-    }
-
-    /** Instantly reapply a saved snapshot layer to every captured cell. */
-    private _applySnapshotLayer(layer: Map<string, SignalSnapshot<any>>): void {
-        const signals = this.__signals;
-        if (!signals) return;
-        for (const [key, snap] of layer) {
-            signals.get(key)?.restoreFrom(snap);
-        }
-    }
-
-    private *_restoreAnimated(
-        layer: Map<string, SignalSnapshot<any>> | undefined,
-        duration: number,
-        easing?: EasingFunction,
-    ): FrameGenerator {
-        if (!layer) { yield* this._toGen({} as Partial<P>, duration, easing); return; }
-
-        // Tween the numeric / custom-tweenable props toward their saved
-        // resolved values. `to()` reads the snapshot's resolved `value` (correct
-        // even for a bound cell), so the node animates to where it *was*.
-        const target: Record<string, unknown> = {};
-        for (const [key, snap] of layer) {
-            target[key] = snap.value;
-        }
-        yield* this._toGen(target as Partial<P>, duration, easing);
-
-        // Reapply the full snapshot so reactive bindings are restored (not left
-        // frozen at the value the tween landed on) and non-tweened props snap.
-        this._applySnapshotLayer(layer);
+        return restoreAnimated(this, layer, duration, easing);
     }
 
     // ---- Clock ------------------------------------------------------------
@@ -760,12 +671,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     public ellapse(totalTime: number): void {
-        if (!this._clock.initialized) {
-            this._clock.creation = totalTime;
-            this._clock.initialized = true;
-        }
-        this._clock.time = totalTime;
-        this._clock.elapsed = totalTime - this._clock.creation;
+        advanceClock(this._clock, totalTime);
 
         this.tick(this._clock.time);
         // Sample motion here, not at render: ellapse() runs on every advanced
@@ -931,16 +837,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /** Rotate offset (ox, oy) by this node's rotation (degrees clockwise) around the node center. */
     private _rotateOffset(ox: number, oy: number): Vector2 {
-        const deg = this.rotation;
-        if (deg === 0) return { x: this.x + ox, y: this.y + oy };
-        const rad = (deg * Math.PI) / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-        // Canvas rotation is clockwise; in y-up space that means x'= cos*ox + sin*oy, y'= -sin*ox + cos*oy
-        return {
-            x: this.x + cos * ox + sin * oy,
-            y: this.y - sin * ox + cos * oy,
-        };
+        return rotateOffset(this.x, this.y, this.rotation, ox, oy);
     }
 
     /** Center of the node — equivalent to its x/y position (0,0 is the center of the layout cell). */
@@ -1006,10 +903,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         const cx = (r?.x ?? 0) + this.x;
         const cy = (r?.y ?? 0) - this.y;
         // The accessor stores the resolved normalised pivot via the mapper.
-        const pivot = this.pivot as Vector2;
-        const pivotX = pivot.x * ((r?.width ?? 0) / 2);
-        const pivotY = -pivot.y * ((r?.height ?? 0) / 2);
-        return nodeLocalMatrix(cx, cy, this.rotation, this.scale, pivotX, pivotY);
+        return localMatrix(cx, cy, this.rotation, this.scale, this.pivot as Vector2, r?.width ?? 0, r?.height ?? 0);
     }
 
     /**
@@ -1051,18 +945,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * `x: () => other.global.x` already lands on target with no compensation.
      */
     get global(): WorldTransform {
-        const m = this.worldMatrix();
         const r = this.layoutRect;
-        const hw = (r?.width ?? 0) / 2;
-        const hh = (r?.height ?? 0) / 2;
-
-        // Map a node-local centered offset (y-up, like the local anchor getters)
-        // through the world matrix, returning a y-up world position. The matrix
-        // works in canvas (y-down) space, so flip y in and back out.
-        const at = (ox: number, oy: number): Vector2 => {
-            const p = applyToPoint(m, { x: ox, y: -oy });
-            return { x: p.x, y: -p.y };
-        };
+        const anchors = worldAnchors(this.worldMatrix(), (r?.width ?? 0) / 2, (r?.height ?? 0) / 2);
 
         // Accumulate ancestor rotation/scale/opacity up the chain (rotation sums,
         // scale and opacity multiply — all match the renderer's nested transforms
@@ -1076,19 +960,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             opacity *= n.opacity;
         }
 
-        const center = at(0, 0);
         return {
-            x: center.x,
-            y: center.y,
-            center,
-            topLeft: at(-hw, hh),
-            topRight: at(hw, hh),
-            bottomLeft: at(-hw, -hh),
-            bottomRight: at(hw, -hh),
-            topCenter: at(0, hh),
-            bottomCenter: at(0, -hh),
-            leftCenter: at(-hw, 0),
-            rightCenter: at(hw, 0),
+            x: anchors.center.x,
+            y: anchors.center.y,
+            ...anchors,
             rotation,
             scale,
             opacity,
@@ -1188,13 +1063,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // but-unrendered frames — so beforeRender() fills those in at draw time,
     // leaving the motion fields untouched.
 
-    /** Largest frame delta we trust for a velocity estimate (seconds). Larger gaps (scrub/seek) read as "unknown". */
-    private static readonly MAX_MOTION_DT = 0.2;
-
-    private _prevRenderPos: Vector2 | null = null;
-    private _prevRenderTime = 0;
-    private _prevRotation = 0;
-    private _prevScale = 1;
+    /** Rolling history for the backward-difference velocity estimate. Allocated once (not per frame); mutated in place by {@link _sampleMotion}. */
+    private readonly _motionHistory: MotionHistory = createMotionHistory();
 
     /** Reused per-node state handed to `ctx.begin()` (mirrors `_transformScratch`). */
     private readonly _renderState: NodeRenderState = {
@@ -1221,42 +1091,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * (`rects`/`elapsed`) are filled in by {@link beforeRender} at draw time.
      */
     protected _sampleMotion(): void {
+        // Resolve the reactive world position (y-down, matching applyTransform);
+        // the backward-difference math lives in sampleMotion (no per-frame alloc).
         const r = this.layoutRect;
         const x = (r?.x ?? 0) + this.x;
         const y = (r?.y ?? 0) - this.y;
-        const rotation = this.rotation;
-        const scale = this.scale;
-
-        const now = this._clock.time;
-        const dt = now - this._prevRenderTime;
-        const s = this._renderState;
-
-        const prev = this._prevRenderPos;
-        if (prev && dt > 0 && dt <= Node.MAX_MOTION_DT) {
-            const vx = (x - prev.x) / dt;
-            const vy = (y - prev.y) / dt;
-            s.dt = dt;
-            s.velocity.x = vx;
-            s.velocity.y = vy;
-            s.speed = Math.hypot(vx, vy);
-            s.direction = (Math.atan2(vy, vx) * 180) / Math.PI;
-            s.angularVelocity = (rotation - this._prevRotation) / dt;
-            s.scaleVelocity = (scale - this._prevScale) / dt;
-        } else {
-            s.dt = 0;
-            s.velocity.x = 0;
-            s.velocity.y = 0;
-            s.speed = 0;
-            s.direction = 0;
-            s.angularVelocity = 0;
-            s.scaleVelocity = 0;
-        }
-
-        if (!prev) this._prevRenderPos = { x, y };
-        else { prev.x = x; prev.y = y; }
-        this._prevRenderTime = now;
-        this._prevRotation = rotation;
-        this._prevScale = scale;
+        sampleMotion(this._renderState, this._motionHistory, x, y, this.rotation, this.scale, this._clock.time);
     }
 
     /** Push this node's transform (position, scale, rotate, opacity, effects). */
@@ -1351,21 +1191,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * without a {@link clipSelf} outline (there's no silhouette to confine to).
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        const backdrop = backdropEffects(this.effects as SceneEffect[]);
-        if (backdrop.length === 0) return;
-
-        const clip = this.clipSelf();
-        if (!clip || clip.isEmpty()) return;
-
-        const w = this.layoutRect?.width ?? 0;
-        const h = this.layoutRect?.height ?? 0;
-
-        // Clip to the silhouette first so the backdrop passes are confined to the
-        // node; the renderer opens its backdrop layers within that clip.
-        ctx.beginClip(clip);
-        ctx.beginEffectScope(backdrop, "backdrop", w, h);
-        ctx.endEffectScope();
-        ctx.endClip();
+        applyBackdropEffectsImpl(ctx, this.effects as SceneEffect[], this.clipSelf(), this.layoutRect?.width ?? 0, this.layoutRect?.height ?? 0);
     }
 
     /**
@@ -1388,30 +1214,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     protected renderContentWithEffects(ctx: RenderContext, body: () => void): void {
         this.applyBackdropEffects(ctx);
-
-        const w = this.layoutRect?.width ?? 0;
-        const h = this.layoutRect?.height ?? 0;
-
-        // Capture everything this node paints — its own content and its children —
-        // so the foreground shader effects (posterize wrapping bulge) warp/band the
-        // lot, mirroring how blur-style content effects compose.
-        const foreground = foregroundShaderEffects(this.effects as SceneEffect[]);
-        const hasForeground = foreground.length > 0;
-        if (hasForeground) ctx.beginEffectScope(foreground, "foreground", w, h);
-
-        // A clipPath cuts through this node's own paint *and* its children, so it
-        // wraps the whole body. Opened first, the node's own content is clipped
-        // too — distinct from `clip`, which only confines children. Skipped when
-        // the path is empty so endClip() balances.
-        const clipPath = this.clipPathSelf();
-        const pathClipped = clipPath != null && !clipPath.isEmpty();
-        if (pathClipped) ctx.beginClip(clipPath);
-
-        body();
-
-        if (pathClipped) ctx.endClip();
-
-        if (hasForeground) ctx.endEffectScope();
+        applyContentEffectScope(ctx, this.effects as SceneEffect[], this.clipPathSelf(), this.layoutRect?.width ?? 0, this.layoutRect?.height ?? 0, body);
     }
 
     onRender(ctx: RenderContext): void {
@@ -1457,21 +1260,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * the rect is the axis-aligned parent box, which is what gradients expect.
      */
     protected _spaceRects(): SpaceRects {
-        const parent = this._parent;
-        if (!parent) return {};
-        const p = parent.layoutRect;
-        const r = this.layoutRect;
-        // This node's local origin within the parent's space.
-        const ox = r.x + this.x;
-        const oy = r.y - this.y;
-        return {
-            parent: {
-                left: -p.width / 2 - ox,
-                top: -p.height / 2 - oy,
-                right: p.width / 2 - ox,
-                bottom: p.height / 2 - oy,
-            },
-        };
+        return computeSpaceRects(this._parent?.layoutRect, this.layoutRect, this.x, this.y);
     }
 
     afterRender(ctx: RenderContext): void {
@@ -1545,70 +1334,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     private *_reparentAnimated(newParent: Node, duration: number, easing?: EasingFunction): FrameGenerator {
-        const half = duration / 2;
-        const targetOpacity = this.opacity;
-
-        // Pin to current rendered size so exit shrink reflows the old parent.
-        const lw = this.layoutRect?.width;
-        const lh = this.layoutRect?.height;
-        const hasSizeAnim = lw !== undefined && lh !== undefined;
-        if (hasSizeAnim) {
-            this.set({ width: lw, height: lh } as Partial<P>);
-        }
-
-        const exitProps: Partial<NodeProps> = { opacity: 0 };
-        if (hasSizeAnim) { exitProps.width = 0; exitProps.height = 0; }
-        yield* this.to(exitProps as Partial<P>, half, easing);
-
-        const old = this.parent;
-        if (old) old.removeChild(this);
-        newParent.addChild(this);
-
-        const enterProps: Partial<NodeProps> = { opacity: targetOpacity };
-        if (hasSizeAnim) { enterProps.width = lw; enterProps.height = lh; }
-        yield* this.to(enterProps as Partial<P>, half, easing);
+        yield* reparentAnimated(this, newParent, duration, easing);
     }
 
     private *_addChildAtAnimated(child: Node, index: number, duration: number, easing?: EasingFunction): FrameGenerator {
-        const targetOpacity = child.opacity;
-        const isNumericW = typeof child.width === 'number';
-        const isNumericH = typeof child.height === 'number';
-        const targetW = isNumericW ? (child.width as number) : 0;
-        const targetH = isNumericH ? (child.height as number) : 0;
-
-        child.set({
-            opacity: 0,
-            width: isNumericW ? 0 : undefined,
-            height: isNumericH ? 0 : undefined,
-        } as Partial<NodeProps>);
-
-        this._children.splice(index, 0, child);
-        child._parent = this;
-        const assets = this.tryAssets();
-        if (assets) child.bindAssets(assets);
-        this.bindChildContext(child);
-
-        const toProps: Partial<NodeProps> = { opacity: targetOpacity };
-        if (isNumericW) toProps.width = targetW;
-        if (isNumericH) toProps.height = targetH;
-        yield* child.to(toProps as Partial<NodeProps>, duration, easing);
+        yield* addChildAtAnimated(this, child, index, duration, easing);
     }
 
     private *_removeChildAtAnimated(index: number, duration: number, easing?: EasingFunction): FrameGenerator {
-        if (index < 0 || index >= this._children.length) return;
-        const child = this._children[index];
-        // Pin to current rendered size so the shrink reflows siblings in the parent layout.
-        const lw = child.layoutRect?.width;
-        const lh = child.layoutRect?.height;
-        child.set({ width: lw, height: lh } as Partial<NodeProps>);
-
-        const toProps: Partial<NodeProps> = { opacity: 0 };
-        if (lw !== undefined) toProps.width = 0;
-        if (lh !== undefined) toProps.height = 0;
-        yield* child.to(toProps as Partial<NodeProps>, duration, easing);
-
-        this._children.splice(index, 1);
-        child._parent = null;
+        yield* removeChildAtAnimated(this, index, duration, easing);
     }
 
     // ---- Teardown ---------------------------------------------------------

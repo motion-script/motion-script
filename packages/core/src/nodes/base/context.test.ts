@@ -3,9 +3,9 @@ import { createContext, ContextMap } from "@/util/context";
 import { Node } from "./node";
 import { Rect } from "../geometry/rect-node";
 import { Text } from "../text/text-node";
-import { Provider } from "./provider-node";
-import { ThemeProvider } from "./theme-provider-node";
-import { DefaultTextStyle } from "./default-text-style-node";
+import { Provider } from "../scene/provider-node";
+import { ThemeProvider } from "../scene/theme-provider-node";
+import { DefaultTextStyle } from "../text/default-text-style-node";
 import { ThemeToken, DataToken, SeedToken } from "@/runtime/builtin-context";
 import { Random } from "@/util/random";
 
