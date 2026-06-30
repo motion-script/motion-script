@@ -6,7 +6,9 @@ import { CodeCanvas } from '@site/src/components/docs/node-scenes';
 
 # Code
 
-The `Code` node renders syntax-highlighted code using [Shiki](https://shiki.matsu.io/). It supports any Shiki language and theme, and provides animation methods for highlighting, replacing, inserting, and removing code.
+The `Code` node renders syntax-highlighted code using [Lezer](https://lezer.codemirror.net/). Grammars are loaded lazily per language, and built-in themes are provided. It offers animation methods for highlighting, replacing, inserting, and removing code.
+
+Supported languages: `typescript`, `tsx`, `javascript`, `jsx`, `python`, `json`, `html`, `css`, `rust`, `go`, `java`, `cpp`, `php`, `markdown`, `xml`, and `yaml`.
 
 <CodeCanvas />
 
@@ -48,7 +50,7 @@ export default createScene(function* (stage) {
 | `fontSize` | `number` | Font size in pixels |
 | `showLineNumbers` | `boolean` | Show line number gutter |
 
-The highlighted language and color theme are configured via the `@motion-script/code` package settings.
+The highlighted language and color theme are configured via the `@motion-script/code` package settings. Themes are Lezer-based highlight styles (e.g. `github-dark`, `github-light`, `vscode-dark`, `vscode-light`) rather than Shiki themes.
 
 ## Animation methods
 

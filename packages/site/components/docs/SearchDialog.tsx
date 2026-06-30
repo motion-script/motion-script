@@ -6,7 +6,12 @@ import { Dialog } from '@base-ui/react/dialog'
 import { Search, FileText, Hash, CornerDownLeft } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { searchEntries, type SearchEntry, type SearchIndex } from '@/lib/search'
+import {
+  searchSections,
+  type SearchEntry,
+  type SearchSectionGroup,
+  type SearchIndex,
+} from '@/lib/search'
 
 // The static index is small and only needed once search is opened, so it is
 // fetched lazily on first open and cached in a module-level promise — shared
@@ -56,10 +61,23 @@ export function SearchDialog({
     return () => clearTimeout(id)
   }, [query])
 
-  const results = useMemo<SearchEntry[]>(() => {
+  const sections = useMemo<SearchSectionGroup[]>(() => {
     if (!index || !debounced.trim()) return []
-    return searchEntries(debounced, index, RESULT_LIMIT)
+    return searchSections(debounced, index, RESULT_LIMIT)
   }, [index, debounced])
+
+  // Flatten the section → page → subheading hierarchy into the linear order rows
+  // are rendered in (each page header followed by its children, sections in
+  // order). Keyboard navigation and the active-row index operate on this flat
+  // list so it walks the visible result rows top-to-bottom; section headers are
+  // labels, not selectable rows, so they're excluded.
+  const flat = useMemo<SearchEntry[]>(
+    () =>
+      sections.flatMap((section) =>
+        section.groups.flatMap((g) => [g.page, ...g.children]),
+      ),
+    [sections],
+  )
 
   // Wrap open changes so closing the dialog also clears transient state — done
   // in the event path rather than an effect to avoid a cascading reset render.
@@ -85,16 +103,16 @@ export function SearchDialog({
   )
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (results.length === 0) return
+    if (flat.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex((i) => (i + 1) % results.length)
+      setActiveIndex((i) => (i + 1) % flat.length)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActiveIndex((i) => (i - 1 + results.length) % results.length)
+      setActiveIndex((i) => (i - 1 + flat.length) % flat.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      go(results[activeIndex])
+      go(flat[activeIndex])
     }
   }
 
@@ -139,9 +157,9 @@ export function SearchDialog({
               autoCorrect="off"
               spellCheck={false}
               role="combobox"
-              aria-expanded={results.length > 0}
+              aria-expanded={flat.length > 0}
               aria-controls="search-results"
-              aria-activedescendant={results.length > 0 ? `search-option-${activeIndex}` : undefined}
+              aria-activedescendant={flat.length > 0 ? `search-option-${activeIndex}` : undefined}
               className="h-12 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
@@ -149,7 +167,8 @@ export function SearchDialog({
           {/* Results */}
           <Results
             listRef={listRef}
-            results={results}
+            sections={sections}
+            flat={flat}
             activeIndex={activeIndex}
             setActiveIndex={setActiveIndex}
             onSelect={go}
@@ -158,7 +177,7 @@ export function SearchDialog({
           />
 
           {/* Footer hint */}
-          {results.length > 0 && (
+          {flat.length > 0 && (
             <div className="hidden sm:flex items-center gap-3 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
               <Hint keys={['↑', '↓']}>navigate</Hint>
               <Hint keys={['↵']}>open</Hint>
@@ -173,7 +192,8 @@ export function SearchDialog({
 
 function Results({
   listRef,
-  results,
+  sections,
+  flat,
   activeIndex,
   setActiveIndex,
   onSelect,
@@ -181,7 +201,8 @@ function Results({
   loading,
 }: {
   listRef: React.RefObject<HTMLUListElement | null>
-  results: SearchEntry[]
+  sections: SearchSectionGroup[]
+  flat: SearchEntry[]
   activeIndex: number
   setActiveIndex: (i: number) => void
   onSelect: (entry: SearchEntry) => void
@@ -196,13 +217,20 @@ function Results({
     )
   }
 
-  if (results.length === 0) {
+  if (flat.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-sm text-muted-foreground">
         No results for “{query}”.
       </p>
     )
   }
+
+  // Each selectable row (page header, then its children) maps to a position in
+  // the flat list so the active index lines up with keyboard navigation. The
+  // flat list is already in render order, so a url→index map resolves each row's
+  // position without a mutable render-time counter. Entry urls are unique (page
+  // base urls and anchored subheading urls are all distinct).
+  const flatIndexByUrl = new Map(flat.map((entry, i) => [entry.url, i]))
 
   return (
     <ul
@@ -212,45 +240,109 @@ function Results({
       aria-label="Search results"
       className="max-h-[min(60vh,24rem)] overflow-y-auto p-2"
     >
-      {results.map((entry, i) => (
-        <li key={`${entry.url}-${i}`}>
-          <a
-            id={`search-option-${i}`}
-            data-index={i}
-            role="option"
-            aria-selected={i === activeIndex}
-            href={entry.url}
-            onClick={(e) => {
-              e.preventDefault()
-              onSelect(entry)
-            }}
-            onMouseMove={() => setActiveIndex(i)}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm',
-              i === activeIndex ? 'bg-foreground/5 text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {entry.depth === 1 ? (
-              <FileText className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-            ) : (
-              <Hash className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-foreground">{entry.heading}</span>
-              {entry.depth !== 1 && (
-                <span className="block truncate text-xs text-muted-foreground">{entry.title}</span>
-              )}
+      {sections.map((section) => (
+        <li key={section.category} role="presentation" className="not-first:mt-3">
+          <div className="flex items-center gap-2 px-3 pb-1 pt-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {section.label}
             </span>
-            <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              {entry.section}
+            <span className="rounded border border-border px-1.5 py-px text-[9px] uppercase tracking-wide text-muted-foreground">
+              {section.section}
             </span>
-            {i === activeIndex && (
-              <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            )}
-          </a>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <ul role="group" aria-label={section.label}>
+            {section.groups.map((group) => {
+              const pageIndex = flatIndexByUrl.get(group.page.url) ?? -1
+              return (
+                <li key={group.page.url} className="not-first:mt-0.5">
+                  <ResultRow
+                    entry={group.page}
+                    flatIndex={pageIndex}
+                    active={pageIndex === activeIndex}
+                    setActiveIndex={setActiveIndex}
+                    onSelect={onSelect}
+                  />
+                  {group.children.length > 0 && (
+                    <ul
+                      role="group"
+                      aria-label={group.page.title}
+                      className="ml-3.5 mt-0.5 border-l border-border pl-1.5"
+                    >
+                      {group.children.map((child) => {
+                        const childIndex = flatIndexByUrl.get(child.url) ?? -1
+                        return (
+                          <li key={child.url}>
+                            <ResultRow
+                              entry={child}
+                              flatIndex={childIndex}
+                              active={childIndex === activeIndex}
+                              setActiveIndex={setActiveIndex}
+                              onSelect={onSelect}
+                            />
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         </li>
       ))}
     </ul>
+  )
+}
+
+function ResultRow({
+  entry,
+  flatIndex,
+  active,
+  setActiveIndex,
+  onSelect,
+}: {
+  entry: SearchEntry
+  flatIndex: number
+  active: boolean
+  setActiveIndex: (i: number) => void
+  onSelect: (entry: SearchEntry) => void
+}) {
+  const isPage = entry.depth === 1
+  return (
+    <a
+      id={`search-option-${flatIndex}`}
+      data-index={flatIndex}
+      role="option"
+      aria-selected={active}
+      href={entry.url}
+      onClick={(e) => {
+        e.preventDefault()
+        onSelect(entry)
+      }}
+      onMouseMove={() => setActiveIndex(flatIndex)}
+      className={cn(
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm',
+        active ? 'bg-foreground/5 text-foreground' : 'text-muted-foreground',
+      )}
+    >
+      {isPage ? (
+        <FileText className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+      ) : (
+        <Hash className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+      )}
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate',
+          isPage ? 'font-medium text-foreground' : 'text-muted-foreground',
+        )}
+      >
+        {entry.heading}
+      </span>
+      {active && (
+        <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      )}
+    </a>
   )
 }
 
