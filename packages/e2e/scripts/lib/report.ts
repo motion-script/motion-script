@@ -1,11 +1,13 @@
 /**
  * Self-contained HTML report builder for the screenshot comparison.
  *
- * Every image is inlined as a base64 data URI so the single report.html opens
+ * Images are inlined as base64 data URIs so the single report.html opens
  * anywhere with no sidecar files — including when copied out of the Docker
- * container that produced it. Failing rows (a frame over the mismatch threshold,
- * a dimension mismatch, or a frame missing on one side) are highlighted and
- * sorted to the top.
+ * container that produced it. Only failing frames carry images, though: a row
+ * that passed shows just its metric, so a clean run produces a tiny file and the
+ * embedded image weight is spent only where someone actually needs to look.
+ * Failing rows (a frame over the mismatch threshold, a dimension mismatch, or a
+ * frame missing on one side) are highlighted and sorted to the top.
  */
 import fs from 'node:fs';
 import type { FrameLabel } from './frames.ts';
@@ -69,14 +71,20 @@ function frameRow(r: FrameResult): string {
             : r.status === 'fail'
               ? escapeHtml(r.note ?? 'fail')
               : `${r.mismatch.toFixed(3)}%`;
-    return `
-      <div class="${cls}">
-        <div class="frame-head"><span class="label">${r.label}</span><span class="metric">${metric}</span></div>
+    // Only failing frames embed images — a passing row is just its metric, which
+    // is what keeps a clean report small. The images exist on disk regardless;
+    // they're simply not inlined when there's nothing to inspect.
+    const imgs = r.failed
+        ? `
         <div class="imgs">
           <figure>${cell(dataUri(r.stablePath), `stable ${r.label}`)}<figcaption>stable</figcaption></figure>
           <figure>${cell(dataUri(r.libPath), `lib ${r.label}`)}<figcaption>lib</figcaption></figure>
           <figure>${cell(dataUri(r.diffPath), `diff ${r.label}`)}<figcaption>diff</figcaption></figure>
-        </div>
+        </div>`
+        : '';
+    return `
+      <div class="${cls}">
+        <div class="frame-head"><span class="label">${r.label}</span><span class="metric">${metric}</span></div>${imgs}
       </div>`;
 }
 

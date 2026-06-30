@@ -293,6 +293,19 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     root: pluginAppRoot,
                     // Still load env files (.env, etc.) from the user's project root.
                     envDir: userRoot,
+                    // Key the dep-optimize cache to the user's project, not the
+                    // shared plugin-app root. `root` is plugin-app, so Vite would
+                    // otherwise default cacheDir to plugin-app/node_modules/.vite —
+                    // the *same* physical dir for every project rendered through a
+                    // given plugin install. Two projects sharing one plugin (e.g. the
+                    // e2e `lib` and `stable` variants) would then reuse each other's
+                    // optimizer graph: the second project to start finds a cache
+                    // discovered for the first's scene set, triggers a mid-load
+                    // re-optimize, and — because the headless server runs with
+                    // hmr:false — the in-flight `import('./headless.ts')` never gets
+                    // the reload and 504s ("Failed to fetch dynamically imported
+                    // module"). A per-project cache removes the cross-contamination.
+                    cacheDir: path.resolve(userRoot, 'node_modules/.vite-motion-script'),
                     // Disabled because root is plugin-app, not the user project;
                     // static assets are served explicitly in configureServer instead.
                     publicDir: false,

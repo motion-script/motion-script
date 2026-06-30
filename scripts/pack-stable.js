@@ -62,6 +62,7 @@ const PACKAGES = [
     'packages/react',
     'packages/player',
     'packages/cli',
+    'packages/motion-script',
     'packages/vite-plugin',
     'packages/components/code',
     'packages/components/latex',

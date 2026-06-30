@@ -1,11 +1,55 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import net from 'node:net';
 import { createServer, type ViteDevServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
 
 /** How long to wait for the headless bridge to install before giving up. */
 const BRIDGE_READY_TIMEOUT_MS = 60_000;
+
+/**
+ * Minimal structural shape of Vite's internal dep-optimizer, just the bits
+ * warmOptimizer() needs. Vite doesn't export this type from its public entry,
+ * and it isn't stable across minors, so we describe only what we read rather
+ * than depend on the full interface.
+ */
+type DepsOptimizerLike = {
+    scanProcessing?: Promise<void>;
+    metadata?: {
+        optimized?: Record<string, { processing?: Promise<void> } | undefined>;
+        discovered?: Record<string, { processing?: Promise<void> } | undefined>;
+    };
+};
+
+/**
+ * Ask the OS for a free TCP port by binding to port 0, reading the assigned
+ * port, then releasing it. We can't just pass `server.port: 0` to Vite: its
+ * config merge drops a literal `0` (treating it as unset) and falls back to the
+ * default 5173 — so every headless server would actually bind 5173, colliding
+ * with each other (and any real dev server) and desyncing the page's module
+ * base from the server, which surfaces as "Failed to fetch dynamically imported
+ * module". We resolve a concrete free port here and pin it with strictPort so
+ * the bound port and the resolved URL always agree. There's a tiny TOCTOU
+ * window between releasing and Vite re-binding, but on an ephemeral port the
+ * OS won't hand the same one out again that fast in practice.
+ */
+function findFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const srv = net.createServer();
+        srv.unref();
+        srv.on('error', reject);
+        srv.listen(0, '127.0.0.1', () => {
+            const addr = srv.address();
+            if (addr && typeof addr === 'object') {
+                const { port } = addr;
+                srv.close(() => resolve(port));
+            } else {
+                srv.close(() => reject(new Error('Could not resolve a free port.')));
+            }
+        });
+    });
+}
 
 export type ExportFile = {
     /** The scene name (split or single-scene export) or `null` (multi-scene combined). */
@@ -77,21 +121,42 @@ export class HeadlessDriver {
         // so cwd is already correct — but pin `root` to the project dir too so
         // Vite picks up the project's own vite.config.* (which registers the
         // motionScript plugin).
+        // Resolve a concrete free port up front and pin it with strictPort.
+        // `server.port: 0` does NOT work here — Vite's config merge discards the
+        // 0 and falls back to its default 5173, so we'd never actually get an
+        // ephemeral port (see findFreePort).
+        const port = await findFreePort();
+
         this.server = await createServer({
             root: this.projectRoot,
             // Quiet the dev-server banner; export progress is the only output
             // the user cares about.
             logLevel: 'warn',
             server: {
-                // Ephemeral port — avoid colliding with a player dev server the
-                // user may already have running on the project's configured port.
-                port: 0,
+                // Concrete free port (not the project's configured dev port, so we
+                // never collide with a player dev server the user has running).
+                port,
+                // Fail loudly if the port is taken rather than silently bumping to
+                // the next one — a silent bump would desync the page's module base
+                // from the resolved URL.
+                strictPort: true,
                 // We drive the page over CDP; never pop a real browser tab.
                 open: false,
                 hmr: false,
             },
         });
         await this.server.listen();
+
+        // Force dep-optimization to fully complete (bundles committed to disk)
+        // BEFORE the browser navigates. Otherwise the very first page load races
+        // the optimizer: main.tsx does `await import('./headless.ts')`, whose
+        // transitive deps (canvaskit, mathjax, mediabunny, …) get discovered
+        // mid-load and trigger a re-optimize + full page reload — but the headless
+        // server runs with hmr:false, so that reload signal never reaches the
+        // page and the in-flight dynamic import 504s ("Failed to fetch dynamically
+        // imported module"). Warming server-side first means the deps are already
+        // built when the browser asks for them.
+        await this.warmOptimizer();
 
         const url = this.resolveServerUrl();
 
@@ -146,6 +211,51 @@ export class HeadlessDriver {
                 `The installed @motion-script/vite-plugin is likely stale — ` +
                 `rebuild it and reinstall the project.`,
             );
+        }
+    }
+
+    /**
+     * Drive Vite's dep-optimizer to completion server-side before the browser
+     * loads the page. We transform the headless entry chain (which is plugin-app's
+     * own src/main.tsx → src/headless.ts; Vite is rooted at plugin-app), wait for
+     * the static-import graph to settle, then await every optimized/discovered
+     * dep's `processing` promise so the bundles are written to disk. After this,
+     * the browser's first request for headless.ts and its deps is a cache hit —
+     * no mid-load re-optimize, no reload (which hmr:false would swallow anyway).
+     *
+     * Best-effort: a transform error here isn't fatal (the page load + ready-wait
+     * is still the real gate), so we swallow failures and let startup proceed.
+     */
+    private async warmOptimizer(): Promise<void> {
+        const server = this.server;
+        if (!server) return;
+        try {
+            await server.transformRequest('/src/main.tsx');
+            await server.transformRequest('/src/headless.ts');
+            await server.waitForRequestsIdle();
+
+            // The optimizer lives on the client environment in Vite's environment
+            // API; fall back to the legacy top-level accessor for older minors.
+            const env = (server as unknown as {
+                environments?: { client?: { depsOptimizer?: DepsOptimizerLike } };
+            }).environments?.client;
+            const optimizer =
+                env?.depsOptimizer ??
+                (server as unknown as { depsOptimizer?: DepsOptimizerLike }).depsOptimizer;
+            if (!optimizer) return;
+
+            await optimizer.scanProcessing;
+            const meta = optimizer.metadata;
+            const pending = [
+                ...Object.values(meta?.optimized ?? {}),
+                ...Object.values(meta?.discovered ?? {}),
+            ]
+                .map(dep => dep?.processing)
+                .filter((p): p is Promise<void> => Boolean(p));
+            await Promise.all(pending);
+        } catch {
+            // Non-fatal: the cold-optimize race is rare and the page ready-wait
+            // (plus startWithRetry in the shoot script) still backstops it.
         }
     }
 
