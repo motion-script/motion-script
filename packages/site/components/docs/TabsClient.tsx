@@ -24,7 +24,7 @@ export function TabsClient({ panels }: { panels: TabPanel[] }) {
   if (!panels.length) return null
 
   return (
-    <div className="my-4 w-full rounded-xl overflow-hidden border border-border bg-[#18181a] shadow-2xl text-left text-sm not-prose">
+    <div className="terminal-chrome my-4 w-full rounded-xl overflow-hidden border border-border bg-[var(--terminal-bg)] text-left text-sm not-prose">
       {/* Tab bar — mirrors the landing page's CreateTerminal selector. */}
       <div className="relative flex items-end gap-1 px-4 pt-3 border-b border-border">
         {panels.map((panel, i) => (
@@ -34,19 +34,19 @@ export function TabsClient({ panels }: { panels: TabPanel[] }) {
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: i === active ? '2px solid #7c6af7' : '2px solid transparent',
+              borderBottom: i === active ? '2px solid var(--terminal-accent)' : '2px solid transparent',
               borderRadius: 0,
               marginBottom: '-1px',
               padding: '0 8px 8px',
               fontFamily: 'var(--font-sans)',
               fontSize: '12px',
               fontWeight: 500,
-              color: i === active ? '#e2e2e2' : '#6b6b7b',
+              color: i === active ? 'var(--terminal-text)' : 'var(--terminal-text-muted)',
               cursor: 'pointer',
               transition: 'color 0.15s',
             }}
-            onMouseEnter={(e) => { if (i !== active) (e.target as HTMLElement).style.color = '#aaaaaa' }}
-            onMouseLeave={(e) => { if (i !== active) (e.target as HTMLElement).style.color = '#6b6b7b' }}
+            onMouseEnter={(e) => { if (i !== active) (e.target as HTMLElement).style.color = 'var(--terminal-text-hover)' }}
+            onMouseLeave={(e) => { if (i !== active) (e.target as HTMLElement).style.color = 'var(--terminal-text-muted)' }}
           >
             {panel.label}
           </button>

@@ -1,0 +1,30 @@
+---
+sidebar_position: 1
+---
+
+# Your first scene
+
+A scene is a generator function passed to `makeScene`. In `1.0.0` the function
+receives a `view` — the root container every node is added to.
+
+```tsx
+import { makeScene, Circle, createRef } from '@motion-script/core';
+
+export default makeScene(function* (view) {
+  const dot = createRef<Circle>();
+
+  view.add(<Circle ref={dot} size={120} fill="tomato" />);
+
+  yield* dot().scale(2, 0.8);
+});
+```
+
+## Running it
+
+In `1.0.0` scenes were rendered with the standalone CLI:
+
+```bash
+motion-script render scene.tsx
+```
+
+This was later folded into the `ms` command.

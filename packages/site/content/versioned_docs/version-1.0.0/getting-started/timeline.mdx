@@ -1,0 +1,44 @@
+---
+sidebar_position: 2
+---
+
+# The Timeline API
+
+:::note
+This page is **specific to MotionScript 1.0.0**. The explicit `Timeline` object
+was removed in later versions — animations are now driven directly by `yield*`
+inside the scene generator, so there is no equivalent page in the current docs.
+:::
+
+In `1.0.0`, you could build an animation imperatively by pushing steps onto a
+`Timeline` and playing it back, instead of (or alongside) `yield*`.
+
+```tsx
+import { makeScene, Rect, createRef, Timeline } from '@motion-script/core';
+
+export default makeScene(function* (view) {
+  const box = createRef<Rect>();
+  view.add(<Rect ref={box} width={160} height={160} fill="royalblue" radius={12} />);
+
+  const timeline = new Timeline();
+  timeline.add(box().to({ x: 300 }, 1));
+  timeline.add(box().to({ rotation: 180 }, 0.5));
+
+  yield* timeline.play();
+});
+```
+
+## Why it was removed
+
+The `Timeline` object duplicated what `yield*` already expresses more directly,
+and it made nested/parallel composition harder to reason about. From `2.0.0`
+onward you compose flows with plain `yield*` and the `all`/`sequence` helpers:
+
+```tsx
+// Equivalent in newer versions — no Timeline needed:
+yield* box().to({ x: 300 }, 1);
+yield* box().to({ rotation: 180 }, 0.5);
+```
+
+If you are migrating off `1.0.0`, replace each `timeline.add(...)` /
+`timeline.play()` with the corresponding `yield*` statements.

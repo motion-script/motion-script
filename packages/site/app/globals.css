@@ -1,7 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "highlight.js/styles/github-dark.css";
+/* Light hljs theme is the base; the .dark block below re-scopes GitHub Dark
+   so code blocks follow the active theme. */
+@import "highlight.js/styles/github.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -140,10 +142,109 @@
     }
 }
 
+/* Terminal-styled tab widgets (TerminalTabs / TabsClient). Inline styles and
+   JS hover handlers can't use Tailwind `dark:` variants, so the chrome colors
+   come from these CSS variables, overridden under .dark below. */
+.terminal-chrome {
+  --terminal-bg: oklch(0.985 0 0);
+  --terminal-accent: #7c6af7;
+  --terminal-text: #2a2a35;
+  --terminal-text-muted: #8a8a99;
+  --terminal-text-hover: #4a4a55;
+  --terminal-hover-bg: rgba(0, 0, 0, 0.06);
+}
+.dark .terminal-chrome {
+  --terminal-bg: #18181a;
+  --terminal-accent: #7c6af7;
+  --terminal-text: #e2e2e2;
+  --terminal-text-muted: #6b6b7b;
+  --terminal-text-hover: #aaaaaa;
+  --terminal-hover-bg: #2a2a2e;
+}
+
 /* Override hljs default background so our rounded container controls it */
 .hljs {
   background: transparent !important;
   padding: 0 !important;
+}
+
+/* GitHub Dark syntax colors, scoped to the dark theme. The base github.css
+   import (light) handles light mode; these override token colors under .dark. */
+.dark .hljs {
+  color: #c9d1d9;
+}
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-meta .hljs-keyword,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-type,
+.dark .hljs-variable.language_ {
+  color: #ff7b72;
+}
+.dark .hljs-title,
+.dark .hljs-title.class_,
+.dark .hljs-title.class_.inherited__,
+.dark .hljs-title.function_ {
+  color: #d2a8ff;
+}
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-literal,
+.dark .hljs-meta,
+.dark .hljs-number,
+.dark .hljs-operator,
+.dark .hljs-variable,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-class,
+.dark .hljs-selector-id {
+  color: #79c0ff;
+}
+.dark .hljs-regexp,
+.dark .hljs-string,
+.dark .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+.dark .hljs-built_in,
+.dark .hljs-symbol {
+  color: #ffa657;
+}
+.dark .hljs-comment,
+.dark .hljs-code,
+.dark .hljs-formula {
+  color: #8b949e;
+}
+.dark .hljs-name,
+.dark .hljs-quote,
+.dark .hljs-selector-tag,
+.dark .hljs-selector-pseudo {
+  color: #7ee787;
+}
+.dark .hljs-subst {
+  color: #c9d1d9;
+}
+.dark .hljs-section {
+  color: #1f6feb;
+  font-weight: bold;
+}
+.dark .hljs-bullet {
+  color: #f2cc60;
+}
+.dark .hljs-emphasis {
+  color: #c9d1d9;
+  font-style: italic;
+}
+.dark .hljs-strong {
+  color: #c9d1d9;
+  font-weight: bold;
+}
+.dark .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+.dark .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
 }
 
 /* font-code utility for Pixelify Sans (maps to --font-code CSS var set by next/font) */

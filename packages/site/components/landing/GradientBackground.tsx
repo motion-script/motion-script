@@ -177,6 +177,20 @@ function GradientCanvas() {
       canvas.getContext('experimental-webgl', { alpha: true })) as WebGLRenderingContext | null
     if (!gl) return
 
+    // A context can be lost out from under us (driver reset, GPU process crash,
+    // or a remount race during client-side navigation). Pause the loop on loss
+    // and let the browser hand us a fresh context on restore — without
+    // preventDefault on the lost event the context is never restored.
+    const onLost = (e: Event) => {
+      e.preventDefault()
+      cancelAnimationFrame(raf)
+    }
+    const onRestored = () => {
+      raf = requestAnimationFrame(frame)
+    }
+    canvas.addEventListener('webglcontextlost', onLost as EventListener, false)
+    canvas.addEventListener('webglcontextrestored', onRestored as EventListener, false)
+
     gl.getExtension('OES_standard_derivatives')
 
     const progGradient = buildProgram(gl, gradientVert, gradientFrag, ['position', 'uv'])
@@ -237,6 +251,7 @@ function GradientCanvas() {
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
+      if (gl.isContextLost()) return
       if (!resize()) return
       if (!start) start = now
       const elapsed = (now - start) / 1000
@@ -291,11 +306,17 @@ function GradientCanvas() {
 
     return () => {
       cancelAnimationFrame(raf)
+      canvas.removeEventListener('webglcontextlost', onLost as EventListener, false)
+      canvas.removeEventListener('webglcontextrestored', onRestored as EventListener, false)
       Object.values(buffers).forEach((b) => gl.deleteBuffer(b))
       gl.deleteProgram(progGradient)
       gl.deleteProgram(progGrid)
       gl.deleteProgram(progParticles)
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
+      // NOTE: do not call WEBGL_lose_context.loseContext() here. React Strict
+      // Mode (dev) and client-side route remounts reuse the same <canvas>, and
+      // getContext() returns the SAME context object — forcing it lost on
+      // cleanup leaves the next mount with a dead context that renders nothing
+      // until a full page refresh. Let the context be GC'd with the canvas.
     }
   }, [])
 

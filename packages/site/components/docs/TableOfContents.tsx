@@ -51,7 +51,7 @@ export function TableOfContents({ entries }: { entries: TocEntry[] }) {
             ].join(' ')}
           >
             {activeId === entry.id && (
-              <span className="absolute -left-px top-0 bottom-0 w-0.5 bg-white" />
+              <span className="absolute -left-px top-0 bottom-0 w-0.5 bg-foreground" />
             )}
             <a
               href={`#${entry.id}`}

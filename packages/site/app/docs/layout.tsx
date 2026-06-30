@@ -1,16 +1,27 @@
 import Link from 'next/link'
 import { getSidebar } from '@/lib/docs'
-import DocsSidebar from '@/components/docs/DocsSidebar'
+import { VERSIONS } from '@/lib/versions'
+import VersionedSidebar, { type SidebarsByVersion } from '@/components/docs/VersionedSidebar'
+import MobileSidebar from '@/components/docs/MobileSidebar'
 import { Logo } from '@/components/landing/Logo'
+import Footer from '@/components/landing/Footer'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
-  const sidebar = getSidebar()
+  // Pre-render every version's sidebar; VersionedSidebar picks one by pathname.
+  const sidebars: SidebarsByVersion = Object.fromEntries(
+    VERSIONS.map((version) => [version.version, getSidebar(version)]),
+  )
 
   return (
-    <div className="min-h-screen bg-background dark">
+    <div className="min-h-screen bg-background">
       {/* Top nav */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 h-14">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 sm:gap-6 px-4 h-14">
+          <MobileSidebar>
+            <VersionedSidebar sidebars={sidebars} />
+          </MobileSidebar>
+
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Logo className="h-5 w-5 text-foreground" />
             <span className="font-serif text-base text-foreground flex items-center">
@@ -19,7 +30,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             </span>
           </Link>
 
-          <div className="flex items-center gap-1 text-sm">
+          <div className="hidden sm:flex items-center gap-1 text-sm">
             <Link href="/docs/intro" className="px-3 py-1.5 rounded-md text-foreground font-medium bg-foreground/5">
               Docs
             </Link>
@@ -31,28 +42,30 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-1 sm:gap-3">
             <a
               href="https://github.com/motion-script/motion-script"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors"
+              aria-label="GitHub"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-foreground/5 transition-colors"
             >
               <GithubIcon className="h-4 w-4" />
-              GitHub
+              <span className="hidden sm:inline">GitHub</span>
             </a>
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
       <div className="mx-auto flex max-w-7xl">
-        {/* Sidebar */}
-        <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-y-auto border-r border-border px-4 py-6">
-          <DocsSidebar items={sidebar} />
+        {/* Sidebar (desktop) */}
+        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-y-auto border-r border-border px-4 py-6 lg:block">
+          <VersionedSidebar sidebars={sidebars} />
         </aside>
 
         {/* Content */}
-        <main className="min-w-0 flex-1 px-8 py-10">
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
           <article className="prose-docs max-w-3xl">
             {children}
           </article>
@@ -64,6 +77,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 overflow-y-auto px-4 py-8 xl:block"
         />
       </div>
+
+      <Footer />
     </div>
   )
 }

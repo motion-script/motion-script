@@ -1,0 +1,50 @@
+---
+sidebar_position: 1
+---
+
+# Introduction
+
+MotionScript is a TypeScript-first animation library for creating programmatic
+2D animations. In `1.0.0` you describe scenes as generator functions passed to
+`makeScene`, compose animations with `yield*`, and render to video.
+
+## Quick start
+
+Scaffold a new project:
+
+```bash
+npm init @motion-script
+```
+
+---
+
+## How scenes work
+
+In `1.0.0` every animation is a **Scene**, created with `makeScene` (renamed to
+`createScene` in later versions). Inside the generator you add nodes to the
+`view` and use `yield*` to drive animations.
+
+```tsx
+import { makeScene, Rect, createRef, waitFor } from '@motion-script/core';
+
+export default makeScene(function* (view) {
+  const box = createRef<Rect>();
+
+  view.add(
+    <Rect ref={box} width={200} height={200} fill="royalblue" radius={16} />
+  );
+
+  // Slide right over 1 second, then wait
+  yield* box().to({ x: 400 }, 1);
+  yield* waitFor(0.5);
+});
+```
+
+Key concepts in `1.0.0`:
+
+- `view.add(node)` — attach a node to the scene (renamed to `stage.add` later)
+- `createRef<T>()` — get a typed reference to a JSX node
+- `yield* node.to(props, duration)` — animate properties over time
+- `yield* waitFor(seconds)` — pause for a duration (later renamed to `wait`)
+
+---
