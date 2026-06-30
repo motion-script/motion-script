@@ -2,7 +2,7 @@
 
 import {
     SceneGenerator, createRef, Text, Rect,
-    ChainableAfx, easeInOut, parallel, wait,
+    AudioFilter, easeInOut, parallel, wait,
 } from "motion-script";
 
 /**
@@ -20,13 +20,13 @@ export interface AudioDemoSpec {
     /** Audio file to play. Defaults to `song.mp3`. */
     src?: string;
     /** Filter chain to apply. Omit for the unfiltered reference clip. */
-    filters?: ChainableAfx;
+    filters?: AudioFilter;
     /** Seconds of source audio to play (before any speed retiming). Default 4. */
     clip?: number;
 }
 
 /** Scene-time length of the clip, accounting for any speed filter. */
-function estimateLength(clip: number, filters?: ChainableAfx): number {
+function estimateLength(clip: number, filters?: AudioFilter): number {
     if (!filters) return clip;
     const list = Array.isArray(filters) ? filters : [...(filters as Iterable<any>)];
     let speed = 1;

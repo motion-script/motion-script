@@ -1,4 +1,4 @@
-import { AudioFilter, Param, isCurve, sourceTimeAtSceneElapsed } from "@motion-script/core";
+import { AudioFilterItem, Param, isCurve, sourceTimeAtSceneElapsed } from "@motion-script/core";
 
 /**
  * Result of building an audio-filter graph for one source.
@@ -122,7 +122,7 @@ function applyParam(
 export function buildAudioFilterGraph(
     ctx: BaseAudioContext,
     source: AudioNode,
-    filters: readonly AudioFilter[],
+    filters: readonly AudioFilterItem[],
     startTime: number = ctx.currentTime,
     clipDuration: number = 0,
     elapsed: number = 0,
@@ -233,7 +233,7 @@ function staticOf(p: Param): number {
  * `Sound.effectiveSpeed()` so the renderer applies the same rate the core timeline
  * reserved time for.
  */
-export function effectiveSpeed(filters: readonly AudioFilter[] | undefined): number {
+export function effectiveSpeed(filters: readonly AudioFilterItem[] | undefined): number {
     if (!filters) return 1;
     let speed = 1;
     for (const f of filters) {
@@ -243,7 +243,7 @@ export function effectiveSpeed(filters: readonly AudioFilter[] | undefined): num
 }
 
 /** The first curve-valued `speed` filter in the chain, if any. */
-export function speedCurveOf(filters: readonly AudioFilter[] | undefined) {
+export function speedCurveOf(filters: readonly AudioFilterItem[] | undefined) {
     if (!filters) return undefined;
     for (const f of filters) {
         if (f.type === "speed" && isCurve(f.value)) return f.value;

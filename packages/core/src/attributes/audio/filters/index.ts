@@ -16,9 +16,9 @@ export type { TremoloFilter } from './implementations/tremolo';
 export type { SpeedFilter } from './implementations/speed';
 export type { EchoFilter } from './implementations/echo';
 
-/** Chainable filter builder API, chain class, and union input type. */
+/** Chainable filter builder API, chain class, and loose author-facing union type. */
 export { AudioFilters, AudioFilterChain, resolveAudioFilters } from './chain';
-export type { ChainableAfx } from './chain';
+export type { AudioFilter } from './chain';
 
 /** Time-varying param curves: builders, the Curve type, and param helpers. */
 export {
@@ -37,7 +37,7 @@ export {
 export type { Param, CurveSegment, ResolvedSegment } from './curve';
 
 /** Union of all concrete audio-filter types accepted by sounds. */
-export type { AudioFilter } from './union';
+export type { AudioFilterItem } from './union';
 export { filtersKey } from './union';
 
 /** Interpolation/equality registry and contract. */

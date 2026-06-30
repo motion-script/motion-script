@@ -6,8 +6,8 @@ import type { SpeedFilter } from "./implementations/speed";
 import type { EchoFilter } from "./implementations/echo";
 import { paramKey } from "./curve";
 
-/** Discriminated union of every audio-filter type a sound clip can carry. */
-export type AudioFilter =
+/** Discriminated union of every concrete audio-filter type a sound clip can carry. */
+export type AudioFilterItem =
     | GainFilter
     | HighPassFilter
     | LowPassFilter
@@ -23,7 +23,7 @@ export type AudioFilter =
  * playing the stale source until the next stop/start). Keyed via {@link paramKey}
  * so two chains with identical curves collapse to the same string.
  */
-export function filtersKey(filters: readonly AudioFilter[] | undefined): string {
+export function filtersKey(filters: readonly AudioFilterItem[] | undefined): string {
     if (!filters || filters.length === 0) return "";
     return filters.map((f) => {
         switch (f.type) {

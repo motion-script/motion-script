@@ -2,8 +2,8 @@ import { FrameGenerator } from "@/tween/generator";
 import { wait } from "@/tween/wait";
 import { AssetTracker } from "@/assets/tracker";
 import { AudioRequest } from "@/attributes/audio/request";
-import { AudioFilter } from "@/attributes/audio/filters/union";
-import { ChainableAfx, resolveAudioFilters } from "@/attributes/audio/filters/chain";
+import { AudioFilterItem } from "@/attributes/audio/filters/union";
+import { AudioFilter, resolveAudioFilters } from "@/attributes/audio/filters/chain";
 import { isCurve, integrateSpeedToSceneTime } from "@/attributes/audio/filters/curve";
 
 interface SoundPropsBase {
@@ -11,7 +11,7 @@ interface SoundPropsBase {
     volume?: number;
     loop?: boolean;
     /** Audio filters applied to the clip (gain, eq, tremolo, speed, echo). */
-    filters?: ChainableAfx;
+    filters?: AudioFilter;
 }
 
 /**
@@ -35,7 +35,7 @@ export interface ResolvedSoundProps {
     loop?: boolean;
     trimStart?: number;
     trimEnd?: number;
-    filters?: AudioFilter[];
+    filters?: AudioFilterItem[];
 }
 
 /**
@@ -52,7 +52,7 @@ export class Sound {
     loop: boolean;
     trimStart: number;
     trimEnd: number;
-    filters: AudioFilter[];
+    filters: AudioFilterItem[];
 
     private _currentTime: number = 0;
     private _requests: AudioRequest[] = [];
@@ -111,7 +111,7 @@ export class Sound {
             return trimmedSourceLength / scalar;
         }
         const curveFilter = this.filters.find(
-            (f): f is Extract<AudioFilter, { type: "speed" }> => f.type === "speed" && isCurve(f.value),
+            (f): f is Extract<AudioFilterItem, { type: "speed" }> => f.type === "speed" && isCurve(f.value),
         );
         // hasSpeedCurve() guarantees this exists and that value is a Curve.
         const curve = curveFilter!.value;

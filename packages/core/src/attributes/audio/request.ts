@@ -1,4 +1,4 @@
-import type { AudioFilter } from "@/attributes/audio/filters/union";
+import type { AudioFilterItem } from "@/attributes/audio/filters/union";
 
 export interface AudioParams {
     src: string;
@@ -6,7 +6,7 @@ export interface AudioParams {
     loop?: boolean;
     trimStart?: number; // in seconds
     trimEnd?: number; // in seconds
-    filters?: AudioFilter[];
+    filters?: AudioFilterItem[];
 }
 
 export interface AudioRequest {
@@ -52,7 +52,7 @@ export interface AudioRequest {
     // --- Processing ---
 
     /** Audio filters applied in array order (index 0 closest to the source). */
-    filters?: AudioFilter[];
+    filters?: AudioFilterItem[];
 
     // --- Timeline attribution (display only) ---
 

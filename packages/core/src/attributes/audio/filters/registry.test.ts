@@ -7,7 +7,7 @@ import '@/attributes/audio/filters/implementations/lowpass';
 import '@/attributes/audio/filters/implementations/tremolo';
 import '@/attributes/audio/filters/implementations/speed';
 import '@/attributes/audio/filters/implementations/echo';
-import type { AudioFilter } from '@/attributes/audio/filters/union';
+import type { AudioFilterItem } from '@/attributes/audio/filters/union';
 import { ramp } from '@/attributes/audio/filters/curve';
 
 describe('AudioFilterRegistry registration', () => {
@@ -34,16 +34,16 @@ describe('AudioFilterRegistry.lerp', () => {
     });
 
     it('hard-cuts at t=0.5 when types differ', () => {
-        const from: AudioFilter = { type: 'gain', value: 1 };
-        const to: AudioFilter = { type: 'speed', value: 2 };
+        const from: AudioFilterItem = { type: 'gain', value: 1 };
+        const to: AudioFilterItem = { type: 'speed', value: 2 };
         expect(AudioFilterRegistry.lerp(from, to, 0.4)).toBe(from);
         expect(AudioFilterRegistry.lerp(from, to, 0.6)).toBe(to);
     });
 
     it('hard-cuts a curve-valued param at t=0.5 instead of lerping', () => {
         const curve = ramp(0, 1, 1);
-        const from: AudioFilter = { type: 'gain', value: 2 };
-        const to: AudioFilter = { type: 'gain', value: curve };
+        const from: AudioFilterItem = { type: 'gain', value: 2 };
+        const to: AudioFilterItem = { type: 'gain', value: curve };
         expect(AudioFilterRegistry.lerp(from, to, 0.4)).toEqual({ type: 'gain', value: 2 });
         expect(AudioFilterRegistry.lerp(from, to, 0.6)).toEqual({ type: 'gain', value: curve });
     });
@@ -53,16 +53,16 @@ describe('AudioFilterRegistry.equals', () => {
     it('treats omitted optional params as their default', () => {
         const echo = AudioFilterRegistry.get('echo')!;
         expect(echo.equals(
-            { type: 'echo', delay: 0.3, feedback: 0.4 } as AudioFilter,
-            { type: 'echo', delay: 0.3, feedback: 0.4, mix: 0.5 } as AudioFilter,
+            { type: 'echo', delay: 0.3, feedback: 0.4 } as AudioFilterItem,
+            { type: 'echo', delay: 0.3, feedback: 0.4, mix: 0.5 } as AudioFilterItem,
         )).toBe(true);
     });
 });
 
 describe('AudioFilterRegistry.lerpArray', () => {
     it('lerps matched indices and keeps unmatched ones', () => {
-        const from: AudioFilter[] = [{ type: 'gain', value: 0 }];
-        const to: AudioFilter[] = [{ type: 'gain', value: 2 }, { type: 'speed', value: 2 }];
+        const from: AudioFilterItem[] = [{ type: 'gain', value: 0 }];
+        const to: AudioFilterItem[] = [{ type: 'gain', value: 2 }, { type: 'speed', value: 2 }];
         expect(AudioFilterRegistry.lerpArray(from, to, 0.5)).toEqual([
             { type: 'gain', value: 1 },
             { type: 'speed', value: 2 },

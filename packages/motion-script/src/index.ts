@@ -3,13 +3,15 @@
 // ---------------------------------------------------------
 export {
     createScene,
-    createProject,
+    createProject, AudioFilters,
 } from '@motion-script/core';
 export type {
     Scene,
     SceneGenerator,
     Stage,
     Clip, BlendMode,
+    AudioFilter,
+
     PathBuilder,
     ProjectConfig,
     Theme,

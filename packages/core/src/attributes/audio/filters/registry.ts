@@ -1,7 +1,7 @@
-import { AudioFilter } from "@/attributes/audio/filters/union";
+import { AudioFilterItem } from "@/attributes/audio/filters/union";
 
 /** Interpolation and equality contract every registered audio filter must implement. */
-export interface AudioFilterData<T extends AudioFilter> {
+export interface AudioFilterData<T extends AudioFilterItem> {
     /** Return a new filter linearly interpolated between `from` and `to` at progress `t` (0–1). */
     lerp(from: T, to: T, t: number): T;
     /** Return true when both filters are audibly identical (used to skip redundant work). */
@@ -17,21 +17,21 @@ export interface AudioFilterData<T extends AudioFilter> {
  * module (see the side-effect imports in this package's `index.ts`).
  */
 export class AudioFilterRegistry {
-    private static registry = new Map<string, AudioFilterData<AudioFilter>>();
+    private static registry = new Map<string, AudioFilterData<AudioFilterItem>>();
 
     /**
      * Register a filter type.
      * Throws if the same `type` key is registered more than once to catch accidental double-imports.
      */
-    static register<T extends AudioFilter>(type: string, data: AudioFilterData<T>): void {
+    static register<T extends AudioFilterItem>(type: string, data: AudioFilterData<T>): void {
         if (this.registry.has(type)) {
             throw new Error(`Audio filter "${type}" is already registered`);
         }
-        this.registry.set(type, data as AudioFilterData<AudioFilter>);
+        this.registry.set(type, data as AudioFilterData<AudioFilterItem>);
     }
 
     /** Look up the `AudioFilterData` for a given type key, or `undefined` if not registered. */
-    static get(type: string): AudioFilterData<AudioFilter> | undefined {
+    static get(type: string): AudioFilterData<AudioFilterItem> | undefined {
         return this.registry.get(type);
     }
 
@@ -44,7 +44,7 @@ export class AudioFilterRegistry {
      * Interpolate between two individual filters at progress `t`.
      * Falls back to a hard cut at t = 0.5 when the types differ or are unregistered.
      */
-    static lerp(from: AudioFilter, to: AudioFilter, t: number): AudioFilter {
+    static lerp(from: AudioFilterItem, to: AudioFilterItem, t: number): AudioFilterItem {
         if (from.type !== to.type) return t < 0.5 ? from : to;
         const data = this.registry.get(from.type);
         return data ? data.lerp(from, to, t) : (t < 0.5 ? from : to);
@@ -54,9 +54,9 @@ export class AudioFilterRegistry {
      * Interpolate between two filter arrays of potentially different lengths.
      * Indices present in only one array are kept as-is; matched indices are lerped pairwise.
      */
-    static lerpArray(from: AudioFilter[], to: AudioFilter[], t: number): AudioFilter[] {
+    static lerpArray(from: AudioFilterItem[], to: AudioFilterItem[], t: number): AudioFilterItem[] {
         const maxLen = Math.max(from.length, to.length);
-        const result: AudioFilter[] = [];
+        const result: AudioFilterItem[] = [];
         for (let i = 0; i < maxLen; i++) {
             const a = from[i];
             const b = to[i];

@@ -1,5 +1,6 @@
-import { AudioFilter } from "./union";
+import { AudioFilterItem } from "./union";
 import { Param } from "./curve";
+import { ImageFilters } from "@/attributes/shape/filters";
 
 /**
  * Immutable, chainable list of audio filters.
@@ -17,7 +18,7 @@ import { Param } from "./curve";
  * this.playSound('song.mp3', { filters: AudioFilters.volume(fadeIn(0.5).fadeOut(1)) }); // animated
  */
 export class AudioFilterChain {
-  constructor(public list: AudioFilter[] = []) { }
+  constructor(public list: AudioFilterItem[] = []) { }
 
   /** Append a gain (volume) filter; `value` 1 = unchanged, 0 = silent, >1 = louder. */
   gain(value: Param) {
@@ -61,17 +62,19 @@ export class AudioFilterChain {
 
   /** Serializes to the raw filter array so frameworks that call `toJSON` get a plain value. */
   toJSON() {
+
     return this.list;
   }
 }
 
 /**
- * Accepted shapes for a sound's `filters` prop.
+ * Accepted shapes for a sound's `filters` prop — the loose, author-facing type.
  * Can be a single filter, a plain array, or an `AudioFilterChain` builder result.
+ * Mirrors how `ImageFilter` is the author-facing union in the shape filter system.
  */
-export type ChainableAfx = AudioFilter[] | AudioFilterChain | AudioFilter;
+export type AudioFilter = AudioFilterItem[] | AudioFilterChain | AudioFilterItem;
 
-const createChain = (list: AudioFilter[] = []): AudioFilterChain => new AudioFilterChain(list);
+const createChain = (list: AudioFilterItem[] = []): AudioFilterChain => new AudioFilterChain(list);
 
 /**
  * Entry points for building audio-filter chains fluently.
@@ -92,10 +95,10 @@ export const AudioFilters = {
 };
 
 /**
- * Normalises any `ChainableAfx` value to a plain `AudioFilter[]`.
+ * Normalises any `AudioFilter` value to a plain `AudioFilterItem[]`.
  * Used internally when reading props before scheduling or interpolation.
  */
-export function resolveAudioFilters(filters: ChainableAfx | undefined): AudioFilter[] {
+export function resolveAudioFilters(filters: AudioFilter | undefined): AudioFilterItem[] {
   if (filters === undefined) return [];
   if (filters instanceof AudioFilterChain) return filters.list;
   if (Array.isArray(filters)) return filters;

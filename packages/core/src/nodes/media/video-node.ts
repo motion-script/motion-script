@@ -12,8 +12,8 @@ import { AssetTracker } from "@/assets/tracker";
 import { resolveFill, updateFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
 import { Sound } from "@/attributes/audio/sound";
-import { AudioFilter } from "@/attributes/audio/filters/union";
-import { ChainableAfx, resolveAudioFilters, AudioFilters } from "@/attributes/audio/filters/chain";
+import { AudioFilterItem } from "@/attributes/audio/filters/union";
+import { AudioFilter, resolveAudioFilters, AudioFilters } from "@/attributes/audio/filters/chain";
 
 export interface VideoProps extends RectProps {
     src?: string;
@@ -39,7 +39,7 @@ export interface VideoProps extends RectProps {
     /** Silence the video's audio track without affecting the picture. Default false. */
     muted?: boolean;
     /** Audio filters applied to the video's sound track (gain, eq, echo, …). */
-    audioFilters?: ChainableAfx;
+    audioFilters?: AudioFilter;
 
 }
 
@@ -75,7 +75,7 @@ export class Video extends Rect {
     @property({ default: 1 }) declare volume: number;
     @property({ default: false }) declare muted: boolean;
     @property({ default: [], mapper: resolveAudioFilters })
-    declare audioFilters?: AudioFilter[];
+    declare audioFilters?: AudioFilterItem[];
 
     /**
      * The live `video` fill state, advanced each tick by the fill's own dynamic
@@ -159,7 +159,7 @@ export class Video extends Rect {
         if (key === this._soundKey && this._sound) return;
 
         this._soundKey = key;
-        const filters: AudioFilter[] = [];
+        const filters: AudioFilterItem[] = [];
         if (speed !== 1) filters.push(...resolveAudioFilters(AudioFilters.speed(speed)));
         filters.push(...this.audioFilters!);
 

@@ -31,7 +31,7 @@ export default createScene(function* (stage) {
 | `trimStart` | `number` | `0` | Start offset into the source file (seconds) |
 | `trimEnd` | `number` | | End offset into the source file (seconds) |
 | `duration` | `number` | | Shorthand for `trimStart: 0, trimEnd: duration`. Mutually exclusive with `trimStart`/`trimEnd`. |
-| `filters` | `AudioFilter[] \| AudioFilterChain` | `[]` | Audio filters |
+| `filters` | `AudioFilter` | `[]` | Audio filters (a single filter, an array, or an `AudioFilterChain`) |
 
 ---
 
