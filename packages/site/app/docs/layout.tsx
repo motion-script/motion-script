@@ -6,6 +6,7 @@ import MobileSidebar from '@/components/docs/MobileSidebar'
 import { Logo } from '@/components/landing/Logo'
 import Footer from '@/components/landing/Footer'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { SearchTrigger } from '@/components/docs/SearchTrigger'
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   // Pre-render every version's sidebar; VersionedSidebar picks one by pathname.
@@ -43,6 +44,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
+            <SearchTrigger />
             <a
               href="https://github.com/motion-script/motion-script"
               target="_blank"

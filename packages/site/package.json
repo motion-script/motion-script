@@ -5,9 +5,10 @@
   "private": true,
   "scripts": {
     "build:player": "pnpm --filter @motion-script/player build:app",
-    "predev": "pnpm build:player",
+    "build:search": "node --import ./scripts/ts-resolve.mjs lib/build-search-index.ts",
+    "predev": "pnpm build:player && pnpm build:search",
     "dev": "next dev",
-    "prebuild": "pnpm build:player",
+    "prebuild": "pnpm build:player && pnpm build:search",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
