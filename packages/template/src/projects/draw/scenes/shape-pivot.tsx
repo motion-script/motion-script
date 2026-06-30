@@ -44,7 +44,7 @@ export default createScene(function* (stage) {
         <Rect width={'fill'} height={'fill'} group={'column'} gap={12}>
             <Text
                 fontFamily={'Pixelify Sans'} text={anchor}
-                fontSize={36} fill={'gray'} width={'fill'} align={'center'}
+                fontSize={36} fill={'gray'} width={'fill'} textAlign={'center'}
             />
             <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={24} group={'stack'} fill={'card'}>
                 <DrawnShapePivot
@@ -63,7 +63,7 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={24}>
-            <Text fontFamily={'Pixelify Sans'} text={'Graphics shape — cardinal anchors'} fontSize={80} fill={'gray'} width={'fill'} align={'start'} />
+            <Text fontFamily={'Pixelify Sans'} text={'Graphics shape — cardinal anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect width={'fill'} height={'fill'} group={'column'} gap={32}>
                 {rows}
             </Rect>

@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
 
         stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text ref={heading} fontFamily={'Pixelify Sans'} text={'group: row -> stack -> column'} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text ref={heading} fontFamily={'Pixelify Sans'} text={'group: row -> stack -> column'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
                 <Rect
                     ref={container}
                     width={'fill'} height={'fill'}

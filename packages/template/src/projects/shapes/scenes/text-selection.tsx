@@ -20,7 +20,7 @@ export default createScene(function* (stage) {
         const overlap = createRef<Text>();
 
         const line = (ref: any, text: string) => (
-            <Text ref={ref} text={text} fontSize={64} fontWeight={500} fill={CREAM} align={'center'} />
+            <Text ref={ref} text={text} fontSize={64} fontWeight={500} fill={CREAM} textAlign={'center'} />
         );
 
         stage.add(line(find, 'select pieces of text'));

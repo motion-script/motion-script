@@ -29,7 +29,7 @@ export default createScene(function* (stage) {
                     <Rect width={'fill'} height={'fill'} group={'column'} gap={32}>
                         {/* Header row: title hugging-left, badge pinned right. */}
                         <Rect width={'fill'} group={'row'} gap={24} fill={'#161a21'} cornerRadius={24} padding={32}>
-                            <Text fontFamily={'Pixelify Sans'} text={'Dashboard'} fontSize={56} fill={'white'} width={'fill'} align={'start'} />
+                            <Text fontFamily={'Pixelify Sans'} text={'Dashboard'} fontSize={56} fill={'white'} width={'fill'} textAlign={'start'} />
                             <Rect group={'stack'} fill={'primary'} cornerRadius={16} padding={24}>
                                 <Text fontFamily={'Pixelify Sans'} text={'PRO'} fontSize={40} fill={'bg'} />
                             </Rect>

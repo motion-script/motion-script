@@ -2,7 +2,7 @@
 // 1. Scene & Project
 // ---------------------------------------------------------
 export {
-    createScene,
+    createScene, fadeIn, fadeOut, ramp,
     createProject, AudioFilters,
 } from '@motion-script/core';
 export type {

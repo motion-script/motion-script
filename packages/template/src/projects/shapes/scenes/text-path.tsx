@@ -51,7 +51,7 @@ export default createScene(function* (stage) {
                     fontSize={28}
                     fill={'gray'}
                     y={-260}
-                    align={'center'}
+                    textAlign={'center'}
                 />
                 {node}
             </Rect>

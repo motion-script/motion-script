@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
 
         stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
-                <Text fontFamily={'Pixelify Sans'} text={'Cross-scene bed — scene B (bed still playing)'} fontSize={64} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={'Cross-scene bed — scene B (bed still playing)'} fontSize={64} fill={'gray'} width={'fill'} textAlign={'start'} />
                 <Rect width={'fill'} height={300} fill={'card'} cornerRadius={16} group={'row'} align={{ x: 0, y: 0 }}>
                     <Rect ref={dot} width={120} height={120} fill={'primary'} cornerRadius={60} />
                 </Rect>

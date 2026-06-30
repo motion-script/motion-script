@@ -75,7 +75,7 @@ export const blendDemo = (opts: BlendDemoOpts): SceneGenerator => function* (sta
 
         stage.add(
                 <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                    <Text fontFamily={'Pixelify Sans'} text={`Blend: ${mode}`} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                    <Text fontFamily={'Pixelify Sans'} text={`Blend: ${mode}`} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
                     <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'}>
                         <Image src={'kingfisher.jpg'} fit={'fill'} width={1200} height={900} />
                         {refs.map((ref, i) => {

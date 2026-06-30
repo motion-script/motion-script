@@ -56,7 +56,7 @@ export default createScene(function* (stage) {
                     fontWeight={700}
                     fill={GHOST_COLOR}
                     opacity={0}
-                    align={'center'}
+                    textAlign={'center'}
                 />
             );
         }
@@ -69,7 +69,7 @@ export default createScene(function* (stage) {
                     fontSize={BASE_FONT_SIZE}
                     fontWeight={800}
                     fill={CREAM}
-                    align={'center'}
+                    textAlign={'center'}
                 />
                 <Text
                     ref={pagesLabel}
@@ -78,7 +78,7 @@ export default createScene(function* (stage) {
                     fontWeight={700}
                     fill={GHOST_COLOR}
                     letterSpacing={12}
-                    align={'center'}
+                    textAlign={'center'}
                     opacity={0}
                     y={30}
                 />

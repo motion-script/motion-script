@@ -1,6 +1,5 @@
 import { AudioFilterItem } from "./union";
 import { Param } from "./curve";
-import { ImageFilters } from "@/attributes/shape/filters";
 
 /**
  * Immutable, chainable list of audio filters.

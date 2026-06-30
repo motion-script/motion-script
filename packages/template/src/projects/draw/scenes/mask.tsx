@@ -20,7 +20,7 @@ export default createScene(function* (stage) {
 
         stage.add(
             <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
-                <Text fontFamily={'Pixelify Sans'} text={"Inline Mask — draw commands"} fontSize={96} fill={'gray'} width={'fill'} align={'start'} />
+                <Text fontFamily={'Pixelify Sans'} text={"Inline Mask — draw commands"} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
                 <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
                     <DrawnMask ref={maskRef} extent={300} offset={0} />
                 </Rect>
