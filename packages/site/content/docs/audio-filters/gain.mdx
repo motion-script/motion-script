@@ -1,0 +1,48 @@
+---
+sidebar_position: 1
+---
+
+# Gain
+
+Scales the clip's amplitude by a linear factor. Use it to raise or lower the volume of a `Sound` without touching the source file.
+
+## Usage
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+// Via AFX builder
+const clip = new Sound({ src: './voice.mp3', filters: AFX.gain(1.5) });
+
+// Via raw object
+const clip = new Sound({ src: './voice.mp3', filters: [{ type: 'gain', value: 1.5 }] });
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'gain'` | — | Filter identifier |
+| `value` | `number` | — | Linear amplitude multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
+
+## Animating
+
+Interpolate `value` inside a `tween` to fade volume in or out:
+
+```tsx
+import { Sound, AFX, tween, lerpNumber, easeOut } from '@motion-script/core';
+
+const clip = new Sound({ src: './music.mp3', filters: AFX.gain(0) });
+clip.start();
+
+// Fade in over 2 seconds
+yield* tween(2, (t) => {
+  clip.set({ filters: AFX.gain(lerpNumber(0, 1, easeOut(t))) });
+});
+```
+
+## Notes
+
+- Gain stacks multiplicatively with the `volume` prop on `Sound`. A `volume` of `0.5` and a gain of `2` cancel out to unity.
+- Values above `1` can cause clipping if the signal is already near full scale. Keep headroom when boosting.
+- `value` is fully animatable — its lerp handler interpolates linearly between keyframes.

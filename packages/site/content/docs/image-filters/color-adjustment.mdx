@@ -1,0 +1,84 @@
+---
+sidebar_position: 6
+---
+
+# Color Adjustment Filter
+
+A collection of photographic-style tonal and color adjustments in one filter. All fields are optional — omitted fields use their neutral default.
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.colorAdjustment({
+    brightness: 0.1,
+    contrast: 1.15,
+    saturation: 0.8,
+    temperature: 0.2,
+    vignette: 0.3,
+  })}
+/>
+
+// Raw object
+filters={[{
+  type: 'colorAdjustment',
+  brightness: 0.1,
+  contrast: 1.15,
+  saturation: 0.8,
+}]}
+```
+
+## Props
+
+| Prop | Type | Neutral | Range | Description |
+|---|---|---|---|---|
+| `type` | `'colorAdjustment'` | — | — | Filter identifier |
+| `brightness` | `number` | `0` | `-1` to `1` | Shifts overall lightness (linear shift, no clipping) |
+| `contrast` | `number` | `1` | `0` to `2` | Spreads highlights and shadows further apart |
+| `saturation` | `number` | `1` | `0` to `3` | Scales color saturation uniformly |
+| `vibrance` | `number` | `0` | `-1` to `1` | Boosts muted colors more than already-vibrant ones |
+| `shadows` | `number` | `0` | `-1` to `1` | Lifts (positive) or crushes (negative) shadow regions |
+| `highlights` | `number` | `0` | `-1` to `1` | Brightens (positive) or dims (negative) highlight regions |
+| `temperature` | `number` | `0` | `-1` to `1` | Negative = cool (blue), positive = warm (orange) |
+| `tint` | `number` | `0` | `-1` to `1` | Negative = green shift, positive = magenta shift |
+| `vignette` | `number` | `0` | `0` to `1` | Darkens the edges of the frame |
+
+All numeric props are interpolated when chained inside a `tween` via `FilterRegistry`.
+
+## Common recipes
+
+### Cinematic look
+
+```tsx
+MX.colorAdjustment({
+  contrast: 1.1,
+  saturation: 0.85,
+  temperature: 0.1,
+  shadows: 0.05,
+  highlights: -0.05,
+  vignette: 0.25,
+})
+```
+
+### Warm vintage
+
+```tsx
+MX.colorAdjustment({
+  brightness: 0.05,
+  saturation: 0.7,
+  temperature: 0.3,
+  vignette: 0.4,
+})
+```
+
+### Cool clean
+
+```tsx
+MX.colorAdjustment({
+  contrast: 1.05,
+  temperature: -0.15,
+  tint: -0.05,
+})
+```

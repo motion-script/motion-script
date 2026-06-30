@@ -1,0 +1,73 @@
+---
+sidebar_position: 3
+---
+
+# Pixelate
+
+Chunks the node into rectangular blocks, like After Effects' **Mosaic** effect.
+
+The block values are a **block count** — how many blocks span the node — *not* a pixel size. A count equal to the node's pixel dimension on that axis is pristine (one block per pixel); lower counts give larger, coarser blocks. For a 1920×1080 image, `1920 × 1080` is untouched and `40 × 24` is heavily pixelated.
+
+![Pixelate effect demo](/effects/pixelate.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Uniform block count on both axes
+<Rect fill={{ type: 'image', src: './photo.jpg', fit: 'fill' }} effects={Effects.pixelate(120)} />
+
+// Per-axis block counts + sharp colours
+<Rect effects={Effects.pixelate({ horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true })} />
+
+// Uniform count via an options object
+<Rect effects={Effects.pixelate({ blocks: 80, sharpColors: false })} />
+
+// Raw effect object
+<Rect effects={[{ type: 'pixelate', horizontalBlocks: 200, verticalBlocks: 180, sharpColors: true }]} />
+```
+
+`Effects.pixelate(options)` accepts:
+
+- `number` — same block count on both axes (`sharpColors` defaults to `true`).
+- `{ blocks, sharpColors? }` — uniform block count.
+- `{ horizontalBlocks, verticalBlocks, sharpColors? }` — per-axis block counts.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'pixelate'` | — | Effect identifier |
+| `horizontalBlocks` | `number` | — | Number of blocks across the node (AE "Horizontal Blocks") |
+| `verticalBlocks` | `number` | — | Number of blocks down the node (AE "Vertical Blocks") |
+| `sharpColors` | `boolean` | `true` | Solid blocks (`true`) vs. smoothly blended (`false`) — mirrors AE's "Sharp Colors" |
+| `backdrop` | `boolean` | `false` | When `true`, pixelates the content beneath the node |
+
+## Animating
+
+Start with a low block count (coarse) and animate up to the node's resolution to reveal the image:
+
+```tsx
+import { createScene, Rect, Effects, tween, lerpNumber, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const img = new Rect({
+    width: 600,
+    height: 400,
+    fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+  });
+  img.set({ effects: Effects.pixelate(40) });
+  stage.add(img);
+
+  yield* tween(1.5, (t) => {
+    img.set({ effects: Effects.pixelate(lerpNumber(40, 600, easeInOut(t))) });
+  });
+});
+```
+
+## Stacking with other effects
+
+```tsx
+<Rect effects={Effects.pixelate(120).grayscale(0.5)} />
+```

@@ -1,0 +1,53 @@
+---
+sidebar_position: 4
+---
+
+# Tremolo
+
+Modulates the clip's amplitude with a low-frequency oscillator (LFO), creating a rhythmic volume wobble. Classic uses include vintage electric-piano tremolo, radio-signal flutter, and pulsing ambient textures.
+
+## Usage
+
+```tsx
+import { Sound, AFX } from '@motion-script/core';
+
+// Via AFX builder — 5 Hz pulse at 60% depth
+const clip = new Sound({ src: './piano.mp3', filters: AFX.tremolo(5, 0.6) });
+
+// Via raw object
+const clip = new Sound({
+  src: './piano.mp3',
+  filters: [{ type: 'tremolo', rate: 5, depth: 0.6 }],
+});
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'tremolo'` | — | Filter identifier |
+| `rate` | `number` | — | Modulation rate in Hz. How fast the volume pulses |
+| `depth` | `number` | — | Modulation depth, `0`–`1`. `0` = no effect, `1` = volume dips fully to silence on each cycle |
+
+## Animating
+
+Ramp up the tremolo rate and depth dynamically:
+
+```tsx
+import { Sound, AFX, tween, lerpNumber } from '@motion-script/core';
+
+const clip = new Sound({ src: './pad.mp3', filters: AFX.tremolo(1, 0) });
+clip.start();
+
+// Intensify the wobble over 4 seconds
+yield* tween(4, (t) => {
+  clip.set({ filters: AFX.tremolo(lerpNumber(1, 8, t), lerpNumber(0, 0.9, t)) });
+});
+```
+
+## Notes
+
+- The LFO shape is a sine wave — the amplitude rises and falls smoothly on each cycle.
+- At very low rates (< 1 Hz) the effect acts as a slow volume swell rather than a noticeable wobble.
+- At rates above ~20 Hz the modulation enters the audio-frequency range and the effect sounds like amplitude modulation (AM) distortion rather than tremolo.
+- Both `rate` and `depth` are fully animatable.

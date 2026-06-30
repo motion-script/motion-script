@@ -1,0 +1,108 @@
+---
+sidebar_position: 1
+---
+
+import { FirstSceneCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Your First Scene
+
+Welcome! In this guide you'll build a small animation from scratch, one page at a time. By the end you'll have a title card that slides in, gets laid out neatly, picks up a blur, and finishes with a mask reveal. Each page adds onto the example from the page before, so follow along in order.
+
+Let's start with the absolute basics: a scene, a single shape, and getting it on screen.
+
+## Create a scene
+
+Everything in MotionScript lives inside a **scene**. You create one with `createScene`, passing a generator function that describes your animation. Export it as the file's default so it can be imported with the `?scene` suffix.
+
+```tsx title="src/scenes/my-scene.tsx"
+import { createScene } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  // your animation goes here
+});
+```
+
+The `*` in front of `function` makes it a generator. Don't worry about what that means yet, just know that it's how MotionScript steps through your animation one frame at a time. We'll use it on the next page. The `stage` argument is your handle to the scene — you'll use it to add nodes and set scene-wide properties.
+
+## Add your first node
+
+A scene starts empty. To put something on screen, you create a **node** and add it with `stage.add()`. Let's add a blue rounded square using the `Rect` node.
+
+```tsx title="src/scenes/my-scene.tsx"
+import { createScene, Rect } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <Rect width={200} height={200} fill="royalblue" cornerRadius={16} />
+  );
+});
+```
+
+That's it. You've placed a 200×200 blue square in the center of your scene. Nodes are written as JSX (the `<Rect ... />` syntax), and every node takes props to control how it looks:
+
+- `width` / `height`: the size in pixels
+- `fill`: the color (any CSS color name or hex value works)
+- `cornerRadius`: how rounded the corners are
+
+`Rect` is the most common node you'll reach for, but there are plenty of others, like `Ellipse`, `Line`, and `Image`. You can browse them all later in the [Nodes reference](/docs/category/available-nodes). For now, one square is all we need.
+
+## Show it in a project
+
+Your scene won't run on its own. A **project** ties one or more scenes together and tells MotionScript how to render them. Every project exports a default config from `createProject`.
+
+Import each scene with the `?scene` suffix and list it directly:
+
+```ts title="src/project.ts"
+import { createProject } from '@motion-script/core';
+import myScene from './scenes/my-scene?scene';
+
+export default createProject({
+  name: 'My First Animation',
+  scenes: [myScene],
+  viewport: { width: 1920, height: 1080 },
+  fps: 60,
+});
+```
+
+Here's what you're telling MotionScript:
+
+- `name`: what shows up in the player
+- `scenes`: the list of scenes to play, in order (just one for now)
+- `viewport`: the size of your video, in pixels
+- `fps`: how many frames per second to render
+
+:::tip Hot reloading
+The `?scene` suffix makes each scene file its own hot-reload boundary. When you
+edit a scene while the player is running, only that scene re-runs — the playhead
+stays put and the rest of the timeline is untouched. Each scene file
+`export default createScene(...)`; the `?scene` import hands you the ready-to-use
+scene, so you list `myScene` directly.
+:::
+
+:::info Reusing a scene with parameters
+`createScene` takes a generator, so a parameterized scene is just a function that
+returns one. Write the factory in a shared file, then call it per `?scene` file
+(one instance per file keeps the hot-reload boundary intact):
+
+```tsx title="src/scenes/card.ts"
+import type { SceneGenerator } from '@motion-script/core';
+export const card = (color: string): SceneGenerator =>
+  function* (stage) {
+    stage.add(<Rect fill={color} width={200} height={200} />);
+  };
+```
+
+```tsx title="src/scenes/blue-card.tsx"
+import { createScene } from '@motion-script/core';
+import { card } from './card';
+export default createScene(card('royalblue'));
+```
+:::
+
+Run your project and you'll see your blue square sitting in the middle of the frame:
+
+<FirstSceneCanvas />
+
+It doesn't move yet, but that's about to change.
+
+Next up: making it animate.
