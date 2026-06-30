@@ -3,7 +3,13 @@
 import { useState, useMemo } from 'react'
 import hljs from 'highlight.js/lib/core'
 import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
 
+// The TypeScript grammar delegates JSX/TSX markup to the `xml` sub-language, so
+// without `xml` registered the tags in `<Node .../>` snippets stay uncolored
+// (everything else highlights). rehype-highlight registers the full bundle,
+// which is why regular markdown code blocks don't show the gap.
+hljs.registerLanguage('xml', xml)
 hljs.registerLanguage('typescript', typescript)
 hljs.registerLanguage('tsx', typescript)
 

@@ -23,8 +23,14 @@ export interface DocVersion {
   latest: boolean
 }
 
+// The "latest" docs version tracks the engine's published version. This module
+// is bundled for the browser too (the version selector is a client component),
+// so we can't read core/package.json with `fs` here. Instead `next.config.ts`
+// reads it in Node and inlines it as NEXT_PUBLIC_CORE_VERSION at build time.
+const LATEST_VERSION_ID = process.env.NEXT_PUBLIC_CORE_VERSION || "3.0.0"
+
 export const VERSIONS: DocVersion[] = [
-  { version: "3.0.0", label: "3.0.0", latest: true },
+  { version: LATEST_VERSION_ID, label: LATEST_VERSION_ID, latest: true },
   { version: "1.0.0", label: "1.0.0", latest: false },
 ]
 
