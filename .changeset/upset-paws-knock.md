@@ -14,4 +14,4 @@
 "@motion-script/vite-plugin": minor
 ---
 
-Create flagship motion-script package
+Create flagship motion-script package 
