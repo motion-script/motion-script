@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.10.1
+
+### Patch Changes
+
+- 89aae7f: Adjust tsconfig and create template
+- Updated dependencies [89aae7f]
+  - @motion-script/canvaskit@2.10.1
+  - @motion-script/core@2.10.1
+  - @motion-script/player@2.10.1
+  - @motion-script/web@2.10.1
+
 ## 2.10.0
 
 ### Minor Changes

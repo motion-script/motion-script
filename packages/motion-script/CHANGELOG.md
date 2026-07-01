@@ -1,5 +1,15 @@
 # motion-script
 
+## 2.10.1
+
+### Patch Changes
+
+- 89aae7f: Adjust tsconfig and create template
+- Updated dependencies [89aae7f]
+  - @motion-script/code@2.10.1
+  - @motion-script/latex@2.10.1
+  - @motion-script/core@2.10.1
+
 ## 2.10.0
 
 ### Minor Changes

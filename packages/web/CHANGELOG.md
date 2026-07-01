@@ -1,5 +1,11 @@
 # @motion-script/web
 
+## 2.10.1
+
+### Patch Changes
+
+- 89aae7f: Adjust tsconfig and create template
+
 ## 2.10.0
 
 ### Minor Changes
