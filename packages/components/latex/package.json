@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/latex",
-  "version": "2.9.2",
+  "version": "2.10.0",
   "type": "module",
   "description": "Animated LaTeX math for Motion Script, rendering formulas to glyph paths via MathJax and morphing them token by token.",
   "repository": {

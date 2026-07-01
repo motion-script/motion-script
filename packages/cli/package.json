@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/cli",
-  "version": "2.9.2",
+  "version": "2.10.0",
   "description": "Headless command-line exporter for Motion Script projects (ms list / ms export).",
   "repository": {
     "type": "git",
