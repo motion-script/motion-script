@@ -6,7 +6,6 @@
 "@motion-script/player": minor
 "@motion-script/react": minor
 "@motion-script/core": minor
-"@motion-script/site": minor
 "@motion-script/e2e": minor
 "@motion-script/web": minor
 "@motion-script/canvaskit": minor
