@@ -1,5 +1,11 @@
 # @motion-script/canvaskit
 
+## 2.10.0
+
+### Minor Changes
+
+- a91a1a2: Create flagship motion-script package
+
 ## 2.9.2
 
 ### Patch Changes
