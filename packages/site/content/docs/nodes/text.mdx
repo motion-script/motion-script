@@ -1,0 +1,97 @@
+---
+sidebar_position: 1
+---
+
+import { TextCanvas } from '@site/src/components/docs/node-scenes';
+
+# Text
+
+Renders a string with a single consistent style. Like all shape nodes it supports fills, strokes, and shadows.
+
+<TextCanvas />
+
+## Usage
+
+```tsx
+import { createScene, Text } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <Text
+      text="Motion Script"
+      fontSize={96}
+      fontFamily="Inter"
+      fontWeight={800}
+      fill="white"
+    />
+  );
+});
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | `''` | The text content to display |
+| `fontSize` | `number \| 'autofit'` | `16` | Font size in pixels, or `'autofit'` to shrink-fit into the node's bounds |
+| `fontFamily` | `string` | `'Inter'` | Font family name |
+| `fontWeight` | `number` | `400` | Font weight (100–900) |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Font style |
+| `letterSpacing` | `number` | `0` | Extra spacing between characters in pixels |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `align` | `number` | `0` | Text alignment: `-1` left · `0` center · `1` right |
+| `wrap` | `boolean` | `false` | Enable word wrapping |
+| `minFontSize` | `number` | `12` | Minimum font size when using `'autofit'` |
+
+### Size defaults
+
+| Condition | `width` default | `height` default |
+|---|---|---|
+| Normal | `'hug'` | `'hug'` |
+| `fontSize: 'autofit'` or `wrap: true` | `'fill'` | `'fill'` |
+
+## Animating
+
+All text props animate with `.to()`. Use `append` and `prepend` to animate characters being typed in:
+
+```tsx
+import { createScene, Text, createRef, easeOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const label = createRef<Text>();
+
+  stage.add(
+    <Text ref={label} text="" fontSize={96} fontWeight={800} fill="white" />
+  );
+
+  // Type "Motion Script" in, character by character
+  yield* label().append('Motion Script', 1.8, easeOut);
+
+  // Animate font size
+  yield* label().to({ fontSize: 120 }, 0.5, easeOut);
+});
+```
+
+### Methods
+
+| Method | Signature | Description |
+|---|---|---|
+| `append` | `*append(text, duration, easing?)` | Animate adding text to the end |
+| `prepend` | `*prepend(text, duration, easing?)` | Animate adding text to the start |
+
+### Draw-on animation
+
+Animate `end` from `0` to `1` to trace the text outline character by character:
+
+```tsx
+const label = createRef<Text>();
+stage.add(<Text ref={label} text="Motion" fontSize={80} fontWeight={900} fill="white" end={0} />);
+
+yield* label().to({ end: 1 }, 1.2);
+```
+
+## Notes
+
+- `fontFamily` must be available to the renderer — bundle or preload custom fonts.
+- With `fontSize: 'autofit'`, the node defaults to `width: 'fill'` and `height: 'fill'` so it has bounds to shrink into. Set explicit pixel dimensions to constrain the fit area.
+- `align` accepts `-1`, `0`, or `1` rather than string keywords.

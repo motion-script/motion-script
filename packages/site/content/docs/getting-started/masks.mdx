@@ -1,0 +1,100 @@
+---
+sidebar_position: 6
+---
+
+import { MaskCanvas, TextMaskCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Revealing with Masks
+
+For our finale, let's get a little carried away. A **mask** lets you show only part of a node, clipped to the shape of another. Animate that shape and you get reveals, wipes, and all sorts of fun.
+
+You create one with `MaskGroup`. The rule to remember: the **first child is the mask**, and everything after it is the content that gets clipped to that mask.
+
+## A basic mask
+
+Here we use a circle to clip our card. Only the part of the card inside the circle shows.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, MaskGroup, Ellipse, Rect, Text } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <MaskGroup mode="vector">
+      {/* first child = the mask */}
+      <Ellipse width={300} height={300} fill="white" />
+
+      {/* everything after = the clipped content (our card) */}
+      <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    </MaskGroup>
+  );
+});
+```
+
+The mask shape's color doesn't matter in `vector` mode, only its outline. We use white out of habit.
+
+## Animate the mask for an iris reveal
+
+This is the payoff. Start the mask circle tiny, then grow it to reveal the card behind it. Grab the mask with a ref and animate it like anything else.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const reveal = createRef<Ellipse>();
+
+  stage.add(
+    <MaskGroup mode="vector">
+      <Ellipse ref={reveal} width={0} height={0} fill="white" />
+
+      <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+        <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+        <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+      </Rect>
+    </MaskGroup>
+  );
+
+  // grow the circle to reveal the card
+  yield* reveal().to({ width: 800, height: 800 }, 1.2, easeInOut);
+});
+```
+
+The card irises open from a point. That's the same `.to()` you've used the whole way through, now driving a reveal.
+
+<MaskCanvas />
+
+## Get carried away: text as a mask
+
+Any node can be the mask, even text. Use a word as the mask and a colorful fill as the content, and the color shows *through the letters*.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, MaskGroup, Text, Rect, Fills } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <MaskGroup mode="alpha">
+      {/* the word is the mask */}
+      <Text text="MOTION" fontSize={140} fontWeight={900} fill="white" />
+
+      {/* the gradient shows through the letters */}
+      <Rect
+        width="fill"
+        height="fill"
+        fill={Fills.linearGradient(['#4f80ff', '#e84393'])}
+      />
+    </MaskGroup>
+  );
+});
+```
+
+<TextMaskCanvas />
+
+This uses `mode="alpha"`, which clips by the mask's transparency instead of its outline, perfect for text and gradient masks. There's also `mode="luminance"` and an `inverted` option to show content *outside* the shape instead. You'll find them in the [Nodes reference](/docs/category/available-nodes).
+
+## You made it
+
+Look back at what you built: a scene with a square and a title, animated into place, arranged in a tidy card, polished with a blur, and revealed with a mask. That's a complete little animation, and the same handful of ideas (nodes, `.to()`, layouts, effects, masks) scale up to anything you want to make.
+
+From here, dig into the [Nodes](/docs/category/available-nodes), [Attributes](/docs/category/attributes), and [Effects](/docs/category/effects) references whenever you need more detail. Now go make something.

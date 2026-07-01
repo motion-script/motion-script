@@ -1,0 +1,95 @@
+---
+sidebar_position: 4
+---
+
+import { LayoutCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Laying Things Out
+
+We've been nudging nodes around with `x` and `y`. That's fine for one shape, but it gets fiddly fast once you have several. Instead, let MotionScript arrange things for you with a **layout**.
+
+Here's the trick: a `Rect` isn't just a shape, it's also a container. Give it a `group` prop and it lines up its children automatically.
+
+## Stack things in a row or column
+
+Set `group="row"` to place children side by side, or `group="column"` to stack them top to bottom. Add `gap` for spacing and `padding` for breathing room around the edges.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, Rect, Text } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  stage.add(
+    <Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
+});
+```
+
+Notice we put our square and title **inside** the container, and we didn't set a single `x` or `y`. The outer `Rect` sizes itself to wrap its children and lays them out in a tidy column. That's our scene's two elements, neatly combined into a card.
+
+The three layout modes:
+
+| `group` | What it does |
+|---|---|
+| `'row'` | children side by side, left to right |
+| `'column'` | children stacked, top to bottom |
+| `'stack'` | children layered on top of each other |
+
+## Sizing: fixed, fill, and hug
+
+`width` and `height` can be more than just a number:
+
+| Value | Meaning |
+|---|---|
+| `number` | a fixed size in pixels |
+| `'fill'` | stretch to fill the available space |
+| `'hug'` | shrink to wrap tightly around the children |
+
+A container with children "hugs" them by default, which is why our card sized itself perfectly without us asking. You'll use `'fill'` when you want something to take up all the room it can.
+
+## Center it with align
+
+Children are centered on the cross axis by default. Use `align` to push them to
+an edge or corner. Pass a named position (`'center'`, `'topLeft'`, `'bottomRight'`,
+…) or an explicit `{ x, y }` pivot where `x` is `-1` (left) … `1` (right) and `y`
+is `-1` (bottom) … `1` (top).
+
+```tsx
+<Rect group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16} align="center">
+  <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+  <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+</Rect>
+```
+
+Now the square and the title are centered within the card.
+
+## Layouts animate too
+
+Here's the fun part: layout props are animatable just like everything else. Grab the container with a ref and animate its `gap` to spread the contents apart, or even switch it from a column to a row.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, Rect, Text, createRef, easeOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const card = createRef<Rect>();
+
+  stage.add(
+    <Rect ref={card} group="column" gap={16} padding={32} fill="#1e293b" cornerRadius={16}>
+      <Rect width={80} height={80} fill="royalblue" cornerRadius={12} />
+      <Text text="Motion Script" fontSize={40} fontWeight={700} fill="white" />
+    </Rect>
+  );
+
+  yield* card().to({ gap: 40 }, 0.8, easeOut);
+});
+```
+
+The whole card smoothly re-flows as the gap grows. Lay your scene out once, then animate the layout itself.
+
+<LayoutCanvas />
+
+Layouts can nest as deep as you like, and there's more to explore (per-side padding, even spacing with `gap="auto"`) in the [Layout reference](../attributes/layout). But you now have everything you need to compose a clean scene.
+
+Our card looks good. Time to make it look *cool* with effects.

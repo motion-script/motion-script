@@ -1,0 +1,106 @@
+---
+sidebar_position: 2
+---
+
+import { AnimatingCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Animating Your Node
+
+Right now our square just sits there. Let's make it move. This is where the scene's generator function earns its keep.
+
+## Reference the node
+
+To animate a node, you need a handle to it. Create one with `createRef`, attach it with `ref={...}`, and call it like a function to get the node back.
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, Rect, createRef } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
+
+  stage.add(
+    <Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={16} />
+  );
+
+  // box() now gives us the square to animate
+});
+```
+
+## Animate with `.to()`
+
+Every node has a `.to()` method. You give it the properties to change and how long it should take, then `yield*` it to play the animation.
+
+```tsx
+yield* box().to({ x: 400 }, 1);
+```
+
+This slides the square 400 pixels to the right over 1 second. The `yield*` is what actually runs it. Think of it as "play this, and wait until it finishes before moving on."
+
+You can animate more than one property at once, including the fill color:
+
+```tsx
+yield* box().to({ x: 400, rotate: 180, fill: '#e84393' }, 1);
+```
+
+Here's our scene so far, with the square sliding and spinning into place:
+
+```tsx title="src/scenes/my-scene.ts"
+import { createScene, Rect, createRef } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const box = createRef<Rect>();
+
+  stage.add(
+    <Rect ref={box} width={200} height={200} fill="royalblue" cornerRadius={16} />
+  );
+
+  yield* box().to({ x: 400, rotate: 180 }, 1);
+});
+```
+
+<AnimatingCanvas />
+
+## Make it feel natural with easing
+
+A plain animation moves at a constant speed, which can look robotic. An **easing** function changes the pacing, like starting slow and speeding up. Pass one as the third argument to `.to()`.
+
+```tsx
+import { easeOut } from '@motion-script/core';
+
+yield* box().to({ x: 400 }, 1, easeOut('back'));
+```
+
+`easeOut('back')` overshoots slightly and settles back, giving the motion a bit of life. `easeOut`, `easeIn`, and `easeInOut` each take the name of a curve — `'quad'`, `'cubic'`, `'back'`, `'elastic'`, and more. Try swapping them in and out to see how the feel changes.
+
+## Pause between moves
+
+To hold for a moment, use `wait`:
+
+```tsx
+import { wait } from '@motion-script/core';
+
+yield* box().to({ x: 400 }, 1, easeOut('back'));
+yield* wait(0.5);          // hold for half a second
+yield* box().to({ x: 0 }, 1, easeOut('back'));  // slide back
+```
+
+Animations written one after another play **in sequence**, each starting when the last one ends. That ordering is exactly what `yield*` gives you.
+
+## Play moves at the same time
+
+Sometimes you want things to happen together. Wrap them in `parallel` and they all start at once:
+
+```tsx
+import { parallel } from '@motion-script/core';
+
+yield* parallel(
+  box().to({ x: 400 }, 1),
+  box().to({ rotate: 180 }, 1),
+);
+```
+
+Both run side by side, and `parallel` finishes when the longest one does.
+
+You now know enough to choreograph movement: animate with `.to()`, shape the feel with easing, and arrange timing with `wait` and `parallel`. That's plenty to keep building.
+
+Next, let's give our animation something to say by adding text.

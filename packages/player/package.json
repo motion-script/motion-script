@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "clean": "rimraf --glob dist .turbo *.tsbuildinfo ../site/static/player",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo ../site/public/player",
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:app": "vite build --config vite.config.app.ts",
     "build:app:watch": "vite build --watch --config vite.config.app.ts",

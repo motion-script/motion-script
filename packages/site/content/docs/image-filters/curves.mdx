@@ -1,0 +1,96 @@
+---
+sidebar_position: 8
+---
+
+# Curves Filter
+
+Remaps pixel values along a smooth tone curve defined by control points. The renderer interpolates a curve through the points and applies it to the selected channel.
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+// S-curve for contrast on RGB composite
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.curves(
+    [[0, 0], [0.25, 0.15], [0.75, 0.85], [1, 1]],
+    'rgb'
+  )}
+/>
+
+// Boost the blue channel only
+filters={MX.curves([[0, 0.1], [0.5, 0.6], [1, 1]], 'b')}
+
+// Raw object
+filters={[{
+  type: 'curves',
+  points: [[0, 0], [0.5, 0.7], [1, 1]],
+  channel: 'rgb',
+}]}
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'curves'` | — | Filter identifier |
+| `points` | `[number, number][]` | — | Control points as `[input, output]` pairs in [0, 1] |
+| `channel` | `'rgb' \| 'r' \| 'g' \| 'b' \| 'a'` | `'rgb'` | Channel(s) to apply the curve to |
+
+## Reading the curve
+
+Each control point is an `[input, output]` pair:
+
+- `input` — the original pixel value (0 = black, 1 = white)
+- `output` — the remapped value after the curve
+
+A straight line from `[0,0]` to `[1,1]` is a no-op identity. Pulling points above the diagonal brightens; below darkens.
+
+## Common recipes
+
+### S-curve (contrast)
+
+```ts
+[[0, 0], [0.25, 0.15], [0.75, 0.85], [1, 1]]
+```
+
+### Lift shadows
+
+```ts
+[[0, 0.08], [0.5, 0.5], [1, 1]]
+```
+
+### Crush blacks
+
+```ts
+[[0, 0], [0.15, 0], [0.5, 0.5], [1, 1]]
+```
+
+### Orange-teal look (combine channels)
+
+```tsx
+MX
+  .curves([[0, 0], [0.5, 0.55], [1, 1]], 'r')   // warm reds
+  .curves([[0, 0.05], [0.5, 0.5], [1, 0.95]], 'b') // cool darks
+```
+
+## Animating
+
+Control points interpolate linearly when tweened. Both curve sets must have the same number of points:
+
+```tsx
+yield* tween(1.5, (t) => {
+  img.set({
+    filters: [{
+      type: 'curves',
+      points: [
+        [0, lerpNumber(0, 0.1, t)],
+        [0.5, 0.5],
+        [1, lerpNumber(1, 0.9, t)],
+      ],
+      channel: 'rgb',
+    }],
+  });
+});
+```

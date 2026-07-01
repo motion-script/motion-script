@@ -1,0 +1,138 @@
+---
+sidebar_position: 8
+---
+
+# Contributing
+
+Thank you for your interest in contributing to MotionScript! This guide covers how to set up the development environment, understand the repo structure, and submit changes.
+
+## Repository structure
+
+```
+motion-script/
+├── packages/
+│   ├── core/          # @motion-script/core — the animation engine
+│   ├── player/        # @motion-script/player — browser renderer
+│   ├── react/         # @motion-script/react — React bindings
+│   ├── docs/          # This documentation site
+│   ├── my-video/      # Example project / testbed
+│   └── components/
+│       ├── latex/     # @motion-script/latex
+│       ├── code/      # @motion-script/code
+│       └── three/     # @motion-script/three
+```
+
+The monorepo uses [pnpm workspaces](https://pnpm.io/workspaces) and [Turborepo](https://turbo.build/).
+
+## Getting started
+
+### Prerequisites
+
+- **Node.js** 18 or later
+- **pnpm** 9 or later
+
+```bash
+npm install -g pnpm
+```
+
+### Install dependencies
+
+```bash
+pnpm install
+```
+
+### Build core
+
+The player and docs depend on the prebuilt `@motion-script/core` dist. Build it first:
+
+```bash
+pnpm --filter @motion-script/core build
+```
+
+### Start the docs site
+
+```bash
+pnpm --filter @motion-script/docs start
+```
+
+### Start the example project
+
+```bash
+pnpm --filter @motion-script/player dev
+```
+
+## Development workflow
+
+### Making changes to core
+
+After editing `packages/core/src`, rebuild the package:
+
+```bash
+pnpm --filter @motion-script/core build
+```
+
+Or run the watch mode:
+
+```bash
+pnpm --filter @motion-script/core dev
+```
+
+:::info Player dependency
+The player Vite config aliases `@motion-script/player` to its prebuilt dist. After rebuilding core, restart the dev server to pick up changes.
+:::
+
+### Running tests
+
+```bash
+pnpm test
+# or run tests for a specific package
+pnpm --filter @motion-script/core test
+```
+
+### Type checking
+
+```bash
+pnpm typecheck
+```
+
+## Submitting a pull request
+
+1. **Fork** the repository on GitHub.
+2. Create a branch from `main`: `git checkout -b feat/my-feature`.
+3. Make your changes and ensure tests pass: `pnpm test`.
+4. Commit with a descriptive message.
+5. Push and open a pull request against `main`.
+
+### What makes a good PR
+
+- Focused changes — one concern per PR
+- Tests for new behaviour
+- Updated docs if you added or changed a public API
+- No breaking changes without a discussion issue first
+
+## Adding a new node
+
+1. Create `packages/core/src/nodes/<category>/<name>-node.ts`.
+2. Extend `ShapeNode<YourProps>` and implement `renderSelf(draw: RenderContext)`.
+3. Export from `packages/core/src/nodes/index.ts`.
+4. Add a page under `packages/docs/docs/nodes/`.
+
+## Adding a new image filter
+
+1. Create `packages/core/src/attributes/shape/filters/implementations/<name>.ts`.
+2. Implement the `FilterRegistry.register<YourFilter>(...)` call with a `lerp` and `equals` function.
+3. Add the type to `MX` in `packages/core/src/attributes/shape/filters/chain.ts`.
+4. Add a page under `packages/docs/docs/image-filters/`.
+
+## Adding a new node effect
+
+1. Create `packages/core/src/attributes/shape/effects/implementations/<name>.ts`.
+2. Register it with the effect registry and add to `FX` in `packages/core/src/attributes/shape/effects/chain.ts`.
+3. Add a page under `packages/docs/docs/node-effects/`.
+
+## Code style
+
+- TypeScript strict mode throughout
+- No comments unless the WHY is non-obvious
+- Prefer editing existing files over creating new ones
+- Run `pnpm lint` before committing

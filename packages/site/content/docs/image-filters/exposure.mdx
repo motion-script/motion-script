@@ -1,0 +1,31 @@
+---
+sidebar_position: 5
+---
+
+# Exposure Filter
+
+Scales pixel brightness multiplicatively. `value` `1` is unchanged; values above `1` brighten and below `1` darken.
+
+## Usage
+
+```tsx
+import { MX } from '@motion-script/core';
+
+<Image src="./photo.jpg" fit="fill" width={600} height={400}
+  filters={MX.exposure(1.4)}
+/>
+
+// Raw object
+filters={[{ type: 'exposure', value: 1.4 }]}
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'exposure'` | Filter identifier |
+| `value` | `number` | 1 = unchanged, &gt;1 brighter, &lt;1 darker |
+
+## Notes
+
+Unlike `brightness` in `colorAdjustment` (which shifts linearly), exposure scales multiplicatively — doubling `value` doubles the apparent brightness. Use `colorAdjustment` for photographic-style tonal control.

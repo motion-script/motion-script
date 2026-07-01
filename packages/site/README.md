@@ -1,41 +1,21 @@
-# Website
+# Next.js template
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This is a Next.js template with shadcn/ui.
 
-## Installation
+## Adding components
 
-```bash
-yarn
-```
-
-## Local Development
+To add components to your app, run the following command:
 
 ```bash
-yarn start
+npx shadcn@latest add button
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+This will place the ui components in the `components` directory.
 
-## Build
+## Using components
 
-```bash
-yarn build
+To use the components in your app, import them as follows:
+
+```tsx
+import { Button } from "@/components/ui/button";
 ```
-
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
