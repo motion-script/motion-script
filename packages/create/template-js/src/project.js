@@ -1,5 +1,5 @@
 import example from "./scenes/example?scene";
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 
 export default createProject({
   name: 'Example Project',

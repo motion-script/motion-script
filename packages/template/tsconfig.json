@@ -6,8 +6,9 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "lib": [
-      "ES2022"
-    ],
+      "ES2022",
+      "WebWorker"
+    ]
   },
   "include": [
     "src"

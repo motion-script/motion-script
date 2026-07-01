@@ -9,9 +9,7 @@
     "export": "ms export"
   },
   "dependencies": {
-    "@motion-script/core": "*",
-    "@motion-script/code": "*",
-    "@motion-script/latex": "*"
+    "motion-script": "*"
   },
   "devDependencies": {
     "@motion-script/cli": "*",

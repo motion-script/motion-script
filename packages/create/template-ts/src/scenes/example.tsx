@@ -1,4 +1,4 @@
-import { createScene, createRef, Rect, easeOut, wait } from "@motion-script/core";
+import { createScene, createRef, Rect, easeOut, wait } from "motion-script";
 
 export default createScene(function* (stage) {
   stage.set({ fill: "#14161D" });
