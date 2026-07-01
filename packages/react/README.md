@@ -6,7 +6,7 @@ Skia/CanvasKit.
 
 ```tsx
 import { MotionScriptProvider, MotionPlayer } from '@motion-script/react';
-import { MyScene } from './scenes/my-scene';
+import myScene from './scenes/my-scene';
 
 export function App() {
   return (
@@ -16,7 +16,7 @@ export function App() {
         isPlaying
         fps={30}
         viewport={{ width: 1920, height: 1080 }}
-        scenes={[new MyScene()]}
+        scenes={[myScene]}
         assets={{}}
       />
     </MotionScriptProvider>
@@ -26,12 +26,12 @@ export function App() {
 
 ## What's in here
 
-- **`MotionScriptProvider`** — initializes CanvasKit (the Skia/WASM runtime)
+- **`MotionScriptProvider`**: initializes CanvasKit (the Skia/WASM runtime)
   and makes it available to players via context. Wrap your app (or the part of
   it that renders Motion Script content) in this once.
-- **`useMotionScript`** — hook for reading CanvasKit initialization state from
+- **`useMotionScript`**: hook for reading CanvasKit initialization state from
   the provider.
-- **`MotionPlayer`** — renders a `Scene[]` to a `<canvas>`, drives playback
+- **`MotionPlayer`**: renders a `Scene[]` to a `<canvas>`, drives playback
   (play/pause/seek/speed/mute), and exposes an imperative `FrameHandle` (via
   `ref`) for screenshotting, scrubbing, and inspecting build errors and node
   state.

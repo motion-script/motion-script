@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const corePkgPath = path.resolve('packages/core/package.json');
+const corePkgPath = path.resolve('packages/motion-script/package.json');
 const { version } = JSON.parse(fs.readFileSync(corePkgPath, 'utf8'));
 
 const changesetConfig = JSON.parse(fs.readFileSync(path.resolve('.changeset/config.json'), 'utf8'));

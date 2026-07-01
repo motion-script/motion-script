@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Directional Blur
 
-Smears the node's content along a single axis — a linear, motion-blur-style streak. Unlike [Motion Blur](./motion-blur), the direction and length are authored manually rather than derived from the node's velocity.
+Smears the node's content along a single axis, producing a linear, motion-blur-style streak. Unlike [Motion Blur](./motion-blur), the direction and length are authored manually rather than derived from the node's velocity.
 
 ![Directional blur effect demo](/effects/directional-blur.png)
 
@@ -27,9 +27,9 @@ import { Effects } from '@motion-script/core';
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `type` | `'directionalBlur'` | — | Effect identifier |
-| `direction` | `number` | — | Smear angle in degrees (`0` = horizontal, `90` = vertical) |
-| `blurLength` | `number` | — | Smear length in pixels |
+| `type` | `'directionalBlur'` | – | Effect identifier |
+| `direction` | `number` | – | Smear angle in degrees (`0` = horizontal, `90` = vertical) |
+| `blurLength` | `number` | – | Smear length in pixels |
 | `backdrop` | `boolean` | `false` | When `true`, smears the content beneath the node instead of the node itself |
 
 ## Animating

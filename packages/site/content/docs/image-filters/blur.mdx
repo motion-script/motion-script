@@ -9,10 +9,10 @@ Applies a Gaussian blur directly to the image texture. `value` is the blur radiu
 ## Usage
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.blur(8)}
+  filters={ImageFilters.blur(8)}
 />
 
 // Raw object

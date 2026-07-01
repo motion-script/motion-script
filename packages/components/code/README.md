@@ -6,28 +6,26 @@ edits at the token level, so appending, inserting, removing, replacing, and
 highlighting code all morph smoothly instead of snapping.
 
 ```tsx
-import { Scene, createRef } from '@motion-script/core';
+import { createScene, createRef } from '@motion-script/core';
 import { Code, lines, word } from '@motion-script/code';
 
-export class CodeScene extends Scene {
-  *build() {
-    const code = createRef<Code>();
+export default createScene(function* (stage) {
+  const code = createRef<Code>();
 
-    this.add(
-      <Code
-        ref={code}
-        language="typescript"
-        theme="github-dark"
-        fontSize={28}
-        code={`function greet(name) {\n  return "hi";\n}`}
-      />,
-    );
+  stage.add(
+    <Code
+      ref={code}
+      language="typescript"
+      theme="github-dark"
+      fontSize={28}
+      code={`function greet(name) {\n  return "hi";\n}`}
+    />,
+  );
 
-    yield* code().append('\ngreet("world");', 0.6);
-    yield* code().highlight(lines(2), 0.4);
-    yield* code().replace(word(2, 10, 4), '`hi, ${name}`', 0.6);
-  }
-}
+  yield* code().append('\ngreet("world");', 0.6);
+  yield* code().highlight(lines(2), 0.4);
+  yield* code().replace(word(2, 10, 4), '`hi, ${name}`', 0.6);
+});
 ```
 
 ## What's in here

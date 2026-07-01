@@ -47,8 +47,8 @@ These props are set on children of a `Grid`, not on the `Grid` itself:
 |---|---|---|---|
 | `colSpan` | `number` | `1` | Number of columns this child spans |
 | `rowSpan` | `number` | `1` | Number of rows this child spans |
-| `column` | `number` | — | Explicit column placement (1-based) |
-| `row` | `number` | — | Explicit row placement (1-based) |
+| `column` | `number` | – | Explicit column placement (1-based) |
+| `row` | `number` | – | Explicit row placement (1-based) |
 
 ### Size defaults
 
@@ -90,7 +90,7 @@ export default createScene(function* (stage) {
 
 ## Notes
 
-- `gap` is shorthand — if you set `gap` and also `columnGap`/`rowGap`, `columnGap`/`rowGap` win for their respective axes.
+- `gap` is shorthand: if you set `gap` and also `columnGap`/`rowGap`, `columnGap`/`rowGap` win for their respective axes.
 - Children with `width: 'fill'` expand to fill their column track width.
 - Explicit `column`/`row` placement uses a 1-based index. Items without explicit placement are auto-placed left-to-right, top-to-bottom.
 - `Grid` draws a background box (like `Rect`) behind its children. Use `Row`/`Column` for invisible layout containers.

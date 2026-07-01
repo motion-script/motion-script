@@ -50,7 +50,7 @@ Every shape node accepts a `stroke` prop. Strokes paint a border along the shape
 <Rect stroke={{ weight: 16, fill: 'royalblue', join: 'bevel' }} />
 ```
 
-A sharp `'miter'` join on a tight corner can spike far past the path; `miterLimit` caps that — once the miter would be longer than `miterLimit × weight`, the join falls back to a bevel.
+A sharp `'miter'` join on a tight corner can spike far past the path; `miterLimit` caps that. Once the miter would be longer than `miterLimit × weight`, the join falls back to a bevel.
 
 ---
 

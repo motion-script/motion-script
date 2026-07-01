@@ -38,13 +38,13 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `data` | `string \| PathCommand[]` | — | SVG path data string, or an array of path commands |
+| `data` | `string \| PathCommand[]` | – | SVG path data string, or an array of path commands |
 
 `Path` inherits all standard `ShapeNode` props (`fill`, `stroke`, `shadow`, `start`, `end`, `opacity`, etc.).
 
 ### Size defaults
 
-`Path` defaults to `width: 'hug'`, `height: 'hug'` — it auto-measures the bounding box from the path data. Set explicit `width`/`height` to scale the path to a fixed size.
+`Path` defaults to `width: 'hug'`, `height: 'hug'`, and auto-measures the bounding box from the path data. Set explicit `width`/`height` to scale the path to a fixed size.
 
 ### PathCommand array
 

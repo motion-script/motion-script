@@ -117,6 +117,7 @@ export type {
 // 7. Animation — Timing & Control
 // ---------------------------------------------------------
 export {
+    tween,
     wait,
     sequence,
     parallel,

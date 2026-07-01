@@ -9,10 +9,10 @@ Desaturates the image. `value` ranges from `0` (original colors) to `1` (fully g
 ## Usage
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.grayscale(1)}
+  filters={ImageFilters.grayscale(1)}
 />
 
 // Raw object

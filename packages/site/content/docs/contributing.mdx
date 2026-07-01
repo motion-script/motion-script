@@ -105,7 +105,7 @@ pnpm typecheck
 
 ### What makes a good PR
 
-- Focused changes — one concern per PR
+- Focused changes: one concern per PR
 - Tests for new behaviour
 - Updated docs if you added or changed a public API
 - No breaking changes without a discussion issue first
@@ -115,20 +115,20 @@ pnpm typecheck
 1. Create `packages/core/src/nodes/<category>/<name>-node.ts`.
 2. Extend `ShapeNode<YourProps>` and implement `renderSelf(draw: RenderContext)`.
 3. Export from `packages/core/src/nodes/index.ts`.
-4. Add a page under `packages/docs/docs/nodes/`.
+4. Add a page under `packages/site/content/docs/nodes/`.
 
 ## Adding a new image filter
 
 1. Create `packages/core/src/attributes/shape/filters/implementations/<name>.ts`.
 2. Implement the `FilterRegistry.register<YourFilter>(...)` call with a `lerp` and `equals` function.
-3. Add the type to `MX` in `packages/core/src/attributes/shape/filters/chain.ts`.
-4. Add a page under `packages/docs/docs/image-filters/`.
+3. Add the type to `ImageFilters` in `packages/core/src/attributes/shape/filters/chain.ts`.
+4. Add a page under `packages/site/content/docs/image-filters/`.
 
 ## Adding a new node effect
 
 1. Create `packages/core/src/attributes/shape/effects/implementations/<name>.ts`.
-2. Register it with the effect registry and add to `FX` in `packages/core/src/attributes/shape/effects/chain.ts`.
-3. Add a page under `packages/docs/docs/node-effects/`.
+2. Register it with the effect registry and add to `Effects` in `packages/core/src/attributes/shape/effects/chain.ts`.
+3. Add a page under `packages/site/content/docs/effects/`.
 
 ## Code style
 

@@ -6,7 +6,7 @@ import { RichTextCanvas } from '@site/src/components/docs/node-scenes';
 
 # RichText
 
-Renders mixed-style text. Style is defined as a tree of `TextSpan` objects — children inherit and can override the parent span's style, so you can nest spans to build up complex formatting.
+Renders mixed-style text. Style is defined as a tree of `TextSpan` objects, and children inherit and can override the parent span's style, so you can nest spans to build up complex formatting.
 
 <RichTextCanvas />
 
@@ -143,5 +143,5 @@ yield* label().to({ end: 1 }, 1.5);
 ## Notes
 
 - Spans without a `text` field act as purely stylistic wrappers for their `children`.
-- `fill` and `stroke` on a span follow the same syntax as shape node fills — CSS strings, gradient objects, or arrays for layering.
+- `fill` and `stroke` on a span follow the same syntax as shape node fills: CSS strings, gradient objects, or arrays for layering.
 - `RichText` does not support word wrapping; use `Text` with `wrap: true` for that.

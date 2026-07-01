@@ -4,7 +4,7 @@
 
 
 An open-source motion design tool, inspired by tools like Manim, that helps
-developers and educators create stunning animations from the browser.
+developers and educators create animations from the browser.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@motion-script/create.svg)](https://www.npmjs.com/package/@motion-script/create)
@@ -23,29 +23,27 @@ turns it into frames using a Skia (CanvasKit) rendering backend, and the bundled
 player gives you a timeline-based editor to preview, scrub, and export.
 
 ```tsx
-import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
+import { createScene, createRef, Rect, Ellipse } from 'motion-script';
 
-export class ShapeScene extends Scene {
-  *build() {
-    const ref = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const ref = createRef<Ellipse>();
 
-    this.add(
-      <Rect width={400} height={400} fill="white" cornerRadius={20}>
-        <Ellipse ref={ref} x={200} y={200} width={350} height={350} />
-      </Rect>
-    );
+  stage.add(
+    <Rect width={400} height={400} fill="white" cornerRadius={20}>
+      <Ellipse ref={ref} x={200} y={200} width={350} height={350} />
+    </Rect>
+  );
 
-    // Animate: tween the ellipse to x=700 over 3 seconds.
-    yield* ref().to({ x: 700 }, 3);
-  }
-}
+  // Animate: tween the ellipse to x=700 over 3 seconds.
+  yield* ref().to({ x: 700 }, 3);
+});
 ```
 
 Animations are driven by generators: `yield*` a tween and the engine advances
 time, interpolating attributes frame by frame. Reactive signals, flex layout,
-fills, gradients, filters, SkSL shader effects, paths, text, and audio are all
-supported. See the [docs](https://motionscript.dev/docs) for the full feature
-set.
+fills, gradients, filters, SkSL shader effects, paths, text, animated code,
+animated LaTeX, and audio are all supported. See the
+[docs](https://motionscript.dev/docs) for the full feature set.
 
 ## Getting started
 
@@ -81,20 +79,21 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 
 | Package | Description |
 | --- | --- |
+| [`motion-script`](packages/motion-script) | **The flagship package.** Bundles core, code, and LaTeX behind one import. The recommended way to depend on Motion Script. |
 | [`@motion-script/core`](packages/core) | The engine-agnostic animation library: scenes, nodes, signals, tweens, layout, and the JSX runtime. |
 | [`@motion-script/web`](packages/web) | Web rendering backend built on Skia/CanvasKit, plus the video exporter and audio playback. |
 | [`@motion-script/canvaskit`](packages/canvaskit) | A WASM build of Skia's CanvasKit API, packaged for Motion Script. |
 | [`@motion-script/react`](packages/react) | React bindings for embedding Motion Script. |
 | [`@motion-script/player`](packages/player) | The timeline-based editor/player UI. |
 | [`@motion-script/vite-plugin`](packages/vite-plugin) | Vite plugin that boots the player app around your project and wires up assets. |
-| [`@motion-script/cli`](packages/cli) | The command-line interface for managing and exporting Motion Script projects. |
+| [`@motion-script/cli`](packages/cli) | Headless command-line exporter for rendering scenes to video or stills. |
 | [`@motion-script/code`](packages/components/code) | Syntax-highlighted code block component for use in scenes. |
 | [`@motion-script/latex`](packages/components/latex) | LaTeX math rendering component for use in scenes. |
 | [`@motion-script/create`](packages/create) | The project scaffolding CLI. |
 
-Plus internal workspaces: [`docs`](packages/docs) (the Docusaurus site),
-[`e2e`](packages/e2e) (Playwright tests), and [`my-video`](packages/my-video)
-(an example project used during development).
+Plus internal workspaces: [`site`](packages/site) (the Next.js docs site),
+[`e2e`](packages/e2e) (visual regression tests), and
+[`template`](packages/template) (an example project used during development).
 
 ## Developing the monorepo
 

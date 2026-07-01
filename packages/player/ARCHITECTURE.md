@@ -40,14 +40,14 @@ Key invariants and behaviors to know before touching this file:
   setting either field directly.
 - **`sceneStartFrames`** is derived once duration data comes back from the
   player (`setSceneDurations`, called from `VideoPreview.handleLoadingChange`)
-  and gives the absolute frame each scene starts at — used everywhere to map
+  and gives the absolute frame each scene starts at. Used everywhere to map
   a global frame to "which scene is active".
 - **`resetConfig` preserves the active scene across reloads.** It looks up
   the currently-active scene by name in the new config (falling back to the
   same index) and stores the target as `_pendingSceneIndex`. Because the new
   config's scene durations aren't known yet, the actual frame jump happens
   later inside `setSceneDurations` once `_pendingSceneIndex` resolves to a
-  concrete start frame. Don't short-circuit this — setting `currentFrame`
+  concrete start frame. Don't short-circuit this: setting `currentFrame`
   directly in `resetConfig` would race the not-yet-computed durations.
 - **`requestSnapshot`/`completeSnapshot`** form a request/ack pair consumed
   by `VideoPreview`, which owns the actual `MotionPlayer` ref and performs the
@@ -74,7 +74,7 @@ Hosts the `MotionPlayer` and layers pan/zoom interaction on top:
 
 `TimelineRuler` (in `timeline.tsx`) is the main component; it composes:
 
-- `EditorToolbar` — playback transport, mute, speed, loop, snapshot, and the
+- `EditorToolbar`: playback transport, mute, speed, loop, snapshot, and the
   timeline zoom slider/buttons.
 - A **ruler header** (canvas-drawn tick marks + an HTML playhead overlay) that
   also acts as a seek control (click/drag).
@@ -100,10 +100,10 @@ or timecodes ("0:01.8").
 ### Auto-follow lock (playhead scrolling while playing)
 
 While playing, once the playhead reaches `rightLimit` (a fixed px distance
-from the right edge), the view "locks" `scrollLeft` is pinned so the
+from the right edge), the view "locks": `scrollLeft` is pinned so the
 playhead stays at that edge and the *content* scrolls underneath it instead.
-This is computed **synchronously every render** (not via effects/state) so
-the playhead position and the scroll offset can never disagree an earlier
+This is computed **synchronously every render** (not via effects/state), so
+the playhead position and the scroll offset can never disagree. An earlier
 effects-based version visibly vibrated because the two could fall a frame out
 of sync. If you need to change this logic, keep it derived in a single place
 per render; don't split the playhead-position and scroll-position
@@ -123,7 +123,7 @@ windows always match.
 
 Each node renders a bar spanning `[startFrame, endFrame]` (its on-timeline
 lifespan). Nodes that own audio clips (`node.waveform`) instead render one
-`AudioWaveformBar` per clip — clip times are scene-local, so they're shifted
+`AudioWaveformBar` per clip. Clip times are scene-local, so they're shifted
 by the owning node's `startFrame` (the scene's global offset) to land in the
 right place on the global timeline.
 
@@ -146,6 +146,6 @@ populated via `MotionPlayer`'s `onBuildErrors`) with a dialog
 `useExport` wraps `@motion-script/web`'s `exportScenesAsVideo`, tracking
 overall and per-scene progress, and supports two modes: a single combined
 video, or one file per scene (`exportIndividually`). Progress callbacks
-differ between the two — combined export reports one global `0..1` value that
+differ between the two: combined export reports one global `0..1` value that
 `useExport` distributes evenly across scenes for the per-scene progress UI;
 individual export reports real per-scene progress directly.

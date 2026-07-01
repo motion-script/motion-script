@@ -6,7 +6,7 @@ import { VideoCanvas } from '@site/src/components/docs/node-scenes';
 
 # Video
 
-Renders a playing video. Layout and child positioning are inherited from `Rect` — a Video lays out its children exactly like a Rect, with a playing video frame painted in place of the fill. The video's audio track is automatically scheduled alongside the picture.
+Renders a playing video. Layout and child positioning are inherited from `Rect`: a Video lays out its children exactly like a Rect, with a playing video frame painted in place of the fill. The video's audio track is automatically scheduled alongside the picture.
 
 <VideoCanvas />
 
@@ -34,10 +34,10 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `src` | `string` | — | Path to the video file |
+| `src` | `string` | – | Path to the video file |
 | `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the video frame fills the node's bounds. `'fill'` covers + crops (centered), `'fit'` letterboxes, `'tile'` repeats, `'stretch'` distorts to fill. |
-| `scaling` | `number` | — | Scale multiplier applied before fitting |
-| `transform` | `ImageTransform` | — | Fine-grained frame transform (offset, scale, rotation within bounds) |
+| `scaling` | `number` | – | Scale multiplier applied before fitting |
+| `transform` | `ImageTransform` | – | Fine-grained frame transform (offset, scale, rotation within bounds) |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Visual filters applied to the rendered frame |
 
 ### Playback
@@ -45,12 +45,12 @@ export default createScene(function* (stage) {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `playing` | `boolean` | `true` | Whether playback advances each frame |
-| `timestamp` | `number` | — | Starting offset into the source in seconds. Defaults to `trimStart` or `0` |
-| `trimStart` | `number` | — | Starting point within the source file in seconds |
-| `trimEnd` | `number` | — | Ending point within the source file in seconds |
+| `timestamp` | `number` | – | Starting offset into the source in seconds. Defaults to `trimStart` or `0` |
+| `trimStart` | `number` | – | Starting point within the source file in seconds |
+| `trimEnd` | `number` | – | Ending point within the source file in seconds |
 | `speed` | `number` | `1` | Playback-rate multiplier (affects both picture and audio) |
-| `loop` | `'forward' \| 'reverse' \| 'none'` | — | Loop behaviour |
-| `duration` | `number` | — | Length of one loop cycle in seconds. Defaults to the trimmed clip length |
+| `loop` | `'forward' \| 'reverse' \| 'none'` | – | Loop behaviour |
+| `duration` | `number` | – | Length of one loop cycle in seconds. Defaults to the trimmed clip length |
 
 ### Audio
 
@@ -124,7 +124,7 @@ export default createScene(function* (stage) {
 ## Notes
 
 - `Video` extends `Rect`, so children can be placed on top of the video frame (for subtitles, overlays, etc.).
-- Set `muted: true` to suppress audio while keeping the picture — useful when compositing multiple video layers.
+- Set `muted: true` to suppress audio while keeping the picture, which is useful when compositing multiple video layers.
 - `playing: false` freezes both picture and sound.
 - `loop: 'reverse'` plays the clip backward when it reaches the end.
 - See [Audio Filters](../attributes/audio) for the full list of audio filters.

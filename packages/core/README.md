@@ -6,39 +6,39 @@ signals, tweening, flex layout, and the JSX runtime used to describe scenes
 declaratively independent of any particular rendering backend with zero dependencies.
 
 ```tsx
-import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
+import { createScene, createRef, Rect, Ellipse } from '@motion-script/core';
 
-export class ShapeScene extends Scene {
-  *build() {
-    const lens = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const lens = createRef<Ellipse>();
 
-    this.add(
-      <Rect width={400} height={400} fill="white" cornerRadius={20}>
-        <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
-      </Rect>,
-    );
+  stage.add(
+    <Rect width={400} height={400} fill="white" cornerRadius={20}>
+      <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
+    </Rect>,
+  );
 
-    yield* lens().to({ x: 700 }, 3);
-  }
-}
+  yield* lens().to({ x: 700 }, 3);
+});
 ```
 
 ## What's in here
 
-- **Nodes** — the scene graph (`Scene`, `Rect`, `Ellipse`, `Txt`, paths, and
-  more) with attributes for fills, gradients, filters, and SkSL shader effects.
-- **Runtime** — drives animations from generators: `yield*` a tween or signal
-  change and the engine advances time, interpolating attributes frame by frame.
-- **Signals** — reactive values that nodes and tweens can depend on.
-- **Tweens** — interpolation and easing for animating attributes over time.
-- **Layout** — a flexbox-based layout system for positioning nodes.
-- **JSX runtime** — lets scenes be authored as TSX (`./jsx/jsx-runtime`,
+- **Nodes**: the scene graph (`Rect`, `Ellipse`, `Text`, `RichText`, `Image`,
+  `Video`, paths, and more) with attributes for fills, gradients, filters, and
+  SkSL shader effects.
+- **Runtime**: `createScene` builds a `Scene` from a generator body. `yield*`
+  a tween or signal change and the engine advances time, interpolating
+  attributes frame by frame.
+- **Signals**: reactive values that nodes and tweens can depend on.
+- **Tweens**: interpolation and easing for animating attributes over time.
+- **Layout**: a flexbox-based layout system for positioning nodes.
+- **JSX runtime**: lets scenes be authored as TSX (`./jsx/jsx-runtime`,
   `./jsx/jsx-dev-runtime`).
-- **Project / render / platform / assets** — the abstractions a rendering
+- **Project / render / platform / assets**: the abstractions a rendering
   backend (such as [`@motion-script/web`](../web)) implements to turn a scene
   graph into pixels, audio, and exported video.
 
-This package has no rendering backend of its own — pair it with
+This package has no rendering backend of its own. Pair it with
 [`@motion-script/web`](../web) (Skia/CanvasKit) or build your own backend
 against the `platform`/`render` abstractions.
 

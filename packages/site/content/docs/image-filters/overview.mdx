@@ -16,15 +16,15 @@ Image filters are pixel-level operations applied to `Image` nodes and `image` fi
 <Rect fill={{ type: 'image', src: './photo.jpg', filters: [{ type: 'blur', value: 5 }] }} />
 ```
 
-## Using the MX builder
+## Using the ImageFilters builder
 
-The `MX` builder provides a chainable API — each method returns a new immutable `FilterChain`:
+The `ImageFilters` builder provides a chainable API: each method returns a new immutable `FilterChain`.
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.grayscale(1).blur(3).colorAdjustment({ brightness: 0.1 })}
+  filters={ImageFilters.grayscale(1).blur(3).colorAdjustment({ brightness: 0.1 })}
 />
 ```
 
@@ -42,10 +42,10 @@ import { MX } from '@motion-script/core';
 
 ## Chaining
 
-All filters can be chained with `MX`:
+All filters can be chained with `ImageFilters`:
 
 ```tsx
-const look = MX
+const look = ImageFilters
   .grayscale(0.6)
   .colorAdjustment({ contrast: 1.2, highlights: -0.1 });
 

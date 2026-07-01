@@ -9,10 +9,10 @@ Adjusts the transparency of the image texture. `value` `1` is unchanged; `0` is 
 ## Usage
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.alpha(0.6)}
+  filters={ImageFilters.alpha(0.6)}
 />
 
 // Raw object

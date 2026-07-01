@@ -31,7 +31,7 @@ Available anchors: `center`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`,
 <Rect center={() => otherNode.topRight} width={80} height={80} fill="seagreen" />
 ```
 
-Only one anchor prop may be set at a time. Setting `pivot` alongside an anchor prop is an error — anchors manage pivot automatically.
+Only one anchor prop may be set at a time. Setting `pivot` alongside an anchor prop is an error, since anchors manage pivot automatically.
 
 ---
 
@@ -75,7 +75,7 @@ Rotation happens around the `pivot` point (center by default).
 
 ## Movement animations
 
-### `.to()` — tween position
+### `.to()`: tween position
 
 ```tsx
 import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
@@ -93,26 +93,26 @@ export default createScene(function* (stage) {
 });
 ```
 
-### `.moveTo()` — convenience helper
+### `.moveTo()`: convenience helper
 
 ```tsx
 yield* box().moveTo(300, 100, 0.6, easeOut('back'));
 ```
 
-### `.moveX()` / `.moveY()` — single-axis
+### `.moveX()` / `.moveY()`: single-axis
 
 ```tsx
 yield* box().moveX(400, 0.5);
 yield* box().moveY(-200, 0.5);
 ```
 
-### `.rotateTo()` — animate rotation
+### `.rotateTo()`: animate rotation
 
 ```tsx
 yield* box().rotateTo(180, 0.8, easeInOut('quad'));
 ```
 
-### `.scaleTo()` — animate scale
+### `.scaleTo()`: animate scale
 
 ```tsx
 yield* box().scaleTo(2, 0.4);
@@ -141,7 +141,7 @@ const center = box().center;    // same as { x: box().x, y: box().y }
 const br = box().bottomRight;
 ```
 
-These are reactive — reading them inside a callback creates a live binding:
+These are reactive: reading them inside a callback creates a live binding:
 
 ```tsx
 // Badge always follows the top-right of the card

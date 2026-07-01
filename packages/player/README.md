@@ -7,12 +7,12 @@ on in production.
 
 ## What's in here
 
-- **`PlayerApp`** — the editor shell: video preview, timeline with scrubbing
+- **`PlayerApp`**: the editor shell: video preview, timeline with scrubbing
   and zoom, scene/node inspector, export dialog, and theming.
-- **Timeline** — a virtualized track view of the scene graph with a ruler,
+- **Timeline**: a virtualized track view of the scene graph with a ruler,
   audio waveforms, and per-node rows.
-- **Export** — render the active project to video directly from the browser.
-- **Editor store** — Zustand-backed state for playback, selection, and
+- **Export**: render the active project to video directly from the browser.
+- **Editor store**: Zustand-backed state for playback, selection, and
   layout, exposed via `editor-provider` and `useEditorStore`.
 
 This package builds on [`@motion-script/core`](../core) (the scene graph and

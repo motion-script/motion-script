@@ -44,9 +44,9 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `divisions` | `number` | `4` | Number of cells along each axis — equal gaps between major grid lines |
+| `divisions` | `number` | `4` | Number of cells along each axis, with equal gaps between major grid lines |
 | `subdivisions` | `number` | `1` | How many finer cells each division is split into |
-| `subStroke` | `StrokeProp \| StrokeProp[]` | — | Stroke style for the minor (subdivision) lines. Falls back to the main `stroke` if unset |
+| `subStroke` | `StrokeProp \| StrokeProp[]` | – | Stroke style for the minor (subdivision) lines. Falls back to the main `stroke` if unset |
 | `origin` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | Pixel offset that pans the whole grid |
 
 The standard `stroke` prop (from `ShapeNode`) styles the major division lines.
@@ -83,5 +83,5 @@ export default createScene(function* (stage) {
 
 - `subdivisions: 1` means no subdivision lines (each division is one cell).
 - `subStroke` only has an effect when `subdivisions > 1`.
-- `LineGrid` draws lines only — it has no fill of its own. Add a `fill` prop to paint a background behind the lines.
+- `LineGrid` draws lines only. It has no fill of its own, so add a `fill` prop to paint a background behind the lines.
 - `origin` pans the grid lines as a whole; use it to animate an infinite-scroll effect.

@@ -4,15 +4,15 @@ sidebar_position: 6
 
 # Color Adjustment Filter
 
-A collection of photographic-style tonal and color adjustments in one filter. All fields are optional — omitted fields use their neutral default.
+A collection of photographic-style tonal and color adjustments in one filter. All fields are optional, and omitted fields use their neutral default.
 
 ## Usage
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.colorAdjustment({
+  filters={ImageFilters.colorAdjustment({
     brightness: 0.1,
     contrast: 1.15,
     saturation: 0.8,
@@ -34,7 +34,7 @@ filters={[{
 
 | Prop | Type | Neutral | Range | Description |
 |---|---|---|---|---|
-| `type` | `'colorAdjustment'` | — | — | Filter identifier |
+| `type` | `'colorAdjustment'` | – | – | Filter identifier |
 | `brightness` | `number` | `0` | `-1` to `1` | Shifts overall lightness (linear shift, no clipping) |
 | `contrast` | `number` | `1` | `0` to `2` | Spreads highlights and shadows further apart |
 | `saturation` | `number` | `1` | `0` to `3` | Scales color saturation uniformly |
@@ -52,7 +52,7 @@ All numeric props are interpolated when chained inside a `tween` via `FilterRegi
 ### Cinematic look
 
 ```tsx
-MX.colorAdjustment({
+ImageFilters.colorAdjustment({
   contrast: 1.1,
   saturation: 0.85,
   temperature: 0.1,
@@ -65,7 +65,7 @@ MX.colorAdjustment({
 ### Warm vintage
 
 ```tsx
-MX.colorAdjustment({
+ImageFilters.colorAdjustment({
   brightness: 0.05,
   saturation: 0.7,
   temperature: 0.3,
@@ -76,7 +76,7 @@ MX.colorAdjustment({
 ### Cool clean
 
 ```tsx
-MX.colorAdjustment({
+ImageFilters.colorAdjustment({
   contrast: 1.05,
   temperature: -0.15,
   tint: -0.05,

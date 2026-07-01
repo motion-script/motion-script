@@ -27,8 +27,8 @@ Behavior that is not acceptable includes:
 
 ## Scope
 
-This Code of Conduct applies in all project spaces — the repository, issues,
-pull requests, discussions, and any other channels — and when an individual is
+This Code of Conduct applies in all project spaces (the repository, issues,
+pull requests, discussions, and any other channels) and when an individual is
 representing the project in public.
 
 ## Enforcement
@@ -41,7 +41,7 @@ participation.
 ## Reporting
 
 If you experience or witness unacceptable behavior, please report it to the
-maintainers by opening a confidential channel — for example, by contacting a
+maintainers by opening a confidential channel, for example by contacting a
 maintainer directly. All reports will be reviewed and handled with discretion.
 We respect the privacy and safety of anyone who reports an issue in good faith.
 

@@ -40,14 +40,14 @@ Skip the prompts by passing answers as flags:
 npm create motion-script@latest -- --name my-video --path ./my-video --language ts
 ```
 
-- `--name` — the project (npm package) name.
-- `--path` — the target directory. Must be empty if it already exists.
-- `--language` — `ts` (default) or `js`.
+- `--name`: the project (npm package) name.
+- `--path`: the target directory. Must be empty if it already exists.
+- `--language`: `ts` (default) or `js`.
 
 ## Templates
 
-- `template-ts` — TypeScript starter (recommended).
-- `template-js` — JavaScript starter.
+- `template-ts`: TypeScript starter (recommended).
+- `template-js`: JavaScript starter.
 
 Both come preconfigured with the Motion Script Vite plugin and an example scene.
 
@@ -56,7 +56,7 @@ reference.
 
 ## Development
 
-This package is plain Node ESM with no build step — `index.js` is the published
+This package is plain Node ESM with no build step. `index.js` is the published
 entry point. To try it locally from the monorepo:
 
 ```bash

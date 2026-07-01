@@ -17,7 +17,8 @@
       "@motion-script/latex",
       "@motion-script/code",
       "@motion-script/create",
-      "@motion-script/cli"
+      "@motion-script/cli",
+      "motion-script"
     ]
   ],
   "linked": [],

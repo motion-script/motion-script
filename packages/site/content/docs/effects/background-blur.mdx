@@ -4,7 +4,7 @@ sidebar_position: 14
 
 # Background Blur
 
-Blurs the content _beneath_ a node rather than the node itself — the node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `backdrop: true` variant of [Blur](./blur), equivalent to Figma's background blur.
+Blurs the content _beneath_ a node rather than the node itself. The node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `backdrop: true` variant of [Blur](./blur), equivalent to Figma's background blur.
 
 ![Background blur effect demo](/effects/background-blur.png)
 
@@ -25,15 +25,15 @@ import { Effects } from '@motion-script/core';
 <Rect effects={[{ type: 'blur', blur: 16, backdrop: true }]} />
 ```
 
-The node must be layered _over_ other scene content for the effect to be visible — it blurs whatever is painted below it.
+The node must be layered _over_ other scene content for the effect to be visible: it blurs whatever is painted below it.
 
 ## Props
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `type` | `'blur'` | — | Effect identifier |
-| `blur` | `number` | — | Blur radius in pixels |
-| `backdrop` | `true` | — | Must be `true` — this is what distinguishes background blur from a regular node blur |
+| `type` | `'blur'` | – | Effect identifier |
+| `blur` | `number` | – | Blur radius in pixels |
+| `backdrop` | `true` | – | Must be `true`; this is what distinguishes background blur from a regular node blur |
 
 ## Animating
 

@@ -22,7 +22,7 @@ export default createScene(function* (stage) {
 });
 ```
 
-The `*` in front of `function` makes it a generator. Don't worry about what that means yet, just know that it's how MotionScript steps through your animation one frame at a time. We'll use it on the next page. The `stage` argument is your handle to the scene — you'll use it to add nodes and set scene-wide properties.
+The `*` in front of `function` makes it a generator. Don't worry about what that means yet, just know that it's how MotionScript steps through your animation one frame at a time. We'll use it on the next page. The `stage` argument is your handle to the scene: you'll use it to add nodes and set scene-wide properties.
 
 ## Add your first node
 
@@ -73,7 +73,7 @@ Here's what you're telling MotionScript:
 
 :::tip Hot reloading
 The `?scene` suffix makes each scene file its own hot-reload boundary. When you
-edit a scene while the player is running, only that scene re-runs — the playhead
+edit a scene while the player is running, only that scene re-runs. The playhead
 stays put and the rest of the timeline is untouched. Each scene file
 `export default createScene(...)`; the `?scene` import hands you the ready-to-use
 scene, so you list `myScene` directly.

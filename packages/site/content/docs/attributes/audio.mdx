@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Audio
 
-`Sound` is a playable audio clip. Unlike nodes, it lives on a parallel timeline outside the visual scene graph — it does not appear in the tree but participates in the same frame-based timeline.
+`Sound` is a playable audio clip. Unlike nodes, it lives on a parallel timeline outside the visual scene graph: it does not appear in the tree, but it participates in the same frame-based timeline.
 
 ## Basic usage
 
@@ -83,14 +83,14 @@ sfx.stop();
 
 ## Audio filters
 
-The `AFX` builder chains filters fluently. Filters apply in order from index 0 (closest to the source):
+The `AudioFilters` builder chains filters fluently. Filters apply in order from index 0 (closest to the source):
 
 ```tsx
-import { Sound, AFX } from '@motion-script/core';
+import { Sound, AudioFilters } from '@motion-script/core';
 
 const processed = new Sound({
   src: './voice.mp3',
-  filters: AFX.gain(1.5).lowpass(3000).echo(0.3, 0.4),
+  filters: AudioFilters.gain(1.5).lowpass(3000).echo(0.3, 0.4),
 });
 
 yield* processed.play();
@@ -100,12 +100,12 @@ yield* processed.play();
 
 | Filter | Builder | Description |
 |---|---|---|
-| Gain | `AFX.gain(value)` | Volume multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
-| High-pass | `AFX.highpass(frequency, q?)` | Rolls off content below `frequency` Hz |
-| Low-pass | `AFX.lowpass(frequency, q?)` | Rolls off content above `frequency` Hz |
-| Tremolo | `AFX.tremolo(rate, depth)` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
-| Speed | `AFX.speed(value)` | Playback-rate multiplier. Alters pitch. `2` = double speed |
-| Echo | `AFX.echo(delay, feedback, mix?)` | Delay `delay` seconds, feedback 0–&lt;1, wet mix 0-1 |
+| Gain | `AudioFilters.gain(value)` | Volume multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
+| High-pass | `AudioFilters.highpass(frequency, q?)` | Rolls off content below `frequency` Hz |
+| Low-pass | `AudioFilters.lowpass(frequency, q?)` | Rolls off content above `frequency` Hz |
+| Tremolo | `AudioFilters.tremolo(rate, depth)` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
+| Speed | `AudioFilters.speed(value)` | Playback-rate multiplier. Alters pitch. `2` = double speed |
+| Echo | `AudioFilters.echo(delay, feedback, mix?)` | Delay `delay` seconds, feedback 0–&lt;1, wet mix 0-1 |
 
 ### Raw filter objects
 
@@ -123,10 +123,10 @@ const clip = new Sound({
 
 ### Spreading and branching chains
 
-`AFX` chains are immutable — each method returns a new chain. Safe to share and branch:
+`AudioFilters` chains are immutable: each method returns a new chain. Safe to share and branch:
 
 ```tsx
-const base = AFX.gain(1.2).lowpass(4000);
+const base = AudioFilters.gain(1.2).lowpass(4000);
 const wet  = base.echo(0.4, 0.5);   // 'base' is unchanged
 const dry  = base.highpass(80);
 
@@ -141,7 +141,7 @@ const filters = [...base, { type: 'tremolo', rate: 4, depth: 0.3 }];
 `speed` alters both tempo and pitch (like changing tape speed). A `2` multiplier doubles speed and raises pitch by one octave:
 
 ```tsx
-const fast = new Sound({ src: './beat.mp3', filters: AFX.speed(1.5) });
+const fast = new Sound({ src: './beat.mp3', filters: AudioFilters.speed(1.5) });
 yield* fast.play();
 ```
 
@@ -151,7 +151,7 @@ The clip's scene-time duration shrinks proportionally: a 10-second source at `sp
 
 ## Playback ranges
 
-`sound.playRanges` returns the scene-time segments the sound has been scheduled to play — useful for visualizing audio on a timeline:
+`sound.playRanges` returns the scene-time segments the sound has been scheduled to play, useful for visualizing audio on a timeline:
 
 ```tsx
 clip.start();

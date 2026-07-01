@@ -4,7 +4,7 @@ Visual end-to-end tests for Motion Script. One scene per checkbox in
 [`scripts/TESTS.md`](../../scripts/TESTS.md), rendered at **960×540 (Quarter HD),
 30 fps**. For each scene the harness captures the **first, mid, and last frame**
 and pixel-diffs a **packed "stable" build** of the library against the **live
-"lib" build** — so a rendering regression between the two shows up as a visible
+"lib" build**, so a rendering regression between the two shows up as a visible
 diff and a non-zero exit code.
 
 This package is private (never published). It exists only to render and compare.
@@ -31,16 +31,16 @@ src/scenes/catalog.{ts,json} ◀────────┘        960×540 · 3
 
 - **One scene file per checkbox.** Every `` - [ ] `id` — … `` line in TESTS.md
   maps to `src/scenes/<id>.tsx`. Real sample scenes are hand-authored; the rest
-  are placeholder stubs (rendering the scene id) until someone fills them in —
-  a stub still produces a valid, comparable frame, so the pipeline is complete
+  are placeholder stubs (rendering the scene id) until someone fills them in.
+  A stub still produces a valid, comparable frame, so the pipeline is complete
   from day one. See [Adding / filling in scenes](#adding--filling-in-scenes).
 - **Fixed-length scenes.** Each scene runs ~2s (≈60 frames). The harness reads
   the real frame count per scene and resolves first / mid / last to frames
   `0 / floor((n-1)/2) / n-1` (see [`scripts/lib/frames.ts`](scripts/lib/frames.ts)).
 - **stable vs lib.** There's no published baseline yet, so "stable" is built by
   packing the *current* `@motion-script/*` packages into tarballs and rendering
-  the **same scenes** against them. Both sides render identical source — only
-  the resolved library differs — so the diff isolates library changes.
+  the **same scenes** against them. Both sides render identical source; only
+  the resolved library differs, so the diff isolates library changes.
 
 ---
 
@@ -56,7 +56,7 @@ pnpm build:lib
 #    a) Move the baseline to "current": pack the current packages into tarballs
 #       (committed to git) and stand up packages/e2e/stable/ from them.
 pnpm e2e:stable                 # add --no-build if you just ran build:lib
-#    b) Use the committed tarballs as-is (the concurrent baseline) — no repack:
+#    b) Use the committed tarballs as-is (the concurrent baseline), no repack:
 pnpm e2e:stable:from-tarballs
 
 # 3. Render both variants and compare
@@ -65,8 +65,8 @@ pnpm test:e2e              # = e2e/scripts/run.ts: shoot stable, shoot lib, comp
 
 The packed tarballs under `stable/tarballs/*.tgz` are **committed to git** and act
 as the shared baseline. On a feature branch you typically run
-`pnpm e2e:stable:from-tarballs` (baseline = committed tarballs) then `pnpm test:e2e`
-— your working tree renders as `lib` and is diffed against the frozen `stable`.
+`pnpm e2e:stable:from-tarballs` (baseline = committed tarballs) then `pnpm test:e2e`.
+Your working tree renders as `lib` and is diffed against the frozen `stable`.
 Run plain `pnpm e2e:stable` and commit the result when you want to advance the
 baseline to the current library.
 
@@ -78,7 +78,7 @@ than the threshold (default 0.1% of pixels).
 
 ```bash
 # regenerate scene files + catalog from TESTS.md (safe: never clobbers a scene
-# file that already exists — only adds stubs for new checkboxes)
+# file that already exists, only adds stubs for new checkboxes)
 pnpm --filter @motion-script/e2e run gen
 
 # render just one variant (optionally a subset of scenes)
@@ -115,7 +115,7 @@ docker run --rm -v "$PWD/packages/e2e/out:/repo/packages/e2e/out" motion-script-
 ```
 
 The container builds the library, packs the stable snapshot, renders both
-variants, and compares — writing `out/report.html` (and screenshots/diffs) back
+variants, and compares, writing `out/report.html` (and screenshots/diffs) back
 to the host through the mounted `out/` volume. It exits non-zero on any diff, so
 it drops straight into CI.
 
@@ -153,7 +153,7 @@ export default createScene(placeholder('rect-basic'));
 ```
 
 To make it a **real** test, replace the body with an actual scene. Keep the
-filename (`<id>.tsx`) — the id is also the headless scene name and the catalog
+filename (`<id>.tsx`): the id is also the headless scene name and the catalog
 key. Author to ~2 seconds total and `holdTail(usedSeconds)` so the mid frame
 lands on something meaningful:
 
@@ -216,11 +216,11 @@ packages/e2e/
 The packed packages share the workspace version (e.g. `2.9.2`). Installing them
 as `file:*.tgz` deps lets pnpm key them by `name@version` and reuse a cached
 extraction of that version for the *transitive* `@motion-script/*` deps
-(`vite-plugin` → `core`, …) — silently mixing a stale copy in. To guarantee the
+(`vite-plugin` → `core`, …), silently mixing a stale copy in. To guarantee the
 snapshot is exactly the bytes just packed, `pack-stable.js` extracts every
 tarball into `stable/node_modules/@motion-script/<name>/` (flat, real dirs) and
 installs only third-party deps. With flat real dirs every `@motion-script/*`
-import — direct or transitive — resolves to the extracted tarball.
+import, direct or transitive, resolves to the extracted tarball.
 
 ---
 

@@ -6,25 +6,23 @@ and animates between formulas token by token, so equations morph into one anothe
 instead of cutting.
 
 ```tsx
-import { Scene, createRef } from '@motion-script/core';
+import { createScene, createRef } from '@motion-script/core';
 import { Latex } from '@motion-script/latex';
 
-export class MathScene extends Scene {
-  *build() {
-    const eq = createRef<Latex>();
+export default createScene(function* (stage) {
+  const eq = createRef<Latex>();
 
-    this.add(
-      <Latex
-        ref={eq}
-        fontSize={64}
-        fill="white"
-        latex="a^2 + b^2 = c^2"
-      />,
-    );
+  stage.add(
+    <Latex
+      ref={eq}
+      fontSize={64}
+      fill="white"
+      latex="a^2 + b^2 = c^2"
+    />,
+  );
 
-    yield* eq().to({ latex: 'c = \\sqrt{a^2 + b^2}' }, 1.2);
-  }
-}
+  yield* eq().to({ latex: 'c = \\sqrt{a^2 + b^2}' }, 1.2);
+});
 ```
 
 ## What's in here

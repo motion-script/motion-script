@@ -14,7 +14,7 @@ sidebar_position: 7
 
 ---
 
-## `'fill'` — expand to parent
+## `'fill'`: expand to parent
 
 A node with `width: 'fill'` stretches to consume all available space along that axis in its parent container. Multiple `fill` siblings share the space equally (or by their `flex` ratio):
 
@@ -31,7 +31,7 @@ A node with no children defaults to `width: 'fill'`, `height: 'fill'`. A `Rect` 
 
 ---
 
-## `'hug'` — shrink to content
+## `'hug'`: shrink to content
 
 A node with `width: 'hug'` measures its children and sizes itself to fit them exactly (plus any padding):
 
@@ -44,9 +44,9 @@ A node with `width: 'hug'` measures its children and sizes itself to fit them ex
 
 ---
 
-## `flex` — proportional fill
+## `flex`: proportional fill
 
-When multiple siblings use `width: 'fill'` (or `height: 'fill'`), the `flex` prop controls how much of the free space each one gets. The default is `1` — equal shares.
+When multiple siblings use `width: 'fill'` (or `height: 'fill'`), the `flex` prop controls how much of the free space each one gets. The default is `1`, giving equal shares.
 
 ```tsx
 <Rect group="row" gap={8} fill="#0f1117" width={600} height={80}>
@@ -90,4 +90,4 @@ const w = box().measuredWidth;
 const h = box().measuredHeight;
 ```
 
-These are reactive — reads inside callbacks track changes automatically.
+These are reactive: reads inside callbacks track changes automatically.

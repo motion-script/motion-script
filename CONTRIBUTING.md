@@ -11,7 +11,7 @@ For the user-facing guides and the API reference, see
 ## Prerequisites
 
 - **Node.js** (LTS recommended)
-- **[pnpm](https://pnpm.io/)** — the repo's package manager (pinned via
+- **[pnpm](https://pnpm.io/)**, the repo's package manager (pinned via
   `packageManager` in the root `package.json`)
 
 ## Initial setup
@@ -37,7 +37,7 @@ Workspaces live under `packages/*` (and `packages/components/*`). The root
 | `pnpm build` | `turbo run build` across all packages |
 | `pnpm build-core` | build just `@motion-script/core` |
 | `pnpm build-web` | build `@motion-script/web` and its dependencies |
-| `pnpm test` | `pnpm -r test` — run every package's tests |
+| `pnpm test` | `pnpm -r test`, runs every package's tests |
 | `pnpm clean` | `turbo run clean` |
 
 ## Architecture
@@ -75,70 +75,70 @@ project into an interactive editor.
                                           └──────────────────────────────┘
 ```
 
-### `@motion-script/core` — the engine
+### `@motion-script/core`: the engine
 
 The backend-agnostic heart of the library. It has no DOM/canvas dependencies; it
 describes *what* should be drawn and *how it changes over time*, leaving the
 *how to draw* to a render context. Key areas under `packages/core/src`:
 
-- **`nodes/`** — the scene graph. A base `Node` plus geometry (`Rect`,
+- **`nodes/`**: the scene graph. A base `Node` plus geometry (`Rect`,
   `Ellipse`, `Line`, `Path`, `Polygon`, `Polygram`, `Grid`), text (`Text`,
   `RichText`), media (`Image`), and structural nodes (`Scene`, `Camera`,
   `Boolean`, `Mask`).
-- **`attributes/`** — the animatable properties of nodes: layout
+- **`attributes/`**: the animatable properties of nodes: layout
   (size/bounds/constraints/padding), shape (fill, stroke, corners, shadow,
   filters/effects, paths), text, and audio. Each attribute knows how to
   interpolate (`lerp`) between values.
-- **`signals/`** — the reactive primitive. Values are signals; computed values
+- **`signals/`**: the reactive primitive. Values are signals; computed values
   recompute when their dependencies change. This is what makes attributes
   declarative and tween-able.
-- **`tween/`** — time-based animation: tweens, easing functions, sequencing
+- **`tween/`**: time-based animation: tweens, easing functions, sequencing
   (`yield*`), `wait`, and the generator-driven timeline. Scenes are generators;
   `yield*`-ing a tween hands control back to the engine to advance time.
-- **`layout/`** — flexbox layout and size resolution for laying out child nodes.
-- **`render/`** — **render descriptors** and the abstract `RenderContext` /
+- **`layout/`**: flexbox layout and size resolution for laying out child nodes.
+- **`render/`**: **render descriptors** and the abstract `RenderContext` /
   `Render2DContext` interface. Descriptors are the contract a backend
   implements; `core` produces them, a backend consumes them. Also `BuildStage`
   and `MeasureScope`.
-- **`jsx/`** — the JSX runtime (`jsx-runtime` / `jsx-dev-runtime`) so scenes can
+- **`jsx/`**: the JSX runtime (`jsx-runtime` / `jsx-dev-runtime`) so scenes can
   use JSX to construct the node tree.
-- **`project/`** — `createProject({ name, fps, scenes, theme })`, the entry
+- **`project/`**: `createProject({ name, fps, scenes, theme })`, the entry
   point that defines a renderable project.
-- **`assets/`** — the asset manifest and manager (fonts, images, audio).
-- **`platform/`** — platform seams the backend fills in: the master clock and
+- **`assets/`**: the asset manifest and manager (fonts, images, audio).
+- **`platform/`**: platform seams the backend fills in: the master clock and
   storage adapter.
 
-### `@motion-script/web` — the web rendering backend
+### `@motion-script/web`: the web rendering backend
 
 Implements `core`'s `RenderContext` against Skia/CanvasKit and provides the
 browser-specific machinery. Notable exports (`packages/web/src/index.ts`):
 
-- `WebRenderContext` — draws frames via CanvasKit.
-- `getCanvasKit` — loads/initializes the WASM module.
-- `CanvasKitEffect` / `CanvasKitEffectRegistry` — SkSL shader effects.
-- `exportScenesAsVideo` — encodes rendered frames to video (via `mediabunny`).
-- `WebAudioPlayer`, `WebMasterClock`, `WebMeasureScope`, `WebStorageAdapter` —
+- `WebRenderContext`: draws frames via CanvasKit.
+- `getCanvasKit`: loads/initializes the WASM module.
+- `CanvasKitEffect` / `CanvasKitEffectRegistry`: SkSL shader effects.
+- `exportScenesAsVideo`: encodes rendered frames to video (via `mediabunny`).
+- `WebAudioPlayer`, `WebMasterClock`, `WebMeasureScope`, `WebStorageAdapter`:
   the browser implementations of `core`'s platform seams.
 
-### `@motion-script/canvaskit` — Skia WASM
+### `@motion-script/canvaskit`: Skia WASM
 
 A repackaged WASM build of Skia's CanvasKit (`canvaskit.js` + `canvaskit.wasm`),
 licensed BSD-3-Clause. The `.wasm` binary is generated/copied rather than
-hand-edited — see below.
+hand-edited (see below).
 
-### `@motion-script/react` — React bindings
+### `@motion-script/react`: React bindings
 
 React bindings (`@motion-script/react`) for embedding Motion Script in a React
 app. Depends on `core` and `web`.
 
-### `@motion-script/player` — the editor UI
+### `@motion-script/player`: the editor UI
 
 The React app that is the actual editor: timeline, scene panel, node-names
 column, playback/scrubbing, and export controls. Built with Tailwind, Base UI,
 Zustand, and `wavesurfer.js` (audio). It's a `private` package consumed by the
 vite plugin rather than published as a standalone tool.
 
-### `@motion-script/vite-plugin` — the glue
+### `@motion-script/vite-plugin`: the glue
 
 The plugin a user project depends on. It makes `vite` boot the **player app**
 (not the user's project directly): it sets the player as the Vite `root`, aliases
@@ -148,7 +148,7 @@ serves `canvaskit.wasm` in dev (middleware) and emits it on build
 folder, and resolves React from its own `node_modules` so it works whether or
 not the user installed React.
 
-### `create-motion-script` — scaffolding
+### `create-motion-script`: scaffolding
 
 The `create-motion-script` CLI. Prompts for a project name/path/language, copies
 `template-ts` or `template-js`, writes a `vite.config` that registers the plugin,
@@ -156,9 +156,9 @@ and pins `@motion-script/*` dependency versions.
 
 ### Supporting workspaces
 
-- **`docs`** — the Docusaurus site behind [motionscript.dev](https://motionscript.dev).
-- **`e2e`** — Playwright end-to-end tests.
-- **`my-video`** — an example project (lots of scene demos) used to exercise the
+- **`site`**: the Next.js docs site behind [motionscript.dev](https://motionscript.dev).
+- **`e2e`**: visual regression tests.
+- **`template`**: an example project (lots of scene demos) used to exercise the
   engine during development.
 
 ## Per-package development
@@ -184,7 +184,7 @@ pnpm --filter @motion-script/core test
 distinction matters: `tsc -b` walks a package's `references` and rebuilds its
 dependencies, so running it under Turbo (which *also* builds those dependencies
 via `dependsOn: ["^build"]`) makes two processes write the same `dist/`
-concurrently — a race that corrupts output and intermittently fails the first
+concurrently, a race that corrupts output and intermittently fails the first
 clean build. `tsc -p` compiles only the current package and reads its
 dependencies' already-built `dist/*.d.ts`, which Turbo guarantees exist first.
 
@@ -192,21 +192,21 @@ Conventions for a buildable package:
 
 - **Project `references` are for the editor only.** They give the language
   server cross-package go-to-definition. Point a reference at the dependency's
-  **`tsconfig.build.json`** (e.g. `{ "path": "../core/tsconfig.build.json" }`),
-  never the bare directory — the bare dir resolves to the test-inclusive
-  `tsconfig.json` and diverges from what the dependency actually builds.
+  **`tsconfig.build.json`** (e.g. `{ "path": "../core/tsconfig.build.json" }`).
+  Never the bare directory: it resolves to the test-inclusive `tsconfig.json`
+  and diverges from what the dependency actually builds.
 - **Two tsconfigs:** `tsconfig.json` (test-inclusive, used by the editor and
   `typecheck`) and `tsconfig.build.json` (extends it, excludes tests, the emit
   config that `build` and consumer `references` point at).
-- **`tsBuildInfoFile` lives in `dist/`** (`"dist/tsconfig.build.tsbuildinfo"`)
-  so Turbo's `dist/**` output cache stores it alongside the emitted files —
-  caching `dist` without its buildinfo causes stale-declaration bugs on cache
+- **`tsBuildInfoFile` lives in `dist/`** (`"dist/tsconfig.build.tsbuildinfo"`),
+  so Turbo's `dist/**` output cache stores it alongside the emitted files.
+  Caching `dist` without its buildinfo causes stale-declaration bugs on cache
   restore. Each package's `files` excludes it from the published tarball
   (`"!dist/**/*.tsbuildinfo"`).
 - **Scripts:** `build` = `tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`
   (or `&& vite build` for bundled packages like `react`/`player`);
   `typecheck` = `tsc -p tsconfig.json --noEmit` (or `tsc -b --noEmit` for the
-  Vite app/solution packages — safe because the `typecheck` task emits nothing
+  Vite app/solution packages, safe because the `typecheck` task emits nothing
   and never races on `dist`); `clean` = `rimraf --glob dist .turbo *.tsbuildinfo`.
 
 ### Important: the player ships prebuilt
@@ -226,14 +226,14 @@ pnpm --filter @motion-script/player build
 it. The vite plugin serves it from the installed `@motion-script/canvaskit`
 package in dev and emits it into `dist/` on build. If you have an uncommitted or
 custom `canvaskit.js` + `.wasm` in your working tree, stash it before running the
-`web` browser tests — a mismatched binary breaks them with
+`web` browser tests: a mismatched binary breaks them with
 `_MakeSRGB undefined`.
 
 ## Testing
 
-- **Unit tests:** [Vitest](https://vitest.dev/) — `pnpm --filter <pkg> test`, or
+- **Unit tests:** [Vitest](https://vitest.dev/), `pnpm --filter <pkg> test`, or
   `pnpm test` for everything.
-- **End-to-end:** Playwright in `packages/e2e` — `pnpm --filter @motion-script/e2e test`
+- **End-to-end:** Playwright in `packages/e2e`, `pnpm --filter @motion-script/e2e test`
   (use `test:update-snapshots` to refresh snapshots).
 
 Please add or update tests alongside behavior changes.

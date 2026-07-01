@@ -54,7 +54,7 @@ latex="\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}"
 | Prop | Type | Description |
 |---|---|---|
 | `latex` | `string` | LaTeX math expression |
-| `fontSize` | `number` | Font size — node bounds adjust automatically |
+| `fontSize` | `number` | Font size (node bounds adjust automatically) |
 | `fill` | `FillProp \| FillProp[]` | Fill color(s) |
 
 The node auto-sizes to fit the rendered equation.
@@ -97,7 +97,7 @@ export default createScene(function* (stage) {
 
 ## Combining with other nodes
 
-`Latex` is a full scene node — place it in layouts, masks, or alongside shapes:
+`Latex` is a full scene node: place it in layouts, masks, or alongside shapes.
 
 ```tsx
 stage.add(

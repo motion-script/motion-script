@@ -6,7 +6,7 @@ import { CameraCanvas } from '@site/src/components/docs/node-scenes';
 
 # Camera
 
-A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform — clipped to the card's bounds.
+A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform, clipped to the card's bounds.
 
 <CameraCanvas />
 
@@ -76,7 +76,7 @@ export default createScene(function* (stage) {
 
 ## Notes
 
-- The Camera runs no flex or stack layout — children are positioned stack-style (centered), then viewed through the camera transform.
+- The Camera runs no flex or stack layout. Children are positioned stack-style (centered), then viewed through the camera transform.
 - The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
 - `origin` is in world-space coordinates relative to the children's own origin, not screen coordinates.
-- `heading` rotates the camera's view, not the children — the world stays fixed and the camera turns.
+- `heading` rotates the camera's view, not the children: the world stays fixed and the camera turns.

@@ -8,16 +8,16 @@ exported to video all in the browser.
 
 ## What's in here
 
-- **Render context** — `WebRenderContext` draws the `@motion-script/core` scene
+- **Render context**: `WebRenderContext` draws the `@motion-script/core` scene
   graph (shapes, fills, strokes, effects, text, video, masks) onto a CanvasKit
   surface.
-- **Exporter** — `exportScenesAsVideo` renders one or more scenes offline and
+- **Exporter**: `exportScenesAsVideo` renders one or more scenes offline and
   muxes video and audio into an MP4 using [mediabunny](https://github.com/Vanilagy/mediabunny).
-- **Audio** — `WebAudioPlayer` drives playback through the Web Audio API.
-- **Storage / assets** — `WebStorageAdapter` and `WebMeasureScope` implement the
+- **Audio**: `WebAudioPlayer` drives playback through the Web Audio API.
+- **Storage / assets**: `WebStorageAdapter` and `WebMeasureScope` implement the
   asset-loading and text-measurement abstractions `@motion-script/core` needs.
-- **Clock** — `WebMasterClock` synchronizes scene playback to `requestAnimationFrame` while calculating dt from audio context to ensure audio and animation line up.
-- **CanvasKit access** — `getCanvasKit` loads and caches the CanvasKit/Skia
+- **Clock**: `WebMasterClock` synchronizes scene playback to `requestAnimationFrame` while calculating dt from audio context to ensure audio and animation line up.
+- **CanvasKit access**: `getCanvasKit` loads and caches the CanvasKit/Skia
   WebAssembly module used for rendering.
 
 ## Usage

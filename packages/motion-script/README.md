@@ -1,51 +1,70 @@
-# @motion-script/core
+# motion-script
 
-The engine-agnostic animation library at the heart of [Motion Script](https://motionscript.dev).
-It provides the scene graph, generator-driven animation runtime, reactive
-signals, tweening, flex layout, and the JSX runtime used to describe scenes
-declaratively independent of any particular rendering backend with zero dependencies.
+The flagship, all-in-one package for [Motion Script](https://motionscript.dev).
+Describe animations as TypeScript/JSX scenes and render them in real time in
+the browser. It bundles [`@motion-script/core`](../core) (the scene graph,
+animation runtime, signals, layout, and JSX runtime) together with
+[`@motion-script/code`](../components/code) (animated code blocks) and
+[`@motion-script/latex`](../components/latex) (animated LaTeX) behind a single
+import, so most projects only need this one dependency.
 
 ```tsx
-import { Scene, createRef, Rect, Ellipse } from '@motion-script/core';
+import { createScene, createRef, Rect, Ellipse } from 'motion-script';
 
-export class ShapeScene extends Scene {
-  *build() {
-    const lens = createRef<Ellipse>();
+export default createScene(function* (stage) {
+  const lens = createRef<Ellipse>();
 
-    this.add(
-      <Rect width={400} height={400} fill="white" cornerRadius={20}>
-        <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
-      </Rect>,
-    );
+  stage.add(
+    <Rect width={400} height={400} fill="white" cornerRadius={20}>
+      <Ellipse ref={lens} x={200} y={200} width={350} height={350} />
+    </Rect>,
+  );
 
-    yield* lens().to({ x: 700 }, 3);
-  }
-}
+  // Animate: tween the ellipse to x=700 over 3 seconds.
+  yield* lens().to({ x: 700 }, 3);
+});
 ```
+
+Animations are driven by generators: `yield*` a tween and the engine advances
+time, interpolating attributes frame by frame. Reactive signals, flex layout,
+fills, gradients, filters, SkSL shader effects, paths, text, audio, animated
+code, and animated LaTeX are all supported. See the
+[docs](https://motionscript.dev/docs) for the full feature set.
 
 ## What's in here
 
-- **Nodes** — the scene graph (`Scene`, `Rect`, `Ellipse`, `Txt`, paths, and
-  more) with attributes for fills, gradients, filters, and SkSL shader effects.
-- **Runtime** — drives animations from generators: `yield*` a tween or signal
-  change and the engine advances time, interpolating attributes frame by frame.
-- **Signals** — reactive values that nodes and tweens can depend on.
-- **Tweens** — interpolation and easing for animating attributes over time.
-- **Layout** — a flexbox-based layout system for positioning nodes.
-- **JSX runtime** — lets scenes be authored as TSX (`./jsx/jsx-runtime`,
-  `./jsx/jsx-dev-runtime`).
-- **Project / render / platform / assets** — the abstractions a rendering
-  backend (such as [`@motion-script/web`](../web)) implements to turn a scene
-  graph into pixels, audio, and exported video.
+- **Scene & project**: `createScene`, `createProject`, and the `Scene` /
+  `Stage` types that describe and run an animation.
+- **Nodes**: geometry (`Rect`, `Ellipse`, `Line`, `Path`, `Polygon`,
+  `Polygram`, `LineGrid`, `Grid`, `MaskGroup`, `BooleanGroup`), text (`Text`,
+  `RichText`, `NumberNode`), layout (`Row`, `Column`, `Camera`), and media
+  (`Image`, `Video`).
+- **Animation**: timing and control (`wait`, `sequence`, `parallel`,
+  `tween`), easing (`linear`, `easeIn`, `easeOut`, `easeInOut`), and
+  interpolation (`lerpNumber`).
+- **Signals**: `Signal`, `createSignal`, reactive values that nodes and
+  tweens can depend on.
+- **Styling & effects**: `Fills`, `Effects`, `ImageFilters`, `VideoFilters`,
+  `AudioFilters`, plus the `Stroke`/`Shadow`/`Corners` attribute types.
+- **Audio**: the `Sound` node.
+- **Utilities**: `createRef`, `clamp`, `generateList`, `createContext`,
+  `Random`, the `@property` decorator.
+- **`Code`** (from `@motion-script/code`): syntax-highlighted, token-level
+  animated code blocks.
+- **`Latex`** (from `@motion-script/latex`): animated LaTeX formulas that
+  morph between states.
+- **JSX runtime**: `motion-script/jsx-runtime` and
+  `motion-script/jsx-dev-runtime`, so scenes can be authored as TSX.
 
-This package has no rendering backend of its own — pair it with
-[`@motion-script/web`](../web) (Skia/CanvasKit) or build your own backend
-against the `platform`/`render` abstractions.
+This package has no rendering backend of its own. Pair it with
+[`@motion-script/web`](../web) (Skia/CanvasKit) directly, or use
+[`@motion-script/react`](../react) / the bundled player for a ready-made
+preview and export UI.
 
 ## Usage
 
 ```bash
-npm install @motion-script/core
+npm install motion-script
 ```
 
 For a guided setup, scaffold a project instead with:
@@ -62,7 +81,6 @@ reference.
 From the monorepo root:
 
 ```bash
-pnpm --filter @motion-script/core build
-pnpm --filter @motion-script/core test
+pnpm --filter motion-script build
+pnpm --filter motion-script test
 ```
-

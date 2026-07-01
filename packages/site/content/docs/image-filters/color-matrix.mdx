@@ -9,11 +9,11 @@ Applies a raw 4×5 row-major color matrix (Skia format) to each pixel. This give
 ## Usage
 
 ```tsx
-import { MX } from '@motion-script/core';
+import { ImageFilters } from '@motion-script/core';
 
 // Invert colors
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
-  filters={MX.colorMatrix([
+  filters={ImageFilters.colorMatrix([
     -1, 0, 0, 0, 255,
      0,-1, 0, 0, 255,
      0, 0,-1, 0, 255,
