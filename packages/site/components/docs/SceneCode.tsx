@@ -29,7 +29,7 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={copy}
-      className="absolute right-3 top-3 z-10 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 dark:bg-[#2a2a3a]"
+      className="absolute right-3 top-3 z-10 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
     >
       {copied ? '✓' : 'Copy'}
     </button>
@@ -44,7 +44,7 @@ export function CodePanel({ code, className = '' }: { code: string; className?: 
   return (
     <figure className="group relative m-0">
       <pre
-        className={`overflow-auto bg-muted/50 p-4 text-sm leading-relaxed font-mono dark:bg-[#0d1117] ${className}`}
+        className={`overflow-auto bg-muted/50 p-4 text-sm leading-relaxed font-mono ${className}`}
       >
         <code className="hljs language-tsx" dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
@@ -87,7 +87,7 @@ export function SceneCode({ code }: { code: string }) {
 
       {open && (
         <figure className="group relative mt-2 m-0">
-          <pre className="overflow-x-auto rounded-lg border border-border bg-muted/50 p-4 text-sm leading-relaxed font-mono dark:bg-[#0d1117]">
+          <pre className="overflow-x-auto rounded-lg border border-border bg-muted/50 p-4 text-sm leading-relaxed font-mono">
             <code
               className="hljs language-tsx"
               dangerouslySetInnerHTML={{ __html: html }}

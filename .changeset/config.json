@@ -14,9 +14,9 @@
       "@motion-script/react",
       "@motion-script/player",
       "@motion-script/vite-plugin",
+      "@motion-script/create",
       "@motion-script/latex",
       "@motion-script/code",
-      "@motion-script/create",
       "@motion-script/cli",
       "motion-script"
     ]
@@ -26,7 +26,8 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@motion-script/template"
+    "@motion-script/template",
+    "@motion-script/site"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

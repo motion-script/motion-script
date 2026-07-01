@@ -1,11 +1,15 @@
 # Release workflow driven by Changesets.
 #
-# On every push to `main`:
+# Triggered by CI (workflow_run) finishing successfully on `main`, rather than
+# on `push` directly — CI already installs, builds, and tests this exact SHA,
+# so re-running all of that here would just duplicate that work on every push.
+# This workflow only needs to run once CI has confirmed the commit is green:
 #   - If there are unreleased changesets, the changesets/action opens (or updates)
 #     a "Version Packages" PR. That PR runs `pnpm version-packages`, which bumps
 #     versions, syncs the root version, and updates the lockfile.
-#   - When that PR is merged, this workflow runs again, finds the bumped versions,
-#     and runs `pnpm release` (build:lib + changeset publish) to publish to npm.
+#   - When that PR is merged (and CI passes on it), this workflow runs again,
+#     finds the bumped versions, and runs `pnpm release` (build:lib + changeset
+#     publish) to publish to npm.
 #
 # Publishing uses npm OIDC Trusted Publishing (provenance), so no NPM_TOKEN is
 # required. Each @motion-script/* package must have a Trusted Publisher configured
@@ -13,9 +17,10 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch: # enables the manual "Run workflow" button
 
 concurrency:
@@ -24,6 +29,9 @@ concurrency:
 
 jobs:
   release:
+    # Only run for a CI run that actually passed; skip on CI failure. The
+    # `workflow_dispatch` path has no workflow_run event, so let that through too.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write       # create the Version Packages PR / push tags
@@ -33,6 +41,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Install pnpm
@@ -53,21 +62,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # @motion-script/web runs its tests in a real headless Chromium via
-      # @vitest/browser-playwright, so the browser (and its Linux system deps)
-      # must be installed on the runner before `pnpm test`.
-      - name: Install Playwright Chromium
-        run: pnpm --filter @motion-script/web exec playwright install --with-deps chromium
-
-      # The web tests import the built `@motion-script/core` (its package
-      # `exports` point at `dist/`), so the libraries must be compiled before
-      # `pnpm test` — a fresh checkout has no `dist/` yet. `build:lib` builds
-      # every package except the `site` app in topological order.
+      # Build is still needed here: `changeset publish` (via `pnpm release`)
+      # publishes the built `dist/` output, and this job's checkout doesn't
+      # share filesystem state with the CI run that already built + tested it.
       - name: Build libraries
         run: pnpm build:lib
-
-      - name: Run tests
-        run: pnpm test
 
       - name: Create Release PR or Publish to npm
         id: changesets

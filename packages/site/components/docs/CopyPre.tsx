@@ -24,12 +24,12 @@ export function CopyPre({ children }: { children?: React.ReactNode }) {
 
   return (
     <figure className="group relative my-4 m-0">
-      <pre className="overflow-x-auto rounded-lg border border-border bg-muted/50 dark:bg-[#0d1117] p-4 text-sm leading-relaxed font-mono">
+      <pre className="overflow-x-auto rounded-lg border border-border bg-muted/50 p-4 text-sm leading-relaxed font-mono">
         {children}
       </pre>
       <button
         onClick={copy}
-        className="absolute right-3 top-3 rounded-md border border-border/60 bg-background/80 dark:bg-[#2a2a3a] px-2 py-1 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+        className="absolute right-3 top-3 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
       >
         {copied ? '✓' : 'Copy'}
       </button>

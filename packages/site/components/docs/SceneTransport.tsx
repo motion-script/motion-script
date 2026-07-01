@@ -31,7 +31,7 @@ export function SceneTransport({
   const pct = loop > 0 ? (time / loop) * 100 : 0
 
   return (
-    <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 dark:bg-[#0d1117]">
+    <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-3 py-2">
       <button onClick={onStepBack} className={btn} aria-label="Step backward" title="Step backward">
         <svg
           width="14"
