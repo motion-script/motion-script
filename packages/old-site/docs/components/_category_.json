@@ -1,8 +1,0 @@
-{
-  "label": "Components",
-  "position": 7,
-  "link": {
-    "type": "generated-index",
-    "description": "Optional packages that extend MotionScript with specialized nodes."
-  }
-}

@@ -18,7 +18,7 @@ allowBuilds:
   '@swc/core': false
   core-js: false
   esbuild: false
-  sharp: set this to true or false
+  sharp: false
   unrs-resolver: false
 
 catalog:
