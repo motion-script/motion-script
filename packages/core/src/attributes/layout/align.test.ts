@@ -10,8 +10,8 @@ describe('resolveAlign', () => {
         expect(resolveAlign('bottomRight')).toEqual({ x: 1, y: -1 });
         expect(resolveAlign('topCenter')).toEqual({ x: 0, y: 1 });
         expect(resolveAlign('bottomCenter')).toEqual({ x: 0, y: -1 });
-        expect(resolveAlign('leftCenter')).toEqual({ x: -1, y: 0 });
-        expect(resolveAlign('rightCenter')).toEqual({ x: 1, y: 0 });
+        expect(resolveAlign('centerLeft')).toEqual({ x: -1, y: 0 });
+        expect(resolveAlign('centerRight')).toEqual({ x: 1, y: 0 });
     });
 
     it('passes an explicit Vector2 through unchanged', () => {
@@ -29,7 +29,7 @@ describe('resolveAlign', () => {
     });
 
     it('throws on an unknown named position', () => {
-        // @ts-expect-error – not an AlignName
+        // @ts-expect-error – not an AlignKey
         expect(() => resolveAlign('middle')).toThrow(/Unknown align value/);
     });
 });

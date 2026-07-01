@@ -70,9 +70,30 @@ const PACKAGES = [
 
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
+// On Windows we must launch pnpm through a shell (it's a `.cmd` batch file, which
+// execFile can't spawn directly). But passing an args array together with
+// `shell: true` is deprecated (DEP0190) — Node concatenates the args into the
+// command line unescaped. So on win32 we build one quoted command string and run
+// it with `shell: true` and no separate args; elsewhere we pass the args array
+// directly with no shell (safer, no quoting needed).
+const useShell = process.platform === 'win32';
+
+/** Quote an arg for a Windows cmd.exe command line (handles spaces in paths). */
+function winQuote(arg) {
+    return /[\s"&|<>^%]/.test(arg) ? `"${arg.replace(/"/g, '""')}"` : arg;
+}
+
+function execFileMaybeShell(cmd, args, options) {
+    if (useShell) {
+        const line = [cmd, ...args].map(winQuote).join(' ');
+        return execFileSync(line, { ...options, shell: true });
+    }
+    return execFileSync(cmd, args, options);
+}
+
 function run(cmd, args, cwd) {
     console.log(`$ ${cmd} ${args.join(' ')}  (in ${path.relative(repoRoot, cwd) || '.'})`);
-    execFileSync(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+    execFileMaybeShell(cmd, args, { cwd, stdio: 'inherit' });
 }
 
 function readPkg(dir) {
@@ -142,10 +163,10 @@ function packTarballs(tarballByName, thirdPartyDeps) {
     for (const rel of PACKAGES) {
         const dir = path.join(repoRoot, rel);
         const pkg = readPkg(dir);
-        const out = execFileSync(
+        const out = execFileMaybeShell(
             pnpm,
             ['pack', '--pack-destination', tarballsDir],
-            { cwd: dir, encoding: 'utf8', shell: process.platform === 'win32' },
+            { cwd: dir, encoding: 'utf8' },
         );
         const emitted = path.join(tarballsDir, path.basename(out.trim().split(/\r?\n/).pop().trim()));
         const stableBase = stableTarballName(pkg.name);

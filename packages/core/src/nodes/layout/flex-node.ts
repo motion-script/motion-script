@@ -8,7 +8,7 @@ import { PaddingResolved } from "@/attributes/layout/padding";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
 import { Node, NodeConfig } from "../base/node";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
@@ -31,7 +31,7 @@ export interface FlexProps extends ShapeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: AlignInput;
+    align: Alignment;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
     cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
@@ -62,10 +62,10 @@ interface FlexMeasureCache {
 export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNode<P> {
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Stored resolved as a per-axis `Vector2` pivot; the loose `AlignInput`
+    // Stored resolved as a per-axis `Vector2` pivot; the loose `Alignment`
     // declared type covers both named-string assignment and reads. See Rect.
-    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
-    declare align: AlignInput;
+    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    declare align: Alignment;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment and reads; the accessor stores the resolved value. See Rect.
     @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })

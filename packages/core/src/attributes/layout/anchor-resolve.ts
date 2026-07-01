@@ -1,4 +1,4 @@
-import { ALIGN_KEYS, resolvePivot, type AlignName } from "./align";
+import { ALIGN_KEYS, resolvePivot, type AlignKey } from "./align";
 import { BoxBounds } from "./bounds";
 import { Vector2 } from "./vector2";
 
@@ -6,7 +6,7 @@ import { Vector2 } from "./vector2";
  * Shared anchor-positioning math for {@link Node}, used by both the constructor
  * (reactive binding form) and a `to()` step (one-shot form).
  *
- * A named anchor (`'topRight'`, `'leftCenter'`, …) resolves to a normalised
+ * A named anchor (`'topRight'`, `'centerLeft'`, …) resolves to a normalised
  * pivot `a` in `[-1, 1]` (y-up). To land that anchor on a target scene-space
  * point, the node's centre must sit at `target - a·(size/2)` — the inverse of
  * the offset from centre to the anchor. This file is the single source of that
@@ -30,7 +30,7 @@ export function validateAnchorProps(props: Record<string, unknown>): void {
 }
 
 /** @internal The first named anchor key present in `props`, or `undefined` if none. */
-export function findAnchorKey(props: Record<string, unknown>): AlignName | undefined {
+export function findAnchorKey(props: Record<string, unknown>): AlignKey | undefined {
     return ALIGN_KEYS.find(k => props[k] !== undefined);
 }
 
@@ -41,7 +41,7 @@ export function findAnchorKey(props: Record<string, unknown>): AlignName | undef
  */
 /** @internal */
 export function resolveAnchorTargetOnce(
-    anchorKey: AlignName,
+    anchorKey: AlignKey,
     rect: BoxBounds,
     target: Vector2,
 ): { pivot: Vector2; x: number; y: number } {
@@ -61,7 +61,7 @@ export function resolveAnchorTargetOnce(
  */
 /** @internal */
 export function bindAnchorTarget(
-    anchorKey: AlignName,
+    anchorKey: AlignKey,
     getTarget: () => Vector2,
     getRect: () => BoxBounds,
 ): { pivot: Vector2; x: () => number; y: () => number } {

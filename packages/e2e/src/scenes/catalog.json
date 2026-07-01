@@ -1293,7 +1293,7 @@
     "id": "cardinal-node-leftcenter",
     "name": "CardinalNodeLeftcenter",
     "section": "Cardinal Coordinates",
-    "description": "leftCenter"
+    "description": "centerLeft"
   },
   {
     "id": "cardinal-node-center",
@@ -1305,7 +1305,7 @@
     "id": "cardinal-node-rightcenter",
     "name": "CardinalNodeRightcenter",
     "section": "Cardinal Coordinates",
-    "description": "rightCenter"
+    "description": "centerRight"
   },
   {
     "id": "cardinal-node-bottomleft",

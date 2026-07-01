@@ -27,7 +27,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
-import { PivotInput, resolvePivot } from "@/attributes/layout/align";
+import { Alignment, resolvePivot } from "@/attributes/layout/align";
 import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAnchorProps } from "@/attributes/layout/anchor-resolve";
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
@@ -89,7 +89,7 @@ export interface NodeProps {
      * {@link Vector2}: `(0,0)`=center, `(-1,1)`=top-left, `(1,-1)`=bottom-right. Set
      * automatically when an anchor *positioning* prop is used.
      */
-    pivot: PivotInput;
+    pivot: Alignment;
 
     // ---- Anchor-based positioning -----------------------------------------
     // Pass any one of these instead of (or in addition to) x/y.
@@ -103,8 +103,8 @@ export interface NodeProps {
     bottomRight: Vector2 | (() => Vector2);
     topCenter: Vector2 | (() => Vector2);
     bottomCenter: Vector2 | (() => Vector2);
-    leftCenter: Vector2 | (() => Vector2);
-    rightCenter: Vector2 | (() => Vector2);
+    centerLeft: Vector2 | (() => Vector2);
+    centerRight: Vector2 | (() => Vector2);
 
     /**
      * Proportional share of the free space along the parent's main axis,
@@ -243,8 +243,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
     @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
 
-    @property({ default: { x: 0, y: 0 }, mapper: (v: PivotInput) => resolvePivot(v), tween: lerpVector2 })
-    declare readonly pivot: PivotInput;
+    @property({ default: { x: 0, y: 0 }, mapper: (v: Alignment) => resolvePivot(v), tween: lerpVector2 })
+    declare readonly pivot: Alignment;
 
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
     @property({ default: false }) declare clip: boolean;
@@ -875,12 +875,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         return this._rotateOffset(0, -r.height / 2);
     }
 
-    get leftCenter(): Vector2 {
+    get centerLeft(): Vector2 {
         const r = this.layoutRect;
         return this._rotateOffset(-r.width / 2, 0);
     }
 
-    get rightCenter(): Vector2 {
+    get centerRight(): Vector2 {
         const r = this.layoutRect;
         return this._rotateOffset(r.width / 2, 0);
     }

@@ -27,8 +27,7 @@ export {
     Rect,
     Ellipse,
     Line,
-    Path, Graphics, ShapeNode, RenderContext, resolvePivot,
-
+    Path, Graphics, ShapeNode, RenderContext, resolvePivot, resolveAlign, resolveSize, resolvePadding, resolveCorners, resolveStroke, resolveShadow, resolveFill,
     Polygon,
     Polygram,
     LineGrid,
@@ -198,7 +197,6 @@ export type {
     Shadow,
     ShadowProp,
     Corners,
-    CornersInput,
     CornerStyle,
     SceneEffect,
     BooleanOperation,
@@ -220,12 +218,10 @@ export type {
 // ---------------------------------------------------------
 export type {
     Vector2,
-    Size2D,
-    PaddingProps,
-    Padding,
-    AlignName,
-    AlignInput,
-    PivotInput,
+    Size2D, FillResolved, StrokeResolved, ShadowResolved, CornerStyleResolved, CornerRadiusResolved,
+    Padding, PaddingResolved,
+    AlignKey,
+    Alignment,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------
@@ -276,12 +272,6 @@ export {
     initSyntaxHighlighter,
     registerCodeTheme,
     resolveTheme,
-    DefaultHighlightStyle,
-    GithubDarkStyle,
-    GithubLightStyle,
-    VscodeDarkStyle,
-    VscodeLightStyle,
-    BUILTIN_THEMES,
     compileStyle,
 } from '@motion-script/code';
 export type {

@@ -13,7 +13,7 @@ import type { Stroke } from "@/attributes/shape/stroke/mapper";
 import type { Shadow } from "@/attributes/shape/shadow/resolver";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { type Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
-import type { PivotInput } from "@/attributes/layout/align";
+import type { Alignment } from "@/attributes/layout/align";
 import type { MaskOptions } from "@/attributes/mask/mask";
 
 /**
@@ -26,7 +26,7 @@ import type { MaskOptions } from "@/attributes/mask/mask";
 export interface GraphicsTransform {
     rotation: number;
     scale: number;
-    center?: PivotInput;
+    center?: Alignment;
 }
 
 /**
@@ -107,7 +107,7 @@ export class Graphics {
     private _effects: SceneEffect[] = [];
     private _rotation: number = 0;
     private _scale: number = 1;
-    private _transformCenter?: PivotInput;
+    private _transformCenter?: Alignment;
 
     // ─── Shapes ──────────────────────────────────────────────────────────────
 
@@ -234,7 +234,7 @@ export class Graphics {
      * this mutates the combined silhouette — every shape turns together as one
      * figure.
      */
-    rotation(rotation: number, center?: PivotInput): this {
+    rotation(rotation: number, center?: Alignment): this {
         this._rotation = rotation;
         if (center !== undefined) this._transformCenter = center;
         return this;
@@ -246,7 +246,7 @@ export class Graphics {
      * the box's centre). Like {@link rotation}, this transforms the combined
      * silhouette rather than a single shape.
      */
-    scale(scale: number, center?: PivotInput): this {
+    scale(scale: number, center?: Alignment): this {
         this._scale = scale;
         if (center !== undefined) this._transformCenter = center;
         return this;

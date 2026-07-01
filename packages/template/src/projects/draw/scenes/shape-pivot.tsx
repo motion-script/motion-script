@@ -1,5 +1,5 @@
 import {
-    createScene, Text, Rect, Fills, AlignName,
+    createScene, Text, Rect, Fills, AlignKey,
 } from "motion-script";
 import { DrawnShapePivot } from "../nodes/drawn-shape-pivot";
 
@@ -25,9 +25,9 @@ export default createScene(function* (stage) {
     const e = 150;
 
     // All nine cardinal anchors, laid out in a 3×3 grid mirroring their meaning.
-    const anchors: AlignName[] = [
+    const anchors: AlignKey[] = [
         'topLeft',    'topCenter',    'topRight',
-        'leftCenter', 'center',       'rightCenter',
+        'centerLeft', 'center',       'centerRight',
         'bottomLeft', 'bottomCenter', 'bottomRight',
     ];
 

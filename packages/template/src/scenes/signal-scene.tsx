@@ -20,7 +20,7 @@ export default createScene(function* (stage) {
                     fill={'#4ac27e'}
                     rotation={() => rect().rotation}
                     // Try changing "right" to "top"
-                    rightCenter={() => rect().leftCenter}
+                    centerRight={() => rect().centerLeft}
                 />
                 <Rect
                     width={300}

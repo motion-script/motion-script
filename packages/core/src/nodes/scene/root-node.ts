@@ -13,7 +13,7 @@ import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { MeasureScope } from "@/render/measure-scope";
 import { AssetTracker } from "@/assets/tracker";
-import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
@@ -45,7 +45,7 @@ export interface RootProps extends NodeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: AlignInput;
+    align: Alignment;
     /** Camera magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
     /** World-space point that maps to the centre of the viewport. */
@@ -86,10 +86,10 @@ export class RootNode extends Node<RootProps> implements GroupHost {
 
     // ---- Layout container -------------------------------------------------
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Declared loose as `AlignInput` (covers `this.align = 'center'`); the
+    // Declared loose as `Alignment` (covers `this.align = 'center'`); the
     // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
-    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
-    declare align: AlignInput;
+    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    declare align: Alignment;
     // `group` has a closure-based tween (the engine captures the in-flight
     // blend), so it's applied via applyProp rather than a static @property.
     declare group: LayoutMode;

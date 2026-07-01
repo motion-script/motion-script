@@ -6,7 +6,7 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { LayoutMode } from "@/layout/group-engine";
 import { GapSize } from "@/layout/flex";
-import { AlignInput } from "@/attributes/layout/align";
+import { Alignment } from "@/attributes/layout/align";
 import { Padding } from "@/attributes/layout/padding";
 import { EasingFunction } from "@/tween/ease/type";
 import { TweenOptions } from "@/tween/lerp";
@@ -199,8 +199,8 @@ export class Scene {
     get gap(): GapSize { return this.root.gap; }
 
     /** Alignment of the root's children within the viewport. */
-    get align(): AlignInput { return this.root.align; }
-    set align(value: AlignInput) { this.root.align = value; }
+    get align(): Alignment { return this.root.align; }
+    set align(value: Alignment) { this.root.align = value; }
 
     /** Inner spacing between the viewport edges and the root's children. */
     get padding(): Padding { return this.root.padding; }

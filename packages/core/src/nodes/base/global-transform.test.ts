@@ -106,9 +106,9 @@ describe('Node.global', () => {
         // Child centered in parent, 100×100, so its right edge is at local +50.
         child.place({ x: 0, y: 0, width: 100, height: 100 });
 
-        // The child's local rightCenter is at world (+50, 0). A 90° clockwise
+        // The child's local centerRight is at world (+50, 0). A 90° clockwise
         // parent rotation (canvas) maps +x → -y (downward in y-up world).
-        const rc = child.global.rightCenter;
+        const rc = child.global.centerRight;
         closeTo(rc.x, 0);
         closeTo(rc.y, -50);
     });

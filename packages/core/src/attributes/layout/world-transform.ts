@@ -22,8 +22,8 @@ export interface WorldTransform {
     readonly bottomRight: Vector2;
     readonly topCenter: Vector2;
     readonly bottomCenter: Vector2;
-    readonly leftCenter: Vector2;
-    readonly rightCenter: Vector2;
+    readonly centerLeft: Vector2;
+    readonly centerRight: Vector2;
     /** Sum of this node's and all ancestors' rotations, in degrees clockwise. */
     readonly rotation: number;
     /** Product of this node's and all ancestors' scale factors. */

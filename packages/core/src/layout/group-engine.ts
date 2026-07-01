@@ -7,7 +7,7 @@ import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpNumber } from "@/tween/lerp";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { AlignInput } from "@/attributes/layout/align";
+import { Alignment } from "@/attributes/layout/align";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, FlexDirection, GapSize } from "@/layout/flex";
 import { Node } from "@/nodes/base/node";
 
@@ -26,11 +26,11 @@ export interface GroupHost {
     readonly group: LayoutMode;
     readonly gap: GapSize;
     /**
-     * The `align` prop, declared loose (`AlignInput`) to match how containers
+     * The `align` prop, declared loose (`Alignment`) to match how containers
      * type it; at runtime the accessor stores the resolved per-axis `Vector2`
      * pivot, which the engine reads via {@link resolvedAlign}.
      */
-    readonly align: AlignInput;
+    readonly align: Alignment;
     /** Effective content padding (base padding plus any stroke intrusion). */
     effectivePadding(): PaddingResolved;
 }

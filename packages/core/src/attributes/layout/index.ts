@@ -5,4 +5,4 @@ export { Padding, PaddingProps, PaddingResolved, resolvePadding } from './paddin
 export { Size2D } from './size';
 export { Vector2 } from './vector2';
 export { WorldTransform } from './world-transform';
-export { AlignInput, AlignName, ALIGN_KEYS, resolveAlign, PivotInput, resolvePivot } from './align';
+export { Alignment, AlignKey, ALIGN_KEYS, resolveAlign, resolvePivot } from './align';

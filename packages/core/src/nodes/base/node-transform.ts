@@ -57,8 +57,8 @@ export interface WorldAnchors {
     bottomRight: Vector2;
     topCenter: Vector2;
     bottomCenter: Vector2;
-    leftCenter: Vector2;
-    rightCenter: Vector2;
+    centerLeft: Vector2;
+    centerRight: Vector2;
 }
 
 /**
@@ -81,7 +81,7 @@ export function worldAnchors(m: Matrix2D, halfW: number, halfH: number): WorldAn
         bottomRight: at(halfW, -halfH),
         topCenter: at(0, halfH),
         bottomCenter: at(0, -halfH),
-        leftCenter: at(-halfW, 0),
-        rightCenter: at(halfW, 0),
+        centerLeft: at(-halfW, 0),
+        centerRight: at(halfW, 0),
     };
 }

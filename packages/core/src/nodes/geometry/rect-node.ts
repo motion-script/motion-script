@@ -7,7 +7,7 @@ import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
-import { AlignInput, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
@@ -33,7 +33,7 @@ export interface RectProps extends ShapeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: AlignInput;
+    align: Alignment;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
     cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
@@ -50,11 +50,11 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Declared as the loose `AlignInput` so one @property covers both assignment
+    // Declared as the loose `Alignment` so one @property covers both assignment
     // (`this.align = 'center'`) and reads. At runtime the accessor stores the
     // resolved per-axis `Vector2` pivot; readers cast at the read site.
-    @property({ default: "center", mapper: (v: AlignInput) => resolveAlign(v), tween: lerpAlign })
-    declare align: AlignInput;
+    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    declare align: Alignment;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment (`this.cornerRadius = 8`) and reads. At runtime the
     // accessor stores the resolved per-corner value; readers that need the

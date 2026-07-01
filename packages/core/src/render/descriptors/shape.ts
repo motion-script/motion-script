@@ -1,5 +1,5 @@
 import { TransformState } from "./transform";
-import { AlignName, PivotInput, resolvePivot } from "@/attributes/layout/align";
+import { AlignKey, Alignment, resolvePivot } from "@/attributes/layout/align";
 import { Vector2 } from "@/attributes/layout/vector2";
 
 /**
@@ -14,12 +14,12 @@ export interface ShapeState extends Omit<TransformState, "effects" | "pivot"> {
     end: number;
     /**
      * Pivot for the shape's local rotation/scale. Widened from a `Vector2` to a
-     * {@link PivotInput} so a shape can pivot about a **named anchor**
+     * {@link Alignment} so a shape can pivot about a **named anchor**
      * (`.rect({ pivot: 'topRight' })`) as well as an explicit `Vector2`.
      * `with*Descriptor` normalises it to a `Vector2` (via {@link resolveShapePivot}),
      * so the resolved state the renderer reads always carries a concrete pivot.
      */
-    pivot: PivotInput;
+    pivot: Alignment;
 }
 
 /**
@@ -29,7 +29,7 @@ export interface ShapeState extends Omit<TransformState, "effects" | "pivot"> {
  * both `with*Descriptor` and the renderer can call it. Defaults to centre when
  * the pivot is absent.
  */
-export function resolveShapePivot(pivot: PivotInput | undefined): Vector2 {
+export function resolveShapePivot(pivot: Alignment | undefined): Vector2 {
     return resolvePivot(pivot ?? { x: 0, y: 0 });
 }
 
@@ -54,14 +54,14 @@ export interface ShapeAnchorInput {
     bottomRight?: Vector2;
     topCenter?: Vector2;
     bottomCenter?: Vector2;
-    leftCenter?: Vector2;
-    rightCenter?: Vector2;
+    centerLeft?: Vector2;
+    centerRight?: Vector2;
 }
 
 /** The nine anchor keys, in the node `align` vocabulary. */
-export const SHAPE_ANCHOR_KEYS: AlignName[] = [
+export const SHAPE_ANCHOR_KEYS: AlignKey[] = [
     "center", "topLeft", "topRight", "bottomLeft", "bottomRight",
-    "topCenter", "bottomCenter", "leftCenter", "rightCenter",
+    "topCenter", "bottomCenter", "centerLeft", "centerRight",
 ];
 
 /**
@@ -110,7 +110,7 @@ export function resolveShapeAnchor(
     descriptor: Partial<ShapeState> & ShapeAnchorInput,
     width: number,
     height: number,
-): { x: number; y: number; pivot: PivotInput } {
+): { x: number; y: number; pivot: Alignment } {
     validateShapeAnchorProps(descriptor as Record<string, unknown>);
 
     const anchorKey = SHAPE_ANCHOR_KEYS.find(k => (descriptor as Record<string, unknown>)[k] !== undefined);

@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
-    PivotInput, resolvePivot, property,
+    Alignment, resolvePivot, property,
 } from "motion-script";
 
 export interface DrawnPivotProps extends ShapeProps {
@@ -16,7 +16,7 @@ export interface DrawnPivotProps extends ShapeProps {
      * Named `spinPivot` (not `pivot`) so it doesn't shadow the node's own `pivot`
      * (the node-level transform pivot): this is the *graphics-union* pivot.
      */
-    spinPivot: PivotInput;
+    spinPivot: Alignment;
     /** Rotation applied to the whole union about {@link spinPivot} (degrees). Animate this. */
     angle: number;
 }
@@ -43,7 +43,7 @@ export interface DrawnPivotProps extends ShapeProps {
 export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
 
     @property({ default: 300 }) declare readonly extent: number;
-    @property({ default: 'center' }) declare readonly spinPivot: PivotInput;
+    @property({ default: 'center' }) declare readonly spinPivot: Alignment;
     @property({ default: 0 }) declare readonly angle: number;
 
     constructor(props: NodeConfig<DrawnPivot, DrawnPivotProps>) {

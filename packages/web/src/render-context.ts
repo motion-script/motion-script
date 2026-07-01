@@ -36,7 +36,7 @@ import {
     type TextState,
     type TransformState,
     type Vector2,
-    type PivotInput,
+    type Alignment,
     type MotionBlurEffect,
     type FontStyle,
     type SceneEffect,
@@ -617,7 +617,7 @@ export class WebRenderContext extends RenderContext {
      * Falls back to the local origin when there are no path-backed shapes (e.g.
      * text only).
      */
-    private resolveGroupCenter(graphics: Graphics, center: PivotInput | undefined): Vector2 {
+    private resolveGroupCenter(graphics: Graphics, center: Alignment | undefined): Vector2 {
         // Explicit pixel pivot — no need to size the union.
         if (center !== undefined && typeof center !== "string") {
             return { x: center.x, y: center.y };

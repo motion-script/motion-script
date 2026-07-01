@@ -15,7 +15,7 @@ describe('resolveShapePivot', () => {
         expect(resolveShapePivot('topRight')).toEqual({ x: 1, y: 1 });
         expect(resolveShapePivot('bottomLeft')).toEqual({ x: -1, y: -1 });
         expect(resolveShapePivot('center')).toEqual({ x: 0, y: 0 });
-        expect(resolveShapePivot('leftCenter')).toEqual({ x: -1, y: 0 });
+        expect(resolveShapePivot('centerLeft')).toEqual({ x: -1, y: 0 });
         expect(resolveShapePivot('bottomCenter')).toEqual({ x: 0, y: -1 });
     });
 });

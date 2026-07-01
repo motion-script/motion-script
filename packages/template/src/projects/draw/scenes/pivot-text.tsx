@@ -1,5 +1,5 @@
 import {
-    createScene, createRef, Text, Rect, Fills, PivotInput,
+    createScene, createRef, Text, Rect, Fills, Alignment,
     easeInOut, sequence, parallel,
 } from "motion-script";
 import { DrawnPivotText } from "../nodes/drawn-pivot-text";
@@ -14,11 +14,11 @@ const GRADIENT = ['#6990DD', '#E8617C', '#F5C26B'];
  * Text contributes no bounds to a Graphics' measured union, so a graphics-level
  * rotation on text-only output falls back to pivoting about the local origin — a
  * pivot is the *only* way to steer where the text turns. The pivots are given as
- * **named anchors** (the same `'center'` / `'leftCenter'` / `'bottomCenter'`
+ * **named anchors** (the same `'center'` / `'centerLeft'` / `'bottomCenter'`
  * vocabulary as node `align`), resolved against the word's estimated box; the
  * same word is spun about three of them side by side:
  *  - **center**       — pivots at the word's middle, so it spins in place.
- *  - **leftCenter**   — pivots at the word's left edge, swinging like a hinged sign.
+ *  - **centerLeft**   — pivots at the word's left edge, swinging like a hinged sign.
  *  - **bottomCenter** — pivots under the word's middle, so the line tips over.
  *
  * Every word animates the *same* `angle`, so the only variable is the pivot. A ✕
@@ -41,9 +41,9 @@ export default createScene(function* (stage) {
     // The three pivots, given as named anchors (resolved against the word's
     // estimated box inside DrawnPivotText). A pivot can also be an explicit
     // Vector2 in local pixels — the named anchors are the convenient shorthand.
-    const pivots: { label: string; pivot: PivotInput }[] = [
+    const pivots: { label: string; pivot: Alignment }[] = [
         { label: 'center', pivot: 'center' },
-        { label: 'leftCenter', pivot: 'leftCenter' },
+        { label: 'centerLeft', pivot: 'centerLeft' },
         { label: 'bottomCenter', pivot: 'bottomCenter' },
     ];
 

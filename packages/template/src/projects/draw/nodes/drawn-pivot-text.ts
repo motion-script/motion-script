@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
-    PivotInput, resolvePivot, property,
+    Alignment, resolvePivot, property,
 } from "motion-script";
 
 export interface DrawnPivotTextProps extends ShapeProps {
@@ -25,7 +25,7 @@ export interface DrawnPivotTextProps extends ShapeProps {
      * estimated box and passes an explicit `Vector2` — which is exactly why a
      * pivot is the only way to steer where text turns.
      */
-    spinPivot: PivotInput;
+    spinPivot: Alignment;
     /** Rotation applied to the whole drawn text about {@link spinPivot} (degrees). Animate this. */
     angle: number;
 }
@@ -51,7 +51,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
     @property({ default: 'pivot' }) declare readonly text: string;
     @property({ default: 120 }) declare readonly fontSize: number;
     @property({ default: 'Pixelify Sans' }) declare readonly fontFamily: string;
-    @property({ default: 'center' }) declare readonly spinPivot: PivotInput;
+    @property({ default: 'center' }) declare readonly spinPivot: Alignment;
     @property({ default: 0 }) declare readonly angle: number;
 
     constructor(props: NodeConfig<DrawnPivotText, DrawnPivotTextProps>) {

@@ -320,9 +320,9 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `cardinal-node-topleft` — Anchoring/measuring from topLeft of a node
 - [ ] `cardinal-node-topcenter` — topCenter
 - [ ] `cardinal-node-topright` — topRight
-- [ ] `cardinal-node-leftcenter` — leftCenter
+- [ ] `cardinal-node-leftcenter` — centerLeft
 - [ ] `cardinal-node-center` — center
-- [ ] `cardinal-node-rightcenter` — rightCenter
+- [ ] `cardinal-node-rightcenter` — centerRight
 - [ ] `cardinal-node-bottomleft` — bottomLeft
 - [ ] `cardinal-node-bottomcenter` — bottomCenter
 - [ ] `cardinal-node-bottomright` — bottomRight
