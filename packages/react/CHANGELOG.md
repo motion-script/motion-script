@@ -1,5 +1,11 @@
 # @motion-script/react
 
+## 2.11.0
+
+### Minor Changes
+
+- 89bb963: Fix support for cardinal cordinates
+
 ## 2.10.1
 
 ### Patch Changes

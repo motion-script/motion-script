@@ -1,5 +1,16 @@
 # @motion-script/e2e
 
+## 0.2.0
+
+### Minor Changes
+
+- 89bb963: Fix support for cardinal cordinates
+
+### Patch Changes
+
+- Updated dependencies [89bb963]
+  - motion-script@2.11.0
+
 ## 0.1.1
 
 ### Patch Changes
