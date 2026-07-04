@@ -1,0 +1,51 @@
+import {
+    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
+    FillSpace, FillResolved, property,
+    Alignment,
+    resolvePivot,
+    lerpVector2,
+
+} from "motion-script";
+
+
+export interface TextDrawShapeProps extends ShapeProps {
+    textAlignment: Alignment;
+}
+
+
+export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
+
+    @property({ default: { x: 0, y: 0 }, mapper: (v: Alignment) => resolvePivot(v), tween: lerpVector2 })
+    declare textAlignment: Alignment;
+
+
+    constructor(props: NodeConfig<TextDrawShape, TextDrawShapeProps>) {
+        super(props);
+        // The figure is self-sized to the design box; default to hugging it so a
+        // bare <DrawnShape /> lays out at its natural size in any container.
+    }
+
+
+
+    protected renderSelf(draw: RenderContext): void {
+
+
+        const g = new Graphics().rect({
+            width: 100,
+            height: 100,
+            cornerRadius: 20,
+
+            pivot: this.textAlignment,
+            x: 0, y: 0
+            //bottomCenter: { x: 0, y: 0 },
+        }).fill(this.fill);
+
+        draw.draw(g);
+        const center = new Graphics().ellipse({
+            width: 24, height: 24,
+            pivot: 'center', x: 0, y: 0,
+        }).stroke({ weight: 2, fill: '#c2c2c2' });
+
+        draw.draw(center);
+    }
+}

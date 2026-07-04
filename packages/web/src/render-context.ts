@@ -49,6 +49,7 @@ import {
     resolveShadowArray,
     resolvePivot,
     resolveShapeAnchor,
+    resolvePivotPosition,
     stripShapeAnchorKeys,
     ShapeState,
 
@@ -111,8 +112,9 @@ const negY = (y: number | undefined): number => -(y ?? 0);
 function flipPositionY<T extends Partial<ShapeState> & ShapeAnchorInput>(
     state: T, width: number, height: number,
 ): T {
-    const { x, y, pivot } = resolveShapeAnchor(state, width, height);
-    return { ...stripShapeAnchorKeys(state), x, y: -y, pivot } as T;
+    const withPivotOffset = resolvePivotPosition(state, width, height);
+    const { x, y, pivot } = resolveShapeAnchor(withPivotOffset, width, height);
+    return { ...stripShapeAnchorKeys(withPivotOffset), x, y: -y, pivot } as T;
 }
 
 /** Swap the top and bottom entries of a per-corner value (a vertical mirror). */

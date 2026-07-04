@@ -3,16 +3,16 @@
 // ---------------------------------------------------------
 export {
     createScene, fadeIn, fadeOut, ramp,
-    createProject, AudioFilters,
+    createProject, AudioFilters, PathBuilder, lerpVector2,
 } from '@motion-script/core';
 export type {
     Scene,
     SceneGenerator,
     Stage,
-    Clip, BlendMode,
+    Clip, BlendMode, FillSpace,
     AudioFilter,
 
-    PathBuilder,
+
     ProjectConfig,
     Theme,
     ColorTokens,

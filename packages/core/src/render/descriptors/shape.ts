@@ -101,10 +101,16 @@ export function stripShapeAnchorKeys<T extends object>(descriptor: T): Omit<T, k
  * When an anchor is present its normalised pivot `a` (in `[-1, 1]`, y-up) is mapped
  * onto the shape's own `width`×`height` box: the centre that lands the named anchor
  * on `target` is `centre = target − a · (size / 2)`, and `pivot` is set to `a`
- * (matching `Node`'s auto-pivot). Otherwise `x`/`y`/`pivot` pass through unchanged.
+ * (matching `Node`'s auto-pivot). Otherwise `x`/`y`/`pivot` pass through unchanged —
+ * `pivot` alone never repositions the shape here, since this same function re-runs
+ * on already-resolved state (`with*Descriptor` is called again from
+ * `BaseShape.resolveState`) and re-deriving an offset from an already-resolved
+ * `pivot` would double-apply it. The `pivot` + plain `x`/`y` shorthand ({@link
+ * resolvePivotPosition}) bakes its offset in exactly once, before this function
+ * ever sees the descriptor, precisely to preserve that idempotency.
  *
- * Idempotent only in the no-anchor case; call once per descriptor resolve. Validates
- * via {@link validateShapeAnchorProps} first.
+ * Idempotent in the no-anchor case; safe to call more than once per descriptor
+ * resolve. Validates via {@link validateShapeAnchorProps} first.
  */
 export function resolveShapeAnchor(
     descriptor: Partial<ShapeState> & ShapeAnchorInput,
@@ -128,5 +134,40 @@ export function resolveShapeAnchor(
         x: descriptor.x ?? 0,
         y: descriptor.y ?? 0,
         pivot: descriptor.pivot ?? { x: 0, y: 0 },
+    };
+}
+
+/**
+ * Fold a plain `pivot` + `x`/`y` into an equivalent resolved centre, so
+ * `{ x, y, pivot: 'topRight' }` lands the top-right corner at `(x, y)` — the same
+ * place `{ topRight: { x, y } }` would — instead of `x`/`y` always positioning the
+ * centre regardless of `pivot`. Uses the same `centre = target − a · (size / 2)`
+ * formula as the anchor shorthand.
+ *
+ * Must run exactly once, on the raw author-facing descriptor, **before**
+ * {@link resolveShapeAnchor} ever sees it (i.e. in `flipPositionY`, not inside
+ * `with*Descriptor`, which `BaseShape.resolveState` calls a second time on
+ * already-resolved state — re-running this there would double the offset, since
+ * the output below is indistinguishable from a plain `x`/`y`/`pivot` descriptor).
+ * A no-op when an anchor shorthand is already present (validated downstream) or
+ * `pivot` is centre/absent.
+ */
+export function resolvePivotPosition<T extends Partial<ShapeState> & ShapeAnchorInput>(
+    descriptor: T,
+    width: number,
+    height: number,
+): T {
+    const anchorKey = SHAPE_ANCHOR_KEYS.find(k => (descriptor as Record<string, unknown>)[k] !== undefined);
+    if (anchorKey || descriptor.pivot === undefined) return descriptor;
+
+    const a = resolvePivot(descriptor.pivot); // normalised [-1,1], y-up
+    if (a.x === 0 && a.y === 0) return descriptor;
+
+    const target = { x: descriptor.x ?? 0, y: descriptor.y ?? 0 };
+    return {
+        ...descriptor,
+        x: target.x - a.x * (width / 2),
+        y: target.y - a.y * (height / 2),
+        pivot: a,
     };
 }

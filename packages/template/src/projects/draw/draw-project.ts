@@ -7,6 +7,7 @@ import drawMask from './scenes/mask?scene';
 import drawPivot from './scenes/pivot?scene';
 import drawPivotText from './scenes/pivot-text?scene';
 import drawShapePivot from './scenes/shape-pivot?scene';
+import drawTextAlignment from './scenes/draw-pivot-text?scene';
 import randomNode from './scenes/random-node?scene';
 
 /**
@@ -43,6 +44,7 @@ export default createProject({
         drawPivot,
         drawPivotText,
         drawShapePivot,
+        drawTextAlignment,
         randomNode,
     ],
     theme: {
