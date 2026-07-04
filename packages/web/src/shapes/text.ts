@@ -1,5 +1,5 @@
 import type { CanvasKit, Canvas, Paint, TypefaceFontProvider } from "@motion-script/canvaskit";
-import { TextState, withTextDescriptor } from "@motion-script/core";
+import { TextState, withTextDescriptor, resolveShapePivot } from "@motion-script/core";
 import type { CurrentShape } from "./shape-handler";
 import { layoutParagraph, drawShapedRunAt, type ParagraphSegment } from "./paragraph-layout";
 import { layoutTextOnPath, drawTextOnPath } from "./text-path";
@@ -103,11 +103,24 @@ export function buildText(
         originY: 0,
     }));
 
+    // A declared width/height already lands its pivot offset in fullState.x/y
+    // (resolvePivotPosition, run before this state ever reaches withTextDescriptor).
+    // Without one — the common case, since text usually has no authored box — that
+    // offset was computed against a 0×0 box and is a no-op. Text still has a real
+    // size once shaped, so redo the offset here against the *measured* box
+    // (layout.width/height, y-up and symmetric about the origin-(0,0) shape) instead
+    // of leaving `pivot` silently inert. x stays in author (y-up) space; y is
+    // already canvas (y-down) at this point, so the pivot's y contribution flips sign.
+    const pivot = resolveShapePivot(fullState.pivot);
+    const hasDeclaredBox = fullState.width > 0 && fullState.height > 0;
+    const px = (!hasDeclaredBox && pivot.x !== 0) ? x - pivot.x * (layout.width / 2) : x;
+    const py = (!hasDeclaredBox && pivot.y !== 0) ? y + pivot.y * (layout.height / 2) : y;
+
     // Cached layout is origin-(0,0); shift its bounds into the node's space so
     // bounds-resolved fills (gradients/images) and getShapeBounds() see the same
     // absolute box the original origin-baked layout produced.
     const b = layout.bounds;
-    const bounds = { left: b.left + x, top: b.top + y, right: b.right + x, bottom: b.bottom + y };
+    const bounds = { left: b.left + px, top: b.top + py, right: b.right + px, bottom: b.bottom + py };
 
     return {
         bounds,
@@ -118,7 +131,7 @@ export function buildText(
             // aligned with a shader the fill handler built from the absolute bounds
             // above. Identical placement to baking origin into the positions.
             for (const run of layout.runs) {
-                drawShapedRunAt(canvas, run, x, y, paint);
+                drawShapedRunAt(canvas, run, px, py, paint);
             }
         },
     };

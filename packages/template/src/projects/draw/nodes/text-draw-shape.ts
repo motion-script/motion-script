@@ -30,10 +30,8 @@ export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
     protected renderSelf(draw: RenderContext): void {
 
 
-        const g = new Graphics().rect({
-            width: 100,
-            height: 100,
-            cornerRadius: 20,
+        const g = new Graphics().text({
+            fontSize: 32, text: 'Hello World',
 
             pivot: this.textAlignment,
             x: 0, y: 0
