@@ -1,7 +1,7 @@
 {
   "name": "@motion-script/player",
   "description": "Visual editor and preview app for Motion Script projects, with timeline scrubbing, scene inspection, and video export.",
-  "version": "2.10.1",
+  "version": "2.11.0",
   "type": "module",
   "author": "Motion Script",
   "license": "Apache-2.0",

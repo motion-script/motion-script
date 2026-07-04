@@ -1,5 +1,19 @@
 # @motion-script/vite-plugin
 
+## 2.11.0
+
+### Minor Changes
+
+- 89bb963: Fix support for cardinal cordinates
+
+### Patch Changes
+
+- Updated dependencies [89bb963]
+  - @motion-script/canvaskit@2.11.0
+  - @motion-script/core@2.11.0
+  - @motion-script/player@2.11.0
+  - @motion-script/web@2.11.0
+
 ## 2.10.1
 
 ### Patch Changes
