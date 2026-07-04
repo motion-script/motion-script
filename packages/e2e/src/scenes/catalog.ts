@@ -225,6 +225,8 @@ import s_cardinal_node_bottomleft from './cardinal-node-bottomleft?scene';
 import s_cardinal_node_bottomcenter from './cardinal-node-bottomcenter?scene';
 import s_cardinal_node_bottomright from './cardinal-node-bottomright?scene';
 import s_cardinal_graphics_points from './cardinal-graphics-points?scene';
+import s_cardinal_graphics_rect from './cardinal-graphics-rect?scene';
+import s_cardinal_graphics_text from './cardinal-graphics-text?scene';
 import s_shape_start_end_rect from './shape-start-end-rect?scene';
 import s_shape_start_end_ellipse from './shape-start-end-ellipse?scene';
 import s_shape_start_end_polygon from './shape-start-end-polygon?scene';
@@ -461,6 +463,8 @@ export const scenes: Scene[] = [
     s_cardinal_node_bottomcenter,
     s_cardinal_node_bottomright,
     s_cardinal_graphics_points,
+    s_cardinal_graphics_rect,
+    s_cardinal_graphics_text,
     s_shape_start_end_rect,
     s_shape_start_end_ellipse,
     s_shape_start_end_polygon,
@@ -709,6 +713,8 @@ export const catalog: SceneMeta[] = [
     { id: "cardinal-node-bottomcenter", name: "CardinalNodeBottomcenter", section: "Cardinal Coordinates", description: "bottomCenter" },
     { id: "cardinal-node-bottomright", name: "CardinalNodeBottomright", section: "Cardinal Coordinates", description: "bottomRight" },
     { id: "cardinal-graphics-points", name: "CardinalGraphicsPoints", section: "Cardinal Coordinates", description: "Cardinal points used in a graphics/drawable context" },
+    { id: "cardinal-graphics-rect", name: "CardinalGraphicsRect", section: "Cardinal Coordinates", description: "Graphics().rect({ pivot, x, y }) for all nine named anchors, no anchor shorthand" },
+    { id: "cardinal-graphics-text", name: "CardinalGraphicsText", section: "Cardinal Coordinates", description: "Graphics().text({ pivot, x, y }) for all nine named anchors, no authored box" },
     { id: "shape-start-end-rect", name: "ShapeStartEndRect", section: "Shape Start / End", description: "Rect animated from `start=0,end=0` to `end=1` (draws itself in)" },
     { id: "shape-start-end-ellipse", name: "ShapeStartEndEllipse", section: "Shape Start / End", description: "Ellipse revealing arc from start to end" },
     { id: "shape-start-end-polygon", name: "ShapeStartEndPolygon", section: "Shape Start / End", description: "Polygon drawing its perimeter progressively" },

@@ -30,13 +30,14 @@ export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
     protected renderSelf(draw: RenderContext): void {
 
 
-        const g = new Graphics().text({
-            fontSize: 32, text: 'Hello World',
+        const g = new Graphics().rect({
+            width: 120, height: 120,
 
             pivot: this.textAlignment,
-            x: 0, y: 0
+            x: 0, y: 0,
             //bottomCenter: { x: 0, y: 0 },
         }).fill(this.fill);
+
 
         draw.draw(g);
         const center = new Graphics().ellipse({
