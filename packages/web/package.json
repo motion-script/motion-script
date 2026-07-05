@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/web",
-  "version": "2.11.1",
+  "version": "2.11.2",
   "type": "module",
   "description": "Browser rendering backend for Motion Script, powered by Skia/CanvasKit.",
   "repository": {

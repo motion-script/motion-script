@@ -1,5 +1,15 @@
 # motion-script
 
+## 2.11.2
+
+### Patch Changes
+
+- f716f6b: feat: fix text align and add asset tracker into export
+- Updated dependencies [f716f6b]
+  - @motion-script/code@2.11.2
+  - @motion-script/latex@2.11.2
+  - @motion-script/core@2.11.2
+
 ## 2.11.1
 
 ### Patch Changes

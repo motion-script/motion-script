@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.11.2
+
+### Patch Changes
+
+- f716f6b: feat: fix text align and add asset tracker into export
+- Updated dependencies [f716f6b]
+  - @motion-script/canvaskit@2.11.2
+  - @motion-script/core@2.11.2
+  - @motion-script/player@2.11.2
+  - @motion-script/web@2.11.2
+
 ## 2.11.1
 
 ### Patch Changes

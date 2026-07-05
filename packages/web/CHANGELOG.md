@@ -1,5 +1,11 @@
 # @motion-script/web
 
+## 2.11.2
+
+### Patch Changes
+
+- f716f6b: feat: fix text align and add asset tracker into export
+
 ## 2.11.1
 
 ### Patch Changes
