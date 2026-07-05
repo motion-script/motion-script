@@ -3,7 +3,7 @@
 // ---------------------------------------------------------
 export {
     createScene, fadeIn, fadeOut, ramp,
-    createProject, AudioFilters, PathBuilder, lerpVector2,
+    createProject, AudioFilters, PathBuilder, lerpVector2, AssetTracker
 } from '@motion-script/core';
 export type {
     Scene,
