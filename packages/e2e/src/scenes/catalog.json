@@ -1332,6 +1332,36 @@
     "description": "Cardinal points used in a graphics/drawable context"
   },
   {
+    "id": "cardinal-graphics-rect",
+    "name": "CardinalGraphicsRect",
+    "section": "Cardinal Coordinates",
+    "description": "Graphics().rect({ pivot, x, y }) for all nine named anchors, animating rotation/scale"
+  },
+  {
+    "id": "cardinal-graphics-text",
+    "name": "CardinalGraphicsText",
+    "section": "Cardinal Coordinates",
+    "description": "Graphics().text({ pivot, x, y }) for all nine named anchors, no authored box, animating rotation/scale"
+  },
+  {
+    "id": "cardinal-graphics-ellipse",
+    "name": "CardinalGraphicsEllipse",
+    "section": "Cardinal Coordinates",
+    "description": "Graphics().ellipse({ pivot, x, y }) for all nine named anchors, animating rotation/scale"
+  },
+  {
+    "id": "cardinal-graphics-polygon",
+    "name": "CardinalGraphicsPolygon",
+    "section": "Cardinal Coordinates",
+    "description": "Graphics().polygon({ pivot, x, y }) for all nine named anchors, animating rotation/scale"
+  },
+  {
+    "id": "cardinal-graphics-polygram",
+    "name": "CardinalGraphicsPolygram",
+    "section": "Cardinal Coordinates",
+    "description": "Graphics().polygram({ pivot, x, y }) for all nine named anchors, animating rotation/scale"
+  },
+  {
     "id": "shape-start-end-rect",
     "name": "ShapeStartEndRect",
     "section": "Shape Start / End",

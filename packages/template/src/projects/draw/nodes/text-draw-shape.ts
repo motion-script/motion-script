@@ -10,6 +10,7 @@ import {
 
 export interface TextDrawShapeProps extends ShapeProps {
     textAlignment: Alignment;
+
 }
 
 
@@ -30,12 +31,12 @@ export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
     protected renderSelf(draw: RenderContext): void {
 
 
-        const g = new Graphics().rect({
-            width: 120, height: 120,
+        const g = new Graphics().text({
+            fontSize: 32, text: 'Hello World',
 
             pivot: this.textAlignment,
-            x: 0, y: 0,
-            //bottomCenter: { x: 0, y: 0 },
+            x: 0, y: 0, rotation: 45, scale: 2
+            //bottomCenter: { x: 0, y: 0 },s
         }).fill(this.fill);
 
 

@@ -27,7 +27,8 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@motion-script/template",
-    "@motion-script/site"
+    "@motion-script/site",
+    "@motion-script/e2e"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

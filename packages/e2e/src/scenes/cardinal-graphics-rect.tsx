@@ -1,6 +1,6 @@
 import {
-    createScene, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
-    AlignKey, Alignment, property, resolvePivot,
+    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
+    AlignKey, Alignment, property, resolvePivot, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
 
@@ -13,17 +13,22 @@ const ANCHORS: AlignKey[] = [
 
 interface PivotRectProps extends ShapeProps {
     anchor: Alignment;
+    shapeRotation: number;
+    shapeScale: number;
 }
 
 /**
- * Draws a `Graphics().rect({ pivot, x: 0, y: 0 })` box plus a marker dot at the
- * drawn origin, so the anchor's effect on a plain `pivot` + `x`/`y` descriptor
- * (no cardinal-anchor shorthand) reads at a glance: the named corner/edge of the
- * box should land exactly on the marker.
+ * Draws a `Graphics().rect({ pivot, x: 0, y: 0, rotation, scale })` box plus a
+ * marker dot at the drawn origin, so the anchor's effect on a plain `pivot` +
+ * `x`/`y` descriptor (no cardinal-anchor shorthand) reads at a glance: the
+ * named corner/edge of the box stays pinned to the marker as the box turns and
+ * grows about that same pivot.
  */
 class PivotRect extends ShapeNode<PivotRectProps> {
     @property({ default: 'center', mapper: (v: Alignment) => resolvePivot(v) })
     declare readonly anchor: Alignment;
+    @property({ default: 0 }) declare readonly shapeRotation: number;
+    @property({ default: 1 }) declare readonly shapeScale: number;
 
     constructor(props: NodeConfig<PivotRect, PivotRectProps>) {
         super(props);
@@ -31,7 +36,10 @@ class PivotRect extends ShapeNode<PivotRectProps> {
 
     protected renderSelf(draw: RenderContext): void {
         const box = new Graphics()
-            .rect({ width: 90, height: 60, cornerRadius: 10, pivot: this.anchor, x: 0, y: 0 })
+            .rect({
+                width: 90, height: 60, cornerRadius: 10, pivot: this.anchor, x: 0, y: 0,
+                rotation: this.shapeRotation, scale: this.shapeScale,
+            })
             .fill('primary');
         draw.draw(box);
 
@@ -43,17 +51,23 @@ class PivotRect extends ShapeNode<PivotRectProps> {
 }
 
 /**
- * `Graphics().rect({ pivot, x: 0, y: 0 })` for all nine named anchors: with no
+ * `Graphics().rect({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
+ * the descriptor's own `rotation`/`scale` (not the node-level transform) so the
+ * per-shape pivot fix is exercised under motion, not just a static pose: with no
  * cardinal-anchor shorthand (`{ topRight: { x, y } }`), a plain `pivot` combined
- * with `x`/`y` should still land that named corner/edge of the box on `(x, y)` —
- * the marker dot. One cell per anchor in a 3x3 grid.
+ * with `x`/`y` should still land that named corner/edge of the box on `(x, y)`
+ * and keep it pinned there as the box turns and grows. One cell per anchor in a
+ * 3x3 grid.
  */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
 
+    const rotation = createSignal(0);
+    const scale = createSignal(1);
+
     const cells = ANCHORS.map((anchor) => (
         <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }} fill={'card'} cornerRadius={12}>
-            <PivotRect anchor={anchor} />
+            <PivotRect anchor={anchor} shapeRotation={rotation} shapeScale={scale} />
         </Rect>
     ));
 
@@ -69,5 +83,9 @@ export default createScene(function* (stage) {
         </Rect>,
     );
 
-    yield* holdTail(0);
+    yield* parallel(
+        rotation(360, 1.6, easeInOut('quad')),
+        scale(1.4, 1.6, easeInOut('quad')),
+    );
+    yield* holdTail(1.6);
 });

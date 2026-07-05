@@ -5,6 +5,32 @@ import { layoutParagraph, drawShapedRunAt, type ParagraphSegment } from "./parag
 import { layoutTextOnPath, drawTextOnPath } from "./text-path";
 import { ParagraphShapeCache, shapeKey, shapeKeyInputsFor } from "./paragraph-cache";
 
+type Bounds = { left: number; top: number; right: number; bottom: number };
+
+/** The enclosing axis-aligned box of `bounds`' four corners after rotating (degrees,
+ *  clockwise, canvas convention) and uniformly scaling about `(px, py)`. */
+function rotatedBounds(bounds: Bounds, px: number, py: number, rotationDeg: number, scale: number): Bounds {
+    const rad = (rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const corners = [
+        { x: bounds.left, y: bounds.top }, { x: bounds.right, y: bounds.top },
+        { x: bounds.right, y: bounds.bottom }, { x: bounds.left, y: bounds.bottom },
+    ];
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const c of corners) {
+        const ox = (c.x - px) * scale;
+        const oy = (c.y - py) * scale;
+        const x = px + ox * cos - oy * sin;
+        const y = py + ox * sin + oy * cos;
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+    }
+    return { left, top, right, bottom };
+}
+
 /**
  * Lay out a Text node into a drawable `CurrentShape`. When `fontSize` is
  * "autofit", first probes an unwrapped single-line layout to derive a scale
@@ -113,6 +139,8 @@ export function buildText(
     // already canvas (y-down) at this point, so the pivot's y contribution flips sign.
     const pivot = resolveShapePivot(fullState.pivot);
     const hasDeclaredBox = fullState.width > 0 && fullState.height > 0;
+    const boxWidth = hasDeclaredBox ? fullState.width : layout.width;
+    const boxHeight = hasDeclaredBox ? fullState.height : layout.height;
     const px = (!hasDeclaredBox && pivot.x !== 0) ? x - pivot.x * (layout.width / 2) : x;
     const py = (!hasDeclaredBox && pivot.y !== 0) ? y + pivot.y * (layout.height / 2) : y;
 
@@ -120,18 +148,46 @@ export function buildText(
     // bounds-resolved fills (gradients/images) and getShapeBounds() see the same
     // absolute box the original origin-baked layout produced.
     const b = layout.bounds;
-    const bounds = { left: b.left + px, top: b.top + py, right: b.right + px, bottom: b.bottom + py };
+    let bounds = { left: b.left + px, top: b.top + py, right: b.right + px, bottom: b.bottom + py };
+
+    const rotation = fullState.rotation;
+    const scale = fullState.scale;
+    const hasShapeTransform = rotation !== 0 || scale !== 1;
+    // Rotation/scale pivot about the same point `applyShapeTransform` (base.ts)
+    // uses for path-backed shapes: the pivot mapped onto the box, in canvas space.
+    const pivotX = px + pivot.x * (boxWidth / 2);
+    const pivotY = py - pivot.y * (boxHeight / 2);
+
+    if (hasShapeTransform) {
+        // A path-backed shape reports getShapeBounds() from its already-rotated/
+        // scaled geometry; text has no path, so its bounds must be transformed the
+        // same way by hand — the enclosing box of the four corners mapped through
+        // the same pivot-about rotate+scale the draw call applies below.
+        bounds = rotatedBounds(bounds, pivotX, pivotY, rotation, scale);
+    }
 
     return {
         bounds,
         isText: true,
         draw: (paint: Paint) => {
-            // Apply the node origin as a per-glyph offset (drawGlyphs adds it in the
-            // shape's pre-CTM space), NOT a canvas translate — that keeps the glyphs
-            // aligned with a shader the fill handler built from the absolute bounds
-            // above. Identical placement to baking origin into the positions.
-            for (const run of layout.runs) {
-                drawShapedRunAt(canvas, run, px, py, paint);
+            if (hasShapeTransform) canvas.save();
+            try {
+                if (hasShapeTransform) {
+                    canvas.translate(pivotX, pivotY);
+                    canvas.rotate(rotation, 0, 0);
+                    canvas.scale(scale, scale);
+                    canvas.translate(-pivotX, -pivotY);
+                }
+                // Apply the node origin as a per-glyph offset (drawGlyphs adds it in
+                // the shape's pre-CTM space), NOT a canvas translate — that keeps the
+                // glyphs aligned with a shader the fill handler built from the
+                // absolute bounds above. Identical placement to baking origin into
+                // the positions.
+                for (const run of layout.runs) {
+                    drawShapedRunAt(canvas, run, px, py, paint);
+                }
+            } finally {
+                if (hasShapeTransform) canvas.restore();
             }
         },
     };

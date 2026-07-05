@@ -11,46 +11,36 @@ const ANCHORS: AlignKey[] = [
     'bottomLeft', 'bottomCenter', 'bottomRight',
 ];
 
-interface PivotTextProps extends ShapeProps {
+interface PivotEllipseProps extends ShapeProps {
     anchor: Alignment;
     shapeRotation: number;
     shapeScale: number;
 }
 
 /**
- * Draws a `Graphics().text({ pivot, x: 0, y: 0, rotation, scale })` label plus
- * a marker dot at the drawn origin. Text has no authored `width`/`height` (it
- * auto-sizes to its shaped content), so this is the case the pivot fix had to
- * cover separately from a box shape: the named corner/edge of the *shaped*
- * text should stay pinned to the marker as the text turns and grows about that
- * same pivot.
+ * Draws a `Graphics().ellipse({ pivot, x: 0, y: 0, rotation, scale })` oval
+ * (non-1:1 ratio, so rotation is visible) plus a marker dot at the drawn
+ * origin: the named corner/edge of the ellipse's bounding box stays pinned to
+ * the marker as the shape turns and grows about that same pivot.
  */
-class PivotText extends ShapeNode<PivotTextProps> {
+class PivotEllipse extends ShapeNode<PivotEllipseProps> {
     @property({ default: 'center', mapper: (v: Alignment) => resolvePivot(v) })
     declare readonly anchor: Alignment;
     @property({ default: 0 }) declare readonly shapeRotation: number;
     @property({ default: 1 }) declare readonly shapeScale: number;
 
-    constructor(props: NodeConfig<PivotText, PivotTextProps>) {
+    constructor(props: NodeConfig<PivotEllipse, PivotEllipseProps>) {
         super(props);
     }
 
-    // Register the font before first paint — a raw `Graphics().text()` draw call
-    // (unlike the `Text` node) has no built-in font dependency declaration, so
-    // without this the glyphs can render blank on a cold font cache.
-    override prepareLayout(storage: Parameters<ShapeNode<PivotTextProps>['prepareLayout']>[0]): void {
-        super.prepareLayout(storage);
-        storage.requestFont('Inter', '400');
-    }
-
     protected renderSelf(draw: RenderContext): void {
-        const label = new Graphics()
-            .text({
-                text: 'Hello', fontFamily: 'Inter', fontSize: 22, pivot: this.anchor, x: 0, y: 0,
+        const oval = new Graphics()
+            .ellipse({
+                width: 90, height: 50, pivot: this.anchor, x: 0, y: 0,
                 rotation: this.shapeRotation, scale: this.shapeScale,
             })
             .fill('primary');
-        draw.draw(label);
+        draw.draw(oval);
 
         const marker = new Graphics()
             .ellipse({ width: 10, height: 10, x: 0, y: 0 })
@@ -60,13 +50,12 @@ class PivotText extends ShapeNode<PivotTextProps> {
 }
 
 /**
- * `Graphics().text({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
- * the descriptor's own `rotation`/`scale` (not the node-level transform) so the
- * per-shape pivot fix is exercised under motion, not just a static pose: with no
- * cardinal-anchor shorthand and no authored box, a plain `pivot` combined with
- * `x`/`y` should still land that named corner/edge of the *shaped* text on
- * `(x, y)` and keep it pinned there as the text turns and grows. One cell per
- * anchor in a 3x3 grid.
+ * `Graphics().ellipse({ pivot, x: 0, y: 0 })` for all nine named anchors,
+ * animating the descriptor's own `rotation`/`scale` (not the node-level
+ * transform): with no cardinal-anchor shorthand, a plain `pivot` combined with
+ * `x`/`y` should still land that named corner/edge of the ellipse's bounding
+ * box on `(x, y)` and keep it pinned there under motion. One cell per anchor in
+ * a 3x3 grid.
  */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
@@ -76,7 +65,7 @@ export default createScene(function* (stage) {
 
     const cells = ANCHORS.map((anchor) => (
         <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }} fill={'card'} cornerRadius={12}>
-            <PivotText anchor={anchor} shapeRotation={rotation} shapeScale={scale} />
+            <PivotEllipse anchor={anchor} shapeRotation={rotation} shapeScale={scale} />
         </Rect>
     ));
 
@@ -94,7 +83,7 @@ export default createScene(function* (stage) {
 
     yield* parallel(
         rotation(360, 1.6, easeInOut('quad')),
-        scale(1.3, 1.6, easeInOut('quad')),
+        scale(1.4, 1.6, easeInOut('quad')),
     );
     yield* holdTail(1.6);
 });

@@ -327,8 +327,11 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `cardinal-node-bottomcenter`: bottomCenter
 - [ ] `cardinal-node-bottomright`: bottomRight
 - [ ] `cardinal-graphics-points`: Cardinal points used in a graphics/drawable context
-- [ ] `cardinal-graphics-rect`: `Graphics().rect({ pivot, x, y })` for all nine named anchors, no anchor shorthand
-- [ ] `cardinal-graphics-text`: `Graphics().text({ pivot, x, y })` for all nine named anchors, no authored box
+- [ ] `cardinal-graphics-rect`: `Graphics().rect({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-text`: `Graphics().text({ pivot, x, y })` for all nine named anchors, no authored box, animating rotation/scale
+- [ ] `cardinal-graphics-ellipse`: `Graphics().ellipse({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygon`: `Graphics().polygon({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygram`: `Graphics().polygram({ pivot, x, y })` for all nine named anchors, animating rotation/scale
 
 ---
 
