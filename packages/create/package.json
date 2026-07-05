@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/create",
-  "version": "2.11.1",
+  "version": "2.11.2",
   "description": "Scaffold a new Motion Script project with a single command",
   "repository": {
     "type": "git",

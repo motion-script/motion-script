@@ -1,5 +1,13 @@
 # @motion-script/player
 
+## 2.11.2
+
+### Patch Changes
+
+- f716f6b: feat: fix text align and add asset tracker into export
+- Updated dependencies [f716f6b]
+  - @motion-script/canvaskit@2.11.2
+
 ## 2.11.1
 
 ### Patch Changes
