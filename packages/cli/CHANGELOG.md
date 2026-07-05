@@ -1,5 +1,11 @@
 # @motion-script/cli
 
+## 2.11.1
+
+### Patch Changes
+
+- 2177c70: fix rotation and scale rendering for text graphics
+
 ## 2.11.0
 
 ### Minor Changes

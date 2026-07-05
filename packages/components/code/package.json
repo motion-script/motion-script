@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/code",
-  "version": "2.11.0",
+  "version": "2.11.1",
   "type": "module",
   "description": "Animated, syntax-highlighted code blocks for Motion Script, with token-level append, insert, remove, replace, and highlight transitions.",
   "repository": {

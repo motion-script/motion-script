@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.11.1
+
+### Patch Changes
+
+- 2177c70: fix rotation and scale rendering for text graphics
+- Updated dependencies [2177c70]
+  - @motion-script/canvaskit@2.11.1
+  - @motion-script/core@2.11.1
+  - @motion-script/player@2.11.1
+  - @motion-script/web@2.11.1
+
 ## 2.11.0
 
 ### Minor Changes
