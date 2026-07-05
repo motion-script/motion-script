@@ -37,10 +37,10 @@ export interface ShapeKeyInputs {
     fontStyle: string;
     letterSpacing: number;
     lineHeight: number;
-    align: TextAlign;
+    textAlign: TextAlign;
     /** Resolved wrap width (Infinity when not wrapping). */
     maxWidth: number;
-    /** Box width used for align placement when not wrapping (0 when n/a). */
+    /** Box width used for textAlign placement when not wrapping (0 when n/a). */
     boxWidth: number;
 }
 
@@ -51,7 +51,7 @@ export interface CachedParagraph {
 }
 
 // Field separator for the cache key — a control char (U+0001) that can't appear
-// in `text`, a family name, or an align string, so distinct field tuples can't
+// in `text`, a family name, or a textAlign string, so distinct field tuples can't
 // collide (e.g. family "A12"+size 3 vs family "A1"+size 23). Built via
 // fromCharCode so no literal control byte lives in the source.
 const SEP = String.fromCharCode(1);
@@ -70,7 +70,7 @@ export function shapeKey(inputs: ShapeKeyInputs, fontEpoch: number): string {
         inputs.fontStyle,
         inputs.letterSpacing,
         inputs.lineHeight,
-        inputs.align,
+        inputs.textAlign,
         inputs.maxWidth,
         inputs.boxWidth,
         fontEpoch,
@@ -119,7 +119,7 @@ export class ParagraphShapeCache {
 /** Convenience: pull the {@link ShapeKeyInputs} out of a single segment + layout opts. */
 export function shapeKeyInputsFor(
     segment: ParagraphSegment,
-    align: TextAlign,
+    textAlign: TextAlign,
     lineHeight: number,
     maxWidth: number,
     boxWidth: number,
@@ -132,14 +132,14 @@ export function shapeKeyInputsFor(
         fontStyle: segment.fontStyle,
         letterSpacing: segment.letterSpacing,
         lineHeight,
-        align,
+        textAlign,
         maxWidth,
         boxWidth,
     };
 }
 
 // Fixed layout opts both measureText implementations use — width only depends on
-// shaping, not align/origin, so these constants give a stable cache key. Kept in
+// shaping, not textAlign/origin, so these constants give a stable cache key. Kept in
 // sync with the (formerly inline) layoutParagraph opts in render-context and
 // measure-scope so a measured string and a measured-then-drawn string can share
 // shape passes where their full inputs match.
@@ -171,7 +171,7 @@ export function measureTextCached(
         fontEpoch,
     );
     const { layout } = cache.get(key, () => layoutParagraph(canvasKit, fontMgr, [segment], {
-        align: MEASURE_ALIGN,
+        textAlign: MEASURE_ALIGN,
         lineHeight: MEASURE_LINE_HEIGHT,
         maxWidth: Infinity,
         originX: 0,

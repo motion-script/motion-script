@@ -21,7 +21,7 @@ export interface SegmentedTextLayout {
 /**
  * Lay out a selection-segmented Text node. Each {@link TextSegment} carries its
  * effective shaping inputs (text/fontWeight/letterSpacing), so weight/spacing
- * overrides reshape correctly while kerning/wrap/align stay consistent across
+ * overrides reshape correctly while kerning/wrap/textAlign stay consistent across
  * the whole paragraph (one `layoutParagraph` call). Runs are mapped back to
  * their segment via `segmentIndex` for per-run override application.
  *
@@ -49,7 +49,7 @@ export function layoutTextSegments(
 
     const wrap = full.wrap && full.width > 0;
     const layout = layoutParagraph(canvasKit, fontMgr, paragraphSegments, {
-        align: full.align,
+        textAlign: full.textAlign,
         lineHeight: full.lineHeight,
         maxWidth: wrap ? full.width : Infinity,
         boxWidth: full.width,

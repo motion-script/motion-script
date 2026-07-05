@@ -888,7 +888,7 @@ export class Code extends Node<CodeProps> {
                         lineHeight: this.lineHeight,
                         x: gx + labelW / 2,
                         y: centerY,
-                        align: 'left',
+                        textAlign: 'left',
                     })
                     .fill([{ type: "solid", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]));
             }
@@ -919,7 +919,7 @@ export class Code extends Node<CodeProps> {
                             // its visual center is always x + tokWidth/2.
                             x: x + tokWidth / 2,
                             y: centerY + offsetY,
-                            align: 'left',
+                            textAlign: 'left',
                         })
                         .fill([{ type: "solid", color, opacity }]));
                 }

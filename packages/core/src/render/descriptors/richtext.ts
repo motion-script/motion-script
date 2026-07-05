@@ -5,7 +5,7 @@ import { ShapeAnchorInput, ShapeState, resolveShapeAnchor, resolveShapePivot, st
 export interface RichTextState extends ShapeState {
     spans: ResolvedTextSpan[];
     lineHeight: number;
-    align: TextAlign;
+    textAlign: TextAlign;
     width: number;
     height: number;
 }
@@ -26,7 +26,7 @@ export function withRichTextDescriptor(descriptor: Partial<RichTextState> & Shap
         pivot: resolveShapePivot(pivot),
         spans: descriptor.spans ?? [],
         lineHeight: descriptor.lineHeight ?? 1.2,
-        align: descriptor.align ?? 'center',
+        textAlign: descriptor.textAlign ?? 'center',
         width,
         height,
     };

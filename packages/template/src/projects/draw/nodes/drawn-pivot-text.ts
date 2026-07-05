@@ -76,14 +76,14 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
         const spinCenter = { x: pivot.x, y: -pivot.y };
 
         // ── The drawn text, turned about the pivot as one unit ────────────────
-        // `align: 'center'` + origin `x:0,y:0` centres the word on the local
+        // `textAlign: 'center'` + origin `x:0,y:0` centres the word on the local
         // origin, so the `'center'` pivot lands at the word's middle.
         const g = new Graphics()
             .text({
                 text: this.text,
                 fontSize: this.fontSize,
                 fontFamily: this.fontFamily,
-                align: 'center',
+                textAlign: 'center',
                 x: 0,
                 y: 0,
             })

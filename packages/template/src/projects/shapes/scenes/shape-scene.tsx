@@ -79,7 +79,7 @@ export const shapeScene = (spec: ShapeSceneSpec, buildShape: BuildShape): SceneG
                     fontSize={80}
                     fill={'gray'}
                     width={'fill'}
-                    align={'start'}
+                    textAlign={'start'}
                 />
                 <Rect width={'fill'} height={'fill'} group={'row'} gap={80} align={{ x: 0, y: 0 }}>
                     <Rect

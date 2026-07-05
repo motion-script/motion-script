@@ -39,7 +39,7 @@ export default createScene(function* (stage) {
 | `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Font style |
 | `letterSpacing` | `number` | `0` | Extra spacing between characters in pixels |
 | `lineHeight` | `number` | `1.2` | Line height multiplier |
-| `align` | `number` | `0` | Text alignment: `-1` left · `0` center · `1` right |
+| `textAlign` | `'left' \| 'right' \| 'center' \| 'justify' \| 'start' \| 'end'` | `'center'` | Text alignment |
 | `wrap` | `boolean` | `false` | Enable word wrapping |
 | `minFontSize` | `number` | `12` | Minimum font size when using `'autofit'` |
 
@@ -94,4 +94,3 @@ yield* label().to({ end: 1 }, 1.2);
 
 - `fontFamily` must be available to the renderer, so bundle or preload custom fonts.
 - With `fontSize: 'autofit'`, the node defaults to `width: 'fill'` and `height: 'fill'` so it has bounds to shrink into. Set explicit pixel dimensions to constrain the fit area.
-- `align` accepts `-1`, `0`, or `1` rather than string keywords.

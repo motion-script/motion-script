@@ -868,7 +868,7 @@ export class WebRenderContext extends RenderContext {
 
     /**
      * Draw a Text node split into selection segments. Shapes all pieces in one
-     * paragraph (consistent kerning/wrap/align) and paints each shaped run with
+     * paragraph (consistent kerning/wrap/textAlign) and paints each shaped run with
      * its segment's overrides: opacity folded into the paint, a transform about
      * the run's centre, and the segment's fill/stroke (which default to the
      * node's paint when the selection didn't override them). Mirrors

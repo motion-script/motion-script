@@ -333,7 +333,7 @@ export class Text extends ShapeNode<TextProps> {
             fontStyle: this.fontStyle,
             letterSpacing: this.letterSpacing,
             lineHeight: this.lineHeight,
-            align: this.textAlign,
+            textAlign: this.textAlign,
             wrap: this.wrap,
             minFontSize: this.minFontSize,
             width: this.layoutRect?.width ?? 0,

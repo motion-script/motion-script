@@ -27,7 +27,7 @@ export function layoutRichText(
     fontMgr: TypefaceFontProvider,
     state: RichTextState,
 ): RichTextLayout {
-    const { spans, lineHeight, align, width } = state;
+    const { spans, lineHeight, textAlign, width } = state;
 
     const segments: ParagraphSegment[] = spans.map(s => ({
         text: s.text,
@@ -39,11 +39,11 @@ export function layoutRichText(
     }));
 
     const layout = layoutParagraph(canvasKit, fontMgr, segments, {
-        align,
+        textAlign,
         lineHeight,
         // RichText boxes are hug/explicit; wrap only when a finite width exists.
         maxWidth: width > 0 ? width : Infinity,
-        // Box width drives `align` placement within the box when not wrapping.
+        // Box width drives `textAlign` placement within the box when not wrapping.
         boxWidth: width,
         // RichText draws in the node's centered local space (origin 0,0).
         originX: 0,

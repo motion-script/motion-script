@@ -186,7 +186,7 @@ export class RichText extends ShapeNode<RichTextProps> {
         ctx.draw(new Graphics().richText({
             spans: this.runs(),
             lineHeight: this.lineHeight,
-            align: this.textAlign,
+            textAlign: this.textAlign,
             width: this.layoutRect?.width ?? 0,
             height: this.layoutRect?.height ?? 0,
         }));

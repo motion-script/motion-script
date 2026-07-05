@@ -9,7 +9,7 @@ import { TextState, withTextDescriptor, createPathSampler, type PathData, type P
  * glyphs whose center falls before the path start or past its end are clipped.
  *
  * v1: single line only (newlines/wrap are ignored upstream), left-aligned
- * shaping with `align` applied as a distance offset along the path. We draw each
+ * shaping with `textAlign` applied as a distance offset along the path. We draw each
  * glyph with our own `canvas.drawGlyphs` (one transformed draw per glyph) so the
  * normal fill/stroke/shadow handling still applies to the returned shape.
  *
@@ -50,7 +50,7 @@ interface ShapedGlyph {
     font: Font;
 }
 
-/** Path-independent result of shaping a run: the glyphs, the run width (for align), and the size used. */
+/** Path-independent result of shaping a run: the glyphs, the run width (for textAlign), and the size used. */
 interface ShapedRun {
     glyphs: ShapedGlyph[];
     textWidth: number;
@@ -66,13 +66,13 @@ function fontSlantFor(canvasKit: CanvasKit, style: FontStyle) {
 }
 
 /**
- * Distance along the path where the text run starts, per `align`. `left`/`start`
+ * Distance along the path where the text run starts, per `textAlign`. `left`/`start`
  * begins at the path start; `center` centers the run along the path; `right`/`end`
- * ends the run at the path end. Mirrors the horizontal anchoring `align` gives
+ * ends the run at the path end. Mirrors the horizontal anchoring `textAlign` gives
  * straight text, but measured in path arc length.
  */
-function alignOffset(align: TextState["align"], textWidth: number, pathLength: number): number {
-    switch (align) {
+function alignOffset(textAlign: TextState["textAlign"], textWidth: number, pathLength: number): number {
+    switch (textAlign) {
         case 'right':
         case 'end':
             return pathLength - textWidth;
@@ -155,7 +155,7 @@ function buildShapedRun(
     const fonts: Font[] = [];
 
     // Shape left-aligned with no wrap/box so glyph x-positions are pure distance
-    // from the text start; `align` is then applied as a path-distance offset.
+    // from the text start; `textAlign` is then applied as a path-distance offset.
     const fontCollection = canvasKit.FontCollection.Make();
     fontCollection.setDefaultFontManager(fontMgr);
 
@@ -206,7 +206,7 @@ function buildShapedRun(
         return null;
     }
 
-    // Total advance of the run(s) on this line = its right edge, used for align.
+    // Total advance of the run(s) on this line = its right edge, used for textAlign.
     let textWidth = 0;
     for (const run of line.runs) {
         const n = run.glyphs.length;
@@ -244,13 +244,13 @@ function buildShapedRun(
  * each glyph at its centre distance, rotated to the tangent. Cheap — no shaping,
  * no font creation — so it's safe to run every frame as the path animates.
  */
-function mapRunToPath(run: ShapedRun, path: PathData, align: TextState["align"]): TextPathLayout {
+function mapRunToPath(run: ShapedRun, path: PathData, textAlign: TextState["textAlign"]): TextPathLayout {
     const empty: TextPathLayout = { glyphs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 } };
 
     const sampler: PathSampler = createPathSampler(path);
     if (sampler.length <= 0) return empty;
 
-    const offset = alignOffset(align, run.textWidth, sampler.length);
+    const offset = alignOffset(textAlign, run.textWidth, sampler.length);
 
     const glyphs: PlacedGlyph[] = [];
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -304,7 +304,7 @@ export function layoutTextOnPath(
     const run = shapeTextRun(canvasKit, fontMgr, full, fontSize);
     if (!run) return empty;
 
-    return mapRunToPath(run, full.path, full.align);
+    return mapRunToPath(run, full.path, full.textAlign);
 }
 
 /** Draw placed glyphs, one transformed draw per glyph (rotates about the glyph center). */

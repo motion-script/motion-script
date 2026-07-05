@@ -51,8 +51,8 @@ function fontSlantFor(canvasKit: CanvasKit, style: FontStyle) {
     }
 }
 
-function textAlignFor(canvasKit: CanvasKit, align: TextAlign) {
-    switch (align) {
+function textAlignFor(canvasKit: CanvasKit, textAlign: TextAlign) {
+    switch (textAlign) {
         case 'left':    return canvasKit.TextAlign.Left;
         case 'right':   return canvasKit.TextAlign.Right;
         case 'justify': return canvasKit.TextAlign.Justify;
@@ -75,12 +75,12 @@ export function layoutParagraph(
     fontMgr: TypefaceFontProvider,
     segments: ParagraphSegment[],
     opts: {
-        align: TextAlign;
+        textAlign: TextAlign;
         lineHeight: number;
         maxWidth: number;
         /**
          * The node's box width, used to position the text within its box per
-         * `align` when not wrapping. When wider than the text, the paragraph is
+         * `textAlign` when not wrapping. When wider than the text, the paragraph is
          * laid out at this width so Skia's TextAlign anchors the glyphs
          * (left/center/right) inside the box instead of centering on the origin.
          */
@@ -100,7 +100,7 @@ export function layoutParagraph(
 
     const paraStyle = new canvasKit.ParagraphStyle({
         textStyle: { fontFamilies: [segments[0].fontFamily], fontSize: segments[0].fontSize },
-        textAlign: textAlignFor(canvasKit, opts.align),
+        textAlign: textAlignFor(canvasKit, opts.textAlign),
         // heightMultiplier is applied per text style below; keep the paragraph
         // default neutral so per-run line height is honored.
     });

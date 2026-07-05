@@ -38,7 +38,7 @@ export interface TextState extends ShapeState {
     fontStyle: FontStyle;
     letterSpacing: number;
     lineHeight: number;
-    align: TextAlign;
+    textAlign: TextAlign;
     wrap: boolean;
     minFontSize: number;
     width: number;
@@ -80,7 +80,7 @@ export function withTextDescriptor(descriptor: Partial<TextState> & ShapeAnchorI
         fontStyle: descriptor.fontStyle ?? 'normal',
         letterSpacing: descriptor.letterSpacing ?? 0,
         lineHeight: descriptor.lineHeight ?? 0,
-        align: descriptor.align ?? 'center',
+        textAlign: descriptor.textAlign ?? 'center',
         wrap: descriptor.wrap ?? false,
         minFontSize: descriptor.minFontSize ?? 12,
         width: descriptor.width ?? 0,

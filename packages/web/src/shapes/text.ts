@@ -91,7 +91,7 @@ export function buildText(
     // minFontSize and let the text wrap instead.
     if (autofit && fullState.width > 0 && fullState.height > 0) {
         const probe = layoutParagraph(canvasKit, fontMgr, [segment(fontSize)], {
-            align: fullState.align,
+            textAlign: fullState.textAlign,
             lineHeight: fullState.lineHeight,
             maxWidth: Infinity,
             originX: x,
@@ -116,14 +116,14 @@ export function buildText(
     const maxWidth = wrap ? fullState.width : Infinity;
     const seg = segment(fontSize);
     const key = shapeKey(
-        shapeKeyInputsFor(seg, fullState.align, fullState.lineHeight, maxWidth, fullState.width),
+        shapeKeyInputsFor(seg, fullState.textAlign, fullState.lineHeight, maxWidth, fullState.width),
         fontEpoch,
     );
     const { layout } = paragraphCache.get(key, () => layoutParagraph(canvasKit, fontMgr, [seg], {
-        align: fullState.align,
+        textAlign: fullState.textAlign,
         lineHeight: fullState.lineHeight,
         maxWidth,
-        // When not wrapping, the box width drives `align` placement within the box.
+        // When not wrapping, the box width drives `textAlign` placement within the box.
         boxWidth: fullState.width,
         originX: 0,
         originY: 0,
