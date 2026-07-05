@@ -1,5 +1,13 @@
 # @motion-script/player
 
+## 2.11.1
+
+### Patch Changes
+
+- 2177c70: fix rotation and scale rendering for text graphics
+- Updated dependencies [2177c70]
+  - @motion-script/canvaskit@2.11.1
+
 ## 2.11.0
 
 ### Minor Changes

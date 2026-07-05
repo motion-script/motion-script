@@ -7,7 +7,7 @@
     "directory": "packages/vite-plugin"
   },
   "license": "Apache-2.0",
-  "version": "2.11.0",
+  "version": "2.11.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
