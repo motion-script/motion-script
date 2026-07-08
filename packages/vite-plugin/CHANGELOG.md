@@ -1,5 +1,16 @@
 # @motion-script/vite-plugin
 
+## 2.11.3
+
+### Patch Changes
+
+- f44d98c: fix: update exporter to be consistent among different OS
+- Updated dependencies [f44d98c]
+  - @motion-script/web@2.11.3
+  - @motion-script/canvaskit@2.11.3
+  - @motion-script/core@2.11.3
+  - @motion-script/player@2.11.3
+
 ## 2.11.2
 
 ### Patch Changes
