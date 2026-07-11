@@ -1,5 +1,11 @@
 # @motion-script/web
 
+## 2.11.3
+
+### Patch Changes
+
+- f44d98c: fix: update exporter to be consistent among different OS
+
 ## 2.11.2
 
 ### Patch Changes

@@ -206,6 +206,14 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     const videoSource = new CanvasSource(offscreenCanvas, {
         codec: 'avc',
         bitrate: 10_000_000,
+        // Pin to the software encoder with fixed rate control so every platform
+        // produces the same output. Without this, WebCodecs' `no-preference`
+        // default lets each OS pick its own HW encoder (VideoToolbox on macOS,
+        // Media Foundation/NVENC on Windows), which have different quality/
+        // color tuning at the same nominal bitrate — same settings, different
+        // result.
+        hardwareAcceleration: 'prefer-software',
+        bitrateMode: 'constant',
     });
 
     const output = new Output({ format: new Mp4OutputFormat(), target });
