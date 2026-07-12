@@ -125,6 +125,11 @@ export class Camera extends ShapeNode<CameraProps> {
     // No flex/stack layout — the world (children) is stack-laid-out (centered)
     // by the base Node.layout default, then viewed through the camera.
 
+    // No custom measure — the base `Node.measure` hugs children stack-style on a
+    // `"hug"` axis, which is exactly the camera's convention (its world is
+    // centered inside the viewport box). So a bare `<Camera>` sizes itself to its
+    // world, and an explicit `width`/`height`/`'fill'` still resolves as given.
+
     // ---- Rendering --------------------------------------------------------
 
     // Render the world through the camera viewport transform instead of the

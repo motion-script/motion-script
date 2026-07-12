@@ -1,25 +1,41 @@
 import { BoxBounds } from "@/attributes/layout/bounds";
+import { PaddingResolved } from "@/attributes/layout/padding";
 import { MeasureScope } from "@/render/measure-scope";
 import type { Node } from "@/nodes/base/node";
 
+const NO_PADDING: PaddingResolved = { top: 0, right: 0, bottom: 0, left: 0 };
+
 /**
- * Stack-layout a container's children, centered within its box.
+ * Stack-layout a container's children, centered within its padded box.
  *
- * Container nodes that aren't a {@link Rect} (e.g. MaskGroup, BooleanGroup)
- * don't run flex/stack layout themselves, so without this their children never
- * receive a layout pass and render at zero size. This gives each child a
- * `BoxBounds` centered in the container (origin = container center, matching the
- * `Rect` "stack" convention), sized to the child's own measured size and capped
- * to the container. Children then offset from center via their own `x`/`y`.
+ * Container nodes that aren't a {@link Rect} (e.g. MaskGroup, BooleanGroup) and
+ * every plain {@link Node} / {@link ShapeNode} leaf don't run flex/stack layout
+ * themselves, so without this their children never receive a layout pass and
+ * render at zero size. This gives each child a `BoxBounds` centered in the
+ * container's content area (origin = container center, matching the `Rect`
+ * "stack" convention), sized to the child's own measured size and capped to the
+ * content area. Padding insets the content area and shifts the centre by the
+ * left/right (top/bottom) asymmetry, exactly like `Rect`'s stack layout, so a
+ * padded hug container reserves the same space it measured. Children then offset
+ * from centre via their own `x`/`y`.
  */
-export function layoutGroupChildren(children: Node[], rect: BoxBounds, scope: MeasureScope): void {
-    const constraints = { maxWidth: rect.width, maxHeight: rect.height };
+export function layoutGroupChildren(
+    children: Node[],
+    rect: BoxBounds,
+    scope: MeasureScope,
+    pad: PaddingResolved = NO_PADDING,
+): void {
+    const innerW = Math.max(0, rect.width - pad.left - pad.right);
+    const innerH = Math.max(0, rect.height - pad.top - pad.bottom);
+    const offsetX = (pad.left - pad.right) / 2;
+    const offsetY = (pad.top - pad.bottom) / 2;
+    const constraints = { maxWidth: innerW, maxHeight: innerH };
     for (const child of children) {
         const size = child.measure(constraints, scope);
         child.layout(
             {
-                x: 0,
-                y: 0,
+                x: offsetX,
+                y: offsetY,
                 width: size.width ?? 0,
                 height: size.height ?? 0,
             },

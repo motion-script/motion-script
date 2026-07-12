@@ -43,7 +43,8 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
             height: this.layoutRect.height / 2,
 
         }).shadow(this.shadow).fill(this.fill).stroke(this.stroke)
-            // Effects apply to the whole drawn union now, not a single shape.
+            // effects() scopes to the current shape group (like fill): the single
+            // trailing call here filters all three ellipses as one union.
             .effects(FX.blur(50));
         ctx.draw(graphics);
     }

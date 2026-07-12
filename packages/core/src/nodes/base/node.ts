@@ -45,7 +45,7 @@ import { Clip } from "@/render/clip";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput, expandSize } from "@/attributes/layout/size";
 import { Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
-import { Padding, resolvePadding } from "@/attributes/layout/padding";
+import { Padding, PaddingResolved, resolvePadding } from "@/attributes/layout/padding";
 import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
 import { lerpEffectArray } from "@/attributes/shape/effects/registry";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
@@ -1351,24 +1351,70 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
-     * Stack-layout this node's children, centered within `rect`: each child is
-     * measured against `rect` and given a `BoxBounds` centered on it (sized to
-     * its own measured size, capped to the container), offsetting from center
-     * via its own `x`/`y`. Called by the default {@link layout}; nodes that run
-     * their own child-layout (`Rect`'s flex/stack, `Camera`'s viewport, …)
-     * override `layout` instead and don't call this.
+     * Stack-layout this node's children, centered within `rect`'s content area:
+     * each child is measured against the padded inner box and given a
+     * `BoxBounds` centered on it (sized to its own measured size, capped to the
+     * content area), offsetting from center via its own `x`/`y`. Called by the
+     * default {@link layout}; nodes that run their own child-layout (`Rect`'s
+     * flex/stack, `Camera`'s viewport, …) override `layout` instead and don't
+     * call this.
      */
     protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
-        layoutGroupChildren(this._children, rect, scope);
+        layoutGroupChildren(this._children, rect, scope, this.padding as PaddingResolved);
     }
 
-    measure(constraints: SizeConstraints, _scope: MeasureScope): Partial<Size2D> {
+    /**
+     * Default measure: resolve `width`/`height`, hugging children stack-style on
+     * any `"hug"` axis. A `"hug"` axis shrink-wraps to the largest child extent
+     * on that axis (children overlap and are centered — they don't sum), plus
+     * this node's padding — the same content size {@link layoutChildren} lays
+     * them out in. A fixed or `"fill"` axis resolves as before.
+     *
+     * This is what lets a plain {@link Node} — and any {@link ShapeNode} leaf
+     * (`Ellipse`, `Polygon`, `Camera`, …) that doesn't override `measure` — hug
+     * its children out of the box, matching how `Rect`'s `"stack"` mode measures
+     * rather than collapsing to 0 (which resolving `"hug"` against a content size
+     * of `0` used to do, so a hugging non-`Rect` container rendered nothing).
+     */
+    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
         this.constraints = constraints;
 
         const maxW = constraints.maxWidth ?? 0;
         const maxH = constraints.maxHeight ?? 0;
-        this._measuredSize.width = resolveSize(this.width, maxW, 0);
-        this._measuredSize.height = resolveSize(this.height, maxH, 0);
+        const widthIsHug = this.width === "hug";
+        const heightIsHug = this.height === "hug";
+
+        if (!widthIsHug && !heightIsHug) {
+            this._measuredSize.width = resolveSize(this.width, maxW, 0);
+            this._measuredSize.height = resolveSize(this.height, maxH, 0);
+            return this._measuredSize;
+        }
+
+        // Hug at least one axis: measure children (stack-style) to a content
+        // size. A non-hug axis gives children its resolved size to measure
+        // against; a hug axis exposes the full available space. Padding insets
+        // the area children see and is added back onto the hugged size.
+        const pad = this.padding as PaddingResolved;
+        const outerW = widthIsHug ? maxW : resolveSize(this.width, maxW, 0);
+        const outerH = heightIsHug ? maxH : resolveSize(this.height, maxH, 0);
+        const innerW = Math.max(0, outerW - pad.left - pad.right);
+        const innerH = Math.max(0, outerH - pad.top - pad.bottom);
+
+        const childConstraints: SizeConstraints = { maxWidth: innerW, maxHeight: innerH };
+        let hugInnerW = 0;
+        let hugInnerH = 0;
+        for (const child of this._children) {
+            const size = child.measure(childConstraints, scope);
+            if ((size.width ?? 0) > hugInnerW) hugInnerW = size.width ?? 0;
+            if ((size.height ?? 0) > hugInnerH) hugInnerH = size.height ?? 0;
+        }
+
+        this._measuredSize.width = widthIsHug
+            ? resolveSize(this.width, maxW, hugInnerW + pad.left + pad.right)
+            : outerW;
+        this._measuredSize.height = heightIsHug
+            ? resolveSize(this.height, maxH, hugInnerH + pad.top + pad.bottom)
+            : outerH;
         return this._measuredSize;
     }
 
