@@ -1,3 +1,5 @@
+import { Maximize2 } from 'lucide-react';
+
 import { useEditorStore } from '@/providers/editor-provider';
 
 const MIN_ZOOM = 0.25;
@@ -12,6 +14,7 @@ export function PreviewZoomControls() {
     const previewZoom = useEditorStore(s => s.previewZoom);
     const setPreviewZoom = useEditorStore(s => s.setPreviewZoom);
     const resetPreviewView = useEditorStore(s => s.resetPreviewView);
+    const toggleFullscreen = useEditorStore(s => s.toggleFullscreen);
 
     const zoomOut = () => setPreviewZoom(clampZoom(previewZoom - BUTTON_ZOOM_STEP));
     const zoomIn = () => setPreviewZoom(clampZoom(previewZoom + BUTTON_ZOOM_STEP));
@@ -52,6 +55,16 @@ export function PreviewZoomControls() {
                 title="Fit and center (Shift+F)"
             >
                 Fit
+            </button>
+
+            <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="h-6 w-6 flex items-center justify-center rounded-sm bg-card hover:bg-toolbar-control cursor-pointer"
+                aria-label="Enter fullscreen"
+                title="Fullscreen"
+            >
+                <Maximize2 className="size-3.5" strokeWidth={2} />
             </button>
         </div>
     );

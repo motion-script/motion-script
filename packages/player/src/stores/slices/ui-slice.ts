@@ -33,6 +33,10 @@ export type UiSlice = {
 
     selectedNode: NodeState | null;
     setSelectedNode: (node: NodeState | null) => void;
+
+    isFullscreen: boolean;
+    setIsFullscreen: (fullscreen: boolean) => void;
+    toggleFullscreen: () => void;
 };
 
 export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
@@ -54,4 +58,8 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
 
     selectedNode: null,
     setSelectedNode: (node) => set(() => ({ selectedNode: node })),
+
+    isFullscreen: false,
+    setIsFullscreen: (fullscreen) => set(() => ({ isFullscreen: fullscreen })),
+    toggleFullscreen: () => set((s) => ({ isFullscreen: !s.isFullscreen })),
 });

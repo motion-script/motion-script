@@ -35,11 +35,15 @@ import { useRowVirtualizer } from "./use-row-virtualizer";
 type TimelineRulerProps = {
   width?: number;
   minorTicks?: number;
+  // When true, renders only the ruler + scene row (no toolbar, no node tree).
+  // Used by the fullscreen player overlay.
+  sceneOnly?: boolean;
 };
 
 export function TimelineRuler({
   width,
   minorTicks = DEFAULT_MINOR_TICKS,
+  sceneOnly = false,
 }: TimelineRulerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rulerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -367,7 +371,7 @@ export function TimelineRuler({
       ref={containerRef}
       className="bg-timeline w-full h-full rounded-lg flex flex-col select-none overflow-hidden"
     >
-      <EditorToolbar />
+      {!sceneOnly && <EditorToolbar />}
 
       {/* ── Header ── */}
       <div className="flex shrink-0 border-b border-border" style={{ height: RULER_HEIGHT }}>
@@ -503,52 +507,56 @@ export function TimelineRuler({
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left: node names (virtualized) */}
-          <NodeNamesColumn
-            nodes={flatNodes}
-            window={rowWindow}
-            collapsed={collapsed}
-            selectedNodeId={selectedNodeId}
-            onMeasure={measureRows}
-            onScroll={onNamesScroll}
-            scrollRef={(el) => { namesScrollRef.current = el; }}
-            onToggle={handleToggle}
-            onNavigate={handleNavigate}
-          />
+        {!sceneOnly && (
+          <>
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left: node names (virtualized) */}
+              <NodeNamesColumn
+                nodes={flatNodes}
+                window={rowWindow}
+                collapsed={collapsed}
+                selectedNodeId={selectedNodeId}
+                onMeasure={measureRows}
+                onScroll={onNamesScroll}
+                scrollRef={(el) => { namesScrollRef.current = el; }}
+                onToggle={handleToggle}
+                onNavigate={handleNavigate}
+              />
 
-          {/* Right: track area (virtualized) */}
-          <TrackRows
-            nodes={flatNodes}
-            window={rowWindow}
-            fullContentWidth={fullContentWidth}
-            effectiveScrollLeft={effectiveScrollLeft}
-            paddingX={paddingX}
-            computedPxPerUnit={computedPxPerUnit}
-            totalFrameCount={totalFrameCount}
-            fps={fps}
-            playheadX={playheadX}
-            gridTicks={gridTicks}
-            onMeasure={measureRows}
-            onScroll={onTrackScroll}
-            scrollRef={(el) => { trackScrollRef.current = el; }}
-          />
-        </div>
+              {/* Right: track area (virtualized) */}
+              <TrackRows
+                nodes={flatNodes}
+                window={rowWindow}
+                fullContentWidth={fullContentWidth}
+                effectiveScrollLeft={effectiveScrollLeft}
+                paddingX={paddingX}
+                computedPxPerUnit={computedPxPerUnit}
+                totalFrameCount={totalFrameCount}
+                fps={fps}
+                playheadX={playheadX}
+                gridTicks={gridTicks}
+                onMeasure={measureRows}
+                onScroll={onTrackScroll}
+                scrollRef={(el) => { trackScrollRef.current = el; }}
+              />
+            </div>
 
-        {/* Horizontal scrollbar */}
-        <div className="flex shrink-0">
-          <div style={{ width: NODE_LIST_WIDTH, minWidth: NODE_LIST_WIDTH }} className="shrink-0 border-r border-border bg-panel" />
-          <div
-            ref={(el) => {
-              hScrollRef.current = el;
-              if (!el) return;
-              el.onscroll = () => { setScrollLeft(el.scrollLeft); };
-            }}
-            className="flex-1 overflow-x-auto overflow-y-hidden"
-          >
-            <div style={{ width: fullContentWidth, height: 1 }} />
-          </div>
-        </div>
+            {/* Horizontal scrollbar */}
+            <div className="flex shrink-0">
+              <div style={{ width: NODE_LIST_WIDTH, minWidth: NODE_LIST_WIDTH }} className="shrink-0 border-r border-border bg-panel" />
+              <div
+                ref={(el) => {
+                  hScrollRef.current = el;
+                  if (!el) return;
+                  el.onscroll = () => { setScrollLeft(el.scrollLeft); };
+                }}
+                className="flex-1 overflow-x-auto overflow-y-hidden"
+              >
+                <div style={{ width: fullContentWidth, height: 1 }} />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
