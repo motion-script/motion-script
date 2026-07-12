@@ -43,7 +43,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-context";
 import { Clip } from "@/render/clip";
 import { TransformState } from "@/render/descriptors/transform";
-import { Size2D, SizeInput } from "@/attributes/layout/size";
+import { Size2D, SizeInput, expandSize } from "@/attributes/layout/size";
 import { Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
 import { Padding, resolvePadding } from "@/attributes/layout/padding";
 import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
@@ -71,6 +71,17 @@ export interface NodeProps {
     y: number; // 0 is center, negative is down, positive is up
     width: SizeInput;
     height: SizeInput;
+    /**
+     * Sets `width` and `height` to the same value in one go. Pure sugar: at
+     * construction time, an author-facing `size` is expanded into `width`/
+     * `height` before either is applied. Explicit `width` or `height` takes
+     * precedence over `size` (mirroring `padding`'s side-vs-shorthand rule),
+     * so `{ size: 200, width: 100 }` yields `width: 100, height: 200`.
+     * Reactive bindings and `to()`/`set()` targets both work the same as
+     * `width`/`height` — `size: 'fill'`, `size: () => ...`, or
+     * `node.to({ size: 300 }, 0.5)` are all valid.
+     */
+    size: SizeInput;
     scale: number;
     rotation: number;
     opacity: number;
@@ -165,6 +176,7 @@ export interface NodeProps {
  * | `y`       | 0        | vertical offset (positive = up)       |
  * | `width`   | `'fill'` | `SizeInput`: px, `'fill'`, `'auto'`  |
  * | `height`  | `'fill'` | same                                  |
+ * | `size`    | —        | sugar: sets `width` and `height` together |
  * | `scale`   | 1        | uniform scale factor                  |
  * | `rotate`  | 0        | degrees, clockwise                    |
  * | `opacity` | 1        | 0–1                                   |
@@ -264,6 +276,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     protected _children: Node[] = [];
 
     constructor(props?: NodeConfig<any, P>) {
+        // Expand `size` sugar into width/height before anything reads either —
+        // in place, so the single object retained as `_props` below already
+        // carries the expanded values on every init() re-run.
+        if (props) expandSize(props as Record<string, unknown>);
+
         // Retain for init() re-runs each pass (see _props doc). Captured before
         // any default application so it reflects exactly what the author passed.
         this._props = props;
@@ -432,9 +449,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // Iterate the caller's keys (usually 1–3) rather than every registered
         // signal (15+): set() runs in the per-frame hot path. Only keys backed
         // by a signal are written; unknown keys are ignored as before.
+        // `size` has no signal of its own — it's sugar written straight to
+        // width/height (explicit width/height in the same call still wins).
+        const sizeVal = (props as any).size;
         for (const key in props) {
             const val = (props as any)[key];
             if (val !== undefined && signals.has(key)) this._writeProp(key, val);
+        }
+        if (sizeVal !== undefined) {
+            if ((props as any).width === undefined) this._writeProp('width', sizeVal);
+            if ((props as any).height === undefined) this._writeProp('height', sizeVal);
         }
     }
 
@@ -449,6 +473,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * generator path (`_toGen`) and the batched `parallel` path.
      */
     _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
+        // `size` has no signal of its own — expand it into width/height targets
+        // before anchor validation and the per-key tween setup below see it.
+        expandSize(to as Record<string, unknown>);
+
         validateAnchorProps(to as Record<string, unknown>);
 
         // If an anchor key is in the tween target, resolve it to x/y targets and

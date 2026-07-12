@@ -59,6 +59,30 @@ Setting `flex` without an explicit `width`/`height` defaults both to `'fill'` au
 
 ---
 
+## `size`: shorthand for both axes
+
+`size` is sugar for setting `width` and `height` to the same value at once. It accepts the same three value kinds — a fixed number, `'fill'`, or `'hug'`:
+
+```tsx
+<Rect size={200} fill="royalblue" />
+<Rect size="fill" fill="royalblue" />
+```
+
+An explicit `width` or `height` alongside `size` wins on that axis:
+
+```tsx
+<Rect size={200} width={100} fill="royalblue" /> {/* width: 100, height: 200 */}
+```
+
+`size` works everywhere `width`/`height` do — imperative `.set()` and animated `.to()`:
+
+```tsx
+box().set({ size: 250 });
+yield* box().to({ size: 400 }, 0.8, easeOut);
+```
+
+---
+
 ## Animating size
 
 Fixed sizes animate smoothly with `.to()`. Switching between fixed and `'fill'`/`'hug'` also cross-fades:
