@@ -44,6 +44,8 @@ export default createScene(function* (stage) {
 | No children | `'fill'` | `'fill'` |
 | Has children | `'hug'` | `'hug'` |
 
+If a direct child is `'fill'` on the axis `Rect` would otherwise hug (its `group`'s main axis — width for `row`, height for `column`, both independently for `stack`), that axis defaults to `'fill'` instead, so the child has real space to fill into. See [Size](../attributes/size#default-sizing) for the full rule.
+
 ### Corner shorthands
 
 `cornerRadius` and `cornerStyle` share the same shorthand grammar:

@@ -16,6 +16,7 @@ import random from './scenes/random?scene';
 import context from './scenes/context?scene';
 import stage from './scenes/stage';
 import overlayVerify from './scenes/overlay-verify?scene';
+import defaultSize from './scenes/default-size';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -35,6 +36,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        defaultSize,
         overlayVerify,
         stage,
         global,

@@ -26,7 +26,7 @@ A node with `width: 'fill'` stretches to consume all available space along that 
 ```
 
 :::info Default sizing
-A node with no children defaults to `width: 'fill'`, `height: 'fill'`. A `Rect` with children defaults to `width: 'hug'`, `height: 'hug'`.
+Every layout container resolves an unset `width`/`height` for you — see [Default sizing](#default-sizing) below for the full rule.
 :::
 
 ---
@@ -41,6 +41,64 @@ A node with `width: 'hug'` measures its children and sizes itself to fit them ex
   <Rect width={60} height={60} fill="royalblue" cornerRadius={8} />
 </Rect>
 ```
+
+---
+
+## Default sizing
+
+Every layout container resolves an unset `width`/`height` to one of `'fill'` or `'hug'` — you never have to set either explicitly for the common case:
+
+| Container | No children | Has children |
+|---|---|---|
+| `Rect` | `width: 'fill'`, `height: 'fill'` | `width: 'hug'`, `height: 'hug'` |
+| `Row` / `Column` | `width: 'hug'`, `height: 'hug'` | `width: 'hug'`, `height: 'hug'` |
+
+`Row` and `Column` always default to `'hug'` on both axes — they're layout containers first, so an empty one shouldn't stretch and cover the scene the way an empty `Rect` (a shape that doubles as a background/spacer) does.
+
+### A `'fill'` child needs somewhere to fill into
+
+`'hug'` and `'fill'` pull in opposite directions on the same axis: `'hug'` means "size me from my children," `'fill'` means "size me from my parent." If a container hugs an axis while a direct child fills that same axis, the child has nothing to fill into.
+
+To avoid that, the default above gets one refinement: if a direct child is `'fill'` on the axis the container would otherwise hug — its **main axis**, the axis children are laid out along — the container's default for *that axis* becomes `'fill'` too, so the child has real space to expand into.
+
+| Container | Main axis | Cross axis |
+|---|---|---|
+| `Rect group="row"` / `Row` | width | height |
+| `Rect group="column"` / `Column` | height | width |
+| `Rect group="stack"` | width *and* height, checked independently | — |
+
+A fill child on the **cross** axis doesn't trigger this — it already anchors correctly to the size of the tallest/widest fixed sibling, which is what lets this column's tiles span its full hugged width without the column itself needing to fill:
+
+```tsx
+<Rect group="column" gap={16} padding={20} fill="#1e293b">
+  <Rect width="fill" height={60} fill="tomato" cornerRadius={8} />
+  <Rect width="fill" height={60} fill="royalblue" cornerRadius={8} />
+</Rect>
+```
+
+But a fill child on the **main** axis is the case that needs the container's own default to change. Here, the middle tile has no `width` — with children of its own it would hug, but it has none, so it defaults to `'fill'`. Because that's the row's main axis, the row's own default flips from `'hug'` to `'fill'` too, and the row spans all 1920px of available width instead of collapsing:
+
+```tsx
+<Rect group="row" padding={48} gap={48}>
+  <Rect width={400} height={400} fill="#6990DD" />
+  <Rect height={400} fill="#E8617C" />   {/* no width → defaults to 'fill' */}
+  <Rect width={400} height={400} fill="#F5C26B" />
+</Rect>
+```
+
+In a `1920`-wide scene, the two fixed tiles and the padding/gaps leave `928px` for the middle tile — it fills exactly that, and the row itself resolves to `'fill'` (`1920`px), not `'hug'`.
+
+This only changes the **inferred default**. An explicit `width`/`height` on the container always wins, even if it re-creates the hug + fill-with-nothing-to-fill-into combination:
+
+```tsx
+<Rect group="row" width="hug" padding={48} gap={48}>
+  <Rect width={400} height={400} fill="#6990DD" />
+  <Rect height={400} fill="#E8617C" />   {/* still defaults to 'fill' */}
+  <Rect width={400} height={400} fill="#F5C26B" />
+</Rect>
+```
+
+Forcing `width: 'hug'` here means the row genuinely has nothing to hug the middle tile to, so it collapses to `0` width. The row itself still hugs to a finite size from its fixed tiles, padding, and gaps — `992px` — rather than growing without bound.
 
 ---
 

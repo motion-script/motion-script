@@ -36,7 +36,7 @@ export default createScene(function* (stage) {
 
 ### Size defaults
 
-`Column` defaults to `width: 'hug'`, `height: 'hug'`. Give a child `flex: 1` (or `height: 'fill'`) to make it expand into remaining column space.
+`Column` defaults to `width: 'hug'`, `height: 'hug'` — unless a direct child is `height: 'fill'`, in which case `Column` defaults its own height to `'fill'` too, so the child has real space to fill into. Give a child `flex: 1` (or `height: 'fill'`) to make it expand into remaining column space. See [Size](../attributes/size#default-sizing) for the full rule.
 
 ## Animating
 

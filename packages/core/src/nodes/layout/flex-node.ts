@@ -109,10 +109,24 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
 
     // Row/Column lay out around their content, so — unlike Rect, whose empty
     // form fills the parent — they always hug, even with no children, rather
-    // than stretching to fill.
-    protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
-        if (!props || props.width === undefined) this.applyProp("width", "hug", { tween: lerpSizeInput });
-        if (!props || props.height === undefined) this.applyProp("height", "hug", { tween: lerpSizeInput });
+    // than stretching to fill. The one refinement: hugging the *main* axis
+    // while a direct child asks to fill that same axis strands the child with
+    // no space to fill into (it measures unconstrained instead — see
+    // measureFlex's Figma-mirroring comment), so that axis defaults to fill
+    // instead. `this.direction` isn't set yet at this point in construction
+    // (Row/Column assign it as a field initializer, which runs after `super()`
+    // returns) — Row/Column each call this via a one-line override that passes
+    // their own known-constant main axis instead of reading `this.direction`.
+    protected applyFlexDefaultSize(props: NodeConfig<any, P> | undefined, mainAxis: "width" | "height"): void {
+        const children = Node.flattenChildrenProp(props);
+        const mainDefault = Node.hasFillChild(children, mainAxis) ? "fill" : "hug";
+
+        if (!props || props.width === undefined) {
+            this.applyProp("width", mainAxis === "width" ? mainDefault : "hug", { tween: lerpSizeInput });
+        }
+        if (!props || props.height === undefined) {
+            this.applyProp("height", mainAxis === "height" ? mainDefault : "hug", { tween: lerpSizeInput });
+        }
     }
 
     // Children must sit inside the stroke (drawn at the layout-rect edge), so the

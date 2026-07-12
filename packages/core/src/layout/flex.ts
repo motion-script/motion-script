@@ -89,7 +89,6 @@ export function measureFlex<C extends FlexChild>(
 
     const parentMainMode = mainIsRow ? parentWidthMode : parentHeightMode;
     const parentCrossMode = mainIsRow ? parentHeightMode : parentWidthMode;
-    const parentIsHugMain = parentMainMode === "hug";
     const parentIsHugCross = parentCrossMode === "hug";
 
     const entries: FlexMeasureEntry<C>[] = children.map((child) => {
@@ -102,6 +101,8 @@ export function measureFlex<C extends FlexChild>(
             flex: isFlexibleMain ? sanitizeFlex(child.mainFlex) : 0,
         };
     });
+
+    const parentIsHugMain = parentMainMode === "hug";
 
     const innerMain = mainIsRow ? innerWidth : innerHeight;
     const innerCross = mainIsRow ? innerHeight : innerWidth;
@@ -165,18 +166,30 @@ export function measureFlex<C extends FlexChild>(
         if (parentIsHugMain) {
             // No real remaining space to give a main-axis fill child here, so
             // measure its main axis unconstrained (like a hug child) rather
-            // than handing it 0 via a missing/defaulted constraint.
+            // than handing it 0 via a missing/defaulted constraint. That's
+            // correct for a child with genuine intrinsic content (e.g.
+            // wrapping Text reports its real wrapped size even unconstrained)
+            // — but a child with no intrinsic size of its own (a bare
+            // `fill`-mode leaf) just echoes back "unconstrained" as Infinity.
+            // This combination normally can't arise from an unspecified
+            // default (Rect/FlexNode default their own main-axis mode to
+            // "fill" whenever a direct child requests fill on that axis — see
+            // applyDefaultSize), but an explicit author override (`width:
+            // 'hug'` alongside a fill child) can still reach it — clamp to 0
+            // rather than propagate Infinity into the container's hug size.
             const measured = entry.child.measure(
                 mainIsRow
                     ? { maxWidth: Infinity, maxHeight: innerHeight }
                     : { maxWidth: innerWidth, maxHeight: Infinity },
             );
+            const measuredMain = (mainIsRow ? measured.width : measured.height) ?? 0;
+            const mainSize = Number.isFinite(measuredMain) ? measuredMain : 0;
             if (mainIsRow) {
-                entry.width = measured.width ?? 0;
+                entry.width = mainSize;
                 entry.height = crossMode === "fill" ? innerCrossForFillMain : (measured.height ?? 0);
             } else {
                 entry.width = crossMode === "fill" ? innerCrossForFillMain : (measured.width ?? 0);
-                entry.height = measured.height ?? 0;
+                entry.height = mainSize;
             }
             continue;
         }

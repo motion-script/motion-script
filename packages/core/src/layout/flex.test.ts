@@ -281,16 +281,22 @@ describe('measureFlex – parent hug behavior', () => {
         expect(result.hugWidth).toBe(30);
     });
 
-    it('parent hug main + fill-main child with no intrinsic size measures unconstrained', () => {
+    it('parent hug main + fill-main child with no intrinsic size collapses to 0, not Infinity', () => {
         // A fill-main child with no content-driven intrinsic size (unlike
-        // Text, which always has wrapped/unwrapped line width) measures
-        // against an unconstrained main axis, since there's no real
-        // remaining space for a hug-main parent to hand it.
+        // Text, which always has wrapped/unwrapped line width) measures as
+        // Infinity when probed unconstrained — there's nothing real to hug
+        // to. This combination now only arises from an explicit author
+        // override (Rect/FlexNode default their own main-axis mode to "fill"
+        // at construction time when a direct child requests fill on that
+        // axis), so it's a deliberate "collapse to 0" rather than a promotion:
+        // an Infinity here would otherwise propagate into the container's hug
+        // size and make the whole thing disappear.
         const result = measureFlex(
             [child('fill', 50)],
             measureInput({ parentWidthMode: 'hug' }),
         );
-        expect(result.entries[0].width).toBe(Infinity);
+        expect(result.entries[0].width).toBe(0);
+        expect(result.hugWidth).toBe(0);
     });
 
     it('hug-main column with a fixed child and a wrapping fill-height child hugs to both (wrap-bounds regression)', () => {

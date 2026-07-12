@@ -340,6 +340,31 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
+     * Flatten a constructor's raw `children` prop into the `Node` instances it
+     * contains, without mutating or adding them — the same normalisation the
+     * constructor applies before {@link addChildren}, exposed standalone so
+     * {@link applyDefaultSize} overrides can inspect children's own resolved
+     * `width`/`height` *before* they're attached (JSX children are constructed,
+     * defaults and all, before being passed in as props).
+     */
+    protected static flattenChildrenProp(props: { children?: unknown } | undefined): Node[] {
+        const childProp = props ? props.children : undefined;
+        if (!childProp) return [];
+        const raw = Array.isArray(childProp) ? childProp : [childProp];
+        return (raw as unknown[]).flat(Infinity).filter((c: unknown): c is Node => c instanceof Node);
+    }
+
+    /**
+     * True if any of `children` requests `"fill"` on `axis` — the signal a
+     * container's {@link applyDefaultSize} override uses to decide whether its
+     * own hug default on that axis would strand the child with no space to
+     * fill into (see {@link Rect}/{@link FlexNode} overrides).
+     */
+    protected static hasFillChild(children: Node[], axis: "width" | "height"): boolean {
+        return children.some((c) => (axis === "width" ? c.width : c.height) === "fill");
+    }
+
+    /**
      * Figma-style smart default for `width`/`height`: hug-to-content when the
      * node is given children, fill-the-parent when it's empty — so a plain
      * `new Rect({ children: [...] })` shrink-wraps like a Figma auto-layout

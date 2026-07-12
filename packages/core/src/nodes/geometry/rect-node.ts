@@ -13,8 +13,9 @@ import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
+import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
+import { lerpSizeInput } from "@/layout/tweens";
 
 
 export type { LayoutMode };
@@ -84,6 +85,40 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     constructor(props: NodeConfig<Rect<P>, P>) {
         super(props);
         this.applyGroupProp(props.group ?? "stack");
+    }
+
+    /**
+     * Figma-style smart default (see base {@link Node.applyDefaultSize}), plus
+     * one refinement for flex/stack containers: hugging an axis that a direct
+     * child asks to `"fill"` stacks the child against nothing — the child would
+     * either collapse to 0 (stack, or the container's cross axis) or measure
+     * unconstrained (row/column main axis; see `measureFlex`'s Figma-mirroring
+     * comment). Since JSX children are already-constructed `Node`s by the time
+     * they reach this constructor, their own resolved `width`/`height` can be
+     * inspected here — so a bare `fill` child flips *this* default from `hug`
+     * to `fill` on that exact axis, matching what the author almost certainly
+     * wants. An explicit `width`/`height` on this Rect always wins; this only
+     * adjusts the *default* used when neither is given.
+     *
+     * `group` isn't applied to its signal until after `super()` returns (see
+     * constructor above), so the raw `props.group` is read here instead —
+     * `"row"`/`"column"` only promote their single main axis; `"stack"` (the
+     * default, and the mode with no distinct main axis) checks both axes
+     * independently.
+     */
+    protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
+        const children = Node.flattenChildrenProp(props);
+        const hasChildren = children.length > 0;
+        const group: LayoutMode = (props as any)?.group ?? "stack";
+
+        const widthIsMain = group === "row" || group === "stack";
+        const heightIsMain = group === "column" || group === "stack";
+
+        const defaultWidth = hasChildren && widthIsMain && Node.hasFillChild(children, "width") ? "fill" : hasChildren ? "hug" : "fill";
+        const defaultHeight = hasChildren && heightIsMain && Node.hasFillChild(children, "height") ? "fill" : hasChildren ? "hug" : "fill";
+
+        if (!props || props.width === undefined) this.applyProp("width", defaultWidth, { tween: lerpSizeInput });
+        if (!props || props.height === undefined) this.applyProp("height", defaultHeight, { tween: lerpSizeInput });
     }
 
     // group has a closure-based tween (the engine captures the in-flight blend),

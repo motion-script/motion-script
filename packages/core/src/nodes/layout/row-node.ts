@@ -1,5 +1,6 @@
 import { FlexDirection } from "@/layout/flex";
 import { FlexNode, FlexProps } from "./flex-node";
+import { NodeConfig } from "../base/node";
 
 
 export interface RowProps extends FlexProps { }
@@ -14,4 +15,10 @@ export interface RowProps extends FlexProps { }
  */
 export class Row extends FlexNode<RowProps> {
     protected readonly direction: FlexDirection = "row";
+
+    // this.direction isn't set yet during construction (see FlexNode.applyFlexDefaultSize),
+    // so the main axis is passed in directly instead.
+    protected override applyDefaultSize(props?: NodeConfig<any, RowProps>): void {
+        this.applyFlexDefaultSize(props, "width");
+    }
 }

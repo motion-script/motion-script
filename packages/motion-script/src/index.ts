@@ -2,14 +2,14 @@
 // 1. Scene & Project
 // ---------------------------------------------------------
 export {
-    createScene, fadeIn, fadeOut, ramp, MeasureScope,
+    createScene, fadeIn, fadeOut, ramp, MeasureScope, Clip,
     createProject, AudioFilters, PathBuilder, lerpVector2, AssetTracker
 } from '@motion-script/core';
 export type {
     Scene,
     SceneGenerator, BoxBounds,
     Stage,
-    Clip, BlendMode, FillSpace,
+    BlendMode, FillSpace,
     AudioFilter,
 
 
