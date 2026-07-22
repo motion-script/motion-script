@@ -544,29 +544,11 @@ export class WebRenderContext extends RenderContext {
         }
         // Graphics-level opacity is pass-through: it folds into worldAlpha (so
         // the group's paints fade while their blend modes keep mixing against the
-        // backdrop), mirroring a pass-through node transform. Effects still need
-        // their own isolated buffer.
+        // backdrop), mirroring a pass-through node transform.
         const needsLayer = graphics.needsGroupLayer();
         const prevWorldAlpha = this.worldAlpha;
-        let groupFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
-        let pushedLayer = false;
         if (needsLayer) {
             const opacity = graphics.groupOpacity();
-            // Backdrop-mode effects run on the backdrop layer (applyBackdropEffects),
-            // not the node's own content — exclude them from the foreground filter chain.
-            const effects = graphics.groupEffects().filter((e) => e.mode !== "backdrop");
-            if (effects.length > 0) {
-                const w = this.surface.width();
-                const h = this.surface.height();
-                groupFilter = CanvasKitEffectRegistry.composeFilters([...effects], this.canvasKit, w, h);
-            }
-            if (groupFilter != null) {
-                this.layerPaint.setAlphaf(1);
-                this.layerPaint.setImageFilter(groupFilter);
-                this.currentCanvas.saveLayer(this.layerPaint);
-                this.layerPaint.setImageFilter(null);
-                pushedLayer = true;
-            }
             if (opacity < 1) this.worldAlpha *= opacity;
         }
 
@@ -589,19 +571,130 @@ export class WebRenderContext extends RenderContext {
             pushedTransform = true;
         }
 
+        // `effects()` scopes like `fill()`: each `effects` op filters the shape
+        // group accumulated since the previous one. The filtered saveLayer must be
+        // opened *before* that group's shapes are drawn, but the op is recorded
+        // *after* them — so pre-scan the op list into segments (a run of ops ending
+        // in an `effects` op) and open the layer at each such segment's first op.
+        const ops = graphics.ops();
+        const segmentStartFilter = this.buildEffectSegments(graphics);
+
         // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
         // the fill/stroke for a boolean result left active by endBoolean) is
         // applied to the currently-active surface without resetting it.
-        for (const op of graphics.ops()) {
+        let pushedEffectLayer = false;
+        let effectFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
+        for (let i = 0; i < ops.length; i++) {
+            // Open this segment's filtered layer before its first op is drawn.
+            const seg = segmentStartFilter.get(i);
+            if (seg) {
+                effectFilter = seg.filter;
+                this.layerPaint.setAlphaf(1);
+                this.layerPaint.setImageFilter(effectFilter);
+                // No explicit bounds: let Skia size the layer from the filter's
+                // output so a blur/scatter/bloom that expands past the group's edges
+                // isn't clipped (matching the former whole-graphics effect layer).
+                // A Graphics segment has no per-segment clip to contain, unlike a
+                // node, so the node path's tight-rect bounding doesn't apply here.
+                this.currentCanvas.saveLayer(this.layerPaint);
+                this.layerPaint.setImageFilter(null);
+                pushedEffectLayer = true;
+            }
+
+            const op = ops[i];
+            if (op.kind === "effects") {
+                // Close the group: pop this segment's layer and start a fresh
+                // shape accumulation, so shapes after the effects op render
+                // unfiltered — the same boundary `fill()` establishes.
+                if (pushedEffectLayer) {
+                    this.currentCanvas.restore();
+                    effectFilter?.delete?.();
+                    effectFilter = null;
+                    pushedEffectLayer = false;
+                }
+                this.shapeHandler.reset();
+                continue;
+            }
+
             this.applyOp(op);
+        }
+        // Defensive: an unterminated segment (should not happen — a segment is only
+        // recorded when it ends in an effects op) still unwinds its layer.
+        if (pushedEffectLayer) {
+            this.currentCanvas.restore();
+            effectFilter?.delete?.();
         }
 
         if (pushedTransform) this.currentCanvas.restore();
         this.worldAlpha = prevWorldAlpha;
-        if (pushedLayer) {
-            this.currentCanvas.restore();
-            groupFilter?.delete?.();
+    }
+
+    /**
+     * Pre-scan a Graphics op list into effect segments. A *segment* is a run of
+     * ops ending in an `effects` op; its filter wraps every shape/paint drawn
+     * since the previous `effects` op (or the start). Because the filtered
+     * `saveLayer` must open *before* the segment's shapes are drawn but the op is
+     * recorded after them, this returns a map from the segment's **first op index**
+     * to the composed filter, so `draw()` can open the layer at the right point in
+     * its forward replay.
+     *
+     * Backdrop-mode effects are excluded (they run on the backdrop layer, not the
+     * group's own content); a segment whose foreground filter composes to nothing
+     * is skipped entirely (its shapes then draw unfiltered). Motion-blur effects
+     * are resolved against the current node's velocity, matching {@link transform}.
+     */
+    private buildEffectSegments(
+        graphics: Graphics,
+    ): Map<number, { filter: NonNullable<ReturnType<typeof CanvasKitEffectRegistry.composeFilters>> }> {
+        const ops = graphics.ops();
+        const segments = new Map<number, { filter: NonNullable<ReturnType<typeof CanvasKitEffectRegistry.composeFilters>> }>();
+
+        // Track the start of the *current shape group*, mirroring the shape
+        // accumulator's own boundaries (see `_fill` + the `paintApplied` reset in
+        // the shape ops). A group begins at the first shape op drawn after a paint
+        // (`fill`/`stroke`/`shadow`) or after an `effects` op — exactly where the
+        // renderer resets its accumulator. An `effects` op then filters only *its*
+        // group `[groupStart, i]`, not everything back to the previous effects op —
+        // so already-painted content before it (e.g. gridlines/axis, each closed by
+        // their own fill) is NOT swept into the first bar's filter.
+        let groupStart = 0;
+        let paintApplied = false;
+        const isShape = (kind: GraphicsOp["kind"]) =>
+            kind === "rect" || kind === "ellipse" || kind === "path" || kind === "line" ||
+            kind === "polygon" || kind === "polygram" || kind === "text" || kind === "richText";
+
+        for (let i = 0; i < ops.length; i++) {
+            const op = ops[i];
+            if (isShape(op.kind)) {
+                // A shape after a paint (or after an effects reset) starts a fresh
+                // group — the accumulator resets here in the real replay.
+                if (paintApplied) {
+                    groupStart = i;
+                    paintApplied = false;
+                }
+                continue;
+            }
+            if (op.kind === "fill" || op.kind === "stroke" || op.kind === "shadow") {
+                paintApplied = true;
+                continue;
+            }
+            if (op.kind === "effects") {
+                const foreground = this.resolveMotionBlurEffects(op.effects.filter((e) => e.mode !== "backdrop"));
+                const filter = foreground.length > 0
+                    ? CanvasKitEffectRegistry.composeFilters(foreground, this.canvasKit, this.surface.width(), this.surface.height())
+                    : null;
+                if (filter != null) {
+                    segments.set(groupStart, { filter });
+                }
+                // The effects op closes the group; the next shape starts a new one.
+                groupStart = i + 1;
+                paintApplied = false;
+                continue;
+            }
+            // cut/mask/applyMask/endMask: leave group tracking as-is (these compose
+            // within the current group and don't introduce an effect boundary).
         }
+        return segments;
     }
 
     /**
@@ -676,6 +769,9 @@ export class WebRenderContext extends RenderContext {
             case "mask": this._maskOp(op.options); break;
             case "applyMask": this._applyMask(); break;
             case "endMask": this._endMaskOp(); break;
+            // `effects` ops are handled directly in draw()'s segment loop (they
+            // open/close a scoped filter layer), never dispatched here.
+            case "effects": break;
         }
     }
 

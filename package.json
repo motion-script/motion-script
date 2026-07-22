@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "build:lib": "turbo run build --filter=\"!@motion-script/site\"",
+    "build:lib": "turbo run build --filter=\"!@motion-script/site\" --force",
     "version-packages": "changeset version && node scripts/sync-root-version.js && pnpm install --no-frozen-lockfile",
     "release": "pnpm build:lib && changeset publish",
     "test": "pnpm -r test",

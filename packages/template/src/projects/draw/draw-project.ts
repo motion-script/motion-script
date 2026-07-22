@@ -9,6 +9,7 @@ import drawPivotText from './scenes/pivot-text?scene';
 import drawShapePivot from './scenes/shape-pivot?scene';
 import drawTextAlignment from './scenes/draw-pivot-text?scene';
 import randomNode from './scenes/random-node?scene';
+import smithChart from './scenes/smith-chart?scene';
 
 /**
  * A project that exercises the draw-command API. Every scene paints one complex
@@ -46,6 +47,7 @@ export default createProject({
         drawShapePivot,
         drawTextAlignment,
         randomNode,
+        smithChart,
     ],
     theme: {
         colors: {

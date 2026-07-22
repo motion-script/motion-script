@@ -27,13 +27,12 @@ describe('Graphics', () => {
         expect((op.state as any).data).toEqual(builder.toCommands());
     });
 
-    it('rotation/scale/opacity/effects are graphics-level modifiers, not shape ops', () => {
+    it('rotation/scale/opacity are graphics-level modifiers, not shape ops', () => {
         const g = new Graphics()
             .rect({ width: 1, height: 1 })
             .rotation(30)
             .scale(2)
-            .opacity(0.5)
-            .effects([{ type: 'blur', blur: 2 }]);
+            .opacity(0.5);
 
         const op = g.ops()[0] as GraphicsShapeOp;
         // None of the modifiers merge into the shape — they're graphics-level.
@@ -41,20 +40,54 @@ describe('Graphics', () => {
         expect(op.state.scale).toBeUndefined();
         expect(op.state.opacity).toBeUndefined();
         expect(g.groupOpacity()).toBe(0.5);
-        expect(g.groupEffects()).toEqual([{ type: 'blur', blur: 2 }]);
         expect(g.groupTransform()).toEqual({ rotation: 30, scale: 2, center: undefined });
+        // Opacity < 1 still needs a whole-graphics layer; effects no longer do.
         expect(g.needsGroupLayer()).toBe(true);
-        // Only the single shape op is recorded; modifiers don't add ops.
+        // Only the single shape op is recorded; these modifiers don't add ops.
         expect(g.ops()).toHaveLength(1);
     });
 
-    it('effects() accepts a ChainableFx (FX builder) and resolves to a SceneEffect[]', () => {
+    it('effects() records an ordered op (scoped like fill), not a graphics-level field', () => {
+        const g = new Graphics()
+            .rect({ width: 1, height: 1 })
+            .fill('red')
+            .effects([{ type: 'blur', blur: 2 }]);
+
+        // The effect is an in-order op after its shape group, mirroring fill.
+        expect(g.ops().map((o) => o.kind)).toEqual(['rect', 'fill', 'effects']);
+        expect(g.ops()[2]).toEqual({ kind: 'effects', effects: [{ type: 'blur', blur: 2 }] });
+        // Effects alone do not force a whole-graphics layer — each op scopes its own.
+        expect(g.needsGroupLayer()).toBe(false);
+    });
+
+    it('effects() accepts a ChainableFx (FX builder) and resolves the op to a SceneEffect[]', () => {
         const g = new Graphics().rect({ width: 1, height: 1 }).effects(Effects.blur(8).grayscale(1));
-        expect(g.groupEffects()).toEqual([
-            { type: 'blur', blur: 8 },
-            { type: 'grayscale', amount: 1 },
+        expect(g.ops()[1]).toEqual({
+            kind: 'effects',
+            effects: [
+                { type: 'blur', blur: 8 },
+                { type: 'grayscale', amount: 1 },
+            ],
+        });
+    });
+
+    it('effects() scopes per group: each call closes its group, shapes after start fresh', () => {
+        const g = new Graphics()
+            .ellipse({ width: 2, height: 2 })
+            .ellipse({ width: 3, height: 3 })
+            .fill('red')
+            .effects(Effects.blur(4))
+            .rect({ width: 4, height: 4 })
+            .fill('blue')
+            .effects(Effects.scatter(2));
+
+        // Two independent segments, each ending in its own effects op — as if two
+        // separate Graphics were drawn.
+        expect(g.ops().map((o) => o.kind)).toEqual([
+            'ellipse', 'ellipse', 'fill', 'effects', 'rect', 'fill', 'effects',
         ]);
-        expect(g.needsGroupLayer()).toBe(true);
+        expect(g.ops()[3]).toEqual({ kind: 'effects', effects: [{ type: 'blur', blur: 4 }] });
+        expect(g.ops()[6]).toEqual({ kind: 'effects', effects: [{ type: 'scatter', strength: 2, direction: 'both' }] });
     });
 
     it('rotation/scale accept an explicit center pivot', () => {

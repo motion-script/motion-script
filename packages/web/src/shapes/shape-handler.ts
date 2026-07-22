@@ -63,13 +63,62 @@ export interface CurrentShape {
     spreadPath?: (spread: number) => CKPath | null;
 }
 
-// Shallow equality check for plain state objects. Handles the common case where
-// all values are primitives or the same object reference (e.g. arrays held stable).
-function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+// Leaf equality for a shape descriptor's input-state values. Most fields are
+// primitives (compared by `===`), but a shape's raw input state also carries a
+// few small object-valued fields that are *freshly allocated every frame* by the
+// renderer's y-flip helpers — `pivot` ({x,y}), `points` (Vector2[]), and per-
+// corner `cornerRadius`/`cornerStyle` records. A plain `!==` on those always sees
+// distinct references, so an animated Graphics whose shapes carry any of them
+// would miss the cross-frame shape cache on every frame (rebuilding its wasm path
+// each frame even though the geometry is identical). This comparator restores the
+// hit by comparing those known small structures by value.
+//
+// Deliberately narrow and fail-closed: it only relaxes `!==` for the exact
+// shapes enumerated below, with primitive (`===`) leaf equality; any other
+// non-identical, non-matching value returns false and is treated as changed. So
+// it can never report genuinely different states as equal (no stale-geometry
+// false hits) — it only adds cache hits that were being needlessly missed.
+export function valuesEqual(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+
+    // {x, y} — a pivot / anchor point.
+    if ("x" in a && "y" in a && "x" in b && "y" in b) {
+        const pa = a as { x: unknown; y: unknown };
+        const pb = b as { x: unknown; y: unknown };
+        return pa.x === pb.x && pa.y === pb.y;
+    }
+
+    // Vector2[] — a line's points. Element-wise, each element a primitive or {x,y}.
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!valuesEqual(a[i], b[i])) return false;
+        }
+        return true;
+    }
+
+    // Per-corner record — cornerRadius / cornerStyle. Each corner is a number or
+    // string (or a small object), so recurse to keep the comparison value-based.
+    const CORNER_KEYS = ["topLeft", "topRight", "bottomRight", "bottomLeft"] as const;
+    if (CORNER_KEYS.every(k => k in a) && CORNER_KEYS.every(k => k in b)) {
+        for (const k of CORNER_KEYS) {
+            if (!valuesEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) return false;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+// Shallow equality check for plain state objects. Leaf values compare via
+// `valuesEqual`, which handles primitives plus the small object-valued fields
+// (pivot / points / per-corner records) that are reallocated each frame.
+export function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
     const keysA = Object.keys(a);
     if (keysA.length !== Object.keys(b).length) return false;
     for (const k of keysA) {
-        if (a[k] !== b[k]) return false;
+        if (!valuesEqual(a[k], b[k])) return false;
     }
     return true;
 }
@@ -80,7 +129,7 @@ function shallowEqualExcluding(a: Record<string, unknown>, b: Record<string, unk
     const keysB = Object.keys(b).filter(k => !excSet.has(k));
     if (keysA.length !== keysB.length) return false;
     for (const k of keysA) {
-        if (a[k] !== b[k]) return false;
+        if (!valuesEqual(a[k], b[k])) return false;
     }
     return true;
 }

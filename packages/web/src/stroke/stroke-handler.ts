@@ -180,25 +180,45 @@ export class StrokeHandler {
         };
     }
 
-    private deviceMetrics(canvas: Canvas): { sx: number; sy: number; tx: number; ty: number } {
+    private deviceMetrics(canvas: Canvas): { sx: number; sy: number; scale: number; rotated: boolean; tx: number; ty: number } {
         const m = canvas.getTotalMatrix();
-        return {
-            sx: Math.hypot(m[0], m[3]),
-            sy: Math.hypot(m[1], m[4]),
-            tx: m[2],
-            ty: m[5],
-        };
+        // Per-column magnitudes (used by snapPath). Under a pure rotation both
+        // recover the base scale, but `Math.hypot(cos,sin)` carries angle-dependent
+        // floating-point noise — feeding that into the thin-stroke pixel
+        // quantization makes device widths flip 1px↔2px as a rotation animates.
+        const sx = Math.hypot(m[0], m[3]);
+        const sy = Math.hypot(m[1], m[4]);
+        // A rotation-invariant uniform scale from the 2×2 linear part's
+        // determinant: `sqrt(|det|)`. A rotation has determinant 1, so this equals
+        // the base (pixelRatio) scale at *every* angle — no `hypot`/`max` jitter.
+        // For an axis-aligned uniform CTM it equals `Math.max(sx, sy)` exactly, so
+        // the width decision (and thus snapped output) is unchanged when not rotated.
+        const scale = Math.sqrt(Math.abs(m[0] * m[4] - m[1] * m[3]));
+        // The CTM is rotated/skewed when the off-diagonal (skew) terms are non-zero
+        // — the same test `snapPath` uses to bail. Thin-stroke pixel snapping is
+        // meaningless on a rotated grid, so we also skip the integer quantization
+        // there (see resolveStrokeWidth) and draw at the continuous logical width.
+        const rotated = Math.abs(m[1]) > 1e-6 || Math.abs(m[3]) > 1e-6;
+        return { sx, sy, scale, rotated, tx: m[2], ty: m[5] };
     }
 
-    // For thin strokes (≤ ~2.5 device px), round to an integer device width
-    // ≥ 1 px and convert back to logical units. Returns the adjusted logical
-    // weight and the integer device width (or -1 when no snapping should occur).
+    // For thin strokes (≤ ~2.5 device px) on an *axis-aligned* CTM, round to an
+    // integer device width ≥ 1 px and convert back to logical units so the stroke
+    // lands crisply on the pixel grid (paired with snapPath). Returns the adjusted
+    // logical weight and the integer device width (or -1 when no snapping should
+    // occur). When `rotated` is true the pixel grid is meaningless (snapPath bails
+    // anyway), so quantization is skipped and the true logical width is drawn — a
+    // continuous width through the rotation instead of a per-angle 1px↔2px flip.
     private resolveStrokeWidth(
         weight: number,
         deviceScale: number,
+        rotated: boolean,
     ): { logical: number; intDeviceWidth: number } {
         if (weight <= 0 || deviceScale <= 0) {
             return { logical: 0, intDeviceWidth: -1 };
+        }
+        if (rotated) {
+            return { logical: weight, intDeviceWidth: -1 };
         }
         const deviceWidth = weight * deviceScale;
         if (deviceWidth >= 2.5) {
@@ -293,8 +313,8 @@ export class StrokeHandler {
         const worldAlpha = this.fills.worldAlpha();
         for (const stroke of strokes) {
             const weight = stroke.weight ?? 1;
-            const { sx, sy } = this.deviceMetrics(canvas);
-            const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
+            const { scale, rotated } = this.deviceMetrics(canvas);
+            const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, scale, rotated);
             paint.setStrokeWidth(logical);
 
             for (const fill of stroke.fill) {
@@ -706,8 +726,8 @@ export class StrokeHandler {
                 paint.setStyle(this.canvasKit.PaintStyle.Stroke);
                 for (const stroke of strokes) {
                     const weight = stroke.weight ?? 1;
-                    const { sx, sy } = this.deviceMetrics(canvas);
-                    const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, Math.max(sx, sy));
+                    const { scale, rotated } = this.deviceMetrics(canvas);
+                    const { logical, intDeviceWidth } = this.resolveStrokeWidth(weight, scale, rotated);
                     paint.setStrokeWidth(logical);
                     paint.setPathEffect(null);
                     // Shadow strokes inherit the shadow's silhouette colour set

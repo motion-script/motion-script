@@ -58,7 +58,8 @@ export type GraphicsOp =
     | { kind: "cut" }
     | { kind: "mask"; options?: MaskOptions }
     | { kind: "applyMask" }
-    | { kind: "endMask" };
+    | { kind: "endMask" }
+    | { kind: "effects"; effects: SceneEffect[] };
 
 const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
     "rect", "ellipse", "path", "line", "polygon", "polygram", "text", "richText",
@@ -95,16 +96,20 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  * (default: the union's bounding-box centre) — turning or growing the entire
  * drawn silhouette as one.
  *
- * `opacity()` and `effects()` are also graphics-level: they composite the entire
- * drawn result (all shapes together) into one layer with the given alpha and
- * image filter, exactly like a node-level transform — so a trailing
- * `.opacity(0.4)` dims the whole union, and `.effects(FX.blur(8))` blurs the
- * whole drawn union, not just the last shape.
+ * `opacity()` is graphics-level: it composites the entire drawn result (all
+ * shapes together) into one layer at the given alpha, exactly like a node-level
+ * transform — so a trailing `.opacity(0.4)` dims the whole union.
+ *
+ * `effects()` scopes like `fill()`: it applies to the shapes and paints
+ * accumulated *since the previous `effects()` call* (or the start), then closes
+ * that group off — shapes declared after it start a fresh, unaffected group, as
+ * if a new `Graphics` had begun. So `.ellipse().ellipse().fill().effects(FX.blur(8))`
+ * blurs those two ellipses as one union, and a following `.rect().fill()` renders
+ * crisp. Chaining a second `.effects()` later filters only that later group.
  */
 export class Graphics {
     private _ops: GraphicsOp[] = [];
     private _opacity: number = 1;
-    private _effects: SceneEffect[] = [];
     private _rotation: number = 0;
     private _scale: number = 1;
     private _transformCenter?: Alignment;
@@ -215,14 +220,18 @@ export class Graphics {
     }
 
     /**
-     * Set image effects applied to the whole drawn union. The entire drawn result
-     * is composited through the composed filter as one layer, so the effect reads
-     * the union silhouette (a blur bleeds across the combined shape's edges, not
-     * each shape's). Accepts an {@link Effect} — a single effect, an array, or an
-     * `FX`/`EffectChain` builder result — normalised to a `SceneEffect[]`.
+     * Apply image effects to the current shape group, scoped like {@link fill}:
+     * the shapes and paints recorded since the previous `effects()` call (or the
+     * start of this `Graphics`) are composited through the composed filter as one
+     * layer, so the effect reads that group's union silhouette (a blur bleeds
+     * across the group's combined edges, not each shape's). Calling `effects()`
+     * *closes* the group — shapes declared afterwards start a fresh, unfiltered
+     * group, as if a new `Graphics` had begun. Accepts an {@link Effect} — a
+     * single effect, an array, or an `FX`/`EffectChain` builder result —
+     * normalised to a `SceneEffect[]`.
      */
     effects(effects: Effect): this {
-        this._effects = resolveChainEffects(effects);
+        this._ops.push({ kind: "effects", effects: resolveChainEffects(effects) });
         return this;
     }
 
@@ -264,14 +273,13 @@ export class Graphics {
         return this._opacity;
     }
 
-    /** Effects applied to the whole drawn union. Default empty. */
-    groupEffects(): readonly SceneEffect[] {
-        return this._effects;
-    }
-
-    /** True when the group needs a composited layer (opacity < 1 or any effect). */
+    /**
+     * True when the whole graphics needs a composited layer (opacity < 1). Effects
+     * no longer force a whole-graphics layer — each `effects` op scopes its own
+     * layer to its shape group during replay (see {@link effects}).
+     */
     needsGroupLayer(): boolean {
-        return this._opacity < 1 || this._effects.length > 0;
+        return this._opacity < 1;
     }
 
     /**
