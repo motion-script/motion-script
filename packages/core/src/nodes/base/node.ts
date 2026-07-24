@@ -101,6 +101,13 @@ export interface WiggleOptions {
     settle?: number;
 }
 
+/**
+ * A JSX/`children` child: a single {@link Node}, or an arbitrarily-nested array
+ * of children. Nesting is allowed so `.map()` results can be dropped straight in
+ * as a child — the {@link Node} constructor flattens it (`.flat(Infinity)`).
+ */
+export type NodeChildren = Node | NodeChildren[];
+
 export interface NodeProps {
     x: number; // 0 is center, negative is left, positive is right
     y: number; // 0 is center, negative is down, positive is up
@@ -127,7 +134,12 @@ export interface NodeProps {
     padding: Padding;
     /** When true, content drawn outside this node's outline is clipped away (see {@link Node.clipSelf}). */
     clip: boolean;
-    children: Node | Node[];
+    /**
+     * Child nodes. A single {@link Node}, or an arbitrarily-nested array of them
+     * — the constructor flattens nesting (`.flat(Infinity)`), so `.map()` results
+     * can be dropped in directly as a child without spreading, like React.
+     */
+    children: NodeChildren;
 
     /**
      * Pivot point for rotation and scale. Either a **named anchor** (`'center'`,
