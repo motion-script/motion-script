@@ -30,7 +30,7 @@ export {
     Path, Graphics, ShapeNode, RenderContext, resolvePivot, resolveAlign, resolveSize, resolvePadding, resolveCorners, resolveStroke, resolveShadow, resolveFill,
     Polygon,
     Polygram,
-    LineGrid,
+    LineGrid, lerpFillArray,
     GridPattern,
     Grid, RotatedBox,
     BooleanGroup,

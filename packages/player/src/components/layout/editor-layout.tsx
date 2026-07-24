@@ -203,7 +203,7 @@ export function EditorLayout() {
                                 );
 
                                 const timelinePane = (
-                                    <div className={isRow ? "h-full min-h-0 min-w-0" : "h-full min-h-0 pb-1"}>
+                                    <div className={isRow ? "h-full min-h-0 min-w-0" : "h-full min-h-0 min-w-0 pb-1"}>
                                         <TimelineRuler />
                                     </div>
                                 );

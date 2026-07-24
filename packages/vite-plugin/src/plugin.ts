@@ -314,6 +314,19 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         fs: {
                             allow: [userRoot, pluginAppRoot, pluginNodeModules, playerRoot],
                         },
+                        // Vite marks pre-bundled deps (player, canvaskit — see
+                        // optimizeDeps.include below) immutable and cacheable for a
+                        // year, keyed by a content-agnostic hash (config/lockfile,
+                        // not dist file contents — see the exclude comment below).
+                        // Rebuilding player's dist doesn't change that hash, so a
+                        // browser that already cached the old URL keeps serving it
+                        // from disk forever and never even asks the server — which
+                        // is why a fresh/incognito profile shows the update but an
+                        // existing tab doesn't. no-store keeps every dev response
+                        // live so a normal reload always reflects the latest build.
+                        headers: {
+                            'Cache-Control': 'no-store',
+                        },
                     },
 
                     resolve: {

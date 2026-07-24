@@ -55,7 +55,10 @@ export const EditorToolbar: React.FC = () => {
       )}
 
       <div className="flex gap-2 ml-auto w-80 max-w-full min-w-0 text-muted-foreground px-4 items-center">
-        <button onClick={() => setTimelineZoom(Math.max(0, timelineZoom - 0.1))} className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer">
+        {/* timelineZoom runs 0 (densest, zoomed in) → 1 (fit whole duration, zoomed out) —
+            see timeline.tsx's zoom comment. So the "zoom out" (−) button raises
+            timelineZoom toward 1 and "zoom in" (+) lowers it toward 0. */}
+        <button onClick={() => setTimelineZoom(Math.min(1, timelineZoom + 0.1))} className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4 text-muted-foreground">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
           </svg>
@@ -66,7 +69,7 @@ export const EditorToolbar: React.FC = () => {
           else setTimelineZoom(e as number);
         }} />
 
-        <button onClick={() => setTimelineZoom(Math.min(1, timelineZoom + 0.1))} className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer">
+        <button onClick={() => setTimelineZoom(Math.max(0, timelineZoom - 0.1))} className="h-8 px-2 hover:bg-toolbar-control rounded-lg cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
