@@ -26,6 +26,24 @@ export type ModeOptions = { mode?: EffectMode };
  * - `{ blocks, sharpColors?, backdrop? }` — uniform block count, optional sharpness.
  * - `{ horizontalBlocks, verticalBlocks, sharpColors?, backdrop? }` — per-axis block count.
  */
+/**
+ * Options for {@link Effects.motionBlur} / {@link EffectChain.motionBlur}.
+ * Every field is optional; omitted fields fall back to the defaults noted below.
+ *
+ * - `length` — shutter "openness" as a percent; 100 ≈ 360° (default 50).
+ * - `alignment` — shutter phase: `'behind'` | `'centered'` | `'ahead'` | −1…1 (default `'centered'`).
+ * - `samples` — renderer quality hint; higher switches to multi-tap accumulation (default 16).
+ * - `strength` — blur-length multiplier (default 1).
+ * - `axis` — per-axis velocity scale: `'x'` | `'y'` | `'both'` | `{x,y}` (default `'both'`).
+ */
+export type MotionBlurOptions = {
+  length?: number;
+  alignment?: MotionBlurEffect['alignment'];
+  samples?: number;
+  strength?: number;
+  axis?: MotionBlurAxis;
+} & ModeOptions;
+
 export type PixelateOptions =
   | number
   | ({ blocks: number; sharpColors?: boolean } & ModeOptions)
@@ -193,20 +211,17 @@ export class EffectChain {
    * Append velocity-driven motion blur — smears the node's own content along its
    * actual per-frame motion (a static node stays sharp). Modelled on After
    * Effects' shutter angle (`length`) and shutter phase (`alignment`).
-   * @param length     shutter "openness" as a percent; 100 ≈ 360° (default 50).
-   * @param alignment  shutter phase: `'behind'` | `'centered'` | `'ahead'` | −1…1 (default `'centered'`).
-   * @param samples    renderer quality hint — higher switches to multi-tap accumulation (default 16).
-   * @param strength   blur-length multiplier (default 1).
-   * @param axis       per-axis velocity scale: `'x'` | `'y'` | `'both'` | `{x,y}` (default `'both'`).
+   * @param opts  {@link MotionBlurOptions} — all fields optional; see its docs for defaults.
    */
-  motionBlur(
+  motionBlur({
     length = 50,
-    alignment: MotionBlurEffect['alignment'] = 'centered',
+    alignment = 'centered',
     samples = 16,
     strength = 1,
-    axis: MotionBlurAxis = 'both',
-  ) {
-    return new EffectChain([...this.list, { type: 'motionBlur', length, alignment, samples, strength, axis }]);
+    axis = 'both',
+    ...mode
+  }: MotionBlurOptions = {}) {
+    return new EffectChain([...this.list, { type: 'motionBlur', length, alignment, samples, strength, axis, ...mode }]);
   }
 
   /**
@@ -307,14 +322,15 @@ export const Effects = {
   /** After Effects-style posterize. `level` = brightness bands per channel (≥ 2). `{ backdrop }` bands the backdrop. */
   posterize: (level = 4, opts?: ModeOptions) =>
     createChain([{ type: 'posterize', level, ...opts }]),
-  /** Velocity-driven motion blur. `length` percent (≈ shutter angle), `alignment` shutter phase, `samples` quality hint. */
-  motionBlur: (
+  /** Velocity-driven motion blur. `length` percent (≈ shutter angle), `alignment` shutter phase, `samples` quality hint. See {@link MotionBlurOptions}. */
+  motionBlur: ({
     length = 50,
-    alignment: MotionBlurEffect['alignment'] = 'centered',
+    alignment = 'centered',
     samples = 16,
-    multiplier = 1,
-    axis: MotionBlurAxis = 'both',
-  ) => createChain([{ type: 'motionBlur', length, alignment, samples, strength: multiplier, axis }]),
+    strength = 1,
+    axis = 'both',
+    ...mode
+  }: MotionBlurOptions = {}) => createChain([{ type: 'motionBlur', length, alignment, samples, strength, axis, ...mode }]),
   skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
     createChain([{ type: 'sksl', shader, uniforms, mode: 'foreground' as const, blendMode }]),
   skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>

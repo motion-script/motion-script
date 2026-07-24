@@ -17,6 +17,7 @@ import context from './scenes/context?scene';
 import stage from './scenes/stage';
 import overlayVerify from './scenes/overlay-verify?scene';
 import defaultSize from './scenes/default-size';
+import addRemoveChild from './scenes/add-remove-child?scene';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
@@ -53,6 +54,7 @@ export default createProject({
         nested,
         grid,
         flexNodes,
+        addRemoveChild,
     ],
     theme: {
         colors: {

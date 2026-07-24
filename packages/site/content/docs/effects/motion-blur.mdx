@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Ellipse effects={Effects.motionBlur()} />
 
 // Heavy shutter, trailing phase
-<Ellipse effects={Effects.motionBlur(90, 'behind', 16)} />
+<Ellipse effects={Effects.motionBlur({ length: 90, alignment: 'behind', samples: 16 })} />
 
 // Raw object
 <Ellipse effects={[{ type: 'motionBlur', length: 50, alignment: 'centered', samples: 16, strength: 1, axis: 'both' }]} />
@@ -30,7 +30,7 @@ import { createScene, Ellipse, Effects, tween } from '@motion-script/core';
 
 export default createScene(function* (stage) {
   const puck = new Ellipse({ width: 120, height: 120, fill: 'royalblue' });
-  puck.set({ x: -400, effects: Effects.motionBlur(80, 'centered', 16) });
+  puck.set({ x: -400, effects: Effects.motionBlur({ length: 80, alignment: 'centered', samples: 16 }) });
   stage.add(puck);
 
   yield* puck.moveX(400, 0.4);
@@ -63,7 +63,7 @@ export default createScene(function* (stage) {
   yield* tween(1, (t) => {
     puck.set({
       x: lerpNumber(-400, 400, t),
-      effects: Effects.motionBlur(80, 'centered', 16, lerpNumber(0, 1, t)),
+      effects: Effects.motionBlur({ length: 80, alignment: 'centered', samples: 16, strength: lerpNumber(0, 1, t) }),
     });
   });
 });
@@ -73,8 +73,8 @@ export default createScene(function* (stage) {
 
 ```tsx
 // Motion blur with chromatic aberration for a fast-camera look
-<Ellipse effects={Effects.motionBlur(80).chromaticAberration(4)} />
+<Ellipse effects={Effects.motionBlur({ length: 80 }).chromaticAberration(4)} />
 
 // Smear + slight blur to soften the trail edges
-<Ellipse effects={Effects.motionBlur(60).blur(2)} />
+<Ellipse effects={Effects.motionBlur({ length: 60 }).blur(2)} />
 ```

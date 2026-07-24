@@ -2,7 +2,7 @@
 // 1. Scene & Project
 // ---------------------------------------------------------
 export {
-    createScene, fadeIn, fadeOut, ramp, MeasureScope, Clip,
+    createScene, fadeIn, fadeOut, resolveFillArray, prepareFill, resolveStrokeArray, resolveShadowArray, ramp, MeasureScope, Clip,
     createProject, AudioFilters, PathBuilder, lerpVector2, AssetTracker
 } from '@motion-script/core';
 export type {
@@ -244,6 +244,7 @@ export {
     clamp,
     generateList,
     createContext,
+    ContextMap,
     Random,
     SeedGenerator,
 } from '@motion-script/core';

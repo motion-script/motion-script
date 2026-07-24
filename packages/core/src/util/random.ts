@@ -189,11 +189,11 @@ export class Random {
     /**
      * Rewind this source so the next draws reproduce a sequence from the start.
      *
-     * With no argument, rewinds to the current {@link seed} — what the runtime
-     * calls before each timeline replay, and what authors call to repeat a
-     * sequence within a scene. Pass a `seed` to adopt it as the new origin first
-     * (equivalent to assigning {@link seed}), so the source both re-seeds and
-     * rewinds in one call — convenient inside a node's `init()`.
+     * With no argument, rewinds to the current {@link seed} — what authors call to
+     * repeat a sequence within a scene. Pass a `seed` to adopt it as the new origin
+     * first (equivalent to assigning {@link seed}), so the source both re-seeds and
+     * rewinds in one call — e.g. in a node's constructor to give it a distinct
+     * reproducible stream.
      */
     reset(seed: string | number = this._seed): void {
         this.adopt(seed);

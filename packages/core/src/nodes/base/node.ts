@@ -64,7 +64,42 @@ export interface NodeMetadata<T extends Node> {
     ref?: Reference<T>;
 }
 
+/**
+ * Map a prop name to a large, stable offset into a {@link Random.noise} field,
+ * so two props wiggled together sample independent regions and don't move in
+ * lockstep. A djb2 hash (not the name's length — `x`/`y` collide there) spreads
+ * the offsets ~thousands of units apart, well past any overlap for a realistic
+ * wiggle duration × frequency.
+ */
+function wigglePhase(key: string): number {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    // Spread across a wide span; the sign of the hash doesn't matter (noise is
+    // defined for negative inputs too).
+    return (h % 100000) * 13.37;
+}
+
 export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
+
+/**
+ * Call-wide options for {@link Node.wiggle}, the trailing bag that shapes every
+ * prop in the call (mirrors how `TweenOptions` bundles `ease`/`lerp`/`delay`).
+ */
+export interface WiggleOptions {
+    /**
+     * Oscillations per second — higher is faster/twitchier. Applies to every
+     * prop in the call; for a per-prop rate, use a second `wiggle` in the same
+     * {@link parallel}. Defaults to `4`.
+     */
+    frequency?: number;
+    /**
+     * Fraction of the duration (`0`–`1`) spent easing each offset back to its
+     * base at the end, so props land without a snap. `0` is a hard cut (stop
+     * mid-swing). Defaults automatically to a short window that shrinks for
+     * longer wiggles, and is `0` for an unbounded (`Infinity`) duration.
+     */
+    settle?: number;
+}
 
 export interface NodeProps {
     x: number; // 0 is center, negative is left, positive is right
@@ -140,8 +175,9 @@ export interface NodeProps {
     /**
      * Origin seed for this node's {@link Node.random} source. Defaults to `0`.
      * Set it to give the node a reproducible-but-distinct random stream without
-     * re-seeding inside `init`. The base `init` rewinds `random` to this seed
-     * each playback pass, so draws stay reproducible across scrub/precomp/HMR.
+     * re-seeding by hand. The constructor adopts it as `random`'s origin, and the
+     * runtime rebuilds the node each playback pass, so draws stay reproducible
+     * across scrub/precomp/HMR.
      */
     seed: string | number;
 }
@@ -211,9 +247,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * children added afterwards (mirrors `tryAssets()` being non-null). */
     private _contextBound = false;
 
-    /** The props this node was constructed with, retained so {@link init} can
-     * re-run each playback pass (the constructor's prop application is one-shot;
-     * `reinitProps` resets cells to defaults, then `init` re-layers on top). */
+    /** The raw props this node was constructed with, retained past construction so
+     * a provider's {@link provideContext} can see which keys the author explicitly
+     * passed on every bind walk (e.g. {@link DefaultTextStyle} contributes only the
+     * style keys it was given). Authored identity — deliberately kept through
+     * {@link dispose} so a reused instance re-derives context from the next walk. */
     protected _props?: NodeConfig<any, P>;
 
     /** Read the nearest ancestor provider's value for `ctx` (or its default). */
@@ -224,13 +262,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     /**
      * Per-node seeded randomness, available to every subclass without threading a
      * `Random` in from the stage. Defaults to seed `0`; set the origin via the
-     * {@link NodeProps.seed} prop, or re-seed inside {@link init} with
-     * `this.random.reset(seed)` or `this.random.seed = seed` (e.g. from
-     * `this.useContext(SeedToken)`).
+     * {@link NodeProps.seed} prop, or re-seed in the constructor with
+     * `this.random.reset(seed)` / `this.random.seed = seed`.
      *
-     * The base {@link init} rewinds this each playback pass, so draws are
-     * reproducible across scrub/precomp/HMR out of the box — the same determinism
-     * guarantee `stage.reset()` gives `stage.random` sources.
+     * Draws are reproducible across scrub/precomp/HMR out of the box: the runtime
+     * rebuilds a fresh node (and thus a fresh source at its constructor-set seed) on
+     * every playback pass rather than reusing a source that has advanced — so a draw
+     * taken during construction always starts from the seed head, no per-pass rewind
+     * needed.
      */
     readonly random: Random = new Random(0);
 
@@ -270,6 +309,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     private readonly _layoutRect = new Signal<BoxBounds>({ x: 0, y: 0, width: 0, height: 0 });
     protected constraints!: SizeConstraints;
 
+    /**
+     * The {@link MeasureScope} threaded through the last {@link measure} pass,
+     * retained so off-tree work (e.g. the animated child-insert in
+     * `node-lifecycle.ts`) can measure a not-yet-attached child in isolation —
+     * measuring its natural size without adding it to this node's layout flow, so
+     * siblings don't shift for a frame. Undefined until this node is first
+     * measured. `@internal`.
+     */
+    _lastScope?: MeasureScope;
+
     /** The allocated bounding box from the last layout pass. Reactive — reads inside callbacks are tracked. */
     protected get layoutRect(): BoxBounds { return this._layoutRect.get(); }
 
@@ -278,21 +327,22 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     constructor(props?: NodeConfig<any, P>) {
         // Expand `size` sugar into width/height before anything reads either —
         // in place, so the single object retained as `_props` below already
-        // carries the expanded values on every init() re-run.
+        // carries the expanded values.
         if (props) expandSize(props as Record<string, unknown>);
 
-        // Retain for init() re-runs each pass (see _props doc). Captured before
-        // any default application so it reflects exactly what the author passed.
+        // Retain the raw props (see _props doc) so a provider's provideContext can
+        // read which keys the author passed. Captured before any default
+        // application so it reflects exactly what the author passed.
         this._props = props;
 
         if (props?.ref) {
             props.ref(this as any);
         }
 
-        // Adopt the configured seed as `random`'s origin (default 0). The base
-        // `init` rewinds to it each pass via `this.random.reset()`, so draws stay
-        // reproducible without the author re-seeding inside `init`. `seed` is a
-        // construction-time config, not a reactive prop, so a callback form is
+        // Adopt the configured seed as `random`'s origin (default 0). Because the
+        // runtime rebuilds the node each pass, the source is fresh at this seed on
+        // every pass, so draws stay reproducible without any per-pass rewind. `seed`
+        // is a construction-time config, not a reactive prop, so a callback form is
         // ignored.
         if (props?.seed !== undefined && typeof props.seed !== "function") {
             this.random.reset(props.seed);
@@ -389,6 +439,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /**
      * Re-create this node's reactive signals from their @property defaults.
+     *
+     * This exists **only for the scene root** — the sole node instance reused
+     * across playback controllers. Generator-built children are disposed and
+     * rebuilt fresh on every reset, so they never need re-initialisation; the one
+     * runtime caller is `Scene.reset()` on `this.root` (see {@link reinit}).
      *
      * `dispose()` is terminal — it frees every signal and sets `__signals` to
      * undefined. Scene roots, however, are owned by the project config and
@@ -652,6 +707,137 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         return yield* this.to({ scale } as Partial<P>, duration, ease);
     }
 
+    /**
+     * Continuously jitter one or more numeric props around their **current**
+     * values for `duration` seconds, then settle them back exactly where they
+     * started.
+     *
+     * The target reads like {@link to} — an object of prop → *amplitude* rather
+     * than prop → target — so you name props as typed object keys, never string
+     * arguments, and can jitter several at once: `wiggle({ x: 8, rotation: 2 },
+     * 0.6)`. Each value is the peak offset from that prop's base, in the prop's
+     * own units. Call-wide shaping (`frequency`, `settle`) goes in the trailing
+     * {@link WiggleOptions} bag, mirroring how `TweenOptions` bundles its knobs.
+     *
+     * Unlike `to()`, which drives a prop *to* a target, `wiggle` adds an organic
+     * offset on top of a fixed base — each prop's value at the moment the
+     * generator starts. Offsets are drawn from this node's seeded {@link random}
+     * `noise` field, so they are *correlated over time* (nearby frames get
+     * nearby offsets) rather than the jagged jumps independent draws would give
+     * — the difference that makes it read as hand-held shake / drift rather than
+     * static. Because the source is seeded per node, the motion is reproducible
+     * across scrub / precomp / HMR out of the box.
+     *
+     * The offset rides on each prop's *stored* numeric value, so raw props
+     * (`x`, `rotation`, …) and mapped props that resolve to a plain number both
+     * wiggle correctly. A prop whose stored value isn't a number — `width:
+     * 'fill'`, or a per-corner `cornerRadius` object — has no scalar to offset,
+     * so it's skipped with a dev-time warning rather than producing `NaN`.
+     *
+     * The bases are captured once, so `wiggle` composes: run it inside
+     * {@link parallel} alongside a `to()` on *other* props, or give sibling nodes
+     * distinct seeds (via the {@link NodeProps.seed} prop) so a crowd wiggles out
+     * of phase. Every prop's offset eases to zero over the final `settle` fraction
+     * so it lands back on its base without a visible snap.
+     *
+     * @param amplitudes Map of prop → peak offset from its base, in the prop's
+     *                   own units. Same key shape as {@link to}'s target
+     *                   (`{ x, y, rotation, … }`).
+     * @param duration   Seconds to wiggle for. Pass `Infinity` inside a
+     *                   {@link parallel} for an endless jitter bounded by its
+     *                   siblings (no settle is applied to an infinite wiggle).
+     * @param options    Call-wide {@link WiggleOptions}: `frequency` (default
+     *                   `4`) and `settle`. `frequency` applies to every prop; for
+     *                   a per-prop rate, use a second `wiggle` in the same
+     *                   `parallel`.
+     *
+     * @example
+     * // Shake horizontally for a beat, then rest exactly where it began:
+     * yield* node.wiggle({ x: 8 }, 0.6);
+     *
+     * @example
+     * // A faster shake with a hard cut (no ease-out) at the end:
+     * yield* node.wiggle({ x: 12, y: 12 }, 1, { frequency: 8, settle: 0 });
+     *
+     * @example
+     * // Hand-held drift while it moves across (offset composes with the move):
+     * yield* parallel(
+     *   node.moveX(400, 2),
+     *   node.wiggle({ y: 6, rotation: 2 }, 2, { frequency: 3 }),
+     * );
+     */
+    *wiggle(
+        amplitudes: { [K in keyof P]?: number },
+        duration: number,
+        options?: WiggleOptions,
+    ): FrameGenerator {
+        const frequency = options?.frequency ?? 4;
+        // The ease-out window: `settle` overrides, else a short fraction of the
+        // run, capped so a very short wiggle still spends most of its time
+        // actually wiggling, and zero for an unbounded (Infinity) wiggle — there's
+        // no end to ease toward.
+        const settle = options?.settle ?? (Number.isFinite(duration) && duration > 0
+            ? Math.min(0.25, 0.15 / duration)
+            : 0);
+
+        // Resolve each key to its numeric cell + captured base once, up front.
+        // `base` is captured now so the jitter rides on top of wherever the prop
+        // is at the start — what lets wiggle compose with a concurrent to() on a
+        // different prop.
+        //
+        // The offset is applied in the prop's *stored* space via `cell.set` — a
+        // mapped numeric prop (a clamp / scale mapper) stores a number, so the
+        // wiggle rides on the resolved value directly; that also sidesteps the
+        // double-mapping a setter write would cause (the mapper is one-way, so
+        // there's no author-space base to recover). A prop whose stored value
+        // isn't a plain number — `width: 'fill'`, or a per-corner `cornerRadius`
+        // object — has no scalar to offset, so it's skipped with a dev warning.
+        interface WiggleTarget { cell: Signal<number>; base: number; amplitude: number; phase: number; }
+        const resolved: WiggleTarget[] = [];
+        for (const key in amplitudes) {
+            const amplitude = amplitudes[key];
+            if (amplitude === undefined) continue;
+
+            const cell = this.__signals?.get(key) as Signal<number> | undefined;
+            const base = cell?.get();
+            if (!cell || typeof base !== 'number') {
+                if (cell) {
+                    console.warn(`Node.wiggle: prop "${key}" isn't a plain number (got ${typeof base}); skipping. wiggle only offsets numeric props.`);
+                }
+                continue;
+            }
+
+            resolved.push({
+                cell,
+                base,
+                amplitude,
+                // Give each prop its own region of the noise field so props
+                // wiggled together (x + y) draw independent curves instead of
+                // moving in lockstep. A per-key hash — not `key.length`, which
+                // collides for same-length names like x/y — spreads the sample
+                // points far apart, past any overlap for a realistic run.
+                phase: wigglePhase(key),
+            });
+        }
+        if (resolved.length === 0) return;
+
+        let elapsed = 0;
+        while (elapsed < duration) {
+            const t = duration > 0 && Number.isFinite(duration) ? elapsed / duration : 0;
+            // Ease every offset to zero over the final `settle` window.
+            const fade = settle > 0 && t > 1 - settle ? (1 - t) / settle : 1;
+            for (const target of resolved) {
+                // noise() returns [0, 1]; remap to [-1, 1] for a symmetric swing
+                // around the base.
+                const swing = this.random.noise(target.phase + elapsed, frequency) * 2 - 1;
+                target.cell.set(target.base + swing * target.amplitude * fade);
+            }
+            elapsed += yield;
+        }
+        // Land exactly on the bases — no residual offset from the last frame.
+        for (const target of resolved) target.cell.set(target.base);
+    }
+
     // ---- State stack (save / restore) -------------------------------------
     // A per-node LIFO stack of property snapshots, mirroring Motion Canvas's
     // node.save()/restore(). `save()` pushes a snapshot of every reactive prop;
@@ -768,25 +954,34 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Context lifecycle ------------------------------------------------
 
     /**
-     * Recommended hook for context-aware setup. Runs **after** the parent link
-     * and inherited context exist (unlike the constructor, which runs before
-     * either), and **re-runs every playback pass** — `reset()` restores props to
-     * their defaults, then the context walk re-invokes `init` to re-layer
-     * inherited values on top. Override to read {@link useContext}, apply
-     * context-derived props (`this.fontSize = …`), or `this.addChild(…)`.
+     * Hook for applying **inherited context values** to this node, once, after the
+     * node is linked into the tree and the context walk has resolved its ancestors'
+     * providers — the first moment {@link useContext} returns real values (the
+     * constructor runs before the node is linked, so it can't read context).
      *
-     * The base implementation rewinds {@link random} so per-node draws reproduce
-     * identically each pass. A subclass that overrides `init` and draws from
-     * `this.random` should either call `super.init(props)` or rewind the source
-     * itself (`this.random.reset(seed)` doubles as the re-seed) — otherwise the
-     * source keeps advancing across passes and draws stop being reproducible.
+     * Runs **exactly once per node instance**: the runtime rebuilds the subtree on
+     * every reset/scrub/precomp rather than replaying this hook, so there is no
+     * "each pass" re-entry to guard against — never call {@link clearChildren} or
+     * write idempotency ceremony here.
      *
-     * Idempotent by contract: it must produce the same result each pass, since
-     * cells (and `random`) are reset before every call.
+     * ### Composition rule
+     * **Structure** (which children exist, and how many) is built in the
+     * **constructor** via {@link add} from *props* — never here, and never from
+     * context. This hook applies context-derived **values** only: read the resolved
+     * value from `ctx` (or {@link useContext}) and write it onto the already-built
+     * structure, typically through refs captured in the constructor.
+     *
+     * @example
+     * // constructor: this.add(<Rect ref={this.accent} … />)   // structure from props
+     * protected override resolveContext(ctx: ContextMap): void {
+     *   this.accent().set({ fill: ctx.get(ThemeToken).accent }); // value from context
+     * }
+     *
+     * @param ctx The resolved {@link ContextMap} for this node — the same map its
+     *            children inherit. `ctx.get(token)` is equivalent to
+     *            {@link useContext}, passed in so the single-fire timing is explicit.
      */
-    protected init(_props?: NodeConfig<any, P>): void {
-        this.random.reset();
-    }
+    protected resolveContext(_ctx: ContextMap): void { }
 
     /**
      * Providers override this to attach their token(s) to the {@link ContextMap}
@@ -799,25 +994,26 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     /**
      * Push inherited context down this subtree, mirroring {@link bindAssets}.
      *
-     * `runInit` separates the two responsibilities the walk has:
-     * - `true` (start-of-pass / a freshly-added child): also invoke {@link init},
-     *   which may write prop cells and add children. Children added during a
-     *   parent's `init` are reached by the recursion below.
-     * - `false` (per-frame structural re-push): only refresh `_context` so
-     *   subtrees added this frame inherit it — must **not** re-fire `init`, which
-     *   would clobber an in-flight tween's value every frame.
+     * `runResolve` separates the two responsibilities the walk has:
+     * - `true` (first bind of this instance / a freshly-added child): also invoke
+     *   {@link resolveContext}, which applies inherited context *values* to the
+     *   already-built structure. It runs once per instance (the runtime rebuilds
+     *   rather than replaying), so it must not depend on being re-fired.
+     * - `false` (per-frame structural re-push): only refresh `_context` so subtrees
+     *   added this frame inherit it — must **not** re-fire {@link resolveContext},
+     *   which would clobber an in-flight tween's value every frame.
      */
-    bindContext(parent: ContextMap, runInit: boolean): void {
+    bindContext(parent: ContextMap, runResolve: boolean): void {
         const next = this.provideContext(parent);
         this._context = next;
         this._contextBound = true;
-        if (runInit) this.init(this._props);
-        for (const child of this._children) child.bindContext(next, runInit);
+        if (runResolve) this.resolveContext(next);
+        for (const child of this._children) child.bindContext(next, runResolve);
     }
 
     /** Push this node's current context onto a newly-added child (and run its
-     * `init`), but only if this node has itself been bound — so children added
-     * before the first bind walk are left for that walk to reach. */
+     * {@link resolveContext}), but only if this node has itself been bound — so
+     * children added before the first bind walk are left for that walk to reach. */
     private bindChildContext(child: Node): void {
         if (this._contextBound) child.bindContext(this._context, true);
     }
@@ -1035,6 +1231,25 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     get children(): Node[] {
         return this._children;
+    }
+
+    /**
+     * Compose this node's internal children — the constructor-friendly entry point
+     * a custom composite calls to build its own subtree (a single node or an array,
+     * JSX included). Sugar over {@link addChild}/{@link addChildren}: it works the
+     * same before the node is linked into the tree (in the constructor) as after,
+     * so a composite builds its structure from *props* right in its constructor —
+     * no `init`-style hook, no idempotency guard, since the constructor runs once.
+     *
+     * @example
+     * constructor(props?) {
+     *   super(props);
+     *   this.add(<Rect ref={this.rowRef} group="row">{…}</Rect>);
+     * }
+     */
+    add(child: Node | Node[]): void {
+        if (Array.isArray(child)) this.addChildren(child);
+        else this.addChild(child);
     }
 
     addChild(child: Node): void {
@@ -1378,6 +1593,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
         this.constraints = constraints;
+        this._lastScope = scope;
 
         const maxW = constraints.maxWidth ?? 0;
         const maxH = constraints.maxHeight ?? 0;
@@ -1459,7 +1675,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         this._assets = null;
         // Drop inherited context so a reused instance re-derives it from the next
         // bind walk rather than serving a stale map. `_props` is authored identity
-        // and is deliberately retained for init() re-runs.
+        // and is deliberately retained so provideContext still works after reuse.
         this._context = ContextMap.EMPTY;
         this._contextBound = false;
     }

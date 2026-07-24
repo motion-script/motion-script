@@ -101,7 +101,7 @@ describe('FX builders', () => {
     });
 
     it('motionBlur accepts explicit params', () => {
-        expect([...Effects.motionBlur(80, 'ahead', 32, 2, 'x')]).toEqual([
+        expect([...Effects.motionBlur({ length: 80, alignment: 'ahead', samples: 32, strength: 2, axis: 'x' })]).toEqual([
             { type: 'motionBlur', length: 80, alignment: 'ahead', samples: 32, strength: 2, axis: 'x' },
         ]);
     });

@@ -18,6 +18,9 @@ import path from './scenes/path-scene?scene';
 import latex from './scenes/latex-scene?scene';
 import code from './scenes/code-scene?scene';
 import customScene from './scenes/custom-scene';
+import composite from './scenes/composite-scene?scene';
+import fanScene from './scenes/fan-scene?scene';
+import dataScene from './scenes/data-scene?scene';
 
 /**
  * One scene per built-in node — used to generate the screenshots and
@@ -51,7 +54,10 @@ export default createProject({
         path,
         latex,
         code,
-        customScene
+        customScene,
+        composite,
+        fanScene,
+        dataScene,
     ],
     theme: {
         colors: {

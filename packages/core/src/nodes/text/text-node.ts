@@ -4,6 +4,7 @@ import { FontStyle } from "@/attributes/text/span";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
+import { ContextMap } from "@/util/context";
 import { AssetTracker } from "@/assets/tracker";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
@@ -79,11 +80,12 @@ export class Text extends ShapeNode<TextProps> {
     }
 
     // Inherit text-style defaults from the nearest ancestor <DefaultTextStyle>
-    // for any style prop the author didn't set. Runs after the tree + context
-    // exist and re-runs each pass (see Node.init); writing through _writeProp
+    // for any style prop the author didn't set. This is context-value application
+    // (structure is fixed — Text has no children), so it belongs in resolveContext,
+    // which runs once after the tree + context exist. Writing through _writeProp
     // applies each field's own mapper (e.g. `fill`'s color resolver) once.
-    protected override init(props?: NodeConfig<Text, TextProps>): void {
-        applyTextDefaults(this, props as Record<string, unknown> | undefined);
+    protected override resolveContext(_ctx: ContextMap): void {
+        applyTextDefaults(this, this._props as Record<string, unknown> | undefined);
     }
 
     // Text doesn't hug/fill based on children (it has none) — it hugs its own

@@ -80,7 +80,7 @@ describe("Provider / useContext over the tree", () => {
         const root = new Provider({ context: Money, value: 9 });
         bind(root);
         const late = new Rect({ width: 1, height: 1 });
-        root.addChild(late); // addChild pushes context + runs init immediately
+        root.addChild(late); // addChild pushes context + runs resolveContext immediately
         expect(late.useContext(Money)).toBe(9);
     });
 });
@@ -100,13 +100,13 @@ describe("ThemeProvider built-in tokens", () => {
 });
 
 describe("Node.random", () => {
-    /** A custom node that records a draw taken in init() — the documented author
-     * pattern. Base init() rewinds this.random, so the draw is the head of the
-     * seed's sequence every pass. */
+    /** A custom node that records a draw taken in its constructor — the documented
+     * author pattern. The constructor runs once per instance and `this.random` is
+     * fresh at its seed, so the draw is the head of the seed's sequence. */
     class Draws extends Rect {
         drawn = 0;
-        protected override init(): void {
-            super.init(); // rewinds this.random
+        constructor(props: ConstructorParameters<typeof Rect>[0]) {
+            super(props);
             this.drawn = this.random.nextFloat();
         }
     }
@@ -114,34 +114,29 @@ describe("Node.random", () => {
     it("defaults to seed 0 and is independent per node", () => {
         const a = new Draws({ width: 1, height: 1 });
         const b = new Draws({ width: 1, height: 1 });
-        const root = new Rect({ children: [a, b] });
-        bind(root);
         // Same default seed → same head draw; each node has its own source.
         expect(a.drawn).toBe(b.drawn);
         expect(a.drawn).toBe(new Random(0).nextFloat());
     });
 
-    it("base init() rewinds the source, so draws reproduce each pass", () => {
-        const node = new Draws({ width: 1, height: 1 });
-        const root = new Rect({ children: [node] });
-        bind(root);
-        const first = node.drawn;
-        // A second bind walk simulates the next playback pass.
-        bind(root);
-        expect(node.drawn).toBe(first);
+    it("a fresh instance reproduces the same draw (the runtime rebuilds per pass)", () => {
+        // Each playback pass constructs a new node, so the draw is stable across
+        // passes without any per-pass rewind — same seed, same head draw.
+        const first = new Draws({ width: 1, height: 1 }).drawn;
+        const second = new Draws({ width: 1, height: 1 }).drawn;
+        expect(second).toBe(first);
     });
 
-    it("re-seeding in init() via reset(seed) changes the draw deterministically", () => {
+    it("re-seeding via the seed prop changes the draw deterministically", () => {
+        // The constructor adopts the seed prop as random's origin before any draw.
         class Seeded extends Rect {
             drawn = 0;
-            protected override init(): void {
-                this.random.reset(123); // re-seed + rewind in one call
+            constructor(props: ConstructorParameters<typeof Rect>[0]) {
+                super(props);
                 this.drawn = this.random.nextFloat();
             }
         }
-        const node = new Seeded({ width: 1, height: 1 });
-        const root = new Rect({ children: [node] });
-        bind(root);
+        const node = new Seeded({ width: 1, height: 1, seed: 123 });
         expect(node.drawn).toBe(new Random(123).nextFloat());
     });
 });
@@ -180,16 +175,25 @@ describe("DefaultTextStyle inheritance", () => {
         expect((txt.fill as any[]).length).toBeGreaterThan(0);
     });
 
-    it("re-running the bind walk (a new pass) re-applies inherited defaults", () => {
+    it("inherited defaults apply once on the initial bind", () => {
         const txt = new Text({ text: "hi" });
         const root = new DefaultTextStyle({ fontSize: 32, children: [txt] });
         bind(root);
         expect(txt.fontSize).toBe(32);
-        // Simulate a generator tween moving the value mid-pass…
-        txt.set({ fontSize: 99 });
-        expect(txt.fontSize).toBe(99);
-        // …then the next pass's bind walk re-layers the inherited default.
+    });
+
+    it("a per-frame structural re-push (runResolve=false) does not clobber a mid-pass value", () => {
+        const txt = new Text({ text: "hi" });
+        const root = new DefaultTextStyle({ fontSize: 32, children: [txt] });
         bind(root);
         expect(txt.fontSize).toBe(32);
+        // A generator tween moves the value mid-pass…
+        txt.set({ fontSize: 99 });
+        expect(txt.fontSize).toBe(99);
+        // …and the per-frame re-push (runResolve=false, the way the runtime refreshes
+        // context for subtrees added this frame) must NOT re-fire resolveContext and
+        // overwrite the in-flight value.
+        root.bindContext(ContextMap.EMPTY, false);
+        expect(txt.fontSize).toBe(99);
     });
 });

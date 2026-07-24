@@ -148,6 +148,12 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     }
 
     override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+        // Retain constraints + scope for off-tree work (see Node.measure / the
+        // animated child-insert in node-lifecycle.ts) — this override doesn't call
+        // super, so mirror the base capture here.
+        this.constraints = constraints;
+        this._lastScope = scope;
+
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
 

@@ -1,5 +1,5 @@
 import {
-    createScene, createRef, createContext, Rect, Text, Provider,
+    createScene, createRef, createContext, ContextMap, Rect, Text, Provider,
     DefaultTextStyle, easeInOut,
 } from "motion-script";
 import { layoutCard } from "./layout-card";
@@ -14,22 +14,24 @@ import { layoutCard } from "./layout-card";
  *    (the heading bumps `fontSize`, one row overrides `fill`).
  *
  *  - **`createContext` + `<Provider>`** is the general primitive: a typed token
- *    carries arbitrary author data down the tree. A node reads it in `init()`
- *    via `this.useContext(token)`. Here a `LabelColor` token drives the swatch
- *    fill of a small custom node, with a nested `<Provider>` overriding it for
- *    one subtree (nearest-ancestor-wins). `<ThemeProvider>` (not shown) is the
- *    batteries-included wrapper over the same machinery for theme/data/seed.
+ *    carries arbitrary author data down the tree. A node reads it in
+ *    `resolveContext(ctx)` — the once-per-instance hook that runs after the node
+ *    is linked in, so context is resolved (the constructor runs too early). Here a
+ *    `LabelColor` token drives the swatch fill of a small custom node, with a
+ *    nested `<Provider>` overriding it for one subtree (nearest-ancestor-wins).
+ *    `<ThemeProvider>` (not shown) is the batteries-included wrapper over the same
+ *    machinery for theme/data/seed.
  */
 
 // A typed context token: the value flowing down is a color string.
 const LabelColor = createContext<string>("#888", "label-color");
 
 /** A tiny custom node that paints itself with whatever LabelColor it inherits.
- * Reads context in init() — the recommended hook, where the parent/context
- * already exist (unlike the constructor). */
+ * A context *value* applied to a fixed structure (a leaf Rect), so it belongs in
+ * resolveContext — which runs once, after context is resolved. */
 class Swatch extends Rect {
-    protected override init(): void {
-        this.fill = this.useContext(LabelColor);
+    protected override resolveContext(ctx: ContextMap): void {
+        this.fill = ctx.get(LabelColor);
     }
 }
 

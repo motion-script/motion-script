@@ -109,6 +109,11 @@ export class GroupLayout {
 
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
         const host = this.host;
+        // Retain the scope on the host for off-tree measurement (the animated
+        // child-insert in node-lifecycle.ts): Rect/Root delegate here instead of
+        // Node.measure, so capture it on the host node the same way.
+        (host as unknown as { _lastScope?: MeasureScope })._lastScope = scope;
+
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
 

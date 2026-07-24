@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
             <Rect width={'fill'} height={'fill'} group={'column'} gap={40} padding={60}>
                 <Text text={'Motion blur — velocity-driven'} fontSize={28} fill={'white'} width={'fill'} textAlign={'center'} />
                 <Rect width={'fill'} height={'fill'} group={'column'} gap={80}>
-                    <Ellipse ref={blurred} x={-560} width={120} height={120} fill={'primary'} effects={FX.motionBlur(90, 'centered', 16)} />
+                    <Ellipse ref={blurred} x={-560} width={120} height={120} fill={'primary'} effects={FX.motionBlur({ length: 90, alignment: 'centered', samples: 16 })} />
                     <Ellipse ref={sharp} x={-560} width={120} height={120} fill={'primary'} />
                 </Rect>
             </Rect>

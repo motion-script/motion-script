@@ -1,37 +1,30 @@
 import { Rect, RectProps, type NodeConfig, property } from "motion-script";
 
-export interface RandomSwatchProps extends RectProps {
-    /**
-     * Optional seed. Omitted → the node's default `Random` (seed `0`), so two
-     * unseeded swatches paint identically. Provide a distinct seed (e.g. the
-     * grid index) to give each swatch its own reproducible look.
-     */
-    seed?: string | number;
-}
+// `seed` is inherited from RectProps/NodeProps; a swatch works without one (it
+// falls back to the default seed-0 source). NodeConfig makes every prop optional
+// at the JSX call site, so no redeclaration is needed here.
+export type RandomSwatchProps = RectProps;
 
 const PALETTE = ["#E8617C", "#6990DD", "#F5C26B", "#7FD1AE", "#C58BE8"];
 
 /**
  * A swatch that paints *itself* from `this.random` — the per-node seeded source
- * every `Node` now carries, no `Random` threaded in from the stage.
+ * every `Node` carries, no `Random` threaded in from the stage.
  *
- * All draws happen in {@link init} (the recommended hook, where the node already
- * exists in the tree). `super.init()` rewinds `this.random` first, so the same
- * seed reproduces the identical colour + corner radius on every playback pass
- * (scrub / precomp / HMR). Passing a `seed` prop re-seeds via
- * `this.random.reset(seed)` — equivalently `this.random.seed = seed` — so each
- * swatch in a grid can vary while staying deterministic.
+ * All draws happen in the **constructor**: the swatch needs no inherited context,
+ * only its `seed` prop, so it composes its own look at construction. The base
+ * constructor already adopts the `seed` prop as `this.random`'s origin, and the
+ * runtime rebuilds the node each playback pass, so the same seed reproduces the
+ * identical colour + corner radius across scrub / precomp / HMR — deterministic
+ * without any per-pass rewind, and distinct per seed for a varied grid.
  */
 export class RandomSwatch extends Rect<RandomSwatchProps> {
     @property({ default: undefined }) declare readonly seed?: string | number;
 
-    protected override init(props?: NodeConfig<RandomSwatch, RandomSwatchProps>): void {
-        // Re-seed (and rewind) from the seed prop when given; otherwise the base
-        // rewind keeps the default seed-0 source reproducible across passes.
-        if (this.seed !== undefined) this.random.reset(this.seed);
-        else super.init(props);
-
-        // Draws from this node's own source: a palette colour and a corner radius.
+    constructor(props: NodeConfig<RandomSwatch, RandomSwatchProps>) {
+        super(props);
+        // Draws from this node's own source (seeded from the `seed` prop by the base
+        // constructor): a palette colour and a corner radius.
         this.fill = PALETTE[this.random.nextInt(0, PALETTE.length)];
         this.cornerRadius = this.random.nextInt(4, 48);
     }
