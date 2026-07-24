@@ -22,7 +22,7 @@ function evaluator(scene: ReturnType<typeof createScene>) {
     // over the same scene so we can seek and inspect the live tree.
     const precomp = new Precomp([scene], VIEWPORT, FPS, catalog(), scope).run();
     const tracks = precomp.scenes.map((s) => s.frameCount);
-    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks);
+    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks, scope);
 }
 
 describe("context — full precomp/evaluator pipeline", () => {

@@ -3,6 +3,7 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
+import { clamp } from "@/util/clamp";
 
 export type FlexDirection = "row" | "column";
 export type GapSize = number | "auto";
@@ -22,6 +23,14 @@ export interface FlexChild {
      * otherwise. Undefined is treated as 1.
      */
     mainFlex?: number;
+    /**
+     * Per-child gap weight in `[0, 1]` for animated insert/remove: the fraction
+     * of a full gap this child contributes on each of its sides. Undefined → 1
+     * (normal layout). The animated `addChildAt`/`removeChildAt` overloads tween
+     * this `0 ↔ 1` so a collapsing/growing child opens or closes exactly one
+     * gap's worth of space in lockstep with its box.
+     */
+    gapScale?: number;
     measure(constraints: SizeConstraints): Partial<Size2D>;
 }
 
@@ -36,6 +45,13 @@ export interface FlexMeasureEntry<C extends FlexChild = FlexChild> {
      * entries directly for layout may omit it.
      */
     flex?: number;
+    /**
+     * Sanitized per-child gap weight in `[0, 1]` (see {@link FlexChild.gapScale}).
+     * Set by `measureFlex` so `layoutFlex` — which receives entries, not children
+     * — can weight the gaps around this child without re-reading the child.
+     * Undefined → treated as 1 by both passes.
+     */
+    gapScale?: number;
 }
 
 export interface FlexMeasureResult<C extends FlexChild = FlexChild> {
@@ -99,6 +115,7 @@ export function measureFlex<C extends FlexChild>(
             height: 0,
             isFlexibleMain,
             flex: isFlexibleMain ? sanitizeFlex(child.mainFlex) : 0,
+            gapScale: sanitizeGapScale(child.gapScale),
         };
     });
 
@@ -107,8 +124,15 @@ export function measureFlex<C extends FlexChild>(
     const innerMain = mainIsRow ? innerWidth : innerHeight;
     const innerCross = mainIsRow ? innerHeight : innerWidth;
 
-    const gapCount = Math.max(0, entries.length - 1);
-    const totalGap = gap === "auto" ? 0 : gap * gapCount;
+    // Gap budget driven by the sum of per-child gap weights rather than a flat
+    // `(count - 1)`. With every child at the default weight 1 this is exactly
+    // `gap * (count - 1)` (unchanged). A single child collapsing to weight 0
+    // (mid animated insert/remove) removes exactly one gap's worth from the
+    // budget — regardless of the child's index — so a hug container's size and
+    // the space left for `fill` siblings both track the animation smoothly.
+    let scaleSum = 0;
+    for (const entry of entries) scaleSum += entry.gapScale ?? 1;
+    const totalGap = gap === "auto" ? 0 : gap * Math.max(0, scaleSum - 1);
 
     // Pass 1a: measure fixed-main + fixed-cross children to establish maxCross anchor.
     let fixedMain = 0;
@@ -241,15 +265,43 @@ export function layoutFlex<C extends FlexChild>(input: FlexLayoutInput<C>): BoxB
     const innerMain = mainIsRow ? innerWidth : innerHeight;
     const crossDim = mainIsRow ? rect.height : rect.width;
 
-    const gapCount = Math.max(0, entries.length - 1);
-    const effectiveGap =
-        gap === "auto"
-            ? gapCount > 0
-                ? Math.max(0, innerMain - childrenMain) / gapCount
-                : 0
-            : gap;
+    // Per-child gap weighting for smooth animated insert/remove. Each boundary
+    // between child i and i+1 gets `gap * (scale_i + scale_{i+1}) / 2` — the
+    // average of its two neighbours' weights. The whole run occupies
+    // `totalGap = gap * max(0, Σscale − 1)`, exactly matching the budget
+    // `measureFlex` reserves, so the container's own size and the run's extent
+    // stay in agreement every frame. `startBias` shifts a start-justified run
+    // left by the leading child's collapsed half-gap so the *existing* content
+    // edge holds still while an inserted first child grows in from width 0 — the
+    // average weighting alone would otherwise nudge every sibling by half a gap
+    // at the instant of insertion. With every weight 1 (the normal case),
+    // `boundaryGap = gap`, `startBias = 0`, and `totalGap = gap * (count − 1)` —
+    // identical to the pre-`gapScale` behaviour.
+    const n = entries.length;
+    // Bounds-safe: an out-of-range index is a phantom off-the-end neighbour with
+    // full weight. Only reached for the trailing `boundaryGap(n - 1)` the loop
+    // computes but discards (no child follows the last one), so its value never
+    // affects a real position; keeping it defined just avoids an undefined read.
+    const gapScaleAt = (i: number): number =>
+        i >= 0 && i < n ? entries[i].gapScale ?? 1 : 1;
+    const autoGapCount = Math.max(0, n - 1);
+    let boundaryGap: (i: number) => number;
+    let totalGap: number;
+    let startBias = 0;
+    if (gap === "auto") {
+        const effectiveGap =
+            autoGapCount > 0 ? Math.max(0, innerMain - childrenMain) / autoGapCount : 0;
+        boundaryGap = () => effectiveGap;
+        totalGap = effectiveGap * autoGapCount;
+    } else {
+        boundaryGap = (i: number) => gap * (gapScaleAt(i) + gapScaleAt(i + 1)) / 2;
+        let scaleSum = 0;
+        for (let i = 0; i < n; i++) scaleSum += gapScaleAt(i);
+        totalGap = gap * Math.max(0, scaleSum - 1);
+        startBias = n > 0 ? -gap * (1 - gapScaleAt(0)) / 2 : 0;
+    }
 
-    const totalMain = childrenMain + effectiveGap * gapCount;
+    const totalMain = childrenMain + totalGap;
 
     const justify = mainIsRow
         ? alignment.x === -1
@@ -286,8 +338,17 @@ export function layoutFlex<C extends FlexChild>(input: FlexLayoutInput<C>): BoxB
         else mainPos = mainDim / 2 - totalMain - padding.bottom;
     }
 
+    // Start-justify pins the first child's leading edge, so a collapsing leading
+    // child (mid animated insert/remove) would otherwise slide every sibling by
+    // half a gap. `startBias` (≤ 0) shifts the run left by that collapsed leading
+    // half-gap so the existing content edge holds still. Center/end justify
+    // derive from `totalMain` and stay put on their own; `startBias` is 0 unless
+    // the first child's weight is below 1.
+    if (justify === "start") mainPos += startBias;
+
     const result: BoxBounds[] = [];
-    for (const entry of entries) {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
         const childMain = mainIsRow ? entry.width : entry.height;
         const childCross = mainIsRow ? entry.height : entry.width;
 
@@ -314,7 +375,7 @@ export function layoutFlex<C extends FlexChild>(input: FlexLayoutInput<C>): BoxB
             height: entry.height,
         });
 
-        mainPos += childMain + effectiveGap;
+        mainPos += childMain + boundaryGap(i);
     }
     return result;
 }
@@ -327,4 +388,14 @@ function getMode(child: FlexChild, axis: "width" | "height"): SizeInput {
 function sanitizeFlex(value: number | undefined): number {
     if (value == null) return 1;
     return Number.isFinite(value) && value >= 0 ? value : 1;
+}
+
+/**
+ * Coerce a per-child gap weight to `[0, 1]`; undefined/invalid → 1 (full gap).
+ * Clamped so an eased tween that momentarily overshoots its 0↔1 endpoints can't
+ * push a gap negative or past full width.
+ */
+function sanitizeGapScale(value: number | undefined): number {
+    if (value == null) return 1;
+    return Number.isFinite(value) ? clamp(value, 0, 1) : 1;
 }

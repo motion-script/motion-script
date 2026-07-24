@@ -247,6 +247,7 @@ export class GroupLayout {
             widthMode: child.width,
             heightMode: child.height,
             mainFlex: child.flex,
+            gapScale: child.gapScale,
             measure: (c: SizeConstraints) => child.measure(c, scope),
         }));
 

@@ -40,6 +40,19 @@ type SceneSlot = {
  * 1. `stateAt(frame)` — advance generator(s) to the requested frame.
  * 2. `layout(scope)` — lay out the current scene's node tree.
  * 3. `render(context)` — draw the current scene into the render context.
+ *
+ * ### Why the replay loop lays out per frame
+ * A backward seek (and any multi-frame forward jump) replays the scene
+ * generator from frame 0 to the target in one `stateAt` call. Some generator
+ * bodies read **post-layout** state — the animated `removeChildAt`/`reparent`
+ * helpers pin a child's box to its laid-out `measuredWidth`/`measuredHeight`,
+ * and the hug/fill `addChildAt` path measures against `parent._lastScope`
+ * (see `node-lifecycle.ts`). Those are only fresh after a `layout()`/`measure()`
+ * pass. So the replay loop lays out **before** each `generator.next(dt)`,
+ * exactly as `Precomp` does — otherwise the generator would read a stale (or
+ * zero, for a just-added child) `layoutRect` and the animation would diverge
+ * from forward playback. This is what makes a backward scrub reproduce the
+ * forward result.
  */
 export class StateEvaluator {
     private scenes: Scene[];
@@ -48,6 +61,14 @@ export class StateEvaluator {
     private fps: number;
     private viewport: Size2D;
     private assets: AssetCatalog;
+    /**
+     * Text-measurement scope for the internal layout passes {@link stateAt} and
+     * {@link resetSlot} run between generator steps. Held here (not just passed
+     * into the public {@link layout}) so the replay loop can lay out every
+     * advanced frame — mirrors how {@link Precomp} keeps its own `measureScope`.
+     * See the class doc for why the loop must lay out.
+     */
+    private measureScope: MeasureScope;
 
     /** Most-recently evaluated global frame (integer). */
     get currentFrame() {
@@ -64,12 +85,15 @@ export class StateEvaluator {
      * @param tracks  Per-scene frame counts in timeline order (one entry per
      *                scene). Used to build global frame ranges so `stateAt`
      *                can jump directly to the owning scene without scanning.
+     * @param measureScope Text-measurement scope for the internal layout passes
+     *                the replay loop runs between generator steps (see class doc).
      */
-    constructor(scenes: Scene[], viewport: Size2D, fps: number, assets: AssetCatalog, tracks: number[]) {
+    constructor(scenes: Scene[], viewport: Size2D, fps: number, assets: AssetCatalog, tracks: number[], measureScope: MeasureScope) {
         this.fps = fps;
         this.viewport = viewport;
         this.scenes = scenes;
         this.assets = assets;
+        this.measureScope = measureScope;
         this.stage = new BuildStage<Scene>(viewport, fps);
 
         for (const s of scenes) {
@@ -155,12 +179,29 @@ export class StateEvaluator {
         // their sampling history now (zero velocity) — a forward step from here
         // then differentiates against a real previous frame.
         slot.scene.sample();
+        // Lay out the primed frame-0 tree so the first advance-loop step (which
+        // runs the generator from frame 0 → 1) reads a real `layoutRect` — a
+        // frame-0 animated removeChildAt pins to `measuredWidth`, which is 0
+        // until this pass. Precomp lays out at the top of its loop before the
+        // first `generator.next`; this gives the reset path the same guarantee.
+        this.layoutScene(slot.scene);
         slot.generator = gen;
         slot.localFrame = 0;
     }
 
+    /**
+     * Lay out a scene's node tree against the full viewport with the retained
+     * measure scope. Shared by the public {@link layout} (render pass) and the
+     * per-frame layout the replay loop / {@link resetSlot} run so generator
+     * bodies read a fresh `layoutRect` (see class doc).
+     */
+    private layoutScene(scene: Scene): void {
+        const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
+        scene.layout(bounds, this.measureScope);
+    }
+
     /** Lay out the current scene's node tree against the full viewport. */
-    layout(scope: MeasureScope) {
+    layout(scope: MeasureScope = this.measureScope) {
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.currentScene.layout(bounds, scope);
     }
@@ -225,6 +266,13 @@ export class StateEvaluator {
             this.bindAssets();
             this.bindContext(false);
             this.ellapse(globalTime);
+            // Lay out before stepping the generator so any post-layout state it
+            // reads (an animated removeChildAt pinning to `measuredWidth`, the
+            // hug/fill addChildAt measuring against `_lastScope`) is fresh for
+            // this frame — the ordering precomp uses. Without this the replay
+            // (backward seek / multi-frame jump) reads a stale layoutRect and
+            // the animation diverges from forward playback (see class doc).
+            this.layoutScene(targetSlot.scene);
             targetSlot.generator!.next(dt);
         }
 

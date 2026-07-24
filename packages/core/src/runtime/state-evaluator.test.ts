@@ -17,7 +17,7 @@ const scope = new FakeMeasureScope();
 
 function single(yieldCount = 10) {
     const scene = new FakeScene({ id: 'a', yieldCount });
-    const evaluator = new StateEvaluator(asScenes([scene]), VIEWPORT, FPS, catalog, [yieldCount]);
+    const evaluator = new StateEvaluator(asScenes([scene]), VIEWPORT, FPS, catalog, [yieldCount], scope);
     return { scene, evaluator };
 }
 
@@ -25,7 +25,7 @@ describe('StateEvaluator – construction', () => {
     it('sizes every scene to the viewport and selects the first as current', () => {
         const a = new FakeScene({ id: 'a', yieldCount: 5 });
         const b = new FakeScene({ id: 'b', yieldCount: 5 });
-        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [5, 5]);
+        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [5, 5], scope);
 
         expect(a.setCalls).toEqual([{ width: 100, height: 50 }]);
         expect(b.setCalls).toEqual([{ width: 100, height: 50 }]);
@@ -140,7 +140,7 @@ describe('StateEvaluator – multi-scene timeline', () => {
     function pair() {
         const a = new FakeScene({ id: 'a', yieldCount: 10 });
         const b = new FakeScene({ id: 'b', yieldCount: 5 });
-        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [10, 5]);
+        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [10, 5], scope);
         return { a, b, evaluator };
     }
 
@@ -173,9 +173,25 @@ describe('StateEvaluator – layout & render delegation', () => {
     it('lays out the current scene against the full viewport rect', () => {
         const { scene, evaluator } = single();
         evaluator.stateAt(1);
+        // stateAt now lays out internally per advanced frame (see class doc), so
+        // clear those and assert the explicit render-pass layout on its own.
+        scene.layoutCalls.length = 0;
         evaluator.layout(scope);
         expect(scene.layoutCalls).toHaveLength(1);
         expect(scene.layoutCalls[0].rect).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+    });
+
+    it('lays out every advanced frame during replay so generators read fresh layout', () => {
+        // Priming lays out frame 0 (resetSlot), then the advance loop lays out
+        // before stepping the generator at frames 1, 2, 3 → 4 internal layouts.
+        // This is what keeps an animated removeChildAt (which pins to
+        // measuredWidth) reproducible on a backward scrub.
+        const { scene, evaluator } = single();
+        evaluator.stateAt(3);
+        expect(scene.layoutCalls).toHaveLength(4);
+        for (const call of scene.layoutCalls) {
+            expect(call.rect).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+        }
     });
 
     it('renders the current scene through the render context', () => {
@@ -191,7 +207,7 @@ describe('StateEvaluator – dispose', () => {
     it('disposes every scene', () => {
         const a = new FakeScene({ id: 'a', yieldCount: 5 });
         const b = new FakeScene({ id: 'b', yieldCount: 5 });
-        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [5, 5]);
+        const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [5, 5], scope);
         evaluator.dispose();
         expect(a.disposeCount).toBe(1);
         expect(b.disposeCount).toBe(1);

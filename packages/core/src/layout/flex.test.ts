@@ -580,3 +580,150 @@ describe('layoutFlex – returns sizes from entries', () => {
         expect(result[0].height).toBe(50);
     });
 });
+
+// A fixed-size child carrying a per-child `gapScale`, for the animated
+// insert/remove gap behavior. `gapScale` weights the flex gaps around this child.
+function scaledChild(width: number, gapScale: number): FlexChild {
+    return { ...child(width, 50), gapScale };
+}
+
+describe('measureFlex – gapScale (animated insert/remove gap budget)', () => {
+    it('default gapScale of 1 reproduces the flat (count - 1) gap budget', () => {
+        // 3 × 100, gap 20, all default weight → hug = 300 + 2×20 = 340 (unchanged).
+        const result = measureFlex(
+            [child(100, 50), child(100, 50), child(100, 50)],
+            measureInput({ gap: 20 }),
+        );
+        expect(result.hugWidth).toBe(340);
+    });
+
+    it('a fractional-scale child opens a fractional gap in the hug size', () => {
+        // Σ gapScale = 1 + 0.5 + 1 = 2.5 → totalGap = 20 × (2.5 − 1) = 30 → hug = 330.
+        const result = measureFlex(
+            [child(100, 50), scaledChild(100, 0.5), child(100, 50)],
+            measureInput({ gap: 20 }),
+        );
+        expect(result.hugWidth).toBe(330);
+    });
+
+    it('a fully collapsed child removes exactly one gap from the budget', () => {
+        // Σ gapScale = 1 + 0 + 1 = 2 → totalGap = 20 × (2 − 1) = 20 → hug = 320,
+        // i.e. exactly one gap fewer than the fully-open 340.
+        const result = measureFlex(
+            [child(100, 50), scaledChild(100, 0), child(100, 50)],
+            measureInput({ gap: 20 }),
+        );
+        expect(result.hugWidth).toBe(320);
+    });
+
+    it('a collapsed *edge* child also removes exactly one gap (position-independent)', () => {
+        // Same Σ = 2 whether the 0-weight child is first, middle, or last.
+        const first = measureFlex(
+            [scaledChild(100, 0), child(100, 50), child(100, 50)],
+            measureInput({ gap: 20 }),
+        );
+        const last = measureFlex(
+            [child(100, 50), child(100, 50), scaledChild(100, 0)],
+            measureInput({ gap: 20 }),
+        );
+        expect(first.hugWidth).toBe(320);
+        expect(last.hugWidth).toBe(320);
+    });
+
+    it('clamps an over/undershooting scale to [0, 1] (guards eased-tween overshoot)', () => {
+        // 1.5 clamps to 1, −0.3 clamps to 0 → Σ = 1 + 1 + 0 = 2 → totalGap = 20 → hug 320.
+        const result = measureFlex(
+            [scaledChild(100, 1.5), child(100, 50), scaledChild(100, -0.3)],
+            measureInput({ gap: 20 }),
+        );
+        expect(result.hugWidth).toBe(320);
+    });
+
+    it('leaves fill children the right space as an inserted child grows', () => {
+        // 500 inner, one 100 fixed + one fill, gap 20, fixed child at scale 0.5:
+        // totalGap = 20 × (1.5 − 1) = 10 → fill gets 500 − 100 − 10 = 390.
+        const result = measureFlex(
+            [scaledChild(100, 0.5), child('fill', 50)],
+            measureInput({ innerWidth: 500, gap: 20 }),
+        );
+        expect(result.entries[1].width).toBe(390);
+    });
+});
+
+describe('layoutFlex – gapScale placement', () => {
+    // Helper: 3 fixed 100-wide children in a 500-wide start-justified row, each
+    // carrying a gapScale; returns the child centre x's.
+    function centers(scales: [number, number, number]): number[] {
+        const entries = scales.map((gapScale) => ({
+            child: scaledChild(100, gapScale),
+            width: 100,
+            height: 50,
+            isFlexibleMain: false,
+            gapScale,
+        }));
+        return layoutFlex(layoutInput({
+            entries,
+            rect: rect(500, 200),
+            innerWidth: 500,
+            innerHeight: 200,
+            gap: 20,
+            alignment: { x: -1, y: -1 },
+        })).map((b) => b.x);
+    }
+
+    it('all default weights place children exactly like a flat gap', () => {
+        // -250 start: -200, then +100+20 → -80, then again → 40.
+        expect(centers([1, 1, 1])).toEqual([-200, -80, 40]);
+    });
+
+    it('a half-scale middle child half-opens both its gaps', () => {
+        // boundaryGap 0 = 20×(1+0.5)/2 = 15, boundaryGap 1 = 20×(0.5+1)/2 = 15.
+        expect(centers([1, 0.5, 1])).toEqual([-200, -85, 30]);
+    });
+
+    it('a collapsed middle child pulls its right neighbour in by one full gap', () => {
+        // Left child stays pinned; right side closes up by exactly one gap (20).
+        expect(centers([1, 0, 1])).toEqual([-200, -90, 20]);
+    });
+
+    it('a collapsed leading child keeps the existing content edge pinned', () => {
+        // startBias = -20×(1-0)/2 = -10 shifts the run left so the first *real*
+        // child (index 1) sits where a 3-child row's first child would: -200.
+        const entries = [
+            { child: scaledChild(0, 0), width: 0, height: 50, isFlexibleMain: false, gapScale: 0 },
+            { child: scaledChild(100, 1), width: 100, height: 50, isFlexibleMain: false, gapScale: 1 },
+            { child: scaledChild(100, 1), width: 100, height: 50, isFlexibleMain: false, gapScale: 1 },
+            { child: scaledChild(100, 1), width: 100, height: 50, isFlexibleMain: false, gapScale: 1 },
+        ];
+        const xs = layoutFlex(layoutInput({
+            entries,
+            rect: rect(500, 200),
+            innerWidth: 500,
+            innerHeight: 200,
+            gap: 20,
+            alignment: { x: -1, y: -1 },
+        })).map((b) => b.x);
+        // Existing tiles (indices 1..3) match the pre-insert 3-child layout.
+        expect(xs.slice(1)).toEqual([-200, -80, 40]);
+    });
+
+    it('center justify stays centered with a collapsed child', () => {
+        // totalMain = 300 + 20 = 320 → mainPos -160: -110, 0, 110 (symmetric).
+        const entries = [1, 0, 1].map((gapScale) => ({
+            child: scaledChild(100, gapScale),
+            width: 100,
+            height: 50,
+            isFlexibleMain: false,
+            gapScale,
+        }));
+        const xs = layoutFlex(layoutInput({
+            entries,
+            rect: rect(500, 200),
+            innerWidth: 500,
+            innerHeight: 200,
+            gap: 20,
+            alignment: { x: 0, y: 0 },
+        })).map((b) => b.x);
+        expect(xs).toEqual([-110, 0, 110]);
+    });
+});

@@ -106,6 +106,7 @@ export class PlaybackController {
             this.fps,
             catalog,
             this.tracks,
+            this.measureScope,
         );
 
         this.assetManager = new AssetManager(

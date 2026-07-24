@@ -8,6 +8,11 @@ import { layoutCard, tile } from "./layout-card";
  * duration (and optional easing) and the child grows/shrinks in place instead
  * of popping, with siblings sliding over to open or close the gap.
  *
+ * The row uses a non-zero `gap` on purpose: the animated helpers tween the
+ * child's per-child `gapScale` alongside its box, so the flanking gap opens and
+ * closes *continuously* with the size — no jump-cut of one whole gap the instant
+ * the child attaches/detaches.
+ *
  * Run three times against the same row — insert-at-start, insert-at-end, and
  * insert-in-the-middle — then reverse each with a matching animated remove, so
  * both directions (grow-in / shrink-out) are visible at every position a child
@@ -25,7 +30,7 @@ export default createScene(function* (stage) {
             label: 'animated addChildAt / removeChildAt',
             stage: 'stack',
             children: (
-                <Rect ref={row} width={'hug'} height={'fill'} group={'row'} gap={32} align={'centerLeft'}>
+                <Rect ref={row} width={'hug'} height={'fill'} group={'row'} gap={24} align={'centerLeft'}>
                     {base.map((ref, i) => tile({ ref, color: baseColors[i], width: 200, height: 200, label: `${i + 1}` }))}
                 </Rect>
             ),

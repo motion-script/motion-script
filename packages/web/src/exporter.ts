@@ -189,7 +189,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     const { totalFrames, totalDuration } = precomp;
     const tracks = precomp.scenes.map(s => s.frameCount);
 
-    const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks);
+    const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope);
     const audioDevice = new NoopAudioDevice();
     const assetManager = new AssetManager(precomp, storageAdapter, audioDevice);
 

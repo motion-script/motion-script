@@ -18,7 +18,7 @@ const catalog = () => asCatalog(new FakeAssetCatalog());
 function evaluator(scene: ReturnType<typeof createScene>) {
     const precomp = new Precomp([scene], VIEWPORT, FPS, catalog(), scope).run();
     const tracks = precomp.scenes.map((s) => s.frameCount);
-    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks);
+    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks, scope);
 }
 
 describe("Text variant — typography preset precedence", () => {

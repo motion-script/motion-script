@@ -315,6 +315,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: false }) declare clip: boolean;
 
     @property({ default: 1 }) declare flex: number;
+    /**
+     * Per-child weight for the flex gap this node contributes to its parent's
+     * main axis, in `[0, 1]`. Default `1` = a full gap on each side (normal
+     * layout). Driven `0 → 1` (insert) / `1 → 0` (remove) by the animated
+     * `addChildAt`/`removeChildAt` overloads so the surrounding gap opens/closes
+     * in lockstep with the child's box instead of popping — see
+     * {@link addChildAtAnimated}. Read only by flex containers off their
+     * children; authors have no reason to set it directly. `@internal`.
+     */
+    @property({ default: 1 }) declare gapScale: number;
     @property({ default: undefined }) declare column: number | undefined;
     @property({ default: undefined }) declare row: number | undefined;
     @property({ default: 1 }) declare colSpan: number;

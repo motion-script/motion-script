@@ -133,7 +133,7 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
         const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.floor(requested)));
 
         const tracks = precomp.scenes.map(s => s.frameCount);
-        const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks);
+        const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope);
         const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
 
         // stateAt replays from the owning scene's start to reach a mid-timeline

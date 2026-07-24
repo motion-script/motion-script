@@ -204,6 +204,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
             widthMode: child.width,
             heightMode: child.height,
             mainFlex: child.flex,
+            gapScale: child.gapScale,
             measure: (c: SizeConstraints) => child.measure(c, scope),
         }));
 
