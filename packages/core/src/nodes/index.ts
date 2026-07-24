@@ -33,6 +33,7 @@ export * from "./geometry/grid-node";
 export * from "./layout/flex-node";
 export * from "./layout/row-node";
 export * from "./layout/column-node";
+export * from "./layout/rotated-box";
 
 // Media
 export * from "./media/image-node";

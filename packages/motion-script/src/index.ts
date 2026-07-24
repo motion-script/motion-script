@@ -32,7 +32,7 @@ export {
     Polygram,
     LineGrid,
     GridPattern,
-    Grid,
+    Grid, RotatedBox,
     BooleanGroup,
     MaskGroup,
 } from '@motion-script/core';
