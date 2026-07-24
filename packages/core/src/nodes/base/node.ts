@@ -102,11 +102,13 @@ export interface WiggleOptions {
 }
 
 /**
- * A JSX/`children` child: a single {@link Node}, or an arbitrarily-nested array
- * of children. Nesting is allowed so `.map()` results can be dropped straight in
- * as a child — the {@link Node} constructor flattens it (`.flat(Infinity)`).
+ * A JSX/`children` child: a single {@link Node}, an arbitrarily-nested array of
+ * children, or a falsy value. Nesting is allowed so `.map()` results can be
+ * dropped straight in as a child, and falsy values are allowed so
+ * `{condition && <Node/>}` works like in React — the {@link Node} constructor
+ * flattens (`.flat(Infinity)`) and filters out everything but `Node` instances.
  */
-export type NodeChildren = Node | NodeChildren[];
+export type NodeChildren = Node | false | null | undefined | NodeChildren[];
 
 export interface NodeProps {
     x: number; // 0 is center, negative is left, positive is right
@@ -1253,15 +1255,25 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * so a composite builds its structure from *props* right in its constructor —
      * no `init`-style hook, no idempotency guard, since the constructor runs once.
      *
+     * Accepts the same shape as the `children` prop — a single node, or an
+     * arbitrarily-nested array (`.flat(Infinity)`), with non-`Node` entries
+     * (`false`/`null`/`undefined` from `cond && <Node/>`) filtered out — so
+     * `this.add(items.map(...))` or `this.add(cond && <Text/>)` work directly.
+     *
      * @example
      * constructor(props?) {
      *   super(props);
      *   this.add(<Rect ref={this.rowRef} group="row">{…}</Rect>);
      * }
      */
-    add(child: Node | Node[]): void {
-        if (Array.isArray(child)) this.addChildren(child);
-        else this.addChild(child);
+    add(child: NodeChildren): void {
+        if (child instanceof Node) {
+            this.addChild(child);
+            return;
+        }
+        const raw: unknown[] = Array.isArray(child) ? child : [child];
+        const flat = raw.flat(Infinity).filter((c: unknown): c is Node => c instanceof Node);
+        if (flat.length > 0) this.addChildren(flat);
     }
 
     addChild(child: Node): void {
