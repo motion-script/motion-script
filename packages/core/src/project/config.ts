@@ -17,8 +17,14 @@ export type ColorTokens = Record<string, ColorToken>;
  *  author set it explicitly). Same shape as the `<DefaultTextStyle>` defaults. */
 export type TypographyPreset = TextDefaults;
 
-/** Named typography presets, keyed by variant name (e.g. `header`, `body`). */
-export type Typography = Record<string, TypographyPreset>;
+/** Named typography presets, keyed by variant name (e.g. `header`, `body`).
+ *  The `default` key is reserved: if present, it's applied to every `Text`/
+ *  `RichText` as a project-wide base style — no `variant` prop or
+ *  `<DefaultTextStyle>` wrapper needed — for any style key a more specific
+ *  source (explicit prop, `variant`, inherited `<DefaultTextStyle>`) doesn't
+ *  set. Declared as an explicit property (rather than folded into the index
+ *  signature) so editors offer it in autocomplete. */
+export type Typography = { default?: TypographyPreset } & Record<string, TypographyPreset>;
 
 /** Flat, arbitrary project constants (corner radii, durations, counts, flags, …),
  *  keyed by name. Keys are flat — no nesting; author dash-names them directly

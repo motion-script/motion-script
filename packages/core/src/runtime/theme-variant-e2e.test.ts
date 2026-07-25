@@ -101,4 +101,68 @@ describe("Text variant — typography preset precedence", () => {
         ev.stateAt(0);
         expect(txt().fontSize).toBe(16); // the Text @property default
     });
+
+    it("a `default` typography preset applies with no variant or <DefaultTextStyle>", () => {
+        setTheme({ typography: { default: { fontSize: 40, fontFamily: "Zilla Slab" } } });
+        const txt = createRef<Text>();
+        const scene = createScene(function* (stage) {
+            stage.add(new Text({ ref: txt, text: "hi" }));
+            yield;
+        });
+
+        const ev = evaluator(scene);
+        ev.stateAt(0);
+        expect(txt().fontSize).toBe(40);
+        expect(txt().fontFamily).toBe("Zilla Slab");
+    });
+
+    it("an explicit variant wins over the `default` preset", () => {
+        setTheme({
+            typography: {
+                default: { fontSize: 40 },
+                header: { fontSize: 96 },
+            },
+        });
+        const txt = createRef<Text>();
+        const scene = createScene(function* (stage) {
+            stage.add(new Text({ ref: txt, text: "hi", variant: "header" }));
+            yield;
+        });
+
+        const ev = evaluator(scene);
+        ev.stateAt(0);
+        expect(txt().fontSize).toBe(96);
+    });
+
+    it("an inherited <DefaultTextStyle> wins over the `default` preset", () => {
+        setTheme({ typography: { default: { fontSize: 40 } } });
+        const txt = createRef<Text>();
+        const scene = createScene(function* (stage) {
+            stage.add(
+                new DefaultTextStyle({
+                    fontSize: 32,
+                    children: [new Text({ ref: txt, text: "hi" })],
+                }),
+            );
+            yield;
+        });
+
+        const ev = evaluator(scene);
+        ev.stateAt(0);
+        expect(txt().fontSize).toBe(32);
+    });
+
+    it("a key the `default` preset doesn't set falls through to the node's own default", () => {
+        setTheme({ typography: { default: { fontFamily: "Zilla Slab" } } });
+        const txt = createRef<Text>();
+        const scene = createScene(function* (stage) {
+            stage.add(new Text({ ref: txt, text: "hi" }));
+            yield;
+        });
+
+        const ev = evaluator(scene);
+        ev.stateAt(0);
+        expect(txt().fontFamily).toBe("Zilla Slab");
+        expect(txt().fontSize).toBe(16); // the Text @property default
+    });
 });

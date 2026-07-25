@@ -61,7 +61,10 @@ export const SeedToken = createContext<string | number | undefined>(undefined, "
  *      by {@link setTheme}, looked up via {@link getTypographyPreset});
  *   3. the inherited {@link TextStyleToken} default from an ancestor
  *      `<DefaultTextStyle>`;
- *   (4. the node's own `@property` default — already applied by the constructor.)
+ *   4. the theme's `default` typography preset (`theme.typography.default`) —
+ *      a project-wide base style applied with no `variant` or `<DefaultTextStyle>`
+ *      required;
+ *   (5. the node's own `@property` default — already applied by the constructor.)
  *
  * Assignment goes through the node's property setter, which runs the field's
  * registered mapper (so a preset/inherited `fill: 'brand-500'` is resolved
@@ -72,13 +75,17 @@ export function applyTextDefaults(node: Node, props?: Record<string, unknown>): 
     const inherited = node.useContext(TextStyleToken);
     const variant = props?.variant as string | undefined;
     const preset = variant ? getTypographyPreset(variant) : undefined;
+    const defaultPreset = getTypographyPreset('default');
     const target = node as unknown as Record<string, unknown>;
     for (const key of TEXT_STYLE_KEYS) {
         if (props && props[key] !== undefined) continue;        // 1. author wins
         const fromVariant = preset ? preset[key] : undefined;   // 2. variant preset
+        const fromInherited = inherited[key as keyof TextDefaults]; // 3. inherited default
         const value = fromVariant !== undefined
             ? fromVariant
-            : inherited[key as keyof TextDefaults];             // 3. inherited default
+            : fromInherited !== undefined
+                ? fromInherited
+                : defaultPreset?.[key];                          // 4. theme default preset
         if (value === undefined) continue;                      // nothing set it
         target[key] = value;
     }

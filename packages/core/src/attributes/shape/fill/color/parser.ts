@@ -124,10 +124,17 @@ function flattenColors(
  * flattened to dash-joined names (`{ brand: { 500: … } }` → `brand-500`). Call
  * with no argument (or an empty object) to clear both registries.
  *
+ * The `default` typography key is reserved: it's read directly by
+ * {@link applyTextDefaults} (not just via `variant`) and applied to every
+ * `Text`/`RichText` as a project-wide base style.
+ *
  * @example
  * setTheme({
  *   colors: { brand: "#ff6b35", accent: { 500: "oklch(70% 0.2 145)" } },
- *   typography: { header: { fontSize: 96, fontWeight: 700 } },
+ *   typography: {
+ *     default: { fontFamily: "Inter", fontSize: 32 },
+ *     header: { fontSize: 96, fontWeight: 700 },
+ *   },
  * });
  * // Later: fill="brand", fill="accent-500", <Text variant="header" />
  */
