@@ -17,3 +17,17 @@ declare module '*?scene' {
     const scene: Scene;
     export default scene;
 }
+
+/**
+ * The `?csv` import suffix, handled by the plugin's `csv-transform`, parses a
+ * CSV file into row records at build time:
+ *
+ *   import data from './data/sales.csv?csv';
+ *
+ * `data` is ready to use immediately — no loading, no await.
+ */
+declare module '*?csv' {
+    import type { CSVRecord } from '@motion-script/core';
+    const records: CSVRecord[];
+    export default records;
+}

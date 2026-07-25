@@ -247,10 +247,13 @@ export {
     ContextMap,
     Random,
     SeedGenerator,
+    parseCSV,
 } from '@motion-script/core';
 export type {
     Reference,
     Context,
+    CSVRecord,
+    ParseCSVOptions,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

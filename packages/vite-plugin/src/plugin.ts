@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import type { PluginOption, UserConfig } from 'vite';
 import { buildAssetManifest } from './asset-manifest';
 import { sceneTransform } from './scene-transform';
+import { csvTransform } from './csv-transform';
 
 /**
  * Options accepted by the {@link motionScript} Vite plugin.
@@ -153,6 +154,7 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
         // `?scene` id before the React plugin; the wrapper it emits imports the
         // real .tsx, which then goes through React/esbuild normally.
         sceneTransform(process.cwd()),
+        csvTransform(),
         react(),
         {
             name: 'vite-plugin-motion-script',
