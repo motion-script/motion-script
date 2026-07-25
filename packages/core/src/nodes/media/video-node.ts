@@ -183,23 +183,15 @@ export class Video extends Rect {
         this._sound?.tick(time);
     }
 
-    override prepareRender(tracker: AssetTracker): void {
-        super.prepareRender(tracker);
+    // Audio scheduling only — the picture is inferred automatically from the
+    // `video` fill `renderSelf` paints (see `TrackRenderContext`). Audio has no
+    // draw-call representation, so it stays an explicit, tracker-based
+    // registration into the frame-ranged timeline (see `Node.prepareAudio`).
+    override prepareAudio(tracker: AssetTracker): void {
+        super.prepareAudio(tracker);
         if (!this.src) return;
-        this.syncVideo();
 
-        // Picture: register the video for frame decoding at the node's size,
-        // honouring the active trim (same request the video fill would emit).
-        tracker.requestVideo(
-            this.src,
-            this.layoutRect.width,
-            this.layoutRect.height,
-            this.trimStart ?? 0,
-            this.trimEnd,
-        );
-
-        // Audio: schedule the video's own track. Muted or paused videos draw the
-        // picture but contribute no sound.
+        // Muted or paused videos draw the picture but contribute no sound.
         if (this.muted || !this.playing) return;
         this.syncSound();
         const sound = this._sound;
@@ -207,7 +199,7 @@ export class Video extends Rect {
 
         // Resolve the full-length default for trimEnd against the *video*'s
         // duration (getMediaDuration falls back to the video manifest), then
-        // start the clip once and let prepareRender() push its request each frame.
+        // start the clip once and let prepareAudio() push its request each frame.
         if (sound.trimEnd === Infinity && !sound.loop) {
             sound.trimEnd = tracker.catalog.getMediaDuration(this.src);
         }

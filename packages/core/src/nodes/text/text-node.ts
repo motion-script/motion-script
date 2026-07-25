@@ -5,7 +5,6 @@ import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { ContextMap } from "@/util/context";
-import { AssetTracker } from "@/assets/tracker";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
 import { Size2D } from "@/attributes/layout/size";
@@ -96,14 +95,6 @@ export class Text extends ShapeNode<TextProps> {
         const autofit = props?.fontSize === 'autofit';
         this.applyProp("height", props?.height ?? (autofit ? "fill" : "hug"));
         this.applyProp("width", props?.width ?? (autofit || props?.wrap ? "fill" : "hug"));
-    }
-
-    // The typeface must be loaded before layout so the paragraph is measured
-    // with the real font metrics rather than a fallback face — hence
-    // prepareLayout, not prepareRender. (Any image/gradient fill paint is still
-    // registered after layout by ShapeNode.prepareRender.)
-    prepareLayout(storage: AssetTracker): void {
-        storage.requestFont(this.fontFamily, this.fontWeight.toString());
     }
 
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {

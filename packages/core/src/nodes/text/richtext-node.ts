@@ -7,7 +7,6 @@ import { resolveFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { resolveStrokeArray, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { Size2D } from "@/attributes/layout/size";
-import { AssetTracker } from "@/assets/tracker";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
@@ -77,20 +76,6 @@ export class RichText extends ShapeNode<RichTextProps> {
         this.applyProp("width", props?.width ?? "hug");
     }
 
-    // Each run's typeface must be loaded before layout so spans are measured
-    // with their real metrics — hence prepareLayout. Fill/stroke paint is still
-    // registered after layout via the inherited ShapeNode.prepareRender.
-    prepareLayout(storage: AssetTracker): void {
-        super.prepareLayout(storage);
-        const seen = new Set<string>();
-        for (const run of this.runs()) {
-            const key = `${run.fontFamily}@${run.fontWeight}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            storage.requestFont(run.fontFamily, run.fontWeight.toString());
-        }
-    }
-
     /**
      * Flatten the nested span tree against this node's defaults, returning
      * leaf runs in document order. Children inherit any style fields the
@@ -156,9 +141,10 @@ export class RichText extends ShapeNode<RichTextProps> {
             const segments = run.text.split("\n");
             for (let i = 0; i < segments.length; i++) {
                 if (i > 0) finishLine();
-                if (segments[i].length > 0) {
-                    lineW += scope.measureText(segments[i], run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle);
-                }
+                // Called unconditionally (even for an empty segment, where
+                // measureTextCached short-circuits to 0) so TrackMeasureScope
+                // always sees this run's font, not just on frames with content.
+                lineW += scope.measureText(segments[i], run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle);
                 if (lh > maxLineH) maxLineH = lh;
             }
         }

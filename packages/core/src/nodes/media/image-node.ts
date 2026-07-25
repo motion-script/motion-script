@@ -9,7 +9,6 @@ import { FillProp } from "@/attributes/shape/fill/union";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
-import { AssetTracker } from "@/assets/tracker";
 
 export interface ImageProps extends RectProps {
     src?: string;
@@ -37,11 +36,6 @@ export class Image extends Rect {
 
     constructor(props: NodeConfig<Image, ImageProps>) {
         super(props as NodeConfig<Rect, RectProps>);
-    }
-
-    override prepareRender(tracker: AssetTracker): void {
-        super.prepareRender(tracker);
-        if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
     }
 
     /** The resolved `image` fill painted in place of the rect's fill, or `null`

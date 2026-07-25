@@ -1,4 +1,4 @@
-import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray, updateFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
 
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
@@ -9,7 +9,6 @@ import { Fill } from "@/attributes/shape/fill/chain";
 
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { AssetTracker } from "@/assets/tracker";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import { TweenOptions } from "@/tween/lerp";
@@ -126,16 +125,6 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
             (patch as { overlay?: FillResolved[] }).overlay = overlays.map(fill => updateFill(fill, time, this.assets));
         }
         this.set(patch);
-    }
-
-    prepareRender(tracker: AssetTracker): void {
-        super.prepareRender(tracker);
-        [
-            ...(this.fill as FillResolved[]),
-            ...(this.overlay as FillResolved[]),
-            ...(this.stroke as StrokeResolved[]).flatMap(s => s.fill),
-            ...(this.shadow as ShadowResolved[]).flatMap(s => s.fill),
-        ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
     protected abstract override renderSelf(ctx: RenderContext): void;

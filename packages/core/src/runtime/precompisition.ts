@@ -8,6 +8,8 @@ import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetTracker } from "@/assets/tracker";
+import { TrackMeasureScope } from "@/render/track-measure-scope";
+import { TrackRenderContext } from "@/render/track-render-context";
 import { Scene } from "@/nodes/scene/scene-node";
 
 // ─── Asset track types ────────────────────────────────────────────────────────
@@ -209,6 +211,12 @@ export class Precomp {
         // own frame 0, so the pass is independent of where the scene sits on the
         // global timeline. assembleTimeline shifts these into absolute frames.
         const registry = new AssetTracker(this.assets);
+        // Font requests are inferred from layout()'s own measureText() calls;
+        // image/video/paint requests from render()'s own draw() calls — both
+        // write into the same `registry` as a side effect of work the scene was
+        // already doing, rather than a hand-written declaration pass.
+        const trackMeasureScope = new TrackMeasureScope(this.measureScope, registry);
+        const trackRenderContext = new TrackRenderContext(registry);
         const stage = new BuildStage<Scene>(this.viewport, this.fps);
 
         scene.reset();
@@ -234,16 +242,27 @@ export class Precomp {
             while (true) {
                 registry.start(localFrame);
 
-                // Two-phase asset prep around layout. Fonts are gathered first
-                // (prepareLayoutAssets) because text/code measurement needs the
-                // real typeface metrics — collecting them after layout would
-                // measure against a fallback face. layout() then resolves every
-                // node's layoutRect, which the render-phase prep
-                // (prepareRenderAssets: images/video/paint) reads to size its
-                // decodes.
-                scene.prepareLayoutAssets(registry);
-                scene.layout(layoutBounds, this.measureScope);
-                scene.prepareRenderAssets(registry);
+                // Opaque pre-layout async setup (e.g. Code's syntax grammar) —
+                // fire-and-forget, doesn't block this synchronous pass. Layout
+                // then resolves every node's layoutRect, measuring text through
+                // trackMeasureScope so every font it touches is registered as a
+                // side effect (see TrackMeasureScope) — no hand-written font
+                // declaration needed, and no less accurate than before: the real
+                // font manager was never populated this early anyway (see
+                // TrackMeasureScope's doc comment).
+                scene.prepareLayoutAssets();
+                scene.layout(layoutBounds, trackMeasureScope);
+                // Reserved pre-render async setup; no current built-in user.
+                scene.prepareRenderAssets();
+                // Audio scheduling (Video, managed sounds) — the one asset concern
+                // that's neither drawable nor a simple async load, so it stays an
+                // explicit, tracker-based registration.
+                scene.prepareAudioAssets(registry);
+                // Replay the scene's real render() against a context that
+                // registers every image/video/paint fill it would have painted
+                // instead of rasterizing — the same Graphics objects renderSelf
+                // already builds, so this can't drift from what's actually drawn.
+                trackRenderContext.execute(() => scene.render(trackRenderContext));
 
                 registry.end();
 

@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, AssetTracker, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -170,12 +170,9 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         }
     }
 
-    prepareRender(tracker: AssetTracker): void {
-        super.prepareRender(tracker);
-        if (this.src) tracker.requestImage(this.src, this.layoutRect.width, this.layoutRect.height);
-    }
-
-    // The grid draws nothing itself; its cells (children) render the image.
+    // The grid draws nothing itself; its cells (children) render the image,
+    // and TrackRenderContext infers the image request from that draw call —
+    // no hand-written declaration needed here anymore.
     protected renderSelf(_ctx: RenderContext): void { }
 }
 

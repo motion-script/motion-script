@@ -35,14 +35,10 @@ class PivotText extends ShapeNode<PivotTextProps> {
         super(props);
     }
 
-    // Register the font before first paint — a raw `Graphics().text()` draw call
-    // (unlike the `Text` node) has no built-in font dependency declaration, so
-    // without this the glyphs can render blank on a cold font cache.
-    override prepareLayout(storage: Parameters<ShapeNode<PivotTextProps>['prepareLayout']>[0]): void {
-        super.prepareLayout(storage);
-        storage.requestFont('Inter', '400');
-    }
-
+    // No font declaration needed: a raw `Graphics().text()` draw call is now
+    // scanned automatically by TrackRenderContext, which registers its font
+    // the same way it registers image/video fills — inferred from the draw
+    // call itself, not hand-declared.
     protected renderSelf(draw: RenderContext): void {
         const label = new Graphics()
             .text({

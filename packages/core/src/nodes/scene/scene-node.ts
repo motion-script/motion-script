@@ -69,10 +69,14 @@ export type SceneGenerator = (stage: Stage) => FrameGenerator;
  *   });
  *
  * The runtime drives a scene through `reset → bindAssets → ellapse → build →
- * prepareLayoutAssets → layout → prepareRenderAssets → render → dispose`, each
- * forwarding to the root. Asset collection is split around layout: fonts are
- * gathered first (text measurement needs their metrics), then images/video/paint
- * after layout (those size their decodes against each node's `layoutRect`).
+ * prepareLayoutAssets → layout → prepareRenderAssets → prepareAudioAssets →
+ * render → dispose`, each forwarding to the root. Image/video/paint and font
+ * assets are no longer hand-declared — they're inferred automatically from the
+ * same `render()`/`layout()` calls (`TrackRenderContext`/`TrackMeasureScope`,
+ * see {@link Precomp.precompScene}). `prepareLayoutAssets`/`prepareRenderAssets`
+ * remain only for opaque async setup (e.g. `Code`'s syntax grammar);
+ * `prepareAudioAssets` is the one asset concern that's neither drawable nor a
+ * simple async load — a playing clip's frame-ranged timeline registration.
  *
  * The scene's authoring methods (`add`/`set`/`to`/camera/paint/sounds) all act
  * on its {@link RootNode} `root`. They're merged with a {@link BuildStage} into
@@ -346,21 +350,30 @@ export class Scene {
     }
 
     /**
-     * Collect the scene's **pre-layout** asset requests (fonts). Called before
-     * {@link layout} so text/code can be measured with real font metrics.
+     * Fire the scene's **pre-layout** async setup (e.g. `Code`'s syntax
+     * grammar). Called before {@link layout}; fire-and-forget, see
+     * {@link Node.prepareLayoutAssets}.
      */
-    prepareLayoutAssets(tracker: AssetTracker): void {
-        this.root.prepareLayoutAssets(tracker);
+    prepareLayoutAssets(): void {
+        this.root.prepareLayoutAssets();
     }
 
     /**
-     * Collect the scene's **pre-render** asset requests (images, video, paint,
-     * and managed sounds). Called after {@link layout} so nodes can size their
-     * decodes against their `layoutRect`. Managed sounds have no layout
-     * dependency, so they're prepared here alongside the render-phase nodes.
+     * Fire the scene's **pre-render** async setup. Called after {@link layout};
+     * fire-and-forget, see {@link Node.prepareRenderAssets}.
      */
-    prepareRenderAssets(tracker: AssetTracker): void {
-        this.root.prepareRenderAssets(tracker);
+    prepareRenderAssets(): void {
+        this.root.prepareRenderAssets();
+    }
+
+    /**
+     * Collect the scene's audio-scheduling requests — nodes with a playing
+     * clip (e.g. {@link Video}) and managed sounds ({@link startSound}/
+     * {@link playSound}). Has no layout dependency, so it can run either side
+     * of {@link layout}; kept after by convention.
+     */
+    prepareAudioAssets(tracker: AssetTracker): void {
+        this.root.prepareAudioAssets(tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
     }
 

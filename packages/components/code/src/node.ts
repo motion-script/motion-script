@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, AssetTracker, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -125,28 +125,22 @@ export class Code extends Node<CodeProps> {
 
 
 
-    // Code measures token advance widths during layout, so its typeface must be
-    // resolved beforehand — hence prepareLayout. The language parser is tracked
-    // here too; it only affects tokenization (re-run on the next render once it
-    // loads), so the phase is immaterial for it, but co-locating both keeps the
-    // node's asset surface in one place.
-    prepareLayout(storage: AssetTracker): void {
-        // Request the typeface so CanvasKit actually loads it; otherwise the
-        // family resolves to a fallback face. We measure and draw with a single
-        // fontFamily and no per-token weight, so weight 400 matches what we use.
-        storage.requestFont(this.fontFamily, '400');
+    // The font itself is inferred automatically now (see the unconditional
+    // scope.measureText() call in computeGeometry, picked up by
+    // TrackMeasureScope) — this hook is left for the one thing that isn't
+    // drawable or measurable: loading the language's syntax grammar.
+    // Tokenization (and therefore layout) depends on it, so it has to resolve
+    // before layout runs, not just before render. Memoized on `language` so a
+    // static block doesn't re-trigger the loader every precomp frame;
+    // re-tokenizing once it loads is handled by onRender's guard, so there's
+    // nothing to free on disposal (parsers are cheap to keep resident).
+    private _highlighterLanguage: string | null = null;
 
-        // Track the language as a timeline asset: the AssetManager runs this load
-        // when the frame window opens (before the scene renders) and disposes it
-        // when the window closes. Keyed by language so every frame and every Code
-        // node sharing it collapses to one load (the theme is a synchronous color
-        // style and never needs loading). Re-tokenizing on the next render is
-        // handled by onRender's guard, so the disposer is a no-op (parsers are
-        // cheap to keep resident).
-        storage.requestLoader(`code:lang:${this.language}`, async () => {
-            await ensureHighlighter(undefined, [this.language]);
+    prepareLayout(): Promise<void> | void {
+        if (this._highlighterLanguage === this.language) return;
+        this._highlighterLanguage = this.language;
+        return ensureHighlighter(undefined, [this.language]).then(() => {
             this.tokenized = false;
-            return () => { };
         });
     }
 
@@ -187,6 +181,14 @@ export class Code extends Node<CodeProps> {
     ): CodeGeometry {
         const pad = this.padding;
         const lineH = this.fontSize * this.lineHeight;
+
+        // Register the font even when there's no content to measure (e.g. an
+        // empty code block, or a static frame that returns the cached geometry
+        // below without ever calling tokenAdvance) — TrackMeasureScope infers
+        // font requests from measureText() calls, so this call's only purpose
+        // outside precomp is that same free registration; the string is empty
+        // and measureTextCached short-circuits it to a cheap 0.
+        scope.measureText("", this.fontSize, this.fontFamily);
 
         // A frame is static (geometry-cacheable) when no transition is mid-flight.
         // A persistent highlight dim (highlightDimOpacity) only touches opacity,

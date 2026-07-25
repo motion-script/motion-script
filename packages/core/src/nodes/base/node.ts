@@ -10,6 +10,7 @@ import { Context, ContextMap } from "@/util/context";
 import { Random } from "@/util/random";
 import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
+import { Disposer } from "@/assets/record";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
 import {
     applyProp,
@@ -1043,54 +1044,105 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
-     * Register the assets this node needs resolved **before layout** — chiefly
-     * fonts, whose metrics text measurement depends on. Runs in the precomp pass
-     * ahead of {@link layout}, so the node cannot read its `layoutRect` here (it
-     * hasn't been laid out yet). No-op by default; {@link Text}/{@link RichText}
-     * (and `Code`) override it to request their typefaces.
+     * Opaque async setup needed **before layout** — e.g. {@link Code}'s syntax
+     * grammar, which tokenization/measurement depends on. Runs in the precomp
+     * pass ahead of {@link layout}, so the node cannot read its `layoutRect`
+     * here (it hasn't been laid out yet). Image/video/paint and font requests
+     * are no longer declared here — they're inferred automatically from the
+     * same `render()`/`layout()` calls a node already makes (see
+     * `TrackRenderContext`/`TrackMeasureScope`). No-op by default.
+     *
+     * The framework does **not** await the returned promise inline (precomp
+     * stays fully synchronous) — it's fired once per frame and, when nothing
+     * changed, should return synchronously (`void`). Memoize like
+     * {@link Video}'s `syncVideo()` does: key off whatever prop drives the
+     * async work and skip re-running when the key is unchanged. When the
+     * promise resolves to a {@link Disposer}, it replaces (and disposes) any
+     * previous one for this node+phase, and runs when this node is
+     * {@link dispose}d.
      */
-    prepareLayout(_storage: AssetTracker): void {
+    prepareLayout(): Promise<void | Disposer> | void {
 
     }
 
     /**
-     * Register the assets this node needs resolved **before render** — images,
-     * video, audio, and fill/stroke/shadow paint. Runs *after* {@link layout},
-     * so the node can read its `layoutRect` to size decodes (image/video
-     * resolution, gradient extents). No-op by default; {@link ShapeNode},
-     * {@link Image}, and {@link Video} override it.
+     * Opaque async setup needed **before render**, with the node's
+     * `layoutRect` available (runs after {@link layout}). No-op by default —
+     * no built-in node currently needs this timing, but it's kept symmetric
+     * with {@link prepareLayout} for custom nodes whose async setup depends on
+     * knowing their rendered size. See {@link prepareLayout} for the contract.
      */
-    prepareRender(_storage: AssetTracker): void {
+    prepareRender(): Promise<void | Disposer> | void {
 
     }
 
+    /** Disposer returned by the most recent {@link prepareLayout}/{@link prepareRender}. */
+    private _layoutDisposer?: Disposer;
+    private _renderDisposer?: Disposer;
+
     /**
-     * Walk the subtree registering each node's **pre-layout** assets (fonts).
-     * Run before {@link layout} so text can be measured with the correct metrics.
-     * Mirrors {@link prepareRenderAssets} but drives {@link prepareLayout}.
+     * Walk the subtree firing each node's **pre-layout** async setup (see
+     * {@link prepareLayout}). Fire-and-forget: does not block precomp's
+     * synchronous per-frame pass.
      */
-    prepareLayoutAssets(storage: AssetTracker, path: string = ""): void {
-        storage.withOwnerPath(path, () => this.prepareLayout(storage));
+    prepareLayoutAssets(): void {
+        const result = this.prepareLayout();
+        if (result) {
+            result.then((disposer) => {
+                if (!disposer) return;
+                this._layoutDisposer?.();
+                this._layoutDisposer = disposer;
+            }).catch((err) => console.error("[prepareLayout] failed:", err));
+        }
         const children = this._children;
         for (let i = 0; i < children.length; i++) {
-            children[i].prepareLayoutAssets(storage, nodePath(path, i));
+            children[i].prepareLayoutAssets();
         }
     }
 
     /**
-     * Walk the subtree registering each node's **pre-render** assets (images,
-     * video, audio, paint). Run after {@link layout} so each node's `layoutRect`
-     * is available to size its decodes. Mirrors {@link prepareLayoutAssets} but
-     * drives {@link prepareRender}.
+     * Walk the subtree firing each node's **pre-render** async setup (see
+     * {@link prepareRender}). Fire-and-forget: does not block precomp's
+     * synchronous per-frame pass.
      */
-    prepareRenderAssets(storage: AssetTracker, path: string = ""): void {
-        // Stamp the owning node's structural path onto any audio requests this
-        // node emits, so the timeline can draw each clip on its own bar. Purely
-        // for display — playback ignores ownerPath.
-        storage.withOwnerPath(path, () => this.prepareRender(storage));
+    prepareRenderAssets(): void {
+        const result = this.prepareRender();
+        if (result) {
+            result.then((disposer) => {
+                if (!disposer) return;
+                this._renderDisposer?.();
+                this._renderDisposer = disposer;
+            }).catch((err) => console.error("[prepareRender] failed:", err));
+        }
         const children = this._children;
         for (let i = 0; i < children.length; i++) {
-            children[i].prepareRenderAssets(storage, nodePath(path, i));
+            children[i].prepareRenderAssets();
+        }
+    }
+
+    /**
+     * Register this node's audio scheduling needs on the timeline — the one
+     * asset concern that's neither drawable (like images/video/paint, inferred
+     * via `TrackRenderContext`) nor a simple async load (see
+     * {@link prepareLayout}): a playing clip has to be declared into the
+     * frame-ranged timeline `AssetManager`/`AudioDevice` use to keep audio in
+     * sync while scrubbing. No-op by default; {@link Video} overrides it.
+     */
+    prepareAudio(_tracker: AssetTracker): void {
+
+    }
+
+    /**
+     * Walk the subtree registering each node's audio requests (see
+     * {@link prepareAudio}). Stamps the owning node's structural path onto any
+     * audio requests emitted, so the timeline can draw each clip on its own
+     * bar — purely for display, playback ignores `ownerPath`.
+     */
+    prepareAudioAssets(tracker: AssetTracker, path: string = ""): void {
+        tracker.withOwnerPath(path, () => this.prepareAudio(tracker));
+        const children = this._children;
+        for (let i = 0; i < children.length; i++) {
+            children[i].prepareAudioAssets(tracker, nodePath(path, i));
         }
     }
 
@@ -1697,6 +1749,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Teardown ---------------------------------------------------------
 
     dispose(): void {
+        this._layoutDisposer?.();
+        this._layoutDisposer = undefined;
+        this._renderDisposer?.();
+        this._renderDisposer = undefined;
         if (this.__signals) {
             for (const cell of this.__signals.values()) {
                 cell.dispose();

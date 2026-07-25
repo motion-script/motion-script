@@ -12,11 +12,10 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { MeasureScope } from "@/render/measure-scope";
-import { AssetTracker } from "@/assets/tracker";
 import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
-import { resolveFillArray, lerpFillArray, updateFill, prepareFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray, updateFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { Node, NodeConfig, NodeProps } from "../base/node";
@@ -230,14 +229,6 @@ export class RootNode extends Node<RootProps> implements GroupHost {
             patch.overlay = overlays.map(fill => updateFill(fill, time, this.assets)) as Fill;
         }
         this.set(patch);
-    }
-
-    override prepareRender(tracker: AssetTracker): void {
-        super.prepareRender(tracker);
-        [
-            ...(this.fill as FillResolved[]),
-            ...(this.overlay as FillResolved[]),
-        ].forEach(fill => prepareFill(fill, tracker, this.layoutRect.width, this.layoutRect.height));
     }
 
     // ---- Measure / layout -------------------------------------------------
