@@ -21,13 +21,28 @@ export class AssetCatalog {
     constructor(private manifest: AssetManifest) { }
 
     /**
+     * Normalize a caller-supplied asset `src` into the manifest's lookup key.
+     * The manifest stores image/video/audio keys as the file's path relative
+     * to the scanned public folder, using forward slashes with no leading
+     * `./` or `/` (see `scanInto` in the vite-plugin's asset-manifest.ts).
+     * Scene authors write `src` in whichever equivalent form is natural — a
+     * bare filename, `"./sub/file.png"`, `"/sub/file.png"`, or a
+     * Windows-authored backslash path — so normalize all of them to the same
+     * key. Font lookups are keyed by `family@weight`, not a path, so they
+     * don't go through this.
+     */
+    private normalizeKey(src: string): string {
+        return src.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+    }
+
+    /**
      * Retrieves the complete metadata object for a specified image.
      * * @param src - The unique source path or identifier of the image asset.
      * @returns The associated {@link ImageMeta} block.
      * @throws {Error} If the image resource does not exist in the manifest.
      */
     getImageMeta(src: string): ImageMeta {
-        const meta = this.manifest.image[src];
+        const meta = this.manifest.image[this.normalizeKey(src)];
         if (!meta) throw new Error(`Image asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
@@ -39,7 +54,7 @@ export class AssetCatalog {
      * @throws {Error} If the video resource does not exist in the manifest.
      */
     getVideoMeta(src: string): VideoMeta {
-        const meta = this.manifest.video[src];
+        const meta = this.manifest.video[this.normalizeKey(src)];
         if (!meta) throw new Error(`Video asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
@@ -51,7 +66,7 @@ export class AssetCatalog {
      * @throws {Error} If the audio resource does not exist in the manifest.
      */
     getAudioMeta(src: string): AudioMeta {
-        const meta = this.manifest.audio[src];
+        const meta = this.manifest.audio[this.normalizeKey(src)];
         if (!meta) throw new Error(`No audio metadata for src: ${src}`);
         return meta;
     }
@@ -109,9 +124,10 @@ export class AssetCatalog {
      * @throws {Error} If `src` is in neither the audio nor the video manifest.
      */
     getMediaDuration(src: string): number {
-        const audio = this.manifest.audio[src];
+        const key = this.normalizeKey(src);
+        const audio = this.manifest.audio[key];
         if (audio) return audio.duration;
-        const video = this.manifest.video[src];
+        const video = this.manifest.video[key];
         if (video) return video.duration;
         throw new Error(`Audio asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
     }

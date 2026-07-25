@@ -147,7 +147,10 @@ async function scanInto(manifest: AssetManifest, dir: string, srcPrefix: string)
 
         const rel = path.relative(dir, file).split(path.sep).join('/');
         const src = `${srcPrefix}${rel}`;
-        const key = path.basename(file);
+        // Keyed by the path relative to the scanned root (not the basename) so
+        // files with the same name in different subfolders don't collide, and a
+        // scene author can reference a nested asset via its folder-qualified src.
+        const key = rel;
         const sizeBytes = fs.statSync(file).size;
 
         if (kind === 'image') {

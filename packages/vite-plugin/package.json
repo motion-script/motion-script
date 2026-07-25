@@ -29,7 +29,8 @@
   ],
   "scripts": {
     "build": "vite build",
-    "clean": "rimraf dist .turbo && tsc -b --clean"
+    "clean": "rimraf dist .turbo && tsc -b --clean",
+    "test": "vitest"
   },
   "dependencies": {
     "@motion-script/canvaskit": "workspace:*",
@@ -52,6 +53,7 @@
     "@types/react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:"
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
   }
 }
