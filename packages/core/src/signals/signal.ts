@@ -51,7 +51,13 @@ export class Signal<T> {
             this._subs.add(currentReader);
             currentReader._deps.add(this);
         }
-        if (this._fn && this._dirty) this._recompute();
+        // A bound fn that reads its own cell (e.g. `cell.bind(() => mapper(ext(),
+        // cell.get()))`, used for mapper "previous value" continuity) re-enters
+        // get() while `currentReader === this` mid-_recompute(): `_dirty` is
+        // still true until _fn() returns, so without this guard the re-entrant
+        // call would call _recompute() again, calling _fn() again, forever.
+        // Self-reads mid-computation get the last-settled value instead.
+        if (this._fn && this._dirty && currentReader !== this) this._recompute();
         return this._value;
     }
 

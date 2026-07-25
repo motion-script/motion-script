@@ -1,10 +1,12 @@
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 import { ContextMap } from "@/util/context";
-import { TextStyleToken, TextDefaults, TEXT_STYLE_KEYS } from "@/runtime/builtin-context";
+import { TextStyleToken, TextStyle, TEXT_STYLE_KEYS } from "@/runtime/builtin-context";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
+import { type Stroke } from "@/attributes/shape/stroke/mapper";
+import { type Shadow } from "@/attributes/shape/shadow/resolver";
 
 export interface DefaultTextStyleProps extends NodeProps {
     fontFamily: string;
@@ -15,6 +17,8 @@ export interface DefaultTextStyleProps extends NodeProps {
     lineHeight: number;
     textAlign: TextAlign;
     fill: Fill;
+    stroke: Stroke;
+    shadow: Shadow;
 }
 
 /**
@@ -43,6 +47,8 @@ export class DefaultTextStyle extends Node<DefaultTextStyleProps> {
     @property({ default: undefined }) declare readonly lineHeight?: number;
     @property({ default: undefined }) declare readonly textAlign?: TextAlign;
     @property({ default: undefined }) declare readonly fill?: Fill;
+    @property({ default: undefined }) declare readonly stroke?: Stroke;
+    @property({ default: undefined }) declare readonly shadow?: Shadow;
 
     constructor(props: NodeConfig<DefaultTextStyle, DefaultTextStyleProps>) {
         super(props);
@@ -51,7 +57,7 @@ export class DefaultTextStyle extends Node<DefaultTextStyleProps> {
     protected override provideContext(parent: ContextMap): ContextMap {
         const p = this._props as Record<string, unknown> | undefined;
         if (!p) return parent;
-        const td: TextDefaults = { ...parent.get(TextStyleToken) };
+        const td: TextStyle = { ...parent.get(TextStyleToken) };
         let changed = false;
         for (const key of TEXT_STYLE_KEYS) {
             if (p[key] !== undefined) {

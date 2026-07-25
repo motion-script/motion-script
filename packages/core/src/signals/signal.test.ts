@@ -220,3 +220,42 @@ describe('createSignal – interaction with Signal', () => {
         expect(s.get()).toBe(21);
     });
 });
+
+describe('Signal – bound fn reading its own cell (mapper "previous value" pattern)', () => {
+    // Mirrors `node.ts`'s `_writeProp`: `cell.bind(() => mapper(extFn(), cell.get()))`
+    // — used so a `@property` mapper (e.g. `resolveStroke`) can fold a new external
+    // value onto the cell's own previous resolved value. Regression test for a stack
+    // overflow: the self-reentrant `cell.get()` call happens while `_dirty` is still
+    // true (it only clears after the bound fn returns), so without a `currentReader
+    // !== this` guard in `get()`, the reentrant call re-triggers `_recompute()` on
+    // itself forever.
+    it('does not recurse infinitely when the bound fn reads its own cell', () => {
+        const ext = new Signal<number>(10);
+        const cell = new Signal<number>(0);
+        const mapper = (extVal: number, previous: number) => extVal + previous;
+        cell.bind(() => mapper(ext.get(), cell.get()));
+
+        expect(() => cell.get()).not.toThrow();
+    });
+
+    it('the self-read sees the last-settled value, not a re-entrant recompute', () => {
+        const ext = new Signal<number>(10);
+        const cell = new Signal<number>(5);
+        cell.bind(() => ext.get() + cell.get());
+
+        // Self-read returns the pre-recompute value (5), so this settles at 15,
+        // not an unbounded/undefined result from recursing.
+        expect(cell.get()).toBe(15);
+    });
+
+    it('a later external change still recomputes correctly', () => {
+        const ext = new Signal<number>(10);
+        const cell = new Signal<number>(5);
+        cell.bind(() => ext.get() + cell.get());
+        expect(cell.get()).toBe(15);
+
+        ext.set(20);
+        // Recompute reads the *previously settled* cell value (15) as "previous".
+        expect(cell.get()).toBe(35);
+    });
+});

@@ -85,7 +85,7 @@ const TYPOGRAPHY_MAP = _g.__msTypographyMap as Map<string, Record<string, unknow
 // is structurally compatible, so `setTheme(config.theme)` just works.
 // `typography` presets are stored opaquely (the parser never reads their fields),
 // so the value type is the loose `object` — this stays assignable from `Theme`'s
-// `TypographyPreset` (a `TextDefaults` interface, which lacks an implicit string
+// `TypographyPreset` (a `TextStyle` interface, which lacks an implicit string
 // index signature and so is not a `Record<string, unknown>`).
 type ColorTokenInput = Color | { [key: string]: ColorTokenInput };
 interface ThemeInput {

@@ -3,6 +3,8 @@ import { Fill } from "@/attributes/shape/fill/chain";
 import { getTypographyPreset } from "@/attributes/shape/fill/color/parser";
 import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
+import { type Stroke } from "@/attributes/shape/stroke/mapper";
+import { type Shadow } from "@/attributes/shape/shadow/resolver";
 import type { Node } from "@/nodes/base/node";
 
 /**
@@ -13,13 +15,14 @@ import type { Node } from "@/nodes/base/node";
  */
 
 /**
- * Text-style defaults contributed by a `<DefaultTextStyle>`. Each field is the
- * loose author-facing type (matching the corresponding `Text` `@property`), and
- * is optional: only the keys a `DefaultTextStyle` explicitly sets are present,
- * so a descendant `Text` inherits exactly those and keeps its own defaults for
- * the rest.
+ * A text node's style vocabulary — every field a `<DefaultTextStyle>` can
+ * supply, a `Text`/`RichText` `variant` preset can set, and `theme.typography`
+ * can default. Each field is the loose author-facing type (matching the
+ * corresponding `Text` `@property`) and is optional: only the keys a given
+ * source explicitly sets are present, so a descendant inherits exactly those
+ * and keeps its own defaults for the rest.
  */
-export interface TextDefaults {
+export interface TextStyle {
     fontFamily?: string;
     fontSize?: number | 'autofit';
     fontWeight?: number;
@@ -28,6 +31,8 @@ export interface TextDefaults {
     lineHeight?: number;
     textAlign?: TextAlign;
     fill?: Fill;
+    stroke?: Stroke;
+    shadow?: Shadow;
 }
 
 /** The `Text` style props a `DefaultTextStyle` can supply and a `Text`/`RichText`
@@ -35,11 +40,11 @@ export interface TextDefaults {
  * apply), so the two stay in lockstep. */
 export const TEXT_STYLE_KEYS = [
     'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
-    'letterSpacing', 'lineHeight', 'textAlign', 'fill',
-] as const satisfies readonly (keyof TextDefaults)[];
+    'letterSpacing', 'lineHeight', 'textAlign', 'fill', 'stroke', 'shadow',
+] as const satisfies readonly (keyof TextStyle)[];
 
 /** Inherited text-style defaults (set by `<DefaultTextStyle>`). */
-export const TextStyleToken = createContext<TextDefaults>({}, "text-style");
+export const TextStyleToken = createContext<TextStyle>({}, "text-style");
 
 /** Inherited theme map (set by `<ThemeProvider theme={…}>`). */
 export const ThemeToken = createContext<Record<string, unknown>>({}, "theme");
@@ -80,7 +85,7 @@ export function applyTextDefaults(node: Node, props?: Record<string, unknown>): 
     for (const key of TEXT_STYLE_KEYS) {
         if (props && props[key] !== undefined) continue;        // 1. author wins
         const fromVariant = preset ? preset[key] : undefined;   // 2. variant preset
-        const fromInherited = inherited[key as keyof TextDefaults]; // 3. inherited default
+        const fromInherited = inherited[key as keyof TextStyle]; // 3. inherited default
         const value = fromVariant !== undefined
             ? fromVariant
             : fromInherited !== undefined

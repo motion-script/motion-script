@@ -29,8 +29,8 @@ export {
     Line,
     Path, Graphics, ShapeNode, RenderContext, resolvePivot, resolveAlign, resolveSize, resolvePadding, resolveCorners, resolveStroke, resolveShadow, resolveFill,
     Polygon,
-    Polygram,
-    LineGrid, lerpFillArray,
+    Polygram, lerpStrokeArray,
+    LineGrid, lerpFillArray, lerpShadowArray,
     GridPattern,
     Grid, RotatedBox,
     BooleanGroup,
@@ -70,6 +70,7 @@ export type {
     TextRange,
     TextSelectionProps,
     SelectionOverrides,
+    TextStyle,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

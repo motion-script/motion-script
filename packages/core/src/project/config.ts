@@ -1,7 +1,7 @@
 import { Size2D } from "@/attributes/layout/size";
 import { Color } from "@/attributes/shape/fill/color/parser";
 import { Scene } from "@/nodes/scene/scene-node";
-import type { TextDefaults } from "@/runtime/builtin-context";
+import type { TextStyle } from "@/runtime/builtin-context";
 
 /** A color token: a resolvable {@link Color}, or a nested group of them. Groups
  *  flatten to dash-joined names — `{ brand: { 500: … } }` → `brand-500`. */
@@ -15,7 +15,7 @@ export type ColorTokens = Record<string, ColorToken>;
 /** A named text-style preset referenced by a `Text`/`RichText` `variant` prop.
  *  Each field it sets supplies that style key to a variant'd node (unless the
  *  author set it explicitly). Same shape as the `<DefaultTextStyle>` defaults. */
-export type TypographyPreset = TextDefaults;
+export type TypographyPreset = TextStyle;
 
 /** Named typography presets, keyed by variant name (e.g. `header`, `body`).
  *  The `default` key is reserved: if present, it's applied to every `Text`/
