@@ -122,6 +122,34 @@ function resolveCanvasKitWasm(): string | null {
 }
 
 /**
+ * Locate `three`, which `@motion-script/web` loads lazily for 3D scenes.
+ *
+ * Needed because the dev server's `root` is plugin-app, and `three` is a
+ * dependency of `@motion-script/web` — so a bare `three` specifier isn't
+ * resolvable from the root and Vite reports "Failed to resolve dependency". This
+ * resolves it from web's own location (mirroring how React is aliased from
+ * wherever it happens to be installed) so the alias below can point at the real
+ * file.
+ *
+ * Returns null when three isn't installed, in which case no alias is registered
+ * and 2D projects behave exactly as before.
+ */
+function resolveThree(): string | null {
+    try {
+        const webPkg = requireFromPlugin.resolve('@motion-script/web/package.json');
+        return createRequire(webPkg).resolve('three');
+    } catch {
+        // Fall back to the plugin's own resolution paths (flat node_modules, or a
+        // project that depends on three directly).
+        try {
+            return requireFromPlugin.resolve('three');
+        } catch {
+            return null;
+        }
+    }
+}
+
+/**
  * Motion Script Vite plugin.
  *
  * Bootstraps a Motion Script project by running an internal preview app
@@ -267,6 +295,11 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                 const { entry: playerEntry, style: playerStyle, root: playerRoot } =
                     resolvePlayer();
 
+                // three, for 3D scenes. Unlike the player this is optional — null
+                // when 3D isn't installed — so the alias and optimizeDeps entry
+                // below are both conditional.
+                const threeEntry = resolveThree();
+
                 // Alias React so plugin-app source resolves it regardless of whether
                 // the user's project depends on React. We alias each package to its
                 // installed *directory* (not its entry file): Vite's alias appends any
@@ -334,6 +367,9 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     resolve: {
                         alias: {
                             ...pluginAppAliases,
+                            // Only aliased when three is actually installed, so a
+                            // 2D-only project is unaffected.
+                            ...(threeEntry ? { three: threeEntry } : {}),
                             '@motion-script/player/style.css': playerStyle,
                             '@motion-script/player': playerEntry,
                             '~user-script': userEntry
@@ -370,7 +406,22 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         // monorepo or installed from npm. Explicitly including it also
                         // stops Vite from discovering it mid-session and triggering an
                         // optimizer re-run + full page reload on first load.
-                        include: ['@motion-script/canvaskit', '@motion-script/player'],
+                        // `three` is included for a different reason than the two
+                        // above: @motion-script/web is deliberately *excluded* from
+                        // the optimizer (see below) and reaches three through a bare
+                        // `import("three")`, so Vite can't see that dependency at
+                        // server start. It would discover it mid-session on the
+                        // first 3D frame, trigger a cold re-optimize + full reload,
+                        // and — with `hmr: false` in the headless CLI driver — fail
+                        // the dynamic import with a 504. Declaring it up front is
+                        // what keeps `ms screenshot`/`ms export` working for 3D.
+                        // Conditional so a project without three doesn't get a
+                        // "failed to resolve dependency" warning on every boot.
+                        include: [
+                            '@motion-script/canvaskit',
+                            '@motion-script/player',
+                            ...(threeEntry ? ['three'] : []),
+                        ],
                         // Keep core/web/react OUT of the optimizer so they are served
                         // straight from their (workspace) `dist` rather than folded into
                         // the player's optimized chunk. The optimize hash ignores a dep's

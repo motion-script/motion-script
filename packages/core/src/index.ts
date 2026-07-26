@@ -2,6 +2,7 @@ export * from './attributes';
 export * from './nodes';
 export * from './project';
 export * from './render';
+export * from './render3d';
 export * from './runtime';
 export * from './platform';
 export * from './assets';

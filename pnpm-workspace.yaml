@@ -47,3 +47,8 @@ catalog:
   "@types/node": ^25.6.2
   "@vitest/browser": 4.1.7
   "@vitest/browser-playwright": ^4.1.7
+  # three ships no bundled types and @types/three tracks its version exactly, so
+  # both are pinned to the same exact version rather than a caret range — a range
+  # would let the runtime and its types drift apart across installs.
+  three: 0.185.1
+  "@types/three": 0.185.1

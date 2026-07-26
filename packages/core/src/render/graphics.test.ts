@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Graphics, GraphicsShapeOp } from '@/render/graphics';
 import { PathBuilder } from '@/render/descriptors/path-builder';
 import { Effects } from '@/attributes/shape/effects/chain';
+import { Graphics3D } from '@/render3d/graphics3d';
 
 describe('Graphics', () => {
     it('records shapes and paint ops in order', () => {
@@ -139,5 +140,44 @@ describe('Graphics', () => {
     it('isPaintOnly is true for a fill/stroke-only Graphics (e.g. boolean result)', () => {
         expect(new Graphics().fill('red').stroke({ weight: 1, fill: 'black' }).isPaintOnly()).toBe(true);
         expect(new Graphics().rect({ width: 1, height: 1 }).fill('red').isPaintOnly()).toBe(false);
+    });
+
+    describe('scene3D', () => {
+        it('records a 3D composite as an in-order op', () => {
+            const g3 = new Graphics3D().box();
+            const g = new Graphics()
+                .rect({ width: 100, height: 100 })
+                .fill('black')
+                .scene3D(g3, { width: 100, height: 100 });
+
+            // Position matters: the 2D fill above paints beneath the 3D.
+            expect(g.ops().map((o) => o.kind)).toEqual(['rect', 'fill', 'scene3D']);
+            expect(g.ops()[2]).toEqual({
+                kind: 'scene3D',
+                graphics: g3,
+                state: { width: 100, height: 100 },
+            });
+        });
+
+        it('does not force a whole-graphics layer', () => {
+            const g = new Graphics().scene3D(new Graphics3D().box(), { width: 10, height: 10 });
+            expect(g.needsGroupLayer()).toBe(false);
+            expect(g.groupTransform()).toBeNull();
+        });
+
+        // A scene3D op paints, it doesn't shape: it contributes no path to the
+        // shape accumulator, the union bbox, or a group transform's pivot
+        // measurement — which is why it stays out of SHAPE_KINDS. The visible
+        // consequence is that a 3D-only Graphics reads as paint-only. That only
+        // matters immediately after endBoolean() (where a paint-only Graphics
+        // styles the merged path instead of resetting the accumulator), so it is
+        // harmless — but pin it so it isn't "fixed" into a shape kind later.
+        it('is paint-only: it contributes no geometry to the shape accumulator', () => {
+            expect(new Graphics().scene3D(new Graphics3D().box(), { width: 1, height: 1 }).isPaintOnly())
+                .toBe(true);
+            expect(new Graphics().rect({ width: 1, height: 1 })
+                .scene3D(new Graphics3D().box(), { width: 1, height: 1 }).isPaintOnly())
+                .toBe(false);
+        });
     });
 });

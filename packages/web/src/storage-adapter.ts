@@ -2,6 +2,8 @@ import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from 
 import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "./shapes/paragraph-cache";
+// Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
+import { warmPendingScene3D } from "./three/bridge";
 
 interface CachedPixels {
     width: number;
@@ -322,6 +324,87 @@ export class WebStorageAdapter extends StorageAdapter {
         return made;
     }
 
+    /**
+     * Decoded RGBA8888 pixels for `src`, or null until {@link loadImage} has
+     * completed.
+     *
+     * The 3D backend needs raw bytes rather than a CanvasKit image ({@link
+     * getCKImage}) because it uploads them into a WebGL texture on its own
+     * context. Same cache, same decode — just a different destination.
+     */
+    getImagePixels(src: string): { pixels: Uint8Array; width: number; height: number } | null {
+        return this.imagePixels.get(src) ?? null;
+    }
+
+    // ─── 3D compositing ──────────────────────────────────────────────────────
+
+    /**
+     * Persistent CanvasKit texture per 3D node, so a 60 fps 3D scene doesn't
+     * allocate and free a GPU texture every frame.
+     */
+    private scene3DTextures = new Map<string, CKImage>();
+
+    /**
+     * Upload a 3D renderer's canvas into a GPU-resident CanvasKit image, creating
+     * the texture on first use and updating it in place afterwards — the same
+     * pattern decoded video frames use ({@link uploadFrame}).
+     *
+     * `srcIsPremul: true` is load-bearing. three's `WebGLRenderer` defaults to
+     * `premultipliedAlpha: true`, so its canvas holds premultiplied pixels; the
+     * third argument defaults to *unpremultiplied*, and omitting it makes Skia
+     * premultiply already-premultiplied data — which shows up as dark fringes on
+     * every antialiased 3D edge.
+     *
+     * The returned image is owned by this adapter (keyed by node), not the caller:
+     * it must NOT be deleted after the draw, or the next frame loses its texture.
+     */
+    upload3DFrame(
+        nodeId: string,
+        source: HTMLCanvasElement | OffscreenCanvas | ImageBitmap,
+        width: number,
+        height: number,
+    ): CKImage | null {
+        const surface = this.surface;
+        if (!surface) return null;
+
+        const info = {
+            width,
+            height,
+            alphaType: this.canvasKit.AlphaType.Premul,
+            colorType: this.canvasKit.ColorType.RGBA_8888,
+            colorSpace: this.canvasKit.ColorSpace.SRGB,
+        };
+
+        let image = this.scene3DTextures.get(nodeId);
+
+        // The buffer can grow (see the renderer's size quantisation); a texture is
+        // fixed-size, so a size change needs a fresh one.
+        if (image && (image.width() !== width || image.height() !== height)) {
+            image.delete();
+            this.scene3DTextures.delete(nodeId);
+            image = undefined;
+        }
+
+        if (!image) {
+            // CanvasKit's TextureSource type omits canvas elements, though the
+            // underlying texImage2D upload accepts them — same cast the video path
+            // makes for ImageBitmap.
+            const made = surface.makeImageFromTextureSource(source as never, info, true);
+            if (!made) return null;
+            this.scene3DTextures.set(nodeId, made);
+            return made;
+        }
+
+        surface.updateTextureFromSource(image, source as never, true);
+        return image;
+    }
+
+    /** Release a 3D node's texture — called when its node is swept. */
+    release3DTexture(nodeId: string): void {
+        this.scene3DTextures.get(nodeId)?.delete();
+        this.scene3DTextures.delete(nodeId);
+    }
+
     // ─── Video ───────────────────────────────────────────────────────────────
 
     /**
@@ -338,6 +421,11 @@ export class WebStorageAdapter extends StorageAdapter {
             session.textureImage = null;
             session.uploadedTs = null;
         }
+        // 3D composites are texture-backed too, so they're bound to the surface
+        // that made them and must be dropped alongside the video textures.
+        for (const image of this.scene3DTextures.values()) image.delete();
+        this.scene3DTextures.clear();
+
         this.surface = surface;
     }
 
@@ -529,7 +617,17 @@ export class WebStorageAdapter extends StorageAdapter {
         );
         this.pendingEchoFrames.clear();
 
-        if (pending.length === 0 && echo.length === 0) return false;
+        // 3D shares this hatch. A `scene3D` op that couldn't be drawn
+        // synchronously — the three runtime still importing on a cold first frame —
+        // registers itself, and every existing caller of this method (export,
+        // screenshot, seek) already re-renders while it returns true. So 3D warms
+        // up frame-accurately without any of those call sites knowing about it.
+        //
+        // Drained before the early return below so a 3D-only scene, which queues no
+        // video work at all, still gets its runtime loaded.
+        const warmed3D = await warmPendingScene3D();
+
+        if (pending.length === 0 && echo.length === 0) return warmed3D;
         await Promise.all([
             ...pending.map(([src, ts]) => this.decodeAt(src, ts)),
             ...echo.map(([src, ts]) => this.decodeEchoFrameAt(src, ts)),
@@ -867,6 +965,9 @@ export class WebStorageAdapter extends StorageAdapter {
         for (const img of this.imageCKCache.values()) img.delete();
         this.imageCKCache.clear();
         this.imagePixels.clear();
+
+        for (const image of this.scene3DTextures.values()) image.delete();
+        this.scene3DTextures.clear();
 
         // Close window bitmaps, tracking them so shared echo entries aren't
         // double-closed below.

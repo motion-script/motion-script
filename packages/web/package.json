@@ -41,6 +41,7 @@
   "devDependencies": {
     "@motion-script/canvaskit": "workspace:*",
     "@motion-script/core": "workspace:*",
+    "@types/three": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "concurrently": "catalog:",
@@ -54,6 +55,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "mediabunny": "catalog:"
+    "mediabunny": "catalog:",
+    "three": "catalog:"
   }
 }

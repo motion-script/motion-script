@@ -7,6 +7,7 @@
 
 /** @internal */ export * from './descriptors/transform';
 /** @internal */ export * from './descriptors/shape';
+/** @internal */ export * from './descriptors/scene3d';
 
 /** @internal */ export * from './descriptors/path';
 /** @internal */ export * from './descriptors/path-builder';

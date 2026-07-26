@@ -10,6 +10,7 @@ import { resolveShadowArray } from "@/attributes/shape/shadow/resolver";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { Vector2 } from "@/attributes/layout/vector2";
+import { track3DResources } from "@/render3d/tracking";
 
 /**
  * A `RenderContext` that never draws anything — it walks the same `Graphics`
@@ -136,6 +137,15 @@ export class TrackRenderContext extends RenderContext {
 
                 case "shadow":
                     for (const s of resolveShadowArray(op.shadows)) this.trackFills(s.fill);
+                    break;
+
+                case "scene3D":
+                    // Size 3D texture requests off the composite rect, the same way
+                    // a 2D fill sizes off its shape — a texture on a small node
+                    // doesn't need full-resolution pixels.
+                    this.currentWidth = op.state.width;
+                    this.currentHeight = op.state.height;
+                    track3DResources(op.graphics, this.tracker, this.currentWidth, this.currentHeight);
                     break;
 
                 // cut/mask/applyMask/endMask/effects carry no asset references.

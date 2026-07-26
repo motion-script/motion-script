@@ -38,3 +38,6 @@ export * from "./layout/rotated-box";
 // Media
 export * from "./media/image-node";
 export * from "./media/video-node";
+
+// 3D
+export * from "./three/scene3d-node";

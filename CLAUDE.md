@@ -262,11 +262,89 @@ above it) should still build its structure in the constructor but override
 
 Implements `core`'s `RenderContext` against Skia/CanvasKit. Notable exports
 (`packages/web/src/index.ts`): `WebRenderContext` (draws frames via
-CanvasKit), `getCanvasKit` (loads/inits the WASM module), `CanvasKitEffect` /
-`CanvasKitEffectRegistry` (SkSL shader effects), `exportScenesAsVideo`
-(encodes frames to video via `mediabunny`), `WebAudioPlayer`,
-`WebMasterClock`, `WebMeasureScope`, `WebStorageAdapter` (browser
-implementations of `core`'s platform seams).
+CanvasKit), `getCanvasKit` (loads/inits the WASM module), `EffectHandler` /
+`EffectRegistry` (`packages/web/src/effects/` — SkSL shader effects),
+`exportScenesAsVideo` (encodes frames to video via `mediabunny`),
+`WebAudioPlayer`, `WebMasterClock`, `WebMeasureScope`, `WebStorageAdapter`
+(browser implementations of `core`'s platform seams), and `Scene3DBackend`
+(three.js, lazily imported — see [3D](#3d-graphics3d-and-scene3d)).
+
+### 3D: `Graphics3D` and `Scene3D`
+
+3D follows the same split as 2D: `core` describes a scene as pure data
+(`packages/core/src/render3d/`), and `web` renders it (three.js lives there,
+never in core).
+
+**There is one 3D node, not a 3D node tree.** `NodeProps` are 2D concepts
+(`x`/`y`/`width`/`opacity`/`flex`/`padding`/anchors) that mean nothing for a mesh
+positioned in 3D space, so rather than neuter them on a dozen node types,
+everything inside a 3D scene is described with `Graphics3D` —
+**which makes `Graphics3D` the public 3D API**, not an internal builder like 2D
+`Graphics` is.
+
+`Scene3D` (`packages/core/src/nodes/three/scene3d-node.ts`) extends `Rect`, so it
+is an ordinary 2D node: it lays out in flex/stack groups, takes
+`cornerRadius`/`clip`, can be masked, blended and filtered, and can hold 2D
+children as a HUD over the 3D.
+
+```tsx
+<Scene3D width="fill" height="fill" cornerRadius={24}
+    scene={(g, t) => g
+        .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+        .ambient({ intensity: 0.4 })
+        .directional({ intensity: 2.4, position: [4, 6, 3] })
+        .box({ width: 2, color: "tomato", roughness: 0.3, rotation: [0, spin(), 0] })
+        .group({ position: [3, 0, 0] }, inner => inner.sphere({ radius: 0.8 }))}
+/>
+```
+
+Key things to know when working on this:
+
+- **Angles are degrees everywhere** (Euler rotations, spot cone angles, sweep
+  arcs, UV rotation), matching 2D `rotation`. The backend converts.
+- **Animation is signals read inside the builder**, which re-runs every frame
+  inside the synchronous render pass — that is what makes 3D seekable. Nothing
+  accumulates; frame *N* is identical however the playhead got there. A signal
+  holding a non-number **must** be given a lerp (`createSignal(v, lerpVector3)`)
+  or it snaps at the end of the tween instead of interpolating.
+- **Colours are core's `Color`**, so `oklch()`, theme tokens and `"white/10"` all
+  work. Note `parseColor` returns *gamma-encoded* sRGB, not linear-light — the
+  backend declares `SRGBColorSpace` when handing values to three, and converts
+  explicitly for vertex-colour buffers (which are sampled as linear).
+- **Full control** comes from four escape hatches, in preference order: the
+  complete parameter surface on each named descriptor; arbitrary vertex data via
+  `Geo.buffer`/`Geo.parametric`; raw GLSL via `Mat.shader`; and a `params`
+  passthrough assigned straight onto the three object.
+- **What is cheap to animate**: transforms, material/light values and shader
+  uniform values are in-place writes. **Geometry parameters are not** — three
+  geometries are immutable, so `.box({ width: signal() })` reallocates every
+  frame. Scale the object instead: `.box({ width: 1, scale: [signal(), 1, 1] })`.
+  The fields marked "structural" on `MaterialCommon3D` recompile the shader
+  program; set them once rather than tweening them.
+
+Rendering path — a `scene3D` **`GraphicsOp`**, not a separate context method, so
+position in the op list is meaningful (2D `fill` before it paints beneath, a
+trailing `effects()` filters it, a `mask()` scope clips it):
+
+```
+Scene3D.renderSelf → Graphics.scene3D(g3, state)   [core, pure data]
+  → WebRenderContext.applyOp "scene3D" → _scene3D()
+    → Scene3DBackend.render()   reconcile ops → cached THREE.Scene, render
+    → upload3DFrame()           makeImageFromTextureSource(…, srcIsPremul: true)
+    → drawImageRect()           into the node's rect, honouring worldAlpha
+```
+
+The reconciler (`packages/web/src/three/reconciler.ts`) keeps one live three
+object per op, keyed by structural path, and mutates rather than rebuilds — a
+`Graphics3D` is rebuilt from scratch every frame but the GPU resources are not.
+
+three is reached through a lazy `import("three")`, so 2D-only projects never load
+it. `Scene3D.prepareRender()` warms it during precomp (before any frame draws) via
+core's `registerScene3DWarmup` seam; if a frame still beats it, the existing
+`warmPendingVideo` re-render loop covers it, so exports stay frame-accurate.
+Because the dev server's root is the player app, `vite-plugin` resolves `three`
+from `@motion-script/web`'s location and declares it in `optimizeDeps.include` —
+without that the dynamic import 504s under the headless CLI.
 
 ### `@motion-script/canvaskit`
 

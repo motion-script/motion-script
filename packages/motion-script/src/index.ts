@@ -101,6 +101,57 @@ export type {
 } from '@motion-script/core';
 
 // ---------------------------------------------------------
+// 5b. 3D — the Scene3D node and the Graphics3D API
+// ---------------------------------------------------------
+// There is one 3D node; everything inside it is described with `Graphics3D`.
+// `Geo`/`Mat`/`Tex` build the geometry/material/texture descriptors, and the lerps
+// are what make a Vector3/Euler/Quaternion signal interpolate rather than snap.
+export {
+    Scene3D,
+    Graphics3D,
+    Geo,
+    Mat,
+    Tex,
+    lerpVector3,
+    lerpEuler3,
+    slerpQuaternion,
+    quaternionFromEuler,
+    normalizeQuaternion,
+    resolveVector3,
+    evaluateParametric,
+} from '@motion-script/core';
+export type {
+    Scene3DProps,
+    Scene3DBuilder,
+    Graphics3DOp,
+    Vector3,
+    Vector3Input,
+    Euler3,
+    EulerOrder,
+    Quaternion,
+    Transform3D,
+    Side3D,
+    Blending3D,
+    Geometry3D,
+    Material3D,
+    MaterialCommon3D,
+    MeshShorthand3D,
+    Uniform3D,
+    Texture3D,
+    TextureOptions3D,
+    Light3D,
+    Camera3D,
+    Fog3D,
+    Background3D,
+    Environment3D,
+    ShadowSettings3D,
+    ToneMapping3D,
+    PostEffect3D,
+    LineMode3D,
+    ModelAnimation3D,
+} from '@motion-script/core';
+
+// ---------------------------------------------------------
 // 6. Nodes — Scene Utilities
 // ---------------------------------------------------------
 export {
