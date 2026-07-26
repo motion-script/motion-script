@@ -1,15 +1,17 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
-import { CanvasKitEffect } from "./effect";
-import { type BlurEffect } from "@motion-script/core";
+import { type BlurEffect, type BlurFilter } from "@motion-script/core";
+import type { EffectHandler } from "./handler";
 
-export class BlurCanvasKitEffect extends CanvasKitEffect<BlurEffect> {
-    constructor() {
-        super("blur");
-    }
+/**
+ * Gaussian blur. Serves both the scene effect and the image/video-fill filter —
+ * since the field unification both are `{ type: 'blur', radius }` and both want
+ * Decal tiling, so a second copy would only be a second place to fix bugs.
+ */
+export const blurEffectHandler: EffectHandler<BlurEffect | BlurFilter> = {
+    type: "blur",
 
-    makeImageFilter(effect: BlurEffect, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         // Skia's blur sigma is roughly half the perceived "radius" of the blur.
-        const sigma = effect.blur / 2;
+        const sigma = effect.radius / 2;
         return ck.ImageFilter.MakeBlur(sigma, sigma, ck.TileMode.Decal, null);
-    }
-}
+    },
+};

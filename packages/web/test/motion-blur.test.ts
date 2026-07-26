@@ -18,15 +18,15 @@ describe("resolveMotionBlur", () => {
         const r = resolveMotionBlur(base, { x: 100, y: 0 }, dt);
         expect(r).not.toBeNull();
         // length 100% * strength 1 → full per-frame displacement (100 px/s * dt).
-        expect(r!.blurLength).toBeCloseTo(100 * dt, 6);
-        expect(r!.direction).toBeCloseTo(0, 6);
+        expect(r!.radius).toBeCloseTo(100 * dt, 6);
+        expect(r!.angle).toBeCloseTo(0, 6);
         expect(r!.phase).toBe(0);
     });
 
     it("scales the smear by length% and strength", () => {
         const r = resolveMotionBlur({ ...base, length: 50, strength: 2 }, { x: 100, y: 0 }, dt);
         // 0.5 * 2 = 1.0 → same as the nominal case above.
-        expect(r!.blurLength).toBeCloseTo(100 * dt, 6);
+        expect(r!.radius).toBeCloseTo(100 * dt, 6);
     });
 
     it("isolates an axis: 'x' suppresses smear from purely vertical motion", () => {

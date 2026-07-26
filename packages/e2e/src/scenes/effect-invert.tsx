@@ -16,7 +16,7 @@ export default createScene(function* (stage) {
                 group={'row'}
                 gap={16}
                 padding={20}
-                effects={Effects.invert('rgba', 0)}
+                effects={Effects.invert(0)}
             >
                 <Rect width={'fill'} height={'fill'} cornerRadius={12} fill={'#6990dd'} />
                 <Rect width={'fill'} height={'fill'} cornerRadius={12} fill={'#e8617c'} />
@@ -25,6 +25,6 @@ export default createScene(function* (stage) {
         </Rect>,
     );
 
-    yield* card().to({ effects: Effects.invert('rgba', 1) }, 1.2, easeInOut('quad'));
+    yield* card().to({ effects: Effects.invert(1) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

@@ -20,6 +20,16 @@ export type { EchoFilter } from './implementations/echo';
 export { AudioFilters, AudioFilterChain, resolveAudioFilters } from './chain';
 export type { AudioFilter } from './chain';
 
+/** Per-builder options. Each builder takes one of these, or its dominant `Param`. */
+export type {
+    GainFilterOptions,
+    HighPassFilterOptions,
+    LowPassFilterOptions,
+    TremoloFilterOptions,
+    SpeedFilterOptions,
+    EchoFilterOptions,
+} from './chain';
+
 /** Time-varying param curves: builders, the Curve type, and param helpers. */
 export {
     Curve,

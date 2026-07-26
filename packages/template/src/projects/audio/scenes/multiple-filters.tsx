@@ -8,5 +8,5 @@ import { audioDemo } from "./audio-demo";
  */
 export default createScene(audioDemo({
         label: 'Gain + Low-pass + Echo',
-        filters: AudioFilters.gain(1.5).lowpass(800).echo(0.3, 0.4, 0.4),
+        filters: AudioFilters.gain(1.5).lowpass(800).echo({ delay: 0.3, feedback: 0.4, mix: 0.4 }),
     }));

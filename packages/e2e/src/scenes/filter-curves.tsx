@@ -12,13 +12,13 @@ export default createScene(function* (stage) {
                 width={320}
                 height={320}
                 cornerRadius={24}
-                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.curves([[0, 0], [0.5, 0.5], [1, 1]]) })}
+                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.curves({ points: [[0, 0], [0.5, 0.5], [1, 1]] }) })}
             />
         </Rect>,
     );
 
     yield* rect().to(
-        { fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.curves([[0, 0], [0.25, 0.1], [0.75, 0.9], [1, 1]]) }) },
+        { fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.curves({ points: [[0, 0], [0.25, 0.1], [0.75, 0.9], [1, 1]] }) }) },
         1.4,
         easeInOut('quad'),
     );

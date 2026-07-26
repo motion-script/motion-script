@@ -5,10 +5,10 @@ import { lerpNumber } from "@/tween/lerp";
 export interface BlurFilter {
     type: 'blur';
     /** Blur radius in pixels. */
-    value: number;
+    radius: number;
 }
 
 export const blurFilter: FilterData<BlurFilter> = {
-    lerp: (from, to, t) => ({ type: "blur", value: lerpNumber(from.value, to.value, t) }),
-    equals: (a, b) => a.value === b.value,
+    lerp: (from, to, t) => ({ type: "blur", radius: lerpNumber(from.radius, to.radius, t) }),
+    equals: (a, b) => a.radius === b.radius,
 };

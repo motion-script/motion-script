@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
 import type { VintageEffect } from "@motion-script/core";
-import { CanvasKitEffect } from "./effect";
 
 /**
  * Vintage / film-look colour grading effect.
@@ -14,12 +13,10 @@ import { CanvasKitEffect } from "./effect";
  *   G' = 0.349R + 0.686G + 0.168B
  *   B' = 0.272R + 0.534G + 0.131B
  */
-export class VintageCanvasKitEffect extends CanvasKitEffect<VintageEffect> {
-    constructor() {
-        super("vintage");
-    }
+export const vintageEffectHandler: EffectHandler<VintageEffect> = {
+    type: "vintage",
 
-    makeImageFilter(effect: VintageEffect, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         if (effect.amount <= 0 && effect.warmth === 0) return null;
 
         const a = Math.max(0, Math.min(1, effect.amount));
@@ -51,5 +48,5 @@ export class VintageCanvasKitEffect extends CanvasKitEffect<VintageEffect> {
         const result = ck.ImageFilter.MakeColorFilter(cf, null);
         cf.delete();
         return result;
-    }
-}
+    },
+};

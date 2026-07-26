@@ -5,10 +5,10 @@ import { lerpNumber } from "@/tween/lerp";
 export interface ExposureFilter {
     type: 'exposure';
     /** Exposure multiplier. 1 = unchanged, >1 brighter, <1 darker. */
-    value: number;
+    amount: number;
 }
 
 export const exposureFilter: FilterData<ExposureFilter> = {
-    lerp: (from, to, t) => ({ type: "exposure", value: lerpNumber(from.value, to.value, t) }),
-    equals: (a, b) => a.value === b.value,
+    lerp: (from, to, t) => ({ type: "exposure", amount: lerpNumber(from.amount, to.amount, t) }),
+    equals: (a, b) => a.amount === b.amount,
 };

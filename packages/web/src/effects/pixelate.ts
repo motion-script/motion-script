@@ -1,20 +1,17 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
-import { CanvasKitEffect } from "./effect";
+import type { EffectHandler } from "./handler";
 import { type PixelateEffect } from "@motion-script/core";
 
-export class PixelateCanvasKitEffect extends CanvasKitEffect<PixelateEffect> {
-    constructor() {
-        super("pixelate");
-    }
+export const pixelateEffectHandler: EffectHandler<PixelateEffect> = {
+    type: "pixelate",
 
     /**
      * After Effects-style Mosaic via two MakeMatrixTransform passes:
-     *   1. Downsample so the grid has exactly `horizontalBlocks × verticalBlocks`
+     *   1. Downsample so the grid has exactly `blocks.x × blocks.y`
      *      cells (every block collapses to one representative pixel).
      *   2. Upsample that coarse grid back to full size, blowing each cell up to a
      *      block.
      *
-     * `horizontalBlocks` / `verticalBlocks` are *block counts* across the layer
+     * `blocks.x` / `blocks.y` are *block counts* across the layer
      * (AE "Horizontal/Vertical Blocks"), so a count equal to the surface size on
      * that axis is pristine. The block size in pixels is therefore the surface
      * size divided by the block count.
@@ -23,12 +20,12 @@ export class PixelateCanvasKitEffect extends CanvasKitEffect<PixelateEffect> {
      * a single solid colour (nearest-neighbour upsample); when false the block
      * colours are smoothly interpolated (linear upsample).
      */
-    makeImageFilter(effect: PixelateEffect, ck: CanvasKit, width: number, height: number): any {
+    makeImageFilter(effect, ck, { width, height }) {
         // Block size in pixels = surface size / number of blocks. Clamp the
         // block count to at least 1 (a whole-layer block) and never more than
         // the surface size (one block per pixel → no pixelation).
-        const blocksX = Math.max(1, Math.min(width, effect.horizontalBlocks));
-        const blocksY = Math.max(1, Math.min(height, effect.verticalBlocks));
+        const blocksX = Math.max(1, Math.min(width, effect.blocks.x));
+        const blocksY = Math.max(1, Math.min(height, effect.blocks.y));
         const blockW = width / blocksX;
         const blockH = height / blocksY;
 
@@ -65,5 +62,5 @@ export class PixelateCanvasKitEffect extends CanvasKitEffect<PixelateEffect> {
 
         step1.delete();
         return step2;
-    }
-}
+    },
+};

@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Rect width={400} height={300} fill="royalblue" effects={Effects.blur(12)} />
 
 // Via raw object
-<Rect width={400} height={300} fill="royalblue" effects={[{ type: 'blur', blur: 12 }]} />
+<Rect width={400} height={300} fill="royalblue" effects={[{ type: 'blur', radius: 12 }]} />
 ```
 
 ## Props
@@ -25,8 +25,8 @@ import { Effects } from '@motion-script/core';
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `type` | `'blur'` | – | Effect identifier |
-| `blur` | `number` | – | Gaussian blur radius in pixels |
-| `backdrop` | `boolean` | `false` | When `true`, blurs the content beneath the node (Figma-style) instead of the node itself |
+| `radius` | `number` | – | Gaussian blur radius in pixels |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` blurs the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 

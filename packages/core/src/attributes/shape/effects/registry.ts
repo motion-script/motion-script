@@ -14,7 +14,7 @@ import { scatterEffect } from "./implementations/scatter";
 import { posterizeEffect } from "./implementations/posterize";
 import { motionBlurEffect } from "./implementations/motion-blur";
 import { skslEffect } from "./implementations/sksl";
-import { EffectData } from "./effect-data";
+import { EffectData, EffectSurface } from "./effect-data";
 
 
 const EFFECTS = new Map<string, EffectData<SceneEffect>>([
@@ -33,6 +33,16 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["motionBlur", motionBlurEffect as EffectData<SceneEffect>],
     ["sksl", skslEffect as EffectData<SceneEffect>],
 ]);
+
+/**
+ * How a backend must realise `effect` — see {@link EffectSurface}. Unknown types
+ * fall back to `"filter"`, the composable default.
+ */
+export function effectSurface(effect: SceneEffect): EffectSurface {
+    const surface = EFFECTS.get(effect.type)?.surface;
+    if (surface === undefined) return "filter";
+    return typeof surface === "function" ? surface(effect) : surface;
+}
 
 /** @internal */
 export function lerpEffect(from: SceneEffect, to: SceneEffect, t: number): SceneEffect {

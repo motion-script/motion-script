@@ -1,13 +1,10 @@
 import { lerpNumber } from "@/tween/lerp";
-import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
-import type { ModedEffect, EffectData } from "../effect-data";
+import { lerpVector2 } from "@/attributes/layout/vector2";
+import type { ModedEffect, EffectData, EffectAxis } from "../effect-data";
+import { resolveEffectAxis, sameEffectAxis } from "../effect-data";
 
-/**
- * Per-axis scale applied to the node's velocity before the smear is computed.
- * `'both'` (= `{x:1,y:1}`) blurs along the full motion vector; `'x'`/`'y'`
- * isolate a single axis; a {@link Vector2} gives fractional control per axis.
- */
-export type MotionBlurAxis = "x" | "y" | "both" | Vector2;
+/** Shutter phase presets — see {@link MotionBlurEffect.alignment}. */
+export type MotionBlurAlignment = "behind" | "centered" | "ahead" | number;
 
 /**
  * Velocity-driven motion blur. Unlike {@link DirectionalBlurEffect}, whose smear
@@ -28,7 +25,7 @@ export interface MotionBlurEffect extends ModedEffect {
      * position along its motion. `'behind'` (−1) trails the motion, `'centered'`
      * (0) straddles it, `'ahead'` (1) leads it; a number is clamped to −1…1.
      */
-    alignment: "behind" | "centered" | "ahead" | number;
+    alignment: MotionBlurAlignment;
     /**
      * Quality hint for the renderer. Low values use a cheap continuous smear;
      * above the renderer's threshold it switches to discrete multi-tap
@@ -37,22 +34,12 @@ export interface MotionBlurEffect extends ModedEffect {
     samples: number;
     /** Multiplier on the blur length. `1` = nominal, `0` = off. */
     strength: number;
-    /** Per-axis velocity scale — see {@link MotionBlurAxis}. */
-    axis: MotionBlurAxis;
-}
-
-/** Resolve a {@link MotionBlurAxis} to its per-axis scale vector. */
-export function resolveMotionBlurAxis(axis: MotionBlurAxis): Vector2 {
-    switch (axis) {
-        case "x": return { x: 1, y: 0 };
-        case "y": return { x: 0, y: 1 };
-        case "both": return { x: 1, y: 1 };
-        default: return { x: axis.x, y: axis.y };
-    }
+    /** Per-axis velocity scale — see {@link EffectAxis}. */
+    axis: EffectAxis;
 }
 
 /** Resolve {@link MotionBlurEffect.alignment} to a shutter-phase number in −1…1. */
-export function resolveMotionBlurAlignment(alignment: MotionBlurEffect["alignment"]): number {
+export function resolveMotionBlurAlignment(alignment: MotionBlurAlignment): number {
     switch (alignment) {
         case "behind": return -1;
         case "centered": return 0;
@@ -70,7 +57,7 @@ export const motionBlurEffect: EffectData<MotionBlurEffect> = {
         alignment: lerpNumber(resolveMotionBlurAlignment(from.alignment), resolveMotionBlurAlignment(to.alignment), t),
         samples: lerpNumber(from.samples, to.samples, t),
         strength: lerpNumber(from.strength, to.strength, t),
-        axis: lerpVector2(resolveMotionBlurAxis(from.axis), resolveMotionBlurAxis(to.axis), t),
+        axis: lerpVector2(resolveEffectAxis(from.axis), resolveEffectAxis(to.axis), t),
         mode: t < 0.5 ? from.mode : to.mode,
     }),
     equals: (a, b) =>
@@ -78,12 +65,6 @@ export const motionBlurEffect: EffectData<MotionBlurEffect> = {
         resolveMotionBlurAlignment(a.alignment) === resolveMotionBlurAlignment(b.alignment) &&
         a.samples === b.samples &&
         a.strength === b.strength &&
-        sameAxis(a.axis, b.axis) &&
+        sameEffectAxis(a.axis, b.axis) &&
         a.mode === b.mode,
 };
-
-function sameAxis(a: MotionBlurAxis, b: MotionBlurAxis): boolean {
-    const av = resolveMotionBlurAxis(a);
-    const bv = resolveMotionBlurAxis(b);
-    return av.x === bv.x && av.y === bv.y;
-}

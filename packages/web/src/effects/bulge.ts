@@ -1,4 +1,6 @@
-import type { CanvasKit, RuntimeEffect, Shader } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
+import type { CanvasKit, Shader } from "@motion-script/canvaskit";
+import { getOrCompileSkSL } from "./sksl-cache";
 import { type BulgeEffect } from "@motion-script/core";
 
 /**
@@ -36,18 +38,6 @@ vec4 main(vec2 fragCoord) {
 }
 `;
 
-let cachedEffect: RuntimeEffect | null = null;
-
-function getRuntimeEffect(ck: CanvasKit): RuntimeEffect | null {
-    if (!cachedEffect) cachedEffect = ck.RuntimeEffect.Make(BULGE_SKSL);
-    return cachedEffect;
-}
-
-/** Drop the cached RuntimeEffect (called when the draw context is disposed). */
-export function disposeBulge(): void {
-    cachedEffect?.delete();
-    cachedEffect = null;
-}
 
 /**
  * Build a paint shader that draws the node's content barrel/pincushion-distorted
@@ -78,11 +68,25 @@ export function makeBulgeShader(
     const halfW = width / 2;
     const halfH = height / 2;
 
-    const runtimeEffect = getRuntimeEffect(ck);
+    const runtimeEffect = getOrCompileSkSL(BULGE_SKSL, ck);
     if (!runtimeEffect) return null;
 
+    // `center` is authored in 0–1 layer coords; offset the node centre by how far
+    // it sits from the middle, in device px (same mapping magnify uses).
+    const cx = centerX + (effect.center.x - 0.5) * width;
+    const cy = centerY + (effect.center.y - 0.5) * height;
+
     return runtimeEffect.makeShaderWithChildren(
-        [centerX, centerY, halfW, halfH, strength],
+        [cx, cy, halfW, halfH, strength],
         [content],
     );
 }
+
+/** Bulge / pinch lens over the node's own content (foreground only). */
+export const bulgeEffectHandler: EffectHandler<BulgeEffect> = {
+    type: "bulge",
+    sampling: { tileMode: "decal", filterMode: "linear" },
+    handles: (_effect, target) => target === "foreground",
+    makeShader: (effect, ck, content, geom) =>
+        makeBulgeShader(effect, ck, content, geom.centerX, geom.centerY, geom.width, geom.height),
+};

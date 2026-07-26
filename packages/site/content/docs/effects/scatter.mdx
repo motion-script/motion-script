@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.scatter()} />
 
 // Horizontal only
-<Rect effects={Effects.scatter(20, 'horizontal')} />
+<Rect effects={Effects.scatter({ strength: 20, axis: 'x' })} />
 
 // Raw object
 <Rect effects={[{ type: 'scatter', strength: 10, direction: 'both' }]} />
@@ -29,8 +29,8 @@ import { Effects } from '@motion-script/core';
 |---|---|---|---|
 | `type` | `'scatter'` | – | Effect identifier |
 | `strength` | `number` | `10` | Maximum random pixel displacement. `0` = off |
-| `direction` | `'horizontal' \| 'vertical' \| 'both'` | `'both'` | Axis along which pixels are displaced |
-| `backdrop` | `boolean` | `false` | When `true`, scatters the content beneath the node |
+| `axis` | `'x' \| 'y' \| 'both' \| { x: number; y: number }` | `'both'` | Axis along which pixels are displaced. `{ x, y }` scales the jitter per axis |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` scatters the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 
@@ -57,5 +57,5 @@ export default createScene(function* (stage) {
 
 ```tsx
 // Signal-loss look: scatter + chromatic aberration
-<Rect effects={Effects.scatter(8, 'horizontal').chromaticAberration(4, 0)} />
+<Rect effects={Effects.scatter({ strength: 8, axis: 'x' }).chromaticAberration(4, 0)} />
 ```

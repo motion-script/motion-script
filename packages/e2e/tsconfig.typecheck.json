@@ -1,0 +1,9 @@
+{
+  // Scenes only. `scripts/` runs through tsx (which allows `.ts` import
+  // specifiers and untyped deps), so type-checking it here would report config
+  // gaps that never affect a run. The point of this config is catching scene
+  // rot against the library API — which is how the `{ backdrop: true }` scenes
+  // silently stopped being backdrop scenes.
+  "extends": "./tsconfig.json",
+  "include": ["src"]
+}

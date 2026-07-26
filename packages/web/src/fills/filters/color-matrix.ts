@@ -1,17 +1,14 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "../../effects/handler";
 import type { ColorMatrixFilter } from "@motion-script/core";
-import { ImageFillFilter } from "./filter";
 
 /** Applies an arbitrary user-supplied 4×5 color matrix verbatim. */
-export class ColorMatrixImageFillFilter extends ImageFillFilter<ColorMatrixFilter> {
-    constructor() {
-        super("colorMatrix");
-    }
+export const colorMatrixEffectHandler: EffectHandler<ColorMatrixFilter> = {
+    type: "colorMatrix",
 
-    makeImageFilter(filter: ColorMatrixFilter, ck: CanvasKit): any {
-        const colorFilter = ck.ColorFilter.MakeMatrix(filter.matrix);
+    makeImageFilter(effect, ck) {
+        const colorFilter = ck.ColorFilter.MakeMatrix(effect.matrix);
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

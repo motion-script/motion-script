@@ -15,7 +15,7 @@ import { Sound, AudioFilters } from '@motion-script/core';
 const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.highpass(200) });
 
 // With resonance boost at the cutoff
-const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.highpass(300, 2) });
+const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.highpass({ frequency: 300, q: 2 }) });
 
 // Via raw object
 const clip = new Sound({ src: './voice.mp3', filters: [{ type: 'highpass', frequency: 200 }] });

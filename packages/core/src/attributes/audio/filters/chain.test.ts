@@ -9,11 +9,15 @@ describe('AudioFilters builders', () => {
 
     it('highpass/lowpass carry frequency and optional q', () => {
         expect([...AudioFilters.highpass(2000)]).toEqual([{ type: 'highpass', frequency: 2000, q: undefined }]);
-        expect([...AudioFilters.lowpass(500, 0.7)]).toEqual([{ type: 'lowpass', frequency: 500, q: 0.7 }]);
+        expect([...AudioFilters.lowpass({ frequency: 500, q: 0.7 })]).toEqual([{ type: 'lowpass', frequency: 500, q: 0.7 }]);
     });
 
     it('tremolo carries rate and depth', () => {
-        expect([...AudioFilters.tremolo(6, 0.7)]).toEqual([{ type: 'tremolo', rate: 6, depth: 0.7 }]);
+        expect([...AudioFilters.tremolo({ rate: 6, depth: 0.7 })]).toEqual([{ type: 'tremolo', rate: 6, depth: 0.7 }]);
+    });
+
+    it('tremolo defaults depth so the rate shorthand is usable alone', () => {
+        expect([...AudioFilters.tremolo(6)]).toEqual([{ type: 'tremolo', rate: 6, depth: 0.5 }]);
     });
 
     it('speed carries the rate multiplier', () => {
@@ -21,8 +25,14 @@ describe('AudioFilters builders', () => {
     });
 
     it('echo carries delay, feedback, and optional mix', () => {
-        expect([...AudioFilters.echo(0.3, 0.45, 0.5)]).toEqual([
+        expect([...AudioFilters.echo({ delay: 0.3, feedback: 0.45, mix: 0.5 })]).toEqual([
             { type: 'echo', delay: 0.3, feedback: 0.45, mix: 0.5 },
+        ]);
+    });
+
+    it('echo defaults feedback so the delay shorthand is usable alone', () => {
+        expect([...AudioFilters.echo(0.3)]).toEqual([
+            { type: 'echo', delay: 0.3, feedback: 0.4, mix: undefined },
         ]);
     });
 
@@ -70,7 +80,7 @@ describe('AudioFilterChain', () => {
     });
 
     it('toJSON serializes to the raw filter array', () => {
-        expect(AudioFilters.gain(2).echo(0.3, 0.4).toJSON()).toEqual([
+        expect(AudioFilters.gain(2).echo({ delay: 0.3, feedback: 0.4 }).toJSON()).toEqual([
             { type: 'gain', value: 2 },
             { type: 'echo', delay: 0.3, feedback: 0.4, mix: undefined },
         ]);

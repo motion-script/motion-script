@@ -15,13 +15,13 @@ export default createScene(function* (stage) {
                 fill={'#0d0f15'}
                 group={'stack'}
                 align={{ x: 0, y: 0 }}
-                effects={Effects.bloom(0.4, 20, 0)}
+                effects={Effects.bloom({ threshold: 0.4, radius: 20, intensity: 0 })}
             >
                 <Text text={'BLOOM'} fontFamily={'Inter'} fontWeight={800} fontSize={56} fill={'#f4f6ff'} />
             </Rect>
         </Rect>,
     );
 
-    yield* card().to({ effects: Effects.bloom(0.4, 20, 2.5) }, 1.2, easeInOut('quad'));
+    yield* card().to({ effects: Effects.bloom({ threshold: 0.4, radius: 20, intensity: 2.5 }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

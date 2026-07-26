@@ -1,4 +1,5 @@
 import { lerpNumber } from "@/tween/lerp";
+import type { BlendMode } from "../../fill/blend";
 import type { ModedEffect, EffectData } from "../effect-data";
 
 /** A single uniform value: a float or a flat array for vec2/vec3/vec4. */
@@ -30,12 +31,10 @@ export interface SkSLEffect extends ModedEffect {
     uniforms: SkSLUniform[];
     /**
      * Blend mode used when `mode` is `'foreground'`. Defaults to `'screen'` so the
-     * generated shader overlay composites additively onto the layer.
-     *
-     * Any CSS blend-mode name that CanvasKit supports is valid
-     * (e.g. `'srcOver'`, `'multiply'`, `'screen'`, `'overlay'`).
+     * generated shader overlay composites additively onto the layer. Ignored for
+     * `'backdrop'`, where the shader's output replaces the backdrop.
      */
-    blendMode?: string;
+    blendMode?: BlendMode;
 }
 
 function lerpUniformValue(a: SkSLUniformValue, b: SkSLUniformValue, t: number): SkSLUniformValue {
@@ -79,4 +78,7 @@ export const skslEffect: EffectData<SkSLEffect> = {
         a.mode === b.mode &&
         a.blendMode === b.blendMode &&
         uniformsEqual(a.uniforms, b.uniforms),
+    // A backdrop shader resamples `u_backdrop`, so it needs a redraw scope; the
+    // foreground variant is an overlay composed via ImageFilter.MakeShader.
+    surface: (effect) => (effect.mode === "backdrop" ? "shader" : "filter"),
 };

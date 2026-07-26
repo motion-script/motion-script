@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, Fills, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link Effects.posterize}: a smooth gradient flattens into bands as `level` drops from many levels to just a few. */
+/** {@link Effects.posterize}: a smooth gradient flattens into bands as `levels` drops from many levels to just a few. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();

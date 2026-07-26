@@ -2,7 +2,7 @@ import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script'
 import { holdTail } from './_lib';
 
 /**
- * `Effects.pixelate({blocks, sharpColors: false})`: with `sharpColors` off,
+ * `Effects.pixelate({ blocks, sharpColors: false })`: with `sharpColors` off,
  * each mosaic block averages its source area smoothly instead of snapping to a
  * single solid sample — softer than the default "Sharp Colors" look.
  */

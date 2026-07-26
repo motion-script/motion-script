@@ -4,7 +4,7 @@ import { effectDemo } from "./effect-demo";
 
 export default createScene(effectDemo({
         label: 'Vintage',
-        from: FX.vintage(0, 0),
-        to: FX.vintage(1, 0.4),
+        from: FX.vintage({ amount: 0, warmth: 0 }),
+        to: FX.vintage({ amount: 1, warmth: 0.4 }),
         compare: true,
     }));

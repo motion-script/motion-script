@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
 import { type InvertEffect } from "@motion-script/core";
-import { CanvasKitEffect } from "./effect";
 
 // 4x5 row-major identity color matrix (Skia format).
 // prettier-ignore
@@ -87,12 +86,10 @@ function fullMatrix(channel: InvertEffect["channel"]): number[] {
 }
 
 /** Colour inversion via a single colour-matrix ImageFilter, lerped between identity (strength=0) and a fully inverted channel (strength=1). */
-export class InvertCanvasKitEffect extends CanvasKitEffect<InvertEffect> {
-    constructor() {
-        super("invert");
-    }
+export const invertEffectHandler: EffectHandler<InvertEffect> = {
+    type: "invert",
 
-    makeImageFilter(effect: InvertEffect, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         const s = Math.max(0, Math.min(1, effect.strength));
         if (s === 0) return null;
 
@@ -103,5 +100,5 @@ export class InvertCanvasKitEffect extends CanvasKitEffect<InvertEffect> {
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

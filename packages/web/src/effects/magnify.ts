@@ -1,4 +1,6 @@
-import type { CanvasKit, RuntimeEffect, Shader } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
+import type { CanvasKit, Shader } from "@motion-script/canvaskit";
+import { getOrCompileSkSL } from "./sksl-cache";
 import { type MagnifyEffect } from "@motion-script/core";
 
 /**
@@ -29,18 +31,6 @@ vec4 main(vec2 fragCoord) {
 }
 `;
 
-let cachedEffect: RuntimeEffect | null = null;
-
-function getRuntimeEffect(ck: CanvasKit): RuntimeEffect | null {
-    if (!cachedEffect) cachedEffect = ck.RuntimeEffect.Make(MAGNIFY_SKSL);
-    return cachedEffect;
-}
-
-/** Drop the cached RuntimeEffect (called when the draw context is disposed). */
-export function disposeMagnify(): void {
-    cachedEffect?.delete();
-    cachedEffect = null;
-}
 
 /**
  * Build a paint shader that draws the backdrop magnified within the lens box and
@@ -72,7 +62,7 @@ export function makeMagnifyShader(
     const cx = centerX + (effect.center.x - 0.5) * width;
     const cy = centerY + (effect.center.y - 0.5) * height;
 
-    const runtimeEffect = getRuntimeEffect(ck);
+    const runtimeEffect = getOrCompileSkSL(MAGNIFY_SKSL, ck);
     if (!runtimeEffect) return null;
 
     return runtimeEffect.makeShaderWithChildren(
@@ -80,3 +70,12 @@ export function makeMagnifyShader(
         [backdrop],
     );
 }
+
+/** Magnifier lens over the backdrop beneath the node (backdrop only). */
+export const magnifyEffectHandler: EffectHandler<MagnifyEffect> = {
+    type: "magnify",
+    sampling: { tileMode: "clamp", filterMode: "linear" },
+    handles: (_effect, target) => target === "backdrop",
+    makeShader: (effect, ck, content, geom) =>
+        makeMagnifyShader(effect, ck, content, geom.centerX, geom.centerY, geom.width, geom.height),
+};

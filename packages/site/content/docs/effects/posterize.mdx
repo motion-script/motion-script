@@ -20,7 +20,7 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.posterize(3)} />
 
 // Raw object
-<Rect effects={[{ type: 'posterize', level: 4 }]} />
+<Rect effects={[{ type: 'posterize', levels: 4 }]} />
 ```
 
 ## Props
@@ -28,8 +28,8 @@ import { Effects } from '@motion-script/core';
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `type` | `'posterize'` | – | Effect identifier |
-| `level` | `number` | `4` | Number of brightness bands per channel (minimum `2`). Lower = fewer steps, more graphic |
-| `backdrop` | `boolean` | `false` | When `true`, posterizes the content beneath the node |
+| `levels` | `number` | `4` | Number of brightness bands per channel (minimum `2`). Lower = fewer steps, more graphic |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` posterizes the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 

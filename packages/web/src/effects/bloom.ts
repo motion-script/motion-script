@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
 import type { BloomEffect } from "@motion-script/core";
-import { CanvasKitEffect } from "./effect";
 
 /**
  * Bloom glow effect. Extracts pixels above `threshold`, blurs them, then
@@ -13,12 +12,10 @@ import { CanvasKitEffect } from "./effect";
  *   background = null → the dynamic source (the saveLayer content)
  *   foreground = blurred threshold pass of the same source
  */
-export class BloomCanvasKitEffect extends CanvasKitEffect<BloomEffect> {
-    constructor() {
-        super("bloom");
-    }
+export const bloomEffectHandler: EffectHandler<BloomEffect> = {
+    type: "bloom",
 
-    makeImageFilter(effect: BloomEffect, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         if (effect.radius <= 0 || effect.intensity <= 0) return null;
 
         const t = Math.max(0, Math.min(1, effect.threshold));
@@ -69,5 +66,5 @@ export class BloomCanvasKitEffect extends CanvasKitEffect<BloomEffect> {
         const result = ck.ImageFilter.MakeBlend(ck.BlendMode.Screen, null, bloomIF);
         bloomIF.delete();
         return result;
-    }
-}
+    },
+};

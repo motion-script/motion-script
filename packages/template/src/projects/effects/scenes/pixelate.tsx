@@ -5,7 +5,7 @@ import { effectDemo } from "./effect-demo";
 export default createScene(effectDemo({
         label: 'Pixelate',
         // Block counts across the node (AE Mosaic). Start coarse → resolve sharp.
-        to: FX.pixelate({ horizontalBlocks: 20, verticalBlocks: 16, sharpColors: true }),
-        from: FX.pixelate({ horizontalBlocks: 1920, verticalBlocks: 1080, sharpColors: true }),
+        to: FX.pixelate({ blocks: { x: 20, y: 16 }, sharpColors: true }),
+        from: FX.pixelate({ blocks: { x: 1920, y: 1080 }, sharpColors: true }),
         compare: true,
     }));

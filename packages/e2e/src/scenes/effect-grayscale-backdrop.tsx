@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** `Effects.grayscale(amount, {backdrop: true})`: desaturates the content beneath the node, clipped to its silhouette, while the node's own fill/stroke stays untouched. */
+/** `Effects.grayscale({ amount, mode: 'backdrop' })`: desaturates the content beneath the node, clipped to its silhouette, while the node's own fill/stroke stays untouched. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const lens = createRef<Rect>();
@@ -20,10 +20,10 @@ export default createScene(function* (stage) {
             cornerRadius={130}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
             center={() => stage.root.center}
-            effects={Effects.grayscale(0, { backdrop: true })}
+            effects={Effects.grayscale({ amount: 0, mode: 'backdrop' })}
         />,
     );
 
-    yield* lens().to({ effects: Effects.grayscale(1, { backdrop: true }) }, 1.2, easeInOut('quad'));
+    yield* lens().to({ effects: Effects.grayscale({ amount: 1, mode: 'backdrop' }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

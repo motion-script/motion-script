@@ -72,7 +72,7 @@ describe('Row/Column clip and effect area (rectangle parity)', () => {
             });
 
             it('confines a backdrop effect to its own outline', () => {
-                const node = new Container({ effects: [{ type: 'blur', blur: 8, mode: 'backdrop' }] });
+                const node = new Container({ effects: [{ type: 'blur', radius: 8, mode: 'backdrop' }] });
                 setLayout(node, RECT);
                 const ctx = new RecorderContext();
                 node.onRender(ctx.asCtx());
@@ -84,7 +84,7 @@ describe('Row/Column clip and effect area (rectangle parity)', () => {
             });
 
             it('opens a foreground shader-effect scope for posterize/bulge', () => {
-                const node = new Container({ effects: [{ type: 'posterize', level: 4 }] });
+                const node = new Container({ effects: [{ type: 'posterize', levels: 4 }] });
                 setLayout(node, RECT);
                 const ctx = new RecorderContext();
                 node.onRender(ctx.asCtx());

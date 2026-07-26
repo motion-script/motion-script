@@ -29,7 +29,7 @@ import { Effects } from '@motion-script/core';
 |---|---|---|---|
 | `type` | `'grayscale'` | – | Effect identifier |
 | `amount` | `number` | – | Desaturation amount: `0` = full color, `1` = fully grayscale |
-| `backdrop` | `boolean` | `false` | When `true`, desaturates the content beneath the node instead of the node itself |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` desaturates the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 

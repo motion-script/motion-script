@@ -183,8 +183,65 @@ export type {
 // ---------------------------------------------------------
 export {
     Effects,
+    FX,
+    EffectChain,
     ImageFilters,
     VideoFilters,
+    FilterChain,
+} from '@motion-script/core';
+
+export type {
+    /** The `effects` prop type — what a node actually accepts. */
+    Effect,
+    EffectMode,
+    EffectAxis,
+    EffectSurface,
+    EffectOptions,
+    ImageFilter,
+    VideoFilter,
+} from '@motion-script/core';
+
+/**
+ * Per-builder options. Every effect builder takes exactly one argument: one of
+ * these, or the dominant scalar it wraps.
+ */
+export type {
+    BlurOptions,
+    DirectionalBlurOptions,
+    GrayscaleOptions,
+    PixelateOptions,
+    BulgeOptions,
+    MagnifyOptions,
+    BloomOptions,
+    VintageOptions,
+    ChromaticAberrationOptions,
+    InvertOptions,
+    ScatterOptions,
+    PosterizeOptions,
+    MotionBlurOptions,
+    SkSLOptions,
+} from '@motion-script/core';
+
+/** Effect data types, for naming an effect value or building one by hand. */
+export type {
+    BlurEffect,
+    DirectionalBlurEffect,
+    GrayscaleEffect,
+    PixelateEffect,
+    BulgeEffect,
+    MagnifyEffect,
+    BloomEffect,
+    VintageEffect,
+    ChromaticAberrationEffect,
+    InvertEffect,
+    InvertChannel,
+    ScatterEffect,
+    PosterizeEffect,
+    MotionBlurEffect,
+    MotionBlurAlignment,
+    SkSLEffect,
+    SkSLUniform,
+    SkSLUniformValue,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

@@ -4,7 +4,8 @@
 export { WebRenderContext } from "./render-context";
 export { WebStorageAdapter } from "./storage-adapter";
 export { getCanvasKit } from "./getter";
-export { CanvasKitEffect, CanvasKitEffectRegistry } from "./effects";
+export { EffectRegistry } from "./effects";
+export type { EffectHandler, EffectGeometry, EffectTarget, RenderEffect } from "./effects";
 export { exportScenesAsVideo, type ExportParams, type ExportProgressCallback } from "./exporter";
 export { exportScreenshot, type ScreenshotParams, type ScreenshotResult, type ScreenshotFormat, type FrameSpec } from "./screenshot";
 export { WebAudioDevice as WebAudioPlayer } from "./audio/player";

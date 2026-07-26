@@ -90,7 +90,7 @@ import { Sound, AudioFilters } from '@motion-script/core';
 
 const processed = new Sound({
   src: './voice.mp3',
-  filters: AudioFilters.gain(1.5).lowpass(3000).echo(0.3, 0.4),
+  filters: AudioFilters.gain(1.5).lowpass(3000).echo({ delay: 0.3, feedback: 0.4 }),
 });
 
 yield* processed.play();
@@ -101,11 +101,11 @@ yield* processed.play();
 | Filter | Builder | Description |
 |---|---|---|
 | Gain | `AudioFilters.gain(value)` | Volume multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
-| High-pass | `AudioFilters.highpass(frequency, q?)` | Rolls off content below `frequency` Hz |
-| Low-pass | `AudioFilters.lowpass(frequency, q?)` | Rolls off content above `frequency` Hz |
-| Tremolo | `AudioFilters.tremolo(rate, depth)` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
+| High-pass | `AudioFilters.highpass(frequency)` or `.highpass({ frequency, q? })` | Rolls off content below `frequency` Hz |
+| Low-pass | `AudioFilters.lowpass(frequency)` or `.lowpass({ frequency, q? })` | Rolls off content above `frequency` Hz |
+| Tremolo | `AudioFilters.tremolo(rate)` or `.tremolo({ rate, depth? })` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
 | Speed | `AudioFilters.speed(value)` | Playback-rate multiplier. Alters pitch. `2` = double speed |
-| Echo | `AudioFilters.echo(delay, feedback, mix?)` | Delay `delay` seconds, feedback 0–&lt;1, wet mix 0-1 |
+| Echo | `AudioFilters.echo(delay)` or `.echo({ delay, feedback?, mix? })` | Delay `delay` seconds, feedback 0–&lt;1, wet mix 0-1 |
 
 ### Raw filter objects
 
@@ -127,7 +127,7 @@ const clip = new Sound({
 
 ```tsx
 const base = AudioFilters.gain(1.2).lowpass(4000);
-const wet  = base.echo(0.4, 0.5);   // 'base' is unchanged
+const wet  = base.echo({ delay: 0.4, feedback: 0.5 });   // 'base' is unchanged
 const dry  = base.highpass(80);
 
 // Spread into an array

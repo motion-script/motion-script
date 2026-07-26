@@ -4,7 +4,7 @@ sidebar_position: 14
 
 # Background Blur
 
-Blurs the content _beneath_ a node rather than the node itself. The node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `backdrop: true` variant of [Blur](./blur), equivalent to Figma's background blur.
+Blurs the content _beneath_ a node rather than the node itself. The node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `mode: 'backdrop'` variant of [Blur](./blur), equivalent to Figma's background blur.
 
 ![Background blur effect demo](/effects/background-blur.png)
 
@@ -18,11 +18,11 @@ import { Effects } from '@motion-script/core';
   width={300}
   height={200}
   fill={{ type: 'color', value: 'rgba(255,255,255,0.2)' }}
-  effects={Effects.blur(16, { backdrop: true })}
+  effects={Effects.blur({ radius: 16, mode: 'backdrop' })}
 />
 
 // Raw object
-<Rect effects={[{ type: 'blur', blur: 16, backdrop: true }]} />
+<Rect effects={[{ type: 'blur', radius: 16, mode: 'backdrop' }]} />
 ```
 
 The node must be layered _over_ other scene content for the effect to be visible: it blurs whatever is painted below it.
@@ -32,8 +32,8 @@ The node must be layered _over_ other scene content for the effect to be visible
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `type` | `'blur'` | – | Effect identifier |
-| `blur` | `number` | – | Blur radius in pixels |
-| `backdrop` | `true` | – | Must be `true`; this is what distinguishes background blur from a regular node blur |
+| `radius` | `number` | – | Blur radius in pixels |
+| `mode` | `'backdrop'` | – | Must be `'backdrop'`; this is what distinguishes background blur from a regular node blur |
 
 ## Animating
 
@@ -52,11 +52,11 @@ export default createScene(function* (stage) {
     cornerRadius: 16,
     fill: { type: 'color', value: 'rgba(255,255,255,0.15)' },
   });
-  card.set({ effects: Effects.blur(0, { backdrop: true }) });
+  card.set({ effects: Effects.blur({ radius: 0, mode: 'backdrop' }) });
   stage.add(bg, card);
 
   yield* tween(1.2, (t) => {
-    card.set({ effects: Effects.blur(lerpNumber(0, 20, easeInOut(t)), { backdrop: true }) });
+    card.set({ effects: Effects.blur({ radius: lerpNumber(0, 20, easeInOut(t)), mode: 'backdrop' }) });
   });
 });
 ```
@@ -67,5 +67,5 @@ Background blur composes with other backdrop effects or regular effects on the s
 
 ```tsx
 // Frosted glass: background blur + subtle grayscale on the backdrop
-<Rect effects={Effects.blur(16, { backdrop: true }).grayscale(0.2, { backdrop: true })} />
+<Rect effects={Effects.blur({ radius: 16, mode: 'backdrop' }).grayscale({ amount: 0.2, mode: 'backdrop' })} />
 ```

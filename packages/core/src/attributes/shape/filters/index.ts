@@ -13,6 +13,19 @@
 /** @internal */ export { ImageFilters, VideoFilters, FilterChain, resolveChainFilters } from './chain';
 /** @internal */ export type { ImageFilter, VideoFilter } from './chain';
 
+/** @internal Per-builder options. Each builder takes one of these, or its dominant scalar. */
+/** @internal */ export type {
+    BlurFilterOptions,
+    GrayscaleFilterOptions,
+    AlphaFilterOptions,
+    ExposureFilterOptions,
+    ColorMatrixFilterOptions,
+    CurvesFilterOptions,
+    ColorAdjustmentFilterOptions,
+    PosterizeTimeFilterOptions,
+    EchoFilterOptions as VideoEchoFilterOptions,
+} from './chain';
+
 /** @internal Unions of concrete filter types: pixel (`MediaFilter`) and video-only. */
 /** @internal */ export type { MediaFilter, VideoMediaFilter } from './union';
 

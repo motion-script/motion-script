@@ -22,7 +22,7 @@ export default createScene(function* (stage) {
     );
 
     // Kick the sound off in the background, keep its handle.
-    const handle = stage.startSound('song.mp3', { volume: 0.9, filters: AudioFilters.echo(0.25, 0.4, 0.4) });
+    const handle = stage.startSound('song.mp3', { volume: 0.9, filters: AudioFilters.echo({ delay: 0.25, feedback: 0.4, mix: 0.4 }) });
 
     // Animate while it plays — startSound doesn't block.
     yield* dot().to({ scale: 1.6, fill: '#e8c84a' } as any, 1.2, easeInOut('quad'));

@@ -51,21 +51,21 @@ describe('Graphics', () => {
         const g = new Graphics()
             .rect({ width: 1, height: 1 })
             .fill('red')
-            .effects([{ type: 'blur', blur: 2 }]);
+            .effects([{ type: 'blur', radius: 2 }]);
 
         // The effect is an in-order op after its shape group, mirroring fill.
         expect(g.ops().map((o) => o.kind)).toEqual(['rect', 'fill', 'effects']);
-        expect(g.ops()[2]).toEqual({ kind: 'effects', effects: [{ type: 'blur', blur: 2 }] });
+        expect(g.ops()[2]).toEqual({ kind: 'effects', effects: [{ type: 'blur', radius: 2 }] });
         // Effects alone do not force a whole-graphics layer — each op scopes its own.
         expect(g.needsGroupLayer()).toBe(false);
     });
 
-    it('effects() accepts a ChainableFx (FX builder) and resolves the op to a SceneEffect[]', () => {
+    it('effects() accepts an Effect (FX builder) and resolves the op to a SceneEffect[]', () => {
         const g = new Graphics().rect({ width: 1, height: 1 }).effects(Effects.blur(8).grayscale(1));
         expect(g.ops()[1]).toEqual({
             kind: 'effects',
             effects: [
-                { type: 'blur', blur: 8 },
+                { type: 'blur', radius: 8 },
                 { type: 'grayscale', amount: 1 },
             ],
         });
@@ -86,8 +86,8 @@ describe('Graphics', () => {
         expect(g.ops().map((o) => o.kind)).toEqual([
             'ellipse', 'ellipse', 'fill', 'effects', 'rect', 'fill', 'effects',
         ]);
-        expect(g.ops()[3]).toEqual({ kind: 'effects', effects: [{ type: 'blur', blur: 4 }] });
-        expect(g.ops()[6]).toEqual({ kind: 'effects', effects: [{ type: 'scatter', strength: 2, direction: 'both' }] });
+        expect(g.ops()[3]).toEqual({ kind: 'effects', effects: [{ type: 'blur', radius: 4 }] });
+        expect(g.ops()[6]).toEqual({ kind: 'effects', effects: [{ type: 'scatter', strength: 2, axis: 'both' }] });
     });
 
     it('rotation/scale accept an explicit center pivot', () => {

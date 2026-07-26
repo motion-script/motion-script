@@ -15,13 +15,13 @@ export default createScene(function* (stage) {
                 fill={'primary'}
                 group={'stack'}
                 align={{ x: 0, y: 0 }}
-                effects={Effects.directionalBlur(0, 0)}
+                effects={Effects.directionalBlur(0)}
             >
                 <Text text={'SPEED'} fontFamily={'Inter'} fontWeight={800} fontSize={56} fill={'#0d0f15'} />
             </Rect>
         </Rect>,
     );
 
-    yield* card().to({ effects: Effects.directionalBlur(0, 60) }, 1.2, easeInOut('quad'));
+    yield* card().to({ effects: Effects.directionalBlur(60) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

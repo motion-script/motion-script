@@ -17,10 +17,10 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.invert()} />
 
 // Hue rotation (180°)
-<Rect effects={Effects.invert('hue')} />
+<Rect effects={Effects.invert({ channel: 'hue' })} />
 
 // Partial invert with blend
-<Rect effects={Effects.invert('rgba', 0.6)} />
+<Rect effects={Effects.invert(0.6)} />
 
 // Raw object
 <Rect effects={[{ type: 'invert', channel: 'rgba', strength: 1 }]} />
@@ -33,7 +33,7 @@ import { Effects } from '@motion-script/core';
 | `type` | `'invert'` | – | Effect identifier |
 | `channel` | `InvertChannel` | `'rgba'` | Which channel or color component to invert (see table below) |
 | `strength` | `number` | `1` | Blend from original (`0`) to fully inverted (`1`) |
-| `backdrop` | `boolean` | `false` | When `true`, inverts the content beneath the node |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` inverts the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ### `InvertChannel` values
 
@@ -58,11 +58,11 @@ export default createScene(function* (stage) {
     height: 400,
     fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
   });
-  photo.set({ effects: Effects.invert('rgba', 0) });
+  photo.set({ effects: Effects.invert(0) });
   stage.add(photo);
 
   yield* tween(1, (t) => {
-    photo.set({ effects: Effects.invert('rgba', lerpNumber(0, 1, easeInOut(t))) });
+    photo.set({ effects: Effects.invert(lerpNumber(0, 1, easeInOut(t))) });
   });
 });
 ```
@@ -71,5 +71,5 @@ export default createScene(function* (stage) {
 
 ```tsx
 // Inverted and desaturated
-<Rect effects={Effects.invert('luminance').grayscale(0.5)} />
+<Rect effects={Effects.invert({ channel: 'luminance' }).grayscale(0.5)} />
 ```

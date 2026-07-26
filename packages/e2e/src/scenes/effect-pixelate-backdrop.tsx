@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** `Effects.pixelate(blocks, {backdrop: true})`: mosaics the content beneath the node, clipped to its silhouette, while the node's own edges stay sharp. */
+/** `Effects.pixelate({ blocks, mode: 'backdrop' })`: mosaics the content beneath the node, clipped to its silhouette, while the node's own edges stay sharp. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const lens = createRef<Rect>();
@@ -20,10 +20,10 @@ export default createScene(function* (stage) {
             cornerRadius={130}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
             center={() => stage.root.center}
-            effects={Effects.pixelate(64, { backdrop: true })}
+            effects={Effects.pixelate({ blocks: 64, mode: 'backdrop' })}
         />,
     );
 
-    yield* lens().to({ effects: Effects.pixelate(8, { backdrop: true }) }, 1.2, easeInOut('quad'));
+    yield* lens().to({ effects: Effects.pixelate({ blocks: 8, mode: 'backdrop' }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

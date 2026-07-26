@@ -20,7 +20,7 @@ import { ImageFilters } from '@motion-script/core';
 />
 
 // Boost the blue channel only
-filters={ImageFilters.curves([[0, 0.1], [0.5, 0.6], [1, 1]], 'b')}
+filters={ImageFilters.curves({ points: [[0, 0.1], [0.5, 0.6], [1, 1]], channel: 'b' })}
 
 // Raw object
 filters={[{
@@ -71,8 +71,8 @@ A straight line from `[0,0]` to `[1,1]` is a no-op identity. Pulling points abov
 
 ```tsx
 ImageFilters
-  .curves([[0, 0], [0.5, 0.55], [1, 1]], 'r')   // warm reds
-  .curves([[0, 0.05], [0.5, 0.5], [1, 0.95]], 'b') // cool darks
+  .curves({ points: [[0, 0], [0.5, 0.55], [1, 1]], channel: 'r' })   // warm reds
+  .curves({ points: [[0, 0.05], [0.5, 0.5], [1, 0.95]], channel: 'b' }) // cool darks
 ```
 
 ## Animating

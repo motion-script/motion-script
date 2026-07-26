@@ -4,7 +4,7 @@ import { effectDemo } from "./effect-demo";
 
 export default createScene(effectDemo({
         label: 'Bloom',
-        from: FX.bloom(0.6, 12, 0),
-        to: FX.bloom(0.6, 24, 1.5),
+        from: FX.bloom({ threshold: 0.6, radius: 12, intensity: 0 }),
+        to: FX.bloom({ threshold: 0.6, radius: 24, intensity: 1.5 }),
         compare: true,
     }));

@@ -1,15 +1,12 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "../../effects/handler";
 import type { ExposureFilter } from "@motion-script/core";
-import { ImageFillFilter } from "./filter";
 
 /** Multiplies RGB channels by `value` (linear exposure scaling), alpha untouched. */
-export class ExposureImageFillFilter extends ImageFillFilter<ExposureFilter> {
-    constructor() {
-        super("exposure");
-    }
+export const exposureEffectHandler: EffectHandler<ExposureFilter> = {
+    type: "exposure",
 
-    makeImageFilter(filter: ExposureFilter, ck: CanvasKit): any {
-        const v = filter.value;
+    makeImageFilter(effect, ck) {
+        const v = effect.amount;
         // Scale RGB channels by `value`, preserve alpha.
         const matrix = [
             v, 0, 0, 0, 0,
@@ -21,5 +18,5 @@ export class ExposureImageFillFilter extends ImageFillFilter<ExposureFilter> {
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

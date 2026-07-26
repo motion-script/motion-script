@@ -1,72 +1,152 @@
 import type { CanvasKit } from "@motion-script/canvaskit";
-import { CanvasKitEffect } from "./effect";
-import { type SceneEffect as IEffect } from "@motion-script/core";
-import { BlurCanvasKitEffect } from "./blur";
-import { DirectionalBlurCanvasKitEffect } from "./directional-blur";
-import { GrayscaleCanvasKitEffect } from "./grayscale";
-import { PixelateCanvasKitEffect } from "./pixelate";
-import { BloomCanvasKitEffect } from "./bloom";
-import { VintageCanvasKitEffect } from "./vintage";
-import { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
-import { InvertCanvasKitEffect } from "./invert";
-import { ScatterCanvasKitEffect } from "./scatter";
-import { MotionBlurCanvasKitEffect } from "./motion-blur";
-import { SkSLLayerEffect } from "./sksl-layer";
-export class CanvasKitEffectRegistry {
-    // Handlers are heterogeneous — each accepts its own effect subtype and is
-    // dispatched by `type` string — so the store is typed loosely. Effects
-    // include both authored `SceneEffect`s and internal resolved-only effects
-    // (e.g. motion blur resolved against a node's velocity).
-    private static registry = new Map<string, CanvasKitEffect<any>>();
+import { effectSurface, type SceneEffect } from "@motion-script/core";
+import type { EffectGeometry, EffectHandler, EffectTarget, RenderEffect } from "./handler";
 
-    static register(effect: CanvasKitEffect<any>): void {
-        this.registry.set(effect.type, effect);
+import { blurEffectHandler } from "./blur";
+import { directionalBlurEffectHandler } from "./directional-blur";
+import { grayscaleEffectHandler } from "./grayscale";
+import { pixelateEffectHandler } from "./pixelate";
+import { bloomEffectHandler } from "./bloom";
+import { vintageEffectHandler } from "./vintage";
+import { chromaticAberrationEffectHandler } from "./chromatic-aberration";
+import { invertEffectHandler } from "./invert";
+import { scatterEffectHandler } from "./scatter";
+import { motionBlurEffectHandler } from "./motion-blur";
+import { skslEffectHandler } from "./sksl";
+import { bulgeEffectHandler } from "./bulge";
+import { magnifyEffectHandler } from "./magnify";
+import { posterizeEffectHandler } from "./posterize";
+import { exposureEffectHandler } from "../fills/filters/exposure";
+import { alphaEffectHandler } from "../fills/filters/alpha";
+import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
+import { curvesEffectHandler } from "../fills/filters/curves";
+import { colorAdjustmentEffectHandler } from "../fills/filters/color-adjustment";
+
+/**
+ * Effect types with no core `EffectData` entry — renderer-internal effects
+ * produced during a draw. The surface assertion has nothing to check them
+ * against, so it skips them.
+ */
+const RENDERER_INTERNAL = new Set<string>(["motionBlurResolved"]);
+
+const handlers = new Map<string, EffectHandler>();
+
+/**
+ * Check that a handler's declared capability matches the effect's
+ * `EffectSurface` in core.
+ *
+ * Core owns the decision of *whether* an effect needs a shader scope (it drives
+ * `foregroundShaderEffects`); this registry owns *how*. If the two disagree, an
+ * effect either silently never renders or takes the wrong path — so catch it at
+ * registration rather than at the first frame that uses it. Runs once per
+ * handler at module load, so it is not worth gating behind a build flag.
+ */
+function assertSurfaceAgrees(handler: EffectHandler): void {
+    if (RENDERER_INTERNAL.has(handler.type)) return;
+
+    // `surface` can be a predicate over the effect, so probe both modes: a
+    // handler is shader-capable if *any* mode needs a shader.
+    const probe = (mode: "foreground" | "backdrop") =>
+        effectSurface({ type: handler.type, mode } as SceneEffect);
+    const needsShader = probe("foreground") === "shader" || probe("backdrop") === "shader";
+
+    if (needsShader && !handler.makeShader) {
+        console.warn(
+            `[motion-script] Effect '${handler.type}' declares surface 'shader' in core but its ` +
+            `renderer handler has no makeShader() — it will never render.`,
+        );
     }
-
-    static get(type: string): CanvasKitEffect<any> | undefined {
-        return this.registry.get(type);
-    }
-
-    static has(type: string): boolean {
-        return this.registry.has(type);
-    }
-
-    static makeImageFilter(effect: IEffect, ck: CanvasKit, width: number, height: number): any {
-        const handler = this.registry.get(effect.type);
-        if (!handler) return null;
-        return handler.makeImageFilter(effect, ck, width, height);
-    }
-
-    /**
-     * Compose all effects into a single ImageFilter chain applied in array order
-     * (index 0 is innermost — applied first to the layer content).
-     */
-    static composeFilters(effects: IEffect[], ck: CanvasKit, width: number, height: number): any | null {
-        let composed: any = null;
-        for (const effect of effects) {
-            const filter = this.makeImageFilter(effect, ck, width, height);
-            if (filter == null) continue;
-            composed = composed === null
-                ? filter
-                : ck.ImageFilter.MakeCompose(filter, composed);
-        }
-        return composed;
-    }
-
-    static disposeAll(): void {
-        for (const handler of this.registry.values()) {
-            handler.dispose();
-        }
+    if (handler.makeShader && !handler.sampling) {
+        console.warn(
+            `[motion-script] Effect handler '${handler.type}' has makeShader() but no sampling mode.`,
+        );
     }
 }
-CanvasKitEffectRegistry.register(new BlurCanvasKitEffect());
-CanvasKitEffectRegistry.register(new DirectionalBlurCanvasKitEffect());
-CanvasKitEffectRegistry.register(new GrayscaleCanvasKitEffect());
-CanvasKitEffectRegistry.register(new PixelateCanvasKitEffect());
-CanvasKitEffectRegistry.register(new BloomCanvasKitEffect());
-CanvasKitEffectRegistry.register(new VintageCanvasKitEffect());
-CanvasKitEffectRegistry.register(new ChromaticAberrationCanvasKitEffect());
-CanvasKitEffectRegistry.register(new InvertCanvasKitEffect());
-CanvasKitEffectRegistry.register(new ScatterCanvasKitEffect());
-CanvasKitEffectRegistry.register(new MotionBlurCanvasKitEffect());
-CanvasKitEffectRegistry.register(new SkSLLayerEffect());
+
+/**
+ * The single registry of CanvasKit effect handlers — scene effects, media
+ * filters, and renderer-internal effects alike.
+ *
+ * There is deliberately one registry rather than one per capability: an effect
+ * that composes as an `ImageFilter` and one that needs a redraw scope differ
+ * only in which method they implement, and the *call site* already knows which
+ * it wants.
+ */
+export const EffectRegistry = {
+    register(handler: EffectHandler): void {
+        assertSurfaceAgrees(handler);
+        handlers.set(handler.type, handler);
+    },
+
+    get(type: string): EffectHandler | undefined {
+        return handlers.get(type);
+    },
+
+    has(type: string): boolean {
+        return handlers.has(type);
+    },
+
+    /** Build one effect's ImageFilter, or `null` if it has no filter path or is a no-op. */
+    makeImageFilter(effect: RenderEffect, ck: CanvasKit, geom: EffectGeometry): any {
+        const handler = handlers.get(effect.type);
+        if (!handler?.makeImageFilter) return null;
+        return handler.makeImageFilter(effect, ck, geom);
+    },
+
+    /**
+     * Compose effects into a single ImageFilter chain applied in array order
+     * (index 0 is innermost — applied first to the content). Order matters:
+     * blur-then-grayscale ≠ grayscale-then-blur.
+     */
+    compose(effects: readonly RenderEffect[], ck: CanvasKit, geom: EffectGeometry): any | null {
+        let composed: any = null;
+        for (const effect of effects) {
+            const filter = this.makeImageFilter(effect, ck, geom);
+            if (filter == null) continue;
+            composed = composed === null ? filter : ck.ImageFilter.MakeCompose(filter, composed);
+        }
+        return composed;
+    },
+
+    /** The shader-capable handler for `effect` on `target`, or `undefined`. */
+    resolveShader(effect: RenderEffect, target: EffectTarget): EffectHandler | undefined {
+        const handler = handlers.get(effect.type);
+        if (!handler?.makeShader) return undefined;
+        if (handler.handles && !handler.handles(effect, target)) return undefined;
+        return handler;
+    },
+
+    /** Whether `effect` renders via a shader (vs. an ImageFilter) for `target`. */
+    isShaderEffect(effect: RenderEffect, target: EffectTarget): boolean {
+        return this.resolveShader(effect, target) !== undefined;
+    },
+
+    disposeAll(): void {
+        for (const handler of handlers.values()) handler.dispose?.();
+    },
+};
+
+// Scene effects.
+EffectRegistry.register(blurEffectHandler);
+EffectRegistry.register(directionalBlurEffectHandler);
+EffectRegistry.register(grayscaleEffectHandler);
+EffectRegistry.register(pixelateEffectHandler);
+EffectRegistry.register(bloomEffectHandler);
+EffectRegistry.register(vintageEffectHandler);
+EffectRegistry.register(chromaticAberrationEffectHandler);
+EffectRegistry.register(invertEffectHandler);
+EffectRegistry.register(scatterEffectHandler);
+EffectRegistry.register(motionBlurEffectHandler);
+EffectRegistry.register(bulgeEffectHandler);
+EffectRegistry.register(magnifyEffectHandler);
+EffectRegistry.register(posterizeEffectHandler);
+EffectRegistry.register(skslEffectHandler);
+
+// Media filters. `blur` and `grayscale` are deliberately absent — after the
+// field unification they are the same effect with the same implementation as
+// their scene-effect counterparts above, so one handler serves both.
+EffectRegistry.register(exposureEffectHandler);
+EffectRegistry.register(alphaEffectHandler);
+EffectRegistry.register(colorMatrixEffectHandler);
+EffectRegistry.register(curvesEffectHandler);
+EffectRegistry.register(colorAdjustmentEffectHandler);

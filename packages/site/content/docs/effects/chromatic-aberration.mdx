@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.chromaticAberration()} />
 
 // Custom offset and angle
-<Rect effects={Effects.chromaticAberration(8, 45)} />
+<Rect effects={Effects.chromaticAberration({ amount: 8, angle: 45 })} />
 
 // Raw object
 <Rect effects={[{ type: 'chromaticAberration', amount: 6, angle: 0 }]} />
@@ -30,7 +30,7 @@ import { Effects } from '@motion-script/core';
 | `type` | `'chromaticAberration'` | – | Effect identifier |
 | `amount` | `number` | `4` | Pixel offset distance for the R/B channel fringe |
 | `angle` | `number` | `0` | Fringe direction in degrees: `0` = horizontal (R right, B left), `90` = vertical |
-| `backdrop` | `boolean` | `false` | When `true`, fringes the content beneath the node |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` fringes the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 

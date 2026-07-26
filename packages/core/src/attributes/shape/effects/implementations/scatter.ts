@@ -1,8 +1,6 @@
 import { lerpNumber } from "@/tween/lerp";
-import type { ModedEffect, EffectData } from "../effect-data";
-
-/** Axis (or axes) along which {@link ScatterEffect} jitters pixels. */
-export type ScatterDirection = "horizontal" | "vertical" | "both";
+import type { ModedEffect, EffectData, EffectAxis } from "../effect-data";
+import { sameEffectAxis } from "../effect-data";
 
 export interface ScatterEffect extends ModedEffect {
     type: "scatter";
@@ -12,16 +10,16 @@ export interface ScatterEffect extends ModedEffect {
      */
     strength: number;
     /** Which axis (or axes) pixels are displaced along. */
-    direction: ScatterDirection;
+    axis: EffectAxis;
 }
 
 export const scatterEffect: EffectData<ScatterEffect> = {
     lerp: (from, to, t) => ({
         type: "scatter",
         strength: lerpNumber(from.strength, to.strength, t),
-        // direction is discrete — snap at the midpoint like other enum-valued effects.
-        direction: t < 0.5 ? from.direction : to.direction,
+        // axis is discrete — snap at the midpoint like other enum-valued effects.
+        axis: t < 0.5 ? from.axis : to.axis,
         mode: t < 0.5 ? from.mode : to.mode,
     }),
-    equals: (a, b) => a.strength === b.strength && a.direction === b.direction && a.mode === b.mode,
+    equals: (a, b) => a.strength === b.strength && sameEffectAxis(a.axis, b.axis) && a.mode === b.mode,
 };

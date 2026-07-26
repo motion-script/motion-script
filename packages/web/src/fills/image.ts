@@ -3,7 +3,7 @@ import { isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { type ShapeBounds } from "./handler";
-import { ImageFillFilterRegistry } from "./filters/registry";
+import { EffectRegistry } from "../effects/registry";
 
 /** Shades with the adapter-decoded image and applies the fill's filter chain. */
 export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
@@ -34,7 +34,7 @@ export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: F
         ctx.paint.setImageFilter(null);
         return;
     }
-    const composed = ImageFillFilterRegistry.compose(pixel, ctx.canvasKit);
+    const composed = EffectRegistry.compose(pixel, ctx.canvasKit, { width: 0, height: 0, centerX: 0, centerY: 0 });
     ctx.paint.setImageFilter(composed);
 }
 

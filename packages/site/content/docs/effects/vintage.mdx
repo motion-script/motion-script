@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.vintage()} />
 
 // Partial grade, cool tint
-<Rect effects={Effects.vintage(0.7, -0.2)} />
+<Rect effects={Effects.vintage({ amount: 0.7, warmth: -0.2 })} />
 
 // Raw object
 <Rect effects={[{ type: 'vintage', amount: 1, warmth: 0.2 }]} />
@@ -25,12 +25,15 @@ import { Effects } from '@motion-script/core';
 
 ## Props
 
+The builder takes a single options object — these are its fields, and also the
+fields of the effect object it produces.
+
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `type` | `'vintage'` | – | Effect identifier |
 | `amount` | `number` | `1` | Grade strength: `0` = original color, `1` = full sepia + desaturate |
 | `warmth` | `number` | `0.2` | Color temperature: `−1` = cool/cyan tint, `0` = neutral, `1` = warm/amber tint |
-| `backdrop` | `boolean` | `false` | When `true`, grades the content beneath the node |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` grades the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 
@@ -43,11 +46,11 @@ export default createScene(function* (stage) {
     height: 400,
     fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
   });
-  photo.set({ effects: Effects.vintage(0, 0) });
+  photo.set({ effects: Effects.vintage({ amount: 0, warmth: 0 }) });
   stage.add(photo);
 
   yield* tween(1.5, (t) => {
-    photo.set({ effects: Effects.vintage(lerpNumber(0, 1, easeInOut(t)), lerpNumber(0, 0.4, easeInOut(t))) });
+    photo.set({ effects: Effects.vintage({ amount: lerpNumber(0, 1, easeInOut(t)), warmth: lerpNumber(0, 0.4, easeInOut(t)) }) });
   });
 });
 ```
@@ -56,8 +59,8 @@ export default createScene(function* (stage) {
 
 ```tsx
 // Retro VHS: vintage grade + chromatic aberration
-<Rect effects={Effects.vintage(0.9, -0.2).chromaticAberration(6, 90)} />
+<Rect effects={Effects.vintage({ amount: 0.9, warmth: -0.2 }).chromaticAberration(6, 90)} />
 
 // Warm bloom
-<Rect effects={Effects.vintage(0.6, 0.5).bloom(0.5, 20, 1)} />
+<Rect effects={Effects.vintage({ amount: 0.6, warmth: 0.5 }).bloom({ threshold: 0.5, radius: 20, intensity: 1 })} />
 ```

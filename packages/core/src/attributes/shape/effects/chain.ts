@@ -1,75 +1,158 @@
 import { SceneEffect } from "./union";
-import type { EffectMode } from "./effect-data";
+import type { Vector2 } from "@/attributes/layout/vector2";
+import type { BlendMode } from "../fill/blend";
+import type { EffectAxis, EffectOptions } from "./effect-data";
+import { scalarOptions, withEffectOptions } from "./effect-data";
 import type { InvertChannel } from "./implementations/invert";
-import type { ScatterDirection } from "./implementations/scatter";
-import type { MotionBlurAxis, MotionBlurEffect } from "./implementations/motion-blur";
-import type { PixelateEffect } from "./implementations/pixelate";
+import type { MotionBlurAlignment } from "./implementations/motion-blur";
 import type { SkSLUniform } from "./implementations/sksl";
 
 /**
- * Options shared by every effect builder for choosing the layer it runs on.
- * `{ mode: "backdrop" }` runs the effect on the content painted *beneath* the
- * node (clipped to its silhouette) instead of the node's own content — the
- * node's own edges stay sharp. Omitted defaults to `"foreground"`.
- */
-export type ModeOptions = { mode?: EffectMode };
-
-/**
- * Accepted shapes for {@link Effects.pixelate} / {@link EffectChain.pixelate}.
+ * Every effect builder takes **exactly one argument**: an options object
+ * carrying all of that effect's data. Builders with one dominant animated
+ * scalar also accept that scalar directly, so the common case stays terse:
  *
- * Block counts follow AE's Mosaic: they are the *number* of blocks across the
- * node, so a count equal to the node's pixel size on that axis is pristine and
- * lower counts are coarser. `sharpColors` mirrors AE's "Sharp Colors" checkbox
- * (default `true` — solid blocks). `backdrop` runs the mosaic on the backdrop.
+ *     FX.blur(8)
+ *     FX.blur({ radius: 8, mode: 'backdrop' })
  *
- * - `number` — same block count on both axes (pass `opts` for `backdrop`).
- * - `{ blocks, sharpColors?, backdrop? }` — uniform block count, optional sharpness.
- * - `{ horizontalBlocks, verticalBlocks, sharpColors?, backdrop? }` — per-axis block count.
+ * Field names are shared vocabulary across every effect — `radius` is always a
+ * pixel distance, `amount` always a 0–1 intensity, `angle` always degrees,
+ * `center` always a 0–1 normalised point, `axis` always an {@link EffectAxis}.
  */
-/**
- * Options for {@link Effects.motionBlur} / {@link EffectChain.motionBlur}.
- * Every field is optional; omitted fields fall back to the defaults noted below.
- *
- * - `length` — shutter "openness" as a percent; 100 ≈ 360° (default 50).
- * - `alignment` — shutter phase: `'behind'` | `'centered'` | `'ahead'` | −1…1 (default `'centered'`).
- * - `samples` — renderer quality hint; higher switches to multi-tap accumulation (default 16).
- * - `strength` — blur-length multiplier (default 1).
- * - `axis` — per-axis velocity scale: `'x'` | `'y'` | `'both'` | `{x,y}` (default `'both'`).
- */
-export type MotionBlurOptions = {
-  length?: number;
-  alignment?: MotionBlurEffect['alignment'];
-  samples?: number;
-  strength?: number;
-  axis?: MotionBlurAxis;
-} & ModeOptions;
 
-export type PixelateOptions =
-  | number
-  | ({ blocks: number; sharpColors?: boolean } & ModeOptions)
-  | ({ horizontalBlocks: number; verticalBlocks: number; sharpColors?: boolean } & ModeOptions);
-
-/**
- * Normalises any {@link PixelateOptions} to a concrete {@link PixelateEffect}.
- * For the `number` form, `opts` supplies the `mode`.
- */
-function toPixelateEffect(options: PixelateOptions, opts?: ModeOptions): PixelateEffect {
-  if (typeof options === "number") {
-    return { type: "pixelate", horizontalBlocks: options, verticalBlocks: options, sharpColors: true, ...opts };
-  }
-  const sharpColors = options.sharpColors ?? true;
-  const mode = options.mode;
-  if ("blocks" in options) {
-    return { type: "pixelate", horizontalBlocks: options.blocks, verticalBlocks: options.blocks, sharpColors, mode };
-  }
-  return {
-    type: "pixelate",
-    horizontalBlocks: options.horizontalBlocks,
-    verticalBlocks: options.verticalBlocks,
-    sharpColors,
-    mode,
-  };
+/** Gaussian blur. Scalar shorthand sets `radius`. */
+export interface BlurOptions extends EffectOptions {
+    /** Blur spread in pixels. */
+    radius: number;
 }
+
+/** Directional (linear) blur. Scalar shorthand sets `radius`. */
+export interface DirectionalBlurOptions extends EffectOptions {
+    /** Smear length in pixels along `angle`. */
+    radius: number;
+    /** Smear axis in degrees — 0 = horizontal, 90 = vertical (default 0). */
+    angle?: number;
+}
+
+/** Desaturation. Scalar shorthand sets `amount`. */
+export interface GrayscaleOptions extends EffectOptions {
+    /** 0–1: 0 = original, 1 = fully desaturated. */
+    amount: number;
+}
+
+/**
+ * After Effects-style Mosaic. Scalar shorthand sets `blocks` on both axes.
+ *
+ * `blocks` is the *number of blocks* across the node, so a count equal to the
+ * node's pixel size on that axis is pristine and lower counts are coarser.
+ */
+export interface PixelateOptions extends EffectOptions {
+    /** Block count — a number for both axes, or per-axis via `{ x, y }`. */
+    blocks: number | Vector2;
+    /** AE "Sharp Colors": solid blocks (true, the default) vs. smoothly blended. */
+    sharpColors?: boolean;
+}
+
+/** Bulge / pinch lens over the node's own content. Scalar shorthand sets `strength`. */
+export interface BulgeOptions extends EffectOptions {
+    /** Positive bulges (barrel), negative pinches (pincushion). Range ≈ −1…1. */
+    strength: number;
+    /** Lens centre in 0–1 layer coords (default middle). */
+    center?: Vector2;
+}
+
+/** Magnifier lens over the backdrop. Scalar shorthand sets `scale`. */
+export interface MagnifyOptions extends EffectOptions {
+    /** Magnification factor — 1 = none, 2 = 2×, 0.5 = zoomed out (default 2). */
+    scale?: number;
+    /** Magnify centre in 0–1 layer coords (default middle). */
+    center?: Vector2;
+}
+
+/** Bloom (glow). Scalar shorthand sets `intensity`. */
+export interface BloomOptions extends EffectOptions {
+    /** Additive multiplier for the bloom pass (default 1). */
+    intensity?: number;
+    /** 0–1 luminance cutoff — only pixels brighter than this bloom (default 0.7). */
+    threshold?: number;
+    /** Spread in pixels (default 12). */
+    radius?: number;
+}
+
+/** Vintage / film-look colour grading. Scalar shorthand sets `amount`. */
+export interface VintageOptions extends EffectOptions {
+    /** 0–1: 0 = original, 1 = full sepia + desaturate (default 1). */
+    amount?: number;
+    /** −1…1: negative = cool/cyan tint, positive = warm/amber (default 0.2). */
+    warmth?: number;
+}
+
+/** Lens-dispersion colour fringing. Scalar shorthand sets `amount`. */
+export interface ChromaticAberrationOptions extends EffectOptions {
+    /** Pixel offset distance for the R/B fringe (default 4). */
+    amount?: number;
+    /** Fringe axis in degrees — 0 = horizontal, R right / B left (default 0). */
+    angle?: number;
+}
+
+/** Colour invert. Scalar shorthand sets `strength`. */
+export interface InvertOptions extends EffectOptions {
+    /** 0–1: blend from original (0) to fully inverted (1) (default 1). */
+    strength?: number;
+    /** Which channel / colour component to invert (default `'rgba'`). */
+    channel?: InvertChannel;
+}
+
+/** Per-pixel random jitter. Scalar shorthand sets `strength`. */
+export interface ScatterOptions extends EffectOptions {
+    /** Maximum random pixel displacement (default 10). */
+    strength?: number;
+    /** Axis pixels are scattered along (default `'both'`). */
+    axis?: EffectAxis;
+}
+
+/** Colour banding. Scalar shorthand sets `levels`. */
+export interface PosterizeOptions extends EffectOptions {
+    /** Number of brightness levels per channel (≥ 2, default 4). */
+    levels?: number;
+}
+
+/** Velocity-driven motion blur. Scalar shorthand sets `length`. */
+export interface MotionBlurOptions extends EffectOptions {
+    /** Shutter "openness" as a percent; 100 ≈ 360° (default 50). */
+    length?: number;
+    /** Shutter phase: `'behind'` | `'centered'` | `'ahead'` | −1…1 (default `'centered'`). */
+    alignment?: MotionBlurAlignment;
+    /** Renderer quality hint; higher switches to multi-tap accumulation (default 16). */
+    samples?: number;
+    /** Blur-length multiplier (default 1). */
+    strength?: number;
+    /** Per-axis velocity scale (default `'both'`). */
+    axis?: EffectAxis;
+}
+
+/**
+ * Custom SkSL shader. `mode` selects the path:
+ *
+ * - `'foreground'` (the default) — the shader generates colour and is composited
+ *   onto the node's layer with `blendMode`.
+ * - `'backdrop'` — the shader receives `uniform shader u_backdrop` (a snapshot of
+ *   what is painted beneath the node) and resamples it. `blendMode` is unused.
+ */
+export interface SkSLOptions extends EffectOptions {
+    /** SkSL source. Uniforms declared after any built-ins are supplied via `uniforms`. */
+    shader: string;
+    /** Values in declaration order — lerped between animation frames (default `[]`). */
+    uniforms?: SkSLUniform[];
+    /** How a foreground shader composites onto the layer (default `'screen'`). */
+    blendMode?: BlendMode;
+}
+
+const CENTER: Vector2 = { x: 0.5, y: 0.5 };
+
+/** Normalise {@link PixelateOptions.blocks} to a per-axis count. */
+const toBlocks = (blocks: number | Vector2): Vector2 =>
+    typeof blocks === "number" ? { x: blocks, y: blocks } : blocks;
 
 /**
  * Immutable, chainable list of scene effects.
@@ -83,180 +166,199 @@ function toPixelateEffect(options: PixelateOptions, opts?: ModeOptions): Pixelat
  * node.effects = [...fx, { type: 'pixelate', ... }]; // spread into array
  */
 export class EffectChain {
-  constructor(public list: SceneEffect[] = []) { }
+    constructor(public list: SceneEffect[] = []) { }
 
-  /**
-   * Append a Gaussian blur with the given pixel `radius`. Pass
-   * `{ mode: "backdrop" }` to blur the content beneath the node (clipped to its
-   * silhouette, Figma-style) instead of the node's own content.
-   */
-  blur(radius: number, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'blur', blur: radius, ...opts }]);
-  }
+    private append(effect: SceneEffect): EffectChain {
+        return new EffectChain([...this.list, effect]);
+    }
 
-  /**
-   * Append a motion-blur-style directional (linear) blur, smearing the node's
-   * own content along a single axis (or the backdrop, with `{ mode: "backdrop" }`).
-   * @param direction  angle in degrees of the smear axis (0 = horizontal, 90 = vertical).
-   * @param blurLength smear length in pixels along `direction`.
-   */
-  directionalBlur(direction: number, blurLength: number, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'directionalBlur', direction, blurLength, ...opts }]);
-  }
+    /**
+     * Append a Gaussian blur. Pass `{ mode: "backdrop" }` to blur the content
+     * beneath the node (clipped to its silhouette, Figma-style) instead of the
+     * node's own content.
+     */
+    blur(options: number | BlurOptions) {
+        const o = scalarOptions(options, "radius");
+        return this.append(withEffectOptions({ type: "blur" as const, radius: o.radius ?? 0 }, o));
+    }
 
-  /**
-   * Append an After Effects-style Mosaic / pixelate. The argument is the *number
-   * of blocks* across the node (a count equal to the node's pixel size on that
-   * axis is pristine; lower is coarser), not a pixel block size.
-   * @param options block count: `number` (uniform), `{ blocks, sharpColors?, backdrop? }`,
-   *                or `{ horizontalBlocks, verticalBlocks, sharpColors?, backdrop? }`.
-   * @param opts    `{ backdrop }` when `options` is a bare `number`.
-   */
-  pixelate(options: PixelateOptions, opts?: ModeOptions) {
-    return new EffectChain([...this.list, toPixelateEffect(options, opts)]);
-  }
+    /**
+     * Append a motion-blur-style directional (linear) blur, smearing the node's
+     * own content along a single axis (or the backdrop, with `{ mode: "backdrop" }`).
+     */
+    directionalBlur(options: number | DirectionalBlurOptions) {
+        const o = scalarOptions(options, "radius");
+        return this.append(withEffectOptions(
+            { type: "directionalBlur" as const, radius: o.radius ?? 0, angle: o.angle ?? 0 },
+            o,
+        ));
+    }
 
-  /** Append a grayscale effect with `amount` in the 0–1 range. `{ mode: "backdrop" }` desaturates the backdrop. */
-  grayscale(amount: number, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'grayscale', amount, ...opts }]);
-  }
+    /**
+     * Append an After Effects-style Mosaic / pixelate. `blocks` is the *number of
+     * blocks* across the node (a count equal to the node's pixel size on that
+     * axis is pristine; lower is coarser), not a pixel block size.
+     */
+    pixelate(options: number | PixelateOptions) {
+        const o = scalarOptions(options, "blocks");
+        return this.append(withEffectOptions(
+            {
+                type: "pixelate" as const,
+                blocks: toBlocks(o.blocks ?? 1),
+                sharpColors: o.sharpColors ?? true,
+            },
+            o,
+        ));
+    }
 
-  /**
-   * Append a bulge/pinch lens applied to the node's *own* content (like blur),
-   * not the backdrop. A barrel distortion magnifies the centre and pins the
-   * edges; a negative strength pinches the centre inward instead.
-   * @param strength positive bulges (barrel), negative pinches (pincushion) (≈ −1…1).
-   */
-  bulge(strength: number) {
-    return new EffectChain([...this.list, { type: 'bulge', strength }]);
-  }
+    /** Append a grayscale effect. `{ mode: "backdrop" }` desaturates the backdrop. */
+    grayscale(options: number | GrayscaleOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions({ type: "grayscale" as const, amount: o.amount ?? 0 }, o));
+    }
 
-  /**
-   * Append a magnify lens that magnifies the backdrop beneath the node. The lens
-   * fills the node's bounding box and is clipped to its silhouette, so whatever
-   * is painted underneath shows through scaled about `center` — like a
-   * magnifying glass shaped to the node.
-   * @param scale  magnification factor (1 = none, 2 = 2×, 0.5 = zoomed out) (default 2).
-   * @param center magnify centre in 0–1 layer coords (default middle).
-   */
-  magnify(scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) {
-    return new EffectChain([...this.list, { type: 'magnify', scale, center, mode: 'backdrop' as const }]);
-  }
+    /**
+     * Append a bulge/pinch lens applied to the node's *own* content (like blur),
+     * not the backdrop. A barrel distortion magnifies the centre and pins the
+     * edges; a negative strength pinches the centre inward instead.
+     */
+    bulge(options: number | BulgeOptions) {
+        const o = scalarOptions(options, "strength");
+        return this.append(withEffectOptions(
+            { type: "bulge" as const, strength: o.strength ?? 0, center: o.center ?? CENTER },
+            o,
+        ));
+    }
 
-  /**
-   * Append a bloom (glow) effect. Bright areas bleed soft light outward via a
-   * screen-blend of the blurred bright-pass onto the layer.
-   * @param threshold  0–1 luminance cutoff — only pixels brighter than this bloom (default 0.7).
-   * @param radius     spread in pixels (default 12).
-   * @param intensity  additive multiplier for the bloom pass (default 1).
-   * @param opts       `{ mode: "backdrop" }` blooms the backdrop instead of the node.
-   */
-  bloom(threshold = 0.7, radius = 12, intensity = 1, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'bloom', threshold, radius, intensity, ...opts }]);
-  }
+    /**
+     * Append a magnify lens that magnifies the backdrop beneath the node. The lens
+     * fills the node's bounding box and is clipped to its silhouette, so whatever
+     * is painted underneath shows through scaled about `center` — like a
+     * magnifying glass shaped to the node.
+     *
+     * Defaults to `{ mode: 'backdrop' }`; pass `mode` explicitly to override.
+     */
+    magnify(options?: number | MagnifyOptions) {
+        const o = scalarOptions(options, "scale");
+        return this.append(withEffectOptions(
+            { type: "magnify" as const, scale: o.scale ?? 2, center: o.center ?? CENTER },
+            { mode: o.mode ?? "backdrop" },
+        ));
+    }
 
-  /**
-   * Append a vintage / film-look colour grading effect.
-   * @param amount  0–1: 0 = original, 1 = full sepia+desaturate (default 1).
-   * @param warmth  -1…1: negative = cool/cyan tint, positive = warm/amber tint (default 0.2).
-   * @param opts    `{ mode: "backdrop" }` grades the backdrop instead of the node.
-   */
-  vintage(amount = 1, warmth = 0.2, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'vintage', amount, warmth, ...opts }]);
-  }
+    /**
+     * Append a bloom (glow) effect. Bright areas bleed soft light outward via a
+     * screen-blend of the blurred bright-pass onto the layer.
+     */
+    bloom(options?: number | BloomOptions) {
+        const o = scalarOptions(options, "intensity");
+        return this.append(withEffectOptions(
+            {
+                type: "bloom" as const,
+                threshold: o.threshold ?? 0.7,
+                radius: o.radius ?? 12,
+                intensity: o.intensity ?? 1,
+            },
+            o,
+        ));
+    }
 
-  /**
-   * Append a chromatic aberration effect — red/blue colour fringing that mimics
-   * lens dispersion.
-   * @param amount  pixel offset distance for the R/B channel fringe (default 4).
-   * @param angle   angle in degrees (0 = horizontal, R right / B left) (default 0).
-   * @param opts    `{ mode: "backdrop" }` fringes the backdrop instead of the node.
-   */
-  chromaticAberration(amount = 4, angle = 0, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'chromaticAberration', amount, angle, ...opts }]);
-  }
+    /** Append a vintage / film-look colour grading effect. */
+    vintage(options?: number | VintageOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            { type: "vintage" as const, amount: o.amount ?? 1, warmth: o.warmth ?? 0.2 },
+            o,
+        ));
+    }
 
-  /**
-   * Append a colour-invert effect.
-   * @param channel  which channel / colour component to invert (default `'rgba'`).
-   * @param strength 0–1: blend from original (0) to fully inverted (1) (default 1).
-   * @param opts     `{ mode: "backdrop" }` inverts the backdrop instead of the node.
-   */
-  invert(channel: InvertChannel = 'rgba', strength = 1, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'invert', channel, strength, ...opts }]);
-  }
+    /**
+     * Append a chromatic aberration effect — red/blue colour fringing that mimics
+     * lens dispersion.
+     */
+    chromaticAberration(options?: number | ChromaticAberrationOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            { type: "chromaticAberration" as const, amount: o.amount ?? 4, angle: o.angle ?? 0 },
+            o,
+        ));
+    }
 
-  /**
-   * Append a scatter effect — randomly jitters the node's own pixels, smearing
-   * its content like After Effects' Scatter.
-   * @param strength   maximum random pixel displacement (default 10).
-   * @param direction  axis pixels are scattered along (default `'both'`).
-   * @param opts       `{ mode: "backdrop" }` scatters the backdrop instead of the node.
-   */
-  scatter(strength = 10, direction: ScatterDirection = 'both', opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'scatter', strength, direction, ...opts }]);
-  }
+    /** Append a colour-invert effect. */
+    invert(options?: number | InvertOptions) {
+        const o = scalarOptions(options, "strength");
+        return this.append(withEffectOptions(
+            { type: "invert" as const, channel: o.channel ?? "rgba", strength: o.strength ?? 1 },
+            o,
+        ));
+    }
 
-  /**
-   * Append an After Effects-style posterize effect — quantizes each colour
-   * channel into `level` evenly-spaced bands, flattening gradients into steps.
-   * @param level number of brightness levels per channel (≥ 2, default 4).
-   * @param opts  `{ mode: "backdrop" }` posterizes the backdrop instead of the node.
-   */
-  posterize(level = 4, opts?: ModeOptions) {
-    return new EffectChain([...this.list, { type: 'posterize', level, ...opts }]);
-  }
+    /**
+     * Append a scatter effect — randomly jitters the node's own pixels, smearing
+     * its content like After Effects' Scatter.
+     */
+    scatter(options?: number | ScatterOptions) {
+        const o = scalarOptions(options, "strength");
+        return this.append(withEffectOptions(
+            { type: "scatter" as const, strength: o.strength ?? 10, axis: o.axis ?? "both" },
+            o,
+        ));
+    }
 
-  /**
-   * Append velocity-driven motion blur — smears the node's own content along its
-   * actual per-frame motion (a static node stays sharp). Modelled on After
-   * Effects' shutter angle (`length`) and shutter phase (`alignment`).
-   * @param opts  {@link MotionBlurOptions} — all fields optional; see its docs for defaults.
-   */
-  motionBlur({
-    length = 50,
-    alignment = 'centered',
-    samples = 16,
-    strength = 1,
-    axis = 'both',
-    ...mode
-  }: MotionBlurOptions = {}) {
-    return new EffectChain([...this.list, { type: 'motionBlur', length, alignment, samples, strength, axis, ...mode }]);
-  }
+    /**
+     * Append an After Effects-style posterize effect — quantizes each colour
+     * channel into `levels` evenly-spaced bands, flattening gradients into steps.
+     */
+    posterize(options?: number | PosterizeOptions) {
+        const o = scalarOptions(options, "levels");
+        return this.append(withEffectOptions({ type: "posterize" as const, levels: o.levels ?? 4 }, o));
+    }
 
-  /**
-   * Append a custom SkSL overlay shader applied as a layer effect.
-   * The shader generates colour from position/uniforms and is blended onto the
-   * node's layer using `blendMode` (default `'screen'`).
-   * @param shader     SkSL source. Uniforms declared after any built-ins are supplied via `uniforms`.
-   * @param uniforms   Values in declaration order — lerped between animation frames.
-   * @param blendMode  How the shader composites onto the layer (default `'screen'`).
-   */
-  skslLayer(shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') {
-    return new EffectChain([...this.list, { type: 'sksl', shader, uniforms, mode: 'foreground' as const, blendMode }]);
-  }
+    /**
+     * Append velocity-driven motion blur — smears the node's own content along its
+     * actual per-frame motion (a static node stays sharp). Modelled on After
+     * Effects' shutter angle (`length`) and shutter phase (`alignment`).
+     */
+    motionBlur(options?: number | MotionBlurOptions) {
+        const o = scalarOptions(options, "length");
+        return this.append(withEffectOptions(
+            {
+                type: "motionBlur" as const,
+                length: o.length ?? 50,
+                alignment: o.alignment ?? "centered",
+                samples: o.samples ?? 16,
+                strength: o.strength ?? 1,
+                axis: o.axis ?? "both",
+            },
+            o,
+        ));
+    }
 
-  /**
-   * Append a custom SkSL backdrop effect. The shader receives
-   * `uniform shader u_backdrop` — a snapshot of the canvas content beneath the
-   * node — and resamples it to produce distortion, ripple, refraction, etc.
-   * The result replaces the backdrop within the node's silhouette clip.
-   * @param shader    SkSL source. First child shader is always `u_backdrop`.
-   * @param uniforms  Values in declaration order — lerped between animation frames.
-   */
-  skslBackdrop(shader: string, uniforms: SkSLUniform[] = []) {
-    return new EffectChain([...this.list, { type: 'sksl', shader, uniforms, mode: 'backdrop' as const }]);
-  }
+    /**
+     * Append a custom SkSL shader. `mode` picks the layer it runs on — a
+     * foreground overlay blended with `blendMode`, or a backdrop shader that
+     * resamples `uniform shader u_backdrop`.
+     */
+    sksl(options: SkSLOptions) {
+        const mode = options.mode ?? "foreground";
+        const base = { type: "sksl" as const, shader: options.shader, uniforms: options.uniforms ?? [] };
+        // blendMode only applies to the foreground overlay; leaving it undefined
+        // for a backdrop shader keeps `equals()` comparing like with like.
+        const effect: SceneEffect = mode === "foreground"
+            ? { ...base, blendMode: options.blendMode ?? "screen" }
+            : base;
+        return this.append(withEffectOptions(effect, { mode }));
+    }
 
-  /** Allows spreading the chain into an array: `[...FX.blur(5)]`. */
-  *[Symbol.iterator]() {
-    yield* this.list;
-  }
+    /** Allows spreading the chain into an array: `[...FX.blur(5)]`. */
+    *[Symbol.iterator]() {
+        yield* this.list;
+    }
 
-  /** Serializes to the raw effect array so frameworks that call `toJSON` get a plain value. */
-  toJSON() {
-    return this.list;
-  }
+    /** Serializes to the raw effect array so frameworks that call `toJSON` get a plain value. */
+    toJSON() {
+        return this.list;
+    }
 }
 
 /**
@@ -267,9 +369,9 @@ export class EffectChain {
  * effects in place). Already-resolved effects are themselves `SceneEffect`s, so
  * a node's read-back `effects` can be assigned straight back.
  *
- *   FX.blur(8)                       // chain
- *   { type: 'blur', blur: 8 }        // single effect
- *   [FX.blur(8), { type: 'invert' }] // mixed array
+ *   FX.blur(8)                        // chain
+ *   { type: 'blur', radius: 8 }       // single effect
+ *   [FX.blur(8), { type: 'invert' }]  // mixed array
  *   [...FX.blur(8), grayscaleEffect]
  */
 export type Effect =
@@ -278,64 +380,32 @@ export type Effect =
     | (SceneEffect | EffectChain)[];
 
 /**
- * @deprecated Use {@link Effect}. Retained as an alias during the rename.
- */
-export type ChainableFx = Effect;
-
-const createChain = (list: SceneEffect[] = []): EffectChain => new EffectChain(list);
-
-/**
- * Entry points for building effect chains fluently.
+ * Entry points for building effect chains fluently. Each delegates to the
+ * matching {@link EffectChain} method, so every signature is declared once.
  *
  * @example
  * node.effects = FX.blur(8).grayscale(1);
  */
 export const Effects = {
-  /** Gaussian blur. `{ mode: "backdrop" }` blurs the backdrop beneath the node, clipped to its silhouette. */
-  blur: (blur: number, opts?: ModeOptions) => createChain([{ type: 'blur', blur: blur, ...opts }]),
-  /** Motion-blur-style directional (linear) blur. `direction` in degrees, `blurLength` in pixels. `{ backdrop }` smears the backdrop. */
-  directionalBlur: (direction: number, blurLength: number, opts?: ModeOptions) =>
-    createChain([{ type: 'directionalBlur', direction, blurLength, ...opts }]),
-  /**
-   * After Effects-style Mosaic / pixelate. The argument is the *number of blocks*
-   * across the node (a count equal to the node's pixel size is pristine; lower is
-   * coarser), accepting a uniform `number`, `{ blocks, sharpColors?, backdrop? }`, or
-   * `{ horizontalBlocks, verticalBlocks, sharpColors?, backdrop? }`. Pass `opts` for
-   * `backdrop` when `options` is a bare `number`.
-   */
-  pixelate: (options: PixelateOptions, opts?: ModeOptions) => createChain([toPixelateEffect(options, opts)]),
-  grayscale: (amount: number, opts?: ModeOptions) => createChain([{ type: 'grayscale', amount, ...opts }]),
-  bulge: (strength: number) =>
-    createChain([{ type: 'bulge', strength }]),
-  magnify: (scale = 2, center: { x: number; y: number } = { x: 0.5, y: 0.5 }) =>
-    createChain([{ type: 'magnify', scale, center, mode: 'backdrop' as const }]),
-  bloom: (threshold = 0.7, radius = 12, intensity = 1, opts?: ModeOptions) =>
-    createChain([{ type: 'bloom', threshold, radius, intensity, ...opts }]),
-  vintage: (amount = 1, warmth = 0.2, opts?: ModeOptions) =>
-    createChain([{ type: 'vintage', amount, warmth, ...opts }]),
-  chromaticAberration: (amount = 4, angle = 0, opts?: ModeOptions) =>
-    createChain([{ type: 'chromaticAberration', amount, angle, ...opts }]),
-  invert: (channel: InvertChannel = 'rgba', strength = 1, opts?: ModeOptions) =>
-    createChain([{ type: 'invert', channel, strength, ...opts }]),
-  scatter: (strength = 10, direction: ScatterDirection = 'both', opts?: ModeOptions) =>
-    createChain([{ type: 'scatter', strength, direction, ...opts }]),
-  /** After Effects-style posterize. `level` = brightness bands per channel (≥ 2). `{ backdrop }` bands the backdrop. */
-  posterize: (level = 4, opts?: ModeOptions) =>
-    createChain([{ type: 'posterize', level, ...opts }]),
-  /** Velocity-driven motion blur. `length` percent (≈ shutter angle), `alignment` shutter phase, `samples` quality hint. See {@link MotionBlurOptions}. */
-  motionBlur: ({
-    length = 50,
-    alignment = 'centered',
-    samples = 16,
-    strength = 1,
-    axis = 'both',
-    ...mode
-  }: MotionBlurOptions = {}) => createChain([{ type: 'motionBlur', length, alignment, samples, strength, axis, ...mode }]),
-  skslLayer: (shader: string, uniforms: SkSLUniform[] = [], blendMode = 'screen') =>
-    createChain([{ type: 'sksl', shader, uniforms, mode: 'foreground' as const, blendMode }]),
-  skslBackdrop: (shader: string, uniforms: SkSLUniform[] = []) =>
-    createChain([{ type: 'sksl', shader, uniforms, mode: 'backdrop' as const }]),
+    blur: (options: number | BlurOptions) => new EffectChain().blur(options),
+    directionalBlur: (options: number | DirectionalBlurOptions) => new EffectChain().directionalBlur(options),
+    pixelate: (options: number | PixelateOptions) => new EffectChain().pixelate(options),
+    grayscale: (options: number | GrayscaleOptions) => new EffectChain().grayscale(options),
+    bulge: (options: number | BulgeOptions) => new EffectChain().bulge(options),
+    magnify: (options?: number | MagnifyOptions) => new EffectChain().magnify(options),
+    bloom: (options?: number | BloomOptions) => new EffectChain().bloom(options),
+    vintage: (options?: number | VintageOptions) => new EffectChain().vintage(options),
+    chromaticAberration: (options?: number | ChromaticAberrationOptions) =>
+        new EffectChain().chromaticAberration(options),
+    invert: (options?: number | InvertOptions) => new EffectChain().invert(options),
+    scatter: (options?: number | ScatterOptions) => new EffectChain().scatter(options),
+    posterize: (options?: number | PosterizeOptions) => new EffectChain().posterize(options),
+    motionBlur: (options?: number | MotionBlurOptions) => new EffectChain().motionBlur(options),
+    sksl: (options: SkSLOptions) => new EffectChain().sksl(options),
 };
+
+/** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */
+export const FX = Effects;
 
 /**
  * Normalises any {@link Effect} value to a plain `SceneEffect[]`.
@@ -345,15 +415,15 @@ export const Effects = {
  * in place: `[FX.blur(8), grayscaleEffect]`.
  */
 export function resolveChainEffects(effects: Effect | undefined): SceneEffect[] {
-  if (effects === undefined) return [];
-  if (effects instanceof EffectChain) return effects.list;
-  if (Array.isArray(effects)) {
-    const out: SceneEffect[] = [];
-    for (const item of effects) {
-      if (item instanceof EffectChain) out.push(...item.list);
-      else out.push(item);
+    if (effects === undefined) return [];
+    if (effects instanceof EffectChain) return effects.list;
+    if (Array.isArray(effects)) {
+        const out: SceneEffect[] = [];
+        for (const item of effects) {
+            if (item instanceof EffectChain) out.push(...item.list);
+            else out.push(item);
+        }
+        return out;
     }
-    return out;
-  }
-  return [effects];
+    return [effects];
 }

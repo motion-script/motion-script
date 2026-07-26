@@ -84,7 +84,7 @@ function* buildDirect(stage: Stage, label: string, from: EffectChain, to: Effect
     stage.add(
         <Rect width={'fill'} height={'fill'} group={'column'} padding={120} gap={40}>
             <Text text={label} fontSize={48} fill={'#5a4a3a'} width={'fill'} textAlign={'center'} />
-            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} effects={Effects.blur(2, { mode: 'backdrop' })}>
+            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={20} effects={Effects.blur({ radius: 2, mode: 'backdrop' })}>
                 <Image ref={imgRef} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'} effects={from} />
             </Rect>
         </Rect>

@@ -1,5 +1,71 @@
 import { AudioFilterItem } from "./union";
-import { Param } from "./curve";
+import { Param, isCurve } from "./curve";
+
+/**
+ * Audio filters follow the same one-argument rule as scene effects and media
+ * filters: every builder takes a single options object, and those with one
+ * dominant param also accept that param directly.
+ *
+ * The shorthand admits a whole {@link Param} — a constant `number` *or* a
+ * {@link Curve} — so `AudioFilters.volume(fadeIn(0.5))` still works.
+ */
+
+/** Gain / volume. Param shorthand sets `value`. */
+export interface GainFilterOptions {
+    /** 1 = unchanged, 0 = silent, >1 = louder. */
+    value: Param;
+}
+
+/** High-pass filter. Param shorthand sets `frequency`. */
+export interface HighPassFilterOptions {
+    /** Rolls off content below this frequency, in Hz. */
+    frequency: Param;
+    /** Resonance at the cutoff (default 1). */
+    q?: Param;
+}
+
+/** Low-pass filter. Param shorthand sets `frequency`. */
+export interface LowPassFilterOptions {
+    /** Rolls off content above this frequency, in Hz. */
+    frequency: Param;
+    /** Resonance at the cutoff (default 1). */
+    q?: Param;
+}
+
+/** Amplitude wobble. Param shorthand sets `rate`. */
+export interface TremoloFilterOptions {
+    /** Wobble rate in Hz. */
+    rate: Param;
+    /** Modulation depth, 0–1 (default 0.5). */
+    depth?: Param;
+}
+
+/** Playback-rate change (alters pitch). Param shorthand sets `value`. */
+export interface SpeedFilterOptions {
+    /** Playback-rate multiplier. */
+    value: Param;
+}
+
+/** Delay line with feedback. Param shorthand sets `delay`. */
+export interface EchoFilterOptions {
+    /** Delay time in seconds. */
+    delay: Param;
+    /** Feedback amount, 0–<1 (default 0.4). */
+    feedback?: Param;
+    /** Wet mix, 0–1 (default 0.5). */
+    mix?: Param;
+}
+
+/**
+ * Normalise a `Param | Options` argument onto its dominant field.
+ *
+ * A {@link Curve} is an object, so the discriminator can't be a bare
+ * `typeof === 'number'` — it must ask {@link isCurve} too, or an animated
+ * shorthand would be mistaken for an options bag.
+ */
+function scalarParam<O extends object>(arg: Param | O, key: keyof O): O {
+    return typeof arg === "number" || isCurve(arg as Param) ? ({ [key]: arg } as O) : (arg as O);
+}
 
 /**
  * Immutable, chainable list of audio filters.
@@ -12,46 +78,56 @@ import { Param } from "./curve";
  * {@link Param} curve (see `ramp`/`fadeIn`/`fadeOut`), so any filter can animate:
  *
  * @example
- * const chain = AudioFilters.gain(1.5).lowpass(800).echo(0.3, 0.4);
+ * const chain = AudioFilters.gain(1.5).lowpass(800).echo(0.3);
  * this.playSound('song.mp3', { filters: chain }); // assign directly
  * this.playSound('song.mp3', { filters: AudioFilters.volume(fadeIn(0.5).fadeOut(1)) }); // animated
  */
 export class AudioFilterChain {
   constructor(public list: AudioFilterItem[] = []) { }
 
-  /** Append a gain (volume) filter; `value` 1 = unchanged, 0 = silent, >1 = louder. */
-  gain(value: Param) {
-    return new AudioFilterChain([...this.list, { type: 'gain', value }]);
+  private append(filter: AudioFilterItem): AudioFilterChain {
+    return new AudioFilterChain([...this.list, filter]);
+  }
+
+  /** Append a gain (volume) filter. */
+  gain(options: Param | GainFilterOptions) {
+    const { value } = scalarParam(options, "value");
+    return this.append({ type: 'gain', value });
   }
 
   /** Alias for {@link gain}; reads naturally for volume automation (`volume(fadeIn(0.5))`). */
-  volume(value: Param) {
-    return this.gain(value);
+  volume(options: Param | GainFilterOptions) {
+    return this.gain(options);
   }
 
   /** Append a high-pass filter; rolls off content below `frequency` Hz. */
-  highpass(frequency: Param, q?: Param) {
-    return new AudioFilterChain([...this.list, { type: 'highpass', frequency, q }]);
+  highpass(options: Param | HighPassFilterOptions) {
+    const { frequency, q } = scalarParam(options, "frequency");
+    return this.append({ type: 'highpass', frequency, q });
   }
 
   /** Append a low-pass filter; rolls off content above `frequency` Hz. */
-  lowpass(frequency: Param, q?: Param) {
-    return new AudioFilterChain([...this.list, { type: 'lowpass', frequency, q }]);
+  lowpass(options: Param | LowPassFilterOptions) {
+    const { frequency, q } = scalarParam(options, "frequency");
+    return this.append({ type: 'lowpass', frequency, q });
   }
 
   /** Append a tremolo; `rate` Hz wobble at `depth` (0–1) modulation depth. */
-  tremolo(rate: Param, depth: Param) {
-    return new AudioFilterChain([...this.list, { type: 'tremolo', rate, depth }]);
+  tremolo(options: Param | TremoloFilterOptions) {
+    const { rate, depth } = scalarParam(options, "rate");
+    return this.append({ type: 'tremolo', rate, depth: depth ?? 0.5 });
   }
 
-  /** Append a speed change; `value` is the playback-rate multiplier (alters pitch). */
-  speed(value: Param) {
-    return new AudioFilterChain([...this.list, { type: 'speed', value }]);
+  /** Append a speed change; the playback-rate multiplier (alters pitch). */
+  speed(options: Param | SpeedFilterOptions) {
+    const { value } = scalarParam(options, "value");
+    return this.append({ type: 'speed', value });
   }
 
   /** Append an echo; `delay` seconds, `feedback` 0–<1, optional wet `mix` 0–1. */
-  echo(delay: Param, feedback: Param, mix?: Param) {
-    return new AudioFilterChain([...this.list, { type: 'echo', delay, feedback, mix }]);
+  echo(options: Param | EchoFilterOptions) {
+    const { delay, feedback, mix } = scalarParam(options, "delay");
+    return this.append({ type: 'echo', delay, feedback: feedback ?? 0.4, mix });
   }
 
   /** Allows spreading the chain into an array: `[...AudioFilters.gain(2)]`. */
@@ -61,7 +137,6 @@ export class AudioFilterChain {
 
   /** Serializes to the raw filter array so frameworks that call `toJSON` get a plain value. */
   toJSON() {
-
     return this.list;
   }
 }
@@ -73,8 +148,6 @@ export class AudioFilterChain {
  */
 export type AudioFilter = AudioFilterItem[] | AudioFilterChain | AudioFilterItem;
 
-const createChain = (list: AudioFilterItem[] = []): AudioFilterChain => new AudioFilterChain(list);
-
 /**
  * Entry points for building audio-filter chains fluently.
  *
@@ -82,15 +155,14 @@ const createChain = (list: AudioFilterItem[] = []): AudioFilterChain => new Audi
  * this.playSound('song.mp3', { filters: AudioFilters.gain(1.5).lowpass(800) });
  */
 export const AudioFilters = {
-  gain: (value: Param) => createChain([{ type: 'gain', value }]),
+  gain: (options: Param | GainFilterOptions) => new AudioFilterChain().gain(options),
   /** Alias for {@link AudioFilters.gain}; reads naturally for volume automation. */
-  volume: (value: Param) => createChain([{ type: 'gain', value }]),
-  highpass: (frequency: Param, q?: Param) => createChain([{ type: 'highpass', frequency, q }]),
-  lowpass: (frequency: Param, q?: Param) => createChain([{ type: 'lowpass', frequency, q }]),
-  tremolo: (rate: Param, depth: Param) => createChain([{ type: 'tremolo', rate, depth }]),
-  speed: (value: Param) => createChain([{ type: 'speed', value }]),
-  echo: (delay: Param, feedback: Param, mix?: Param) =>
-    createChain([{ type: 'echo', delay, feedback, mix }]),
+  volume: (options: Param | GainFilterOptions) => new AudioFilterChain().volume(options),
+  highpass: (options: Param | HighPassFilterOptions) => new AudioFilterChain().highpass(options),
+  lowpass: (options: Param | LowPassFilterOptions) => new AudioFilterChain().lowpass(options),
+  tremolo: (options: Param | TremoloFilterOptions) => new AudioFilterChain().tremolo(options),
+  speed: (options: Param | SpeedFilterOptions) => new AudioFilterChain().speed(options),
+  echo: (options: Param | EchoFilterOptions) => new AudioFilterChain().echo(options),
 };
 
 /**

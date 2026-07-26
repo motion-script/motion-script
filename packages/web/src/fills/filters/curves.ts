@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "../../effects/handler";
 import type { CurvesFilter, CurvesChannel } from "@motion-script/core";
-import { ImageFillFilter } from "./filter";
 
 /**
  * Evaluate a piecewise-linear curve at x ∈ [0, 1].
@@ -59,19 +58,17 @@ function buildMatrix(channel: CurvesChannel, scale: number, bias: number): numbe
 }
 
 /** Applies a per-channel tone curve, approximated as a linear color-matrix fit (see `fitLinear`). */
-export class CurvesImageFillFilter extends ImageFillFilter<CurvesFilter> {
-    constructor() {
-        super("curves");
-    }
+export const curvesEffectHandler: EffectHandler<CurvesFilter> = {
+    type: "curves",
 
-    makeImageFilter(filter: CurvesFilter, ck: CanvasKit): any {
-        const channel: CurvesChannel = filter.channel ?? 'rgb';
-        const sorted = [...filter.points].sort((a, b) => a[0] - b[0]);
+    makeImageFilter(effect, ck) {
+        const channel: CurvesChannel = effect.channel ?? 'rgb';
+        const sorted = [...effect.points].sort((a, b) => a[0] - b[0]);
         const { scale, bias } = fitLinear(sorted);
         const matrix = buildMatrix(channel, scale, bias);
         const colorFilter = ck.ColorFilter.MakeMatrix(matrix);
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

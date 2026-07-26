@@ -1,14 +1,14 @@
 import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
-/** Multiplies every pixel's alpha channel by `value`, fading the entire layer. */
+/** Multiplies every pixel's alpha channel by `amount`, fading the entire layer. */
 export interface AlphaFilter {
     type: 'alpha';
     /** 0 = fully transparent, 1 = unchanged. */
-    value: number;
+    amount: number;
 }
 
 export const alphaFilter: FilterData<AlphaFilter> = {
-    lerp: (from, to, t) => ({ type: "alpha", value: lerpNumber(from.value, to.value, t) }),
-    equals: (a, b) => a.value === b.value,
+    lerp: (from, to, t) => ({ type: "alpha", amount: lerpNumber(from.amount, to.amount, t) }),
+    equals: (a, b) => a.amount === b.amount,
 };

@@ -5,5 +5,5 @@ import { audioDemo } from "./audio-demo";
 /** EchoFilter: adds a delayed, fading repeat of the signal. */
 export default createScene(audioDemo({
         label: 'Echo 0.3s',
-        filters: AudioFilters.echo(0.3, 0.45, 0.5),
+        filters: AudioFilters.echo({ delay: 0.3, feedback: 0.45, mix: 0.5 }),
     }));

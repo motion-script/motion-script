@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Rect effects={Effects.bloom()} />
 
 // Custom threshold, spread, and intensity
-<Rect effects={Effects.bloom(0.6, 24, 1.5)} />
+<Rect effects={Effects.bloom({ threshold: 0.6, radius: 24, intensity: 1.5 })} />
 
 // Raw object
 <Rect effects={[{ type: 'bloom', threshold: 0.7, radius: 12, intensity: 1 }]} />
@@ -25,13 +25,16 @@ import { Effects } from '@motion-script/core';
 
 ## Props
 
+The builder takes a single options object — these are its fields, and also the
+fields of the effect object it produces.
+
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `type` | `'bloom'` | – | Effect identifier |
 | `threshold` | `number` | `0.7` | Luminance cutoff `0`–`1`: only pixels brighter than this contribute to the bloom |
 | `radius` | `number` | `12` | Glow spread in pixels |
 | `intensity` | `number` | `1` | Additive multiplier for the bloom pass; higher values make the glow brighter |
-| `backdrop` | `boolean` | `false` | When `true`, blooms the content beneath the node |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` blooms the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
 
 ## Animating
 
@@ -42,11 +45,11 @@ import { createScene, Rect, Effects, tween, lerpNumber, easeOut } from '@motion-
 
 export default createScene(function* (stage) {
   const light = new Rect({ width: 200, height: 200, fill: 'white' });
-  light.set({ effects: Effects.bloom(0.5, 40, 0) });
+  light.set({ effects: Effects.bloom({ threshold: 0.5, radius: 40, intensity: 0 }) });
   stage.add(light);
 
   yield* tween(1, (t) => {
-    light.set({ effects: Effects.bloom(0.5, 40, lerpNumber(0, 2, easeOut(t))) });
+    light.set({ effects: Effects.bloom({ threshold: 0.5, radius: 40, intensity: lerpNumber(0, 2, easeOut(t)) }) });
   });
 });
 ```
@@ -55,5 +58,5 @@ export default createScene(function* (stage) {
 
 ```tsx
 // Bloom on top of a vintage grade
-<Rect effects={Effects.vintage(0.8).bloom(0.6, 20, 1.2)} />
+<Rect effects={Effects.vintage(0.8).bloom({ threshold: 0.6, radius: 20, intensity: 1.2 })} />
 ```

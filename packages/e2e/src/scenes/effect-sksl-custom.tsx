@@ -2,7 +2,7 @@ import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script'
 import { holdTail } from './_lib';
 
 /**
- * {@link Effects.skslLayer}: a custom shader generates a colored glow from
+ * {@link Effects.sksl} in foreground mode: a custom shader generates a colored glow from
  * position and a `u_amount` uniform, screen-blended onto the node's own layer
  * as it ramps from invisible to fully bright.
  */
@@ -32,20 +32,20 @@ export default createScene(function* (stage) {
                 height={CARD_HEIGHT}
                 cornerRadius={20}
                 fill={'card'}
-                effects={Effects.skslLayer(GLOW_SHADER, [
+                effects={Effects.sksl({ shader: GLOW_SHADER, uniforms: [
                     { name: 'u_resolution', value: [CARD_WIDTH, CARD_HEIGHT] },
                     { name: 'u_amount', value: 0 },
-                ])}
+                ] })}
             />
         </Rect>,
     );
 
     yield* card().to(
         {
-            effects: Effects.skslLayer(GLOW_SHADER, [
+            effects: Effects.sksl({ shader: GLOW_SHADER, uniforms: [
                 { name: 'u_resolution', value: [CARD_WIDTH, CARD_HEIGHT] },
                 { name: 'u_amount', value: 1.2 },
-            ]),
+            ] }),
         },
         1.2,
         easeInOut('quad'),

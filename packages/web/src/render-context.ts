@@ -67,12 +67,9 @@ import { PolygramShape } from "./shapes/polygram";
 import { PathShape } from "./shapes/path";
 import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
-import { CanvasKitEffectRegistry } from "./effects/registry";
+import { EffectRegistry } from "./effects/registry";
 import { resolveMotionBlur } from "./effects/motion-blur";
-import { ShaderEffectRegistry, type ShaderEffect, type ShaderEffectGeometry } from "./effects/shader-effect";
-import { disposeBulge } from "./effects/bulge";
-import { disposeMagnify } from "./effects/magnify";
-import { disposePosterize } from "./effects/posterize";
+import type { EffectHandler, EffectGeometry } from "./effects/handler";
 import { disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
@@ -228,7 +225,7 @@ function flipPathY(state: Partial<PathState>): Partial<PathState> {
  * `matrix` the CTM captured when the scope opened.
  */
 type ForegroundCapture = {
-    handler: ShaderEffect;
+    handler: EffectHandler;
     effect: SceneEffect;
     width: number;
     height: number;
@@ -237,14 +234,24 @@ type ForegroundCapture = {
     matrix: number[];
 };
 
-/** Map a {@link ShaderEffect} tile-mode literal to its CanvasKit enum. */
+/** Map a {@link EffectHandler} tile-mode literal to its CanvasKit enum. */
 function tileMode(ck: CanvasKit, mode: "clamp" | "decal") {
     return mode === "decal" ? ck.TileMode.Decal : ck.TileMode.Clamp;
 }
 
-/** Map a {@link ShaderEffect} filter-mode literal to its CanvasKit enum. */
+/** Map a {@link EffectHandler} filter-mode literal to its CanvasKit enum. */
 function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
     return mode === "nearest" ? ck.FilterMode.Nearest : ck.FilterMode.Linear;
+}
+
+/**
+ * Geometry for the ImageFilter path, where only the box *size* is meaningful —
+ * a composed `ImageFilter` is positioned by the layer it is attached to, so a
+ * centre would be meaningless. (The shader path builds a full
+ * {@link EffectGeometry} from the CTM in `shaderGeometry`.)
+ */
+function boxGeometry(width: number, height: number): EffectGeometry {
+    return { width, height, centerX: 0, centerY: 0 };
 }
 
 /**
@@ -433,9 +440,7 @@ export class WebRenderContext extends RenderContext {
         this.clipRestoreStack.length = 0;
         this.deferredPaintsStack.length = 0;
         this.effectScopeStack.length = 0;
-        disposeBulge();
-        disposeMagnify();
-        disposePosterize();
+        EffectRegistry.disposeAll();
         disposeSkSLCache();
 
         super.dispose();
@@ -583,7 +588,7 @@ export class WebRenderContext extends RenderContext {
         // the fill/stroke for a boolean result left active by endBoolean) is
         // applied to the currently-active surface without resetting it.
         let pushedEffectLayer = false;
-        let effectFilter: ReturnType<typeof CanvasKitEffectRegistry.composeFilters> | null = null;
+        let effectFilter: ReturnType<typeof EffectRegistry.compose> | null = null;
         for (let i = 0; i < ops.length; i++) {
             // Open this segment's filtered layer before its first op is drawn.
             const seg = segmentStartFilter.get(i);
@@ -645,9 +650,9 @@ export class WebRenderContext extends RenderContext {
      */
     private buildEffectSegments(
         graphics: Graphics,
-    ): Map<number, { filter: NonNullable<ReturnType<typeof CanvasKitEffectRegistry.composeFilters>> }> {
+    ): Map<number, { filter: NonNullable<ReturnType<typeof EffectRegistry.compose>> }> {
         const ops = graphics.ops();
-        const segments = new Map<number, { filter: NonNullable<ReturnType<typeof CanvasKitEffectRegistry.composeFilters>> }>();
+        const segments = new Map<number, { filter: NonNullable<ReturnType<typeof EffectRegistry.compose>> }>();
 
         // Track the start of the *current shape group*, mirroring the shape
         // accumulator's own boundaries (see `_fill` + the `paintApplied` reset in
@@ -681,7 +686,7 @@ export class WebRenderContext extends RenderContext {
             if (op.kind === "effects") {
                 const foreground = this.resolveMotionBlurEffects(op.effects.filter((e) => e.mode !== "backdrop"));
                 const filter = foreground.length > 0
-                    ? CanvasKitEffectRegistry.composeFilters(foreground, this.canvasKit, this.surface.width(), this.surface.height())
+                    ? EffectRegistry.compose(foreground, this.canvasKit, boxGeometry(this.surface.width(), this.surface.height()))
                     : null;
                 if (filter != null) {
                     segments.set(groupStart, { filter });
@@ -821,7 +826,7 @@ export class WebRenderContext extends RenderContext {
             // render state here, then hand the renderer a concrete directional
             // smear. Effects without motion blur skip the copy entirely.
             const resolved = this.resolveMotionBlurEffects(foregroundEffects);
-            effectFilter = CanvasKitEffectRegistry.composeFilters(resolved, this.canvasKit, width, height);
+            effectFilter = EffectRegistry.compose(resolved, this.canvasKit, boxGeometry(width, height));
         }
 
         const isolating = blend !== 'pass-through';
@@ -1340,7 +1345,7 @@ export class WebRenderContext extends RenderContext {
      *   the backdrop here (foreground filters ride the node's transform layer) —
      *   are composed into one filter and seeded into a backdrop saveLayer.
      * - Shader effects (bulge, magnify, posterize, backdrop SkSL) are dispatched to
-     *   their {@link ShaderEffect} handler. Backdrop ones snapshot the surface and
+     *   their {@link EffectHandler} handler. Backdrop ones snapshot the surface and
      *   repaint warped in device space immediately; foreground ones redirect drawing
      *   into a per-effect offscreen surface that {@link endEffectScope} resamples.
      *
@@ -1358,9 +1363,9 @@ export class WebRenderContext extends RenderContext {
         // Split into shader effects (per-handler) and the ImageFilter-composable
         // remainder, preserving authoring order.
         const filterEffects: SceneEffect[] = [];
-        const shaderEffects: Array<{ handler: ShaderEffect; effect: SceneEffect }> = [];
+        const shaderEffects: Array<{ handler: EffectHandler; effect: SceneEffect }> = [];
         for (const effect of effects) {
-            const handler = ShaderEffectRegistry.resolve(effect, target);
+            const handler = EffectRegistry.resolveShader(effect, target);
             if (handler) shaderEffects.push({ handler, effect });
             else filterEffects.push(effect);
         }
@@ -1416,7 +1421,7 @@ export class WebRenderContext extends RenderContext {
      */
     private openBackdropFilterLayer(effects: SceneEffect[], width: number, height: number): boolean {
         const ck = this.canvasKit;
-        const composed = CanvasKitEffectRegistry.composeFilters(effects, ck, width, height);
+        const composed = EffectRegistry.compose(effects, ck, boxGeometry(width, height));
         if (composed == null) return false;
         const pr = this.pixelRatio;
         const linear = { filter: ck.FilterMode.Linear, mipmap: ck.MipmapMode.None };
@@ -1442,7 +1447,7 @@ export class WebRenderContext extends RenderContext {
      * active silhouette clip. Used for magnify, backdrop posterize, backdrop SkSL.
      */
     private paintBackdropShaderEffect(
-        handler: ShaderEffect,
+        handler: EffectHandler,
         effect: SceneEffect,
         width: number,
         height: number,
@@ -1457,9 +1462,9 @@ export class WebRenderContext extends RenderContext {
         // Clamp regardless of the handler's foreground tile preference.
         const snapshot = this.surface.makeImageSnapshot();
         const content = snapshot.makeShaderOptions(
-            ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.filterMode), ck.MipmapMode.None,
+            ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const lens = handler.makeShader(effect, ck, content, this.shaderGeometry(m, width, height));
+        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height));
         if (lens == null) {
             content.delete();
             snapshot.delete();
@@ -1478,7 +1483,7 @@ export class WebRenderContext extends RenderContext {
      * when the offscreen couldn't be created (drawing then stays on the main canvas).
      */
     private openForegroundCapture(
-        handler: ShaderEffect,
+        handler: EffectHandler,
         effect: SceneEffect,
         width: number,
         height: number,
@@ -1513,11 +1518,11 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas = savedCanvas;
 
         const snapshot = offscreen.makeImageSnapshot();
-        const tm = tileMode(ck, handler.tileMode);
+        const tm = tileMode(ck, handler.sampling!.tileMode);
         const content = snapshot.makeShaderOptions(
-            tm, tm, filterMode(ck, handler.filterMode), ck.MipmapMode.None,
+            tm, tm, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const lens = handler.makeShader(effect, ck, content, this.shaderGeometry(m, width, height));
+        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height));
         if (lens == null) {
             content.delete();
             snapshot.delete();
@@ -1532,7 +1537,7 @@ export class WebRenderContext extends RenderContext {
     }
 
     /** Node box in device px: centre from the CTM translation, size from its scale. */
-    private shaderGeometry(m: number[], width: number, height: number): ShaderEffectGeometry {
+    private shaderGeometry(m: number[], width: number, height: number): EffectGeometry {
         const sx = Math.hypot(m[0], m[3]);
         const sy = Math.hypot(m[1], m[4]);
         return { centerX: m[2], centerY: m[5], width: width * sx, height: height * sy };

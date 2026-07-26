@@ -16,7 +16,7 @@ export default createScene(function* (stage) {
                 group={'row'}
                 gap={16}
                 padding={20}
-                effects={Effects.vintage(0, 0.5)}
+                effects={Effects.vintage({ amount: 0, warmth: 0.5 })}
             >
                 <Rect width={'fill'} height={'fill'} cornerRadius={12} fill={'#6990dd'} />
                 <Rect width={'fill'} height={'fill'} cornerRadius={12} fill={'#e8617c'} />
@@ -25,6 +25,6 @@ export default createScene(function* (stage) {
         </Rect>,
     );
 
-    yield* card().to({ effects: Effects.vintage(1, 0.5) }, 1.2, easeInOut('quad'));
+    yield* card().to({ effects: Effects.vintage({ amount: 1, warmth: 0.5 }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

@@ -25,11 +25,11 @@ describe('FILTERS map', () => {
 describe('lerpFilter', () => {
     it('interpolates two filters of the same type (no longer hard-cuts — the populated-map fix)', () => {
         const result = lerpFilter(
-            { type: 'blur', value: 0 },
-            { type: 'blur', value: 10 },
+            { type: 'blur', radius: 0 },
+            { type: 'blur', radius: 10 },
             0.5,
         ) as Extract<MediaFilter, { type: 'blur' }>;
-        expect(result.value).toBe(5);
+        expect(result.radius).toBe(5);
     });
 
     it('interpolates the new posterizeTime fps', () => {
@@ -54,8 +54,8 @@ describe('lerpFilter', () => {
     });
 
     it('hard-cuts at t=0.5 when the two filter types differ', () => {
-        const from: AnyFilter = { type: 'blur', value: 1 };
-        const to: AnyFilter = { type: 'alpha', value: 1 };
+        const from: AnyFilter = { type: 'blur', radius: 1 };
+        const to: AnyFilter = { type: 'alpha', amount: 1 };
         expect(lerpFilter(from, to, 0.4)).toBe(from);
         expect(lerpFilter(from, to, 0.6)).toBe(to);
     });
@@ -63,34 +63,34 @@ describe('lerpFilter', () => {
 
 describe('lerpFilterArray', () => {
     it('lerps matched indices pairwise', () => {
-        const from: AnyFilter[] = [{ type: 'blur', value: 0 }];
-        const to: AnyFilter[] = [{ type: 'blur', value: 8 }];
-        expect(lerpFilterArray(from, to, 0.5)).toEqual([{ type: 'blur', value: 4 }]);
+        const from: AnyFilter[] = [{ type: 'blur', radius: 0 }];
+        const to: AnyFilter[] = [{ type: 'blur', radius: 8 }];
+        expect(lerpFilterArray(from, to, 0.5)).toEqual([{ type: 'blur', radius: 4 }]);
     });
 
     it('keeps extra source entries when the target is shorter', () => {
-        const from: AnyFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 1 }];
-        const to: AnyFilter[] = [{ type: 'blur', value: 2 }];
+        const from: AnyFilter[] = [{ type: 'blur', radius: 2 }, { type: 'alpha', amount: 1 }];
+        const to: AnyFilter[] = [{ type: 'blur', radius: 2 }];
         const out = lerpFilterArray(from, to, 0.5);
         expect(out).toHaveLength(2);
-        expect(out[1]).toEqual({ type: 'alpha', value: 1 });
+        expect(out[1]).toEqual({ type: 'alpha', amount: 1 });
     });
 
     it('keeps extra target entries when the source is shorter', () => {
-        const from: AnyFilter[] = [{ type: 'blur', value: 2 }];
-        const to: AnyFilter[] = [{ type: 'blur', value: 2 }, { type: 'alpha', value: 0.5 }];
+        const from: AnyFilter[] = [{ type: 'blur', radius: 2 }];
+        const to: AnyFilter[] = [{ type: 'blur', radius: 2 }, { type: 'alpha', amount: 0.5 }];
         const out = lerpFilterArray(from, to, 0.5);
         expect(out).toHaveLength(2);
-        expect(out[1]).toEqual({ type: 'alpha', value: 0.5 });
+        expect(out[1]).toEqual({ type: 'alpha', amount: 0.5 });
     });
 });
 
 describe('filter data constants – lerp & equals', () => {
-    it('blur lerps and compares by value', () => {
-        expect(blurFilter.lerp({ type: 'blur', value: 0 }, { type: 'blur', value: 4 }, 0.25))
-            .toEqual({ type: 'blur', value: 1 });
-        expect(blurFilter.equals({ type: 'blur', value: 3 }, { type: 'blur', value: 3 })).toBe(true);
-        expect(blurFilter.equals({ type: 'blur', value: 3 }, { type: 'blur', value: 4 })).toBe(false);
+    it('blur lerps and compares by radius', () => {
+        expect(blurFilter.lerp({ type: 'blur', radius: 0 }, { type: 'blur', radius: 4 }, 0.25))
+            .toEqual({ type: 'blur', radius: 1 });
+        expect(blurFilter.equals({ type: 'blur', radius: 3 }, { type: 'blur', radius: 3 })).toBe(true);
+        expect(blurFilter.equals({ type: 'blur', radius: 3 }, { type: 'blur', radius: 4 })).toBe(false);
     });
 
     it('curves lerps points and hard-cuts the channel at t=0.5', () => {

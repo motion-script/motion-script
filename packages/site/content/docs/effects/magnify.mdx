@@ -17,7 +17,7 @@ import { Effects } from '@motion-script/core';
 <Ellipse width={200} height={200} effects={Effects.magnify(2)} />
 
 // Custom scale and off-center focal point
-<Ellipse width={200} height={200} effects={Effects.magnify(1.5, { x: 0.3, y: 0.4 })} />
+<Ellipse width={200} height={200} effects={Effects.magnify({ scale: 1.5, center: { x: 0.3, y: 0.4 } })} />
 
 // Raw object
 <Ellipse effects={[{ type: 'magnify', scale: 2, center: { x: 0.5, y: 0.5 } }]} />
@@ -32,6 +32,7 @@ The node must be layered _over_ other content for the effect to be visible: it m
 | `type` | `'magnify'` | – | Effect identifier |
 | `scale` | `number` | `2` | Magnification factor: `1` = no magnification, `2` = 2×, `0.5` = zoom out |
 | `center` | `{ x: number; y: number }` | `{ x: 0.5, y: 0.5 }` | Focal point in `0`–`1` layer coordinates (top-left `0,0`, bottom-right `1,1`) |
+| `mode` | `'foreground' \| 'backdrop'` | `'backdrop'` | Magnify is a backdrop effect by default — it resamples what is painted beneath the node |
 
 ## Animating
 

@@ -39,7 +39,7 @@ export default createScene(function* (stage) {
                 opacity={0}
                 y={-60}
                 scale={0.92}
-                effects={Effects.chromaticAberration(0, 0).blur(20)}
+                effects={Effects.chromaticAberration(0).blur(20)}
             >
                 <Rect width={1000} height={160} fill={Fills.image('logo-title.png', { fit: 'fit' })} />
             </Rect>
@@ -65,7 +65,7 @@ export default createScene(function* (stage) {
 
     // --- Sleek title intro: rise, settle, and bloom into view. -------------
     yield* parallel(
-        title().to({ opacity: 1, effects: Effects.chromaticAberration(0, 0).blur(0) }, 0.7, easeOut('quad')),
+        title().to({ opacity: 1, effects: Effects.chromaticAberration(0).blur(0) }, 0.7, easeOut('quad')),
         title().to({ y: 0, scale: 1 }, 0.9, easeOut({ type: 'back', overshoot: 1.2 })),
     );
     yield* wait(0.4);
@@ -107,16 +107,16 @@ export default createScene(function* (stage) {
     // --- Glitch finale on the lingering title + subtitle. ------------------
     // A quick, subtle chromatic split: slam in, settle, then snap clean.
     yield* parallel(
-        title().to({ effects: Effects.chromaticAberration(8, 0) }, 0.05),
-        wheel().to({ effects: Effects.chromaticAberration(8, 0) }, 0.05),
+        title().to({ effects: Effects.chromaticAberration(8) }, 0.05),
+        wheel().to({ effects: Effects.chromaticAberration(8) }, 0.05),
     );
     yield* parallel(
-        title().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOut('quad')),
-        wheel().to({ effects: Effects.chromaticAberration(2, 0) }, 0.12, easeOut('quad')),
+        title().to({ effects: Effects.chromaticAberration(2) }, 0.12, easeOut('quad')),
+        wheel().to({ effects: Effects.chromaticAberration(2) }, 0.12, easeOut('quad')),
     );
     yield* parallel(
-        title().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOut('quad')),
-        wheel().to({ effects: Effects.chromaticAberration(0, 0) }, 0.1, easeOut('quad')),
+        title().to({ effects: Effects.chromaticAberration(0) }, 0.1, easeOut('quad')),
+        wheel().to({ effects: Effects.chromaticAberration(0) }, 0.1, easeOut('quad')),
     );
     stage.stopSound(glitch);
 

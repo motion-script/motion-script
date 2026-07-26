@@ -1,4 +1,5 @@
 import type { SceneEffect } from "./union";
+import { effectSurface } from "./registry";
 
 /**
  * Backdrop/foreground classification for effects.
@@ -17,16 +18,13 @@ export const isBackdropEffect = (effect: SceneEffect): boolean => effect.mode ==
 export const backdropEffects = (effects: SceneEffect[]): SceneEffect[] => effects.filter(isBackdropEffect);
 
 /**
- * Foreground shader effects that warp/band the node's *own* content, in compose
- * order: posterize wraps bulge, so the renderer applies bulge inside it
- * (mirroring how blur-style content effects nest). A backdrop-mode posterize
- * bands the backdrop instead (see {@link backdropEffects}), so it's excluded here.
+ * Foreground effects that warp/band the node's *own* content and therefore need
+ * a snapshot-and-redraw scope rather than a composable image filter.
+ *
+ * Driven by each effect's declared {@link EffectSurface}, so adding a shader
+ * effect needs no edit here. Author chain order is preserved: index 0 is the
+ * outermost scope, and the renderer nests the rest inside it.
  */
 export function foregroundShaderEffects(effects: SceneEffect[]): SceneEffect[] {
-    const posterize = effects.find((e) => e.type === "posterize" && e.mode !== "backdrop");
-    const bulge = effects.find((e) => e.type === "bulge");
-    const out: SceneEffect[] = [];
-    if (posterize) out.push(posterize);
-    if (bulge) out.push(bulge);
-    return out;
+    return effects.filter((e) => e.mode !== "backdrop" && effectSurface(e) === "shader");
 }

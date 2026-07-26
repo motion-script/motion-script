@@ -11,6 +11,7 @@
     "screenshot": "tsx scripts/shoot.ts",
     "compare": "tsx scripts/compare.ts",
     "test:e2e": "tsx scripts/run.ts",
+    "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "clean": "rimraf out .turbo",
     "clear-stable": "rimraf out stable"
   },

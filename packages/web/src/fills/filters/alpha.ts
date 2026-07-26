@@ -1,15 +1,12 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "../../effects/handler";
 import type { AlphaFilter } from "@motion-script/core";
-import { ImageFillFilter } from "./filter";
 
 /** Scales the image's alpha channel by `value` via a 4×5 color matrix. */
-export class AlphaImageFillFilter extends ImageFillFilter<AlphaFilter> {
-    constructor() {
-        super("alpha");
-    }
+export const alphaEffectHandler: EffectHandler<AlphaFilter> = {
+    type: "alpha",
 
-    makeImageFilter(filter: AlphaFilter, ck: CanvasKit): any {
-        const a = Math.max(0, Math.min(1, filter.value));
+    makeImageFilter(effect, ck) {
+        const a = Math.max(0, Math.min(1, effect.amount));
         const matrix = [
             1, 0, 0, 0, 0,
             0, 1, 0, 0, 0,
@@ -20,5 +17,5 @@ export class AlphaImageFillFilter extends ImageFillFilter<AlphaFilter> {
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

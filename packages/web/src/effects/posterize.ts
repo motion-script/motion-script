@@ -1,4 +1,6 @@
-import type { CanvasKit, RuntimeEffect, Shader } from "@motion-script/canvaskit";
+import type { EffectHandler } from "./handler";
+import type { CanvasKit, Shader } from "@motion-script/canvaskit";
+import { getOrCompileSkSL } from "./sksl-cache";
 import { type PosterizeEffect } from "@motion-script/core";
 
 /**
@@ -33,22 +35,10 @@ vec4 main(vec2 fragCoord) {
 }
 `;
 
-let cachedEffect: RuntimeEffect | null = null;
-
-function getRuntimeEffect(ck: CanvasKit): RuntimeEffect | null {
-    if (!cachedEffect) cachedEffect = ck.RuntimeEffect.Make(POSTERIZE_SKSL);
-    return cachedEffect;
-}
-
-/** Drop the cached RuntimeEffect (called when the draw context is disposed). */
-export function disposePosterize(): void {
-    cachedEffect?.delete();
-    cachedEffect = null;
-}
 
 /**
  * Build a paint shader that draws the node's content with each colour channel
- * quantized into `effect.level` bands. The caller draws it over the surface in
+ * quantized into `effect.levels` bands. The caller draws it over the surface in
  * device space; the content snapshot's own alpha (Decal tiling) bounds it to the
  * node. Returns null when the effect is a no-op (level < 2 leaves nothing to
  * band).
@@ -62,10 +52,23 @@ export function makePosterizeShader(
     ck: CanvasKit,
     content: Shader,
 ): Shader | null {
-    if (effect.level < 2) return null;
+    if (effect.levels < 2) return null;
 
-    const runtimeEffect = getRuntimeEffect(ck);
+    const runtimeEffect = getOrCompileSkSL(POSTERIZE_SKSL, ck);
     if (!runtimeEffect) return null;
 
-    return runtimeEffect.makeShaderWithChildren([effect.level], [content]);
+    return runtimeEffect.makeShaderWithChildren([effect.levels], [content]);
 }
+
+/**
+ * Posterize colour-banding. Serves both targets from the same shader — the only
+ * difference is the source, which the generic scope selects from `target`.
+ *
+ * Decal tiling is correct for the node's own content and harmless for a backdrop
+ * snapshot that fully covers the surface, so one mode serves both.
+ */
+export const posterizeEffectHandler: EffectHandler<PosterizeEffect> = {
+    type: "posterize",
+    sampling: { tileMode: "decal", filterMode: "nearest" },
+    makeShader: (effect, ck, content) => makePosterizeShader(effect, ck, content),
+};

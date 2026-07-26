@@ -12,10 +12,10 @@ Adds a delayed, fading repeat of the signal: a feedback echo (simple delay line)
 import { Sound, AudioFilters } from '@motion-script/core';
 
 // Via AudioFilters builder — 300 ms delay, 40% feedback, default 50% wet mix
-const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.echo(0.3, 0.4) });
+const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.echo({ delay: 0.3, feedback: 0.4 }) });
 
 // With explicit mix — mostly dry, subtle echo
-const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.echo(0.5, 0.6, 0.25) });
+const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.echo({ delay: 0.5, feedback: 0.6, mix: 0.25 }) });
 
 // Via raw object
 const clip = new Sound({
@@ -40,12 +40,12 @@ Fade the echo in to add spaciousness over time:
 ```tsx
 import { Sound, AudioFilters, tween, lerpNumber, easeOut } from '@motion-script/core';
 
-const clip = new Sound({ src: './narration.mp3', filters: AudioFilters.echo(0.4, 0.5, 0) });
+const clip = new Sound({ src: './narration.mp3', filters: AudioFilters.echo({ delay: 0.4, feedback: 0.5, mix: 0 }) });
 clip.start();
 
 // Crossfade to a wet echo over 3 seconds
 yield* tween(3, (t) => {
-  clip.set({ filters: AudioFilters.echo(0.4, 0.5, lerpNumber(0, 0.6, easeOut(t))) });
+  clip.set({ filters: AudioFilters.echo({ delay: 0.4, feedback: 0.5, mix: lerpNumber(0, 0.6, easeOut(t)) }) });
 });
 ```
 
@@ -53,10 +53,10 @@ yield* tween(3, (t) => {
 
 ```tsx
 // Muffle the echo tails with a low-pass
-AudioFilters.echo(0.3, 0.5).lowpass(3000)
+AudioFilters.echo({ delay: 0.3, feedback: 0.5 }).lowpass(3000)
 
 // Quieter source into a long, washy reverb-like echo
-AudioFilters.gain(0.7).echo(0.6, 0.75, 0.4)
+AudioFilters.gain(0.7).echo({ delay: 0.6, feedback: 0.75, mix: 0.4 })
 ```
 
 ## Notes

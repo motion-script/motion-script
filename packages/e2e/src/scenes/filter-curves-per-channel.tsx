@@ -14,9 +14,9 @@ export default createScene(function* (stage) {
                 cornerRadius={24}
                 fill={Fills.image('kingfisher.jpg', {
                     fit: 'fill',
-                    filters: ImageFilters.curves([[0, 0], [1, 1]], 'r')
-                        .curves([[0, 0], [1, 1]], 'g')
-                        .curves([[0, 0], [1, 1]], 'b'),
+                    filters: ImageFilters.curves({ points: [[0, 0], [1, 1]], channel: 'r' })
+                        .curves({ points: [[0, 0], [1, 1]], channel: 'g' })
+                        .curves({ points: [[0, 0], [1, 1]], channel: 'b' }),
                 })}
             />
         </Rect>,
@@ -26,9 +26,9 @@ export default createScene(function* (stage) {
         {
             fill: Fills.image('kingfisher.jpg', {
                 fit: 'fill',
-                filters: ImageFilters.curves([[0, 0.15], [1, 1]], 'r')
-                    .curves([[0, 0], [1, 1]], 'g')
-                    .curves([[0, 0], [1, 0.7]], 'b'),
+                filters: ImageFilters.curves({ points: [[0, 0.15], [1, 1]], channel: 'r' })
+                    .curves({ points: [[0, 0], [1, 1]], channel: 'g' })
+                    .curves({ points: [[0, 0], [1, 0.7]], channel: 'b' }),
             }),
         },
         1.4,

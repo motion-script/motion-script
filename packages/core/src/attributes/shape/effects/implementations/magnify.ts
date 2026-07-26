@@ -25,4 +25,6 @@ export const magnifyEffect: EffectData<MagnifyEffect> = {
         a.center.y === b.center.y &&
         a.scale === b.scale &&
         a.mode === b.mode,
+    // Resamples the backdrop about `center`.
+    surface: "shader",
 };

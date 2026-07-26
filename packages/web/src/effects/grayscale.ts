@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
-import { CanvasKitEffect } from "./effect";
-import { type GrayScaleEffect } from "@motion-script/core";
+import { type GrayscaleEffect, type GrayscaleFilter } from "@motion-script/core";
+import type { EffectHandler } from "./handler";
 
 // ITU-R BT.709 luminance weights
 const LR = 0.2126;
@@ -10,13 +9,14 @@ const LB = 0.0722;
 /**
  * Desaturation via a single colour-matrix ImageFilter, lerped between identity
  * (amount=0) and full BT.709 luminance grayscale (amount=1).
+ *
+ * Serves both the scene effect and the image/video-fill filter — since the field
+ * unification both are `{ type: 'grayscale', amount }` with identical maths.
  */
-export class GrayscaleCanvasKitEffect extends CanvasKitEffect<GrayScaleEffect> {
-    constructor() {
-        super("grayscale");
-    }
+export const grayscaleEffectHandler: EffectHandler<GrayscaleEffect | GrayscaleFilter> = {
+    type: "grayscale",
 
-    makeImageFilter(effect: GrayScaleEffect, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         const a = Math.max(0, Math.min(1, effect.amount));
 
         // 4×5 row-major color matrix (Skia format):
@@ -33,5 +33,5 @@ export class GrayscaleCanvasKitEffect extends CanvasKitEffect<GrayScaleEffect> {
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

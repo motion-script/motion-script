@@ -1,6 +1,5 @@
-import type { CanvasKit } from "@motion-script/canvaskit";
+import type { EffectHandler } from "../../effects/handler";
 import type { ColorAdjustmentFilter } from "@motion-script/core";
-import { ImageFillFilter } from "./filter";
 
 // ITU-R BT.709 luminance weights
 const LR = 0.2126, LG = 0.7152, LB = 0.0722;
@@ -111,12 +110,10 @@ function highlightsMatrix(h: number): number[] {
  * onto the running matrix, in that order). Returns null if nothing is set —
  * vignette is intentionally unsupported since it needs spatial, not per-pixel, data.
  */
-export class ColorAdjustmentImageFillFilter extends ImageFillFilter<ColorAdjustmentFilter> {
-    constructor() {
-        super("colorAdjustment");
-    }
+export const colorAdjustmentEffectHandler: EffectHandler<ColorAdjustmentFilter> = {
+    type: "colorAdjustment",
 
-    makeImageFilter(filter: ColorAdjustmentFilter, ck: CanvasKit): any {
+    makeImageFilter(effect, ck) {
         let mat = identity();
         let hasAdjustment = false;
 
@@ -125,29 +122,29 @@ export class ColorAdjustmentImageFillFilter extends ImageFillFilter<ColorAdjustm
             hasAdjustment = true;
         };
 
-        const b = filter.brightness ?? 0;
+        const b = effect.brightness ?? 0;
         if (b !== 0) apply(brightnessMatrix(b));
 
-        const c = filter.contrast ?? 1;
+        const c = effect.contrast ?? 1;
         if (c !== 1) apply(contrastMatrix(c));
 
-        const s = filter.saturation ?? 1;
+        const s = effect.saturation ?? 1;
         if (s !== 1) apply(saturationMatrix(s));
 
         // Vibrance: approximate as a lighter saturation pass (muted colors benefit more)
-        const v = filter.vibrance ?? 0;
+        const v = effect.vibrance ?? 0;
         if (v !== 0) apply(saturationMatrix(1 + v * 0.7));
 
-        const temp = filter.temperature ?? 0;
+        const temp = effect.temperature ?? 0;
         if (temp !== 0) apply(temperatureMatrix(temp));
 
-        const tint = filter.tint ?? 0;
+        const tint = effect.tint ?? 0;
         if (tint !== 0) apply(tintMatrix(tint));
 
-        const sh = filter.shadows ?? 0;
+        const sh = effect.shadows ?? 0;
         if (sh !== 0) apply(shadowsMatrix(sh));
 
-        const hi = filter.highlights ?? 0;
+        const hi = effect.highlights ?? 0;
         if (hi !== 0) apply(highlightsMatrix(hi));
 
         // vignette requires spatial data — not implementable via color matrix
@@ -158,5 +155,5 @@ export class ColorAdjustmentImageFillFilter extends ImageFillFilter<ColorAdjustm
         const imageFilter = ck.ImageFilter.MakeColorFilter(colorFilter, null);
         colorFilter.delete();
         return imageFilter;
-    }
-}
+    },
+};

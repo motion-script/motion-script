@@ -1,7 +1,7 @@
 /** Effect data types for each built-in effect. */
 export type { BlurEffect } from "./implementations/blur";
 export type { DirectionalBlurEffect } from "./implementations/directional-blur";
-export type { GrayScaleEffect } from "./implementations/grayscale";
+export type { GrayscaleEffect } from "./implementations/grayscale";
 export type { PixelateEffect } from "./implementations/pixelate";
 export type { BulgeEffect } from "./implementations/bulge";
 export type { MagnifyEffect } from "./implementations/magnify";
@@ -9,18 +9,37 @@ export type { BloomEffect } from "./implementations/bloom";
 export type { VintageEffect } from "./implementations/vintage";
 export type { ChromaticAberrationEffect } from "./implementations/chromatic-aberration";
 export type { InvertEffect, InvertChannel } from "./implementations/invert";
-export type { ScatterEffect, ScatterDirection } from "./implementations/scatter";
+export type { ScatterEffect } from "./implementations/scatter";
 export type { PosterizeEffect } from "./implementations/posterize";
-export type { MotionBlurEffect, MotionBlurAxis } from "./implementations/motion-blur";
-export { resolveMotionBlurAxis, resolveMotionBlurAlignment } from "./implementations/motion-blur";
+export type { MotionBlurEffect, MotionBlurAlignment } from "./implementations/motion-blur";
+export { resolveMotionBlurAlignment } from "./implementations/motion-blur";
 export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
 
 /** Chainable effect builder API, chain class, and union input type. */
-export { Effects as Effects, ChainableFx, EffectChain } from './chain';
-export type { PixelateOptions, ModeOptions } from './chain';
+export { Effects, FX, EffectChain } from './chain';
+export type { Effect } from './chain';
 
-export type { EffectData, EffectMode, ModedEffect } from './effect-data';
-export { lerpEffect, lerpEffectArray } from './registry';
+/** Per-effect builder options. Every builder takes exactly one of these. */
+export type {
+    BlurOptions,
+    DirectionalBlurOptions,
+    GrayscaleOptions,
+    PixelateOptions,
+    BulgeOptions,
+    MagnifyOptions,
+    BloomOptions,
+    VintageOptions,
+    ChromaticAberrationOptions,
+    InvertOptions,
+    ScatterOptions,
+    PosterizeOptions,
+    MotionBlurOptions,
+    SkSLOptions,
+} from './chain';
+
+export type { EffectData, EffectMode, EffectSurface, EffectAxis, EffectOptions, ModedEffect } from './effect-data';
+export { EFFECT_OPTION_KEYS, withEffectOptions, resolveEffectAxis, sameEffectAxis } from './effect-data';
+export { lerpEffect, lerpEffectArray, effectSurface } from './registry';
 
 /** Backdrop/foreground classification helpers. */
 export { isBackdropEffect, backdropEffects, foregroundShaderEffects } from './backdrop';

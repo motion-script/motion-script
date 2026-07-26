@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** `Effects.blur(radius, {backdrop: true})`: blurs the content *beneath* the node, clipped to its silhouette, while the node's own edges stay sharp. */
+/** `Effects.blur({ radius, mode: 'backdrop' })`: blurs the content *beneath* the node, clipped to its silhouette, while the node's own edges stay sharp. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const lens = createRef<Rect>();
@@ -20,10 +20,10 @@ export default createScene(function* (stage) {
             cornerRadius={130}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
             center={() => stage.root.center}
-            effects={Effects.blur(0, { backdrop: true })}
+            effects={Effects.blur({ radius: 0, mode: 'backdrop' })}
         />,
     );
 
-    yield* lens().to({ effects: Effects.blur(24, { backdrop: true }) }, 1.2, easeInOut('quad'));
+    yield* lens().to({ effects: Effects.blur({ radius: 24, mode: 'backdrop' }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

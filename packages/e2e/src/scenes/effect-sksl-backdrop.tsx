@@ -2,7 +2,7 @@ import { createScene, createRef, Rect, Grid, Effects, easeInOut } from 'motion-s
 import { holdTail } from './_lib';
 
 /**
- * {@link Effects.skslBackdrop}: a custom shader resamples `u_backdrop` (the
+ * {@link Effects.sksl} in backdrop mode: a custom shader resamples `u_backdrop` (the
  * canvas content beneath the node) with a horizontal ripple whose amplitude
  * grows, distorting the checkerboard seen through the lens.
  */
@@ -48,19 +48,19 @@ export default createScene(function* (stage) {
             cornerRadius={20}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
             center={() => stage.root.center}
-            effects={Effects.skslBackdrop(RIPPLE_SHADER, [
+            effects={Effects.sksl({ shader: RIPPLE_SHADER, mode: 'backdrop', uniforms: [
                 { name: 'u_resolution', value: [LENS_WIDTH, LENS_HEIGHT] },
                 { name: 'u_amount', value: 0 },
-            ])}
+            ] })}
         />,
     );
 
     yield* lens().to(
         {
-            effects: Effects.skslBackdrop(RIPPLE_SHADER, [
+            effects: Effects.sksl({ shader: RIPPLE_SHADER, mode: 'backdrop', uniforms: [
                 { name: 'u_resolution', value: [LENS_WIDTH, LENS_HEIGHT] },
                 { name: 'u_amount', value: 18 },
-            ]),
+            ] }),
         },
         1.4,
         easeInOut('quad'),

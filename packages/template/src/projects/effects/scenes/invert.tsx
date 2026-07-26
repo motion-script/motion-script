@@ -4,7 +4,7 @@ import { effectDemo } from "./effect-demo";
 
 export default createScene(effectDemo({
         label: 'Invert',
-        from: FX.invert('rgba', 0),
-        to: FX.invert('rgba', 1),
+        from: FX.invert(0),
+        to: FX.invert(1),
         compare: true,
     }));

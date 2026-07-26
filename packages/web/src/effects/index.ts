@@ -1,16 +1,27 @@
-/** CanvasKit-backed implementations of @motion-script/core's scene effects (post-processing image filters). */
-export { CanvasKitEffect } from "./effect";
-export { CanvasKitEffectRegistry } from "./registry";
-export { BlurCanvasKitEffect } from "./blur";
-export { DirectionalBlurCanvasKitEffect } from "./directional-blur";
-export { GrayscaleCanvasKitEffect } from "./grayscale";
-export { PixelateCanvasKitEffect } from "./pixelate";
-export { BloomCanvasKitEffect } from "./bloom";
-export { VintageCanvasKitEffect } from "./vintage";
-export { ChromaticAberrationCanvasKitEffect } from "./chromatic-aberration";
-export { InvertCanvasKitEffect } from "./invert";
-export { ScatterCanvasKitEffect } from "./scatter";
-export { MotionBlurCanvasKitEffect, resolveMotionBlur } from "./motion-blur";
+/**
+ * CanvasKit-backed implementations of `@motion-script/core`'s effects.
+ *
+ * One handler interface and one registry cover every effect the renderer knows:
+ * scene effects, media filters, and renderer-internal effects alike. Adding an
+ * effect is a handler object plus one `EffectRegistry.register` call.
+ */
+export type { EffectHandler, EffectGeometry, EffectTarget, RenderEffect } from "./handler";
+export { EffectRegistry } from "./registry";
+
+export { blurEffectHandler } from "./blur";
+export { directionalBlurEffectHandler } from "./directional-blur";
+export { grayscaleEffectHandler } from "./grayscale";
+export { pixelateEffectHandler } from "./pixelate";
+export { bloomEffectHandler } from "./bloom";
+export { vintageEffectHandler } from "./vintage";
+export { chromaticAberrationEffectHandler } from "./chromatic-aberration";
+export { invertEffectHandler } from "./invert";
+export { scatterEffectHandler } from "./scatter";
+export { bulgeEffectHandler } from "./bulge";
+export { magnifyEffectHandler } from "./magnify";
+export { posterizeEffectHandler } from "./posterize";
+export { skslEffectHandler } from "./sksl";
+export { motionBlurEffectHandler, resolveMotionBlur } from "./motion-blur";
 export type { MotionBlurResolved } from "./motion-blur";
-export { SkSLLayerEffect } from "./sksl-layer";
+
 export { getOrCompileSkSL, disposeSkSLCache } from "./sksl-cache";

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
     motionBlurEffect,
-    resolveMotionBlurAxis,
     resolveMotionBlurAlignment,
     type MotionBlurEffect,
 } from '@/attributes/shape/effects/implementations/motion-blur';
+import { resolveEffectAxis } from '@/attributes/shape/effects/effect-data';
 
 const base: MotionBlurEffect = {
     type: 'motionBlur',
@@ -15,15 +15,15 @@ const base: MotionBlurEffect = {
     axis: 'both',
 };
 
-describe('resolveMotionBlurAxis', () => {
+describe('resolveEffectAxis', () => {
     it('maps the string presets to per-axis scales', () => {
-        expect(resolveMotionBlurAxis('x')).toEqual({ x: 1, y: 0 });
-        expect(resolveMotionBlurAxis('y')).toEqual({ x: 0, y: 1 });
-        expect(resolveMotionBlurAxis('both')).toEqual({ x: 1, y: 1 });
+        expect(resolveEffectAxis('x')).toEqual({ x: 1, y: 0 });
+        expect(resolveEffectAxis('y')).toEqual({ x: 0, y: 1 });
+        expect(resolveEffectAxis('both')).toEqual({ x: 1, y: 1 });
     });
 
     it('passes a Vector2 through', () => {
-        expect(resolveMotionBlurAxis({ x: 0.5, y: 0.25 })).toEqual({ x: 0.5, y: 0.25 });
+        expect(resolveEffectAxis({ x: 0.5, y: 0.25 })).toEqual({ x: 0.5, y: 0.25 });
     });
 });
 

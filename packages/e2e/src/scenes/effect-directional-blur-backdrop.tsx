@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** `Effects.directionalBlur(direction, blurLength, {backdrop: true})`: smears the content beneath the node along an axis, clipped to its silhouette, while the node's own edges stay sharp. */
+/** `Effects.directionalBlur({ radius, angle, mode: 'backdrop' })`: smears the content beneath the node along an axis, clipped to its silhouette, while the node's own edges stay sharp. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const lens = createRef<Rect>();
@@ -20,10 +20,10 @@ export default createScene(function* (stage) {
             cornerRadius={130}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
             center={() => stage.root.center}
-            effects={Effects.directionalBlur(90, 0, { backdrop: true })}
+            effects={Effects.directionalBlur({ radius: 0, angle: 90, mode: 'backdrop' })}
         />,
     );
 
-    yield* lens().to({ effects: Effects.directionalBlur(90, 50, { backdrop: true }) }, 1.2, easeInOut('quad'));
+    yield* lens().to({ effects: Effects.directionalBlur({ radius: 50, angle: 90, mode: 'backdrop' }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

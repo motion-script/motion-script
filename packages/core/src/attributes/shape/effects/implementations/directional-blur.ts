@@ -8,18 +8,18 @@ import type { ModedEffect, EffectData } from "../effect-data";
  */
 export interface DirectionalBlurEffect extends ModedEffect {
     type: "directionalBlur";
+    /** Smear length in pixels along `angle`. */
+    radius: number;
     /** Angle in degrees of the smear axis — 0 = horizontal, 90 = vertical. */
-    direction: number;
-    /** Smear length in pixels along `direction`. */
-    blurLength: number;
+    angle: number;
 }
 
 export const directionalBlurEffect: EffectData<DirectionalBlurEffect> = {
     lerp: (from, to, t) => ({
         type: "directionalBlur",
-        direction: lerpNumber(from.direction, to.direction, t),
-        blurLength: lerpNumber(from.blurLength, to.blurLength, t),
+        radius: lerpNumber(from.radius, to.radius, t),
+        angle: lerpNumber(from.angle, to.angle, t),
         mode: t < 0.5 ? from.mode : to.mode,
     }),
-    equals: (a, b) => a.direction === b.direction && a.blurLength === b.blurLength && a.mode === b.mode,
+    equals: (a, b) => a.radius === b.radius && a.angle === b.angle && a.mode === b.mode,
 };
