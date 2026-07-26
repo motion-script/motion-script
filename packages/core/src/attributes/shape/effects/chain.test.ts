@@ -315,6 +315,25 @@ describe('FX builders — roadmap effects', () => {
         ]);
     });
 
+    it('ascii defaults to a 12px standard-ramp grid, white on black', () => {
+        expect([...Effects.ascii()]).toEqual([
+            {
+                type: 'ascii',
+                size: 12,
+                charset: 'standard',
+                fontFamily: 'monospace',
+                ink: 'white',
+                background: 'black',
+                colored: false,
+            },
+        ]);
+    });
+
+    it('ascii accepts a custom ramp string in place of a named charset', () => {
+        const [effect] = [...Effects.ascii({ size: 8, charset: ' .oO@' })];
+        expect(effect).toMatchObject({ size: 8, charset: ' .oO@' });
+    });
+
     it('carries the backdrop mode like every other effect', () => {
         expect([...Effects.halftone({ size: 6, mode: 'backdrop' })]).toEqual([
             { type: 'halftone', size: 6, angle: 45, shape: 'dot', colored: false, mode: 'backdrop' },
@@ -378,6 +397,7 @@ describe('scalar shorthand', () => {
         ['scanlines', () => Effects.scanlines(0.8), () => Effects.scanlines({ darkness: 0.8 })],
         ['blockDisplace', () => Effects.blockDisplace(30), () => Effects.blockDisplace({ amount: 30 })],
         ['bitCrush', () => Effects.bitCrush(2), () => Effects.bitCrush({ bits: 2 })],
+        ['ascii', () => Effects.ascii(16), () => Effects.ascii({ size: 16 })],
     ])('%s(n) is identical to its options form', (_name, scalar, options) => {
         expect([...scalar()]).toEqual([...options()]);
     });

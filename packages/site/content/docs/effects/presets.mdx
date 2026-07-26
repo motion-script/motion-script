@@ -1,0 +1,94 @@
+---
+sidebar_position: 0
+---
+
+# Presets
+
+Named recipes for the looks people ask for by name — `riso`, `vhs`, `crt`, `gameboy` — composed from the built-in effects.
+
+![Riso preset demo](/effects/preset-riso.png)
+
+A preset is **not a new kind of effect**. It returns a plain `EffectChain`, so it is transparent (log one and you see exactly which effects it used), extensible, and uses no separate render path.
+
+```tsx
+import { Presets } from '@motion-script/core';
+
+<Image src={'./photo.jpg'} effects={Presets.vhs()} />       // full strength
+<Image src={'./photo.jpg'} effects={Presets.vhs(0.6)} />    // dialled back
+<Image src={'./photo.jpg'} effects={Presets.riso().blur(2)} />          // keep building
+<Image src={'./photo.jpg'} effects={[Presets.crt(0.6), FX.grain(0.1)]} /> // or mix
+```
+
+## The recipes
+
+| Preset | Composed from | Extra options |
+|---|---|---|
+| `riso` | halftone → duotone → grain | `ink`, `paper` |
+| `newsprint` | halftone → duotone → grain | `size` |
+| `blueprint` | edges → duotone → grain | `color` |
+| `photocopy` | grayscale → posterize → duotone → grain | – |
+| `vhs` | vintage → blockDisplace → rgbShift → scanlines → grain | `seed` |
+| `crt` | bulge → scanlines → bloom → vignette | `spacing` |
+| `glitch` | blockDisplace → rgbShift → bitCrush → scanlines | `seed` |
+| `gameboy` | pixelate → dither → bitCrush | `blocks` |
+
+Every preset also takes `amount`, via the usual scalar shorthand.
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+  <img src="/effects/preset-crt.png" alt="CRT preset" />
+  <img src="/effects/preset-gameboy.png" alt="Game Boy preset" />
+  <img src="/effects/preset-blueprint.png" alt="Blueprint preset" />
+  <img src="/effects/preset-vhs.png" alt="VHS preset" />
+</div>
+
+## The `amount` contract
+
+**`0` is a no-op and `1` is the full look**, with a smooth ramp between — so a preset animates on like any other effect:
+
+```tsx
+import { createScene, createRef, Image, Presets, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const photo = createRef<Image>();
+  stage.add(<Image ref={photo} src={'./photo.jpg'} effects={Presets.crt(0)} />);
+
+  yield* photo().to({ effects: Presets.crt(1) }, 1.2, easeInOut('quad'));
+});
+```
+
+Two consequences worth knowing if you write your own recipes:
+
+- **Every ingredient needs a neutral setting to ramp from.** `threshold` has none — at any `smoothness` it still flattens colour to grey — which is why the photocopy recipe reaches for `grayscale` + `posterize` instead. When a look seems to want an ingredient that can't be turned off, that's the signal to find a different ingredient.
+- **Discrete choices don't ramp.** A palette or a dot shape is fixed by the recipe and switched on by whatever *scalar* ingredient carries it: `gameboy` holds `bitCrush`'s palette constant and fades its `amount`.
+
+A recipe also keeps a **constant chain shape** across amounts — same effects, same order, only the numbers move. Interpolation pairs two chains up by index, so a recipe that changed length with `amount` would pop mid-tween.
+
+## Order is the recipe
+
+The sequence inside a preset is most of what makes it work, and it follows real-world causality:
+
+- **Damage before separation.** `vhs` tears the tape (`blockDisplace`) *before* the colour split (`rgbShift`), so the torn bands carry their own fringe. Reversed, you get an intact fringe painted over an already-broken image.
+- **Screen artefacts last.** Scanlines and grain go at the end, because a display adds them to whatever it is showing.
+- **Geometry first.** `crt` bulges before it draws scanlines, so the lines sit flat on the glass rather than being warped with the picture.
+- **Screen before you ink.** `riso` halftones *then* duotones: the screen reduces the image to dots and the duotone maps those dots to ink and paper.
+
+Effect chains run in author order, so writing the recipe in the order the physical process happens is all it takes.
+
+## Rolling your own
+
+A preset is just a function returning a chain — there is nothing special about the built-in ones:
+
+```tsx
+import { Effects, EffectChain } from '@motion-script/core';
+
+const at = (t: number, neutral: number, full: number) => neutral + (full - neutral) * t;
+
+export const thermalPrint = (amount = 1): EffectChain =>
+  Effects
+    .grayscale(amount)
+    .posterize({ levels: at(amount, 255, 5) })
+    .duotone({ amount, shadows: '#20211f', highlights: '#e9e4d8' })
+    .grain({ amount: at(amount, 0, 0.15), size: 1 });
+```
+
+Hold to the `amount` contract and it will animate like the built-ins.

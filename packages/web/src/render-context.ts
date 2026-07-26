@@ -69,7 +69,7 @@ import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { EffectRegistry } from "./effects/registry";
 import { resolveMotionBlur } from "./effects/motion-blur";
-import type { EffectHandler, EffectGeometry } from "./effects/handler";
+import type { EffectHandler, EffectGeometry, EffectResources } from "./effects/handler";
 import { disposeSkSLCache } from "./effects/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
@@ -1378,12 +1378,24 @@ export class WebRenderContext extends RenderContext {
             if (this.openBackdropFilterLayer(filterEffects, width, height)) entry.canvasRestores++;
         }
 
-        for (const { handler, effect } of shaderEffects) {
-            if (target === "backdrop") {
+        if (target === "backdrop") {
+            // Each backdrop pass paints immediately and re-snapshots the surface,
+            // so running them in author order already composes front to back.
+            for (const { handler, effect } of shaderEffects) {
                 this.paintBackdropShaderEffect(handler, effect, width, height);
-            } else {
-                // Foreground: redirect drawing into an offscreen capture; resolved
-                // (resampled through the lens) in endEffectScope.
+            }
+        } else {
+            // Foreground: redirect drawing into an offscreen capture, resolved
+            // (resampled through the lens) in endEffectScope.
+            //
+            // Opened in *reverse* author order, because the node's content is
+            // drawn into the innermost (last-opened) capture and endEffectScope
+            // unwinds inner-first. Reversing here makes effects[0] the innermost
+            // scope, so it is the first to see the raw content — matching the
+            // ImageFilter path, where index 0 is likewise applied first. Opening
+            // in author order would run the chain backwards.
+            for (let i = shaderEffects.length - 1; i >= 0; i--) {
+                const { handler, effect } = shaderEffects[i];
                 const capture = this.openForegroundCapture(handler, effect, width, height);
                 if (capture) entry.captures.push(capture);
             }
@@ -1465,8 +1477,11 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height));
+        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
+        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         if (lens == null) {
+            // Unlike the foreground path there is nothing to paint back: the
+            // backdrop is already on the canvas, untouched.
             content.delete();
             snapshot.delete();
             return;
@@ -1523,7 +1538,8 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             tm, tm, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height));
+        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
+        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         // A null lens means the effect is a no-op at these settings (zero radius,
         // zero amount, …). Drawing was already redirected into the offscreen, so
         // the content still has to be painted back — dropping it here would make
@@ -1534,6 +1550,27 @@ export class WebRenderContext extends RenderContext {
         content.delete();
         snapshot.delete();
         offscreen.delete();
+        // `extra` belongs to the handler's own cache — it decides the lifetime.
+    }
+
+    /**
+     * The bake context handed to {@link EffectHandler.resources}: the font
+     * registry, its epoch (so a late-loading family invalidates any cached
+     * bake), and a way to make an offscreen matching the draw surface's format.
+     */
+    private effectResources(): EffectResources {
+        return {
+            fontMgr: this.storageAdapter.getFontMgr(),
+            fontEpoch: this.storageAdapter.getFontEpoch(),
+            makeSurface: (width, height) => {
+                if (!(width > 0) || !(height > 0)) return null;
+                return this.surface.makeSurface({
+                    ...this.surface.imageInfo(),
+                    width: Math.ceil(width),
+                    height: Math.ceil(height),
+                });
+            },
+        };
     }
 
     /**

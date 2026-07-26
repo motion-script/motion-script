@@ -30,10 +30,26 @@ export type { RgbShiftEffect } from "./implementations/rgb-shift";
 export type { ScanlinesEffect } from "./implementations/scanlines";
 export type { BlockDisplaceEffect } from "./implementations/block-displace";
 export type { BitCrushEffect, BitCrushPalette } from "./implementations/bit-crush";
+export type { AsciiEffect, AsciiCharset } from "./implementations/ascii";
+export { ASCII_CHARSETS, resolveAsciiCharset } from "./implementations/ascii";
 
 /** Chainable effect builder API, chain class, and union input type. */
 export { Effects, FX, EffectChain } from './chain';
 export type { Effect } from './chain';
+
+/** Named recipes composing the built-in effects into the looks people ask for. */
+export { Presets } from './presets';
+export type {
+    PresetOptions,
+    RisoOptions,
+    NewsprintOptions,
+    BlueprintOptions,
+    PhotocopyOptions,
+    VhsOptions,
+    CrtOptions,
+    GlitchOptions,
+    GameboyOptions,
+} from './presets';
 
 /** Per-effect builder options. Every builder takes exactly one of these. */
 export type {
@@ -67,6 +83,7 @@ export type {
     ScanlinesOptions,
     BlockDisplaceOptions,
     BitCrushOptions,
+    AsciiOptions,
 } from './chain';
 
 export type { EffectData, EffectMode, EffectSurface, EffectAxis, EffectOptions, ModedEffect } from './effect-data';

@@ -30,6 +30,7 @@ import { rgbShiftEffectHandler } from "./rgb-shift";
 import { scanlinesEffectHandler } from "./scanlines";
 import { blockDisplaceEffectHandler } from "./block-displace";
 import { bitCrushEffectHandler } from "./bit-crush";
+import { asciiEffectHandler } from "./ascii";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -168,6 +169,7 @@ EffectRegistry.register(rgbShiftEffectHandler);
 EffectRegistry.register(scanlinesEffectHandler);
 EffectRegistry.register(blockDisplaceEffectHandler);
 EffectRegistry.register(bitCrushEffectHandler);
+EffectRegistry.register(asciiEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the

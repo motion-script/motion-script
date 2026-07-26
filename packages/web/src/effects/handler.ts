@@ -1,4 +1,4 @@
-import type { CanvasKit, Shader } from "@motion-script/canvaskit";
+import type { CanvasKit, Shader, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
 import type { MediaFilter, SceneEffect } from "@motion-script/core";
 
 /**
@@ -56,6 +56,38 @@ export interface EffectGeometry {
 }
 
 /**
+ * What an effect needs to *build its own texture* before drawing.
+ *
+ * Most effects only ever read their source. A few need a second input baked
+ * first — a glyph atlas for `ascii`, a colour cube for a LUT — and that input is
+ * expensive enough that it must be built once and cached, not per frame. This is
+ * the seam for it: {@link EffectHandler.resources} receives one of these,
+ * produces the extra child shaders, and caches them itself.
+ */
+export interface EffectResources {
+    /**
+     * Font families registered so far, for baking text into a texture.
+     * Pair with {@link fontEpoch} when caching — a family that loads late
+     * changes what this resolves to.
+     */
+    readonly fontMgr: TypefaceFontProvider;
+
+    /**
+     * Bumped whenever a font is registered. Fold it into any cache key derived
+     * from {@link fontMgr}, or a texture baked before the real font arrived will
+     * outlive it — silently, since a missing family still renders (as blanks).
+     */
+    readonly fontEpoch: number;
+
+    /**
+     * An offscreen GPU surface to bake into, sharing the draw surface's format.
+     * Returns null if the surface could not be created; callers must cope.
+     * The caller owns the result and should delete it once it has a snapshot.
+     */
+    makeSurface(width: number, height: number): Surface | null;
+}
+
+/**
  * How one effect type is realised against CanvasKit.
  *
  * A handler declares one or both capabilities, and the **call site** picks which
@@ -87,8 +119,30 @@ export interface EffectHandler<T extends RenderEffect = any> {
      *
      * @param content child shader wrapping the snapshot of the source, already
      *                created with this handler's {@link sampling}.
+     * @param extra   whatever {@link resources} produced, in the same order, or
+     *                an empty array. Pass these to `makeShaderWithChildren`
+     *                *after* `content` so the SkSL child order lines up.
      */
-    makeShader?(effect: T, ck: CanvasKit, content: Shader, geom: EffectGeometry): Shader | null;
+    makeShader?(
+        effect: T,
+        ck: CanvasKit,
+        content: Shader,
+        geom: EffectGeometry,
+        extra?: readonly Shader[],
+    ): Shader | null;
+
+    /**
+     * Bake the extra textures this effect samples besides its source, as child
+     * shaders handed to {@link makeShader}. Return `null` when there is nothing
+     * to build, or when baking failed — `makeShader` then receives an empty
+     * array and should no-op rather than render something wrong.
+     *
+     * Called once per draw, so **cache internally**: baking is exactly the work
+     * this hook exists to avoid repeating. Key the cache on everything the bake
+     * depends on, including `res.fontEpoch` for anything text-derived, and free
+     * it from {@link dispose}.
+     */
+    resources?(effect: T, ck: CanvasKit, res: EffectResources): Shader[] | null;
 
     /** How the content child shader samples. Required when {@link makeShader} is set. */
     readonly sampling?: {

@@ -30,6 +30,7 @@ import { rgbShiftEffect } from "./implementations/rgb-shift";
 import { scanlinesEffect } from "./implementations/scanlines";
 import { blockDisplaceEffect } from "./implementations/block-displace";
 import { bitCrushEffect } from "./implementations/bit-crush";
+import { asciiEffect } from "./implementations/ascii";
 import { EffectData, EffectSurface } from "./effect-data";
 
 
@@ -64,6 +65,7 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["scanlines", scanlinesEffect as EffectData<SceneEffect>],
     ["blockDisplace", blockDisplaceEffect as EffectData<SceneEffect>],
     ["bitCrush", bitCrushEffect as EffectData<SceneEffect>],
+    ["ascii", asciiEffect as EffectData<SceneEffect>],
 ]);
 
 /**

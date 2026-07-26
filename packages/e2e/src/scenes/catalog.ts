@@ -170,6 +170,8 @@ import s_effect_rgb_shift from './effect-rgb-shift?scene';
 import s_effect_scanlines from './effect-scanlines?scene';
 import s_effect_block_displace from './effect-block-displace?scene';
 import s_effect_bit_crush from './effect-bit-crush?scene';
+import s_effect_ascii from './effect-ascii?scene';
+import s_effect_chain_order from './effect-chain-order?scene';
 import s_effect_sksl_custom from './effect-sksl-custom?scene';
 import s_effect_sksl_backdrop from './effect-sksl-backdrop?scene';
 import s_filter_exposure from './filter-exposure?scene';
@@ -259,6 +261,10 @@ import s_opacity_node from './opacity-node?scene';
 import s_opacity_fill from './opacity-fill?scene';
 import s_opacity_stroke from './opacity-stroke?scene';
 import s_opacity_passthrough_vs_normal from './opacity-passthrough-vs-normal?scene';
+import s_preset_riso from './preset-riso?scene';
+import s_preset_vhs from './preset-vhs?scene';
+import s_preset_crt from './preset-crt?scene';
+import s_preset_gameboy from './preset-gameboy?scene';
 
 /** Every e2e scene instance, in TESTS.md order. Feeds createProject({ scenes }). */
 export const scenes: Scene[] = [
@@ -429,6 +435,8 @@ export const scenes: Scene[] = [
     s_effect_scanlines,
     s_effect_block_displace,
     s_effect_bit_crush,
+    s_effect_ascii,
+    s_effect_chain_order,
     s_effect_sksl_custom,
     s_effect_sksl_backdrop,
     s_filter_exposure,
@@ -518,6 +526,10 @@ export const scenes: Scene[] = [
     s_opacity_fill,
     s_opacity_stroke,
     s_opacity_passthrough_vs_normal,
+    s_preset_riso,
+    s_preset_vhs,
+    s_preset_crt,
+    s_preset_gameboy,
 ];
 
 export interface SceneMeta {
@@ -587,7 +599,7 @@ export const catalog: SceneMeta[] = [
     { id: "image-fit-tile", name: "ImageFitTile", section: "Media", description: "Image with `tile` fit mode" },
     { id: "image-fit-stretch", name: "ImageFitStretch", section: "Media", description: "Image with `stretch` fit mode" },
     { id: "video-playback", name: "VideoPlayback", section: "Media", description: "Video node playing, with trim start/end" },
-    { id: "video-speed", name: "VideoSpeed", section: "Media", description: "Video node at 2× speed" },
+    { id: "video-speed", name: "VideoSpeed", section: "Media", description: "Video node at 2\u00d7 speed" },
     { id: "video-loop", name: "VideoLoop", section: "Media", description: "Video node looping over a short clip" },
     { id: "camera-zoom", name: "CameraZoom", section: "Camera", description: "Camera zooming in on a scene" },
     { id: "camera-pan", name: "CameraPan", section: "Camera", description: "Camera panning (origin offset) across objects" },
@@ -664,7 +676,7 @@ export const catalog: SceneMeta[] = [
     { id: "shadow-layered", name: "ShadowLayered", section: "Shadows", description: "Multiple shadows stacked (inner + outer)" },
     { id: "effect-blur", name: "EffectBlur", section: "Effects", description: "Gaussian blur on a rect" },
     { id: "effect-blur-backdrop", name: "EffectBlurBackdrop", section: "Effects", description: "Gaussian blur reading backdrop (frosted glass)" },
-    { id: "effect-directional-blur", name: "EffectDirectionalBlur", section: "Effects", description: "Motion blur along 45° axis" },
+    { id: "effect-directional-blur", name: "EffectDirectionalBlur", section: "Effects", description: "Motion blur along 45\u00b0 axis" },
     { id: "effect-directional-blur-backdrop", name: "EffectDirectionalBlurBackdrop", section: "Effects", description: "Directional blur on backdrop" },
     { id: "effect-grayscale", name: "EffectGrayscale", section: "Effects", description: "Full desaturation of shape" },
     { id: "effect-grayscale-backdrop", name: "EffectGrayscaleBackdrop", section: "Effects", description: "Desaturate backdrop content beneath shape" },
@@ -691,8 +703,8 @@ export const catalog: SceneMeta[] = [
     { id: "effect-threshold", name: "EffectThreshold", section: "Effects", description: "Two-tone luminance cut sweeping across a gradient" },
     { id: "effect-radial-blur", name: "EffectRadialBlur", section: "Effects", description: "Zoom-style radial blur about the centre" },
     { id: "effect-radial-blur-spin", name: "EffectRadialBlurSpin", section: "Effects", description: "Spin-style radial blur about the centre" },
-    { id: "effect-halftone", name: "EffectHalftone", section: "Effects", description: "45° dot screen at increasing cell size" },
-    { id: "effect-dither", name: "EffectDither", section: "Effects", description: "Bayer 8×8 ordered dither down to 1-bit" },
+    { id: "effect-halftone", name: "EffectHalftone", section: "Effects", description: "45\u00b0 dot screen at increasing cell size" },
+    { id: "effect-dither", name: "EffectDither", section: "Effects", description: "Bayer 8\u00d78 ordered dither down to 1-bit" },
     { id: "effect-duotone", name: "EffectDuotone", section: "Effects", description: "Luminance remapped onto a two-colour ramp" },
     { id: "effect-curves", name: "EffectCurves", section: "Effects", description: "Tone curve lifting shadows on a node (not an image fill)" },
     { id: "effect-color-adjustment", name: "EffectColorAdjustment", section: "Effects", description: "Contrast/saturation/temperature on a group of shapes" },
@@ -700,13 +712,15 @@ export const catalog: SceneMeta[] = [
     { id: "effect-scanlines", name: "EffectScanlines", section: "Effects", description: "CRT bands darkening a bright card" },
     { id: "effect-block-displace", name: "EffectBlockDisplace", section: "Effects", description: "Horizontal band tearing at a fixed seed" },
     { id: "effect-bit-crush", name: "EffectBitCrush", section: "Effects", description: "Gradient snapped to the Game Boy palette" },
+    { id: "effect-ascii", name: "EffectAscii", section: "Effects", description: "Image resolving into an ASCII glyph grid as the cell grows" },
+    { id: "effect-chain-order", name: "EffectChainOrder", section: "Effects", description: "Two shader effects in opposite orders must differ (author-order guard)" },
     { id: "effect-sksl-custom", name: "EffectSkslCustom", section: "Effects", description: "Custom SkSL shader as layer effect" },
     { id: "effect-sksl-backdrop", name: "EffectSkslBackdrop", section: "Effects", description: "Custom SkSL shader processing backdrop" },
     { id: "filter-exposure", name: "FilterExposure", section: "Image Filters", description: "Exposure boost and reduction" },
     { id: "filter-blur-image", name: "FilterBlurImage", section: "Image Filters", description: "Gaussian blur on an image" },
     { id: "filter-grayscale-image", name: "FilterGrayscaleImage", section: "Image Filters", description: "Desaturation of an image" },
     { id: "filter-alpha-image", name: "FilterAlphaImage", section: "Image Filters", description: "Alpha multiplier fading an image out" },
-    { id: "filter-color-matrix", name: "FilterColorMatrix", section: "Image Filters", description: "Arbitrary 4×5 color matrix transform" },
+    { id: "filter-color-matrix", name: "FilterColorMatrix", section: "Image Filters", description: "Arbitrary 4\u00d75 color matrix transform" },
     { id: "filter-curves", name: "FilterCurves", section: "Image Filters", description: "Tone curve on RGB channel" },
     { id: "filter-curves-per-channel", name: "FilterCurvesPerChannel", section: "Image Filters", description: "Separate tone curves for R, G, B" },
     { id: "filter-color-adjustment", name: "FilterColorAdjustment", section: "Image Filters", description: "Brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, vignette all animated" },
@@ -789,4 +803,8 @@ export const catalog: SceneMeta[] = [
     { id: "opacity-fill", name: "OpacityFill", section: "Opacity & Visibility", description: "Fill-level opacity animated independently of node" },
     { id: "opacity-stroke", name: "OpacityStroke", section: "Opacity & Visibility", description: "Stroke-level opacity animated" },
     { id: "opacity-passthrough-vs-normal", name: "OpacityPassthroughVsNormal", section: "Opacity & Visibility", description: "Pass-through vs normal node blend isolation with semi-transparent children" },
+    { id: "preset-riso", name: "PresetRiso", section: "Presets", description: "Presets.riso ramping in from its no-op state" },
+    { id: "preset-vhs", name: "PresetVhs", section: "Presets", description: "Presets.vhs ramping in from its no-op state" },
+    { id: "preset-crt", name: "PresetCrt", section: "Presets", description: "Presets.crt ramping in from its no-op state" },
+    { id: "preset-gameboy", name: "PresetGameboy", section: "Presets", description: "Presets.gameboy ramping in (also guards chain order)" },
 ];

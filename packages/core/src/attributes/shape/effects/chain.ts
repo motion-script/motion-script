@@ -15,6 +15,7 @@ import type { DitherMatrix } from "./implementations/dither";
 import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 import type { CurvesChannel } from "../filters/implementations/curves";
 import type { BitCrushPalette } from "./implementations/bit-crush";
+import type { AsciiCharset } from "./implementations/ascii";
 
 /**
  * Every effect builder takes **exactly one argument**: an options object
@@ -318,6 +319,22 @@ export interface BlockDisplaceOptions extends EffectOptions {
     seed?: number;
     /** Which way bands slide (default `'x'`). */
     axis?: EffectAxis;
+}
+
+/** ASCII art from a glyph grid. Scalar shorthand sets `size`. */
+export interface AsciiOptions extends EffectOptions {
+    /** Cell size in pixels — the width of one character (default 12). */
+    size?: number;
+    /** A named ramp, or a custom string ordered most-ink-first (default `'standard'`). */
+    charset?: AsciiCharset | string;
+    /** Family the glyphs are baked in; a monospace face reads best (default `'monospace'`). */
+    fontFamily?: string;
+    /** Glyph colour when `colored` is false (default `'white'`). */
+    ink?: Color;
+    /** Colour behind the glyphs (default `'black'`; use `'transparent'` to overlay). */
+    background?: Color;
+    /** Tint each glyph with its own cell's colour instead of using `ink` (default false). */
+    colored?: boolean;
 }
 
 /** Colour-depth reduction. Scalar shorthand sets `bits`. */
@@ -783,6 +800,29 @@ export class EffectChain {
     }
 
     /**
+     * Append ASCII art — the content divided into a grid of cells, each cell's
+     * tone replaced by the glyph that carries a matching amount of ink.
+     *
+     * Set `background: 'transparent'` to lay the glyphs over whatever is behind
+     * the node instead of over a solid field.
+     */
+    ascii(options?: number | AsciiOptions) {
+        const o = scalarOptions(options, "size");
+        return this.append(withEffectOptions(
+            {
+                type: "ascii" as const,
+                size: o.size ?? 12,
+                charset: o.charset ?? "standard",
+                fontFamily: o.fontFamily ?? "monospace",
+                ink: o.ink ?? "white",
+                background: o.background ?? "black",
+                colored: o.colored ?? false,
+            },
+            o,
+        ));
+    }
+
+    /**
      * Append a custom SkSL shader. `mode` picks the layer it runs on — a
      * foreground overlay blended with `blendMode`, or a backdrop shader that
      * resamples `uniform shader u_backdrop`.
@@ -866,6 +906,7 @@ export const Effects = {
     scanlines: (options?: number | ScanlinesOptions) => new EffectChain().scanlines(options),
     blockDisplace: (options?: number | BlockDisplaceOptions) => new EffectChain().blockDisplace(options),
     bitCrush: (options?: number | BitCrushOptions) => new EffectChain().bitCrush(options),
+    ascii: (options?: number | AsciiOptions) => new EffectChain().ascii(options),
 };
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */

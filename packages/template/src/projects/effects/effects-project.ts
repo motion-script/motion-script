@@ -32,6 +32,15 @@ import rgbShift from './scenes/rgb-shift?scene';
 import scanlines from './scenes/scanlines?scene';
 import blockDisplace from './scenes/block-displace?scene';
 import bitCrush from './scenes/bit-crush?scene';
+import presetRiso from './scenes/preset-riso?scene';
+import presetNewsprint from './scenes/preset-newsprint?scene';
+import presetBlueprint from './scenes/preset-blueprint?scene';
+import presetPhotocopy from './scenes/preset-photocopy?scene';
+import presetVhs from './scenes/preset-vhs?scene';
+import presetCrt from './scenes/preset-crt?scene';
+import presetGlitch from './scenes/preset-glitch?scene';
+import presetGameboy from './scenes/preset-gameboy?scene';
+import ascii from './scenes/ascii?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
@@ -80,6 +89,15 @@ export default createProject({
         scanlines,
         blockDisplace,
         bitCrush,
+        presetRiso,
+        presetNewsprint,
+        presetBlueprint,
+        presetPhotocopy,
+        presetVhs,
+        presetCrt,
+        presetGlitch,
+        presetGameboy,
+        ascii,
     ],
     theme: {
         colors: {

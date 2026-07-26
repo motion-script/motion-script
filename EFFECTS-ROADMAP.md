@@ -7,7 +7,7 @@ Tiers are ordered by implementation cost, not by desirability — Tier 1 items n
 no new plumbing at all, Tier 3 items each unlock a whole family but need a new
 engine capability first.
 
-## Shipping today (30)
+## Shipping today (31)
 
 **Blur & motion** — `blur` · `directionalBlur` · `motionBlur` · `radialBlur`
 (zoom/spin)
@@ -23,6 +23,9 @@ engine capability first.
 
 **Glitch & digital** — `rgbShift` · `scanlines` · `blockDisplace` · `bitCrush`
 (palette or bit-depth)
+
+**Glyph** — `ascii` (standard / blocks / braille / binary / hex ramps, or a
+custom one)
 
 **Escape hatch** — `sksl` (custom shader)
 
@@ -101,6 +104,37 @@ real risk, to buy back something currently unmeasurable. Revisit only if a
 profile on a genuinely heavy project says otherwise, or if 4K + deep chains
 become common.
 
+## Known limitation: filters and shaders don't interleave
+
+Effects come in two kinds — `"filter"` ones compose into a Skia `ImageFilter`,
+`"shader"` ones open a snapshot-and-redraw scope. **Within** each kind, author
+order is respected. **Between** them it is not: filters ride the node's transform
+layer, which is outside every shader scope, so *every filter runs after every
+shader* however the chain was written.
+
+Measured, not inferred: `Effects.grayscale(1).bitCrush({ palette: 'gameboy' })`
+comes out pure grey (mean chroma 0.0). Authored order would give greens — the
+grayscale ran last.
+
+It mostly doesn't bite, because the common chains put colour grading last anyway,
+and it is *not* what made `Presets.gameboy` wrong (that was shader-vs-shader
+order, since fixed). But `colorAdjustment(...).ascii(...)` cannot boost contrast
+*into* an ascii pass, and no amount of reordering the chain will make it.
+
+The workaround today is a nested node — the inner node's shaders resolve before
+the outer node's filters:
+
+```tsx
+<Rect effects={FX.colorAdjustment({ contrast: 1.6 })}>
+    <Rect effects={FX.ascii(12)}>…</Rect>
+</Rect>
+```
+
+Fixing it properly means segmenting the filter chain around each shader scope in
+`transform()` / `applyContentEffectScope` — applying the filters authored *before*
+a shader inside that scope and the rest outside. Worth doing, and worth doing on
+its own: it changes rendering for any mixed chain.
+
 ## Tier 2 — one SkSL shader each
 
 Registry-driven shader dispatch is in place, so each of these is a `makeShader`
@@ -130,15 +164,24 @@ as a fifth effect, so it moved to Tier 4.
 
 The capability is the real unit of work; each one unlocks a family.
 
-1. **Glyph-atlas textures** → `ascii`, `braille`, `hex`/`binary`, and every
-   glyph-driven craft effect (`crossStitch`, `embroidery`). Bake a charset to an
-   offscreen surface once and hand it to the shader as a child. Needs
-   `EffectHandler` to grow an optional `resources()` hook plus a cache keyed by
-   charset + font + cell size.
-2. **Asset-loaded effect inputs** → `lut` (`.cube` / hald). The asset manifest
-   already loads images; effects need a way to declare an asset dependency and
-   receive it as a texture. Would also give `curves` an exact LUT instead of its
-   current linear fit.
+1. ~~**Glyph-atlas textures**~~ — **done.** `EffectHandler.resources()` lets a
+   handler bake extra textures and receive them as child shaders, with an
+   `EffectResources` context (font registry, font epoch, offscreen surfaces).
+   `ascii` ships on it, with the charset baked once per charset/font/cell-size.
+   `braille` and `hex`/`binary` are charsets of that same effect rather than
+   separate ones; `crossStitch`/`embroidery` still want Tier 3.5 textures.
+
+   Two things the build taught, worth knowing before the next user of the hook:
+   this CanvasKit ships **no default typeface**, so an unregistered family bakes
+   a *blank* texture that looks identical to an empty charset — the baker falls
+   back to the first registered family and warns on missing glyphs. And a
+   charset outside Latin (blocks, braille) silently loses ramp steps in a font
+   that doesn't cover it, which is why `standard` is plain ASCII.
+2. **Asset-loaded effect inputs** → `lut` (`.cube` / hald). Now the *cheapest*
+   remaining capability, because it reuses `resources()` wholesale — the hook
+   already hands a handler extra child shaders; this only adds a way to declare
+   an asset dependency and receive it as a texture. Would also give `curves` an
+   exact LUT instead of its current linear fit.
 3. **Node-as-texture references** → `displacementMap` driven by a sibling
    subtree, `depthBlur`. Requires rendering another node to an offscreen surface.
 4. **Frame history buffer** → scene-level `echo` / `trails` / `feedback`.
@@ -152,62 +195,70 @@ The capability is the real unit of work; each one unlocks a family.
 
 ## Tier 4 — craft, textile & material presets
 
-These are *compositions*, not new primitives, which argues for a **`Presets`
-layer**: named recipes returning an `EffectChain`, each driven by a single
-`amount` — `Presets.riso({ amount: 0.8 })`. With Tier 1 now covering the
-ingredients (`halftone` + `duotone` + `grain` + `threshold` already compose into
-riso, newsprint, screen-print and blueprint looks), this is the cheapest
-remaining tier and the natural home for the looks people ask for by name — and
-the cost measurement above says a 3–5 effect recipe is affordable.
+**The `Presets` layer shipped.** Named recipes returning an `EffectChain`, each
+driven by a single `amount` where 0 is a no-op and 1 the full look:
+`Presets.riso({ amount: 0.8 })`. Eight to start — `riso`, `newsprint`,
+`blueprint`, `photocopy`, `vhs`, `crt`, `glitch`, `gameboy`.
 
-**Both headline families are now buildable.** The paper & print looks compose
-from `halftone` + `duotone` + `grain` + `threshold`; `crt`, `vhs` and `glitch`
-compose from `scanlines` + `rgbShift` + `blockDisplace` + `bitCrush` +
-`chromaticAberration`. The template's `retro-vhs` scene is the recipe written
-out by hand — turning that into `Presets.vhs({ amount })` is the remaining work.
+Writing them settled three things that were open questions here:
 
-Two things that recipe surfaced, worth encoding in the preset layer rather than
-rediscovering per look:
+- **Order is load-bearing** — and it turned out the renderer was running shader
+  chains *backwards*. Building `gameboy` is what caught it: the output carried
+  dither's quantization levels and not one palette colour. Fixed, with an
+  `effect-chain-order` e2e scene guarding it.
+- **Every ingredient needs a neutral setting** to ramp from, or `amount: 0`
+  isn't a no-op. `threshold` has none (its output is grey at every setting), so
+  `photocopy` uses `grayscale` + `posterize` instead. This is the real
+  constraint on recipe design.
+- **Discrete choices don't ramp.** A palette is held fixed and faded in by
+  whatever scalar ingredient carries it.
 
-- **Order is load-bearing.** `blockDisplace` must precede `rgbShift`, so torn
-  bands carry their own fringe instead of an intact fringe being painted over a
-  broken image. Scanlines and grain go last, because a screen adds them to
-  whatever it is displaying.
-- **A single `amount` can't drive everything linearly.** Grain and scanline
-  darkness want to ramp; a palette or a kernel choice can't. Presets need a
-  notion of which ingredients scale and which simply switch on.
+What's left in this tier needs texture assets (Tier 3.5) rather than more
+composition:
 
-**Paper & print** — `paper` · `paperCut` · `newsprint` · `riso` · `letterpress` ·
-`screenPrint` · `xerox` / `photocopy` · `thermalPrint` · `blueprint` · `stamp`
+**Paper & print** — `paper` · `paperCut` · `letterpress` · `screenPrint` ·
+`thermalPrint` · `stamp`. The first four want a paper or impression texture;
+`screenPrint` and `thermalPrint` are close to buildable today.
 
 **Textile** — `canvas` · `linen` / `weave` · `denim` · `knit` · `crochet` ·
-`crossStitch` · `embroidery` · `felt` · `quilt` / `patchwork`
+`crossStitch` · `embroidery` · `felt` · `quilt` / `patchwork`. All need either
+fabric normals (3.5) or the glyph atlas (3.1).
 
 **Drawn & painted** — `chalk` · `charcoal` · `pencilSketch` · `watercolor` ·
-`oilPainting` · `comic`
+`oilPainting` · `comic`. `pencilSketch` and `comic` are mostly `edges` +
+`threshold` + `halftone` and could ship now; the rest want paper texture or the
+painterly Tier 2 shaders.
 
-**Screen & optical** — `crt` · `vhs` · `neon` · `godRays` · `lensFlare` ·
-`anamorphicGlare`
+**Screen & optical** — `neon` · `godRays` · `lensFlare` · `anamorphicGlare`
+(`crt` and `vhs` shipped). These want a bloom variant with directional streaks
+more than they want new composition.
 
 ---
 
 ## What to build next
 
-**1. The `Presets` layer.** Both families it needs are now stocked, and the cost
-measurement says a 3–5 effect recipe is affordable. This is the change that makes
-thirty effects add up to more than their parts, and it is the one users ask for
-by name.
+**1. Asset-loaded effect inputs (Tier 3.2).** Much cheaper than it was: the
+`resources()` hook built for `ascii` already hands a handler extra textures, so
+this is the asset-dependency declaration and little else. Gives `lut` (`.cube`)
+as a headline feature and makes `curves` exact rather than a linear fit. Pairs
+with 3.5 (bundled textures) to unblock most of the rest of Tier 4 — but 3.5
+carries the Apache-2.0 / BSD-3-Clause licensing decision, which is a call for a
+human rather than something to pick a texture pack for.
 
-**2. Tier 3.2, asset-loaded effect inputs.** The only item that *repairs*
-something shipped: `curves` is a least-squares linear fit because this build has
-no LUT colour filter, so an S-curve flattens to its average slope. Real texture
-inputs give `lut` (`.cube`) as a headline feature and make `curves` exact.
+**1b. Interleave filters and shaders** (see the limitation above). Not a new
+effect, but it is what stops `colorAdjustment(...).ascii(...)` from meaning what
+it reads as, and it will keep surprising people as chains get longer.
 
-**3. The distort cluster** — `twirl` · `wave`/`ripple` · `polarCoords` ·
-`kaleidoscope`. Well-understood shaders, visually striking, and the largest
-remaining Tier 2 group; they just don't compound with anything else.
+**2. The distort cluster** — `twirl` · `wave`/`ripple` · `polarCoords` ·
+`kaleidoscope`. The largest remaining Tier 2 group: well-understood shaders,
+visually striking, no new plumbing. They just don't compound with anything else.
 
-Then `tiltShift`, `chromaKey`, and the painterly set.
+**3. More presets from what already exists** — `screenPrint`, `thermalPrint`,
+`pencilSketch`, `comic` are all compositions of shipped effects and cost a
+handful of lines each now the layer exists.
+
+Then `tiltShift`, `chromaKey`, the painterly set, and the glyph atlas (3.1) for
+`ascii`.
 
 ## Adding an effect
 

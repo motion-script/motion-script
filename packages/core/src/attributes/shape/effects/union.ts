@@ -28,6 +28,7 @@ import type { RgbShiftEffect } from "./implementations/rgb-shift";
 import type { ScanlinesEffect } from "./implementations/scanlines";
 import type { BlockDisplaceEffect } from "./implementations/block-displace";
 import type { BitCrushEffect } from "./implementations/bit-crush";
+import type { AsciiEffect } from "./implementations/ascii";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -60,4 +61,5 @@ export type SceneEffect =
     | RgbShiftEffect
     | ScanlinesEffect
     | BlockDisplaceEffect
-    | BitCrushEffect;
+    | BitCrushEffect
+    | AsciiEffect;
