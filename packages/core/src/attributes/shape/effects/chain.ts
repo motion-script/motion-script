@@ -14,6 +14,7 @@ import type { HalftoneShape } from "./implementations/halftone";
 import type { DitherMatrix } from "./implementations/dither";
 import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 import type { CurvesChannel } from "../filters/implementations/curves";
+import type { BitCrushPalette } from "./implementations/bit-crush";
 
 /**
  * Every effect builder takes **exactly one argument**: an options object
@@ -275,7 +276,62 @@ export interface CurvesOptions extends EffectOptions {
 /** Photographic grading. Every field is optional and defaults to neutral. */
 export type ColorAdjustmentOptions = Omit<ColorAdjustmentEffect, 'type'> & EffectOptions;
 
+/**
+ * Per-channel RGB offset. Scalar shorthand sets `amount`, which spreads red and
+ * blue apart horizontally by that many pixels and leaves green put — the
+ * everyday case. Name `red`/`green`/`blue` for full control.
+ */
+export interface RgbShiftOptions extends EffectOptions {
+    /** Shorthand: ±px horizontal spread of red vs. blue (default 4). */
+    amount?: number;
+    /** Red plane offset in px. Overrides `amount` for this channel. */
+    red?: Vector2;
+    /** Green plane offset in px. */
+    green?: Vector2;
+    /** Blue plane offset in px. Overrides `amount` for this channel. */
+    blue?: Vector2;
+}
+
+/** CRT scanlines. Scalar shorthand sets `darkness`. */
+export interface ScanlinesOptions extends EffectOptions {
+    /** 0–1 how far the bands darken (default 0.5). */
+    darkness?: number;
+    /** Distance between band centres in px (default 4). */
+    spacing?: number;
+    /** 0–1 share of each period the dark band covers (default 0.5). */
+    thickness?: number;
+    /** Band offset in px — animate to roll the pattern (default 0). */
+    offset?: number;
+    /** Band angle in degrees; 0 = horizontal (default 0). */
+    angle?: number;
+}
+
+/** Datamosh-style band tearing. Scalar shorthand sets `amount`. */
+export interface BlockDisplaceOptions extends EffectOptions {
+    /** Maximum displacement in px (default 20). */
+    amount?: number;
+    /** Band thickness in px (default 16). */
+    size?: number;
+    /** 0–1 fraction of bands that move at all (default 0.3). */
+    density?: number;
+    /** Random field offset — step it to jump between glitch states (default 0). */
+    seed?: number;
+    /** Which way bands slide (default `'x'`). */
+    axis?: EffectAxis;
+}
+
+/** Colour-depth reduction. Scalar shorthand sets `bits`. */
+export interface BitCrushOptions extends EffectOptions {
+    /** Bits per channel when `palette` is `'none'`, 1–8 (default 3). */
+    bits?: number;
+    /** Fixed hardware palette to snap to (default `'none'`). */
+    palette?: BitCrushPalette;
+    /** 0–1 blend between original and crushed (default 1). */
+    amount?: number;
+}
+
 const CENTER: Vector2 = { x: 0.5, y: 0.5 };
+const ZERO: Vector2 = { x: 0, y: 0 };
 
 /** Normalise {@link PixelateOptions.blocks} to a per-axis count. */
 const toBlocks = (blocks: number | Vector2): Vector2 =>
@@ -653,6 +709,80 @@ export class EffectChain {
     }
 
     /**
+     * Append a per-channel RGB offset — the digital cousin of
+     * {@link EffectChain.chromaticAberration}, where each plane goes where you
+     * point it instead of following a lens model.
+     */
+    rgbShift(options?: number | RgbShiftOptions) {
+        const o = scalarOptions(options, "amount");
+        const spread = o.amount ?? 4;
+        return this.append(withEffectOptions(
+            {
+                type: "rgbShift" as const,
+                red: o.red ?? { x: spread, y: 0 },
+                green: o.green ?? ZERO,
+                blue: o.blue ?? { x: -spread, y: 0 },
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append CRT scanlines. Animate `offset` past `spacing` to roll the bands;
+     * the pattern wraps, so a linear tween loops seamlessly.
+     */
+    scanlines(options?: number | ScanlinesOptions) {
+        const o = scalarOptions(options, "darkness");
+        return this.append(withEffectOptions(
+            {
+                type: "scanlines" as const,
+                spacing: o.spacing ?? 4,
+                thickness: o.thickness ?? 0.5,
+                darkness: o.darkness ?? 0.5,
+                offset: o.offset ?? 0,
+                angle: o.angle ?? 0,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append datamosh-style band tearing. Step `seed` in whole numbers to jump
+     * between distinct glitch states rather than sliding between them.
+     */
+    blockDisplace(options?: number | BlockDisplaceOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            {
+                type: "blockDisplace" as const,
+                amount: o.amount ?? 20,
+                size: o.size ?? 16,
+                density: o.density ?? 0.3,
+                seed: o.seed ?? 0,
+                axis: o.axis ?? "x",
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append colour-depth reduction — `bits` per channel, or a fixed hardware
+     * palette. Pair with {@link EffectChain.dither} so gradients survive the cut.
+     */
+    bitCrush(options?: number | BitCrushOptions) {
+        const o = scalarOptions(options, "bits");
+        return this.append(withEffectOptions(
+            {
+                type: "bitCrush" as const,
+                bits: o.bits ?? 3,
+                palette: o.palette ?? "none",
+                amount: o.amount ?? 1,
+            },
+            o,
+        ));
+    }
+
+    /**
      * Append a custom SkSL shader. `mode` picks the layer it runs on — a
      * foreground overlay blended with `blendMode`, or a backdrop shader that
      * resamples `uniform shader u_backdrop`.
@@ -732,6 +862,10 @@ export const Effects = {
     duotone: (options?: number | DuotoneOptions) => new EffectChain().duotone(options),
     curves: (options: CurvesOptions) => new EffectChain().curves(options),
     colorAdjustment: (options: ColorAdjustmentOptions) => new EffectChain().colorAdjustment(options),
+    rgbShift: (options?: number | RgbShiftOptions) => new EffectChain().rgbShift(options),
+    scanlines: (options?: number | ScanlinesOptions) => new EffectChain().scanlines(options),
+    blockDisplace: (options?: number | BlockDisplaceOptions) => new EffectChain().blockDisplace(options),
+    bitCrush: (options?: number | BitCrushOptions) => new EffectChain().bitCrush(options),
 };
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */

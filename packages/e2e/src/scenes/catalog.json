@@ -978,6 +978,30 @@
     "description": "Contrast/saturation/temperature on a group of shapes"
   },
   {
+    "id": "effect-rgb-shift",
+    "name": "EffectRgbShift",
+    "section": "Effects",
+    "description": "Red/blue planes pulled apart on a text silhouette"
+  },
+  {
+    "id": "effect-scanlines",
+    "name": "EffectScanlines",
+    "section": "Effects",
+    "description": "CRT bands darkening a bright card"
+  },
+  {
+    "id": "effect-block-displace",
+    "name": "EffectBlockDisplace",
+    "section": "Effects",
+    "description": "Horizontal band tearing at a fixed seed"
+  },
+  {
+    "id": "effect-bit-crush",
+    "name": "EffectBitCrush",
+    "section": "Effects",
+    "description": "Gradient snapped to the Game Boy palette"
+  },
+  {
     "id": "effect-sksl-custom",
     "name": "EffectSkslCustom",
     "section": "Effects",

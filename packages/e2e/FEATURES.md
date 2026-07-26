@@ -213,6 +213,10 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `effect-duotone`: Luminance remapped onto a two-colour ramp
 - [ ] `effect-curves`: Tone curve lifting shadows on a node (not an image fill)
 - [ ] `effect-color-adjustment`: Contrast/saturation/temperature on a group of shapes
+- [ ] `effect-rgb-shift`: Red/blue planes pulled apart on a text silhouette
+- [ ] `effect-scanlines`: CRT bands darkening a bright card
+- [ ] `effect-block-displace`: Horizontal band tearing at a fixed seed
+- [ ] `effect-bit-crush`: Gradient snapped to the Game Boy palette
 - [ ] `effect-sksl-custom`: Custom SkSL shader as layer effect
 - [ ] `effect-sksl-backdrop`: Custom SkSL shader processing backdrop
 

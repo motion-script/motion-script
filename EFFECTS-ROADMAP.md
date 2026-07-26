@@ -7,7 +7,7 @@ Tiers are ordered by implementation cost, not by desirability — Tier 1 items n
 no new plumbing at all, Tier 3 items each unlock a whole family but need a new
 engine capability first.
 
-## Shipping today (26)
+## Shipping today (30)
 
 **Blur & motion** — `blur` · `directionalBlur` · `motionBlur` · `radialBlur`
 (zoom/spin)
@@ -20,6 +20,9 @@ engine capability first.
 
 **Shape & light** — `outline` · `vignette` · `bulge` · `magnify` ·
 `chromaticAberration`
+
+**Glitch & digital** — `rgbShift` · `scanlines` · `blockDisplace` · `bitCrush`
+(palette or bit-depth)
 
 **Escape hatch** — `sksl` (custom shader)
 
@@ -63,6 +66,41 @@ transform — `duotone` and `colorAdjustment` ride this), `MakeDilate` / `MakeEr
 | `tile` / `motionTile` | TileMode + MatrixTransform | `pixelate` already does the transform pair |
 | `displacementMap` (image source) | MakeDisplacementMap | needs the asset plumbing in Tier 3.2 |
 
+## What a shader effect actually costs (measured)
+
+Worth knowing before designing anything that stacks effects, because the code
+reads alarming and the measurement doesn't.
+
+Each foreground shader effect allocates its **own full-surface offscreen** and
+repaints the **whole canvas** through its lens (`openForegroundCapture` /
+`paintShaderInDeviceSpace` in `packages/web/src/render-context.ts`). Nothing
+about that scales with the node: a 300 px badge and a 1000 px card cost the
+same, and an N-effect chain is N canvas-sized passes.
+
+That reads like a trap for any composition layer. It measures as a non-issue.
+Exporting 90 frames at 1920×1080, interleaved rounds, median of 5:
+
+| Chain | vs. no effects |
+|---|---|
+| 1 shader effect | +0.1 ms/frame |
+| 4 shader effects | lost in the noise |
+| 8 shader effects | lost in the noise (≤ ~1.3 ms/frame worst case) |
+| `outline` at width 40 (multi-tap) | +0.15 ms/frame |
+| 4 colour-matrix filters | ~0 (they compose into one ImageFilter) |
+
+Run-to-run spread on that harness is ±20%, larger than every delta above — eight
+stacked full-canvas shader passes cannot be distinguished from zero effects
+across a real export, where evaluation, readback and video encoding dominate at
+~4.4 ms/frame.
+
+**So: don't pre-optimise the scope path.** Bounding the offscreen to the node
+would need every handler to declare how far it bleeds outward (`outline`,
+`radialBlur` and `grain` all read or write past the node box), and it risks
+clipping children drawn outside their parent's layout box — real complexity and
+real risk, to buy back something currently unmeasurable. Revisit only if a
+profile on a genuinely heavy project says otherwise, or if 4K + deep chains
+become common.
+
 ## Tier 2 — one SkSL shader each
 
 Registry-driven shader dispatch is in place, so each of these is a `makeShader`
@@ -78,10 +116,10 @@ handler and a `surface: "shader"` declaration — no dispatch edits. `halftone` 
 **Blur variants** — `bokeh` / `lensBlur` (bladed aperture) · `tiltShift` ·
 `surfaceBlur` (bilateral)
 
-**Glitch & digital** — `glitch` (seeded composite: block displace + RGB shift +
-scanline + noise) · `rgbShift` (per-channel `Vector2` offsets) · `scanlines` ·
-`blockDisplace` · `bitCrush` / `paletteQuantize` (gameboy/CGA/NES palettes) ·
-`pixelSort` (bounded-pass approximation)
+**Glitch & digital** — `pixelSort` (bounded-pass approximation) is all that's
+left here. `rgbShift`, `scanlines`, `blockDisplace` and `bitCrush` shipped; the
+composite `glitch` they were meant to feed is better expressed as a preset than
+as a fifth effect, so it moved to Tier 4.
 
 **Painterly** — `oilPaint` (Kuwahara) · `stainedGlass` (Voronoi) · `lowPoly` ·
 `contour` / `isoline`
@@ -119,7 +157,25 @@ layer**: named recipes returning an `EffectChain`, each driven by a single
 `amount` — `Presets.riso({ amount: 0.8 })`. With Tier 1 now covering the
 ingredients (`halftone` + `duotone` + `grain` + `threshold` already compose into
 riso, newsprint, screen-print and blueprint looks), this is the cheapest
-remaining tier and the natural home for the looks people ask for by name.
+remaining tier and the natural home for the looks people ask for by name — and
+the cost measurement above says a 3–5 effect recipe is affordable.
+
+**Both headline families are now buildable.** The paper & print looks compose
+from `halftone` + `duotone` + `grain` + `threshold`; `crt`, `vhs` and `glitch`
+compose from `scanlines` + `rgbShift` + `blockDisplace` + `bitCrush` +
+`chromaticAberration`. The template's `retro-vhs` scene is the recipe written
+out by hand — turning that into `Presets.vhs({ amount })` is the remaining work.
+
+Two things that recipe surfaced, worth encoding in the preset layer rather than
+rediscovering per look:
+
+- **Order is load-bearing.** `blockDisplace` must precede `rgbShift`, so torn
+  bands carry their own fringe instead of an intact fringe being painted over a
+  broken image. Scanlines and grain go last, because a screen adds them to
+  whatever it is displaying.
+- **A single `amount` can't drive everything linearly.** Grain and scanline
+  darkness want to ramp; a palette or a kernel choice can't. Presets need a
+  notion of which ingredients scale and which simply switch on.
 
 **Paper & print** — `paper` · `paperCut` · `newsprint` · `riso` · `letterpress` ·
 `screenPrint` · `xerox` / `photocopy` · `thermalPrint` · `blueprint` · `stamp`
@@ -135,13 +191,23 @@ remaining tier and the natural home for the looks people ask for by name.
 
 ---
 
-## If you only build ten more
+## What to build next
 
-`glitch` · `rgbShift` · `twirl` · `wave`/`ripple` · `kaleidoscope` · `scanlines` ·
-`tiltShift` · `bitCrush` · `chromaKey` · a `Presets` layer for Tier 4
+**1. The `Presets` layer.** Both families it needs are now stocked, and the cost
+measurement says a 3–5 effect recipe is affordable. This is the change that makes
+thirty effects add up to more than their parts, and it is the one users ask for
+by name.
 
-Nine Tier 2 shaders plus the composition layer that makes the existing
-twenty-six add up to more than their parts.
+**2. Tier 3.2, asset-loaded effect inputs.** The only item that *repairs*
+something shipped: `curves` is a least-squares linear fit because this build has
+no LUT colour filter, so an S-curve flattens to its average slope. Real texture
+inputs give `lut` (`.cube`) as a headline feature and make `curves` exact.
+
+**3. The distort cluster** — `twirl` · `wave`/`ripple` · `polarCoords` ·
+`kaleidoscope`. Well-understood shaders, visually striking, and the largest
+remaining Tier 2 group; they just don't compound with anything else.
+
+Then `tiltShift`, `chromaKey`, and the painterly set.
 
 ## Adding an effect
 

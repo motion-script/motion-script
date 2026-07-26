@@ -28,6 +28,10 @@ import dither from './scenes/dither?scene';
 import duotone from './scenes/duotone?scene';
 import curves from './scenes/curves?scene';
 import colorAdjustment from './scenes/color-adjustment?scene';
+import rgbShift from './scenes/rgb-shift?scene';
+import scanlines from './scenes/scanlines?scene';
+import blockDisplace from './scenes/block-displace?scene';
+import bitCrush from './scenes/bit-crush?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
@@ -72,6 +76,10 @@ export default createProject({
         duotone,
         curves,
         colorAdjustment,
+        rgbShift,
+        scanlines,
+        blockDisplace,
+        bitCrush,
     ],
     theme: {
         colors: {

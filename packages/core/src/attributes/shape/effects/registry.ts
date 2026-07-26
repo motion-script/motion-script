@@ -26,6 +26,10 @@ import { ditherEffect } from "./implementations/dither";
 import { duotoneEffect } from "./implementations/duotone";
 import { curvesEffect } from "./implementations/curves";
 import { colorAdjustmentEffect } from "./implementations/color-adjustment";
+import { rgbShiftEffect } from "./implementations/rgb-shift";
+import { scanlinesEffect } from "./implementations/scanlines";
+import { blockDisplaceEffect } from "./implementations/block-displace";
+import { bitCrushEffect } from "./implementations/bit-crush";
 import { EffectData, EffectSurface } from "./effect-data";
 
 
@@ -56,6 +60,10 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["duotone", duotoneEffect as EffectData<SceneEffect>],
     ["curves", curvesEffect as EffectData<SceneEffect>],
     ["colorAdjustment", colorAdjustmentEffect as EffectData<SceneEffect>],
+    ["rgbShift", rgbShiftEffect as EffectData<SceneEffect>],
+    ["scanlines", scanlinesEffect as EffectData<SceneEffect>],
+    ["blockDisplace", blockDisplaceEffect as EffectData<SceneEffect>],
+    ["bitCrush", bitCrushEffect as EffectData<SceneEffect>],
 ]);
 
 /**

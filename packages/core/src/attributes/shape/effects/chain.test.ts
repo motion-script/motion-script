@@ -269,6 +269,52 @@ describe('FX builders — roadmap effects', () => {
         expect('mode' in effect).toBe(false);
     });
 
+    it('rgbShift spreads red and blue apart horizontally by default', () => {
+        expect([...Effects.rgbShift()]).toEqual([
+            {
+                type: 'rgbShift',
+                red: { x: 4, y: 0 },
+                green: { x: 0, y: 0 },
+                blue: { x: -4, y: 0 },
+            },
+        ]);
+    });
+
+    it('rgbShift lets a named channel override the scalar spread', () => {
+        expect([...Effects.rgbShift({ amount: 6, green: { x: 0, y: 3 } })]).toEqual([
+            {
+                type: 'rgbShift',
+                red: { x: 6, y: 0 },
+                green: { x: 0, y: 3 },
+                blue: { x: -6, y: 0 },
+            },
+        ]);
+    });
+
+    it('scanlines default to 4px bands at half darkness', () => {
+        expect([...Effects.scanlines()]).toEqual([
+            { type: 'scanlines', spacing: 4, thickness: 0.5, darkness: 0.5, offset: 0, angle: 0 },
+        ]);
+    });
+
+    it('blockDisplace defaults to sparse horizontal tears', () => {
+        expect([...Effects.blockDisplace()]).toEqual([
+            { type: 'blockDisplace', amount: 20, size: 16, density: 0.3, seed: 0, axis: 'x' },
+        ]);
+    });
+
+    it('bitCrush defaults to 3 bits per channel with no palette', () => {
+        expect([...Effects.bitCrush()]).toEqual([
+            { type: 'bitCrush', bits: 3, palette: 'none', amount: 1 },
+        ]);
+    });
+
+    it('bitCrush accepts a fixed hardware palette', () => {
+        expect([...Effects.bitCrush({ palette: 'gameboy' })]).toEqual([
+            { type: 'bitCrush', bits: 3, palette: 'gameboy', amount: 1 },
+        ]);
+    });
+
     it('carries the backdrop mode like every other effect', () => {
         expect([...Effects.halftone({ size: 6, mode: 'backdrop' })]).toEqual([
             { type: 'halftone', size: 6, angle: 45, shape: 'dot', colored: false, mode: 'backdrop' },
@@ -328,6 +374,10 @@ describe('scalar shorthand', () => {
         ['halftone', () => Effects.halftone(12), () => Effects.halftone({ size: 12 })],
         ['dither', () => Effects.dither(4), () => Effects.dither({ levels: 4 })],
         ['duotone', () => Effects.duotone(0.7), () => Effects.duotone({ amount: 0.7 })],
+        ['rgbShift', () => Effects.rgbShift(6), () => Effects.rgbShift({ amount: 6 })],
+        ['scanlines', () => Effects.scanlines(0.8), () => Effects.scanlines({ darkness: 0.8 })],
+        ['blockDisplace', () => Effects.blockDisplace(30), () => Effects.blockDisplace({ amount: 30 })],
+        ['bitCrush', () => Effects.bitCrush(2), () => Effects.bitCrush({ bits: 2 })],
     ])('%s(n) is identical to its options form', (_name, scalar, options) => {
         expect([...scalar()]).toEqual([...options()]);
     });
@@ -373,6 +423,15 @@ describe('foregroundShaderEffects', () => {
         );
         expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual([
             'halftone', 'outline', 'vignette', 'dither',
+        ]);
+    });
+
+    it('picks up the glitch cluster in author order', () => {
+        const effects = resolveChainEffects(
+            Effects.blockDisplace(20).rgbShift(6).scanlines(0.4).bitCrush(2),
+        );
+        expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual([
+            'blockDisplace', 'rgbShift', 'scanlines', 'bitCrush',
         ]);
     });
 

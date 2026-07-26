@@ -166,6 +166,10 @@ import s_effect_dither from './effect-dither?scene';
 import s_effect_duotone from './effect-duotone?scene';
 import s_effect_curves from './effect-curves?scene';
 import s_effect_color_adjustment from './effect-color-adjustment?scene';
+import s_effect_rgb_shift from './effect-rgb-shift?scene';
+import s_effect_scanlines from './effect-scanlines?scene';
+import s_effect_block_displace from './effect-block-displace?scene';
+import s_effect_bit_crush from './effect-bit-crush?scene';
 import s_effect_sksl_custom from './effect-sksl-custom?scene';
 import s_effect_sksl_backdrop from './effect-sksl-backdrop?scene';
 import s_filter_exposure from './filter-exposure?scene';
@@ -421,6 +425,10 @@ export const scenes: Scene[] = [
     s_effect_duotone,
     s_effect_curves,
     s_effect_color_adjustment,
+    s_effect_rgb_shift,
+    s_effect_scanlines,
+    s_effect_block_displace,
+    s_effect_bit_crush,
     s_effect_sksl_custom,
     s_effect_sksl_backdrop,
     s_filter_exposure,
@@ -688,6 +696,10 @@ export const catalog: SceneMeta[] = [
     { id: "effect-duotone", name: "EffectDuotone", section: "Effects", description: "Luminance remapped onto a two-colour ramp" },
     { id: "effect-curves", name: "EffectCurves", section: "Effects", description: "Tone curve lifting shadows on a node (not an image fill)" },
     { id: "effect-color-adjustment", name: "EffectColorAdjustment", section: "Effects", description: "Contrast/saturation/temperature on a group of shapes" },
+    { id: "effect-rgb-shift", name: "EffectRgbShift", section: "Effects", description: "Red/blue planes pulled apart on a text silhouette" },
+    { id: "effect-scanlines", name: "EffectScanlines", section: "Effects", description: "CRT bands darkening a bright card" },
+    { id: "effect-block-displace", name: "EffectBlockDisplace", section: "Effects", description: "Horizontal band tearing at a fixed seed" },
+    { id: "effect-bit-crush", name: "EffectBitCrush", section: "Effects", description: "Gradient snapped to the Game Boy palette" },
     { id: "effect-sksl-custom", name: "EffectSkslCustom", section: "Effects", description: "Custom SkSL shader as layer effect" },
     { id: "effect-sksl-backdrop", name: "EffectSkslBackdrop", section: "Effects", description: "Custom SkSL shader processing backdrop" },
     { id: "filter-exposure", name: "FilterExposure", section: "Image Filters", description: "Exposure boost and reduction" },

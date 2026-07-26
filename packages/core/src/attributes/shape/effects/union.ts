@@ -24,6 +24,10 @@ import type { DitherEffect } from "./implementations/dither";
 import type { DuotoneEffect } from "./implementations/duotone";
 import type { CurvesEffect } from "./implementations/curves";
 import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
+import type { RgbShiftEffect } from "./implementations/rgb-shift";
+import type { ScanlinesEffect } from "./implementations/scanlines";
+import type { BlockDisplaceEffect } from "./implementations/block-displace";
+import type { BitCrushEffect } from "./implementations/bit-crush";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -52,4 +56,8 @@ export type SceneEffect =
     | DitherEffect
     | DuotoneEffect
     | CurvesEffect
-    | ColorAdjustmentEffect;
+    | ColorAdjustmentEffect
+    | RgbShiftEffect
+    | ScanlinesEffect
+    | BlockDisplaceEffect
+    | BitCrushEffect;

@@ -26,6 +26,10 @@ export type { DitherEffect, DitherMatrix } from "./implementations/dither";
 export type { DuotoneEffect } from "./implementations/duotone";
 export type { CurvesEffect } from "./implementations/curves";
 export type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
+export type { RgbShiftEffect } from "./implementations/rgb-shift";
+export type { ScanlinesEffect } from "./implementations/scanlines";
+export type { BlockDisplaceEffect } from "./implementations/block-displace";
+export type { BitCrushEffect, BitCrushPalette } from "./implementations/bit-crush";
 
 /** Chainable effect builder API, chain class, and union input type. */
 export { Effects, FX, EffectChain } from './chain';
@@ -59,6 +63,10 @@ export type {
     DuotoneOptions,
     CurvesOptions,
     ColorAdjustmentOptions,
+    RgbShiftOptions,
+    ScanlinesOptions,
+    BlockDisplaceOptions,
+    BitCrushOptions,
 } from './chain';
 
 export type { EffectData, EffectMode, EffectSurface, EffectAxis, EffectOptions, ModedEffect } from './effect-data';
