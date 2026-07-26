@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCSV } from '@/util/csv';
+import { parseCSV, parseData } from '@/util/csv';
 
 describe('parseCSV', () => {
     it('parses a simple header + rows into records', () => {
@@ -74,5 +74,48 @@ describe('parseCSV', () => {
 
     it('returns an empty array for a header-only file', () => {
         expect(parseCSV('a,b\n')).toEqual([]);
+    });
+
+    it('auto-detects boolean columns per-column, leaving text columns as strings', () => {
+        const csv = 'name,active\nAda,true\nGrace,false\n';
+        expect(parseCSV(csv)).toEqual([
+            { name: 'Ada', active: true },
+            { name: 'Grace', active: false },
+        ]);
+    });
+
+    it('does not coerce a column containing any non-boolean cell', () => {
+        const csv = 'flag\ntrue\nmaybe\n';
+        expect(parseCSV(csv)).toEqual([{ flag: 'true' }, { flag: 'maybe' }]);
+    });
+
+    it('respects an explicit boolean column list', () => {
+        const csv = 'id,ok\nrow-1,true\nrow-2,false\n';
+        expect(parseCSV(csv, { boolean: ['ok'] })).toEqual([
+            { id: 'row-1', ok: true },
+            { id: 'row-2', ok: false },
+        ]);
+    });
+
+    it('disables all boolean coercion when boolean is false', () => {
+        const csv = 'flag\ntrue\nfalse\n';
+        expect(parseCSV(csv, { boolean: false })).toEqual([{ flag: 'true' }, { flag: 'false' }]);
+    });
+
+    it('never coerces a column to boolean once it has coerced to numeric', () => {
+        // "0"/"1" are valid numbers, not "true"/"false" strings, so this column
+        // stays numeric — this test just guards the numeric pass keeps priority.
+        const csv = 'flag\n0\n1\n';
+        expect(parseCSV(csv)).toEqual([{ flag: 0 }, { flag: 1 }]);
+    });
+});
+
+describe('parseData', () => {
+    it('throws when called directly, since it only runs as an inlined build-time literal', () => {
+        // This is deliberate, not a bug: the @motion-script/vite-plugin macro
+        // replaces static parseData("file.csv") calls before this body ever
+        // executes. Calling it directly (unresolved call, or missing plugin)
+        // should fail loudly rather than silently return nothing.
+        expect(() => parseData('missing.csv')).toThrow(/parseData\("missing\.csv"\)/);
     });
 });

@@ -38,6 +38,8 @@
     "@motion-script/player": "workspace:*",
     "@motion-script/web": "workspace:*",
     "@vitejs/plugin-react": "^6.0.0",
+    "acorn": "^8.17.0",
+    "estree-walker": "^3.0.3",
     "fontkit": "^2.0.4",
     "image-size": "^2.0.2",
     "music-metadata": "^11.8.3",
@@ -48,6 +50,7 @@
     "vite": "catalog:"
   },
   "devDependencies": {
+    "@types/estree": "^1.0.9",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

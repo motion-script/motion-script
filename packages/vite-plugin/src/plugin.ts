@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 import type { PluginOption, UserConfig } from 'vite';
 import { buildAssetManifest } from './asset-manifest';
 import { sceneTransform } from './scene-transform';
-import { csvTransform } from './csv-transform';
+import { dataTransform } from './data-transform';
 
 /**
  * Options accepted by the {@link motionScript} Vite plugin.
@@ -148,13 +148,16 @@ function resolveCanvasKitWasm(): string | null {
 export default function motionScript(options?: MotionScriptOptions): PluginOption[] {
     // Set by configResolved, read by closeBundle to know where to emit the wasm.
     let resolvedOutDir: string | null = null;
+    // Shared by the data-transform macro, the asset-manifest loader, and the
+    // dev-server watcher/static-serving below — all resolve the same folder.
+    const publicDir = path.resolve(process.cwd(), 'public');
 
     return [
         // `?scene` import handling. Runs with enforce:'pre' so it claims the
         // `?scene` id before the React plugin; the wrapper it emits imports the
         // real .tsx, which then goes through React/esbuild normally.
         sceneTransform(process.cwd()),
-        csvTransform(),
+        dataTransform(publicDir),
         react(),
         {
             name: 'vite-plugin-motion-script',
@@ -170,21 +173,18 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
             // export so the runtime can `import manifest from '~asset-manifest'`.
             async load(id) {
                 if (id !== RESOLVED_ASSET_MANIFEST_ID) return null;
-                const publicDir = path.resolve(process.cwd(), 'public');
                 const manifest = await buildAssetManifest(publicDir, [DEFAULT_ASSETS_DIR]);
                 return `export default ${JSON.stringify(manifest)};`;
             },
 
             configureServer(server) {
-                const userRoot = process.cwd();
                 const pluginAppRoot = path.resolve(__dirname, 'plugin-app');
-                const userPublicDir = path.resolve(userRoot, 'public');
 
                 // Watch the user's public folder; on any change, invalidate the
                 // virtual asset manifest module so the next request rebuilds it
                 // and HMR pushes the new manifest into the running app.
-                if (fs.existsSync(userPublicDir)) {
-                    server.watcher.add(userPublicDir);
+                if (fs.existsSync(publicDir)) {
+                    server.watcher.add(publicDir);
                 }
                 const invalidateManifest = () => {
                     const mod = server.moduleGraph.getModuleById(RESOLVED_ASSET_MANIFEST_ID);
@@ -194,7 +194,7 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     }
                 };
                 const onChange = (file: string) => {
-                    if (file.startsWith(userPublicDir)) invalidateManifest();
+                    if (file.startsWith(publicDir)) invalidateManifest();
                 };
                 server.watcher.on('add', onChange);
                 server.watcher.on('change', onChange);
@@ -217,7 +217,7 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                 // both dirs explicitly here is more reliable.
                 const staticDirs = [
                     path.resolve(pluginAppRoot, 'public'),
-                    path.resolve(userRoot, 'public'),
+                    publicDir,
                 ];
                 for (const dir of staticDirs) {
                     if (!fs.existsSync(dir)) continue;

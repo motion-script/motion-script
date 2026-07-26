@@ -249,11 +249,12 @@ export {
     Random,
     SeedGenerator,
     parseCSV,
+    parseData,
 } from '@motion-script/core';
 export type {
     Reference,
     Context,
-    CSVRecord,
+    DataRecord,
     ParseCSVOptions,
 } from '@motion-script/core';
 

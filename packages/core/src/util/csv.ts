@@ -1,6 +1,7 @@
-/** One parsed CSV record: column name → cell value (string, or number when the
- *  column auto-coerces — see {@link ParseCSVOptions.numeric}). */
-export type CSVRecord = Record<string, string | number>;
+/** One parsed data record: column name → cell value (string, or number/boolean
+ *  when the column auto-coerces — see {@link ParseCSVOptions.numeric} and
+ *  {@link ParseCSVOptions.boolean}). */
+export type DataRecord = Record<string, string | number | boolean>;
 
 export interface ParseCSVOptions {
     /** Field separator. Default: ','. */
@@ -14,6 +15,13 @@ export interface ParseCSVOptions {
      * alone rather than partially coerced.
      */
     numeric?: string[] | boolean;
+    /**
+     * Which columns to coerce to `boolean`, same shape/semantics as
+     * {@link numeric}. Default (omitted/`true`): auto-detect — a column
+     * becomes boolean only if every non-empty cell is exactly `"true"` or
+     * `"false"`. Never applied to a column already coerced to numeric.
+     */
+    boolean?: string[] | boolean;
 }
 
 /**
@@ -22,7 +30,7 @@ export interface ParseCSVOptions {
  * both CRLF/LF line endings. Synchronous and dependency-free, so it's safe to
  * call at module-eval time on text pulled in via a `?raw` import.
  */
-export function parseCSV(text: string, options: ParseCSVOptions = {}): CSVRecord[] {
+export function parseCSV(text: string, options: ParseCSVOptions = {}): DataRecord[] {
     const delimiter = options.delimiter ?? ',';
     const rows = splitRows(text, delimiter);
     if (rows.length === 0) return [];
@@ -37,17 +45,41 @@ export function parseCSV(text: string, options: ParseCSVOptions = {}): CSVRecord
     });
 
     const numericCols = resolveNumericColumns(header, records, options.numeric);
-    if (numericCols.length === 0) return records;
+    const booleanCols = resolveBooleanColumns(header, records, numericCols, options.boolean);
+    if (numericCols.length === 0 && booleanCols.length === 0) return records;
 
     return records.map(record => {
-        const out: CSVRecord = { ...record };
+        const out: DataRecord = { ...record };
         for (const col of numericCols) {
             const raw = record[col];
             if (raw === '') continue;
             out[col] = Number(raw);
         }
+        for (const col of booleanCols) {
+            const raw = record[col];
+            if (raw === '') continue;
+            out[col] = raw === 'true';
+        }
         return out;
     });
+}
+
+/**
+ * `parseData` only ever runs as an inlined literal — the
+ * `@motion-script/vite-plugin` build-time macro replaces
+ * `parseData("file.csv")` call sites with the already-parsed rows before this
+ * body ever executes. This implementation exists purely so the call
+ * type-checks and so an unresolved call site (missing plugin, or a
+ * non-literal argument the macro couldn't statically inline) fails loudly
+ * instead of silently returning nothing.
+ */
+export function parseData(file: string, _options?: ParseCSVOptions): DataRecord[] {
+    throw new Error(
+        `parseData("${file}") must be called with a static string literal so the ` +
+        `@motion-script/vite-plugin macro can inline it at build time. If you're seeing ` +
+        `this error at runtime, either the plugin isn't installed/registered, or this ` +
+        `call's argument isn't a plain string literal.`
+    );
 }
 
 /** Decide which columns to coerce, per {@link ParseCSVOptions.numeric}. */
@@ -65,6 +97,30 @@ function resolveNumericColumns(
             const raw = record[col];
             if (raw === '') continue;
             if (!Number.isFinite(Number(raw))) return false;
+            sawValue = true;
+        }
+        return sawValue;
+    });
+}
+
+/** Decide which columns to coerce, per {@link ParseCSVOptions.boolean}. */
+function resolveBooleanColumns(
+    header: string[],
+    records: Record<string, string>[],
+    numericCols: string[],
+    bool: string[] | boolean | undefined,
+): string[] {
+    if (bool === false) return [];
+    if (Array.isArray(bool)) return bool;
+
+    const numericSet = new Set(numericCols);
+    return header.filter(col => {
+        if (numericSet.has(col)) return false;
+        let sawValue = false;
+        for (const record of records) {
+            const raw = record[col];
+            if (raw === '') continue;
+            if (raw !== 'true' && raw !== 'false') return false;
             sawValue = true;
         }
         return sawValue;
