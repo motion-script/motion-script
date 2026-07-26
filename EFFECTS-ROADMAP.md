@@ -7,64 +7,76 @@ Tiers are ordered by implementation cost, not by desirability — Tier 1 items n
 no new plumbing at all, Tier 3 items each unlock a whole family but need a new
 engine capability first.
 
-## Shipping today (14)
+## Shipping today (26)
 
-`blur` · `directionalBlur` · `grayscale` · `pixelate` · `bulge` · `magnify` ·
-`bloom` · `vintage` · `chromaticAberration` · `invert` · `scatter` · `posterize` ·
-`motionBlur` · `sksl` (custom shader escape hatch)
+**Blur & motion** — `blur` · `directionalBlur` · `motionBlur` · `radialBlur`
+(zoom/spin)
+
+**Colour & tone** — `grayscale` · `invert` · `posterize` · `threshold` ·
+`duotone` · `curves` · `colorAdjustment` · `vintage` · `bloom`
+
+**Detail & texture** — `sharpen` · `edges` (sobel/prewitt/laplacian) · `grain` ·
+`scatter` · `pixelate` · `dither` (bayer 2/4/8) · `halftone` (dot/line/cross)
+
+**Shape & light** — `outline` · `vignette` · `bulge` · `magnify` ·
+`chromaticAberration`
+
+**Escape hatch** — `sksl` (custom shader)
 
 Plus seven media filters on image/video fills (`exposure`, `blur`, `grayscale`,
 `alpha`, `colorMatrix`, `curves`, `colorAdjustment`) and two video-only temporal
 filters (`posterizeTime`, `echo`).
 
-**The gaps that stand out before any exotica:** no `vignette`, no `grain`, no
-`sharpen`, no `outline`, no edge detect, no `threshold`, no `duotone`, and no
-radial/zoom blur. `colorAdjustment` and `curves` exist only for image fills, not
-as scene effects — so you can grade a photo but not a group of shapes.
+**What the earlier draft of this document called out as the standout gaps —
+`vignette`, `grain`, `sharpen`, `outline`, edge detect, `threshold`, `duotone`,
+radial blur, and `colorAdjustment`/`curves` being image-fill-only — is now
+closed.** The remaining tiers are the exotica.
 
 ---
 
-## Tier 1 — Skia already has the primitive
+## A note on primitives before you cost anything
 
-No new plumbing: each is a handler object plus one `EffectRegistry.register` call,
-roughly 40–80 lines, built from `MakeMatrixConvolution` / `MakeDilate` /
-`MakeErode` / `MakeTableARGB` / `ColorFilter.MakeMatrix` / `MakeDisplacementMap` /
-`Shader.MakeTurbulence`.
+**This CanvasKit build has no `MakeMatrixConvolution` and no `MakeTableARGB`** —
+neither symbol exists in `packages/canvaskit/canvaskit.js`. An earlier version of
+this document costed most of Tier 1 against those two, which was wrong: any
+convolution or LUT-shaped effect needs an SkSL shader on the `surface: "shader"`
+path instead. That is a well-trodden path (nine of the effects above take it),
+but it is 80–150 lines rather than 40, and it costs a full-surface shader pass
+rather than composing into the neighbouring `ImageFilter` chain.
 
-| Effect | Primitive | Notes |
+What *is* available and cheap: `ColorFilter.MakeMatrix` (any affine colour
+transform — `duotone` and `colorAdjustment` ride this), `MakeDilate` / `MakeErode`,
+`MakeDisplacementMap`, `MakeBlur`, `MakeBlend`, `MakeMatrixTransform`, and
+`Shader.MakeTurbulence` / `MakeFractalNoise`.
+
+## Tier 1 — cheap against the primitives that do exist
+
+| Effect | Approach | Notes |
 |---|---|---|
-| `sharpen` / `unsharpMask` | MatrixConvolution | |
-| `edges` | MatrixConvolution | Sobel / Laplacian / Prewitt selected by a `kernel` option |
-| `emboss` / `bevel` | MatrixConvolution | |
-| `dilate`, `erode` | native `MakeDilate` / `MakeErode` | ~20 lines each |
-| `outline` | dilate − source, blended | `width`, `color`, `position: 'outside' \| 'center' \| 'inside'` |
-| `threshold` | TableARGB | `level`, `smoothness` |
-| `solarize` | TableARGB | |
-| `gradientMap` / `duotone` | TableARGB, or a small SkSL ramp | maps luminance through a colour ramp |
-| `hueRotate` / `saturation` | `ColorFilter.MakeMatrix` | |
-| `curves` | TableARGB | **promote** — the maths already exists in `web/src/fills/filters/curves.ts` |
-| `colorAdjustment` | ColorMatrix | **promote** — already in `web/src/fills/filters/color-adjustment.ts` |
-| `vignette` | radial gradient + multiply | currently reachable only as a sub-field of `colorAdjustment` |
-| `grain` / `filmGrain` | `MakeTurbulence` + `MakeBlend` | `animated`, `seed`, `colored` |
+| `emboss` / `bevel` | SkSL 3×3 convolution | `edges` is the template; same tap layout, different kernel |
+| `dilate`, `erode` | native `MakeDilate` / `MakeErode` | ~20 lines each — but see the layer-bounds caveat under `outline` in the docs |
+| `solarize` | SkSL per-pixel remap | `threshold` is the template |
+| `gradientMap` | SkSL ramp | `duotone` generalised past two stops; needs an N-stop uniform array |
+| `hueRotate` / `saturation` | `ColorFilter.MakeMatrix` | genuinely ~40 lines; `saturation` already exists inside `colorAdjustment` |
 | `turbulentDisplace` | FractalNoise + DisplacementMap | `scatter` is already 90% of this |
 | `boxBlur` | MakeBlur / convolution | `iterations` |
 | `tile` / `motionTile` | TileMode + MatrixTransform | `pixelate` already does the transform pair |
-| `displacementMap` (image source) | MakeDisplacementMap | the asset manager already loads images |
+| `displacementMap` (image source) | MakeDisplacementMap | needs the asset plumbing in Tier 3.2 |
 
 ## Tier 2 — one SkSL shader each
 
 Registry-driven shader dispatch is in place, so each of these is a `makeShader`
-handler and a `surface: "shader"` declaration — no dispatch edits.
+handler and a `surface: "shader"` declaration — no dispatch edits. `halftone` and
+`dither` shipped from this tier; the rest are unbuilt.
 
-**Halftone & print** — `halftone` (dot/line/cross, per-channel screen angles) ·
-`dither` (bayer 2/4/8, blue-noise, palette quantise) · `crosshatch` · `stipple` ·
-`benDay`
+**Halftone & print** — `crosshatch` · `stipple` · `benDay` · blue-noise dithering
+(the ordered/Bayer half is done)
 
 **Distort** — `twirl` · `wave` / `ripple` · `polarCoords` · `kaleidoscope` /
 `mirror` · `glassRefract` · `lensDistortion` · `roughenEdges` · `sphere`
 
-**Blur variants** — `radialBlur` (zoom + spin) · `bokeh` / `lensBlur` (bladed
-aperture) · `tiltShift` · `surfaceBlur` (bilateral)
+**Blur variants** — `bokeh` / `lensBlur` (bladed aperture) · `tiltShift` ·
+`surfaceBlur` (bilateral)
 
 **Glitch & digital** — `glitch` (seeded composite: block displace + RGB shift +
 scanline + noise) · `rgbShift` (per-channel `Vector2` offsets) · `scanlines` ·
@@ -87,13 +99,16 @@ The capability is the real unit of work; each one unlocks a family.
    charset + font + cell size.
 2. **Asset-loaded effect inputs** → `lut` (`.cube` / hald). The asset manifest
    already loads images; effects need a way to declare an asset dependency and
-   receive it as a texture.
+   receive it as a texture. Would also give `curves` an exact LUT instead of its
+   current linear fit.
 3. **Node-as-texture references** → `displacementMap` driven by a sibling
    subtree, `depthBlur`. Requires rendering another node to an offscreen surface.
 4. **Frame history buffer** → scene-level `echo` / `trails` / `feedback`.
    Distinct from `VideoFilters.echo`, which re-reads *source* frames; this needs
    past *rendered* frames. `NodeRenderState`'s velocity plumbing (used by
-   `motionBlur`) is the closest existing precedent.
+   `motionBlur`) is the closest existing precedent, and `EffectGeometry.time`
+   (added for animated `grain`) is the first step toward per-frame state in a
+   handler.
 5. **Bundled texture library** (paper, canvas, fabric normals) → most of Tier 4.
    Carries a licensing decision, given the repo's Apache-2.0 / BSD-3-Clause split.
 
@@ -101,8 +116,10 @@ The capability is the real unit of work; each one unlocks a family.
 
 These are *compositions*, not new primitives, which argues for a **`Presets`
 layer**: named recipes returning an `EffectChain`, each driven by a single
-`amount` — `Presets.riso({ amount: 0.8 })`. Cheap once Tiers 1–3 land, and the
-natural home for the looks people actually ask for by name.
+`amount` — `Presets.riso({ amount: 0.8 })`. With Tier 1 now covering the
+ingredients (`halftone` + `duotone` + `grain` + `threshold` already compose into
+riso, newsprint, screen-print and blueprint looks), this is the cheapest
+remaining tier and the natural home for the looks people ask for by name.
 
 **Paper & print** — `paper` · `paperCut` · `newsprint` · `riso` · `letterpress` ·
 `screenPrint` · `xerox` / `photocopy` · `thermalPrint` · `blueprint` · `stamp`
@@ -118,13 +135,13 @@ natural home for the looks people actually ask for by name.
 
 ---
 
-## If you only build ten
+## If you only build ten more
 
-`outline` · `vignette` · `grain` · `sharpen` · `edges` · `duotone`/`gradientMap` ·
-`radialBlur` · `threshold` · `halftone` · `dither`
+`glitch` · `rgbShift` · `twirl` · `wave`/`ripple` · `kaleidoscope` · `scanlines` ·
+`tiltShift` · `bitCrush` · `chromaKey` · a `Presets` layer for Tier 4
 
-The first eight are Tier 1 — days, not weeks. The last two are the
-highest-demand Tier 2 shaders.
+Nine Tier 2 shaders plus the composition layer that makes the existing
+twenty-six add up to more than their parts.
 
 ## Adding an effect
 
@@ -140,5 +157,16 @@ Three files, since the registry merge:
    `packages/web/src/effects/registry.ts`.
 
 Then a builder method on `EffectChain` (the `Effects` entry point delegates, so
-the signature is written once), a scene in `packages/e2e/src/scenes/`, and a page
-under `packages/site/content/docs/effects/`.
+the signature is written once), a scene in `packages/e2e/src/scenes/` (plus its
+row in `FEATURES.md` and both catalog files), a showcase scene in
+`packages/template/src/projects/effects/scenes/`, and a page under
+`packages/site/content/docs/effects/`.
+
+Two things worth knowing before you write the shader:
+
+- **Colour options** are stored as authored (`Color`, not a parsed tuple) so a
+  theme alias still resolves at render time; use `resolveEffectColor` /
+  `sameEffectColor` in `lerp`/`equals`, mirroring the `resolveEffectAxis` pair.
+- **Px-valued options** are authored in logical px but a `makeShader` handler runs
+  in device space — multiply by `EffectGeometry.scale`, or the effect will
+  silently change thickness with the device pixel ratio.

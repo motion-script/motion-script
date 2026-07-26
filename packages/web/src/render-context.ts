@@ -247,11 +247,12 @@ function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
 /**
  * Geometry for the ImageFilter path, where only the box *size* is meaningful —
  * a composed `ImageFilter` is positioned by the layer it is attached to, so a
- * centre would be meaningless. (The shader path builds a full
+ * centre would be meaningless. Filters here are authored in logical px and the
+ * CTM scales them, hence `scale: 1`. (The shader path builds a full
  * {@link EffectGeometry} from the CTM in `shaderGeometry`.)
  */
 function boxGeometry(width: number, height: number): EffectGeometry {
-    return { width, height, centerX: 0, centerY: 0 };
+    return { width, height, centerX: 0, centerY: 0, scale: 1, time: 0 };
 }
 
 /**
@@ -1523,24 +1524,35 @@ export class WebRenderContext extends RenderContext {
             tm, tm, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height));
-        if (lens == null) {
-            content.delete();
-            snapshot.delete();
-            offscreen.delete();
-            return;
-        }
-        this.paintShaderInDeviceSpace(lens, m);
-        lens.delete();
+        // A null lens means the effect is a no-op at these settings (zero radius,
+        // zero amount, …). Drawing was already redirected into the offscreen, so
+        // the content still has to be painted back — dropping it here would make
+        // a neutral effect erase the node, which is exactly the state every
+        // "animate the effect on from nothing" tween starts in.
+        this.paintShaderInDeviceSpace(lens ?? content, m);
+        lens?.delete();
         content.delete();
         snapshot.delete();
         offscreen.delete();
     }
 
-    /** Node box in device px: centre from the CTM translation, size from its scale. */
+    /**
+     * Node box in device px: centre from the CTM translation, size from its scale.
+     * `scale` is that same CTM scale, so a handler can lift an authored px option
+     * into device space; a node's `scale` prop is a scalar and camera zoom is
+     * uniform, so the two axes agree in practice and the x axis stands for both.
+     */
     private shaderGeometry(m: number[], width: number, height: number): EffectGeometry {
         const sx = Math.hypot(m[0], m[3]);
         const sy = Math.hypot(m[1], m[4]);
-        return { centerX: m[2], centerY: m[5], width: width * sx, height: height * sy };
+        return {
+            centerX: m[2],
+            centerY: m[5],
+            width: width * sx,
+            height: height * sy,
+            scale: sx,
+            time: this.currentRenderState()?.elapsed ?? 0,
+        };
     }
 
     /**

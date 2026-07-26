@@ -199,6 +199,20 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `effect-scatter-vertical`: Scatter with `direction: "vertical"`
 - [ ] `effect-scatter-both`: Scatter with `direction: "both"`
 - [ ] `effect-posterize`: Color banding at low level count
+- [ ] `effect-outline`: Outline band growing outside a text silhouette
+- [ ] `effect-outline-inside`: Outline with `position: "inside"` on a filled disc
+- [ ] `effect-vignette`: Corner falloff darkening a bright card
+- [ ] `effect-grain`: Static (unanimated) film grain over a gradient
+- [ ] `effect-sharpen`: Unsharp mask raising edge contrast
+- [ ] `effect-edges`: Sobel edge detection on flat colour blocks
+- [ ] `effect-threshold`: Two-tone luminance cut sweeping across a gradient
+- [ ] `effect-radial-blur`: Zoom-style radial blur about the centre
+- [ ] `effect-radial-blur-spin`: Spin-style radial blur about the centre
+- [ ] `effect-halftone`: 45° dot screen at increasing cell size
+- [ ] `effect-dither`: Bayer 8×8 ordered dither down to 1-bit
+- [ ] `effect-duotone`: Luminance remapped onto a two-colour ramp
+- [ ] `effect-curves`: Tone curve lifting shadows on a node (not an image fill)
+- [ ] `effect-color-adjustment`: Contrast/saturation/temperature on a group of shapes
 - [ ] `effect-sksl-custom`: Custom SkSL shader as layer effect
 - [ ] `effect-sksl-backdrop`: Custom SkSL shader processing backdrop
 

@@ -14,6 +14,18 @@ import { scatterEffect } from "./implementations/scatter";
 import { posterizeEffect } from "./implementations/posterize";
 import { motionBlurEffect } from "./implementations/motion-blur";
 import { skslEffect } from "./implementations/sksl";
+import { outlineEffect } from "./implementations/outline";
+import { vignetteEffect } from "./implementations/vignette";
+import { grainEffect } from "./implementations/grain";
+import { sharpenEffect } from "./implementations/sharpen";
+import { edgesEffect } from "./implementations/edges";
+import { thresholdEffect } from "./implementations/threshold";
+import { radialBlurEffect } from "./implementations/radial-blur";
+import { halftoneEffect } from "./implementations/halftone";
+import { ditherEffect } from "./implementations/dither";
+import { duotoneEffect } from "./implementations/duotone";
+import { curvesEffect } from "./implementations/curves";
+import { colorAdjustmentEffect } from "./implementations/color-adjustment";
 import { EffectData, EffectSurface } from "./effect-data";
 
 
@@ -32,6 +44,18 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["posterize", posterizeEffect as EffectData<SceneEffect>],
     ["motionBlur", motionBlurEffect as EffectData<SceneEffect>],
     ["sksl", skslEffect as EffectData<SceneEffect>],
+    ["outline", outlineEffect as EffectData<SceneEffect>],
+    ["vignette", vignetteEffect as EffectData<SceneEffect>],
+    ["grain", grainEffect as EffectData<SceneEffect>],
+    ["sharpen", sharpenEffect as EffectData<SceneEffect>],
+    ["edges", edgesEffect as EffectData<SceneEffect>],
+    ["threshold", thresholdEffect as EffectData<SceneEffect>],
+    ["radialBlur", radialBlurEffect as EffectData<SceneEffect>],
+    ["halftone", halftoneEffect as EffectData<SceneEffect>],
+    ["dither", ditherEffect as EffectData<SceneEffect>],
+    ["duotone", duotoneEffect as EffectData<SceneEffect>],
+    ["curves", curvesEffect as EffectData<SceneEffect>],
+    ["colorAdjustment", colorAdjustmentEffect as EffectData<SceneEffect>],
 ]);
 
 /**

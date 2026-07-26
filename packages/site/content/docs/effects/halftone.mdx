@@ -1,0 +1,69 @@
+---
+sidebar_position: 22
+---
+
+# Halftone
+
+Reproduces tone as the **area** of a mark on a rotated grid, the way offset printing does — the newsprint / comic-book look.
+
+![Halftone effect demo](/effects/halftone.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default: an 8px dot screen at 45°
+<Image src={'./photo.jpg'} effects={Effects.halftone()} />
+
+// Scalar shorthand sets the cell pitch
+<Image src={'./photo.jpg'} effects={Effects.halftone(16)} />
+
+// A line screen
+<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 10, shape: 'line', angle: 15 })} />
+
+// Four-colour process: three screens at the classic offsets
+<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 8, colored: true })} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'halftone'` | – | Effect identifier |
+| `size` | `number` | `8` | Cell pitch in pixels — the distance between dot centers |
+| `angle` | `number` | `45` | Screen rotation in degrees. 45° is the traditional dot angle |
+| `shape` | `'dot' \| 'line' \| 'cross'` | `'dot'` | Mark drawn in each cell |
+| `colored` | `boolean` | `false` | Screen each RGB channel at 15° / 75° / 0° offsets instead of luminance only |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` screens the content beneath the node |
+
+Dot radius follows `√(1 − tone)` rather than `1 − tone`: a disc's area grows with the square of its radius, so the square root is what makes *coverage* linear in darkness. It is the difference between a screen that holds its midtones and one that plugs up.
+
+`colored` reproduces the rosette pattern and CMY fringing of real process printing — those relative angles are exactly what avoid a moiré.
+
+The grid is anchored to the node's center, so the screen travels with the node instead of the node sliding underneath it.
+
+## Animating
+
+```tsx
+import { createScene, createRef, Image, Effects, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const photo = createRef<Image>();
+  stage.add(<Image ref={photo} src={'./photo.jpg'} effects={Effects.halftone(2)} />);
+
+  // Resolve from continuous tone into a coarse screen.
+  yield* photo().to({ effects: Effects.halftone(20) }, 1.2, easeInOut('quad'));
+});
+```
+
+Rotating `angle` continuously produces a strong moiré against the pixel grid — usually a distraction, occasionally the effect you want.
+
+## Stacking with other effects
+
+```tsx
+// Newsprint
+<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 6 }).duotone({ shadows: '#1a1a1a', highlights: '#f2ece0' })} />
+```
+
+A cell pitch below one device pixel has no mark to draw, so the effect is skipped entirely.

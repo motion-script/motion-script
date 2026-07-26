@@ -19,9 +19,14 @@ export type RenderEffect = SceneEffect | MediaFilter | { type: string };
 export type EffectTarget = "foreground" | "backdrop";
 
 /**
- * The box an effect is being applied to, in **device px** — so a shader's
- * `fragCoord` (which runs in device space after the CTM is reset to identity)
- * lines up with it.
+ * The box an effect is being applied to, plus the per-draw context it may need.
+ *
+ * On the {@link EffectHandler.makeShader} path the box is in **device px** — so a
+ * shader's `fragCoord` (which runs in device space after the CTM is reset to
+ * identity) lines up with it, and {@link scale} converts an authored px option
+ * into that space. On the {@link EffectHandler.makeImageFilter} path filters are
+ * authored in *logical* px and the CTM scales them, so the box is logical and
+ * `scale` is 1.
  *
  * Handlers that don't need geometry simply ignore it; most colour-matrix
  * filters do.
@@ -35,6 +40,19 @@ export interface EffectGeometry {
     width: number;
     /** Box height in device px. */
     height: number;
+    /**
+     * Device px per logical px — the CTM scale (node scale × camera zoom ×
+     * device pixel ratio). Shader handlers multiply px-valued options by this so
+     * an authored `width: 4` means the same thickness a 4px blur radius does on
+     * the ImageFilter path. `1` on that path, which is already logical.
+     */
+    scale: number;
+    /**
+     * Seconds the node has existed (`NodeRenderState.elapsed`), or 0 when
+     * unknown. Lets a shader vary per frame — animated film grain is the only
+     * current user.
+     */
+    time: number;
 }
 
 /**

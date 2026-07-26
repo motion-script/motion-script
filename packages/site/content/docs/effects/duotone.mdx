@@ -1,0 +1,69 @@
+---
+sidebar_position: 24
+---
+
+# Duotone
+
+Remaps the content's luminance onto a two-color ramp: black becomes `shadows`, white becomes `highlights`, everything between interpolates. The source's own chroma is discarded — only its brightness survives.
+
+![Duotone effect demo](/effects/duotone.png)
+
+## Usage
+
+```tsx
+import { Effects } from '@motion-script/core';
+
+// Default: a full black→white ramp (i.e. luminance)
+<Image src={'./photo.jpg'} effects={Effects.duotone()} />
+
+// Scalar shorthand sets the blend amount
+<Image src={'./photo.jpg'} effects={Effects.duotone(0.7)} />
+
+// The editorial two-colour treatment
+<Image src={'./photo.jpg'} effects={Effects.duotone({ shadows: '#12184a', highlights: '#ffd166' })} />
+
+// Theme aliases work like anywhere else
+<Rect effects={Effects.duotone({ shadows: 'bg', highlights: 'primary' })} />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'duotone'` | – | Effect identifier |
+| `amount` | `number` | `1` | 0–1 blend from the original colors to the full ramp |
+| `shadows` | `Color` | `'black'` | Color the darkest tones map to |
+| `highlights` | `Color` | `'white'` | Color the brightest tones map to |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` maps the content beneath the node |
+
+The ramp colors' alpha is ignored — they name the two ends of a tone scale, not translucent inks. Node alpha is untouched, so the silhouette survives the grade.
+
+## Animating
+
+Both the ramp colors and `amount` interpolate, so you can cross-fade between palettes:
+
+```tsx
+import { createScene, createRef, Image, Effects, easeInOut } from '@motion-script/core';
+
+export default createScene(function* (stage) {
+  const photo = createRef<Image>();
+  stage.add(
+    <Image ref={photo} src={'./photo.jpg'} effects={Effects.duotone({ shadows: '#12184a', highlights: '#ffd166' })} />,
+  );
+
+  yield* photo().to(
+    { effects: Effects.duotone({ shadows: '#3a0a2a', highlights: '#00f5d4' }) },
+    1.2,
+    easeInOut('quad'),
+  );
+});
+```
+
+## Stacking with other effects
+
+```tsx
+// Riso: screen it, then ink it
+<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 6 }).duotone({ shadows: '#0033a0', highlights: '#ff4f7b' })} />
+```
+
+Duotone is affine in the source channels, so it composes as a plain color matrix alongside its neighbours in the chain — it costs no more than a `grayscale`.

@@ -16,6 +16,18 @@ import frosted from './scenes/frosted?scene';
 import retroVhs from './scenes/retro-vhs?scene';
 import invert from './scenes/invert?scene';
 import motionBlur from './scenes/motion-blur?scene';
+import outline from './scenes/outline?scene';
+import vignette from './scenes/vignette?scene';
+import grain from './scenes/grain?scene';
+import sharpen from './scenes/sharpen?scene';
+import edges from './scenes/edges?scene';
+import threshold from './scenes/threshold?scene';
+import radialBlur from './scenes/radial-blur?scene';
+import halftone from './scenes/halftone?scene';
+import dither from './scenes/dither?scene';
+import duotone from './scenes/duotone?scene';
+import curves from './scenes/curves?scene';
+import colorAdjustment from './scenes/color-adjustment?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
@@ -48,6 +60,18 @@ export default createProject({
         retroVhs,
         invert,
         motionBlur,
+        outline,
+        vignette,
+        grain,
+        sharpen,
+        edges,
+        threshold,
+        radialBlur,
+        halftone,
+        dither,
+        duotone,
+        curves,
+        colorAdjustment,
     ],
     theme: {
         colors: {

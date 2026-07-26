@@ -16,6 +16,16 @@ import { skslEffectHandler } from "./sksl";
 import { bulgeEffectHandler } from "./bulge";
 import { magnifyEffectHandler } from "./magnify";
 import { posterizeEffectHandler } from "./posterize";
+import { outlineEffectHandler } from "./outline";
+import { vignetteEffectHandler } from "./vignette";
+import { grainEffectHandler } from "./grain";
+import { sharpenEffectHandler } from "./sharpen";
+import { edgesEffectHandler } from "./edges";
+import { thresholdEffectHandler } from "./threshold";
+import { radialBlurEffectHandler } from "./radial-blur";
+import { halftoneEffectHandler } from "./halftone";
+import { ditherEffectHandler } from "./dither";
+import { duotoneEffectHandler } from "./duotone";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -140,11 +150,23 @@ EffectRegistry.register(motionBlurEffectHandler);
 EffectRegistry.register(bulgeEffectHandler);
 EffectRegistry.register(magnifyEffectHandler);
 EffectRegistry.register(posterizeEffectHandler);
+EffectRegistry.register(outlineEffectHandler);
+EffectRegistry.register(vignetteEffectHandler);
+EffectRegistry.register(grainEffectHandler);
+EffectRegistry.register(sharpenEffectHandler);
+EffectRegistry.register(edgesEffectHandler);
+EffectRegistry.register(thresholdEffectHandler);
+EffectRegistry.register(radialBlurEffectHandler);
+EffectRegistry.register(halftoneEffectHandler);
+EffectRegistry.register(ditherEffectHandler);
+EffectRegistry.register(duotoneEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the
 // field unification they are the same effect with the same implementation as
-// their scene-effect counterparts above, so one handler serves both.
+// their scene-effect counterparts above, so one handler serves both. `curves`
+// and `colorAdjustment` now do double duty the same way: one handler each,
+// serving both the media filter and the scene effect of that name.
 EffectRegistry.register(exposureEffectHandler);
 EffectRegistry.register(alphaEffectHandler);
 EffectRegistry.register(colorMatrixEffectHandler);

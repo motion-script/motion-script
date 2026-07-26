@@ -12,6 +12,18 @@ import type { ScatterEffect } from "./implementations/scatter";
 import type { PosterizeEffect } from "./implementations/posterize";
 import type { MotionBlurEffect } from "./implementations/motion-blur";
 import type { SkSLEffect } from "./implementations/sksl";
+import type { OutlineEffect } from "./implementations/outline";
+import type { VignetteEffect } from "./implementations/vignette";
+import type { GrainEffect } from "./implementations/grain";
+import type { SharpenEffect } from "./implementations/sharpen";
+import type { EdgesEffect } from "./implementations/edges";
+import type { ThresholdEffect } from "./implementations/threshold";
+import type { RadialBlurEffect } from "./implementations/radial-blur";
+import type { HalftoneEffect } from "./implementations/halftone";
+import type { DitherEffect } from "./implementations/dither";
+import type { DuotoneEffect } from "./implementations/duotone";
+import type { CurvesEffect } from "./implementations/curves";
+import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -28,4 +40,16 @@ export type SceneEffect =
     | ScatterEffect
     | PosterizeEffect
     | MotionBlurEffect
-    | SkSLEffect;
+    | SkSLEffect
+    | OutlineEffect
+    | VignetteEffect
+    | GrainEffect
+    | SharpenEffect
+    | EdgesEffect
+    | ThresholdEffect
+    | RadialBlurEffect
+    | HalftoneEffect
+    | DitherEffect
+    | DuotoneEffect
+    | CurvesEffect
+    | ColorAdjustmentEffect;

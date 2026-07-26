@@ -1,5 +1,5 @@
 import type { EffectHandler } from "../../effects/handler";
-import type { ColorAdjustmentFilter } from "@motion-script/core";
+import type { ColorAdjustmentEffect, ColorAdjustmentFilter } from "@motion-script/core";
 
 // ITU-R BT.709 luminance weights
 const LR = 0.2126, LG = 0.7152, LB = 0.0722;
@@ -107,10 +107,14 @@ function highlightsMatrix(h: number): number[] {
 /**
  * Composes brightness/contrast/saturation/vibrance/temperature/tint/shadows/
  * highlights into a single 4×5 color matrix (each enabled adjustment multiplies
- * onto the running matrix, in that order). Returns null if nothing is set —
- * vignette is intentionally unsupported since it needs spatial, not per-pixel, data.
+ * onto the running matrix, in that order). Returns null if nothing is set.
+ *
+ * Serves both the media-fill filter and the scene effect from one implementation.
+ * The filter's `vignette` field is intentionally unsupported — it needs spatial,
+ * not per-pixel, data — which is why the scene effect drops the field entirely
+ * and `Effects.vignette()` implements it properly as a shader.
  */
-export const colorAdjustmentEffectHandler: EffectHandler<ColorAdjustmentFilter> = {
+export const colorAdjustmentEffectHandler: EffectHandler<ColorAdjustmentFilter | ColorAdjustmentEffect> = {
     type: "colorAdjustment",
 
     makeImageFilter(effect, ck) {

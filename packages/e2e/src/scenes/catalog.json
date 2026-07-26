@@ -894,6 +894,90 @@
     "description": "Color banding at low level count"
   },
   {
+    "id": "effect-outline",
+    "name": "EffectOutline",
+    "section": "Effects",
+    "description": "Outline band growing outside a text silhouette"
+  },
+  {
+    "id": "effect-outline-inside",
+    "name": "EffectOutlineInside",
+    "section": "Effects",
+    "description": "Outline with `position: \"inside\"` on a filled disc"
+  },
+  {
+    "id": "effect-vignette",
+    "name": "EffectVignette",
+    "section": "Effects",
+    "description": "Corner falloff darkening a bright card"
+  },
+  {
+    "id": "effect-grain",
+    "name": "EffectGrain",
+    "section": "Effects",
+    "description": "Static (unanimated) film grain over a gradient"
+  },
+  {
+    "id": "effect-sharpen",
+    "name": "EffectSharpen",
+    "section": "Effects",
+    "description": "Unsharp mask raising edge contrast"
+  },
+  {
+    "id": "effect-edges",
+    "name": "EffectEdges",
+    "section": "Effects",
+    "description": "Sobel edge detection on flat colour blocks"
+  },
+  {
+    "id": "effect-threshold",
+    "name": "EffectThreshold",
+    "section": "Effects",
+    "description": "Two-tone luminance cut sweeping across a gradient"
+  },
+  {
+    "id": "effect-radial-blur",
+    "name": "EffectRadialBlur",
+    "section": "Effects",
+    "description": "Zoom-style radial blur about the centre"
+  },
+  {
+    "id": "effect-radial-blur-spin",
+    "name": "EffectRadialBlurSpin",
+    "section": "Effects",
+    "description": "Spin-style radial blur about the centre"
+  },
+  {
+    "id": "effect-halftone",
+    "name": "EffectHalftone",
+    "section": "Effects",
+    "description": "45° dot screen at increasing cell size"
+  },
+  {
+    "id": "effect-dither",
+    "name": "EffectDither",
+    "section": "Effects",
+    "description": "Bayer 8×8 ordered dither down to 1-bit"
+  },
+  {
+    "id": "effect-duotone",
+    "name": "EffectDuotone",
+    "section": "Effects",
+    "description": "Luminance remapped onto a two-colour ramp"
+  },
+  {
+    "id": "effect-curves",
+    "name": "EffectCurves",
+    "section": "Effects",
+    "description": "Tone curve lifting shadows on a node (not an image fill)"
+  },
+  {
+    "id": "effect-color-adjustment",
+    "name": "EffectColorAdjustment",
+    "section": "Effects",
+    "description": "Contrast/saturation/temperature on a group of shapes"
+  },
+  {
     "id": "effect-sksl-custom",
     "name": "EffectSkslCustom",
     "section": "Effects",

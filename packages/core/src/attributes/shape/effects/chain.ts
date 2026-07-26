@@ -1,11 +1,19 @@
 import { SceneEffect } from "./union";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import type { BlendMode } from "../fill/blend";
+import type { Color } from "../fill/color/parser";
 import type { EffectAxis, EffectOptions } from "./effect-data";
 import { scalarOptions, withEffectOptions } from "./effect-data";
 import type { InvertChannel } from "./implementations/invert";
 import type { MotionBlurAlignment } from "./implementations/motion-blur";
 import type { SkSLUniform } from "./implementations/sksl";
+import type { OutlinePosition } from "./implementations/outline";
+import type { EdgeKernel } from "./implementations/edges";
+import type { RadialBlurStyle } from "./implementations/radial-blur";
+import type { HalftoneShape } from "./implementations/halftone";
+import type { DitherMatrix } from "./implementations/dither";
+import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
+import type { CurvesChannel } from "../filters/implementations/curves";
 
 /**
  * Every effect builder takes **exactly one argument**: an options object
@@ -147,6 +155,125 @@ export interface SkSLOptions extends EffectOptions {
     /** How a foreground shader composites onto the layer (default `'screen'`). */
     blendMode?: BlendMode;
 }
+
+/** Coloured band around the node's silhouette. Scalar shorthand sets `width`. */
+export interface OutlineOptions extends EffectOptions {
+    /** Band thickness in pixels (default 4). */
+    width?: number;
+    /** Band colour (default `'black'`). */
+    color?: Color;
+    /** Which side of the edge the band grows from (default `'outside'`). */
+    position?: OutlinePosition;
+}
+
+/** Darkened edges / lens falloff. Scalar shorthand sets `amount`. */
+export interface VignetteOptions extends EffectOptions {
+    /** 0–1 tint strength at the edge (default 0.5). */
+    amount?: number;
+    /** 0–1 normalised radius where the falloff starts (default 0.75). */
+    radius?: number;
+    /** 0–1 ramp width; 0 is a hard ring (default 0.5). */
+    softness?: number;
+    /** Tint colour (default `'black'`). */
+    color?: Color;
+}
+
+/** Film grain. Scalar shorthand sets `amount`. */
+export interface GrainOptions extends EffectOptions {
+    /** 0–1 noise amplitude (default 0.25). */
+    amount?: number;
+    /** Grain cell size in pixels (default 1). */
+    size?: number;
+    /** Random field offset — animate it for frame-locked shimmer (default 0). */
+    seed?: number;
+    /** Re-seed every frame from elapsed time (default false). */
+    animated?: boolean;
+    /** Per-channel colour speckle instead of luminance noise (default false). */
+    colored?: boolean;
+}
+
+/** Unsharp-mask sharpen. Scalar shorthand sets `amount`. */
+export interface SharpenOptions extends EffectOptions {
+    /** Edge-contrast boost (default 1). */
+    amount?: number;
+    /** Radius of the blurred reference, in pixels (default 1). */
+    radius?: number;
+}
+
+/** Edge detection. Scalar shorthand sets `strength`. */
+export interface EdgesOptions extends EffectOptions {
+    /** Multiplier on the detected gradient (default 1). */
+    strength?: number;
+    /** Which operator measures the gradient (default `'sobel'`). */
+    kernel?: EdgeKernel;
+    /** Detect per RGB channel instead of on luminance (default false). */
+    colored?: boolean;
+}
+
+/** Two-tone luminance cut. Scalar shorthand sets `level`. */
+export interface ThresholdOptions extends EffectOptions {
+    /** 0–1 cut point (default 0.5). */
+    level?: number;
+    /** 0–1 ramp width around the cut (default 0.05 — just enough to anti-alias). */
+    smoothness?: number;
+}
+
+/** Zoom / spin blur about a point. Scalar shorthand sets `amount`. */
+export interface RadialBlurOptions extends EffectOptions {
+    /** Smear length, 0–1 (default 0.5). */
+    amount?: number;
+    /** Radial rush (`'zoom'`) or rotational streak (`'spin'`) (default `'zoom'`). */
+    style?: RadialBlurStyle;
+    /** Blur centre in 0–1 layer coords (default middle). */
+    center?: Vector2;
+    /** Taps averaged per pixel (default 16, max 32). */
+    samples?: number;
+}
+
+/** Halftone print screen. Scalar shorthand sets `size`. */
+export interface HalftoneOptions extends EffectOptions {
+    /** Cell pitch in pixels (default 8). */
+    size?: number;
+    /** Screen rotation in degrees (default 45). */
+    angle?: number;
+    /** Mark drawn per cell (default `'dot'`). */
+    shape?: HalftoneShape;
+    /** Screen each RGB channel at offset angles (default false). */
+    colored?: boolean;
+}
+
+/** Ordered (Bayer) dithering. Scalar shorthand sets `levels`. */
+export interface DitherOptions extends EffectOptions {
+    /** Output tones per channel, ≥ 2 (default 2). */
+    levels?: number;
+    /** Bayer matrix size (default 4). */
+    matrix?: DitherMatrix;
+    /** Pattern cell size in pixels (default 1). */
+    scale?: number;
+    /** Dither luminance to black and white (default false). */
+    monochrome?: boolean;
+}
+
+/** Two-colour luminance ramp. Scalar shorthand sets `amount`. */
+export interface DuotoneOptions extends EffectOptions {
+    /** 0–1 blend from the original colours to the full ramp (default 1). */
+    amount?: number;
+    /** Colour the darkest tones map to (default `'black'`). */
+    shadows?: Color;
+    /** Colour the brightest tones map to (default `'white'`). */
+    highlights?: Color;
+}
+
+/** Tone curve through control points. */
+export interface CurvesOptions extends EffectOptions {
+    /** Curve control points as `[input, output]` pairs in 0–1. */
+    points: [number, number][];
+    /** Channel(s) the curve applies to (default `'rgb'`). */
+    channel?: CurvesChannel;
+}
+
+/** Photographic grading. Every field is optional and defaults to neutral. */
+export type ColorAdjustmentOptions = Omit<ColorAdjustmentEffect, 'type'> & EffectOptions;
 
 const CENTER: Vector2 = { x: 0.5, y: 0.5 };
 
@@ -335,6 +462,197 @@ export class EffectChain {
     }
 
     /**
+     * Append an outline — a coloured band traced around the node's silhouette,
+     * including alpha silhouettes (text, an image's cutout, a whole subtree) that
+     * a geometry `stroke` can't follow.
+     */
+    outline(options?: number | OutlineOptions) {
+        const o = scalarOptions(options, "width");
+        return this.append(withEffectOptions(
+            {
+                type: "outline" as const,
+                width: o.width ?? 4,
+                color: o.color ?? "black",
+                position: o.position ?? "outside",
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a vignette — a soft tint ramping in toward the node's corners. The
+     * falloff follows the node's aspect ratio, so a wide node darkens along its
+     * short edges the way a lens would.
+     */
+    vignette(options?: number | VignetteOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            {
+                type: "vignette" as const,
+                amount: o.amount ?? 0.5,
+                radius: o.radius ?? 0.75,
+                softness: o.softness ?? 0.5,
+                color: o.color ?? "black",
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append film grain. Static grain reads as texture rather than film, so pass
+     * `{ animated: true }` to re-seed it each frame — or tween `seed` when the
+     * render has to stay deterministic.
+     */
+    grain(options?: number | GrainOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            {
+                type: "grain" as const,
+                amount: o.amount ?? 0.25,
+                size: o.size ?? 1,
+                seed: o.seed ?? 0,
+                animated: o.animated ?? false,
+                colored: o.colored ?? false,
+            },
+            o,
+        ));
+    }
+
+    /** Append an unsharp-mask sharpen — local contrast boosted at `radius` scale. */
+    sharpen(options?: number | SharpenOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            { type: "sharpen" as const, amount: o.amount ?? 1, radius: o.radius ?? 1 },
+            o,
+        ));
+    }
+
+    /**
+     * Append edge detection — flat areas go black and boundaries light up with
+     * the magnitude of the local gradient.
+     */
+    edges(options?: number | EdgesOptions) {
+        const o = scalarOptions(options, "strength");
+        return this.append(withEffectOptions(
+            {
+                type: "edges" as const,
+                strength: o.strength ?? 1,
+                kernel: o.kernel ?? "sobel",
+                colored: o.colored ?? false,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a luminance threshold — a two-tone stencil cut at `level`, with
+     * `smoothness` widening the cut into a ramp.
+     */
+    threshold(options?: number | ThresholdOptions) {
+        const o = scalarOptions(options, "level");
+        return this.append(withEffectOptions(
+            { type: "threshold" as const, level: o.level ?? 0.5, smoothness: o.smoothness ?? 0.05 },
+            o,
+        ));
+    }
+
+    /**
+     * Append a radial blur — samples smeared along the radius (`'zoom'`, the
+     * default) or the tangent (`'spin'`) about `center`, leaving the centre sharp.
+     */
+    radialBlur(options?: number | RadialBlurOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            {
+                type: "radialBlur" as const,
+                amount: o.amount ?? 0.5,
+                style: o.style ?? "zoom",
+                center: o.center ?? CENTER,
+                samples: o.samples ?? 16,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a halftone screen — the newsprint look, where tone becomes the size
+     * of a mark on a rotated grid.
+     */
+    halftone(options?: number | HalftoneOptions) {
+        const o = scalarOptions(options, "size");
+        return this.append(withEffectOptions(
+            {
+                type: "halftone" as const,
+                size: o.size ?? 8,
+                angle: o.angle ?? 45,
+                shape: o.shape ?? "dot",
+                colored: o.colored ?? false,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append ordered (Bayer) dithering — quantization to `levels` tones per
+     * channel with the error traded for a retro crosshatch pattern.
+     */
+    dither(options?: number | DitherOptions) {
+        const o = scalarOptions(options, "levels");
+        return this.append(withEffectOptions(
+            {
+                type: "dither" as const,
+                levels: o.levels ?? 2,
+                matrix: o.matrix ?? 4,
+                scale: o.scale ?? 1,
+                monochrome: o.monochrome ?? false,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a duotone / gradient map — the content's luminance remapped onto a
+     * `shadows` → `highlights` ramp, discarding its original chroma.
+     */
+    duotone(options?: number | DuotoneOptions) {
+        const o = scalarOptions(options, "amount");
+        return this.append(withEffectOptions(
+            {
+                type: "duotone" as const,
+                amount: o.amount ?? 1,
+                shadows: o.shadows ?? "black",
+                highlights: o.highlights ?? "white",
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a tone curve — the same adjustment `ImageFilters.curves` applies to a
+     * photo, on any node.
+     */
+    curves(options: CurvesOptions) {
+        return this.append(withEffectOptions(
+            { type: "curves" as const, points: options.points, channel: options.channel ?? "rgb" },
+            options,
+        ));
+    }
+
+    /**
+     * Append photographic grading (brightness / contrast / saturation / vibrance /
+     * shadows / highlights / temperature / tint) — `ImageFilters.colorAdjustment`
+     * on any node. For darkened edges use {@link EffectChain.vignette}.
+     */
+    colorAdjustment(options: ColorAdjustmentOptions) {
+        // Destructure `mode` out rather than spreading it through: a caller who
+        // writes `{ mode: undefined }` would otherwise plant the key on the
+        // effect, and `equals()` compares `mode` directly. `withEffectOptions`
+        // skips undefined, so handing it back there is safe.
+        const { mode, ...fields } = options;
+        return this.append(withEffectOptions({ type: "colorAdjustment" as const, ...fields }, { mode }));
+    }
+
+    /**
      * Append a custom SkSL shader. `mode` picks the layer it runs on — a
      * foreground overlay blended with `blendMode`, or a backdrop shader that
      * resamples `uniform shader u_backdrop`.
@@ -402,6 +720,18 @@ export const Effects = {
     posterize: (options?: number | PosterizeOptions) => new EffectChain().posterize(options),
     motionBlur: (options?: number | MotionBlurOptions) => new EffectChain().motionBlur(options),
     sksl: (options: SkSLOptions) => new EffectChain().sksl(options),
+    outline: (options?: number | OutlineOptions) => new EffectChain().outline(options),
+    vignette: (options?: number | VignetteOptions) => new EffectChain().vignette(options),
+    grain: (options?: number | GrainOptions) => new EffectChain().grain(options),
+    sharpen: (options?: number | SharpenOptions) => new EffectChain().sharpen(options),
+    edges: (options?: number | EdgesOptions) => new EffectChain().edges(options),
+    threshold: (options?: number | ThresholdOptions) => new EffectChain().threshold(options),
+    radialBlur: (options?: number | RadialBlurOptions) => new EffectChain().radialBlur(options),
+    halftone: (options?: number | HalftoneOptions) => new EffectChain().halftone(options),
+    dither: (options?: number | DitherOptions) => new EffectChain().dither(options),
+    duotone: (options?: number | DuotoneOptions) => new EffectChain().duotone(options),
+    curves: (options: CurvesOptions) => new EffectChain().curves(options),
+    colorAdjustment: (options: ColorAdjustmentOptions) => new EffectChain().colorAdjustment(options),
 };
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */

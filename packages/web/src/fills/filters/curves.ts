@@ -1,5 +1,5 @@
 import type { EffectHandler } from "../../effects/handler";
-import type { CurvesFilter, CurvesChannel } from "@motion-script/core";
+import type { CurvesEffect, CurvesFilter, CurvesChannel } from "@motion-script/core";
 
 /**
  * Evaluate a piecewise-linear curve at x ∈ [0, 1].
@@ -57,8 +57,16 @@ function buildMatrix(channel: CurvesChannel, scale: number, bias: number): numbe
     return m;
 }
 
-/** Applies a per-channel tone curve, approximated as a linear color-matrix fit (see `fitLinear`). */
-export const curvesEffectHandler: EffectHandler<CurvesFilter> = {
+/**
+ * Applies a per-channel tone curve, approximated as a linear color-matrix fit
+ * (see `fitLinear`).
+ *
+ * Serves both the media-fill filter and the scene effect — they are the same
+ * `{ points, channel }` adjustment, and sharing one handler is what keeps
+ * `ImageFilters.curves` and `Effects.curves` from drifting into two different
+ * curves.
+ */
+export const curvesEffectHandler: EffectHandler<CurvesFilter | CurvesEffect> = {
     type: "curves",
 
     makeImageFilter(effect, ck) {
