@@ -1,7 +1,7 @@
 import { AssetManager } from "../assets/manager";
 import { MeasureScope } from "../render/measure-scope";
 import { RenderContext } from "../render/render-context";
-import { StateEvaluator, SeekCancel } from "./state-evaluator";
+import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
@@ -24,6 +24,13 @@ export type ControllerParams = {
     fps: number;
     viewport: Size2D;
     scenes: Scene[];
+    /**
+     * Wall-clock ms a scrub's state replay may run before yielding to the event
+     * loop (see `StateEvaluator.stateAtAsync`). Defaults to
+     * {@link DEFAULT_REPLAY_BUDGET_MS}. Set to `0` in tests to force a yield on
+     * every frame, making preemption deterministic.
+     */
+    replayBudgetMs?: number;
 };
 
 /**
@@ -59,6 +66,8 @@ export class PlaybackController {
      * the scene a later seek already rendered.
      */
     private seekGeneration = 0;
+    /** Time slice for `seek`'s interruptible replay. See {@link ControllerParams.replayBudgetMs}. */
+    private readonly replayBudgetMs: number;
     readonly fps: number;
     readonly viewport: Size2D;
     /** The precomp runner, kept so a single scene can be re-run on hot reload. */
@@ -94,6 +103,7 @@ export class PlaybackController {
         this.audioDevice = params.audioDevice;
         this.fps = params.fps;
         this.viewport = params.viewport;
+        this.replayBudgetMs = params.replayBudgetMs ?? DEFAULT_REPLAY_BUDGET_MS;
 
         const catalog = params.assets;
 
@@ -210,8 +220,34 @@ export class PlaybackController {
     }
 
     /**
+     * Interruptible twin of {@link renderAt}, used by {@link seek} only.
+     *
+     * The state replay is time-sliced (`stateAtAsync`) so it yields to the event
+     * loop periodically — which is what lets a newer seek actually preempt it.
+     * `renderAt`'s synchronous replay can't be cancelled in practice: while it
+     * runs, nothing can bump `seekGeneration`, so `isCancelled` never trips.
+     *
+     * @returns `false` if the replay was superseded — the caller must stop, as
+     *          nothing was painted and a newer pass owns the surface.
+     */
+    private async renderAtAsync(frame: number, isCancelled?: SeekCancel): Promise<boolean> {
+        if (this.disposed) return false;
+        const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled, this.replayBudgetMs);
+        if (!reached || this.disposed || isCancelled?.()) return false;
+        this.stateEvaluator.layout(this.measureScope);
+        this.renderContext.execute(() => {
+            this.stateEvaluator.render(this.renderContext);
+        });
+        return true;
+    }
+
+    /**
      * Jump to `frame`, pausing playback first. Waits for required assets to
      * load before rendering, then prefetches upcoming frames.
+     *
+     * This is the scrub path, so its state replay runs interruptibly — a fast
+     * backward drag supersedes each in-flight seek instead of queueing a full
+     * replay per mouse move.
      */
     async seek(frame: number): Promise<void> {
         if (this.disposed) return;
@@ -227,10 +263,12 @@ export class PlaybackController {
         // loadAt is async — this seek may have been superseded (or the controller
         // disposed) while awaiting.
         if (!this.isCurrent(gen)) return;
-        this.renderAt(clamped, this.cancelAfter(gen));
+        if (!(await this.renderAtAsync(clamped, this.cancelAfter(gen)))) return;
         // A cold seek can land on a video timestamp the window hadn't decoded yet;
         // warm the exact frame(s) the render requested and re-render so the still
         // is frame-accurate. Bounded — decoding is monotonic, so this settles fast.
+        // Stays on the synchronous renderAt: the replay above already reached
+        // `clamped`, so stateAt hits its early return and this is layout+render only.
         for (let pass = 0; pass < 3; pass++) {
             if (!(await this.storageAdapter.warmPendingVideo())) break;
             if (!this.isCurrent(gen)) return;
@@ -264,6 +302,14 @@ export class PlaybackController {
     replaceScene(newScene: Scene): number {
         if (this.disposed) return -1;
 
+        // Claim a generation *before* touching the evaluator, not just before the
+        // repaint below. An async seek parked on a yield re-checks its generation
+        // the instant it resumes, so bumping first guarantees it unwinds rather
+        // than stepping a generator we are about to swap out. (Safe today even if
+        // bumped later, since this method is wholly synchronous — but that is a
+        // property of the current code, not a contract. Keep the bump first.)
+        const gen = ++this.seekGeneration;
+
         const scenes = this.precomper.sceneList;
         // Match by stable hot id first; fall back to scene name (class name).
         let index = newScene.__sceneHotId
@@ -277,10 +323,11 @@ export class PlaybackController {
         this.assetManager.setPrecomp(this.precomp);
         this.masterClock.setDuration(this.totalDuration);
 
-        // Repaint the current frame against the edited scene. Bumping the seek
-        // generation invalidates any in-flight async render so it can't stamp a
-        // stale frame over the reloaded scene.
-        const gen = ++this.seekGeneration;
+        // Repaint the current frame against the edited scene. The generation
+        // claimed at the top of this method already invalidated any in-flight
+        // render, so none can stamp a stale frame over the reloaded scene.
+        // Deliberately synchronous — the no-flash swap depends on painting the
+        // new scene in the same task that installed it.
         const frame = this.currentFrame;
         this.renderAt(frame, this.cancelAfter(gen));
 

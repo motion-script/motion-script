@@ -113,6 +113,8 @@ export function MotionPlayer({
     const controllerRef = useRef<PlaybackController | null>(null);
 
     const onLoadingChangeRef = useRef(onLoadingChange);
+    /** Monotonic seek id; only the latest may clear the loading flag. */
+    const seekTokenRef = useRef(0);
     // Force a re-render on each time tick; the value itself is unused.
     const [, setC] = useState(0);
     const initialFrameRef = useRef(initialFrame);
@@ -176,17 +178,24 @@ export function MotionPlayer({
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
+    //
+    // This effect is the single seek driver for the paused path — don't add a
+    // competing imperative renderFrame() call for the same frame, or the two
+    // seeks bump each other's generation and cancel one another in a ping-pong.
     useEffect(() => {
         if (!controller || isPlaying) return;
-        let cancelled = false;
+        // Only the newest seek may report "settled". A superseded seek still
+        // resolves — its generation guard bailed inside the controller — but it
+        // never painted, so clearing the loading flag from it would tell the UI a
+        // frame is ready when the newest one is still in flight. Consumers use
+        // that edge to pace scrubbing, so a false settle would let them commit
+        // the next seek early and defeat the back-pressure.
+        const token = ++seekTokenRef.current;
         onLoadingChangeRef.current?.(true);
         controller.seek(initialFrame).then(() => {
-            if (cancelled) return;
+            if (token !== seekTokenRef.current) return;
             onLoadingChangeRef.current?.(false);
         });
-        return () => {
-            cancelled = true;
-        };
     }, [controller, isPlaying, initialFrame]);
 
     useEffect(() => {

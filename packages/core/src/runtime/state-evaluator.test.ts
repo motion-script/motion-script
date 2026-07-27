@@ -167,6 +167,99 @@ describe('StateEvaluator – multi-scene timeline', () => {
         expect(evaluator.currentScene as unknown).toBe(b);
         expect(evaluator.currentFrame).toBe(20);
     });
+
+    it('binds and ellapses only the scene being advanced', () => {
+        const { a, b, evaluator } = pair();
+        evaluator.stateAt(12); // global 12 → scene B local 2
+        // Scene A is frozen: nothing mutates its tree while B replays, so it must
+        // not be walked at all. Fanning these across every scene made a replay
+        // cost O(frames × scenes) instead of O(frames).
+        expect(a.ellapseCalls).toEqual([]);
+        expect(a.bindAssetsCalls).toEqual([]);
+        expect(a.bindContextCalls).toEqual([]);
+        expect(b.ellapseCalls.length).toBeGreaterThan(0);
+    });
+
+    it("births a later-entered scene's clock at its own frame 0", () => {
+        const { a, evaluator } = pair();
+        evaluator.stateAt(12); // enter scene B first — A must stay untouched
+        evaluator.stateAt(3);  // now enter scene A
+        // A's first ellapse is its own resetSlot at t=0. If the replay fanned out
+        // across scenes, B's replay would already have ellapsed A at *global*
+        // time (~2.5s), and `advanceClock` seeds `creation` on first touch and
+        // never re-seeds — so A's root would report a negative `elapsed` from
+        // here on, for the rest of the session.
+        expect(a.ellapseCalls[0]).toBe(0);
+    });
+});
+
+describe('StateEvaluator – interruptible seek (stateAtAsync)', () => {
+    it('reaches the target and reports completion', async () => {
+        const { evaluator } = single(60);
+        await expect(evaluator.stateAtAsync(50, () => false)).resolves.toBe(true);
+        expect(evaluator.currentFrame).toBe(50);
+    });
+
+    it('abandons the replay without moving currentFrame when cancelled', async () => {
+        const { evaluator } = single(60);
+        let polls = 0;
+        // budgetMs 0 → yields every frame, so the predicate is actually reachable.
+        const reached = await evaluator.stateAtAsync(50, () => polls++ >= 3, 0);
+        expect(reached).toBe(false);
+        expect(evaluator.currentFrame).toBe(0);
+    });
+
+    it('lets a newer seek preempt one already in flight', async () => {
+        // The regression test for the original bug. `stateAt` is synchronous, so
+        // while it runs nothing can bump the generation — its cancel predicate is
+        // provably always false and a long backward seek is uninterruptible. Only
+        // a yielding replay makes preemption observable, which is what this pins.
+        const { scene, evaluator } = single(600);
+        let generation = 1;
+        let polls = 0;
+        let second: Promise<boolean> | null = null;
+
+        const first = evaluator.stateAtAsync(500, () => {
+            // Once the replay is genuinely under way, issue a newer seek — the
+            // scrub's next mouse move. Driving it from the predicate rather than a
+            // timer keeps the interleaving deterministic.
+            if (++polls === 10) {
+                generation = 2;
+                second = evaluator.stateAtAsync(10, () => generation !== 2, 0);
+            }
+            return generation !== 1;
+        }, 0);
+
+        expect(await first).toBe(false);
+        // It was cancelled *mid-replay*, having advanced real frames first.
+        expect(scene.ellapseCalls.length).toBeGreaterThan(1);
+        expect(await second!).toBe(true);
+        expect(evaluator.currentFrame).toBe(10);
+    });
+
+    it('serializes queued replays so only the newest completes', async () => {
+        const { scene, evaluator } = single(600);
+        let generation = 0;
+        const start = (frame: number) => {
+            const mine = ++generation;
+            return evaluator.stateAtAsync(frame, () => generation !== mine, 0);
+        };
+
+        const results = await Promise.all([start(100), start(200), start(300)]);
+
+        expect(results).toEqual([false, false, true]);
+        expect(evaluator.currentFrame).toBe(300);
+        // Only the surviving replay reset the slot. Two interleaved resets would
+        // both rebuild into the shared BuildStage and corrupt it.
+        expect(scene.buildCount).toBe(1);
+    });
+
+    it('unwinds instead of stepping generators once disposed', async () => {
+        const { evaluator } = single(600);
+        const pending = evaluator.stateAtAsync(500, () => false, 0);
+        evaluator.dispose(); // e.g. StrictMode double-mount / HMR teardown
+        await expect(pending).resolves.toBe(false);
+    });
 });
 
 describe('StateEvaluator – layout & render delegation', () => {

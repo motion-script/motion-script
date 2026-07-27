@@ -61,10 +61,10 @@ import {
 // 3D backend. Only `scene3DBackend`/`requestScene3DWarm` are reached on a draw,
 // and both are cheap no-ops until three has been lazily imported — so a 2D-only
 // project never pulls in the three chunk.
-import {
-    disposeScene3DBackend, disposeSharedRenderer, disposeTextureCache,
-    requestScene3DWarm, scene3DBackend,
-} from "./three";
+import { disposeScene3DBackend, scene3DBackend } from "./three/backend";
+import { requestScene3DWarm } from "./three/bridge";
+import { disposeSharedRenderer } from "./three/renderer";
+import { disposeTextureCache } from "./three/handlers/texture";
 import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun } from "./shapes/paragraph-layout";
 import { measureTextCached } from "./shapes/paragraph-cache";

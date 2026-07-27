@@ -19,7 +19,7 @@ import {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-function makeController(yieldCount = 10, fps = 10) {
+function makeController(yieldCount = 10, fps = 10, replayBudgetMs?: number) {
     const child = new FakeNode('child', 'Rect');
     const scene = new FakeScene({ id: 'root', name: 'Scene', yieldCount, children: [child] });
     const clock = new FakeClock();
@@ -42,6 +42,7 @@ function makeController(yieldCount = 10, fps = 10) {
         fps,
         viewport,
         scenes,
+        replayBudgetMs,
     } as unknown as ControllerParams);
 
     return { controller, scene, clock, audio, storage, rc, child };
@@ -113,6 +114,63 @@ describe('PlaybackController – seek', () => {
 
         expect(rc.renderCount).toBe(rendersAfterCurrentSeek); // no stale frame-5 repaint
         expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);   // playhead stays at the newest target
+    });
+
+    it('a seek superseded mid-replay never paints its frame', async () => {
+        // The scrub case. replayBudgetMs 0 makes the state replay yield on every
+        // frame, so the second seek genuinely lands while the first is mid-flight
+        // — the situation the synchronous replay could never expose, because
+        // nothing could run to bump the generation while it held the thread.
+        const { controller, clock, scene, rc } = makeController(60, 10, 0);
+
+        // Land deep in the scene so seeking back is a real replay-from-zero.
+        await controller.seek(50);
+        const rendersBefore = rc.renderCount;
+        const scenerendersBefore = scene.renderCount;
+
+        // Two backward seeks issued back to back, as a fast drag would.
+        const stale = controller.seek(5);
+        const winner = controller.seek(2);
+        await Promise.all([stale, winner]);
+
+        // Exactly one of the two painted, and the surviving position is the newer.
+        expect(rc.renderCount).toBe(rendersBefore + 1);
+        expect(scene.renderCount).toBe(scenerendersBefore + 1);
+        expect(clock.seekCalls.at(-1)).toBeCloseTo(0.2, 6);
+    });
+});
+
+describe('PlaybackController – synchronous render paths', () => {
+    // seek() is the only caller that may yield. Everything below must still paint
+    // within its own task: screenshot reads the surface immediately afterwards,
+    // and replaceScene's no-flash swap depends on painting in the task that
+    // installed the new scene.
+    it('screenshot renders and captures without awaiting', () => {
+        const { controller, rc } = makeController(10, 10);
+        const rendersBefore = rc.renderCount;
+        const url = controller.screenshot();
+        expect(rc.renderCount).toBe(rendersBefore + 1);
+        expect(url).toBe('data:image/png;base64,FAKE');
+    });
+
+    it('replaceScene repaints within the same task', () => {
+        const { controller, rc } = makeController(10, 10);
+        const rendersBefore = rc.renderCount;
+        const edited = new FakeScene({
+            id: 'root', name: 'Scene', yieldCount: 10,
+            children: [new FakeNode('child', 'Rect')],
+        });
+        expect(controller.replaceScene(asScene(edited))).toBe(0);
+        expect(rc.renderCount).toBe(rendersBefore + 1);
+    });
+
+    it('a clock tick renders once its assets resolve, with no extra yield', async () => {
+        // The controller registers its onTick handler in its constructor, so the
+        // clock alone is enough to drive it here.
+        const { clock, rc } = makeController(10, 10);
+        const rendersBefore = rc.renderCount;
+        await clock.simulateTick(0.3);
+        expect(rc.renderCount).toBe(rendersBefore + 1);
     });
 });
 

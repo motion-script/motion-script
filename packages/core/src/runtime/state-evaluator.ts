@@ -6,6 +6,15 @@ import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
 import { Scene } from "@/nodes/scene/scene-node";
+import { now, yieldToScheduler } from "@/util/scheduler";
+
+/**
+ * Wall-clock milliseconds a time-sliced replay may run before yielding to the
+ * event loop. Half a 60 Hz frame, so the other half is left for input handling
+ * and paint. Much below ~4 ms and the per-yield scheduling overhead starts to
+ * dominate the replay itself.
+ */
+export const DEFAULT_REPLAY_BUDGET_MS = 8;
 
 /**
  * Returns `true` when the in-progress seek has been superseded and the replay
@@ -69,6 +78,18 @@ export class StateEvaluator {
      * See the class doc for why the loop must lay out.
      */
     private measureScope: MeasureScope;
+    /**
+     * Resolves when the in-flight {@link stateAtAsync} finishes, or `null` when
+     * none is running. Serializes async replays so two can never interleave a
+     * `resetSlot` into the shared {@link stage}.
+     */
+    private replayInFlight: Promise<void> | null = null;
+    /**
+     * Set by {@link dispose}. Checked after every yield so a replay parked when
+     * the evaluator was torn down (StrictMode double-mount, HMR) unwinds instead
+     * of stepping generators of disposed scenes.
+     */
+    private disposed = false;
 
     /** Most-recently evaluated global frame (integer). */
     get currentFrame() {
@@ -132,24 +153,6 @@ export class StateEvaluator {
 
     private get dt() {
         return 1 / this.fps;
-    }
-
-    private bindAssets() {
-        for (const s of this.scenes) {
-            s.bindAssets(this.assets);
-        }
-    }
-
-    private bindContext(runInit: boolean) {
-        for (const s of this.scenes) {
-            s.bindContext(ContextMap.EMPTY, runInit);
-        }
-    }
-
-    private ellapse(time: number) {
-        for (const s of this.scenes) {
-            s.ellapse(time);
-        }
     }
 
     /** Find the slot that owns the given global frame. */
@@ -234,12 +237,122 @@ export class StateEvaluator {
      *                    returns true the replay stops early (see above).
      */
     stateAt(frame: number, isCancelled?: SeekCancel): void {
+        const plan = this.beginReplay(frame);
+        if (!plan) return;
+        const { slot, localTarget, clampedFrame } = plan;
+        const dt = this.dt;
+
+        while (slot.localFrame < localTarget) {
+            // A newer seek superseded this one — abandon the replay. We leave
+            // _currentFrame untouched (the slot is at a partial localFrame); the
+            // next stateAt resets or resumes from there cleanly.
+            if (isCancelled?.()) return;
+            this.stepReplay(slot, dt);
+        }
+
+        this._currentFrame = clampedFrame;
+    }
+
+    /**
+     * Time-sliced twin of {@link stateAt}: identical per-frame semantics (both
+     * drive {@link stepReplay}), but the loop yields to the event loop every
+     * `budgetMs` so a newer seek can actually preempt one already running.
+     *
+     * This is the whole point of the async path. `stateAt` is synchronous, so
+     * while it runs no other JS can execute — nothing can bump the caller's
+     * generation counter, so its `isCancelled` predicate is *provably* always
+     * false. A backward seek deep into a long scene therefore blocks the main
+     * thread for its full duration and cannot be abandoned. Yielding is what
+     * makes cancellation observable.
+     *
+     * ### Re-entrancy
+     * The only suspension point is the `await` below, so another replay can only
+     * begin there. `isCancelled` is re-checked as the *first* thing after every
+     * resume, before touching `slot` — so a superseded replay can never mutate
+     * state a newer one has already moved on from. On top of that, concurrent
+     * async replays are serialized through {@link replayInFlight}, because
+     * `resetSlot` rebuilds into the shared `stage` and two interleaved resets
+     * would corrupt it.
+     *
+     * The synchronous {@link stateAt} is deliberately *not* gated by
+     * `replayInFlight`: it never suspends, so it always completes atomically
+     * with respect to an async replay parked on a yield — and that replay
+     * re-validates everything on resume.
+     *
+     * @returns `true` if `frame` was reached, `false` if the replay was
+     *          superseded, cancelled, or the evaluator was disposed. A `false`
+     *          return means `_currentFrame` is untouched and the caller must not
+     *          render.
+     */
+    async stateAtAsync(
+        frame: number,
+        isCancelled?: SeekCancel,
+        budgetMs: number = DEFAULT_REPLAY_BUDGET_MS,
+    ): Promise<boolean> {
+        // Wait out any replay already in flight. A `while`, not an `if`, so more
+        // than two queued seeks unwind correctly; and because every waiter
+        // re-checks `isCancelled` on wake, only the newest survives the queue.
+        while (this.replayInFlight) await this.replayInFlight;
+        if (this.disposed || isCancelled?.()) return false;
+
+        let release!: () => void;
+        this.replayInFlight = new Promise<void>(resolve => { release = resolve; });
+        try {
+            // `beginReplay` may `resetSlot`, which is indivisible and expensive
+            // (a full tree teardown + rebuild + layout). Yield first so the
+            // previous slice's paint lands before we occupy the thread with it.
+            await yieldToScheduler();
+            if (this.disposed || isCancelled?.()) return false;
+
+            const plan = this.beginReplay(frame);
+            if (!plan) return !this.disposed;
+            const { slot, localTarget, clampedFrame } = plan;
+            const dt = this.dt;
+
+            let deadline = now() + budgetMs;
+            while (slot.localFrame < localTarget) {
+                if (isCancelled?.()) return false;
+                if (now() >= deadline) {
+                    await yieldToScheduler();
+                    // Everything below must be re-validated before we mutate:
+                    // arbitrary code ran while we were parked.
+                    if (this.disposed || isCancelled?.()) return false;
+                    // A concurrent replaceScene can null the generator out from
+                    // under us; resuming into it would throw.
+                    if (!slot.generator) return false;
+                    deadline = now() + budgetMs;
+                }
+                this.stepReplay(slot, dt);
+            }
+
+            this._currentFrame = clampedFrame;
+            return true;
+        } finally {
+            this.replayInFlight = null;
+            release();
+        }
+    }
+
+    /**
+     * Resolve a replay target: pick the owning slot, make it current, and reset it
+     * if the target is behind where its generator already stands (or it was never
+     * primed). Returns `null` when there is nothing to do — the frame is already
+     * evaluated, or there are no slots.
+     *
+     * Shared by {@link stateAt} and {@link stateAtAsync} so both agree on when a
+     * slot is reset. Synchronous and indivisible: `resetSlot` tears the scene's
+     * whole node tree down and rebuilds it, so it must not be interleaved with
+     * another replay.
+     */
+    private beginReplay(
+        frame: number,
+    ): { slot: SceneSlot; localTarget: number; clampedFrame: number } | null {
         const clampedFrame = Math.max(0, Math.floor(frame));
 
-        if (clampedFrame === this._currentFrame && this.slotAt(clampedFrame)?.generator !== null) return;
+        if (clampedFrame === this._currentFrame && this.slotAt(clampedFrame)?.generator !== null) return null;
 
         const targetSlot = this.slotAt(clampedFrame);
-        if (!targetSlot) return;
+        if (!targetSlot) return null;
 
         this._currentScene = targetSlot.scene;
 
@@ -250,33 +363,47 @@ export class StateEvaluator {
             this.resetSlot(targetSlot);
         }
 
-        const dt = this.dt;
+        return { slot: targetSlot, localTarget, clampedFrame };
+    }
 
-        // Advance this slot's generator from its current local frame to localTarget.
-        // ellapse() both ticks and samples motion for the frame (see Node.ellapse),
-        // so running it on every advanced frame — not just rendered ones — keeps
-        // velocity-derived effects (motion blur) correct after a scrub/rewind.
-        while (targetSlot.localFrame < localTarget) {
-            // A newer seek superseded this one — abandon the replay. We leave
-            // _currentFrame untouched (the slot is at a partial localFrame); the
-            // next stateAt resets or resumes from there cleanly.
-            if (isCancelled?.()) return;
-            targetSlot.localFrame++;
-            const globalTime = (targetSlot.startFrame + targetSlot.localFrame) * dt;
-            this.bindAssets();
-            this.bindContext(false);
-            this.ellapse(globalTime);
-            // Lay out before stepping the generator so any post-layout state it
-            // reads (an animated removeChildAt pinning to `measuredWidth`, the
-            // hug/fill addChildAt measuring against `_lastScope`) is fresh for
-            // this frame — the ordering precomp uses. Without this the replay
-            // (backward seek / multi-frame jump) reads a stale layoutRect and
-            // the animation diverges from forward playback (see class doc).
-            this.layoutScene(targetSlot.scene);
-            targetSlot.generator!.next(dt);
-        }
-
-        this._currentFrame = clampedFrame;
+    /**
+     * Advance `slot` by exactly one local frame.
+     *
+     * The load-bearing part of the replay lives here and **only** here, so the
+     * synchronous {@link stateAt} and the time-sliced {@link stateAtAsync} can
+     * never drift apart in per-frame ordering or semantics.
+     *
+     * `ellapse()` both ticks and samples motion for the frame (see `Node.ellapse`),
+     * so running it on every advanced frame — not just rendered ones — keeps
+     * velocity-derived effects (motion blur) correct after a scrub/rewind.
+     */
+    private stepReplay(slot: SceneSlot, dt: number): void {
+        slot.localFrame++;
+        const globalTime = (slot.startFrame + slot.localFrame) * dt;
+        // Scoped to the slot being advanced — the same three calls, on the same
+        // scene, in the same order as `Precomp.precompScene`'s loop (and as
+        // `resetSlot` above). Fanning them out across every scene would be pure
+        // waste (nothing mutates a frozen scene's tree during this replay) and
+        // actively wrong: `advanceClock` seeds `creation` on first touch and scene
+        // roots outlive `reset()`, so ellapsing an un-entered scene at *global*
+        // time births its root mid-timeline, and a later seek into it then reports
+        // a negative `elapsed` for the rest of the session.
+        slot.scene.bindAssets(this.assets);
+        // Structural re-push only (runInit=false): refresh context on any subtree
+        // added this frame without re-firing init mid-tween.
+        slot.scene.bindContext(ContextMap.EMPTY, false);
+        slot.scene.ellapse(globalTime);
+        // Lay out before stepping the generator so any post-layout state it
+        // reads (an animated removeChildAt pinning to `measuredWidth`, the
+        // hug/fill addChildAt measuring against `_lastScope`) is fresh for
+        // this frame — the ordering precomp uses. Without this the replay
+        // (backward seek / multi-frame jump) reads a stale layoutRect and
+        // the animation diverges from forward playback (see class doc).
+        this.layoutScene(slot.scene);
+        // Read `slot.generator` fresh — never hoist it into a local across a yield.
+        // A synchronous stateAt (from a clock tick) can run resetSlot while an async
+        // replay is parked, replacing the generator this slot points at.
+        slot.generator!.next(dt);
     }
 
     /**
@@ -328,6 +455,7 @@ export class StateEvaluator {
 
     /** Dispose all scenes and drop generator references. */
     dispose(): void {
+        this.disposed = true;
         for (const slot of this.slots) {
             slot.scene.dispose();
             slot.generator = null;

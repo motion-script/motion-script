@@ -10,13 +10,18 @@ export type BuildError = {
 };
 
 /**
- * Editor chrome state that isn't playback or geometry: loading/snapshot/export
+ * Editor chrome state that isn't playback or geometry: seek/snapshot/export
  * status, build errors surfaced from the dev server, and the inspected node
  * tree / selection.
  */
 export type UiSlice = {
-    isLoading: boolean;
-    setIsLoading: (loading: boolean) => void;
+    /**
+     * True while a seek is in flight (mount, scrub, or scene hot-swap). Goes
+     * true on every seek and false when it settles, so consumers that render
+     * from it must add their own hysteresis — see `useDelayedFlag`.
+     */
+    isSeeking: boolean;
+    setIsSeeking: (seeking: boolean) => void;
 
     snapshotRequested: boolean;
     requestSnapshot: () => void;
@@ -40,8 +45,8 @@ export type UiSlice = {
 };
 
 export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
-    isLoading: false,
-    setIsLoading: (loading) => set(() => ({ isLoading: loading })),
+    isSeeking: false,
+    setIsSeeking: (seeking) => set(() => ({ isSeeking: seeking })),
 
     snapshotRequested: false,
     requestSnapshot: () => set(() => ({ snapshotRequested: true })),

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useEditorStore } from '@/providers/editor-provider';
+import { useDelayedFlag } from '@/hooks/use-delayed-flag';
 import { FrameHandle, MotionPlayer } from '@motion-script/react';
 
 const MIN_ZOOM = 0.25;
@@ -58,7 +59,11 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const setIsPlaying = useEditorStore(s => s.setIsPlaying);
     const setDuration = useEditorStore(s => s.setDuration);
     const setSceneDurations = useEditorStore(s => s.setSceneDurations);
-    const setIsLoading = useEditorStore(s => s.setIsLoading);
+    const setIsSeeking = useEditorStore(s => s.setIsSeeking);
+    const isScrubbing = useEditorStore(s => s.isScrubbing);
+    const isSeeking = useEditorStore(s => s.isSeeking);
+    // Never during playback — there the canvas is already updating every frame.
+    const showShimmer = useDelayedFlag(isSeeking && !isPlaying);
     const setRootNode = useEditorStore(s => s.setRootNode);
     const setBuildErrors = useEditorStore(s => s.setBuildErrors);
     const snapshotRequested = useEditorStore(s => s.snapshotRequested);
@@ -73,14 +78,22 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
         return () => registerHotReplace(null);
     }, [registerHotReplace, frameRef]);
 
+    // Read through a ref inside the callbacks below so their useCallback identity
+    // doesn't change when a drag starts or stops — MotionPlayer holds them.
+    const isScrubbingRef = useRef(isScrubbing);
+    useEffect(() => { isScrubbingRef.current = isScrubbing; }, [isScrubbing]);
+
     const handleLoadingChange = useCallback((loading: boolean) => {
-        setIsLoading(loading);
+        setIsSeeking(loading);
         if (!loading && frameRef.current) {
-            setRootNode(frameRef.current.getTreeState());
+            // getTreeState walks the whole node tree and its result re-renders the
+            // timeline's node list. Skip it mid-drag (the flush on drag end below
+            // catches up); durations are cheap and needed on first load.
+            if (!isScrubbingRef.current) setRootNode(frameRef.current.getTreeState());
             setDuration(frameRef.current.getDuration());
             setSceneDurations(frameRef.current.getSceneDurations());
         }
-    }, [frameRef, setIsLoading, setDuration, setSceneDurations, setRootNode]);
+    }, [frameRef, setIsSeeking, setDuration, setSceneDurations, setRootNode]);
 
     const handleBuildErrors = useCallback((errors: Parameters<typeof setBuildErrors>[0]) => {
         setBuildErrors(errors);
@@ -88,7 +101,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
 
     const handleFrameChange = useCallback((frame: number) => {
         setCurrentFrame(frame);
-        if (frameRef.current) setRootNode(frameRef.current.getTreeState());
+        if (!isScrubbingRef.current && frameRef.current) setRootNode(frameRef.current.getTreeState());
 
         const duration = frameRef.current?.getDuration() ?? 0;
         const totalFrames = Math.round(duration * fps);
@@ -118,6 +131,16 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
             setIsPlaying(false);
         }
     }, [frameRef, fps, loopMode, sceneStartFrames, setCurrentFrame, setIsPlaying, setRootNode]);
+
+    // Refresh the node tree once the drag ends, catching up on everything the
+    // per-frame updates skipped. Edge-triggered so it can't fire on mount.
+    const prevScrubbingRef = useRef(isScrubbing);
+    useEffect(() => {
+        if (prevScrubbingRef.current && !isScrubbing && frameRef.current) {
+            setRootNode(frameRef.current.getTreeState());
+        }
+        prevScrubbingRef.current = isScrubbing;
+    }, [isScrubbing, frameRef, setRootNode]);
 
     useEffect(() => {
         if (!snapshotRequested || !frameRef.current) return;
@@ -364,6 +387,19 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
                         willChange: 'transform',
                     }}
                 >
+                    {/* Shown only while the rendered frame is behind the playhead,
+                        so a scrub the engine keeps up with stays completely clean. */}
+                    {showShimmer && (
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 z-10 overflow-hidden bg-white/10"
+                        >
+                            <div
+                                className="absolute inset-y-0 left-0 w-1/3 animate-shimmer motion-reduce:hidden
+                                           bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            />
+                        </div>
+                    )}
                     <MotionPlayer
                         ref={frameRef}
                         initialFrame={currentFrame}

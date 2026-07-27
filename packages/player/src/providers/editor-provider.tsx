@@ -68,6 +68,21 @@ export function useEditorStore<T>(selector: (state: EditorState) => T): T {
     return useStore(store, selector);
 }
 
+/**
+ * The raw store, for reading and subscribing imperatively.
+ *
+ * Unlike {@link useEditorStore} this never subscribes the calling component, so
+ * a caller can watch a high-frequency value (the scrub gate follows `isSeeking`,
+ * which flips on every seek) without forcing a render on each change.
+ */
+export function useEditorStoreApi(): StoreApi<EditorState> {
+    const store = useContext(EditorStoreContext);
+    if (!store) {
+        throw new Error("useEditorStoreApi must be used within EditorStoreProvider");
+    }
+    return store;
+}
+
 const FrameHandleRefContext = createContext<React.RefObject<FrameHandle | null> | null>(null);
 
 export function FrameHandleProvider({

@@ -99,6 +99,25 @@ importers:
         specifier: ^2.9.14
         version: 2.9.18
 
+  packages/animation:
+    dependencies:
+      motion-script:
+        specifier: workspace:*
+        version: link:../motion-script
+    devDependencies:
+      '@motion-script/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@motion-script/vite-plugin':
+        specifier: workspace:*
+        version: link:../vite-plugin
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)
+
   packages/canvaskit: {}
 
   packages/cli:

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useReducer } from "react";
+import { useEffect, useRef, useState, useCallback, useReducer, useMemo } from "react";
 
 import { EditorToolbar } from "./toolbar";
 import { useEditorStore } from "@/providers/editor-provider";
@@ -20,6 +20,7 @@ import { formatRulerLabel, pickMajorStep } from "./ruler-utils";
 import { NodeNamesColumn } from "./node-names-column";
 import { TrackRows } from "./track-rows";
 import { useRowVirtualizer } from "./use-row-virtualizer";
+import { useScrubController } from "./use-scrub-controller";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────
 //
@@ -63,17 +64,24 @@ export function TimelineRuler({
   const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
   const timelineZoom = useEditorStore((s) => s.timelineZoom);
   const isPlaying = useEditorStore((s) => s.isPlaying);
+  const scrubFrame = useEditorStore((s) => s.scrubFrame);
+  const isScrubbing = useEditorStore((s) => s.isScrubbing);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
 
   const [themeVersion, bumpTheme] = useReducer((x: number) => x + 1, 0);
-  const draggingRef = useRef(false);
   const scrollLeftRef = useRef(scrollLeft);
   const pxRef = useRef<number>(0);
   const totalUnitsRef = useRef<number>(0);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const flatNodes = rootNode ? flattenTree(rootNode, collapsed) : [];
+  // flattenTree walks the entire node tree. Unmemoized it ran on every render —
+  // which during a drag is every animation frame, over every node in the scene.
+  // `rootNode` is held stable while scrubbing (see video-preview), so this holds.
+  const flatNodes = useMemo(
+    () => (rootNode ? flattenTree(rootNode, collapsed) : []),
+    [rootNode, collapsed],
+  );
 
   // Vertical row virtualization shared by both columns.
   const { window: rowWindow, measure: measureRows, onScroll: onRowScroll } =
@@ -83,7 +91,18 @@ export function TimelineRuler({
   // Use sub-frame precision for the playhead position so it moves smoothly
   // between integer frames; round only for the displayed frame number.
   const totalFrameCount = Math.max(1, Math.round(duration * fps));
-  const currentFrameExact = currentTime * fps;
+  // While dragging, the playhead follows the pointer (`scrubFrame`) rather than
+  // the rendered position — on a heavy project the seek lags well behind the
+  // cursor, and a playhead tied to it would feel stuck. Everything downstream
+  // derives from this, so the label, scene highlight and track line follow too.
+  //
+  // Gated on `isScrubbing`, not merely on `scrubFrame` being set: keyed off the
+  // frame alone, any path that left it non-null would pin the playhead forever,
+  // including during playback. Live drag state is the only thing that may
+  // override the clock.
+  const currentFrameExact = isScrubbing && scrubFrame !== null
+    ? scrubFrame
+    : currentTime * fps;
   const currentFrame = Math.round(currentFrameExact);
 
   const handleToggle = (id: string) => {
@@ -330,25 +349,10 @@ export function TimelineRuler({
     return Math.max(0, Math.min(totalUnitsRef.current, frame));
   }
 
-  const onMouseMoveWindow = useCallback((e: MouseEvent) => {
-    if (!draggingRef.current) return;
-    handleSeek(clientXToFrame(e.clientX));
-  }, [handleSeek]);
-
-  const onMouseUpWindow = useCallback((e: MouseEvent) => {
-    if (!draggingRef.current) return;
-    handleSeek(clientXToFrame(e.clientX));
-    draggingRef.current = false;
-    window.removeEventListener("mousemove", onMouseMoveWindow);
-    window.removeEventListener("mouseup", onMouseUpWindow);
-  }, [onMouseMoveWindow, handleSeek]);
-
-  useEffect(() => {
-    return () => {
-      window.removeEventListener("mousemove", onMouseMoveWindow);
-      window.removeEventListener("mouseup", onMouseUpWindow);
-    };
-  }, [onMouseMoveWindow, onMouseUpWindow]);
+  // The controller owns the whole drag once begun — it attaches and removes the
+  // window listeners itself, so there is no drag state or listener bookkeeping
+  // here to fall out of sync with React's render cycle.
+  const scrub = useScrubController(clientXToFrame);
 
   if (!finalWidth) {
     return <div ref={containerRef} className="bg-timeline p-2" />;
@@ -380,7 +384,7 @@ export function TimelineRuler({
           style={{ width: NODE_LIST_WIDTH, minWidth: NODE_LIST_WIDTH }}
         >
           <span className="text-xs font-medium text-foreground truncate">
-            {currentTime.toFixed(2)}s / {duration.toFixed(2)}s
+            {(currentFrameExact / fps).toFixed(2)}s / {duration.toFixed(2)}s
           </span>
         </div>
 
@@ -392,15 +396,26 @@ export function TimelineRuler({
 
           {/* Seek overlay */}
           <div
-            onMouseDown={(e) => {
+            // Pointer capture, not window listeners: once captured, every move
+            // and the final up are delivered to this element no matter where the
+            // cursor travels or how React re-renders around it. A drag can't be
+            // orphaned half-finished, which would strand the playhead on a stale
+            // scrubFrame. `pointercancel` covers the OS yanking the gesture away.
+            onPointerDown={(e) => {
               if (e.button !== 0) return;
-              handleSeek(clientXToFrame(e.clientX));
-              draggingRef.current = true;
-              window.addEventListener("mousemove", onMouseMoveWindow);
-              window.addEventListener("mouseup", onMouseUpWindow);
+              e.currentTarget.setPointerCapture(e.pointerId);
+              scrub.begin(e.clientX);
               e.preventDefault();
             }}
-            style={{ position: "absolute", inset: 0, zIndex: 50 }}
+            onPointerMove={(e) => scrub.move(e.clientX)}
+            onPointerUp={(e) => {
+              scrub.end(e.clientX);
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+            }}
+            onPointerCancel={(e) => scrub.end(e.clientX)}
+            style={{ position: "absolute", inset: 0, zIndex: 50, touchAction: "none" }}
           />
 
           {/* Playhead — line + label */}
