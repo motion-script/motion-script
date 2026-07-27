@@ -12,6 +12,27 @@ import type { ScatterEffect } from "./implementations/scatter";
 import type { PosterizeEffect } from "./implementations/posterize";
 import type { MotionBlurEffect } from "./implementations/motion-blur";
 import type { SkSLEffect } from "./implementations/sksl";
+import type { OutlineEffect } from "./implementations/outline";
+import type { VignetteEffect } from "./implementations/vignette";
+import type { GrainEffect } from "./implementations/grain";
+import type { SharpenEffect } from "./implementations/sharpen";
+import type { EdgesEffect } from "./implementations/edges";
+import type { ThresholdEffect } from "./implementations/threshold";
+import type { RadialBlurEffect } from "./implementations/radial-blur";
+import type { HalftoneEffect } from "./implementations/halftone";
+import type { DitherEffect } from "./implementations/dither";
+import type { DuotoneEffect } from "./implementations/duotone";
+import type { CurvesEffect } from "./implementations/curves";
+import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
+import type { RgbShiftEffect } from "./implementations/rgb-shift";
+import type { ScanlinesEffect } from "./implementations/scanlines";
+import type { BlockDisplaceEffect } from "./implementations/block-displace";
+import type { BitCrushEffect } from "./implementations/bit-crush";
+import type { AsciiEffect } from "./implementations/ascii";
+import type { StreakEffect } from "./implementations/streak";
+import type { GodRaysEffect } from "./implementations/god-rays";
+import type { OilPaintEffect } from "./implementations/oil-paint";
+import type { TextureEffect } from "./implementations/texture";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -28,4 +49,25 @@ export type SceneEffect =
     | ScatterEffect
     | PosterizeEffect
     | MotionBlurEffect
-    | SkSLEffect;
+    | SkSLEffect
+    | OutlineEffect
+    | VignetteEffect
+    | GrainEffect
+    | SharpenEffect
+    | EdgesEffect
+    | ThresholdEffect
+    | RadialBlurEffect
+    | HalftoneEffect
+    | DitherEffect
+    | DuotoneEffect
+    | CurvesEffect
+    | ColorAdjustmentEffect
+    | RgbShiftEffect
+    | ScanlinesEffect
+    | BlockDisplaceEffect
+    | BitCrushEffect
+    | AsciiEffect
+    | StreakEffect
+    | GodRaysEffect
+    | OilPaintEffect
+    | TextureEffect;

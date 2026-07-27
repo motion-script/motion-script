@@ -199,6 +199,30 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `effect-scatter-vertical`: Scatter with `direction: "vertical"`
 - [ ] `effect-scatter-both`: Scatter with `direction: "both"`
 - [ ] `effect-posterize`: Color banding at low level count
+- [ ] `effect-outline`: Outline band growing outside a text silhouette
+- [ ] `effect-outline-inside`: Outline with `position: "inside"` on a filled disc
+- [ ] `effect-vignette`: Corner falloff darkening a bright card
+- [ ] `effect-grain`: Static (unanimated) film grain over a gradient
+- [ ] `effect-sharpen`: Unsharp mask raising edge contrast
+- [ ] `effect-edges`: Sobel edge detection on flat colour blocks
+- [ ] `effect-threshold`: Two-tone luminance cut sweeping across a gradient
+- [ ] `effect-radial-blur`: Zoom-style radial blur about the centre
+- [ ] `effect-radial-blur-spin`: Spin-style radial blur about the centre
+- [ ] `effect-halftone`: 45° dot screen at increasing cell size
+- [ ] `effect-dither`: Bayer 8×8 ordered dither down to 1-bit
+- [ ] `effect-duotone`: Luminance remapped onto a two-colour ramp
+- [ ] `effect-curves`: Tone curve lifting shadows on a node (not an image fill)
+- [ ] `effect-color-adjustment`: Contrast/saturation/temperature on a group of shapes
+- [ ] `effect-rgb-shift`: Red/blue planes pulled apart on a text silhouette
+- [ ] `effect-scanlines`: CRT bands darkening a bright card
+- [ ] `effect-block-displace`: Horizontal band tearing at a fixed seed
+- [ ] `effect-bit-crush`: Gradient snapped to the Game Boy palette
+- [ ] `effect-streak`: Anamorphic glare smeared along one axis
+- [ ] `effect-god-rays`: Light streaming from a disc past an occluding bar
+- [ ] `effect-oil-paint`: Kuwahara brushwork — flat strokes with edges intact
+- [ ] `effect-texture`: An image multiplied over the content
+- [ ] `effect-ascii`: Image resolving into an ASCII glyph grid as the cell grows
+- [ ] `effect-chain-order`: Two shader effects in opposite orders must differ (author-order guard)
 - [ ] `effect-sksl-custom`: Custom SkSL shader as layer effect
 - [ ] `effect-sksl-backdrop`: Custom SkSL shader processing backdrop
 
@@ -360,3 +384,14 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `opacity-fill`: Fill-level opacity animated independently of node
 - [ ] `opacity-stroke`: Stroke-level opacity animated
 - [ ] `opacity-passthrough-vs-normal`: Pass-through vs normal node blend isolation with semi-transparent children
+
+---
+
+## Presets
+
+- [ ] `preset-riso`: Presets.riso ramping in from its no-op state
+- [ ] `preset-vhs`: Presets.vhs ramping in from its no-op state
+- [ ] `preset-crt`: Presets.crt ramping in from its no-op state
+- [ ] `preset-gameboy`: Presets.gameboy ramping in (also guards chain order)
+- [ ] `preset-comic`: Presets.comic on a CMYK process screen
+- [ ] `preset-paper`: Presets.paper — the texture-based material template

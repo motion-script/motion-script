@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Chromatic aberration',
         from: FX.chromaticAberration(0),
         to: FX.chromaticAberration(8),
-        compare: true,
     }));

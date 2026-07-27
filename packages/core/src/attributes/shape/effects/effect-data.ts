@@ -1,4 +1,7 @@
 import type { Vector2 } from "@/attributes/layout/vector2";
+import type { AssetTracker } from "@/assets/tracker";
+import type { Color, NormalizedColor } from "../fill/color/parser";
+import { parseColor } from "../fill/color/parser";
 
 /**
  * Which layer an effect runs on: the node's own content (`"foreground"`, the
@@ -48,6 +51,27 @@ export function sameEffectAxis(a: EffectAxis, b: EffectAxis): boolean {
     const av = resolveEffectAxis(a);
     const bv = resolveEffectAxis(b);
     return av.x === bv.x && av.y === bv.y;
+}
+
+/**
+ * Resolve a colour-valued effect option to its RGBA tuple.
+ *
+ * Colour options are stored **as authored** (a CSS string, a theme alias, or an
+ * already-normalised tuple) rather than parsed at build time, so a raw effect
+ * literal — `{ type: 'outline', color: 'primary', … }` — behaves exactly like the
+ * builder form, and a theme alias still resolves against whatever `setTheme`
+ * installed. Backends call this to get numbers; `lerp` calls it on both ends.
+ */
+export function resolveEffectColor(color: Color): NormalizedColor {
+    return Array.isArray(color) ? color : parseColor(color);
+}
+
+/** Do two colour options resolve to the same RGBA? (`'red'` === `'#ff0000'`.) */
+export function sameEffectColor(a: Color, b: Color): boolean {
+    if (a === b) return true;
+    const av = resolveEffectColor(a);
+    const bv = resolveEffectColor(b);
+    return av[0] === bv[0] && av[1] === bv[1] && av[2] === bv[2] && av[3] === bv[3];
 }
 
 /**
@@ -142,4 +166,19 @@ export interface EffectData<T> {
      * backdrop mode resamples what is beneath it.
      */
     surface?: EffectSurface | ((effect: T) => EffectSurface);
+
+    /**
+     * Declare any assets this effect needs at the current frame, so they are
+     * loaded before it renders.
+     *
+     * The mirror of `FillData.prepare` — an image fill calls
+     * `tracker.requestImage(src, …)` here, and an effect that samples a texture
+     * does exactly the same. Without it the asset is never requested and the
+     * backend's synchronous lookup returns nothing, which the effect can only
+     * interpret as "no texture".
+     *
+     * `width`/`height` are the node's box in logical px, the size hint the
+     * loader rasterises SVGs and downsamples large images against.
+     */
+    prepare?(effect: T, tracker: AssetTracker, width: number, height: number): void;
 }

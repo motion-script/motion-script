@@ -16,6 +16,25 @@ import { skslEffectHandler } from "./sksl";
 import { bulgeEffectHandler } from "./bulge";
 import { magnifyEffectHandler } from "./magnify";
 import { posterizeEffectHandler } from "./posterize";
+import { outlineEffectHandler } from "./outline";
+import { vignetteEffectHandler } from "./vignette";
+import { grainEffectHandler } from "./grain";
+import { sharpenEffectHandler } from "./sharpen";
+import { edgesEffectHandler } from "./edges";
+import { thresholdEffectHandler } from "./threshold";
+import { radialBlurEffectHandler } from "./radial-blur";
+import { halftoneEffectHandler } from "./halftone";
+import { ditherEffectHandler } from "./dither";
+import { duotoneEffectHandler } from "./duotone";
+import { rgbShiftEffectHandler } from "./rgb-shift";
+import { scanlinesEffectHandler } from "./scanlines";
+import { blockDisplaceEffectHandler } from "./block-displace";
+import { bitCrushEffectHandler } from "./bit-crush";
+import { asciiEffectHandler } from "./ascii";
+import { streakEffectHandler } from "./streak";
+import { godRaysEffectHandler } from "./god-rays";
+import { oilPaintEffectHandler } from "./oil-paint";
+import { textureEffectHandler } from "./texture";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -140,11 +159,32 @@ EffectRegistry.register(motionBlurEffectHandler);
 EffectRegistry.register(bulgeEffectHandler);
 EffectRegistry.register(magnifyEffectHandler);
 EffectRegistry.register(posterizeEffectHandler);
+EffectRegistry.register(outlineEffectHandler);
+EffectRegistry.register(vignetteEffectHandler);
+EffectRegistry.register(grainEffectHandler);
+EffectRegistry.register(sharpenEffectHandler);
+EffectRegistry.register(edgesEffectHandler);
+EffectRegistry.register(thresholdEffectHandler);
+EffectRegistry.register(radialBlurEffectHandler);
+EffectRegistry.register(halftoneEffectHandler);
+EffectRegistry.register(ditherEffectHandler);
+EffectRegistry.register(duotoneEffectHandler);
+EffectRegistry.register(rgbShiftEffectHandler);
+EffectRegistry.register(scanlinesEffectHandler);
+EffectRegistry.register(blockDisplaceEffectHandler);
+EffectRegistry.register(bitCrushEffectHandler);
+EffectRegistry.register(asciiEffectHandler);
+EffectRegistry.register(streakEffectHandler);
+EffectRegistry.register(godRaysEffectHandler);
+EffectRegistry.register(oilPaintEffectHandler);
+EffectRegistry.register(textureEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the
 // field unification they are the same effect with the same implementation as
-// their scene-effect counterparts above, so one handler serves both.
+// their scene-effect counterparts above, so one handler serves both. `curves`
+// and `colorAdjustment` now do double duty the same way: one handler each,
+// serving both the media filter and the scene effect of that name.
 EffectRegistry.register(exposureEffectHandler);
 EffectRegistry.register(alphaEffectHandler);
 EffectRegistry.register(colorMatrixEffectHandler);

@@ -5,7 +5,7 @@
  * scene effects, media filters, and renderer-internal effects alike. Adding an
  * effect is a handler object plus one `EffectRegistry.register` call.
  */
-export type { EffectHandler, EffectGeometry, EffectTarget, RenderEffect } from "./handler";
+export type { EffectHandler, EffectGeometry, EffectResources, EffectTarget, RenderEffect } from "./handler";
 export { EffectRegistry } from "./registry";
 
 export { blurEffectHandler } from "./blur";
@@ -20,6 +20,27 @@ export { scatterEffectHandler } from "./scatter";
 export { bulgeEffectHandler } from "./bulge";
 export { magnifyEffectHandler } from "./magnify";
 export { posterizeEffectHandler } from "./posterize";
+export { outlineEffectHandler } from "./outline";
+export { vignetteEffectHandler } from "./vignette";
+export { grainEffectHandler } from "./grain";
+export { sharpenEffectHandler } from "./sharpen";
+export { edgesEffectHandler } from "./edges";
+export { thresholdEffectHandler } from "./threshold";
+export { radialBlurEffectHandler } from "./radial-blur";
+export { halftoneEffectHandler } from "./halftone";
+export { ditherEffectHandler } from "./dither";
+export { duotoneEffectHandler, duotoneMatrix } from "./duotone";
+export { rgbShiftEffectHandler } from "./rgb-shift";
+export { scanlinesEffectHandler } from "./scanlines";
+export { blockDisplaceEffectHandler } from "./block-displace";
+export { bitCrushEffectHandler } from "./bit-crush";
+export { asciiEffectHandler } from "./ascii";
+export { streakEffectHandler } from "./streak";
+export { godRaysEffectHandler } from "./god-rays";
+export { oilPaintEffectHandler } from "./oil-paint";
+export { textureEffectHandler } from "./texture";
+export { GlyphAtlasCache, atlasCell, atlasGlyphCount } from "./glyph-atlas";
+export type { GlyphAtlas, GlyphAtlasSpec } from "./glyph-atlas";
 export { skslEffectHandler } from "./sksl";
 export { motionBlurEffectHandler, resolveMotionBlur } from "./motion-blur";
 export type { MotionBlurResolved } from "./motion-blur";

@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { Effects, FX, resolveChainEffects } from '@/attributes/shape/effects/chain';
-import { withEffectOptions } from '@/attributes/shape/effects/effect-data';
+import {
+    resolveEffectColor,
+    sameEffectColor,
+    withEffectOptions,
+} from '@/attributes/shape/effects/effect-data';
 import { foregroundShaderEffects } from '@/attributes/shape/effects/backdrop';
 
 describe('FX builders', () => {
@@ -162,6 +166,206 @@ describe('FX builders', () => {
     });
 });
 
+describe('FX builders — roadmap effects', () => {
+    it('outline defaults to a 4px black band outside the silhouette', () => {
+        expect([...Effects.outline()]).toEqual([
+            { type: 'outline', width: 4, color: 'black', position: 'outside' },
+        ]);
+    });
+
+    it('outline takes width as the scalar with colour and position named', () => {
+        expect([...Effects.outline({ width: 10, color: '#ff0044', position: 'inside' })]).toEqual([
+            { type: 'outline', width: 10, color: '#ff0044', position: 'inside' },
+        ]);
+    });
+
+    it('vignette defaults to a soft black falloff', () => {
+        expect([...Effects.vignette()]).toEqual([
+            { type: 'vignette', amount: 0.5, radius: 0.75, softness: 0.5, color: 'black' },
+        ]);
+    });
+
+    it('grain defaults to static luminance noise', () => {
+        expect([...Effects.grain()]).toEqual([
+            { type: 'grain', amount: 0.25, size: 1, seed: 0, animated: false, colored: false },
+        ]);
+    });
+
+    it('grain accepts the animated + coloured variant', () => {
+        expect([...Effects.grain({ amount: 0.4, animated: true, colored: true })]).toEqual([
+            { type: 'grain', amount: 0.4, size: 1, seed: 0, animated: true, colored: true },
+        ]);
+    });
+
+    it('sharpen defaults to a 1px unsharp mask', () => {
+        expect([...Effects.sharpen()]).toEqual([{ type: 'sharpen', amount: 1, radius: 1 }]);
+    });
+
+    it('edges defaults to a monochrome sobel', () => {
+        expect([...Effects.edges()]).toEqual([
+            { type: 'edges', strength: 1, kernel: 'sobel', colored: false },
+        ]);
+    });
+
+    it('edges accepts the other kernels', () => {
+        expect([...Effects.edges({ kernel: 'laplacian' })]).toEqual([
+            { type: 'edges', strength: 1, kernel: 'laplacian', colored: false },
+        ]);
+    });
+
+    it('threshold defaults to a midpoint cut with a hair of smoothing', () => {
+        expect([...Effects.threshold()]).toEqual([
+            { type: 'threshold', level: 0.5, smoothness: 0.05 },
+        ]);
+    });
+
+    it('radialBlur defaults to a centred zoom', () => {
+        expect([...Effects.radialBlur()]).toEqual([
+            { type: 'radialBlur', amount: 0.5, style: 'zoom', center: { x: 0.5, y: 0.5 }, samples: 16 },
+        ]);
+    });
+
+    it('radialBlur accepts a spin about an off-centre point', () => {
+        expect([...Effects.radialBlur({ amount: 0.8, style: 'spin', center: { x: 0.2, y: 0.7 } })]).toEqual([
+            { type: 'radialBlur', amount: 0.8, style: 'spin', center: { x: 0.2, y: 0.7 }, samples: 16 },
+        ]);
+    });
+
+    it('halftone defaults to an 8px dot screen at 45°', () => {
+        expect([...Effects.halftone()]).toEqual([
+            { type: 'halftone', size: 8, angle: 45, shape: 'dot', separation: 'mono' },
+        ]);
+    });
+
+    it('dither defaults to 1-bit output through a 4×4 Bayer matrix', () => {
+        expect([...Effects.dither()]).toEqual([
+            { type: 'dither', levels: 2, matrix: 4, scale: 1, monochrome: false },
+        ]);
+    });
+
+    it('duotone defaults to a full black→white ramp', () => {
+        expect([...Effects.duotone()]).toEqual([
+            { type: 'duotone', amount: 1, shadows: 'black', highlights: 'white' },
+        ]);
+    });
+
+    it('curves carries its points through and defaults the channel', () => {
+        const points: [number, number][] = [[0, 0.1], [1, 0.9]];
+        expect([...Effects.curves({ points })]).toEqual([
+            { type: 'curves', points, channel: 'rgb' },
+        ]);
+    });
+
+    it('colorAdjustment keeps only the fields it was given', () => {
+        expect([...Effects.colorAdjustment({ contrast: 1.4, saturation: 0.6 })]).toEqual([
+            { type: 'colorAdjustment', contrast: 1.4, saturation: 0.6 },
+        ]);
+    });
+
+    it('colorAdjustment does not plant a mode key when passed an explicit undefined', () => {
+        // The spread of the caller's options would otherwise carry `mode: undefined`
+        // onto the effect, and every `equals()` compares `mode` directly.
+        const [effect] = [...Effects.colorAdjustment({ brightness: 0.2, mode: undefined })];
+        expect('mode' in effect).toBe(false);
+    });
+
+    it('rgbShift spreads red and blue apart horizontally by default', () => {
+        expect([...Effects.rgbShift()]).toEqual([
+            {
+                type: 'rgbShift',
+                red: { x: 4, y: 0 },
+                green: { x: 0, y: 0 },
+                blue: { x: -4, y: 0 },
+            },
+        ]);
+    });
+
+    it('rgbShift lets a named channel override the scalar spread', () => {
+        expect([...Effects.rgbShift({ amount: 6, green: { x: 0, y: 3 } })]).toEqual([
+            {
+                type: 'rgbShift',
+                red: { x: 6, y: 0 },
+                green: { x: 0, y: 3 },
+                blue: { x: -6, y: 0 },
+            },
+        ]);
+    });
+
+    it('scanlines default to 4px bands at half darkness', () => {
+        expect([...Effects.scanlines()]).toEqual([
+            { type: 'scanlines', spacing: 4, thickness: 0.5, darkness: 0.5, offset: 0, angle: 0 },
+        ]);
+    });
+
+    it('blockDisplace defaults to sparse horizontal tears', () => {
+        expect([...Effects.blockDisplace()]).toEqual([
+            { type: 'blockDisplace', amount: 20, size: 16, density: 0.3, seed: 0, axis: 'x' },
+        ]);
+    });
+
+    it('bitCrush defaults to 3 bits per channel with no palette', () => {
+        expect([...Effects.bitCrush()]).toEqual([
+            { type: 'bitCrush', bits: 3, palette: 'none', amount: 1 },
+        ]);
+    });
+
+    it('bitCrush accepts a fixed hardware palette', () => {
+        expect([...Effects.bitCrush({ palette: 'gameboy' })]).toEqual([
+            { type: 'bitCrush', bits: 3, palette: 'gameboy', amount: 1 },
+        ]);
+    });
+
+    it('ascii defaults to a 12px standard-ramp grid, white on black', () => {
+        expect([...Effects.ascii()]).toEqual([
+            {
+                type: 'ascii',
+                size: 12,
+                charset: 'standard',
+                fontFamily: 'monospace',
+                ink: 'white',
+                background: 'black',
+                colored: false,
+            },
+        ]);
+    });
+
+    it('ascii accepts a custom ramp string in place of a named charset', () => {
+        const [effect] = [...Effects.ascii({ size: 8, charset: ' .oO@' })];
+        expect(effect).toMatchObject({ size: 8, charset: ' .oO@' });
+    });
+
+    it('carries the backdrop mode like every other effect', () => {
+        expect([...Effects.halftone({ size: 6, mode: 'backdrop' })]).toEqual([
+            { type: 'halftone', size: 6, angle: 45, shape: 'dot', separation: 'mono', mode: 'backdrop' },
+        ]);
+    });
+});
+
+describe('colour-valued options', () => {
+    it('are stored as authored so a raw literal and a builder agree', () => {
+        // Parsing at build time would make `Effects.outline({ color: 'primary' })`
+        // and `{ type: 'outline', color: 'primary', … }` two different effects.
+        const [effect] = [...Effects.outline({ color: 'rebeccapurple' })];
+        expect(effect).toMatchObject({ color: 'rebeccapurple' });
+    });
+
+    it('accept a pre-normalised tuple as readily as a string', () => {
+        const [effect] = [...Effects.duotone({ shadows: [0, 0, 0, 1], highlights: 'white' })];
+        expect(effect).toMatchObject({ shadows: [0, 0, 0, 1], highlights: 'white' });
+    });
+
+    it('resolveEffectColor turns either spelling into the same RGBA', () => {
+        expect(resolveEffectColor('#ff0000')).toEqual([1, 0, 0, 1]);
+        expect(resolveEffectColor([1, 0, 0, 1])).toEqual([1, 0, 0, 1]);
+    });
+
+    it('sameEffectColor compares by resolved value, not by spelling', () => {
+        expect(sameEffectColor('red', '#ff0000')).toBe(true);
+        expect(sameEffectColor('red', [1, 0, 0, 1])).toBe(true);
+        expect(sameEffectColor('red', 'blue')).toBe(false);
+    });
+});
+
 describe('scalar shorthand', () => {
     // The whole point of `number | Options`: the two spellings must be
     // indistinguishable once built, so docs and call sites can use either.
@@ -179,6 +383,21 @@ describe('scalar shorthand', () => {
         ['posterize', () => Effects.posterize(3), () => Effects.posterize({ levels: 3 })],
         ['directionalBlur', () => Effects.directionalBlur(30), () => Effects.directionalBlur({ radius: 30 })],
         ['motionBlur', () => Effects.motionBlur(90), () => Effects.motionBlur({ length: 90 })],
+        ['outline', () => Effects.outline(6), () => Effects.outline({ width: 6 })],
+        ['vignette', () => Effects.vignette(0.8), () => Effects.vignette({ amount: 0.8 })],
+        ['grain', () => Effects.grain(0.4), () => Effects.grain({ amount: 0.4 })],
+        ['sharpen', () => Effects.sharpen(1.5), () => Effects.sharpen({ amount: 1.5 })],
+        ['edges', () => Effects.edges(2), () => Effects.edges({ strength: 2 })],
+        ['threshold', () => Effects.threshold(0.4), () => Effects.threshold({ level: 0.4 })],
+        ['radialBlur', () => Effects.radialBlur(0.3), () => Effects.radialBlur({ amount: 0.3 })],
+        ['halftone', () => Effects.halftone(12), () => Effects.halftone({ size: 12 })],
+        ['dither', () => Effects.dither(4), () => Effects.dither({ levels: 4 })],
+        ['duotone', () => Effects.duotone(0.7), () => Effects.duotone({ amount: 0.7 })],
+        ['rgbShift', () => Effects.rgbShift(6), () => Effects.rgbShift({ amount: 6 })],
+        ['scanlines', () => Effects.scanlines(0.8), () => Effects.scanlines({ darkness: 0.8 })],
+        ['blockDisplace', () => Effects.blockDisplace(30), () => Effects.blockDisplace({ amount: 30 })],
+        ['bitCrush', () => Effects.bitCrush(2), () => Effects.bitCrush({ bits: 2 })],
+        ['ascii', () => Effects.ascii(16), () => Effects.ascii({ size: 16 })],
     ])('%s(n) is identical to its options form', (_name, scalar, options) => {
         expect([...scalar()]).toEqual([...options()]);
     });
@@ -216,6 +435,33 @@ describe('foregroundShaderEffects', () => {
             Effects.blur(4).grayscale(1).bulge(0.5).posterize({ levels: 4, mode: 'backdrop' }),
         );
         expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual(['bulge']);
+    });
+
+    it('picks up the roadmap shader effects in author order', () => {
+        const effects = resolveChainEffects(
+            Effects.halftone(8).outline(4).vignette(0.5).dither(2),
+        );
+        expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual([
+            'halftone', 'outline', 'vignette', 'dither',
+        ]);
+    });
+
+    it('picks up the glitch cluster in author order', () => {
+        const effects = resolveChainEffects(
+            Effects.blockDisplace(20).rgbShift(6).scanlines(0.4).bitCrush(2),
+        );
+        expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual([
+            'blockDisplace', 'rgbShift', 'scanlines', 'bitCrush',
+        ]);
+    });
+
+    it('leaves the colour-matrix roadmap effects on the filter path', () => {
+        // duotone/curves/colorAdjustment are affine in the source channels, so
+        // they compose as ImageFilters rather than opening a snapshot scope.
+        const effects = resolveChainEffects(
+            Effects.duotone(1).curves({ points: [[0, 0], [1, 1]] }).colorAdjustment({ contrast: 1.2 }),
+        );
+        expect(foregroundShaderEffects(effects)).toEqual([]);
     });
 
     it('treats a foreground sksl overlay as a filter, not a shader scope', () => {

@@ -152,6 +152,30 @@ import s_effect_scatter_horizontal from './effect-scatter-horizontal?scene';
 import s_effect_scatter_vertical from './effect-scatter-vertical?scene';
 import s_effect_scatter_both from './effect-scatter-both?scene';
 import s_effect_posterize from './effect-posterize?scene';
+import s_effect_outline from './effect-outline?scene';
+import s_effect_outline_inside from './effect-outline-inside?scene';
+import s_effect_vignette from './effect-vignette?scene';
+import s_effect_grain from './effect-grain?scene';
+import s_effect_sharpen from './effect-sharpen?scene';
+import s_effect_edges from './effect-edges?scene';
+import s_effect_threshold from './effect-threshold?scene';
+import s_effect_radial_blur from './effect-radial-blur?scene';
+import s_effect_radial_blur_spin from './effect-radial-blur-spin?scene';
+import s_effect_halftone from './effect-halftone?scene';
+import s_effect_dither from './effect-dither?scene';
+import s_effect_duotone from './effect-duotone?scene';
+import s_effect_curves from './effect-curves?scene';
+import s_effect_color_adjustment from './effect-color-adjustment?scene';
+import s_effect_rgb_shift from './effect-rgb-shift?scene';
+import s_effect_scanlines from './effect-scanlines?scene';
+import s_effect_block_displace from './effect-block-displace?scene';
+import s_effect_bit_crush from './effect-bit-crush?scene';
+import s_effect_streak from './effect-streak?scene';
+import s_effect_god_rays from './effect-god-rays?scene';
+import s_effect_oil_paint from './effect-oil-paint?scene';
+import s_effect_texture from './effect-texture?scene';
+import s_effect_ascii from './effect-ascii?scene';
+import s_effect_chain_order from './effect-chain-order?scene';
 import s_effect_sksl_custom from './effect-sksl-custom?scene';
 import s_effect_sksl_backdrop from './effect-sksl-backdrop?scene';
 import s_filter_exposure from './filter-exposure?scene';
@@ -241,6 +265,12 @@ import s_opacity_node from './opacity-node?scene';
 import s_opacity_fill from './opacity-fill?scene';
 import s_opacity_stroke from './opacity-stroke?scene';
 import s_opacity_passthrough_vs_normal from './opacity-passthrough-vs-normal?scene';
+import s_preset_riso from './preset-riso?scene';
+import s_preset_vhs from './preset-vhs?scene';
+import s_preset_crt from './preset-crt?scene';
+import s_preset_gameboy from './preset-gameboy?scene';
+import s_preset_comic from './preset-comic?scene';
+import s_preset_paper from './preset-paper?scene';
 
 /** Every e2e scene instance, in TESTS.md order. Feeds createProject({ scenes }). */
 export const scenes: Scene[] = [
@@ -393,6 +423,30 @@ export const scenes: Scene[] = [
     s_effect_scatter_vertical,
     s_effect_scatter_both,
     s_effect_posterize,
+    s_effect_outline,
+    s_effect_outline_inside,
+    s_effect_vignette,
+    s_effect_grain,
+    s_effect_sharpen,
+    s_effect_edges,
+    s_effect_threshold,
+    s_effect_radial_blur,
+    s_effect_radial_blur_spin,
+    s_effect_halftone,
+    s_effect_dither,
+    s_effect_duotone,
+    s_effect_curves,
+    s_effect_color_adjustment,
+    s_effect_rgb_shift,
+    s_effect_scanlines,
+    s_effect_block_displace,
+    s_effect_bit_crush,
+    s_effect_streak,
+    s_effect_god_rays,
+    s_effect_oil_paint,
+    s_effect_texture,
+    s_effect_ascii,
+    s_effect_chain_order,
     s_effect_sksl_custom,
     s_effect_sksl_backdrop,
     s_filter_exposure,
@@ -482,6 +536,12 @@ export const scenes: Scene[] = [
     s_opacity_fill,
     s_opacity_stroke,
     s_opacity_passthrough_vs_normal,
+    s_preset_riso,
+    s_preset_vhs,
+    s_preset_crt,
+    s_preset_gameboy,
+    s_preset_comic,
+    s_preset_paper,
 ];
 
 export interface SceneMeta {
@@ -551,7 +611,7 @@ export const catalog: SceneMeta[] = [
     { id: "image-fit-tile", name: "ImageFitTile", section: "Media", description: "Image with `tile` fit mode" },
     { id: "image-fit-stretch", name: "ImageFitStretch", section: "Media", description: "Image with `stretch` fit mode" },
     { id: "video-playback", name: "VideoPlayback", section: "Media", description: "Video node playing, with trim start/end" },
-    { id: "video-speed", name: "VideoSpeed", section: "Media", description: "Video node at 2× speed" },
+    { id: "video-speed", name: "VideoSpeed", section: "Media", description: "Video node at 2\u00d7 speed" },
     { id: "video-loop", name: "VideoLoop", section: "Media", description: "Video node looping over a short clip" },
     { id: "camera-zoom", name: "CameraZoom", section: "Camera", description: "Camera zooming in on a scene" },
     { id: "camera-pan", name: "CameraPan", section: "Camera", description: "Camera panning (origin offset) across objects" },
@@ -628,7 +688,7 @@ export const catalog: SceneMeta[] = [
     { id: "shadow-layered", name: "ShadowLayered", section: "Shadows", description: "Multiple shadows stacked (inner + outer)" },
     { id: "effect-blur", name: "EffectBlur", section: "Effects", description: "Gaussian blur on a rect" },
     { id: "effect-blur-backdrop", name: "EffectBlurBackdrop", section: "Effects", description: "Gaussian blur reading backdrop (frosted glass)" },
-    { id: "effect-directional-blur", name: "EffectDirectionalBlur", section: "Effects", description: "Motion blur along 45° axis" },
+    { id: "effect-directional-blur", name: "EffectDirectionalBlur", section: "Effects", description: "Motion blur along 45\u00b0 axis" },
     { id: "effect-directional-blur-backdrop", name: "EffectDirectionalBlurBackdrop", section: "Effects", description: "Directional blur on backdrop" },
     { id: "effect-grayscale", name: "EffectGrayscale", section: "Effects", description: "Full desaturation of shape" },
     { id: "effect-grayscale-backdrop", name: "EffectGrayscaleBackdrop", section: "Effects", description: "Desaturate backdrop content beneath shape" },
@@ -646,13 +706,37 @@ export const catalog: SceneMeta[] = [
     { id: "effect-scatter-vertical", name: "EffectScatterVertical", section: "Effects", description: "Scatter with `direction: \"vertical\"`" },
     { id: "effect-scatter-both", name: "EffectScatterBoth", section: "Effects", description: "Scatter with `direction: \"both\"`" },
     { id: "effect-posterize", name: "EffectPosterize", section: "Effects", description: "Color banding at low level count" },
+    { id: "effect-outline", name: "EffectOutline", section: "Effects", description: "Outline band growing outside a text silhouette" },
+    { id: "effect-outline-inside", name: "EffectOutlineInside", section: "Effects", description: "Outline with `position: \"inside\"` on a filled disc" },
+    { id: "effect-vignette", name: "EffectVignette", section: "Effects", description: "Corner falloff darkening a bright card" },
+    { id: "effect-grain", name: "EffectGrain", section: "Effects", description: "Static (unanimated) film grain over a gradient" },
+    { id: "effect-sharpen", name: "EffectSharpen", section: "Effects", description: "Unsharp mask raising edge contrast" },
+    { id: "effect-edges", name: "EffectEdges", section: "Effects", description: "Sobel edge detection on flat colour blocks" },
+    { id: "effect-threshold", name: "EffectThreshold", section: "Effects", description: "Two-tone luminance cut sweeping across a gradient" },
+    { id: "effect-radial-blur", name: "EffectRadialBlur", section: "Effects", description: "Zoom-style radial blur about the centre" },
+    { id: "effect-radial-blur-spin", name: "EffectRadialBlurSpin", section: "Effects", description: "Spin-style radial blur about the centre" },
+    { id: "effect-halftone", name: "EffectHalftone", section: "Effects", description: "45\u00b0 dot screen at increasing cell size" },
+    { id: "effect-dither", name: "EffectDither", section: "Effects", description: "Bayer 8\u00d78 ordered dither down to 1-bit" },
+    { id: "effect-duotone", name: "EffectDuotone", section: "Effects", description: "Luminance remapped onto a two-colour ramp" },
+    { id: "effect-curves", name: "EffectCurves", section: "Effects", description: "Tone curve lifting shadows on a node (not an image fill)" },
+    { id: "effect-color-adjustment", name: "EffectColorAdjustment", section: "Effects", description: "Contrast/saturation/temperature on a group of shapes" },
+    { id: "effect-rgb-shift", name: "EffectRgbShift", section: "Effects", description: "Red/blue planes pulled apart on a text silhouette" },
+    { id: "effect-scanlines", name: "EffectScanlines", section: "Effects", description: "CRT bands darkening a bright card" },
+    { id: "effect-block-displace", name: "EffectBlockDisplace", section: "Effects", description: "Horizontal band tearing at a fixed seed" },
+    { id: "effect-bit-crush", name: "EffectBitCrush", section: "Effects", description: "Gradient snapped to the Game Boy palette" },
+    { id: "effect-streak", name: "EffectStreak", section: "Effects", description: "Anamorphic glare smeared along one axis" },
+    { id: "effect-god-rays", name: "EffectGodRays", section: "Effects", description: "Light streaming from a disc past an occluding bar" },
+    { id: "effect-oil-paint", name: "EffectOilPaint", section: "Effects", description: "Kuwahara brushwork \u2014 flat strokes with edges intact" },
+    { id: "effect-texture", name: "EffectTexture", section: "Effects", description: "An image multiplied over the content" },
+    { id: "effect-ascii", name: "EffectAscii", section: "Effects", description: "Image resolving into an ASCII glyph grid as the cell grows" },
+    { id: "effect-chain-order", name: "EffectChainOrder", section: "Effects", description: "Two shader effects in opposite orders must differ (author-order guard)" },
     { id: "effect-sksl-custom", name: "EffectSkslCustom", section: "Effects", description: "Custom SkSL shader as layer effect" },
     { id: "effect-sksl-backdrop", name: "EffectSkslBackdrop", section: "Effects", description: "Custom SkSL shader processing backdrop" },
     { id: "filter-exposure", name: "FilterExposure", section: "Image Filters", description: "Exposure boost and reduction" },
     { id: "filter-blur-image", name: "FilterBlurImage", section: "Image Filters", description: "Gaussian blur on an image" },
     { id: "filter-grayscale-image", name: "FilterGrayscaleImage", section: "Image Filters", description: "Desaturation of an image" },
     { id: "filter-alpha-image", name: "FilterAlphaImage", section: "Image Filters", description: "Alpha multiplier fading an image out" },
-    { id: "filter-color-matrix", name: "FilterColorMatrix", section: "Image Filters", description: "Arbitrary 4×5 color matrix transform" },
+    { id: "filter-color-matrix", name: "FilterColorMatrix", section: "Image Filters", description: "Arbitrary 4\u00d75 color matrix transform" },
     { id: "filter-curves", name: "FilterCurves", section: "Image Filters", description: "Tone curve on RGB channel" },
     { id: "filter-curves-per-channel", name: "FilterCurvesPerChannel", section: "Image Filters", description: "Separate tone curves for R, G, B" },
     { id: "filter-color-adjustment", name: "FilterColorAdjustment", section: "Image Filters", description: "Brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, vignette all animated" },
@@ -735,4 +819,10 @@ export const catalog: SceneMeta[] = [
     { id: "opacity-fill", name: "OpacityFill", section: "Opacity & Visibility", description: "Fill-level opacity animated independently of node" },
     { id: "opacity-stroke", name: "OpacityStroke", section: "Opacity & Visibility", description: "Stroke-level opacity animated" },
     { id: "opacity-passthrough-vs-normal", name: "OpacityPassthroughVsNormal", section: "Opacity & Visibility", description: "Pass-through vs normal node blend isolation with semi-transparent children" },
+    { id: "preset-riso", name: "PresetRiso", section: "Presets", description: "Presets.riso ramping in from its no-op state" },
+    { id: "preset-vhs", name: "PresetVhs", section: "Presets", description: "Presets.vhs ramping in from its no-op state" },
+    { id: "preset-crt", name: "PresetCrt", section: "Presets", description: "Presets.crt ramping in from its no-op state" },
+    { id: "preset-gameboy", name: "PresetGameboy", section: "Presets", description: "Presets.gameboy ramping in (also guards chain order)" },
+    { id: "preset-comic", name: "PresetComic", section: "Presets", description: "Presets.comic on a CMYK process screen" },
+    { id: "preset-paper", name: "PresetPaper", section: "Presets", description: "Presets.paper \u2014 the texture-based material template" },
 ];

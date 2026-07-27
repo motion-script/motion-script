@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Bloom',
         from: FX.bloom({ threshold: 0.6, radius: 12, intensity: 0 }),
         to: FX.bloom({ threshold: 0.6, radius: 24, intensity: 1.5 }),
-        compare: true,
     }));

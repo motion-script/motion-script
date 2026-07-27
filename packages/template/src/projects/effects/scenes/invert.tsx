@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Invert',
         from: FX.invert(0),
         to: FX.invert(1),
-        compare: true,
     }));

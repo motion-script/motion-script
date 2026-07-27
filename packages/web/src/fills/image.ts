@@ -34,7 +34,9 @@ export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: F
         ctx.paint.setImageFilter(null);
         return;
     }
-    const composed = EffectRegistry.compose(pixel, ctx.canvasKit, { width: 0, height: 0, centerX: 0, centerY: 0 });
+    const composed = EffectRegistry.compose(pixel, ctx.canvasKit, {
+        width: 0, height: 0, centerX: 0, centerY: 0, scale: 1, time: 0,
+    });
     ctx.paint.setImageFilter(composed);
 }
 
