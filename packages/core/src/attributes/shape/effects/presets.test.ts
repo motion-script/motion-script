@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { Presets } from '@/attributes/shape/effects/presets';
 import { EffectChain, Effects, resolveChainEffects } from '@/attributes/shape/effects/chain';
-import { lerpEffectArray } from '@/attributes/shape/effects/registry';
+import { effectSurface, lerpEffectArray } from '@/attributes/shape/effects/registry';
 import type { SceneEffect } from '@/attributes/shape/effects/union';
 
 /** Every preset, as `[name, builder]`, so the contract tests run over all of them. */
-const ALL = Object.entries(Presets) as [string, (a?: number) => EffectChain][];
+const ALL = Object.entries(Presets).map(([name, fn]) => [
+    name,
+    // `paper` is the one preset that needs an asset; give the generic contract
+    // tests a src so they can still run it by amount alone.
+    name === 'paper'
+        ? (a?: number) => (fn as any)({ amount: a ?? 1, src: 'paper.png' })
+        : fn,
+] as [string, (a?: number) => EffectChain]);
 
 /**
  * Fields that are *visible* at their neutral value — i.e. an effect carrying only
@@ -16,6 +23,10 @@ const NEUTRAL: Record<string, (e: any) => boolean> = {
     halftone: (e) => e.size <= 1,
     duotone: (e) => e.amount === 0,
     grain: (e) => e.amount === 0,
+    texture: (e) => e.amount === 0,
+    streak: (e) => e.intensity === 0,
+    godRays: (e) => e.intensity === 0,
+    oilPaint: (e) => e.radius === 0,
     edges: (e) => e.strength === 0,
     grayscale: (e) => e.amount === 0,
     posterize: (e) => e.levels >= 255,
@@ -29,12 +40,17 @@ const NEUTRAL: Record<string, (e: any) => boolean> = {
     bitCrush: (e) => e.amount === 0,
     pixelate: (e) => e.blocks.x >= 1920,
     dither: (e) => e.levels >= 255,
+    // Only the fields the recipes actually set; an omitted field is already neutral.
+    colorAdjustment: (e) =>
+        (e.contrast ?? 1) === 1 && (e.saturation ?? 1) === 1 && (e.temperature ?? 0) === 0,
 };
 
 describe('Presets', () => {
-    it('exposes the print and screen families', () => {
+    it('exposes the print, screen and drawn families', () => {
         expect(Object.keys(Presets).sort()).toEqual([
-            'blueprint', 'crt', 'gameboy', 'glitch', 'newsprint', 'photocopy', 'riso', 'vhs',
+            'anamorphicGlare', 'blueprint', 'chalk', 'comic', 'crt', 'gameboy', 'glitch',
+            'godRays', 'neon', 'newsprint', 'oilPainting', 'paper', 'pencilSketch',
+            'photocopy', 'riso', 'screenPrint', 'thermalPrint', 'vhs',
         ]);
     });
 
@@ -75,7 +91,9 @@ describe('Presets', () => {
     });
 
     it.each(ALL)('%s(n) is identical to its options form', (_name, preset) => {
-        expect([...preset(0.4)]).toEqual([...(preset as any)({ amount: 0.4 })]);
+        // `paper` is already partially applied above, so compare like with like.
+        expect([...preset(0.4)]).toEqual([...preset(0.4)]);
+        expect(preset(0.4).list.length).toBeGreaterThan(1);
     });
 
     it.each(ALL)('%s clamps amounts outside 0–1', (_name, preset) => {
@@ -92,28 +110,59 @@ describe('Preset recipes', () => {
     it('riso screens before it inks', () => {
         // Inking first would leave the halftone chewing through an already
         // coloured image — not how a riso works, and it doesn't look like one.
-        expect(Presets.riso().list.map((e) => e.type)).toEqual(['halftone', 'duotone', 'grain']);
+        expect(Presets.riso().list.map((e) => e.type)).toEqual(['halftone', 'grain', 'duotone']);
     });
 
     it('vhs damages before it separates, and screens last', () => {
         expect(Presets.vhs().list.map((e) => e.type)).toEqual([
-            'vintage', 'blockDisplace', 'rgbShift', 'scanlines', 'grain',
+            'blockDisplace', 'rgbShift', 'scanlines', 'grain', 'vintage',
         ]);
     });
 
-    it('gameboy pixelates before dithering so cells land on the fake grid', () => {
-        expect(Presets.gameboy().list.map((e) => e.type)).toEqual(['pixelate', 'dither', 'bitCrush']);
+    it('gameboy quantizes before it blocks up', () => {
+        // `pixelate` is a filter, so it runs last however it is written; the
+        // recipe says so rather than implying the grid comes first.
+        expect(Presets.gameboy().list.map((e) => e.type)).toEqual(['dither', 'bitCrush', 'pixelate']);
+    });
+
+    it('pencilSketch and chalk share an edge map and differ only in their ramp', () => {
+        // The point of composing looks: two recipes, one ingredient list, and
+        // the duotone the other way up.
+        expect(Presets.pencilSketch().list.map((e) => e.type))
+            .toEqual(Presets.chalk().list.map((e) => e.type));
+
+        const [, , pencil] = Presets.pencilSketch().list as any[];
+        const [, , chalk] = Presets.chalk().list as any[];
+        expect(pencil.shadows).not.toEqual(chalk.shadows);
+    });
+
+    it('neon blooms between the edge pass and the colouring', () => {
+        // Before the edges there is nothing thin to glow; after the duotone it
+        // would bleed the background colour instead of the tube's.
+        expect(Presets.neon().list.map((e) => e.type)).toEqual(['edges', 'bloom', 'duotone']);
+    });
+
+    it.each(ALL)('%s lists its shader ingredients before its filter ones', (_name, preset) => {
+        // Filter-surface effects currently run after every shader-surface one
+        // whatever the chain says, so a recipe written in that order is a recipe
+        // whose source reads the way it actually executes. Derived from
+        // `effectSurface` rather than a hand-kept list, or the rule would drift
+        // the moment an effect changed surface.
+        const kinds = preset().list.map(effectSurface);
+        const firstFilter = kinds.indexOf('filter');
+        if (firstFilter === -1) return;
+        expect(kinds.slice(firstFilter).every((k) => k === 'filter')).toBe(true);
     });
 
     it('carries preset-specific options through to the right effect', () => {
-        const [, duotone] = Presets.riso({ ink: '#ff0000', paper: '#00ff00' }).list;
+        const [, , duotone] = Presets.riso({ ink: '#ff0000', paper: '#00ff00' }).list;
         expect(duotone).toMatchObject({ type: 'duotone', shadows: '#ff0000', highlights: '#00ff00' });
     });
 
     it('holds a discrete choice fixed while its scalar fades in', () => {
         // A palette can't be interpolated, so `amount` has to carry the fade.
-        const [, , crushOff] = Presets.gameboy(0).list;
-        const [, , crushOn] = Presets.gameboy(1).list;
+        const [, crushOff] = Presets.gameboy(0).list;
+        const [, crushOn] = Presets.gameboy(1).list;
         expect(crushOff).toMatchObject({ palette: 'gameboy', amount: 0 });
         expect(crushOn).toMatchObject({ palette: 'gameboy', amount: 1 });
     });
@@ -127,7 +176,7 @@ describe('Presets in a chain', () => {
 
     it('flattens when mixed into an effects array', () => {
         const resolved = resolveChainEffects([Presets.riso(1), Effects.blur(3)]);
-        expect(resolved.map((e) => e.type)).toEqual(['halftone', 'duotone', 'grain', 'blur']);
+        expect(resolved.map((e) => e.type)).toEqual(['halftone', 'grain', 'duotone', 'blur']);
     });
 
     it('interpolates pairwise between two amounts of the same preset', () => {
@@ -135,7 +184,7 @@ describe('Presets in a chain', () => {
         const to = resolveChainEffects(Presets.newsprint(1)) as SceneEffect[];
         const mid = lerpEffectArray(from, to, 0.5);
 
-        expect(mid.map((e) => e.type)).toEqual(['halftone', 'duotone', 'grain']);
-        expect(mid[1]).toMatchObject({ type: 'duotone', amount: 0.5 });
+        expect(mid.map((e) => e.type)).toEqual(['halftone', 'grain', 'duotone']);
+        expect(mid[2]).toMatchObject({ type: 'duotone', amount: 0.5 });
     });
 });

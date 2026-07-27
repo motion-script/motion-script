@@ -3,6 +3,6 @@
   "position": 5,
   "link": {
     "type": "generated-index",
-    "description": "Post-process effects applied to any node via the `effects` prop. Blur, grayscale, pixelate, bloom, directional blur, motion blur, radial blur, chromatic aberration, bulge, magnify, invert, scatter, posterize, threshold, dither, halftone, edges, sharpen, outline, vignette, grain, duotone, curves, color adjustment, RGB shift, scanlines, block displace, bit crush, vintage, and background blur."
+    "description": "Post-process effects applied to any node via the `effects` prop. Blur, grayscale, pixelate, bloom, directional blur, motion blur, radial blur, chromatic aberration, bulge, magnify, invert, scatter, posterize, threshold, dither, halftone, edges, sharpen, outline, vignette, grain, duotone, curves, color adjustment, RGB shift, scanlines, block displace, bit crush, ASCII, streak, god rays, oil paint, texture, vintage, and background blur. Plus a Presets layer of named recipes."
   }
 }

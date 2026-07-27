@@ -1002,6 +1002,30 @@
     "description": "Gradient snapped to the Game Boy palette"
   },
   {
+    "id": "effect-streak",
+    "name": "EffectStreak",
+    "section": "Effects",
+    "description": "Anamorphic glare smeared along one axis"
+  },
+  {
+    "id": "effect-god-rays",
+    "name": "EffectGodRays",
+    "section": "Effects",
+    "description": "Light streaming from a disc past an occluding bar"
+  },
+  {
+    "id": "effect-oil-paint",
+    "name": "EffectOilPaint",
+    "section": "Effects",
+    "description": "Kuwahara brushwork \u2014 flat strokes with edges intact"
+  },
+  {
+    "id": "effect-texture",
+    "name": "EffectTexture",
+    "section": "Effects",
+    "description": "An image multiplied over the content"
+  },
+  {
     "id": "effect-ascii",
     "name": "EffectAscii",
     "section": "Effects",
@@ -1570,5 +1594,17 @@
     "name": "PresetGameboy",
     "section": "Presets",
     "description": "Presets.gameboy ramping in (also guards chain order)"
+  },
+  {
+    "id": "preset-comic",
+    "name": "PresetComic",
+    "section": "Presets",
+    "description": "Presets.comic on a CMYK process screen"
+  },
+  {
+    "id": "preset-paper",
+    "name": "PresetPaper",
+    "section": "Presets",
+    "description": "Presets.paper \u2014 the texture-based material template"
   }
 ]

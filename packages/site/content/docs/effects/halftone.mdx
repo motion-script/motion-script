@@ -22,8 +22,8 @@ import { Effects } from '@motion-script/core';
 // A line screen
 <Image src={'./photo.jpg'} effects={Effects.halftone({ size: 10, shape: 'line', angle: 15 })} />
 
-// Four-colour process: three screens at the classic offsets
-<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 8, colored: true })} />
+// Four-colour process separation
+<Image src={'./photo.jpg'} effects={Effects.halftone({ size: 8, separation: 'cmyk' })} />
 ```
 
 ## Props
@@ -34,12 +34,22 @@ import { Effects } from '@motion-script/core';
 | `size` | `number` | `8` | Cell pitch in pixels — the distance between dot centers |
 | `angle` | `number` | `45` | Screen rotation in degrees. 45° is the traditional dot angle |
 | `shape` | `'dot' \| 'line' \| 'cross'` | `'dot'` | Mark drawn in each cell |
-| `colored` | `boolean` | `false` | Screen each RGB channel at 15° / 75° / 0° offsets instead of luminance only |
+| `separation` | `'mono' \| 'rgb' \| 'cmyk'` | `'mono'` | How many plates to screen into — see below |
 | `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` screens the content beneath the node |
 
 Dot radius follows `√(1 − tone)` rather than `1 − tone`: a disc's area grows with the square of its radius, so the square root is what makes *coverage* linear in darkness. It is the difference between a screen that holds its midtones and one that plugs up.
 
-`colored` reproduces the rosette pattern and CMY fringing of real process printing — those relative angles are exactly what avoid a moiré.
+### Separation
+
+| Mode | What it does |
+|---|---|
+| `'mono'` | One black screen over luminance. The newsprint look |
+| `'cmyk'` | Four plates at the process angles (C 15°, M 75°, Y 0°, K 45°). The one that reads as *printed* |
+| `'rgb'` | One screen per RGB channel |
+
+**Reach for `'cmyk'` on any colour print look.** Real process printing puts the shared darkness on a K plate, so a neutral tone prints one black dot and almost no colour. `'rgb'` has no such plate, so every grey prints three overlapping mid-dots — on a photograph with any neutral area at all, that reads as chromatic noise rather than as print. Measured on a neutral region of the same photo, switching from `'rgb'` to `'cmyk'` drops chroma noise by about 65%.
+
+Those relative angles are what produce a rosette instead of a moiré.
 
 The grid is anchored to the node's center, so the screen travels with the node instead of the node sliding underneath it.
 

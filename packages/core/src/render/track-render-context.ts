@@ -4,6 +4,8 @@ import { Clip } from "./clip";
 import { TransformState } from "./descriptors/transform";
 import { AssetTracker } from "@/assets/tracker";
 import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
+import { prepareEffect } from "@/attributes/shape/effects/registry";
+import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { resolveStrokeArray } from "@/attributes/shape/stroke/mapper";
 import { resolveShadowArray } from "@/attributes/shape/shadow/resolver";
@@ -54,6 +56,18 @@ export class TrackRenderContext extends RenderContext {
         if (!fills) return;
         for (const fill of fills) {
             prepareFill(fill, this.tracker, this.currentWidth, this.currentHeight);
+        }
+    }
+
+    /**
+     * Effects can reference assets too — a `texture` effect names an image the
+     * same way an image fill does. Most declare nothing, so `prepareEffect` is a
+     * cheap miss for the common case.
+     */
+    private trackEffects(effects: readonly SceneEffect[] | undefined): void {
+        if (!effects) return;
+        for (const effect of effects) {
+            prepareEffect(effect, this.tracker, this.currentWidth, this.currentHeight);
         }
     }
 
@@ -138,7 +152,11 @@ export class TrackRenderContext extends RenderContext {
                     for (const s of resolveShadowArray(op.shadows)) this.trackFills(s.fill);
                     break;
 
-                // cut/mask/applyMask/endMask/effects carry no asset references.
+                case "effects":
+                    this.trackEffects(op.effects);
+                    break;
+
+                // cut/mask/applyMask/endMask carry no asset references.
             }
         }
     }
@@ -161,7 +179,21 @@ export class TrackRenderContext extends RenderContext {
         return undefined;
     }
 
-    transform(_state: Partial<TransformState>): RenderContext {
+    /**
+     * Node-level effects arrive here rather than as a graphics op, so this is no
+     * longer a pure no-op: a `texture` effect on a node must get its image
+     * requested during precomp, or the renderer's synchronous lookup finds
+     * nothing and the effect silently has no texture to draw.
+     */
+    transform(state: Partial<TransformState>): RenderContext {
+        const { width, height } = state;
+        const priorWidth = this.currentWidth;
+        const priorHeight = this.currentHeight;
+        this.currentWidth = width ?? 0;
+        this.currentHeight = height ?? 0;
+        this.trackEffects(state.effects);
+        this.currentWidth = priorWidth;
+        this.currentHeight = priorHeight;
         return this;
     }
 

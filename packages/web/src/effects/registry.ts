@@ -31,6 +31,10 @@ import { scanlinesEffectHandler } from "./scanlines";
 import { blockDisplaceEffectHandler } from "./block-displace";
 import { bitCrushEffectHandler } from "./bit-crush";
 import { asciiEffectHandler } from "./ascii";
+import { streakEffectHandler } from "./streak";
+import { godRaysEffectHandler } from "./god-rays";
+import { oilPaintEffectHandler } from "./oil-paint";
+import { textureEffectHandler } from "./texture";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -170,6 +174,10 @@ EffectRegistry.register(scanlinesEffectHandler);
 EffectRegistry.register(blockDisplaceEffectHandler);
 EffectRegistry.register(bitCrushEffectHandler);
 EffectRegistry.register(asciiEffectHandler);
+EffectRegistry.register(streakEffectHandler);
+EffectRegistry.register(godRaysEffectHandler);
+EffectRegistry.register(oilPaintEffectHandler);
+EffectRegistry.register(textureEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the

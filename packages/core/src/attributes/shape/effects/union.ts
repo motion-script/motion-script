@@ -29,6 +29,10 @@ import type { ScanlinesEffect } from "./implementations/scanlines";
 import type { BlockDisplaceEffect } from "./implementations/block-displace";
 import type { BitCrushEffect } from "./implementations/bit-crush";
 import type { AsciiEffect } from "./implementations/ascii";
+import type { StreakEffect } from "./implementations/streak";
+import type { GodRaysEffect } from "./implementations/god-rays";
+import type { OilPaintEffect } from "./implementations/oil-paint";
+import type { TextureEffect } from "./implementations/texture";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -62,4 +66,8 @@ export type SceneEffect =
     | ScanlinesEffect
     | BlockDisplaceEffect
     | BitCrushEffect
-    | AsciiEffect;
+    | AsciiEffect
+    | StreakEffect
+    | GodRaysEffect
+    | OilPaintEffect
+    | TextureEffect;

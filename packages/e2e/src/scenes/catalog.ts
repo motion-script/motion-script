@@ -170,6 +170,10 @@ import s_effect_rgb_shift from './effect-rgb-shift?scene';
 import s_effect_scanlines from './effect-scanlines?scene';
 import s_effect_block_displace from './effect-block-displace?scene';
 import s_effect_bit_crush from './effect-bit-crush?scene';
+import s_effect_streak from './effect-streak?scene';
+import s_effect_god_rays from './effect-god-rays?scene';
+import s_effect_oil_paint from './effect-oil-paint?scene';
+import s_effect_texture from './effect-texture?scene';
 import s_effect_ascii from './effect-ascii?scene';
 import s_effect_chain_order from './effect-chain-order?scene';
 import s_effect_sksl_custom from './effect-sksl-custom?scene';
@@ -265,6 +269,8 @@ import s_preset_riso from './preset-riso?scene';
 import s_preset_vhs from './preset-vhs?scene';
 import s_preset_crt from './preset-crt?scene';
 import s_preset_gameboy from './preset-gameboy?scene';
+import s_preset_comic from './preset-comic?scene';
+import s_preset_paper from './preset-paper?scene';
 
 /** Every e2e scene instance, in TESTS.md order. Feeds createProject({ scenes }). */
 export const scenes: Scene[] = [
@@ -435,6 +441,10 @@ export const scenes: Scene[] = [
     s_effect_scanlines,
     s_effect_block_displace,
     s_effect_bit_crush,
+    s_effect_streak,
+    s_effect_god_rays,
+    s_effect_oil_paint,
+    s_effect_texture,
     s_effect_ascii,
     s_effect_chain_order,
     s_effect_sksl_custom,
@@ -530,6 +540,8 @@ export const scenes: Scene[] = [
     s_preset_vhs,
     s_preset_crt,
     s_preset_gameboy,
+    s_preset_comic,
+    s_preset_paper,
 ];
 
 export interface SceneMeta {
@@ -712,6 +724,10 @@ export const catalog: SceneMeta[] = [
     { id: "effect-scanlines", name: "EffectScanlines", section: "Effects", description: "CRT bands darkening a bright card" },
     { id: "effect-block-displace", name: "EffectBlockDisplace", section: "Effects", description: "Horizontal band tearing at a fixed seed" },
     { id: "effect-bit-crush", name: "EffectBitCrush", section: "Effects", description: "Gradient snapped to the Game Boy palette" },
+    { id: "effect-streak", name: "EffectStreak", section: "Effects", description: "Anamorphic glare smeared along one axis" },
+    { id: "effect-god-rays", name: "EffectGodRays", section: "Effects", description: "Light streaming from a disc past an occluding bar" },
+    { id: "effect-oil-paint", name: "EffectOilPaint", section: "Effects", description: "Kuwahara brushwork \u2014 flat strokes with edges intact" },
+    { id: "effect-texture", name: "EffectTexture", section: "Effects", description: "An image multiplied over the content" },
     { id: "effect-ascii", name: "EffectAscii", section: "Effects", description: "Image resolving into an ASCII glyph grid as the cell grows" },
     { id: "effect-chain-order", name: "EffectChainOrder", section: "Effects", description: "Two shader effects in opposite orders must differ (author-order guard)" },
     { id: "effect-sksl-custom", name: "EffectSkslCustom", section: "Effects", description: "Custom SkSL shader as layer effect" },
@@ -807,4 +823,6 @@ export const catalog: SceneMeta[] = [
     { id: "preset-vhs", name: "PresetVhs", section: "Presets", description: "Presets.vhs ramping in from its no-op state" },
     { id: "preset-crt", name: "PresetCrt", section: "Presets", description: "Presets.crt ramping in from its no-op state" },
     { id: "preset-gameboy", name: "PresetGameboy", section: "Presets", description: "Presets.gameboy ramping in (also guards chain order)" },
+    { id: "preset-comic", name: "PresetComic", section: "Presets", description: "Presets.comic on a CMYK process screen" },
+    { id: "preset-paper", name: "PresetPaper", section: "Presets", description: "Presets.paper \u2014 the texture-based material template" },
 ];

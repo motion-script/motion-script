@@ -233,7 +233,7 @@ describe('FX builders — roadmap effects', () => {
 
     it('halftone defaults to an 8px dot screen at 45°', () => {
         expect([...Effects.halftone()]).toEqual([
-            { type: 'halftone', size: 8, angle: 45, shape: 'dot', colored: false },
+            { type: 'halftone', size: 8, angle: 45, shape: 'dot', separation: 'mono' },
         ]);
     });
 
@@ -336,7 +336,7 @@ describe('FX builders — roadmap effects', () => {
 
     it('carries the backdrop mode like every other effect', () => {
         expect([...Effects.halftone({ size: 6, mode: 'backdrop' })]).toEqual([
-            { type: 'halftone', size: 6, angle: 45, shape: 'dot', colored: false, mode: 'backdrop' },
+            { type: 'halftone', size: 6, angle: 45, shape: 'dot', separation: 'mono', mode: 'backdrop' },
         ]);
     });
 });

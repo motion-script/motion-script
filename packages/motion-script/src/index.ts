@@ -238,6 +238,10 @@ export type {
     BlockDisplaceOptions,
     BitCrushOptions,
     AsciiOptions,
+    StreakOptions,
+    GodRaysOptions,
+    OilPaintOptions,
+    TextureOptions,
 } from '@motion-script/core';
 
 /** Per-preset options. Every preset takes one of these, or the bare `amount`. */
@@ -251,6 +255,16 @@ export type {
     CrtOptions,
     GlitchOptions,
     GameboyOptions,
+    ScreenPrintOptions,
+    ThermalPrintOptions,
+    PencilSketchOptions,
+    ChalkOptions,
+    ComicOptions,
+    AnamorphicGlareOptions,
+    GodRaysPresetOptions,
+    OilPaintingOptions,
+    PaperOptions,
+    NeonOptions,
 } from '@motion-script/core';
 
 /** Effect data types, for naming an effect value or building one by hand. */
@@ -285,6 +299,7 @@ export type {
     RadialBlurStyle,
     HalftoneEffect,
     HalftoneShape,
+    HalftoneSeparation,
     DitherEffect,
     DitherMatrix,
     DuotoneEffect,
@@ -297,6 +312,10 @@ export type {
     BitCrushPalette,
     AsciiEffect,
     AsciiCharset,
+    StreakEffect,
+    GodRaysEffect,
+    OilPaintEffect,
+    TextureEffect,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

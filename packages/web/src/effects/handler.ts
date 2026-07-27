@@ -1,4 +1,4 @@
-import type { CanvasKit, Shader, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
+import type { CanvasKit, Image as CKImage, Shader, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
 import type { MediaFilter, SceneEffect } from "@motion-script/core";
 
 /**
@@ -85,6 +85,17 @@ export interface EffectResources {
      * The caller owns the result and should delete it once it has a snapshot.
      */
     makeSurface(width: number, height: number): Surface | null;
+
+    /**
+     * A GPU-resident image the project has loaded, or null if it isn't there.
+     *
+     * Null does **not** mean "broken" — it also means "not loaded yet", since
+     * the asset manager fills its cache from the effect's own
+     * `EffectData.prepare` declaration and the first frame can race it. Treat it
+     * as "no texture this frame" and no-op; the next frame will have it. An
+     * effect that instead drew something would flash.
+     */
+    getImage(src: string): CKImage | null;
 }
 
 /**

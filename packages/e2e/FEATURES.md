@@ -217,6 +217,10 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `effect-scanlines`: CRT bands darkening a bright card
 - [ ] `effect-block-displace`: Horizontal band tearing at a fixed seed
 - [ ] `effect-bit-crush`: Gradient snapped to the Game Boy palette
+- [ ] `effect-streak`: Anamorphic glare smeared along one axis
+- [ ] `effect-god-rays`: Light streaming from a disc past an occluding bar
+- [ ] `effect-oil-paint`: Kuwahara brushwork — flat strokes with edges intact
+- [ ] `effect-texture`: An image multiplied over the content
 - [ ] `effect-ascii`: Image resolving into an ASCII glyph grid as the cell grows
 - [ ] `effect-chain-order`: Two shader effects in opposite orders must differ (author-order guard)
 - [ ] `effect-sksl-custom`: Custom SkSL shader as layer effect
@@ -389,3 +393,5 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `preset-vhs`: Presets.vhs ramping in from its no-op state
 - [ ] `preset-crt`: Presets.crt ramping in from its no-op state
 - [ ] `preset-gameboy`: Presets.gameboy ramping in (also guards chain order)
+- [ ] `preset-comic`: Presets.comic on a CMYK process screen
+- [ ] `preset-paper`: Presets.paper — the texture-based material template

@@ -10,6 +10,13 @@ const SHAPE_ID: Record<HalftoneEffect["shape"], number> = {
     cross: 2,
 };
 
+/** Plate-count selector — keep in sync with `HalftoneSeparation`. */
+const SEPARATION_ID: Record<HalftoneEffect["separation"], number> = {
+    mono: 0,
+    rgb: 1,
+    cmyk: 2,
+};
+
 /**
  * Halftone screen — tone reproduced as the *area* of a mark on a rotated grid,
  * the way offset printing does it.
@@ -20,9 +27,10 @@ const SHAPE_ID: Record<HalftoneEffect["shape"], number> = {
  * the square root is what makes *coverage* linear in darkness — the difference
  * between a screen that holds its midtones and one that plugs up.
  *
- * `colored` runs three screens at 15° / 75° / 0° from the base angle — the
- * classic process-printing offsets — one per channel. Those relative angles are
- * what produce a rosette instead of a moiré.
+ * `separation` picks the plate count. `'cmyk'` is the one that reads as printed:
+ * the shared darkness moves onto a K plate, so a neutral tone prints one black
+ * dot rather than three overlapping colour dots. The relative angles (15° / 75° /
+ * 0° / 45°) are what produce a rosette instead of a moiré.
  *
  * The grid is anchored to the node's centre, not the surface origin, so the
  * screen travels with the node instead of the node sliding underneath it.
@@ -32,8 +40,8 @@ uniform shader u_content;  // snapshot of the source (premultiplied)
 uniform vec2   u_center;   // grid anchor, device px
 uniform float  u_size;     // cell pitch, device px
 uniform float  u_angle;    // screen rotation, radians
-uniform float  u_shape;    // 0 = dot, 1 = line, 2 = cross
-uniform float  u_colored;  // 1 = per-channel screens, 0 = luminance
+uniform float  u_shape;       // 0 = dot, 1 = line, 2 = cross
+uniform float  u_separation;  // 0 = mono, 1 = rgb, 2 = cmyk
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
@@ -72,7 +80,30 @@ vec4 main(vec2 fragCoord) {
 
     vec3 base = c.rgb / c.a;                       // un-premultiply
     vec3 screened;
-    if (u_colored > 0.5) {
+
+    if (u_separation > 1.5) {
+        // Four-plate process separation. Pulling the common darkness out into a
+        // K plate is the whole point: without it a neutral tone prints three
+        // overlapping mid-dots (which is what 'rgb' does, and why it reads as
+        // colour noise on anything grey). With K carrying it, a neutral prints
+        // one black dot and almost no colour, and paper stays paper.
+        float k = 1.0 - max(base.r, max(base.g, base.b));
+        float inv = max(1.0 - k, 0.0001);           // guard pure black
+        // C = (1 − R − K) / (1 − K), and likewise M, Y. The division rescales
+        // what's left after K has taken the common darkness, so the channel that
+        // was brightest ends up with no ink at all.
+        vec3 cmy = clamp((vec3(1.0) - base - vec3(k)) / inv, 0.0, 1.0);
+
+        // Ink amounts, so pass 1 - amount: 'coverage' takes tone, not ink.
+        float dotC = coverage(fragCoord, 1.0 - cmy.r, 0.2617994);   // +15°
+        float dotM = coverage(fragCoord, 1.0 - cmy.g, 1.3089969);   // +75°
+        float dotY = coverage(fragCoord, 1.0 - cmy.b, 0.0);         //   0°
+        float dotK = coverage(fragCoord, 1.0 - k,     0.7853982);   // +45°
+
+        // Subtractive: each ink absorbs its complementary channel — cyan takes
+        // red, magenta green, yellow blue — and black takes all three.
+        screened = vec3(1.0 - dotC, 1.0 - dotM, 1.0 - dotY) * (1.0 - dotK);
+    } else if (u_separation > 0.5) {
         screened = vec3(
             1.0 - coverage(fragCoord, base.r, 0.2617994),   // +15°
             1.0 - coverage(fragCoord, base.g, 1.3089969),   // +75°
@@ -82,7 +113,7 @@ vec4 main(vec2 fragCoord) {
         screened = vec3(1.0 - coverage(fragCoord, dot(base, LUMA), 0.0));
     }
 
-    return vec4(screened * c.a, c.a);              // re-premultiply
+    return vec4(clamp(screened, 0.0, 1.0) * c.a, c.a);   // re-premultiply
 }
 `;
 
@@ -108,7 +139,7 @@ export function makeHalftoneShader(
             pitch,
             (effect.angle * Math.PI) / 180,
             SHAPE_ID[effect.shape] ?? 0,
-            effect.colored ? 1 : 0,
+            SEPARATION_ID[effect.separation] ?? 0,
         ],
         [content],
     );

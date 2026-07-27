@@ -1570,6 +1570,7 @@ export class WebRenderContext extends RenderContext {
                     height: Math.ceil(height),
                 });
             },
+            getImage: (src) => this.storageAdapter.getCKImage(src),
         };
     }
 

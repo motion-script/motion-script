@@ -10,7 +10,7 @@ import type { SkSLUniform } from "./implementations/sksl";
 import type { OutlinePosition } from "./implementations/outline";
 import type { EdgeKernel } from "./implementations/edges";
 import type { RadialBlurStyle } from "./implementations/radial-blur";
-import type { HalftoneShape } from "./implementations/halftone";
+import type { HalftoneShape, HalftoneSeparation } from "./implementations/halftone";
 import type { DitherMatrix } from "./implementations/dither";
 import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 import type { CurvesChannel } from "../filters/implementations/curves";
@@ -240,8 +240,8 @@ export interface HalftoneOptions extends EffectOptions {
     angle?: number;
     /** Mark drawn per cell (default `'dot'`). */
     shape?: HalftoneShape;
-    /** Screen each RGB channel at offset angles (default false). */
-    colored?: boolean;
+    /** Plates to screen into (default `'mono'`). */
+    separation?: HalftoneSeparation;
 }
 
 /** Ordered (Bayer) dithering. Scalar shorthand sets `levels`. */
@@ -335,6 +335,54 @@ export interface AsciiOptions extends EffectOptions {
     background?: Color;
     /** Tint each glyph with its own cell's colour instead of using `ink` (default false). */
     colored?: boolean;
+}
+
+/** Anamorphic glare — a bright pass smeared along one axis. Scalar shorthand sets `intensity`. */
+export interface StreakOptions extends EffectOptions {
+    /** Additive multiplier for the streak pass (default 1). */
+    intensity?: number;
+    /** 0–1 luminance cutoff (default 0.7). */
+    threshold?: number;
+    /** Smear length in pixels (default 120). */
+    length?: number;
+    /** Smear axis in degrees; 0 = horizontal (default 0). */
+    angle?: number;
+}
+
+/** Light streaming from a point. Scalar shorthand sets `intensity`. */
+export interface GodRaysOptions extends EffectOptions {
+    /** Additive multiplier for the ray pass (default 1). */
+    intensity?: number;
+    /** 0–1 luminance cutoff (default 0.6). */
+    threshold?: number;
+    /** Ray reach as a fraction of the distance to `center` (default 0.6). */
+    length?: number;
+    /** Light source in 0–1 layer coords (default middle). */
+    center?: Vector2;
+    /** Per-step falloff; below 1 the rays fade with distance (default 0.96). */
+    decay?: number;
+    /** Taps marched per pixel, 4–48 (default 32). */
+    samples?: number;
+}
+
+/** Image overlay for material looks. Scalar shorthand sets `amount`. */
+export interface TextureOptions extends EffectOptions {
+    /** Image path, resolved like an image fill's `src`. */
+    src: string;
+    /** 0–1 blend strength (default 1). */
+    amount?: number;
+    /** How it composites (default `'multiply'`). */
+    blend?: BlendMode;
+    /** 1 covers the node once; 2 tiles it at half size (default 1). */
+    scale?: number;
+    /** Rotation in degrees (default 0). */
+    angle?: number;
+}
+
+/** Kuwahara brushwork. Scalar shorthand sets `radius`. */
+export interface OilPaintOptions extends EffectOptions {
+    /** Window radius in pixels — brush size, capped at 6 (default 3). */
+    radius?: number;
 }
 
 /** Colour-depth reduction. Scalar shorthand sets `bits`. */
@@ -659,7 +707,7 @@ export class EffectChain {
                 size: o.size ?? 8,
                 angle: o.angle ?? 45,
                 shape: o.shape ?? "dot",
-                colored: o.colored ?? false,
+                separation: o.separation ?? "mono",
             },
             o,
         ));
@@ -823,6 +871,77 @@ export class EffectChain {
     }
 
     /**
+     * Append an image overlay — paper grain, canvas weave, fabric. The image is
+     * yours: drop it in the project's `public/` folder and name it the way an
+     * image fill would.
+     *
+     * A missing or not-yet-loaded image makes the effect a no-op, so a wrong
+     * path costs you the texture and nothing else.
+     */
+    texture(options: TextureOptions) {
+        return this.append(withEffectOptions(
+            {
+                type: "texture" as const,
+                src: options.src,
+                amount: options.amount ?? 1,
+                blend: options.blend ?? "multiply",
+                scale: options.scale ?? 1,
+                angle: options.angle ?? 0,
+            },
+            options,
+        ));
+    }
+
+    /**
+     * Append Kuwahara brushwork — averages within a region but never across an
+     * edge, so flat areas smooth into strokes while boundaries stay crisp.
+     * By some margin the most expensive effect in the set; keep `radius` small.
+     */
+    oilPaint(options?: number | OilPaintOptions) {
+        const o = scalarOptions(options, "radius");
+        return this.append(withEffectOptions({ type: "oilPaint" as const, radius: o.radius ?? 3 }, o));
+    }
+
+    /**
+     * Append an anamorphic streak — a bright pass smeared along one axis and
+     * screened back on. {@link EffectChain.bloom} spreads light in every
+     * direction; this spreads it in one.
+     */
+    streak(options?: number | StreakOptions) {
+        const o = scalarOptions(options, "intensity");
+        return this.append(withEffectOptions(
+            {
+                type: "streak" as const,
+                intensity: o.intensity ?? 1,
+                threshold: o.threshold ?? 0.7,
+                length: o.length ?? 120,
+                angle: o.angle ?? 0,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append god rays — bright areas streamed outward from `center` and screened
+     * over the source, so light appears to pass whatever occludes it.
+     */
+    godRays(options?: number | GodRaysOptions) {
+        const o = scalarOptions(options, "intensity");
+        return this.append(withEffectOptions(
+            {
+                type: "godRays" as const,
+                intensity: o.intensity ?? 1,
+                threshold: o.threshold ?? 0.6,
+                length: o.length ?? 0.6,
+                center: o.center ?? CENTER,
+                decay: o.decay ?? 0.96,
+                samples: o.samples ?? 32,
+            },
+            o,
+        ));
+    }
+
+    /**
      * Append a custom SkSL shader. `mode` picks the layer it runs on — a
      * foreground overlay blended with `blendMode`, or a backdrop shader that
      * resamples `uniform shader u_backdrop`.
@@ -907,6 +1026,10 @@ export const Effects = {
     blockDisplace: (options?: number | BlockDisplaceOptions) => new EffectChain().blockDisplace(options),
     bitCrush: (options?: number | BitCrushOptions) => new EffectChain().bitCrush(options),
     ascii: (options?: number | AsciiOptions) => new EffectChain().ascii(options),
+    streak: (options?: number | StreakOptions) => new EffectChain().streak(options),
+    godRays: (options?: number | GodRaysOptions) => new EffectChain().godRays(options),
+    oilPaint: (options?: number | OilPaintOptions) => new EffectChain().oilPaint(options),
+    texture: (options: TextureOptions) => new EffectChain().texture(options),
 };
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */

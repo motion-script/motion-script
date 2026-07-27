@@ -31,7 +31,12 @@ import { scanlinesEffect } from "./implementations/scanlines";
 import { blockDisplaceEffect } from "./implementations/block-displace";
 import { bitCrushEffect } from "./implementations/bit-crush";
 import { asciiEffect } from "./implementations/ascii";
+import { streakEffect } from "./implementations/streak";
+import { godRaysEffect } from "./implementations/god-rays";
+import { oilPaintEffect } from "./implementations/oil-paint";
+import { textureEffect } from "./implementations/texture";
 import { EffectData, EffectSurface } from "./effect-data";
+import type { AssetTracker } from "@/assets/tracker";
 
 
 const EFFECTS = new Map<string, EffectData<SceneEffect>>([
@@ -66,6 +71,10 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["blockDisplace", blockDisplaceEffect as EffectData<SceneEffect>],
     ["bitCrush", bitCrushEffect as EffectData<SceneEffect>],
     ["ascii", asciiEffect as EffectData<SceneEffect>],
+    ["streak", streakEffect as EffectData<SceneEffect>],
+    ["godRays", godRaysEffect as EffectData<SceneEffect>],
+    ["oilPaint", oilPaintEffect as EffectData<SceneEffect>],
+    ["texture", textureEffect as EffectData<SceneEffect>],
 ]);
 
 /**
@@ -76,6 +85,20 @@ export function effectSurface(effect: SceneEffect): EffectSurface {
     const surface = EFFECTS.get(effect.type)?.surface;
     if (surface === undefined) return "filter";
     return typeof surface === "function" ? surface(effect) : surface;
+}
+
+/**
+ * Let `effect` declare the assets it needs at the current frame. Mirrors
+ * `prepareFill`; a no-op for the effects that reference nothing, which is most
+ * of them.
+ */
+export function prepareEffect(
+    effect: SceneEffect,
+    tracker: AssetTracker,
+    width: number,
+    height: number,
+): void {
+    EFFECTS.get(effect.type)?.prepare?.(effect, tracker, width, height);
 }
 
 /** @internal */

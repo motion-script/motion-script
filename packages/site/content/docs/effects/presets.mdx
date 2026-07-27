@@ -23,16 +23,28 @@ import { Presets } from '@motion-script/core';
 
 | Preset | Composed from | Extra options |
 |---|---|---|
-| `riso` | halftone → duotone → grain | `ink`, `paper` |
-| `newsprint` | halftone → duotone → grain | `size` |
-| `blueprint` | edges → duotone → grain | `color` |
-| `photocopy` | grayscale → posterize → duotone → grain | – |
-| `vhs` | vintage → blockDisplace → rgbShift → scanlines → grain | `seed` |
-| `crt` | bulge → scanlines → bloom → vignette | `spacing` |
+| `riso` | halftone → grain → duotone | `ink`, `paper` |
+| `newsprint` | halftone → grain → duotone | `size` |
+| `blueprint` | edges → grain → duotone | `color` |
+| `photocopy` | posterize → grain → grayscale → duotone | – |
+| `vhs` | blockDisplace → rgbShift → scanlines → grain → vintage | `seed` |
+| `crt` | bulge → scanlines → vignette → bloom | `spacing` |
 | `glitch` | blockDisplace → rgbShift → bitCrush → scanlines | `seed` |
-| `gameboy` | pixelate → dither → bitCrush | `blocks` |
+| `gameboy` | dither → bitCrush → pixelate | `blocks` |
+| `screenPrint` | posterize → colorAdjustment | `levels` |
+| `thermalPrint` | posterize → grain → grayscale → duotone | – |
+| `pencilSketch` | edges → grain → duotone | `graphite`, `paper` |
+| `chalk` | edges → grain → duotone | `board` |
+| `neon` | edges → bloom → duotone | `color` |
+| `comic` | halftone (cmyk) → colorAdjustment | `size` |
+| `anamorphicGlare` | streak → bloom | `angle` |
+| `godRays` | godRays → vignette → colorAdjustment | `center` |
+| `oilPainting` | oilPaint → colorAdjustment | `radius` |
+| `paper` | texture → grain → colorAdjustment | `src` (**required**), `scale` |
 
 Every preset also takes `amount`, via the usual scalar shorthand.
+
+`paper` is the one that needs an asset: point `src` at an image in your `public/` folder. It is also the template for the whole material family — swap the image for a weave, a denim scan or a felt photograph and the same recipe becomes canvas, denim or felt, which is why those aren't separate presets.
 
 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
   <img src="/effects/preset-crt.png" alt="CRT preset" />
@@ -72,7 +84,16 @@ The sequence inside a preset is most of what makes it work, and it follows real-
 - **Geometry first.** `crt` bulges before it draws scanlines, so the lines sit flat on the glass rather than being warped with the picture.
 - **Screen before you ink.** `riso` halftones *then* duotones: the screen reduces the image to dots and the duotone maps those dots to ink and paper.
 
-Effect chains run in author order, so writing the recipe in the order the physical process happens is all it takes.
+Effect chains run in author order — **among effects of the same kind**. Filter-surface effects (`duotone`, `grayscale`, `bloom`, `colorAdjustment`, `vintage`) currently run after every shader-surface one whatever the chain says, which is why each recipe above lists its shader ingredients first and its filters second: written that way, the source order *is* the execution order.
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+  <img src="/effects/preset-pencil-sketch.png" alt="Pencil sketch preset" />
+  <img src="/effects/preset-neon.png" alt="Neon preset" />
+  <img src="/effects/preset-chalk.png" alt="Chalk preset" />
+  <img src="/effects/preset-thermal-print.png" alt="Thermal print preset" />
+</div>
+
+`pencilSketch` and `chalk` are the clearest illustration of composing over implementing: identical ingredient lists, with the duotone the other way up.
 
 ## Rolling your own
 
@@ -83,12 +104,13 @@ import { Effects, EffectChain } from '@motion-script/core';
 
 const at = (t: number, neutral: number, full: number) => neutral + (full - neutral) * t;
 
-export const thermalPrint = (amount = 1): EffectChain =>
+// Shaders first, then filters — so the source order is the execution order.
+export const sepiaPress = (amount = 1): EffectChain =>
   Effects
-    .grayscale(amount)
     .posterize({ levels: at(amount, 255, 5) })
-    .duotone({ amount, shadows: '#20211f', highlights: '#e9e4d8' })
-    .grain({ amount: at(amount, 0, 0.15), size: 1 });
+    .grain({ amount: at(amount, 0, 0.15), size: 1 })
+    .grayscale(amount)
+    .duotone({ amount, shadows: '#2a211a', highlights: '#efe3cc' });
 ```
 
 Hold to the `amount` contract and it will animate like the built-ins.

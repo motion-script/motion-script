@@ -7,7 +7,7 @@ Tiers are ordered by implementation cost, not by desirability — Tier 1 items n
 no new plumbing at all, Tier 3 items each unlock a whole family but need a new
 engine capability first.
 
-## Shipping today (31)
+## Shipping today (35)
 
 **Blur & motion** — `blur` · `directionalBlur` · `motionBlur` · `radialBlur`
 (zoom/spin)
@@ -26,6 +26,12 @@ engine capability first.
 
 **Glyph** — `ascii` (standard / blocks / braille / binary / hex ramps, or a
 custom one)
+
+**Light** — `streak` (anamorphic glare) · `godRays`
+
+**Painterly** — `oilPaint` (Kuwahara)
+
+**Material** — `texture` (any image you supply, blended)
 
 **Escape hatch** — `sksl` (custom shader)
 
@@ -104,6 +110,20 @@ real risk, to buy back something currently unmeasurable. Revisit only if a
 profile on a genuinely heavy project says otherwise, or if 4K + deep chains
 become common.
 
+## What the last pass settled
+
+Four capabilities landed together, each unblocking a family:
+
+- **CMYK halftone** — `separation: 'cmyk'` puts shared darkness on a K plate.
+  Measured on a neutral region, chroma noise fell from 176 to 61, which is the
+  whole difference between `comic` reading as print and as confetti.
+- **`streak` / `godRays`** — directional light. God rays need their march
+  jittered per pixel; without it the samples line up into concentric arcs that
+  no affordable tap count hides.
+- **`oilPaint`** — Kuwahara. Capped at radius 6, and by a wide margin the most
+  expensive effect in the set.
+- **`texture`** — the material ingredient, on user-supplied images.
+
 ## Known limitation: filters and shaders don't interleave
 
 Effects come in two kinds — `"filter"` ones compose into a Skia `ImageFilter`,
@@ -177,11 +197,18 @@ The capability is the real unit of work; each one unlocks a family.
    back to the first registered family and warns on missing glyphs. And a
    charset outside Latin (blocks, braille) silently loses ramp steps in a font
    that doesn't cover it, which is why `standard` is plain ASCII.
-2. **Asset-loaded effect inputs** → `lut` (`.cube` / hald). Now the *cheapest*
-   remaining capability, because it reuses `resources()` wholesale — the hook
-   already hands a handler extra child shaders; this only adds a way to declare
-   an asset dependency and receive it as a texture. Would also give `curves` an
+2. ~~**Asset-loaded effect inputs**~~ — **done.** `EffectData.prepare` declares
+   an effect's assets (mirroring `FillData.prepare`, dispatched by
+   `prepareEffect` and driven from the precomp pass), and
+   `EffectResources.getImage` hands the renderer the loaded image. `texture`
+   ships on it. **`lut` (`.cube`) is now a small job on top** — the plumbing is
+   the same, only the file parse differs, and it would also give `curves` an
    exact LUT instead of its current linear fit.
+
+   Worth knowing: `requestImage` throws for an unknown `src` *by design*, so a
+   typo'd texture path is a loud build error rather than a silent blank, the
+   same as an image fill. A path that simply hasn't finished loading is the
+   different case, and there the effect no-ops for that frame.
 3. **Node-as-texture references** → `displacementMap` driven by a sibling
    subtree, `depthBlur`. Requires rendering another node to an offscreen surface.
 4. **Frame history buffer** → scene-level `echo` / `trails` / `feedback`.
@@ -195,10 +222,14 @@ The capability is the real unit of work; each one unlocks a family.
 
 ## Tier 4 — craft, textile & material presets
 
-**The `Presets` layer shipped.** Named recipes returning an `EffectChain`, each
-driven by a single `amount` where 0 is a no-op and 1 the full look:
-`Presets.riso({ amount: 0.8 })`. Eight to start — `riso`, `newsprint`,
-`blueprint`, `photocopy`, `vhs`, `crt`, `glitch`, `gameboy`.
+**The `Presets` layer shipped, with thirteen recipes.** Named chains driven by a
+single `amount` where 0 is a no-op and 1 the full look:
+`Presets.riso({ amount: 0.8 })`.
+
+**Print** — `riso` · `newsprint` · `blueprint` · `photocopy` · `screenPrint` ·
+`thermalPrint`
+**Screen** — `vhs` · `crt` · `glitch` · `gameboy` · `neon`
+**Drawn** — `pencilSketch` · `chalk`
 
 Writing them settled three things that were open questions here:
 
@@ -213,49 +244,55 @@ Writing them settled three things that were open questions here:
 - **Discrete choices don't ramp.** A palette is held fixed and faded in by
   whatever scalar ingredient carries it.
 
-What's left in this tier needs texture assets (Tier 3.5) rather than more
+**`comic` is the one that didn't make it**, and for a reason worth recording:
+`halftone`'s `colored` mode screens **RGB**, not CMYK. Real process printing
+puts darkness on a K plate, so a neutral tone prints one light dot; screening
+R, G and B independently makes every neutral print three overlapping mid-dots,
+which reads as chromatic noise however the pitch is tuned. A convincing `comic`
+needs a CMYK mode on `halftone` — a fix to the ingredient, not the recipe, and
+the single cheapest thing that would unblock a whole print look.
+
+What else is left in this tier needs texture assets (Tier 3.5) rather than more
 composition:
 
-**Paper & print** — `paper` · `paperCut` · `letterpress` · `screenPrint` ·
-`thermalPrint` · `stamp`. The first four want a paper or impression texture;
-`screenPrint` and `thermalPrint` are close to buildable today.
+**Paper & print** — `paperCut` · `letterpress` · `stamp` (`paper`,
+`screenPrint` and `thermalPrint` shipped). All three are compositions on
+`texture` now, needing an impression/emboss image rather than new engine work.
 
-**Textile** — `canvas` · `linen` / `weave` · `denim` · `knit` · `crochet` ·
-`crossStitch` · `embroidery` · `felt` · `quilt` / `patchwork`. All need either
-fabric normals (3.5) or the glyph atlas (3.1).
+**Textile** — `canvas` · `linen` · `denim` · `felt` are all `Presets.paper`
+with a different image, which is why they are not separate presets. `knit`,
+`crochet`, `crossStitch`, `embroidery` and `quilt` still want the glyph atlas
+(3.1) pointed at a stitch charset, or bundled normals (3.5).
 
-**Drawn & painted** — `chalk` · `charcoal` · `pencilSketch` · `watercolor` ·
-`oilPainting` · `comic`. `pencilSketch` and `comic` are mostly `edges` +
-`threshold` + `halftone` and could ship now; the rest want paper texture or the
-painterly Tier 2 shaders.
+**Drawn & painted** — `charcoal` · `watercolor` (`pencilSketch`, `chalk`,
+`comic` and `oilPainting` shipped). Both are now compositions rather than
+blocked work: `charcoal` is `pencilSketch` + a paper `texture`, and
+`watercolor` is `oilPaint` + `texture` + a soft edge pass.
 
-**Screen & optical** — `neon` · `godRays` · `lensFlare` · `anamorphicGlare`
-(`crt` and `vhs` shipped). These want a bloom variant with directional streaks
-more than they want new composition.
+**Screen & optical** — `lensFlare` only (`crt`, `vhs`, `neon`, `godRays` and
+`anamorphicGlare` shipped). Ghosts spaced along the line through the centre is a
+different problem from a smear, and wants its own pass.
 
 ---
 
 ## What to build next
 
-**1. Asset-loaded effect inputs (Tier 3.2).** Much cheaper than it was: the
-`resources()` hook built for `ascii` already hands a handler extra textures, so
-this is the asset-dependency declaration and little else. Gives `lut` (`.cube`)
-as a headline feature and makes `curves` exact rather than a linear fit. Pairs
-with 3.5 (bundled textures) to unblock most of the rest of Tier 4 — but 3.5
-carries the Apache-2.0 / BSD-3-Clause licensing decision, which is a call for a
-human rather than something to pick a texture pack for.
+**1. Interleave filters and shaders** (see the limitation above). Now the most
+valuable thing left: it is what stops `colorAdjustment(...).ascii(...)` from
+meaning what it reads as, it forces every preset to be written shader-first, and
+it will keep surprising people as chains get longer.
 
-**1b. Interleave filters and shaders** (see the limitation above). Not a new
-effect, but it is what stops `colorAdjustment(...).ascii(...)` from meaning what
-it reads as, and it will keep surprising people as chains get longer.
+**1b. `lut` (`.cube`).** Small now that effect asset inputs exist — the same
+declaration, a different parse. Also the fix for `curves`, which still ships as
+a least-squares linear approximation.
 
 **2. The distort cluster** — `twirl` · `wave`/`ripple` · `polarCoords` ·
 `kaleidoscope`. The largest remaining Tier 2 group: well-understood shaders,
 visually striking, no new plumbing. They just don't compound with anything else.
 
-**3. More presets from what already exists** — `screenPrint`, `thermalPrint`,
-`pencilSketch`, `comic` are all compositions of shipped effects and cost a
-handful of lines each now the layer exists.
+**3. A CMYK mode on `halftone`.** Small, self-contained, and it unblocks
+`comic` plus a more convincing `riso`/`newsprint` — the current RGB screening is
+what stops any colour print look from reading right.
 
 Then `tiltShift`, `chromaKey`, the painterly set, and the glyph atlas (3.1) for
 `ascii`.

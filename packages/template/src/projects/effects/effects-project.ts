@@ -41,6 +41,19 @@ import presetCrt from './scenes/preset-crt?scene';
 import presetGlitch from './scenes/preset-glitch?scene';
 import presetGameboy from './scenes/preset-gameboy?scene';
 import ascii from './scenes/ascii?scene';
+import streak from './scenes/streak?scene';
+import godRays from './scenes/god-rays?scene';
+import oilPaint from './scenes/oil-paint?scene';
+import texture from './scenes/texture?scene';
+import presetScreenPrint from './scenes/preset-screen-print?scene';
+import presetThermalPrint from './scenes/preset-thermal-print?scene';
+import presetPencilSketch from './scenes/preset-pencil-sketch?scene';
+import presetChalk from './scenes/preset-chalk?scene';
+import presetNeon from './scenes/preset-neon?scene';
+import presetComic from './scenes/preset-comic?scene';
+import presetAnamorphic from './scenes/preset-anamorphic-glare?scene';
+import presetOilPainting from './scenes/preset-oil-painting?scene';
+import presetPaper from './scenes/preset-paper?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
@@ -98,6 +111,19 @@ export default createProject({
         presetGlitch,
         presetGameboy,
         ascii,
+        streak,
+        godRays,
+        oilPaint,
+        texture,
+        presetScreenPrint,
+        presetThermalPrint,
+        presetPencilSketch,
+        presetChalk,
+        presetNeon,
+        presetComic,
+        presetAnamorphic,
+        presetOilPainting,
+        presetPaper,
     ],
     theme: {
         colors: {

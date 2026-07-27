@@ -1,4 +1,5 @@
 import type { Vector2 } from "@/attributes/layout/vector2";
+import type { AssetTracker } from "@/assets/tracker";
 import type { Color, NormalizedColor } from "../fill/color/parser";
 import { parseColor } from "../fill/color/parser";
 
@@ -165,4 +166,19 @@ export interface EffectData<T> {
      * backdrop mode resamples what is beneath it.
      */
     surface?: EffectSurface | ((effect: T) => EffectSurface);
+
+    /**
+     * Declare any assets this effect needs at the current frame, so they are
+     * loaded before it renders.
+     *
+     * The mirror of `FillData.prepare` — an image fill calls
+     * `tracker.requestImage(src, …)` here, and an effect that samples a texture
+     * does exactly the same. Without it the asset is never requested and the
+     * backend's synchronous lookup returns nothing, which the effect can only
+     * interpret as "no texture".
+     *
+     * `width`/`height` are the node's box in logical px, the size hint the
+     * loader rasterises SVGs and downsamples large images against.
+     */
+    prepare?(effect: T, tracker: AssetTracker, width: number, height: number): void;
 }
