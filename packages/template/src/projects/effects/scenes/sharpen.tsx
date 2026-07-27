@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Sharpen',
         from: FX.sharpen(0),
         to: FX.sharpen({ amount: 2.5, radius: 2 }),
-        compare: true,
     }));

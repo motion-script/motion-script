@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'ThermalPrint',
         from: Presets.thermalPrint(0),
         to: Presets.thermalPrint(1),
-        compare: true,
     }));

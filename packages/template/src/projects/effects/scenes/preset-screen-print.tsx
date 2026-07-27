@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'ScreenPrint',
         from: Presets.screenPrint(0),
         to: Presets.screenPrint(1),
-        compare: true,
     }));

@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Oil Paint',
         from: FX.oilPaint(0),
         to: FX.oilPaint(4),
-        compare: true,
     }));

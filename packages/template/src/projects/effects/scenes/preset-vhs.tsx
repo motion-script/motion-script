@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'VHS',
         from: Presets.vhs(0),
         to: Presets.vhs(1),
-        compare: true,
     }));

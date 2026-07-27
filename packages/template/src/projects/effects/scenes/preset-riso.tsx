@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Riso',
         from: Presets.riso(0),
         to: Presets.riso(1),
-        compare: true,
     }));

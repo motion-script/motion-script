@@ -8,5 +8,4 @@ export default createScene(effectDemo({
         // cell shows the photo rather than a near-black edge map.
         from: FX.edges(0),
         to: FX.edges(3),
-        compare: true,
     }));

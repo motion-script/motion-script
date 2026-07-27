@@ -13,5 +13,4 @@ export default createScene(effectDemo({
     label: 'ASCII',
     from: FX.ascii({ size: 2, charset: 'standard', ink: '#7dff9b', }),
     to: FX.ascii({ size: 11, charset: 'standard', ink: '#7dff9b', }),
-    compare: true,
 }));

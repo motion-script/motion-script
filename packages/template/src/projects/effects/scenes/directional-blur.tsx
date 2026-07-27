@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Directional blur',
         from: Effects.directionalBlur(0),
         to: Effects.directionalBlur(40),
-        compare: true,
     }));

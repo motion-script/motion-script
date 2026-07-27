@@ -1,39 +1,61 @@
 
 
-import { createScene, createRef, Text, Rect, Ellipse, Effects as FX, easeInOut, parallel } from "motion-script";
+import { createScene, createRef, Node, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
+import { STAGE, SAMPLES, TRAVELLING_SAMPLE, sampleGrid, sampleRow } from "./effect-demo";
+
+const LABEL = 'Motion blur';
+
+/** Sweep endpoints, as an x offset from the centre of the cell. */
+const LEFT = -100;
+const RIGHT = 100;
+/** Seconds to cross the full LEFT→RIGHT span; shorter hops scale down, so speed is constant. */
+const SWEEP = 0.5;
 
 /**
- * Motion blur is velocity-driven, so a static card can't show it — this scene
- * sweeps two pucks across the screen. The top one carries `FX.motionBlur` and
- * smears along its path; the bottom one is identical but un-blurred, for
- * contrast. Both render sharp at the ends where they stop.
+ * Motion blur is velocity-driven, so unlike every other effect it can't be shown
+ * as a static from → to: a sample sitting still renders sharp no matter how the
+ * effect is configured. This scene keeps the same grid as the rest of the showcase
+ * but sweeps both rows across their cells in lock-step — the top row un-blurred,
+ * the bottom row carrying `motionBlur` — so only the bottom one smears.
+ *
+ * `strength` compensates for the short travel inside a grid cell: the smear is
+ * `velocity × dt × (length / 100) × strength`, so a 3× multiplier buys a legible
+ * streak without needing a full-width lane.
+ *
+ * The last sweep eases *in*, accelerating into the final frame. At rest the effect
+ * is invisible, so ending at peak velocity is what makes the closing frame (what
+ * `ms screenshot last` captures) show the effect at all.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg' });
+    stage.set({ fill: STAGE });
 
-        const blurred = createRef<Ellipse>();
-        const sharp = createRef<Ellipse>();
+    const sharp: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
+    const blurred: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
 
-        stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={40} padding={60}>
-                <Text text={'Motion blur — velocity-driven'} fontSize={28} fill={'white'} width={'fill'} textAlign={'center'} />
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={80}>
-                    <Ellipse ref={blurred} x={-560} width={120} height={120} fill={'primary'} effects={FX.motionBlur({ length: 90, alignment: 'centered', samples: 16 })} />
-                    <Ellipse ref={sharp} x={-560} width={120} height={120} fill={'primary'} />
-                </Rect>
-            </Rect>
-        );
+    stage.add(sampleGrid(LABEL, [
+        sampleRow(`Without ${LABEL}`, { style: TRAVELLING_SAMPLE, refs: sharp }),
+        sampleRow(`With ${LABEL}`, {
+            style: TRAVELLING_SAMPLE,
+            refs: blurred,
+            effects: FX.motionBlur({ length: 100, strength: 1.5, alignment: 'centered', samples: 16 }),
+        }),
+    ]));
 
-        // Fast sweep right → smear; pause (sharp); fast sweep back. The static
-        // node tracks the same path without blur.
-        for (let i = 0; i < 2; i++) {
-            yield* parallel(
-                blurred().moveX(560, 0.5, easeInOut('quad')),
-                sharp().moveX(560, 0.5, easeInOut('quad')),
-            );
-            yield* parallel(
-                blurred().moveX(-560, 0.5, easeInOut('quad')),
-                sharp().moveX(-560, 0.5, easeInOut('quad')),
-            );
-        }
+    // `moveX` takes an absolute x, so track where the samples are to keep every
+    // hop at the same speed regardless of how far it travels.
+    let at = 0;
+    const sweepTo = (x: number, ease = easeInOut('quad')) => {
+        const duration = SWEEP * Math.abs(x - at) / (RIGHT - LEFT);
+        at = x;
+        return parallel(...[...sharp, ...blurred].map(ref => ref().moveX(x, duration, ease)));
+    };
+
+    // Out from centre, two round trips, then accelerate away so the closing frame
+    // is the fastest one rather than a dead stop.
+    yield* sweepTo(RIGHT);
+    for (let i = 0; i < 2; i++) {
+        yield* sweepTo(LEFT);
+        yield* sweepTo(RIGHT);
+    }
+    yield* sweepTo(LEFT, easeIn('quad'));
 });

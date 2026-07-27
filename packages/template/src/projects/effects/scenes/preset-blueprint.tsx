@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Blueprint',
         from: Presets.blueprint(0),
         to: Presets.blueprint(1),
-        compare: true,
     }));

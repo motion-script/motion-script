@@ -8,5 +8,4 @@ export default createScene(effectDemo({
         label: 'Bit Crush',
         from: FX.bitCrush({ palette: 'gameboy', amount: 0 }),
         to: FX.bitCrush({ palette: 'gameboy', amount: 1 }),
-        compare: true,
     }));

@@ -6,5 +6,4 @@ export default createScene(effectDemo({
     label: 'Halftone',
     from: FX.halftone(0),
     to: FX.halftone({ size: 16, angle: 45, shape: 'dot' }),
-    compare: true,
 }));

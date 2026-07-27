@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Scanlines',
         from: FX.scanlines({ darkness: 0, spacing: 6 }),
         to: FX.scanlines({ darkness: 0.85, spacing: 6 }),
-        compare: true,
     }));

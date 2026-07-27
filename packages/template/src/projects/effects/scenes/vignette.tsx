@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Vignette',
         from: FX.vignette(0),
         to: FX.vignette(0.9),
-        compare: true,
     }));

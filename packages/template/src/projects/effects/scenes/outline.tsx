@@ -10,5 +10,4 @@ export default createScene(effectDemo({
         label: 'Outline',
         from: FX.outline({ width: 0, color: '#ff2e63', position: 'inside' }),
         to: FX.outline({ width: 24, color: '#ff2e63', position: 'inside' }),
-        compare: true,
     }));

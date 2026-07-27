@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'PencilSketch',
         from: Presets.pencilSketch(0),
         to: Presets.pencilSketch(1),
-        compare: true,
     }));

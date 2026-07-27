@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Glitch',
         from: Presets.glitch(0),
         to: Presets.glitch(1),
-        compare: true,
     }));

@@ -8,5 +8,4 @@ export default createScene(effectDemo({
         label: 'Paper',
         from: Presets.paper({ amount: 0, src: './halftone.jpg', scale: 2 }),
         to: Presets.paper({ amount: 1, src: './halftone.jpg', scale: 2 }),
-        compare: true,
     }));

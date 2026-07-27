@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Block Displace',
         from: FX.blockDisplace({ amount: 0, size: 24, density: 0.5 }),
         to: FX.blockDisplace({ amount: 90, size: 24, density: 0.5 }),
-        compare: true,
     }));

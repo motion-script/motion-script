@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Neon',
         from: Presets.neon(0),
         to: Presets.neon(1),
-        compare: true,
     }));

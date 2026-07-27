@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Chalk',
         from: Presets.chalk(0),
         to: Presets.chalk(1),
-        compare: true,
     }));

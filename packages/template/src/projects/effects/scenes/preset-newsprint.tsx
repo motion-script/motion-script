@@ -6,5 +6,4 @@ export default createScene(effectDemo({
         label: 'Newsprint',
         from: Presets.newsprint(0),
         to: Presets.newsprint(1),
-        compare: true,
     }));
