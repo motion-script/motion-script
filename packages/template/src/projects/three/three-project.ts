@@ -2,6 +2,7 @@ import { createProject } from 'motion-script';
 
 import spinningCube from './scenes/spinning-cube?scene';
 import waveGrid from './scenes/wave-grid?scene';
+import graph3d from './scenes/graph3d-scene?scene';
 
 /**
  * 3D scenes, exercising the `Scene3D` node and the `Graphics3D` API.
@@ -19,5 +20,6 @@ export default createProject({
     scenes: [
         spinningCube,
         waveGrid,
+        graph3d,
     ],
 });
