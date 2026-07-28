@@ -31,6 +31,7 @@ import {
     type Graphics3D,
     type GraphicsOp,
     type Scene3DOpState,
+    type RasterizedSurface,
     RenderContext,
     type RichTextState,
     type SpaceRect,
@@ -264,6 +265,16 @@ function boxGeometry(width: number, height: number): EffectGeometry {
     return { width, height, centerX: 0, centerY: 0, scale: 1, time: 0 };
 }
 
+/** Nesting ceiling for {@link WebRenderContext.rasterizeOffscreen}. */
+const MAX_RASTER_DEPTH = 4;
+
+/**
+ * Ceiling on a rasterized surface's device-pixel ratio. A surface's resolution is
+ * its `width`/`height`; the ratio only exists to sharpen one viewed close up, and
+ * the cost is quadratic in a buffer that gets read back every frame.
+ */
+const MAX_RASTER_PIXEL_RATIO = 4;
+
 /**
  * Fold a text segment's opacity into its fill layers by multiplying each
  * layer's `opacity` (the fill handler then multiplies that by the node's world
@@ -294,6 +305,25 @@ export class WebRenderContext extends RenderContext {
     private canvasKit!: CanvasKit;
     private canvasElement!: HTMLCanvasElement;
     private surface!: Surface;
+
+    /**
+     * The surface `currentCanvas` belongs to.
+     *
+     * Normally the mounted one, but {@link rasterizeOffscreen} swaps both in
+     * lockstep. Anything that needs the *size of what is being drawn into* — the
+     * device-space shader rect, the `'global'` fill space, a backdrop snapshot,
+     * a compatible offscreen — must read this rather than `this.surface`, or a
+     * node inside a `Surface2D` gets the main canvas' dimensions.
+     */
+    private activeSurface!: Surface;
+
+    /**
+     * Depth of nested {@link rasterizeOffscreen} passes. A `Surface2D` may hold a
+     * `Scene3D` which holds another `Surface2D`; the tree is finite so this can't
+     * actually run away, but a mistake here costs a full GPU readback per level,
+     * so it's bounded rather than trusted.
+     */
+    private rasterDepth = 0;
     private paint!: Paint;
     private layerPaint!: Paint;
     private mounted: boolean = false;
@@ -386,6 +416,7 @@ export class WebRenderContext extends RenderContext {
         // would otherwise call getCanvas() on a deleted Surface and throw.
         if (!this.mounted || !this.surface) return;
         this.currentCanvas = this.surface.getCanvas();
+        this.activeSurface = this.surface;
         this.currentCanvas.clear(this.canvasKit.BLACK);
         this.currentCanvas.save();
         const logicalW = this.surface.width() / this.pixelRatio;
@@ -702,7 +733,7 @@ export class WebRenderContext extends RenderContext {
             if (op.kind === "effects") {
                 const foreground = this.resolveMotionBlurEffects(op.effects.filter((e) => e.mode !== "backdrop"));
                 const filter = foreground.length > 0
-                    ? EffectRegistry.compose(foreground, this.canvasKit, boxGeometry(this.surface.width(), this.surface.height()))
+                    ? EffectRegistry.compose(foreground, this.canvasKit, boxGeometry(this.activeSurface.width(), this.activeSurface.height()))
                     : null;
                 if (filter != null) {
                     segments.set(groupStart, { filter });
@@ -929,9 +960,11 @@ export class WebRenderContext extends RenderContext {
             if (!m) return null;
             const inv = this.canvasKit.Matrix.invert(m);
             if (!inv) return null;
-            // Surface corners in device px → local space.
-            const w = this.surface.width();
-            const h = this.surface.height();
+            // Surface corners in device px → local space. Inside a Surface2D the
+            // "viewport" is that surface's buffer, which is what a `global` fill
+            // should span there.
+            const w = this.activeSurface.width();
+            const h = this.activeSurface.height();
             const tl = this.canvasKit.Matrix.mapPoints(inv, [0, 0]);
             const br = this.canvasKit.Matrix.mapPoints(inv, [w, h]);
             return {
@@ -1489,7 +1522,7 @@ export class WebRenderContext extends RenderContext {
         const m = this.currentCanvas.getTotalMatrix();
         // A backdrop snapshot fully covers the surface, so it always samples with
         // Clamp regardless of the handler's foreground tile preference.
-        const snapshot = this.surface.makeImageSnapshot();
+        const snapshot = this.activeSurface.makeImageSnapshot();
         const content = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
@@ -1523,7 +1556,7 @@ export class WebRenderContext extends RenderContext {
         const ck = this.canvasKit;
         if (width <= 0 || height <= 0) return null;
 
-        const offscreen = this.surface.makeSurface(this.surface.imageInfo());
+        const offscreen = this.activeSurface.makeSurface(this.activeSurface.imageInfo());
         if (!offscreen) return null;
 
         const m = this.currentCanvas.getTotalMatrix();
@@ -1580,8 +1613,8 @@ export class WebRenderContext extends RenderContext {
             fontEpoch: this.storageAdapter.getFontEpoch(),
             makeSurface: (width, height) => {
                 if (!(width > 0) || !(height > 0)) return null;
-                return this.surface.makeSurface({
-                    ...this.surface.imageInfo(),
+                return this.activeSurface.makeSurface({
+                    ...this.activeSurface.imageInfo(),
                     width: Math.ceil(width),
                     height: Math.ceil(height),
                 });
@@ -1624,11 +1657,105 @@ export class WebRenderContext extends RenderContext {
         paint.setShader(shader);
         paint.setAntiAlias(true);
         this.currentCanvas.drawRect(
-            ck.LTRBRect(0, 0, this.surface.width(), this.surface.height()),
+            ck.LTRBRect(0, 0, this.activeSurface.width(), this.activeSurface.height()),
             paint,
         );
         paint.delete();
         this.currentCanvas.restore();
+    }
+
+    // ─── Offscreen rasterization ─────────────────────────────────────────────
+
+    /**
+     * Draw `draw` into a fresh offscreen surface and read its pixels back.
+     *
+     * Same redirect `openForegroundCapture` performs — swap `currentCanvas` (every
+     * handler reads it through a live closure, so they all follow) and restore it
+     * afterwards — but sized to the requested box rather than the whole canvas,
+     * and with the CTM *reset* rather than replicated: the buffer is its own
+     * coordinate space, origin at the centre, exactly as `executePass` sets up the
+     * main canvas. That's what lets `draw` be an ordinary `node.render(this)`.
+     *
+     * The readback is a real GPU→CPU stall (three has its own GL context, so there
+     * is no shared texture to hand over). It is bounded by the surface's size,
+     * which is why `Surface2D` defaults to a pixel ratio of 1 and offers `static`.
+     */
+    override rasterizeOffscreen(
+        width: number,
+        height: number,
+        draw: () => void,
+        pixelRatio: number = 1,
+    ): RasterizedSurface | null {
+        if (!this.isRendering || !this.surface) return null;
+        if (!(width > 0) || !(height > 0)) return null;
+        if (this.rasterDepth >= MAX_RASTER_DEPTH) {
+            console.warn(
+                `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
+                "A Surface2D is most likely nested inside itself via a Scene3D.",
+            );
+            return null;
+        }
+
+        const ck = this.canvasKit;
+        const ratio = Math.max(1, Math.min(pixelRatio, MAX_RASTER_PIXEL_RATIO));
+        const deviceWidth = Math.max(1, Math.ceil(width * ratio));
+        const deviceHeight = Math.max(1, Math.ceil(height * ratio));
+
+        const offscreen = this.activeSurface.makeSurface({
+            ...this.activeSurface.imageInfo(),
+            width: deviceWidth,
+            height: deviceHeight,
+        });
+        if (!offscreen) return null;
+
+        const savedCanvas = this.currentCanvas;
+        const savedSurface = this.activeSurface;
+        const savedWorldAlpha = this.worldAlpha;
+        const shapeFrame = this.shapeHandler.beginNested();
+
+        const offCanvas = offscreen.getCanvas();
+        offCanvas.save();
+        offCanvas.clear(ck.TRANSPARENT);
+        offCanvas.scale(ratio, ratio);
+        offCanvas.translate(width / 2, height / 2);
+
+        this.currentCanvas = offCanvas;
+        this.activeSurface = offscreen;
+        // The buffer is a fresh composite, not a layer over the canvas — inherited
+        // opacity is the *3D material's* business, not the texture's.
+        this.worldAlpha = 1;
+        this.rasterDepth++;
+
+        try {
+            draw();
+        } finally {
+            offCanvas.restore();
+            this.rasterDepth--;
+            this.currentCanvas = savedCanvas;
+            this.activeSurface = savedSurface;
+            this.worldAlpha = savedWorldAlpha;
+            this.shapeHandler.endNested(shapeFrame);
+        }
+
+        offscreen.flush();
+        const snapshot = offscreen.makeImageSnapshot();
+        // Unpremultiplied so the bytes drop straight into a three DataTexture,
+        // whose default `premultiplyAlpha` is false — the same read `screenshot()`
+        // does for ImageData.
+        const pixels = snapshot?.readPixels(0, 0, {
+            width: deviceWidth,
+            height: deviceHeight,
+            colorType: ck.ColorType.RGBA_8888,
+            alphaType: ck.AlphaType.Unpremul,
+            colorSpace: ck.ColorSpace.SRGB,
+        }) as Uint8Array | null;
+        snapshot?.delete();
+        offscreen.delete();
+        if (!pixels) return null;
+
+        // Copy out of the wasm heap: the caller holds this across frames, and the
+        // heap can be reallocated under it.
+        return { pixels: new Uint8Array(pixels), width: deviceWidth, height: deviceHeight };
     }
 
     // ─── 3D ──────────────────────────────────────────────────────────────────
@@ -1681,7 +1808,7 @@ export class WebRenderContext extends RenderContext {
             graphics,
             Math.max(1, Math.ceil(width * ratio)),
             Math.max(1, Math.ceil(height * ratio)),
-            { antialias: state.antialias !== false },
+            { antialias: state.antialias !== false, surfaces: state.surfaces },
         );
 
         const image = this.storageAdapter.upload3DFrame(

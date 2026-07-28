@@ -1,10 +1,11 @@
 import { Graphics } from "@/render/graphics";
-import { RenderContext } from "@/render/render-context";
+import { RasterizedSurface, RenderContext } from "@/render/render-context";
 import { Graphics3D } from "@/render3d/graphics3d";
 import { warmScene3D } from "@/render3d/resources";
 import type { Disposer } from "@/assets/record";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { NodeConfig } from "../base/node";
+import { Surface2D } from "./surface2d-node";
 
 /**
  * Builds a 3D scene. Called once per rendered frame with a fresh
@@ -67,6 +68,14 @@ export interface Scene3DProps extends RectProps {
  * Paint order falls out of the op list rather than needing special cases:
  * `shadow` and `fill` paint *beneath* the 3D (so a gradient shows through a
  * transparent render), children and `overlay` and `stroke` paint *over* it.
+ *
+ * The one child that doesn't paint over the 3D is {@link Surface2D}, which goes
+ * *into* it: its subtree is rendered to an offscreen buffer before the composite
+ * and bound to a material by name, so 2D content can live on 3D geometry.
+ *
+ *   <Scene3D scene={g => g.plane({ map: Tex.surface("screen") })}>
+ *       <Surface2D name="screen" width={1024} height={640}>…</Surface2D>
+ *   </Scene3D>
  *
  * For a reusable component, subclass and override {@link scene3D}:
  *
@@ -162,7 +171,32 @@ export class Scene3D<P extends Scene3DProps = Scene3DProps> extends Rect<P> {
         return built.isEmpty() ? null : built;
     }
 
+    /**
+     * Rasterize every {@link Surface2D} child into an offscreen buffer, keyed by
+     * its `textureName` so a `Tex.surface(name)` map can find it.
+     *
+     * Runs *before* this node's own `draw()` — deliberately. The shape
+     * accumulator for this node is still empty at that point (nothing to
+     * clobber), and more importantly the buffers are this frame's, so a scrubbed
+     * frame is identical to a played one. Rendering the surfaces from the
+     * ordinary child walk instead would leave the composite one frame stale.
+     */
+    private rasterizeSurfaces(ctx: RenderContext): ReadonlyMap<string, RasterizedSurface> | undefined {
+        let surfaces: Map<string, RasterizedSurface> | undefined;
+        for (const child of this.children) {
+            if (!(child instanceof Surface2D)) continue;
+            const raster = child.renderOffscreen(ctx);
+            if (!raster) continue;
+            (surfaces ??= new Map()).set(child.textureName, raster);
+        }
+        return surfaces;
+    }
+
     protected override renderSelf(ctx: RenderContext): void {
+        // Surfaces first: a Tex.surface(...) map recorded by the builder below
+        // needs its pixels in hand by the time the op is replayed.
+        const surfaces = this.rasterizeSurfaces(ctx);
+
         // The rect carries the node's 2D paint and doubles as the destination for
         // the 3D composite. Stroke is deferred to renderStroke (after children).
         const g: Graphics = this.shapeGraphics().shadow(this.shadow).fill(this.fill);
@@ -180,6 +214,7 @@ export class Scene3D<P extends Scene3DProps = Scene3DProps> extends Rect<P> {
                 cornerStyle: this.cornerStyle,
                 maxPixelRatio: this._maxPixelRatio,
                 antialias: this._antialias,
+                surfaces,
             });
         }
 

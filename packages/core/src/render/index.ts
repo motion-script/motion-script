@@ -23,7 +23,7 @@
 /** @internal */ export type { ClipOp, ClipShapeOp } from './clip';
 
 /** @internal */ export { RenderContext, Render2DContext } from './render-context';
-/** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget } from './render-context';
+/** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface } from './render-context';
 /** @internal */ export { MeasureScope } from './measure-scope';
 /** @internal */ export { TrackRenderContext } from './track-render-context';
 /** @internal */ export { TrackMeasureScope } from './track-measure-scope';

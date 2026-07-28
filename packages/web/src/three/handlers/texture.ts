@@ -21,8 +21,8 @@
  */
 
 import type * as THREE from "three";
-import type { Texture3D, TextureColorSpace3D } from "@motion-script/core";
-import { isDataTexture3D, resolveTexture3D } from "@motion-script/core";
+import type { RasterizedSurface, Texture3D, TextureColorSpace3D } from "@motion-script/core";
+import { isDataTexture3D, isSurfaceTexture3D, resolveTexture3D } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { colorSpace as toColorSpace, deg, magFilter, minFilter, wrap } from "./constants";
 
@@ -53,10 +53,24 @@ const cache = new Map<string, CachedTexture>();
  * resulting GPU textures.
  */
 export class TextureResolver {
+    /** The node whose surfaces {@link surfaces} belongs to — scopes the cache key. */
+    private surfaceOwner = "";
+    private surfaces?: ReadonlyMap<string, RasterizedSurface>;
+
     constructor(
         private readonly three: ThreeModule,
         private readonly assets: Scene3DAssets,
     ) { }
+
+    /**
+     * Hand in this frame's `Surface2D` buffers for one `Scene3D`, before its graph
+     * syncs. Set per node rather than per frame because the resolver is shared
+     * across every 3D node and surface names are only unique within one.
+     */
+    setSurfaces(ownerNodeId: string, surfaces: ReadonlyMap<string, RasterizedSurface> | undefined): void {
+        this.surfaceOwner = ownerNodeId;
+        this.surfaces = surfaces;
+    }
 
     /**
      * The `THREE.Texture` for `descriptor`, or `null` when its pixels aren't
@@ -65,7 +79,23 @@ export class TextureResolver {
      */
     resolve(descriptor: Texture3D, defaultColorSpace: TextureColorSpace3D): THREE.Texture | null {
         const resolved = resolveTexture3D(descriptor);
-        const key = textureKey(descriptor, defaultColorSpace);
+        const key = textureKey(descriptor, defaultColorSpace, this.surfaceOwner);
+
+        // A surface is re-rasterized every frame, so it re-uploads unconditionally
+        // rather than comparing a revision — the pixels are new by construction.
+        if (isSurfaceTexture3D(resolved)) {
+            const raster = this.surfaces?.get(resolved.surface);
+            if (!raster) return null;
+            const cached = cache.get(key);
+            if (cached?.resolved) {
+                this.uploadRaster(cached.texture as THREE.DataTexture, raster);
+                return cached.texture;
+            }
+            const texture = this.createRasterTexture(raster);
+            this.applySampler(texture, descriptor, defaultColorSpace);
+            cache.set(key, { texture, resolved: true });
+            return texture;
+        }
 
         const cached = cache.get(key);
         if (cached?.resolved) {
@@ -106,6 +136,41 @@ export class TextureResolver {
         texture.flipY = true;
         texture.needsUpdate = true;
         return texture;
+    }
+
+    /**
+     * A texture from a `Surface2D`'s readback. Same shape as an image texture —
+     * top-down RGBA bytes, so it wants the same `flipY` — but the pixels come from
+     * this frame's offscreen pass rather than the asset pipeline.
+     */
+    private createRasterTexture(raster: RasterizedSurface): THREE.DataTexture {
+        const texture = new this.three.DataTexture(
+            raster.pixels,
+            raster.width,
+            raster.height,
+            this.three.RGBAFormat,
+            this.three.UnsignedByteType,
+        );
+        texture.flipY = true;
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    /**
+     * Re-upload a surface's pixels in place. The buffer is reused when the size
+     * held, so a steady-state animated surface allocates nothing per frame; a
+     * resized surface swaps in the new one and lets three rebuild the GPU texture.
+     */
+    private uploadRaster(texture: THREE.DataTexture, raster: RasterizedSurface): void {
+        const image = texture.image as { data: Uint8Array; width: number; height: number };
+        if (image.width === raster.width && image.height === raster.height) {
+            image.data.set(raster.pixels);
+        } else {
+            image.data = raster.pixels;
+            image.width = raster.width;
+            image.height = raster.height;
+        }
+        texture.needsUpdate = true;
     }
 
     private createDataTexture(descriptor: { data: ArrayLike<number>; width: number; height: number }): THREE.DataTexture {
@@ -174,8 +239,15 @@ export class TextureResolver {
  * Cache key: the source plus every sampler field, so two meshes wanting the same
  * image at different `repeat`s each get their own texture rather than fighting
  * over one.
+ *
+ * `surfaceOwner` scopes a {@link SurfaceTexture3D}: surface names are unique only
+ * within one `Scene3D`, and this cache is global.
  */
-function textureKey(descriptor: Texture3D, defaultColorSpace: TextureColorSpace3D): string {
+function textureKey(
+    descriptor: Texture3D,
+    defaultColorSpace: TextureColorSpace3D,
+    surfaceOwner: string,
+): string {
     if (typeof descriptor === "string") return `${descriptor}|${defaultColorSpace}`;
 
     const bag = descriptor as unknown as Record<string, unknown>;
@@ -188,6 +260,7 @@ function textureKey(descriptor: Texture3D, defaultColorSpace: TextureColorSpace3
     }
     // A data texture has no src to key on, so fall back to its dimensions.
     if (isDataTexture3D(descriptor)) parts.push(`data=${descriptor.width}x${descriptor.height}`);
+    if (isSurfaceTexture3D(descriptor)) parts.push(`owner=${surfaceOwner}`);
     parts.push(`cs=${defaultColorSpace}`);
     return parts.join("|");
 }

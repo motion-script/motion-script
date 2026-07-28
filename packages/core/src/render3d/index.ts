@@ -44,9 +44,9 @@ export type {
     SpriteMaterial3D, ShadowMaterial3D, ShaderMaterial3D,
 } from "./material";
 
-export { isDataTexture3D, resolveTexture3D, texture3DSource } from "./texture";
+export { isDataTexture3D, isSurfaceTexture3D, resolveTexture3D, texture3DSource } from "./texture";
 export type {
-    Texture3D, ImageTexture3D, DataTexture3D, TextureOptions3D,
+    Texture3D, ImageTexture3D, DataTexture3D, SurfaceTexture3D, TextureOptions3D,
     TextureWrap3D, TextureFilter3D, TextureColorSpace3D,
 } from "./texture";
 

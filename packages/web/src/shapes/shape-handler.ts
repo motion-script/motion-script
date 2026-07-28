@@ -148,6 +148,16 @@ interface ShapeEntry {
  * and caches `BaseShape` instances across frames (keyed by node id + index)
  * so `ckPath`s survive when input state is unchanged or only trim moved.
  */
+/** The outer node's in-flight accumulation, parked by {@link ShapeHandler.beginNested}. */
+export interface NestedShapeFrame {
+    nodeId: string;
+    shapeIndex: number;
+    shapes: CurrentShape[];
+    paintApplied: boolean;
+    pendingShadows: ShadowResolved[] | null;
+    transientPaths: Set<CKPath>;
+}
+
 export class ShapeHandler {
     shapes: CurrentShape[] = [];
     paintApplied: boolean = false;
@@ -441,6 +451,50 @@ export class ShapeHandler {
         this.currentNodeId = this._savedNodeId;
         this.shapeIndex = this._savedShapeIndex;
         this.shapes = [];
+        this._boundsDirty = true;
+        this._cachedBounds = null;
+    }
+
+    // ─── Nested render scope ───────────────────────────────────────────────────
+
+    // Open a nested render of a *different* node subtree in the middle of this
+    // node's draw (a Surface2D rasterized offscreen by its Scene3D parent).
+    //
+    // Unlike beginMeasure() the cross-frame cache stays **live**: the nested nodes
+    // have real, stable ids of their own, so their shapes should be cached exactly
+    // as they would be on the canvas. What has to be saved is the *outer* node's
+    // in-flight accumulation — begin()/end() set `currentNodeId`/`shapeIndex` on
+    // the way in but never restore them on the way out, so without this the outer
+    // node would resume keying its shapes as the last nested child.
+    beginNested(): NestedShapeFrame {
+        const frame: NestedShapeFrame = {
+            nodeId: this.currentNodeId,
+            shapeIndex: this.shapeIndex,
+            shapes: this.shapes,
+            paintApplied: this.paintApplied,
+            pendingShadows: this.pendingShadows,
+            transientPaths: this.transientPaths,
+        };
+        this.shapes = [];
+        this.paintApplied = false;
+        this.pendingShadows = null;
+        // A fresh set, because the nested subtree's begin() calls reset(), which
+        // *deletes* everything in it — that would dangle any synthesised path the
+        // parked `shapes` still points at.
+        this.transientPaths = new Set();
+        this._boundsDirty = true;
+        this._cachedBounds = null;
+        return frame;
+    }
+
+    endNested(frame: NestedShapeFrame): void {
+        for (const path of this.transientPaths) path.delete();
+        this.currentNodeId = frame.nodeId;
+        this.shapeIndex = frame.shapeIndex;
+        this.shapes = frame.shapes;
+        this.paintApplied = frame.paintApplied;
+        this.pendingShadows = frame.pendingShadows;
+        this.transientPaths = frame.transientPaths;
         this._boundsDirty = true;
         this._cachedBounds = null;
     }

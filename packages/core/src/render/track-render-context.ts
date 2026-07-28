@@ -191,6 +191,17 @@ export class TrackRenderContext extends RenderContext {
     }
 
     /**
+     * Nothing is rasterized here, but `draw` still has to *run*: it renders a
+     * `Surface2D`'s subtree, and that subtree's fonts and image fills are only
+     * discoverable by walking it. Skipping the callback would leave a `<Text>` on
+     * a 3D screen unshaped and an `<Image>` unloaded.
+     */
+    override rasterizeOffscreen(_width: number, _height: number, draw: () => void): null {
+        draw();
+        return null;
+    }
+
+    /**
      * Node-level effects arrive here rather than as a graphics op, so this is no
      * longer a pure no-op: a `texture` effect on a node must get its image
      * requested during precomp, or the renderer's synchronous lookup finds

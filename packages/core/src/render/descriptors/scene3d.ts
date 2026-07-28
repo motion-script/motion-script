@@ -1,5 +1,6 @@
 import type { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import type { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
+import type { RasterizedSurface } from "../render-context";
 
 /**
  * Where and how a {@link Graphics3D} composites into the 2D scene.
@@ -30,4 +31,11 @@ export interface Scene3DOpState {
     maxPixelRatio?: number;
     /** Multisample the 3D pass. Default true. */
     antialias?: boolean;
+    /**
+     * Pixels for this frame's `Surface2D` children, keyed by their `textureName`
+     * — what a `Tex.surface(name)` map resolves against. Already rasterized by
+     * the time the op is replayed, so the 3D draw stays synchronous, exactly like
+     * an image texture's pixels being resident before the frame.
+     */
+    surfaces?: ReadonlyMap<string, RasterizedSurface>;
 }

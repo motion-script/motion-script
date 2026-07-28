@@ -7,7 +7,7 @@
  */
 
 import type * as THREE from "three";
-import type { Graphics3D } from "@motion-script/core";
+import type { Graphics3D, RasterizedSurface } from "@motion-script/core";
 import { threeModule, type ThreeModule } from "./bridge";
 import { Scene3DGraph } from "./reconciler";
 import { forgetScene3DBuffer, renderScene3D, type RenderedScene3D } from "./renderer";
@@ -44,7 +44,11 @@ export class Scene3DBackend {
         graphics: Graphics3D,
         width: number,
         height: number,
-        options: { antialias?: boolean } = {},
+        options: {
+            antialias?: boolean;
+            /** This frame's `Surface2D` buffers, keyed by `textureName`. */
+            surfaces?: ReadonlyMap<string, RasterizedSurface>;
+        } = {},
     ): RenderedScene3D {
         let graph = this.graphs.get(nodeId);
         if (!graph) {
@@ -53,6 +57,9 @@ export class Scene3DBackend {
         }
         this.touched.add(nodeId);
 
+        // Scoped per node: two Scene3Ds may each own a `name="screen"` surface, and
+        // the texture cache is global.
+        this.textures.setSurfaces(nodeId, options.surfaces);
         const { scene, camera } = graph.sync(graphics, width, height, this.textures);
         return renderScene3D(this.three, nodeId, scene, camera, width, height, options);
     }

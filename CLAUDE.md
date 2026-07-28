@@ -346,6 +346,44 @@ Because the dev server's root is the player app, `vite-plugin` resolves `three`
 from `@motion-script/web`'s location and declares it in `optimizeDeps.include` —
 without that the dynamic import 504s under the headless CLI.
 
+#### 2D on 3D: `Surface2D`
+
+`Surface2D` (`packages/core/src/nodes/three/surface2d-node.ts`) is the bridge the
+other way: an ordinary `Rect` whose content is rendered to an offscreen buffer
+instead of the canvas, bound to any material map with `Tex.surface(name)`. Its
+`width`/`height` **are** the texture's resolution.
+
+```tsx
+<Scene3D scene={g => g.plane({ map: Tex.surface("screen") })}>
+    <Surface2D name="screen" width={1024} height={640} fill="#0b0d12"
+        graphics={(g, t) => g.line({ points: trace(t) }).stroke({ weight: 6 })}>
+        <Text text="CPU" fontSize={64} fill="white" />
+    </Surface2D>
+</Scene3D>
+```
+
+- **It must be a child of the `Scene3D` that uses it.** Not a style preference:
+  `bindAssets`/`bindChildContext`/`tick` only reach mounted nodes, so a webfont or
+  an `<Image>` in a detached subtree never resolves. `Scene3D.renderSelf`
+  rasterizes its `Surface2D` children *before* building the `Graphics3D`, so the
+  texture is the current frame's — rendering them from the ordinary child walk
+  would leave the composite one frame stale and break scrub determinism.
+- `graphics` is not signal-backed, for the same reason `Scene3D.scene` isn't
+  (`Node._writeProp` would treat a function prop as a reactive binding). Use
+  `setGraphics`; animate *inside* the builder.
+- Path: `Surface2D.renderOffscreen` → `RenderContext.rasterizeOffscreen` (a seam,
+  `null` by default; `TrackRenderContext` overrides it to run `draw()` so precomp
+  still discovers the subtree's assets) → `WebRenderContext` swaps `currentCanvas`
+  + `activeSurface` onto a sized offscreen, `readPixels`, → `TextureResolver`
+  uploads into a `THREE.DataTexture` keyed by `owner=<Scene3D node id>`.
+- **`activeSurface`, not `this.surface`** — anything in `WebRenderContext` needing
+  the size of *what is being drawn into* (device-space shader rect, `'global'` fill
+  space, backdrop snapshot, compatible offscreen) must read it, or a node inside a
+  `Surface2D` gets the main canvas' dimensions.
+- **Cost**: three owns its own GL context, so there is no shared texture — every
+  animated surface is a full GPU→CPU `readPixels` plus an upload per frame. Hence
+  a default pixel ratio of 1 and the `static` opt-out.
+
 ### `@motion-script/canvaskit`
 
 Custom Skia CanvasKit WASM build (`canvaskit.js` + `canvaskit.wasm`, committed
