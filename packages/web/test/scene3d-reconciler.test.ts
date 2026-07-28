@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { Geo, Graphics3D, Mat } from "@motion-script/core";
+import type * as THREE from "three";
+import { Geo, Graphics3D, Mat, Tex, type RasterizedSurface } from "@motion-script/core";
 import { loadScene3D, threeModule } from "../src/three/bridge";
 import { Scene3DGraph } from "../src/three/reconciler";
 import { TextureResolver, type Scene3DAssets } from "../src/three/handlers/texture";
@@ -326,5 +327,89 @@ describe("Scene3DGraph reconciliation", () => {
 
         graph.dispose();
         expect(scene.children).toHaveLength(0);
+    });
+});
+
+/**
+ * `Tex.surface(...)` maps: pixels come from the `Surface2D` buffers `Scene3D`
+ * rasterized this frame, handed in via `setSurfaces` rather than the asset
+ * pipeline. Nothing here needs a CanvasKit surface — `RasterizedSurface` is a
+ * plain byte buffer — so the whole resolution path is testable directly.
+ */
+describe("surface textures", () => {
+    /** A distinguishable solid-colour buffer. */
+    function raster(size: number, value: number): RasterizedSurface {
+        return { pixels: new Uint8Array(size * size * 4).fill(value), width: size, height: size };
+    }
+
+    function materialOf(scene: THREE.Scene, index = 0): THREE.MeshBasicMaterial {
+        return (scene.children[index] as THREE.Mesh).material as THREE.MeshBasicMaterial;
+    }
+
+    it("resolves a surface map from the frame's buffers", () => {
+        const graph = new Scene3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 200)]]));
+
+        const g = new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
+        const { scene } = graph.sync(g, 800, 600, resolver);
+
+        const map = materialOf(scene).map!;
+        expect(map).toBeTruthy();
+        expect(map.image.width).toBe(2);
+        // Top-down bytes sampled bottom-up, exactly like an asset image texture.
+        expect(map.flipY).toBe(true);
+        graph.dispose();
+    });
+
+    // The material renders without the map rather than failing — same contract an
+    // image texture has while its pixels are still decoding.
+    it("resolves to null when the named surface is absent", () => {
+        const graph = new Scene3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+        resolver.setSurfaces("node-a", new Map());
+
+        const g = new Graphics3D().plane({ unlit: true, map: Tex.surface("missing") });
+        const { scene } = graph.sync(g, 800, 600, resolver);
+
+        expect(materialOf(scene).map).toBeNull();
+        graph.dispose();
+    });
+
+    // Re-rasterized every frame, so the buffer is reused and the pixels re-upload
+    // in place — no per-frame allocation, no stale first frame.
+    it("re-uploads into the same texture across frames", () => {
+        const graph = new Scene3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+
+        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 10)]]));
+        const build = () => new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
+        const first = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
+
+        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 250)]]));
+        const second = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
+
+        expect(second).toBe(first);
+        expect((second.image.data as Uint8Array)[0]).toBe(250);
+        graph.dispose();
+    });
+
+    // Surface names are only unique within one Scene3D, and the texture cache is
+    // global — so two viewports each owning a `name="screen"` must not share one.
+    it("scopes a surface name to its owning node", () => {
+        const graph = new Scene3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+        const build = () => new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
+
+        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 10)]]));
+        const a = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
+
+        resolver.setSurfaces("node-b", new Map([["screen", raster(4, 250)]]));
+        const b = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
+
+        expect(b).not.toBe(a);
+        expect(a.image.width).toBe(2);
+        expect(b.image.width).toBe(4);
+        graph.dispose();
     });
 });

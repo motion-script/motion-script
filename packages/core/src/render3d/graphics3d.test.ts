@@ -5,6 +5,9 @@ import { evaluateParametric } from '@/render3d/geometry';
 import {
     lerpVector3, lerpEuler3, slerpQuaternion, resolveVector3, quaternionFromEuler,
 } from '@/render3d/vector3';
+import { isDataTexture3D, isSurfaceTexture3D, texture3DSource } from '@/render3d/texture';
+import { track3DResources } from '@/render3d/tracking';
+import type { AssetTracker } from '@/assets/tracker';
 
 describe('Graphics3D', () => {
     it('records drawables in order', () => {
@@ -217,6 +220,52 @@ describe('Geo / Mat / Tex builders', () => {
     it('polyhedron helpers select the right shape', () => {
         expect(Geo.icosahedron({ detail: 2 }))
             .toEqual({ type: 'polyhedron', shape: 'icosahedron', detail: 2 });
+    });
+
+    it('Tex.surface takes a name or the Surface2D itself', () => {
+        expect(Tex.surface('screen')).toEqual({ surface: 'screen' });
+        expect(Tex.surface({ textureName: 'screen' }, { flipY: false }))
+            .toEqual({ surface: 'screen', flipY: false });
+    });
+});
+
+describe('Texture3D discrimination', () => {
+    it('separates the three texture forms', () => {
+        const image = Tex.image('/wood.png');
+        const data = Tex.data(new Uint8Array(4), 1, 1);
+        const surface = Tex.surface('screen');
+
+        expect(isDataTexture3D(data)).toBe(true);
+        expect(isDataTexture3D(surface)).toBe(false);
+        expect(isSurfaceTexture3D(surface)).toBe(true);
+        expect(isSurfaceTexture3D(image)).toBe(false);
+        expect(isSurfaceTexture3D('/wood.png')).toBe(false);
+    });
+
+    // A surface has no manifest asset, so the tracking pass must see "nothing to
+    // request" — `getImageMeta` throws for an unknown src, so leaking `undefined`
+    // through here would break precomp outright.
+    it('reports no asset source for data and surface textures', () => {
+        expect(texture3DSource('/wood.png')).toBe('/wood.png');
+        expect(texture3DSource(Tex.image('/wood.png'))).toBe('/wood.png');
+        expect(texture3DSource(Tex.data(new Uint8Array(4), 1, 1))).toBeNull();
+        expect(texture3DSource(Tex.surface('screen'))).toBeNull();
+    });
+
+    it('track3DResources skips a surface map and still finds image maps', () => {
+        const requested: string[] = [];
+        const tracker = {
+            requestImage: (src: string) => { requested.push(src); },
+            requestFont: () => { },
+            requestLoader: () => { },
+        } as unknown as AssetTracker;
+
+        const g = new Graphics3D()
+            .plane({ map: Tex.surface('screen') })
+            .plane({ map: '/wood.png' });
+        track3DResources(g, tracker, 100, 100);
+
+        expect(requested).toEqual(['/wood.png']);
     });
 });
 

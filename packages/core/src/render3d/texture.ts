@@ -64,26 +64,45 @@ export interface DataTexture3D extends TextureOptions3D {
 }
 
 /**
+ * A texture whose pixels are a 2D `Surface2D` child of the enclosing `Scene3D`,
+ * rasterized offscreen every frame — the way to put Motion Script's own 2D
+ * output (a `Graphics` command list, or a subtree of nodes) onto 3D geometry.
+ *
+ * `surface` matches the `Surface2D`'s `name`. It resolves per `Scene3D`, so two
+ * viewports can each hold a `<Surface2D name="screen">` without colliding.
+ */
+export interface SurfaceTexture3D extends TextureOptions3D {
+    surface: string;
+}
+
+/**
  * A texture reference. A bare string is sugar for `{ src }`, so the common case
  * is `map: "/wood.png"`.
  */
-export type Texture3D = string | ImageTexture3D | DataTexture3D;
+export type Texture3D = string | ImageTexture3D | DataTexture3D | SurfaceTexture3D;
 
 /** True for the raw-bytes form (vs. an asset-backed {@link ImageTexture3D}). */
 export function isDataTexture3D(texture: Texture3D): texture is DataTexture3D {
     return typeof texture !== "string" && "data" in texture;
 }
 
+/** True for the {@link SurfaceTexture3D} form — pixels come from a `Surface2D`. */
+export function isSurfaceTexture3D(texture: Texture3D): texture is SurfaceTexture3D {
+    return typeof texture !== "string" && "surface" in texture;
+}
+
 /** Normalize the string shorthand to an {@link ImageTexture3D}. */
-export function resolveTexture3D(texture: Texture3D): ImageTexture3D | DataTexture3D {
+export function resolveTexture3D(texture: Texture3D): ImageTexture3D | DataTexture3D | SurfaceTexture3D {
     return typeof texture === "string" ? { src: texture } : texture;
 }
 
 /**
- * The asset `src` a texture reads from, or `null` for a data texture. Used by
- * the asset-tracking pass to enumerate what a 3D scene needs loaded.
+ * The asset `src` a texture reads from, or `null` when it has none (a data or
+ * surface texture). Used by the asset-tracking pass to enumerate what a 3D scene
+ * needs loaded — a `null` here means "nothing to request", not "not a texture".
  */
 export function texture3DSource(texture: Texture3D): string | null {
     if (typeof texture === "string") return texture;
-    return isDataTexture3D(texture) ? null : texture.src;
+    if (isDataTexture3D(texture) || isSurfaceTexture3D(texture)) return null;
+    return texture.src;
 }

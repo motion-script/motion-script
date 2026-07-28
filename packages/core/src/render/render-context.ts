@@ -26,6 +26,18 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 export type EffectTarget = "foreground" | "backdrop";
 
 /**
+ * Pixels produced by {@link RenderContext.rasterizeOffscreen}: RGBA8888,
+ * unpremultiplied, top-down (canvas row order). `width`/`height` are **device**
+ * px, so they reflect the pixel ratio the renderer actually used rather than the
+ * logical size that was asked for.
+ */
+export interface RasterizedSurface {
+    pixels: Uint8Array;
+    width: number;
+    height: number;
+}
+
+/**
  * A bounding box in the current node's local space (origin = the node's
  * layout-cell centre, the same space shapes are drawn in). `left/top` use the
  * canvas convention (y down).
@@ -212,6 +224,31 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      */
     beginEffectScope(_effects: SceneEffect[], _target: EffectTarget, _width: number, _height: number): void { }
     endEffectScope(): void { }
+
+    /**
+     * Draw `draw` into an offscreen buffer instead of onto the canvas, and hand
+     * back its pixels. The buffer is `width` × `height` **logical** px with its
+     * origin at the centre, matching the space a node draws in — so `draw` can be
+     * an ordinary `render()` call on a node subtree and needs no special casing.
+     *
+     * This is what backs {@link SurfaceTexture3D}: `Scene3D` rasterizes each of
+     * its `Surface2D` children through here, then hands the pixels to the 3D
+     * backend as a texture. It runs *inside* the frame that consumes it, so a
+     * scrubbed frame is identical to a played one.
+     *
+     * Returns `null` by default — a backend that cannot rasterize offscreen
+     * simply produces no texture, and the material renders without that map.
+     * `pixelRatio` is a ceiling on the buffer's device-pixel scale, not a
+     * guarantee; the renderer may clamp it.
+     */
+    rasterizeOffscreen(
+        _width: number,
+        _height: number,
+        _draw: () => void,
+        _pixelRatio?: number,
+    ): RasterizedSurface | null {
+        return null;
+    }
 
     /**
      * Push a camera viewport. Clips to `viewport` (canvas-space, centred

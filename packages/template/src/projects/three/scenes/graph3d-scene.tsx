@@ -1,4 +1,4 @@
-import { createScene, createSignal, easeInOut, parallel, wait } from "motion-script";
+import { createScene, createSignal, easeInOut, Effects, parallel, wait } from "motion-script";
 import { Graph3D, type Formula } from "../../../components/graph3d";
 
 /** The reference palette, so each surface reads distinctly against the others. */

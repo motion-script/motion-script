@@ -184,5 +184,5 @@ function loader(
 /** True for a texture descriptor object (vs. a plain uniform value). */
 function isTextureLike(value: unknown): boolean {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-    return "src" in value || "data" in value;
+    return "src" in value || "data" in value || "surface" in value;
 }

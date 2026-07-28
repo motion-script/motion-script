@@ -11,7 +11,7 @@ import type {
     PhysicalMaterial3D, PointsMaterial3D, ShaderMaterial3D, ShadowMaterial3D,
     SpriteMaterial3D, StandardMaterial3D, ToonMaterial3D,
 } from "./material";
-import type { DataTexture3D, ImageTexture3D, TextureOptions3D } from "./texture";
+import type { DataTexture3D, ImageTexture3D, SurfaceTexture3D, TextureOptions3D } from "./texture";
 
 /** A descriptor's own params, with the `type` discriminant removed. */
 type ParamsOf<T> = Omit<T, "type">;
@@ -113,4 +113,26 @@ export const Tex = {
         height: number,
         o?: TextureOptions3D & { revision?: number },
     ): DataTexture3D => ({ data, width, height, ...o }),
+    /**
+     * A texture painted by a `Surface2D` child of the enclosing `Scene3D` — the
+     * bridge from Motion Script's own 2D output onto 3D geometry.
+     *
+     *   <Scene3D scene={g => g.plane({ map: Tex.surface("screen") })}>
+     *       <Surface2D name="screen" width={1024} height={640} fill="#0b0d12">
+     *           <Text text="hello" fontSize={64} fill="white" />
+     *       </Surface2D>
+     *   </Scene3D>
+     *
+     * Takes the surface's `name`, or the node itself (a `Surface2D` exposes
+     * `textureName`), so `Tex.surface(screenRef())` works from a ref. Typed
+     * structurally rather than against the node class, to keep `render3d` from
+     * depending on the node layer.
+     */
+    surface: (
+        source: string | { readonly textureName: string },
+        o?: TextureOptions3D,
+    ): SurfaceTexture3D => ({
+        surface: typeof source === "string" ? source : source.textureName,
+        ...o,
+    }),
 } as const;
