@@ -13,7 +13,11 @@ import {
     type NodeState,
     type Size2D,
     type TreeState,
+    type WaveformInfo,
+    type AudioTrack,
+    type GlobalLayerConfig,
     Precomp,
+    ProjectGlobals,
 } from "@motion-script/core";
 import {
     WebAudioPlayer,
@@ -23,6 +27,28 @@ import {
     WebStorageAdapter,
 } from "@motion-script/web";
 import { useMotionScript } from "./provider";
+
+/**
+ * How far the background precomp pass has got. Only the scene that owns frame 0
+ * is measured before the player mounts; the rest stream in behind it, growing
+ * the timeline as they land (see `Precomp.runAsync`).
+ */
+export interface PrecompProgress {
+    /** Scenes measured so far. */
+    measuredScenes: number;
+    /** Scenes in the project. */
+    totalScenes: number;
+    /** True on the final call, once every scene has been measured. */
+    complete: boolean;
+}
+
+function precompProgressOf(result: { scenes: readonly { measured: boolean }[]; complete: boolean }): PrecompProgress {
+    return {
+        measuredScenes: result.scenes.filter(s => s.measured).length,
+        totalScenes: result.scenes.length,
+        complete: result.complete,
+    };
+}
 
 type Props = {
     /** Imperative handle exposing playback and inspection methods; see {@link FrameHandle}. */
@@ -44,6 +70,16 @@ type Props = {
     /** Project variables applied globally before the player mounts; read in scene
      *  generators via `stage.variables(...)`. */
     variables?: Variables;
+    /**
+     * Project-level audio beds played across scene cuts (`ProjectConfig.audioTracks`).
+     * Identity-compared like `scenes` — pass a stable array (the project config's
+     * own), not a fresh literal per render, or the controller is rebuilt each time.
+     */
+    audioTracks?: AudioTrack[];
+    /** Project-level nodes drawn over every scene (`ProjectConfig.overlays`). Same stability rule as `audioTracks`. */
+    overlays?: GlobalLayerConfig[];
+    /** Project-level nodes drawn under every scene (`ProjectConfig.backgrounds`). Same stability rule as `audioTracks`. */
+    backgrounds?: GlobalLayerConfig[];
     /** Playback rate multiplier passed to the controller. Defaults to `1`. */
     speed?: number;
     /** Whether audio output is muted. Defaults to `false`. */
@@ -54,6 +90,12 @@ type Props = {
     onFrameChange?: (frame: number) => void;
     /** Called once on mount if the scene graph failed to build. */
     onBuildErrors?: (errors: BuildError[]) => void;
+    /**
+     * Called each time the background precomp measures another scene. Until it
+     * reports `complete`, `getDuration()`/`getSceneDurations()` describe only the
+     * scenes measured so far and will grow — re-pull them on every call.
+     */
+    onPrecompProgress?: (progress: PrecompProgress) => void;
 };
 
 /** Imperative API exposed by {@link MotionPlayer} via its `ref`. */
@@ -72,6 +114,12 @@ export interface FrameHandle {
     getDuration: () => number;
     /** Duration of each individual scene, in seconds. */
     getSceneDurations: () => number[];
+    /**
+     * The project's audio beds as timeline clips, in absolute seconds. Bounded
+     * by the measured duration, so re-read alongside `getDuration()` as the
+     * background precomp lengthens the timeline.
+     */
+    getGlobalAudio: () => WaveformInfo[];
     /** Errors raised while building the scene graph, if any. */
     getBuildErrors: () => BuildError[];
     /**
@@ -100,14 +148,18 @@ export function MotionPlayer({
     assets,
     theme,
     variables,
+    audioTracks,
+    overlays,
+    backgrounds,
     speed = 1,
     muted = false,
     onLoadingChange,
     onFrameChange,
     onBuildErrors,
+    onPrecompProgress,
 }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const { canvasKit, isInitialized } = useMotionScript();
+    const { canvasKit, isInitialized, precompCache, precompProfile } = useMotionScript();
 
     const [controller, setController] = useState<PlaybackController | null>(null);
     const controllerRef = useRef<PlaybackController | null>(null);
@@ -120,6 +172,17 @@ export function MotionPlayer({
     const initialFrameRef = useRef(initialFrame);
     const onFrameChangeRef = useRef(onFrameChange);
     const onBuildErrorsRef = useRef(onBuildErrors);
+    const onPrecompProgressRef = useRef(onPrecompProgress);
+    /**
+     * The precomp cache is an injected dependency, not an input to the scene
+     * graph, so it is read through a ref rather than listed in the mount effect's
+     * deps — a host swapping in a different store must not tear down and rebuild
+     * the whole controller. This effect is declared before the mount effect, so on
+     * mount it has already run by the time the controller is constructed.
+     */
+    const precompCacheRef = useRef(precompCache);
+    /** Same reasoning as {@link precompCacheRef}: injected, not a scene-graph input. */
+    const precompProfileRef = useRef(precompProfile);
 
     // Keep callback/value refs current without touching them during render.
     useEffect(() => {
@@ -127,6 +190,9 @@ export function MotionPlayer({
         initialFrameRef.current = initialFrame;
         onFrameChangeRef.current = onFrameChange;
         onBuildErrorsRef.current = onBuildErrors;
+        onPrecompProgressRef.current = onPrecompProgress;
+        precompCacheRef.current = precompCache;
+        precompProfileRef.current = precompProfile;
     });
 
     useEffect(() => {
@@ -142,17 +208,34 @@ export function MotionPlayer({
         const renderContext = new WebRenderContext(canvasKit, storage);
         renderContext.mount(canvas);
 
+        // Built here, after setTheme/setVariables above: a layer declared as a
+        // factory is invoked inside this constructor, so its theme tokens resolve
+        // against the registry this mount just populated.
+        const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
+
         const pc: PlaybackController = new PlaybackController({
             renderContext,
             measureScope: measure,
             storageAdapter: storage,
             masterClock: clock,
-            precomposition: new Precomp(scenes, viewport, fps, catalog, measure),
+            precomposition: new Precomp(scenes, viewport, fps, catalog, measure, {
+                cache: precompCacheRef.current,
+                profile: precompProfileRef.current,
+                globals,
+            }),
             audioDevice: audio,
             assets: catalog,
             fps,
             viewport,
             scenes,
+            // Only the scene owning frame 0 is measured before this returns; the
+            // rest arrive here as they land. A scene finishing both lengthens the
+            // timeline and can surface a build error it threw, so refresh both —
+            // the same pair hotReplaceScene refreshes after an in-place swap.
+            onPrecompProgress: (result) => {
+                onBuildErrorsRef.current?.(result.buildErrors);
+                onPrecompProgressRef.current?.(precompProgressOf(result));
+            },
         });
 
         if (pc.buildErrors.length > 0) {
@@ -166,6 +249,12 @@ export function MotionPlayer({
         controllerRef.current = pc;
         setController(pc);
 
+        // Publish the starting position immediately. The controller only measured
+        // the scene owning frame 0, so a multi-scene project is already incomplete
+        // here — without this the UI would show nothing until the *second* scene
+        // lands, which on a long project is exactly the wait we're trying to
+        // make visible.
+        onPrecompProgressRef.current?.(precompProgressOf(pc.precomp));
         onLoadingChangeRef.current?.(true);
 
         return () => {
@@ -174,7 +263,7 @@ export function MotionPlayer({
             pc.dispose();
             renderContext.dispose();
         };
-    }, [canvasKit, assets, viewport, fps, scenes, theme, variables]);
+    }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds]);
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
@@ -225,6 +314,7 @@ export function MotionPlayer({
             getNodeProps: (nodeId: string) => controllerRef.current?.getNodeState(nodeId) ?? null,
             getDuration: () => controllerRef.current?.totalDuration ?? 0,
             getSceneDurations: () => controllerRef.current?.tracks.slice() ?? [],
+            getGlobalAudio: () => controllerRef.current?.globalAudio ?? [],
             getBuildErrors: () => controllerRef.current?.buildErrors ?? [],
             hotReplaceScene: (scene: Scene) => {
                 const pc = controllerRef.current;

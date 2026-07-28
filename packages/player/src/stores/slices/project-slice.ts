@@ -1,4 +1,4 @@
-import type { AssetManifest, ProjectConfig, Scene, Size2D, Theme, Variables } from "@motion-script/core";
+import type { AssetManifest, AudioTrack, GlobalLayerConfig, ProjectConfig, Scene, Size2D, Theme, Variables } from "@motion-script/core";
 
 import type { SliceCreator } from "./types";
 
@@ -17,6 +17,12 @@ export type ProjectSlice = {
     viewport: Size2D;
     fps: number;
     assets: AssetManifest;
+    /** Project-wide audio beds, played across scene cuts. */
+    audioTracks: AudioTrack[];
+    /** Project-wide nodes drawn over every scene. */
+    overlays: GlobalLayerConfig[];
+    /** Project-wide nodes drawn under every scene. */
+    backgrounds: GlobalLayerConfig[];
 
     resetConfig: (config: ProjectConfig) => void;
 
@@ -33,6 +39,18 @@ export type ProjectSlice = {
     _pendingSceneIndex: number | null;
 };
 
+/**
+ * Shared fallbacks for the optional global-content fields.
+ *
+ * Deliberately module-level singletons rather than fresh `[]` literals: the
+ * video preview passes these straight to `MotionPlayer`, whose mount effect
+ * keys on their identity, so a new empty array per `resetConfig` would tear
+ * down and rebuild the whole playback controller for a project that declares
+ * no globals at all.
+ */
+const NO_AUDIO_TRACKS: AudioTrack[] = [];
+const NO_LAYERS: GlobalLayerConfig[] = [];
+
 export const createProjectSlice = (
     config: ProjectConfig,
     assets: AssetManifest,
@@ -43,6 +61,9 @@ export const createProjectSlice = (
     fps: config.fps,
     theme: config.theme ?? {},
     variables: config.variables ?? {},
+    audioTracks: config.audioTracks ?? NO_AUDIO_TRACKS,
+    overlays: config.overlays ?? NO_LAYERS,
+    backgrounds: config.backgrounds ?? NO_LAYERS,
     assets,
 
     _pendingSceneIndex: null,
@@ -96,6 +117,9 @@ export const createProjectSlice = (
             fps: newConfig.fps,
             theme: newConfig.theme ?? {},
             variables: newConfig.variables ?? {},
+            audioTracks: newConfig.audioTracks ?? NO_AUDIO_TRACKS,
+            overlays: newConfig.overlays ?? NO_LAYERS,
+            backgrounds: newConfig.backgrounds ?? NO_LAYERS,
             currentFrame: 0,
             currentTime: 0,
             duration: 0,

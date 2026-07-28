@@ -5,5 +5,5 @@
 // "sideEffects": false so bundlers can drop anything a consumer doesn't import.
 export { MotionScriptProvider, useMotionScript } from './ui/provider';
 export { MotionPlayer } from './ui/scene';
-export type { FrameHandle } from './ui/scene';
+export type { FrameHandle, PrecompProgress } from './ui/scene';
 export type { BuildError } from '@motion-script/core';

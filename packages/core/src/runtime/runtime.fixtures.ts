@@ -360,6 +360,7 @@ export function makeAssetTrack(over: Partial<AssetTrack> & { record?: AssetRecor
 
 export function makeScenePrecomp(over: Partial<ScenePrecomp> = {}): ScenePrecomp {
     return {
+        measured: true,
         frameCount: 10,
         startFrame: 0,
         audioRequests: [],
@@ -376,9 +377,12 @@ export function makePrecompResult(over: Partial<PrecompResult> = {}): PrecompRes
     return {
         fps,
         scenes,
+        globalAudio: over.globalAudio ?? [],
         totalFrames,
         totalDuration: over.totalDuration ?? totalFrames / fps,
         assets: over.assets ?? new Map<string, AssetTrack>(),
         buildErrors: over.buildErrors ?? [],
+        complete: over.complete ?? true,
+        timings: over.timings,
     };
 }

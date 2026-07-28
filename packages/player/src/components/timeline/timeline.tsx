@@ -15,9 +15,10 @@ import {
   BAR_PADDING_Y,
   BAR_MARGIN_X,
 } from "./constants";
-import { flattenTree } from "./flatten";
+import { flattenTree, globalRows } from "./flatten";
 import { formatRulerLabel, pickMajorStep } from "./ruler-utils";
 import { NodeNamesColumn } from "./node-names-column";
+import { TimelineSkeleton } from "./timeline-skeleton";
 import { TrackRows } from "./track-rows";
 import { useRowVirtualizer } from "./use-row-virtualizer";
 import { useScrubController } from "./use-scrub-controller";
@@ -57,6 +58,9 @@ export function TimelineRuler({
   const [scrollLeft, setScrollLeft] = useState(0);
 
   const rootNode = useEditorStore((s) => s.rootNode);
+  const overlays = useEditorStore((s) => s.overlays);
+  const backgrounds = useEditorStore((s) => s.backgrounds);
+  const globalAudioClips = useEditorStore((s) => s.globalAudioClips);
   const currentTime = useEditorStore((s) => s.currentTime);
   const duration = useEditorStore((s) => s.duration);
   const fps = useEditorStore((s) => s.fps);
@@ -66,6 +70,9 @@ export function TimelineRuler({
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const scrubFrame = useEditorStore((s) => s.scrubFrame);
   const isScrubbing = useEditorStore((s) => s.isScrubbing);
+  const precompComplete = useEditorStore((s) => s.precompProgress.complete);
+  const scenes = useEditorStore((s) => s.scenes);
+  const sceneStartFrames = useEditorStore((s) => s.sceneStartFrames);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
 
@@ -75,22 +82,44 @@ export function TimelineRuler({
   const totalUnitsRef = useRef<number>(0);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // flattenTree walks the entire node tree. Unmemoized it ran on every render —
-  // which during a drag is every animation frame, over every node in the scene.
-  // `rootNode` is held stable while scrubbing (see video-preview), so this holds.
-  const flatNodes = useMemo(
-    () => (rootNode ? flattenTree(rootNode, collapsed) : []),
-    [rootNode, collapsed],
-  );
-
-  // Vertical row virtualization shared by both columns.
-  const { window: rowWindow, measure: measureRows, onScroll: onRowScroll } =
-    useRowVirtualizer(flatNodes.length, NODE_ROW_HEIGHT);
 
   // Timeline works in frames for display; convert time ↔ frame using fps.
   // Use sub-frame precision for the playhead position so it moves smoothly
   // between integer frames; round only for the displayed frame number.
   const totalFrameCount = Math.max(1, Math.round(duration * fps));
+
+  // Project-level rows — backgrounds, overlays and audio beds — sit above the
+  // scene's own tree, because they span scenes rather than belonging to one.
+  // Memoized apart from the tree walk: they change only when the project or the
+  // measured timeline does, not on every frame of a scrub.
+  const globalNodes = useMemo(
+    () => globalRows({
+      backgrounds,
+      overlays,
+      audioClips: globalAudioClips,
+      sceneNames: scenes.map((s) => s.name),
+      sceneStartFrames,
+      totalFrameCount,
+      fps,
+    }),
+    [backgrounds, overlays, globalAudioClips, scenes, sceneStartFrames, totalFrameCount, fps],
+  );
+
+  // flattenTree walks the entire node tree. Unmemoized it ran on every render —
+  // which during a drag is every animation frame, over every node in the scene.
+  // `rootNode` is held stable while scrubbing (see video-preview), so this holds.
+  const treeNodes = useMemo(
+    () => (rootNode ? flattenTree(rootNode, collapsed) : []),
+    [rootNode, collapsed],
+  );
+
+  // One list so both columns and the virtualizer share a single row indexing.
+  const flatNodes = useMemo(() => [...globalNodes, ...treeNodes], [globalNodes, treeNodes]);
+
+  // Vertical row virtualization shared by both columns.
+  const { window: rowWindow, measure: measureRows, onScroll: onRowScroll } =
+    useRowVirtualizer(flatNodes.length, NODE_ROW_HEIGHT);
+
   // While dragging, the playhead follows the pointer (`scrubFrame`) rather than
   // the rendered position — on a heavy project the seek lags well behind the
   // cursor, and a playhead tied to it would feel stuck. Everything downstream
@@ -183,8 +212,6 @@ export function TimelineRuler({
   const fullContentWidth = Math.max(trackWidth, Math.ceil(displayTotalUnits * computedPxPerUnit + paddingX * 2));
 
   // Scene info
-  const scenes = useEditorStore((s) => s.scenes);
-  const sceneStartFrames = useEditorStore((s) => s.sceneStartFrames);
   const activeSceneIndex = sceneStartFrames.length > 0
     ? sceneStartFrames.reduce((best, start, i) => currentFrame >= start ? i : best, 0)
     : 0;
@@ -353,6 +380,28 @@ export function TimelineRuler({
   // window listeners itself, so there is no drag state or listener bookkeeping
   // here to fall out of sync with React's render cycle.
   const scrub = useScrubController(clientXToFrame);
+
+  // While the background precomp is still working, the timeline's length is only
+  // partly known — so show a skeleton rather than a real timeline that grows and
+  // reflows under the cursor with each scene that lands. The toolbar stays: in
+  // column layout it holds the transport, and playback works within the measured
+  // range from the first frame.
+  //
+  // Deliberately ahead of the width bail below: the skeleton is pure flexbox and
+  // needs no measurement, so checking it first means the panel shows the skeleton
+  // immediately instead of flashing the empty placeholder until the
+  // ResizeObserver reports a width.
+  if (!precompComplete) {
+    return (
+      <div
+        ref={containerRef}
+        className="bg-timeline w-full h-full rounded-lg flex flex-col select-none overflow-hidden"
+      >
+        {!sceneOnly && <EditorToolbar />}
+        <TimelineSkeleton />
+      </div>
+    );
+  }
 
   if (!finalWidth) {
     return <div ref={containerRef} className="bg-timeline p-2" />;

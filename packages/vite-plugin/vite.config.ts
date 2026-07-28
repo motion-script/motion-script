@@ -57,6 +57,7 @@ export default defineConfig({
                 'node:fs',
                 'node:url',
                 'node:module',
+                'node:crypto',
             ],
         },
         outDir: 'dist',

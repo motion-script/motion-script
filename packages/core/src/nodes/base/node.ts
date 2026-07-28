@@ -54,6 +54,13 @@ import { MeasureScope } from "@/render/measure-scope";
 import { nodePath } from "@/project/tree";
 import { layoutGroupChildren } from "@/layout/group-layout";
 
+/**
+ * Stand-in for a node's reference rects when the context never reads them.
+ * Shared and empty — `computeSpaceRects` returns the same shape for a node with
+ * no parent, so consumers already handle it. See {@link Node.beforeRender}.
+ */
+const NO_SPACE_RECTS: SpaceRects = {};
+
 // NodeClock, WorldTransform, PropInput, and PropInputs now live in dedicated
 // modules (see imports above) and are re-exported below so existing
 // `from ".../node"` imports keep resolving.
@@ -972,6 +979,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Asset lifecycle --------------------------------------------------
 
     bindAssets(context: AssetCatalog): void {
+        // Already bound to this catalog, and so is everything below: the only ways
+        // a subtree joins the tree — `addChild`/`addChildren`/`addChildAt` — bind it
+        // on insertion. So an unchanged catalog means the whole subtree is already
+        // correct, and the per-frame re-bind the precomp and replay loops perform
+        // can stop here instead of walking every node.
+        if (this._assets === context) return;
         this._assets = context;
         for (const child of this._children) child.bindAssets(context);
     }
@@ -1545,7 +1558,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * without a {@link clipSelf} outline (there's no silhouette to confine to).
      */
     private applyBackdropEffects(ctx: RenderContext): void {
-        applyBackdropEffectsImpl(ctx, this.effects as SceneEffect[], this.clipSelf(), this.layoutRect?.width ?? 0, this.layoutRect?.height ?? 0);
+        const effects = this.effects as SceneEffect[];
+        // Bail before building the silhouette. `applyBackdropEffectsImpl` returns
+        // immediately when there are no backdrop effects, but by then `clipSelf()`
+        // has already allocated a Clip and its op list for a node that will never
+        // use it — and a node with no effects at all is the overwhelmingly common
+        // case, so that allocation was pure waste on nearly every node, every frame.
+        if (effects.length === 0) return;
+        applyBackdropEffectsImpl(ctx, effects, this.clipSelf(), this.layoutRect?.width ?? 0, this.layoutRect?.height ?? 0);
     }
 
     /**
@@ -1601,7 +1621,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // Motion fields were already sampled in ellapse() this frame. Only the
         // layout-dependent fields are resolved here, where layout is current.
         const s = this._renderState;
-        s.rects = this._spaceRects();
+        // Skipped for contexts that never resolve a `space:'parent'` fill — the
+        // precomp pass walks every node's render every frame purely to discover
+        // assets, and this is an object allocation per node per frame that nothing
+        // there would ever read.
+        s.rects = ctx.readsSpaceRects ? this._spaceRects() : NO_SPACE_RECTS;
         s.elapsed = this._clock.elapsed;
         ctx.begin(s);
     }

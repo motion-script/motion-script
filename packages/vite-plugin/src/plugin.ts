@@ -4,9 +4,18 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import react from '@vitejs/plugin-react';
 import type { PluginOption, UserConfig } from 'vite';
-import { buildAssetManifest } from './asset-manifest';
+import { buildAssetManifest, type AssetManifest } from './asset-manifest';
 import { sceneTransform } from './scene-transform';
 import { dataTransform } from './data-transform';
+import {
+    PrecompFileCache,
+    PRECOMP_CACHE_ID,
+    RESOLVED_PRECOMP_CACHE_ID,
+    PRECOMP_ENDPOINT,
+    collectSceneDeps,
+    digestManifestEntry,
+    readJsonBody,
+} from './precomp-cache';
 
 /**
  * Options accepted by the {@link motionScript} Vite plugin.
@@ -42,6 +51,39 @@ function tryResolve(specifier: string): string | null {
     } catch {
         return null;
     }
+}
+
+/**
+ * Version of the installed engine, used to key the precomp cache: an upgrade can
+ * legitimately change what a pass produces, so entries must not survive one.
+ *
+ * Resolved by walking up from the package's main entry rather than asking for
+ * `@motion-script/core/package.json` directly — core's `exports` map doesn't
+ * expose that subpath, so the direct form throws.
+ *
+ * Returns null when the version genuinely can't be determined, which disables the
+ * cache. Deliberately not a per-run sentinel: that would leave caching silently
+ * broken forever, which is exactly the failure this returns null to make visible.
+ */
+function engineVersion(): string | null {
+    const entry = tryResolve('@motion-script/core');
+    if (!entry) return null;
+    let dir = path.dirname(entry);
+    for (let i = 0; i < 5; i++) {
+        const pkg = path.join(dir, 'package.json');
+        if (fs.existsSync(pkg)) {
+            try {
+                const version = JSON.parse(fs.readFileSync(pkg, 'utf8')).version;
+                return typeof version === 'string' ? version : null;
+            } catch {
+                return null;
+            }
+        }
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+    }
+    return null;
 }
 
 /**
@@ -179,6 +221,35 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
     // Shared by the data-transform macro, the asset-manifest loader, and the
     // dev-server watcher/static-serving below — all resolve the same folder.
     const publicDir = path.resolve(process.cwd(), 'public');
+    const userRoot = process.cwd();
+
+    // The project config is where fps, viewport, theme and variables live, so it
+    // is an implicit dependency of every scene's precomp — editing it must
+    // invalidate the whole cache, not just the scene that happens to import it.
+    const projectFiles = ['src/project.ts', 'src/project.js']
+        .map(p => path.resolve(userRoot, p))
+        .filter(p => fs.existsSync(p));
+
+    let precompCache: PrecompFileCache | null | undefined;
+    const getPrecompCache = (): PrecompFileCache | null => {
+        if (precompCache !== undefined) return precompCache;
+        const version = engineVersion();
+        if (!version) {
+            console.warn(
+                '[motion-script] could not determine the @motion-script/core version; ' +
+                'the precomp cache is disabled, so scenes will be measured on every start.',
+            );
+            return (precompCache = null);
+        }
+        return (precompCache = new PrecompFileCache(userRoot, version, projectFiles));
+    };
+
+    // buildAssetManifest re-stats and re-parses every media file it finds, which
+    // is far too heavy to redo per cache validation. Memoize it; the public/
+    // watcher below drops the memo whenever an asset actually changes.
+    let manifestPromise: Promise<AssetManifest> | null = null;
+    const getManifest = () => (manifestPromise ??= buildAssetManifest(publicDir, [DEFAULT_ASSETS_DIR]));
+    const dropManifest = () => { manifestPromise = null; };
 
     return [
         // `?scene` import handling. Runs with enforce:'pre' so it claims the
@@ -194,15 +265,26 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
             // for it to this plugin instead of trying to resolve it on disk.
             resolveId(id) {
                 if (id === ASSET_MANIFEST_ID) return RESOLVED_ASSET_MANIFEST_ID;
+                if (id === PRECOMP_CACHE_ID) return RESOLVED_PRECOMP_CACHE_ID;
                 return null;
             },
 
             // Build the asset manifest on demand and expose it as a default
             // export so the runtime can `import manifest from '~asset-manifest'`.
             async load(id) {
-                if (id !== RESOLVED_ASSET_MANIFEST_ID) return null;
-                const manifest = await buildAssetManifest(publicDir, [DEFAULT_ASSETS_DIR]);
-                return `export default ${JSON.stringify(manifest)};`;
+                if (id === RESOLVED_ASSET_MANIFEST_ID) {
+                    return `export default ${JSON.stringify(await getManifest())};`;
+                }
+                if (id === RESOLVED_PRECOMP_CACHE_ID) {
+                    // Only entries whose recorded dependencies still hash the same
+                    // reach the browser, so the runtime never has to judge validity
+                    // — it just uses what it is handed.
+                    const cache = getPrecompCache();
+                    if (!cache) return 'export default {};';
+                    cache.setManifestDigest(digestManifestEntry(await getManifest()));
+                    return `export default ${JSON.stringify(cache.validEntries())};`;
+                }
+                return null;
             },
 
             configureServer(server) {
@@ -215,18 +297,92 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     server.watcher.add(publicDir);
                 }
                 const invalidateManifest = () => {
+                    dropManifest();
                     const mod = server.moduleGraph.getModuleById(RESOLVED_ASSET_MANIFEST_ID);
                     if (mod) {
                         server.moduleGraph.invalidateModule(mod);
                         server.ws.send({ type: 'full-reload' });
                     }
                 };
+                // Entries are validated inside `load`, and Vite only re-runs that
+                // for an invalidated module. Without this, editing a scene and then
+                // reloading the page (rather than restarting the server) would be
+                // served the entry that was valid at startup — the stale duration
+                // the hash check exists to catch. Cheap: invalidating only marks it
+                // for re-transform, and the check itself is a handful of hashes.
+                const invalidatePrecompCache = () => {
+                    const mod = server.moduleGraph.getModuleById(RESOLVED_PRECOMP_CACHE_ID);
+                    if (mod) server.moduleGraph.invalidateModule(mod);
+                };
                 const onChange = (file: string) => {
                     if (file.startsWith(publicDir)) invalidateManifest();
+                    invalidatePrecompCache();
                 };
                 server.watcher.on('add', onChange);
                 server.watcher.on('change', onChange);
                 server.watcher.on('unlink', onChange);
+
+                // Accept finished scene passes from the running player and persist
+                // them, so the next cold start skips the measurement entirely.
+                //
+                // Registered before the static-file middlewares below: those are
+                // method-agnostic and would happily answer a POST with file bytes
+                // if the URL happened to match something on disk.
+                server.middlewares.use(PRECOMP_ENDPOINT, (req, res, next) => {
+                    if (req.method !== 'POST') return next();
+                    void (async () => {
+                        try {
+                            const body = await readJsonBody(req);
+                            const { sceneId, precomp } = (body ?? {}) as { sceneId?: unknown; precomp?: unknown };
+                            if (typeof sceneId !== 'string' || precomp === undefined) {
+                                res.statusCode = 400;
+                                res.end('bad request');
+                                return;
+                            }
+                            // `sceneId` is a scene's `__sceneHotId` — a
+                            // project-relative path from the `?scene` transform. Join
+                            // and re-check rather than trusting it: it arrives over
+                            // HTTP, and `..` segments must not reach outside the
+                            // project. `collectSceneDeps` also drops anything that
+                            // isn't a real file inside the root.
+                            const sceneFile = path.resolve(userRoot, sceneId);
+                            const rel = path.relative(userRoot, sceneFile);
+                            if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+                                res.statusCode = 400;
+                                res.end('outside project');
+                                return;
+                            }
+                            const cache = getPrecompCache();
+                            if (!cache) {
+                                res.statusCode = 204;
+                                res.end();
+                                return;
+                            }
+                            cache.setManifestDigest(digestManifestEntry(await getManifest()));
+                            // The browser has just run this scene, so its module
+                            // graph entry is warm and its imports are known.
+                            cache.put(sceneId, collectSceneDeps(server, sceneFile), precomp);
+                            // Vite transforms a virtual module once and reuses the
+                            // result for the server's lifetime, so without this a
+                            // page reload would keep receiving whatever the cache
+                            // held at startup — usually nothing, on the very run
+                            // that just populated it. Invalidate only; deliberately
+                            // no `ws.send`, since nothing accepts this module and an
+                            // HMR push would bubble to a full reload, which would
+                            // re-measure, re-post, and loop.
+                            const mod = server.moduleGraph.getModuleById(RESOLVED_PRECOMP_CACHE_ID);
+                            if (mod) server.moduleGraph.invalidateModule(mod);
+                            res.statusCode = 204;
+                            res.end();
+                        } catch {
+                            // A cache that cannot persist should cost speed, never
+                            // correctness — the player ignores the failure and the
+                            // scene is simply measured again next time.
+                            res.statusCode = 500;
+                            res.end('precomp cache write failed');
+                        }
+                    })();
+                });
 
                 // Serve canvaskit.wasm from wherever the @motion-script/canvaskit package lives.
                 const wasmPath = resolveCanvasKitWasm();

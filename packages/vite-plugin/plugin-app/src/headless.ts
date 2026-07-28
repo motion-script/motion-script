@@ -168,6 +168,14 @@ export function installHeadlessBridge(): void {
                 fps: config.fps,
                 scale,
                 manifest: assets,
+                // Project-level content applies to a headless render exactly as it
+                // does in the player. In `--split` mode each clip is its own
+                // timeline, so a bed is bounded by that clip and a layer's
+                // `include`/`exclude` sees that clip's scene indices — name-based
+                // selectors are what stay stable across the two modes.
+                audioTracks: config.audioTracks,
+                overlays: config.overlays,
+                backgrounds: config.backgrounds,
                 wasmUrl: '/canvaskit.wasm',
                 returnBytes: true as const,
             };
@@ -219,6 +227,8 @@ export function installHeadlessBridge(): void {
                 fps: config.fps,
                 scale,
                 manifest: assets,
+                overlays: config.overlays,
+                backgrounds: config.backgrounds,
                 wasmUrl: '/canvaskit.wasm',
                 frame,
                 format,

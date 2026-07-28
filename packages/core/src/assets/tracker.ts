@@ -151,7 +151,12 @@ export class AssetTracker {
         const entry = this.requestedAssets.get(key);
         if (entry) {
             if (entry.startFrame === frame) return;
-            this.requestedAssets.set(key, { ...entry, endFrame: frame });
+            // Extended in place rather than replaced. These records are private to
+            // the tracker until `Precomp` snapshots them at the end of the pass, so
+            // nothing can observe the mutation — and copying instead meant one
+            // throwaway object per asset per frame, which for a video on screen for
+            // a whole scene is one allocation for every frame of it.
+            entry.endFrame = frame;
             return;
         }
         this.requestedAssets.set(key, makeEntry(frame));
@@ -177,12 +182,10 @@ export class AssetTracker {
         const entry = this.requestedAssets.get(src);
         if (entry && entry.type === 'image') {
             if (entry.startFrame === frame) return;
-            this.requestedAssets.set(src, {
-                ...entry,
-                endFrame: frame,
-                width: Math.max(entry.width, width),
-                height: Math.max(entry.height, height),
-            });
+            // In place — see the note in `upsertAsset`.
+            entry.endFrame = frame;
+            entry.width = Math.max(entry.width, width);
+            entry.height = Math.max(entry.height, height);
             return;
         }
         this.requestedAssets.set(src, {
@@ -207,12 +210,10 @@ export class AssetTracker {
         const entry = this.requestedAssets.get(src);
         if (entry && entry.type === 'video') {
             if (entry.startFrame === frame) return;
-            this.requestedAssets.set(src, {
-                ...entry,
-                endFrame: frame,
-                width: Math.max(entry.width, width),
-                height: Math.max(entry.height, height),
-            });
+            // In place — see the note in `upsertAsset`.
+            entry.endFrame = frame;
+            entry.width = Math.max(entry.width, width);
+            entry.height = Math.max(entry.height, height);
             return;
         }
         this.requestedAssets.set(src, {

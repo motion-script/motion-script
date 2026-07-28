@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useEditorStore } from '@/providers/editor-provider';
 import { useDelayedFlag } from '@/hooks/use-delayed-flag';
-import { FrameHandle, MotionPlayer } from '@motion-script/react';
+import { FrameHandle, MotionPlayer, type PrecompProgress } from '@motion-script/react';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 8;
@@ -44,6 +44,9 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const isPlaying = useEditorStore(s => s.isPlaying);
     const theme = useEditorStore(s => s.theme);
     const variables = useEditorStore(s => s.variables);
+    const audioTracks = useEditorStore(s => s.audioTracks);
+    const overlays = useEditorStore(s => s.overlays);
+    const backgrounds = useEditorStore(s => s.backgrounds);
     const playbackSpeed = useEditorStore(s => s.playbackSpeed);
     const isMuted = useEditorStore(s => s.isMuted);
     const loopMode = useEditorStore(s => s.loopMode);
@@ -59,6 +62,8 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const setIsPlaying = useEditorStore(s => s.setIsPlaying);
     const setDuration = useEditorStore(s => s.setDuration);
     const setSceneDurations = useEditorStore(s => s.setSceneDurations);
+    const setGlobalAudioClips = useEditorStore(s => s.setGlobalAudioClips);
+    const setPrecompProgress = useEditorStore(s => s.setPrecompProgress);
     const setIsSeeking = useEditorStore(s => s.setIsSeeking);
     const isScrubbing = useEditorStore(s => s.isScrubbing);
     const isSeeking = useEditorStore(s => s.isSeeking);
@@ -92,12 +97,27 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
             if (!isScrubbingRef.current) setRootNode(frameRef.current.getTreeState());
             setDuration(frameRef.current.getDuration());
             setSceneDurations(frameRef.current.getSceneDurations());
+            // Beds are bounded by the measured duration, so they're re-read
+            // wherever it is — not once on mount.
+            setGlobalAudioClips(frameRef.current.getGlobalAudio());
         }
-    }, [frameRef, setIsSeeking, setDuration, setSceneDurations, setRootNode]);
+    }, [frameRef, setIsSeeking, setDuration, setSceneDurations, setGlobalAudioClips, setRootNode]);
 
     const handleBuildErrors = useCallback((errors: Parameters<typeof setBuildErrors>[0]) => {
         setBuildErrors(errors);
     }, [setBuildErrors]);
+
+    // A scene finishing its precomp lengthens the timeline, so re-pull the same
+    // durations handleLoadingChange pulls. Deliberately *not* routed through that
+    // callback: it also drives `isSeeking`, and flipping the shimmer on every
+    // scene that lands would strobe the preview for the whole measuring pass.
+    const handlePrecompProgress = useCallback((progress: PrecompProgress) => {
+        setPrecompProgress(progress);
+        if (!frameRef.current) return;
+        setDuration(frameRef.current.getDuration());
+        setSceneDurations(frameRef.current.getSceneDurations());
+        setGlobalAudioClips(frameRef.current.getGlobalAudio());
+    }, [frameRef, setPrecompProgress, setDuration, setSceneDurations, setGlobalAudioClips]);
 
     const handleFrameChange = useCallback((frame: number) => {
         setCurrentFrame(frame);
@@ -407,6 +427,9 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
                         fps={fps}
                         theme={theme}
                         variables={variables}
+                        audioTracks={audioTracks}
+                        overlays={overlays}
+                        backgrounds={backgrounds}
                         viewport={viewport}
                         scenes={scenes}
                         assets={assets}
@@ -415,6 +438,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
                         onLoadingChange={handleLoadingChange}
                         onFrameChange={handleFrameChange}
                         onBuildErrors={handleBuildErrors}
+                        onPrecompProgress={handlePrecompProgress}
                     />
                 </div>
             </div>

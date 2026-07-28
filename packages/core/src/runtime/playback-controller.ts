@@ -5,7 +5,8 @@ import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-ev
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
-import { Precomp, PrecompResult, NodeLifespan } from "./precompisition";
+import { Precomp, PrecompResult, NodeLifespan, DEFAULT_PRECOMP_BUDGET_MS } from "./precompisition";
+import { yieldToScheduler } from "@/util/scheduler";
 import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
@@ -31,6 +32,19 @@ export type ControllerParams = {
      * every frame, making preemption deterministic.
      */
     replayBudgetMs?: number;
+    /**
+     * Wall-clock ms the background precomp may run before yielding. Defaults to
+     * {@link DEFAULT_PRECOMP_BUDGET_MS}. Set to `0` in tests to force a yield on
+     * every precomped frame.
+     */
+    precompBudgetMs?: number;
+    /**
+     * Called each time the background precomp measures another scene, with the
+     * newly assembled result. Fires until `result.complete` is true. Passed at
+     * construction rather than subscribed afterwards so a fast first scene can't
+     * publish before the caller has attached.
+     */
+    onPrecompProgress?: (result: PrecompResult) => void;
 };
 
 /**
@@ -68,6 +82,19 @@ export class PlaybackController {
     private seekGeneration = 0;
     /** Time slice for `seek`'s interruptible replay. See {@link ControllerParams.replayBudgetMs}. */
     private readonly replayBudgetMs: number;
+    /** Time slice for the background precomp. See {@link ControllerParams.precompBudgetMs}. */
+    private readonly precompBudgetMs: number;
+    private readonly onPrecompProgress?: (result: PrecompResult) => void;
+    /**
+     * Set when playback ran off the end of the *measured* timeline while the
+     * background precomp was still working. Distinguishes "the project ended"
+     * from "we ran out of measured frames", so {@link adoptPrecomp} can resume
+     * once more duration lands instead of stranding the user at a false ending.
+     */
+    private pausedPendingPrecomp = false;
+    /** Speed/direction of the last `play`, replayed by an auto-resume. */
+    private lastPlaySpeed = 1;
+    private lastPlayReverse = false;
     readonly fps: number;
     readonly viewport: Size2D;
     /** The precomp runner, kept so a single scene can be re-run on hot reload. */
@@ -95,6 +122,20 @@ export class PlaybackController {
         return this.precomp.buildErrors;
     }
 
+    /**
+     * The project's audio beds as timeline clips, in **absolute** seconds —
+     * already bounded by the measured duration, so re-read them whenever it
+     * grows. Exposed for the timeline's global track rows; playback schedules
+     * the underlying requests itself.
+     */
+    get globalAudio(): WaveformInfo[] {
+        return this.precomp.globalAudio.map(req => ({
+            src: req.src,
+            startTime: req.startAt,
+            endTime: Number.isFinite(req.endAt) ? req.endAt : null,
+        }));
+    }
+
     constructor(params: ControllerParams) {
         this.renderContext = params.renderContext;
         this.measureScope = params.measureScope;
@@ -104,11 +145,18 @@ export class PlaybackController {
         this.fps = params.fps;
         this.viewport = params.viewport;
         this.replayBudgetMs = params.replayBudgetMs ?? DEFAULT_REPLAY_BUDGET_MS;
+        this.precompBudgetMs = params.precompBudgetMs ?? DEFAULT_PRECOMP_BUDGET_MS;
+        this.onPrecompProgress = params.onPrecompProgress;
 
         const catalog = params.assets;
 
         this.precomper = params.precomposition;
-        this.precomp = this.precomper.run();
+        // Measure only the scene that owns frame 0 — that is everything the first
+        // painted frame needs. The rest of the project streams in behind it (see
+        // startBackgroundPrecomp), so time-to-first-frame is O(one scene) rather
+        // than O(whole project). Scenes not yet measured appear as zero-length
+        // placeholders, which every consumer below already handles.
+        this.precomp = this.precomper.runUntil(i => i === 0);
 
         this.stateEvaluator = new StateEvaluator(
             params.scenes,
@@ -117,6 +165,10 @@ export class PlaybackController {
             catalog,
             this.tracks,
             this.measureScope,
+            // Read off the precomp rather than taken as a separate param: the two
+            // must be the same instance, and there is no way to pass a mismatched
+            // pair if only one of them is ever supplied.
+            this.precomper.globals,
         );
 
         this.assetManager = new AssetManager(
@@ -141,6 +193,10 @@ export class PlaybackController {
             const gen = ++this.seekGeneration;
             const frame = this.fps * currentTime;
             if (frame >= this.totalFrames) {
+                // `totalFrames` is only the end of the project once precomp is
+                // complete; before that it is just the end of what we've measured.
+                // Flag the difference so adoptPrecomp can pick playback back up.
+                this.pausedPendingPrecomp = !this.precomp.complete;
                 this.masterClock.pause();
             }
             await this.assetManager.loadAt(frame);
@@ -149,6 +205,60 @@ export class PlaybackController {
             this.renderAt(frame, this.cancelAfter(gen));
             this.assetManager.prefetch(frame);
         });
+
+        this.startBackgroundPrecomp();
+    }
+
+    /**
+     * Measure the remaining scenes off the critical path, republishing a longer
+     * timeline as each one lands.
+     *
+     * Deferred behind a yield so the caller finishes mounting and the first frame
+     * actually paints before this starts competing for the main thread — the
+     * whole point of the split is that the user sees something immediately.
+     */
+    private startBackgroundPrecomp(): void {
+        if (this.precomp.complete) return;
+        void (async () => {
+            await yieldToScheduler();
+            if (this.disposed) return;
+            const final = await this.precomper.runAsync({
+                budgetMs: this.precompBudgetMs,
+                isCancelled: () => this.disposed,
+                onProgress: result => this.adoptPrecomp(result),
+            });
+            // `onProgress` already published every scene it measured; this only
+            // matters when there was nothing left to measure (every scene served
+            // from cache), where no progress callback fires at all.
+            if (!this.disposed && !this.precomp.complete) this.adoptPrecomp(final);
+        })();
+    }
+
+    /**
+     * Swap in a newly assembled precomp result and propagate the longer timeline
+     * to everything that derives from it.
+     *
+     * The same three updates {@link replaceScene} performs, minus the scene swap.
+     * `setPrecomp` is not optional on any publish: it resets the asset manager's
+     * `lastAudioRequestKey`, which is what forces a reschedule of audio whose
+     * `endAt` was just re-resolved against the now-longer project.
+     */
+    private adoptPrecomp(next: PrecompResult): void {
+        if (this.disposed) return;
+        this.precomp = next;
+        this.stateEvaluator.setTracks(this.tracks);
+        this.assetManager.setPrecomp(next);
+        this.masterClock.setDuration(this.totalDuration);
+
+        // Playback stopped at what was then the end of the world; there is more of
+        // it now, so carry on from where it stopped rather than making the user
+        // press play again at an arbitrary scene boundary.
+        if (this.pausedPendingPrecomp && this.currentFrame < this.totalFrames) {
+            this.pausedPendingPrecomp = false;
+            this.masterClock.play(this.lastPlaySpeed, this.lastPlayReverse);
+        }
+
+        this.onPrecompProgress?.(next);
     }
 
     get isPlaying(): boolean {
@@ -257,6 +367,9 @@ export class PlaybackController {
         // frame) bleeding into a scene a newer seek already rendered.
         const gen = ++this.seekGeneration;
         const clamped = Math.max(0, Math.min(frame, this.totalFrames));
+        // Scrubbing is an explicit reposition — drop any pending auto-resume so a
+        // scene landing mid-scrub doesn't start playing under the user's cursor.
+        this.pausedPendingPrecomp = false;
         this.masterClock.pause();
         this.masterClock.seek(clamped / this.fps);
         await this.assetManager.loadAt(clamped);
@@ -423,6 +536,9 @@ export class PlaybackController {
     }
 
     play(speed: number = 1, reverse: boolean = false): void {
+        this.lastPlaySpeed = speed;
+        this.lastPlayReverse = reverse;
+        this.pausedPendingPrecomp = false;
         if (this.currentFrame >= this.totalFrames) {
             this.seek(0).then(() => this.masterClock.play(speed, reverse)).catch(() => { });
             return;
@@ -431,6 +547,8 @@ export class PlaybackController {
     }
 
     pause(): void {
+        // An explicit pause outranks a pending auto-resume: the user asked to stop.
+        this.pausedPendingPrecomp = false;
         this.masterClock.pause();
     }
 

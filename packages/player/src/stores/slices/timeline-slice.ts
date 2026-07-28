@@ -1,3 +1,5 @@
+import type { WaveformInfo } from "@motion-script/core";
+
 import type { SliceCreator } from "./types";
 
 /**
@@ -5,12 +7,38 @@ import type { SliceCreator } from "./types";
  * frames and, on a project reload, completes the pending scene jump stashed by
  * the project slice's `resetConfig` (reads `_pendingSceneIndex` and `fps`).
  */
+/**
+ * How much of the project the background precomp has measured.
+ *
+ * Only the scene owning frame 0 is measured before the player mounts, so on a
+ * long project `duration` and `sceneStartFrames` describe a prefix of the
+ * timeline and grow as scenes land. Anything presenting the timeline as final
+ * should check `complete` first.
+ */
+export type PrecompProgressState = {
+    measuredScenes: number;
+    totalScenes: number;
+    complete: boolean;
+};
+
 export type TimelineSlice = {
     duration: number;
     setDuration: (duration: number) => void;
 
+    precompProgress: PrecompProgressState;
+    setPrecompProgress: (progress: PrecompProgressState) => void;
+
     sceneStartFrames: number[];
     setSceneDurations: (durationFrames: number[]) => void;
+
+    /**
+     * The project's audio beds resolved to absolute timeline clips, for the
+     * timeline's global track rows. Derived from the live controller rather than
+     * from `audioTracks` directly: a bed's end depends on the source's length and
+     * on the measured duration, neither of which the config states.
+     */
+    globalAudioClips: WaveformInfo[];
+    setGlobalAudioClips: (clips: WaveformInfo[]) => void;
 
     timelineZoom: number;
     setTimelineZoom: (zoom: number) => void;
@@ -20,6 +48,14 @@ export type TimelineSlice = {
 export const createTimelineSlice: SliceCreator<TimelineSlice> = (set, get) => ({
     duration: 0,
     setDuration: (duration) => set(() => ({ duration })),
+
+    // Starts complete so nothing flashes before the player mounts and reports;
+    // MotionPlayer publishes the real starting position on mount.
+    precompProgress: { measuredScenes: 0, totalScenes: 0, complete: true },
+    setPrecompProgress: (precompProgress) => set(() => ({ precompProgress })),
+
+    globalAudioClips: [],
+    setGlobalAudioClips: (globalAudioClips) => set(() => ({ globalAudioClips })),
 
     sceneStartFrames: [],
     setSceneDurations: (durationFrames) => {

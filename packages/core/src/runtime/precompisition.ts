@@ -11,6 +11,8 @@ import { AssetTracker } from "@/assets/tracker";
 import { TrackMeasureScope } from "@/render/track-measure-scope";
 import { TrackRenderContext } from "@/render/track-render-context";
 import { Scene } from "@/nodes/scene/scene-node";
+import { ProjectGlobals, resolveGlobalAudio } from "./globals";
+import { now, yieldToScheduler } from "@/util/scheduler";
 
 // ─── Asset track types ────────────────────────────────────────────────────────
 
@@ -65,6 +67,16 @@ export interface NodeLifespan {
  * scene re-runnable in isolation for hot reloading.
  */
 export interface ScenePrecomp {
+    /**
+     * Whether this scene's generator has actually been driven yet.
+     *
+     * `Precomp.runAsync` publishes intermediate results in which scenes it hasn't
+     * reached appear as zero-length placeholders, so downstream frame arithmetic
+     * stays valid while the timeline is still growing. This flag is the only way
+     * to tell such a placeholder from a scene that genuinely measured zero
+     * frames — don't infer it from `frameCount`.
+     */
+    measured: boolean;
     /** Frame count for this scene. */
     frameCount: number;
     /** Absolute frame offset of this scene in the global timeline. */
@@ -89,12 +101,125 @@ export interface ScenePrecomp {
     lifespans: Map<string, NodeLifespan>;
 }
 
+// ─── Profiling ────────────────────────────────────────────────────────────────
+
+/**
+ * The distinct pieces of work {@link Precomp.precompSceneSteps}'s per-frame loop
+ * performs. Each is a full walk of the scene's node tree (except `generator`,
+ * which is the author's own tween code), so attributing wall-clock to them is
+ * what tells you which one to optimize.
+ */
+export type PrecompPhase =
+    | "prepareLayout"
+    | "layout"
+    | "prepareRender"
+    | "prepareAudio"
+    | "render"
+    | "lifespans"
+    | "bindAssets"
+    | "bindContext"
+    | "ellapse"
+    | "generator";
+
+const PRECOMP_PHASES: readonly PrecompPhase[] = [
+    "prepareLayout", "layout", "prepareRender", "prepareAudio", "render",
+    "lifespans", "bindAssets", "bindContext", "ellapse", "generator",
+];
+
+/** Wall-clock breakdown of one scene's build pass, in milliseconds. */
+export interface ScenePrecompTiming {
+    sceneName: string;
+    sceneIndex: number;
+    frameCount: number;
+    /** Total ms spent inside the pass, excluding time parked on a yield. */
+    totalMs: number;
+    /** Ms attributed to each phase of the per-frame loop. */
+    phases: Record<PrecompPhase, number>;
+}
+
+/** Per-scene timings, in timeline order. Sparse until every scene has run. */
+export type PrecompTimings = (ScenePrecompTiming | undefined)[];
+
+/**
+ * Timing sink for a single scene's pass.
+ *
+ * `enter` closes whichever phase was open and starts the named one, so the loop
+ * pays exactly one call per phase. `suspend`/`resume` bracket a yield so parked
+ * time isn't billed to whatever phase happened to be open.
+ */
+export interface ScenePrecompProfile {
+    enter(phase: PrecompPhase): void;
+    suspend(): void;
+    resume(): void;
+    done(frameCount: number): void;
+}
+
+/**
+ * Optional profiler injected into {@link Precomp}. Deliberately a seam rather
+ * than a module global: it keeps `core` free of any environment assumption, and
+ * leaves nothing but a never-taken branch in a production bundle.
+ */
+export interface PrecompProfile {
+    scene(sceneIndex: number, sceneName: string): ScenePrecompProfile;
+}
+
+/**
+ * A {@link PrecompProfile} that accumulates into a {@link PrecompTimings} array.
+ * Pass `profile` to `new Precomp(...)` and read `PrecompResult.timings`.
+ */
+export function createPrecompProfile(): PrecompProfile & { timings: PrecompTimings } {
+    const timings: PrecompTimings = [];
+    return {
+        timings,
+        scene(sceneIndex: number, sceneName: string): ScenePrecompProfile {
+            const phases = Object.fromEntries(
+                PRECOMP_PHASES.map(p => [p, 0]),
+            ) as Record<PrecompPhase, number>;
+            let open: PrecompPhase | null = null;
+            let since = now();
+            let totalMs = 0;
+            const close = () => {
+                const elapsed = now() - since;
+                if (open) phases[open] += elapsed;
+                totalMs += elapsed;
+            };
+            return {
+                enter(phase) {
+                    close();
+                    open = phase;
+                    since = now();
+                },
+                suspend() {
+                    close();
+                    open = null;
+                },
+                resume() {
+                    since = now();
+                },
+                done(frameCount) {
+                    close();
+                    open = null;
+                    timings[sceneIndex] = { sceneName, sceneIndex, frameCount, totalMs, phases };
+                },
+            };
+        },
+    };
+}
+
 // ─── Full precomp result ──────────────────────────────────────────────────────
 
 export interface PrecompResult {
     fps: number;
     /** Per-scene durations and audio, in timeline order. */
     scenes: ScenePrecomp[];
+    /**
+     * Project-level audio beds (`ProjectConfig.audioTracks`), resolved against
+     * the project total. Unlike {@link ScenePrecomp.audioRequests} these carry
+     * **absolute** timeline times — consumers schedule them with a zero scene
+     * offset. Re-derived on every assembly, so a bed bounded against a partial
+     * total while the background precomp runs is corrected as scenes land.
+     */
+    globalAudio: AudioRequest[];
     /** Total frame count across all scenes. */
     totalFrames: number;
     /** Total duration in seconds. */
@@ -107,21 +232,122 @@ export interface PrecompResult {
     assets: ReadonlyMap<string, AssetTrack>;
     /** Errors thrown by scene generators during the build pass. */
     buildErrors: BuildError[];
+    /**
+     * True once every scene has been measured. False for the intermediate
+     * results {@link Precomp.runAsync} publishes while it is still working, where
+     * `totalFrames`/`totalDuration` cover only the scenes measured so far and
+     * will grow. UI that shows a timeline length should say so while this is
+     * false rather than presenting a partial total as final.
+     */
+    complete: boolean;
+    /**
+     * Per-phase wall-clock breakdown, present only when a {@link PrecompProfile}
+     * was injected. Diagnostics — nothing in the engine reads this.
+     */
+    timings?: PrecompTimings;
 }
 
 // ─── Precomp runner ───────────────────────────────────────────────────────────
+
+/** What one scene's build pass produces: its precomp, plus any error it threw. */
+interface ScenePassOutcome {
+    precomp: ScenePrecomp;
+    error?: BuildError;
+}
+
+/**
+ * A host-provided store of previously-measured scene passes, letting an unchanged
+ * scene skip its build pass entirely.
+ *
+ * The host owns both storage and **validity**: entries handed to {@link get} are
+ * assumed to already have been checked against whatever the pass depended on
+ * (scene source and its imports, project config, referenced assets, engine
+ * version). `Precomp` cannot make that judgement — it has no idea what a scene's
+ * source looks like — so it trusts what it is given and simply records fresh
+ * passes back via {@link put}.
+ *
+ * See `@motion-script/vite-plugin`, which implements this over a project-local
+ * `.motion-script/precomp.json` and validates by re-hashing each entry's recorded
+ * source dependencies.
+ */
+export interface PrecompCache {
+    /** A previously-stored pass for `sceneKey`, already validated, or undefined. */
+    get(sceneKey: string): ScenePrecomp | undefined;
+    /** Record a freshly-measured pass. Only called for scenes that built cleanly. */
+    put(sceneKey: string, precomp: ScenePrecomp): void;
+}
+
+/** Options controlling how a {@link Precomp} runs. */
+export interface PrecompOptions {
+    /** Optional timing sink; see {@link createPrecompProfile}. */
+    profile?: PrecompProfile;
+    /** Optional store of previously-measured passes; see {@link PrecompCache}. */
+    cache?: PrecompCache;
+    /**
+     * The project's global audio beds and background/overlay layers. The **same
+     * instance** must be handed to the {@link StateEvaluator} that plays the
+     * project back (read it off {@link Precomp.globals}), so the layers this
+     * pass measures assets for are the ones that actually draw.
+     */
+    globals?: ProjectGlobals;
+}
+
+/** Knobs for {@link Precomp.runAsync}. */
+export interface RunAsyncOptions {
+    /**
+     * Wall-clock ms the pass may occupy before yielding to the event loop.
+     * Defaults to {@link DEFAULT_PRECOMP_BUDGET_MS}. Set to `0` in tests to force
+     * a yield on every frame, making preemption deterministic.
+     */
+    budgetMs?: number;
+    /** Polled after every yield; when it returns true the pass abandons its work. */
+    isCancelled?: () => boolean;
+    /**
+     * Called with a freshly assembled result each time a scene finishes, so a
+     * consumer can publish a growing timeline instead of waiting for the whole
+     * project. The final call has `complete: true`.
+     */
+    onProgress?: (result: PrecompResult) => void;
+}
+
+/**
+ * Wall-clock ms a background precomp may run before yielding. Matches
+ * `DEFAULT_REPLAY_BUDGET_MS` — half a 60 Hz frame, leaving the other half for
+ * input handling and paint.
+ */
+export const DEFAULT_PRECOMP_BUDGET_MS = 8;
 
 /**
  * Runs offline build passes over a project's scenes before/while it plays.
  *
  * Each scene is driven through its generator (without rendering) to learn its
  * frame count, asset usage, audio, and per-node lifespans — all scene-local.
- * {@link run} does this for every scene up front; {@link replaceScene} re-runs a
- * single scene and reuses every other scene's cached pass, which is what makes
- * scene-level hot reloading cheap (editing scene N never re-runs scenes ≠ N).
+ * {@link ensureScene} is the unit of work and memoizes, so every entry point
+ * below is a different scheduling policy over the same passes:
  *
- * The runner is stateless across calls: `run`/`replaceScene` return a fresh
- * immutable {@link PrecompResult} the `PlaybackController` swaps in.
+ * - {@link run} — every scene, synchronously. Blocks until the whole project is
+ *   measured; used by callers that have nothing to show until then.
+ * - {@link runAsync} — every scene, time-sliced, publishing a growing result as
+ *   each one lands. This is the interactive path: the player renders frame 0
+ *   after scene 0 rather than after scene *n*.
+ * - {@link runUntil} — stops as soon as a caller has what it needs (a screenshot
+ *   at frame *f* only needs the scenes up to the one owning *f*).
+ * - {@link replaceScene} — re-runs one scene and reuses every other scene's
+ *   cached pass, which is what makes scene-level hot reloading cheap.
+ *
+ * ### The sequential invariant
+ *
+ * Scenes must be measured **in order, starting from 0**, and a scene must be
+ * fully measured before anything else drives its generator. `Precomp` and
+ * `StateEvaluator` share the same `Scene` instances and {@link precompSceneSteps}
+ * calls `scene.reset()`, which would tear down a tree the evaluator is live on.
+ * Ordering is what keeps them apart: a frame inside scene *k* is not addressable
+ * until scenes `0..k-1` have durations, so the evaluator cannot reach a scene
+ * the background pass has not already finished with.
+ *
+ * `run`/`runAsync`/`replaceScene` each return a fresh immutable
+ * {@link PrecompResult} the `PlaybackController` swaps in; the per-scene passes
+ * behind them are cached on the instance.
  */
 export class Precomp {
     private scenes: Scene[];
@@ -129,6 +355,15 @@ export class Precomp {
     private readonly fps: number;
     private readonly assets: AssetCatalog;
     private readonly measureScope: MeasureScope;
+    private readonly profile?: PrecompProfile;
+    /** Host-provided store of previously-measured passes; see {@link PrecompCache}. */
+    private readonly store?: PrecompCache;
+    /** The project's global audio + layers; see {@link PrecompOptions.globals}. */
+    private readonly _globals?: ProjectGlobals;
+    /** Memoized per-scene passes, indexed by scene. Invalidated by {@link replaceScene}. */
+    private readonly cache: (ScenePrecomp | undefined)[] = [];
+    /** Build error from each scene's cached pass, parallel to {@link cache}. */
+    private readonly cachedErrors: (BuildError | undefined)[] = [];
 
     constructor(
         scenes: Scene[],
@@ -136,12 +371,17 @@ export class Precomp {
         fps: number,
         assets: AssetCatalog,
         measureScope: MeasureScope,
+        options: PrecompOptions = {},
     ) {
         this.scenes = scenes;
         this.viewport = viewport;
         this.fps = fps;
         this.assets = assets;
         this.measureScope = measureScope;
+        this.profile = options.profile;
+        this.store = options.cache;
+        this._globals = options.globals;
+        this._globals?.setViewport(viewport);
     }
 
     /** The scene list this precomp drives (kept in sync by {@link replaceScene}). */
@@ -150,26 +390,157 @@ export class Precomp {
     }
 
     /**
+     * The project's global audio + layers, or `undefined` when none were
+     * supplied. Hand this to the {@link StateEvaluator} so playback draws the
+     * same layer instances this pass measured.
+     */
+    get globals(): ProjectGlobals | undefined {
+        return this._globals;
+    }
+
+    /** How many scenes have been measured so far. */
+    get measuredCount(): number {
+        let n = 0;
+        for (let i = 0; i < this.scenes.length; i++) if (this.cache[i]) n++;
+        return n;
+    }
+
+    /**
+     * Measure scene `index` if it hasn't been already, and return its pass.
+     *
+     * The one place a scene's generator is actually driven, and idempotent: a
+     * second call is a cache read. Every other entry point is a policy for
+     * choosing *when* to call this.
+     */
+    ensureScene(index: number): ScenePrecomp {
+        return this.measureScene(index, true);
+    }
+
+    /**
+     * @param allowStore Whether a hit in the host {@link PrecompCache} may stand in
+     *                   for a real pass. False on the hot-reload path, where the
+     *                   scene's source has just changed under a store entry the
+     *                   host validated when the page loaded.
+     */
+    private measureScene(index: number, allowStore: boolean): ScenePrecomp {
+        const hit = this.cache[index];
+        if (hit) return hit;
+
+        const scene = this.scenes[index];
+        const key = allowStore ? storeKeyOf(scene) : undefined;
+        const stored = key ? this.store?.get(key) : undefined;
+        if (stored) return this.commit(index, { precomp: stored });
+
+        const steps = this.precompSceneSteps(scene, index, this.profile?.scene(index, scene.name ?? `Scene ${index}`));
+        let step = steps.next();
+        while (!step.done) step = steps.next();
+        this.remember(scene, step.value);
+        return this.commit(index, step.value);
+    }
+
+    /**
+     * Offer a freshly-measured pass to the host store.
+     *
+     * A scene that threw is never stored: `ScenePrecomp` carries no record of the
+     * error, so a cached partial pass would replay as a *successful* short scene
+     * on the next run and the error would vanish from the errors panel.
+     */
+    private remember(scene: Scene, outcome: ScenePassOutcome): void {
+        if (!this.store || outcome.error) return;
+        const key = storeKeyOf(scene);
+        if (key) this.store.put(key, outcome.precomp);
+    }
+
+    /**
      * Execute a build pass over every scene and assemble the complete result.
      *
-     * Each scene's generator is driven through its full loop: `build()` yields
-     * once per frame, and each tick collects fonts, lays out, collects
-     * image/video/paint assets, and records lifespans before advancing the
-     * clock (see {@link precompScene}). A scene that throws is
-     * recorded in `buildErrors` rather than aborting the whole pass, so other
-     * scenes still precomp.
+     * Synchronous and unbounded — for a long project this occupies the thread
+     * until the last scene finishes. Prefer {@link runAsync} anywhere a UI is
+     * waiting. A scene that throws is recorded in `buildErrors` rather than
+     * aborting the whole pass, so other scenes still precomp.
      */
     run(): PrecompResult {
-        const perScene: ScenePrecomp[] = [];
-        const buildErrors: BuildError[] = [];
+        for (let i = 0; i < this.scenes.length; i++) this.ensureScene(i);
+        return this.assemble();
+    }
+
+    /**
+     * Measure scenes in order until `done` is satisfied, then assemble what is
+     * known. Scenes past the stopping point appear as unmeasured placeholders,
+     * so the result's `totalFrames` covers only what was actually measured.
+     *
+     * @param done Called with the index just measured and its pass; return true
+     *             to stop. Not called for scenes served from cache misses only —
+     *             it sees every scene the loop touches, cached or not.
+     */
+    runUntil(done: (index: number, precomp: ScenePrecomp) => boolean): PrecompResult {
+        for (let i = 0; i < this.scenes.length; i++) {
+            if (done(i, this.ensureScene(i))) break;
+        }
+        return this.assemble();
+    }
+
+    /**
+     * Measure every scene in order, yielding to the event loop so the page stays
+     * responsive, and publishing a fresh result each time a scene lands.
+     *
+     * The yield points are complete frame boundaries only — the frame loop
+     * mutates the scene tree, so suspending mid-frame would expose a torn state
+     * to whatever runs next. `isCancelled` is re-checked as the *first* thing
+     * after every resume, before touching anything, so an abandoned pass can
+     * never mutate state a newer one has moved past.
+     *
+     * @returns the final result, or the last partial one if cancelled.
+     */
+    async runAsync(options: RunAsyncOptions = {}): Promise<PrecompResult> {
+        const { budgetMs = DEFAULT_PRECOMP_BUDGET_MS, isCancelled, onProgress } = options;
 
         for (let i = 0; i < this.scenes.length; i++) {
-            const { precomp, error } = this.precompScene(this.scenes[i], i);
-            perScene.push(precomp);
-            if (error) buildErrors.push(error);
+            if (isCancelled?.()) return this.assemble();
+            if (this.cache[i]) continue;
+
+            const scene = this.scenes[i];
+            // A stored pass makes this scene free — take it and publish, so a warm
+            // project reaches a complete timeline without measuring anything.
+            const key = storeKeyOf(scene);
+            const stored = key ? this.store?.get(key) : undefined;
+            if (stored) {
+                this.commit(i, { precomp: stored });
+                onProgress?.(this.assemble());
+                continue;
+            }
+
+            const sceneProfile = this.profile?.scene(i, scene.name ?? `Scene ${i}`);
+            const steps = this.precompSceneSteps(scene, i, sceneProfile);
+            let deadline = now() + budgetMs;
+            let step = steps.next();
+
+            while (!step.done) {
+                if (now() >= deadline) {
+                    sceneProfile?.suspend();
+                    await yieldToScheduler();
+                    // Arbitrary code ran while we were parked — re-validate before
+                    // resuming a generator that mutates a live scene tree.
+                    if (isCancelled?.()) {
+                        // Unwind the pass so its `finally` resets the scene rather
+                        // than leaving it torn at a partial frame. The value handed
+                        // in becomes the abandoned generator's return value, which
+                        // we discard — this scene stays unmeasured.
+                        steps.return({ precomp: pendingScenePrecomp() });
+                        return this.assemble();
+                    }
+                    sceneProfile?.resume();
+                    deadline = now() + budgetMs;
+                }
+                step = steps.next();
+            }
+
+            this.remember(scene, step.value);
+            this.commit(i, step.value);
+            onProgress?.(this.assemble());
         }
 
-        return assembleTimeline(perScene, buildErrors, this.fps);
+        return this.assemble();
     }
 
     /**
@@ -186,24 +557,89 @@ export class Precomp {
         this.scenes = this.scenes.slice();
         this.scenes[index] = newScene;
 
-        const { precomp, error } = this.precompScene(newScene, index);
+        // Drop the stale pass so ensureScene actually re-measures the edited scene.
+        this.cache[index] = undefined;
+        this.cachedErrors[index] = undefined;
 
-        const perScene = prev.scenes.slice();
-        perScene[index] = precomp;
+        // Seed the cache from `prev` for any scene this instance hasn't measured
+        // itself — a result can outlive the runner that produced it (a rehydrated
+        // or handed-over one), and reusing its passes is the whole point here.
+        for (let i = 0; i < this.scenes.length; i++) {
+            const carried = prev.scenes[i];
+            if (i !== index && !this.cache[i] && carried?.measured) {
+                this.cache[i] = carried;
+                this.cachedErrors[i] = prev.buildErrors.find(e => e.sceneIndex === i);
+            }
+        }
 
-        // Carry forward the other scenes' build errors; replace this scene's.
-        const buildErrors = prev.buildErrors.filter(e => e.sceneIndex !== index);
-        if (error) buildErrors.push(error);
+        // Bypass the host store: its entry for this scene was validated when the
+        // page loaded, and the whole reason we're here is that the source has
+        // since changed. The fresh pass is offered back so the host can persist it.
+        this.measureScene(index, false);
+        return this.assemble();
+    }
 
-        return assembleTimeline(perScene, buildErrors, this.fps);
+    /**
+     * Assemble the current cache into a result. Scenes not yet measured appear as
+     * zero-length placeholders so frame arithmetic stays valid — `measured` is
+     * what distinguishes them, and `complete` reports whether any remain.
+     */
+    private assemble(): PrecompResult {
+        const perScene: ScenePrecomp[] = [];
+        const buildErrors: BuildError[] = [];
+        let complete = true;
+
+        for (let i = 0; i < this.scenes.length; i++) {
+            const cached = this.cache[i];
+            if (cached) {
+                perScene.push(cached);
+                const error = this.cachedErrors[i];
+                if (error) buildErrors.push(error);
+            } else {
+                perScene.push(pendingScenePrecomp());
+                complete = false;
+            }
+        }
+
+        return assembleTimeline(
+            perScene,
+            buildErrors,
+            this.fps,
+            complete,
+            this.collectTimings(),
+            this._globals,
+            this.assets,
+        );
+    }
+
+    /** Store a completed pass and return it. */
+    private commit(index: number, outcome: ScenePassOutcome): ScenePrecomp {
+        this.cache[index] = outcome.precomp;
+        this.cachedErrors[index] = outcome.error;
+        return outcome.precomp;
+    }
+
+    private collectTimings(): PrecompTimings | undefined {
+        const p = this.profile as (PrecompProfile & { timings?: PrecompTimings }) | undefined;
+        return p?.timings ? p.timings.slice() : undefined;
     }
 
     /**
      * Drive one scene's generator to completion and collect its scene-local
      * precomp (frame count, asset usage, audio, lifespans). `startFrame` is left
      * 0 here and filled in by {@link assembleTimeline}.
+     *
+     * Written as a generator so the same loop serves both the synchronous and the
+     * time-sliced driver — there is exactly one copy of the per-frame semantics,
+     * and they cannot drift apart. It yields at complete frame boundaries only.
+     * Abandoning it (`.return()`) runs the `finally` that disposes the tracker and
+     * resets the scene, so a cancelled pass leaves nothing torn.
      */
-    private precompScene(scene: Scene, sceneIndex: number): { precomp: ScenePrecomp; error?: BuildError } {
+    private *precompSceneSteps(
+        scene: Scene,
+        sceneIndex: number,
+        profile?: ScenePrecompProfile,
+    ): Generator<void, ScenePassOutcome, void> {
         const dt = 1 / this.fps;
         const layoutBounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
 
@@ -219,6 +655,15 @@ export class Precomp {
         const trackRenderContext = new TrackRenderContext(registry);
         const stage = new BuildStage<Scene>(this.viewport, this.fps);
 
+        // Global layers are not part of the scene tree (see `LayerStack`), so they
+        // are driven alongside it: selected once here, then laid out, rendered and
+        // audio-prepared with every frame below. That is what registers a
+        // watermark's font or a background video's frames as assets — and it uses
+        // the same tracking context the scene does, so a layer's asset window can't
+        // drift from what actually draws.
+        const globals = this._globals;
+        globals?.select(sceneIndex, scene.name ?? `Scene ${sceneIndex}`);
+
         scene.reset();
         scene.set({ width: this.viewport.width, height: this.viewport.height });
         scene.setViewport(this.viewport);
@@ -227,6 +672,8 @@ export class Precomp {
         // generator adds below inherit context and run their init() on add. runInit
         // here fires init() for any nodes already present (e.g. config children).
         scene.bindContext(ContextMap.EMPTY, true);
+        globals?.bindAssets(this.assets);
+        globals?.bindContext(ContextMap.EMPTY);
         stage.reset();
 
         let localFrame = 0;
@@ -234,86 +681,157 @@ export class Precomp {
         let error: BuildError | undefined;
 
         try {
-            const generator = scene.build(stage);
+            try {
+                const generator = scene.build(stage);
 
-            // Prime: advance to first yield so frame-0 nodes are registered.
-            generator.next(dt);
+                // Prime: advance to first yield so frame-0 nodes are registered.
+                generator.next(dt);
 
-            while (true) {
-                registry.start(localFrame);
+                while (true) {
+                    registry.start(localFrame);
 
-                // Opaque pre-layout async setup (e.g. Code's syntax grammar) —
-                // fire-and-forget, doesn't block this synchronous pass. Layout
-                // then resolves every node's layoutRect, measuring text through
-                // trackMeasureScope so every font it touches is registered as a
-                // side effect (see TrackMeasureScope) — no hand-written font
-                // declaration needed, and no less accurate than before: the real
-                // font manager was never populated this early anyway (see
-                // TrackMeasureScope's doc comment).
-                scene.prepareLayoutAssets();
-                scene.layout(layoutBounds, trackMeasureScope);
-                // Reserved pre-render async setup; no current built-in user.
-                scene.prepareRenderAssets();
-                // Audio scheduling (Video, managed sounds) — the one asset concern
-                // that's neither drawable nor a simple async load, so it stays an
-                // explicit, tracker-based registration.
-                scene.prepareAudioAssets(registry);
-                // Replay the scene's real render() against a context that
-                // registers every image/video/paint fill it would have painted
-                // instead of rasterizing — the same Graphics objects renderSelf
-                // already builds, so this can't drift from what's actually drawn.
-                trackRenderContext.execute(() => scene.render(trackRenderContext));
+                    // Opaque pre-layout async setup (e.g. Code's syntax grammar) —
+                    // fire-and-forget, doesn't block this synchronous pass. Layout
+                    // then resolves every node's layoutRect, measuring text through
+                    // trackMeasureScope so every font it touches is registered as a
+                    // side effect (see TrackMeasureScope) — no hand-written font
+                    // declaration needed, and no less accurate than before: the real
+                    // font manager was never populated this early anyway (see
+                    // TrackMeasureScope's doc comment).
+                    profile?.enter("prepareLayout");
+                    scene.prepareLayoutAssets();
+                    globals?.prepareLayoutAssets();
+                    profile?.enter("layout");
+                    scene.layout(layoutBounds, trackMeasureScope);
+                    globals?.layout(layoutBounds, trackMeasureScope);
+                    // Reserved pre-render async setup; Scene3D warms three here.
+                    profile?.enter("prepareRender");
+                    scene.prepareRenderAssets();
+                    globals?.prepareRenderAssets();
+                    // Audio scheduling (Video, managed sounds) — the one asset concern
+                    // that's neither drawable nor a simple async load, so it stays an
+                    // explicit, tracker-based registration.
+                    profile?.enter("prepareAudio");
+                    scene.prepareAudioAssets(registry);
+                    globals?.prepareAudioAssets(registry);
+                    // Replay the scene's real render() against a context that
+                    // registers every image/video/paint fill it would have painted
+                    // instead of rasterizing — the same Graphics objects renderSelf
+                    // already builds, so this can't drift from what's actually drawn.
+                    // Layers bracket the scene in the same order they paint, so a
+                    // background's assets are registered even though nothing above
+                    // it in the stack has drawn yet.
+                    profile?.enter("render");
+                    trackRenderContext.execute(() => {
+                        globals?.backgrounds.render(trackRenderContext);
+                        scene.render(trackRenderContext);
+                        globals?.overlays.render(trackRenderContext);
+                    });
 
-                registry.end();
+                    registry.end();
 
-                // Record which nodes are alive this frame so the timeline can draw
-                // each node's bar over only its true lifespan. The scene's world
-                // lives on `scene.root` (path "" = root).
-                recordLifespans(scene.root, "", localFrame, lifespans);
+                    // Record which nodes are alive this frame so the timeline can draw
+                    // each node's bar over only its true lifespan. The scene's world
+                    // lives on `scene.root` (path "" = root).
+                    profile?.enter("lifespans");
+                    recordLifespans(scene.root, "", localFrame, lifespans);
 
-                localFrame++;
-                scene.bindAssets(this.assets);
-                // Structural re-push only (runInit=false): refresh context on any
-                // subtree added this frame without re-firing init mid-tween.
-                scene.bindContext(ContextMap.EMPTY, false);
-                scene.ellapse(localFrame * dt);
+                    localFrame++;
+                    profile?.enter("bindAssets");
+                    scene.bindAssets(this.assets);
+                    // Structural re-push only (runInit=false): refresh context on any
+                    // subtree added this frame without re-firing init mid-tween.
+                    profile?.enter("bindContext");
+                    scene.bindContext(ContextMap.EMPTY, false);
+                    profile?.enter("ellapse");
+                    scene.ellapse(localFrame * dt);
+                    // Layers run on the same clock the scene does. Scene-local here,
+                    // global during playback — the same split `Scene` itself already
+                    // lives with (see `StateEvaluator.stepReplay`); it only affects
+                    // which frame of a dynamic fill is sampled while measuring, never
+                    // the frame ranges the asset windows are built from.
+                    globals?.bindAssets(this.assets);
+                    globals?.bindContext(ContextMap.EMPTY);
+                    globals?.ellapse(localFrame * dt);
 
-                const result = generator.next(dt);
-                if (result.done) break;
+                    profile?.enter("generator");
+                    const result = generator.next(dt);
+                    if (result.done) break;
+
+                    // The one suspension point, and only here: the frame above is
+                    // complete and the tree is internally consistent, so a
+                    // time-sliced driver can park without exposing a torn state.
+                    yield;
+                }
+            } catch (err) {
+                const e = err instanceof Error ? err : new Error(String(err));
+                error = {
+                    sceneName: scene.name ?? `Scene ${sceneIndex}`,
+                    sceneIndex,
+                    message: e.message,
+                    stack: e.stack,
+                };
             }
-        } catch (err) {
-            const e = err instanceof Error ? err : new Error(String(err));
-            error = {
-                sceneName: scene.name ?? `Scene ${sceneIndex}`,
-                sceneIndex,
-                message: e.message,
-                stack: e.stack,
+
+            profile?.done(localFrame);
+
+            // Scene-boundary blockade: a clip whose source outlasts the scene (e.g. a
+            // long video on a short scene, or a startSound left running) must not
+            // bleed past the cut. Clamp every request to [0, sceneDuration); drop any
+            // that begins at or after the scene ends.
+            const sceneDuration = localFrame / this.fps;
+            const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
+
+            // Snapshot the scene-local asset records before the registry is dropped
+            // by the `finally` below (which runs after this return value is built).
+            const assetRecords = new Map(registry.assets);
+
+            return {
+                precomp: {
+                    measured: true,
+                    frameCount: localFrame,
+                    startFrame: 0, // assigned by assembleTimeline
+                    audioRequests,
+                    assetRecords,
+                    lifespans,
+                },
+                error,
             };
+        } finally {
+            // Also runs when a time-sliced driver abandons the pass mid-scene via
+            // `.return()`, so a cancelled precomp never leaves the scene torn at a
+            // partial frame or the tracker holding a live frame bracket.
+            registry.dispose();
+            scene.reset();
         }
-
-        // Scene-boundary blockade: a clip whose source outlasts the scene (e.g. a
-        // long video on a short scene, or a startSound left running) must not
-        // bleed past the cut. Clamp every request to [0, sceneDuration); drop any
-        // that begins at or after the scene ends.
-        const sceneDuration = localFrame / this.fps;
-        const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
-
-        // Snapshot the scene-local asset records before the registry is dropped.
-        const assetRecords = new Map(registry.assets);
-        registry.dispose();
-        scene.reset();
-
-        return {
-            precomp: {
-                frameCount: localFrame,
-                startFrame: 0, // assigned by assembleTimeline
-                audioRequests,
-                assetRecords,
-                lifespans,
-            },
-            error,
-        };
     }
+}
+
+/**
+ * The key a scene is stored under in a {@link PrecompCache}, or `undefined` when
+ * it has no stable identity and therefore must not be cached.
+ *
+ * `__sceneHotId` is the scene file's project-relative path, stamped by the
+ * vite-plugin's `?scene` transform — the same identity hot reloading matches on.
+ * A scene constructed inline (no `?scene` import) has none, and there is nothing
+ * else stable to key it by: class names collide and array position changes when a
+ * scene is added. Those scenes simply measure every time, which is correct rather
+ * than merely safe — a wrong key would serve one scene's timings for another.
+ */
+function storeKeyOf(scene: Scene): string | undefined {
+    return scene.__sceneHotId || undefined;
+}
+
+/** A placeholder for a scene that hasn't been measured yet. See {@link ScenePrecomp.measured}. */
+function pendingScenePrecomp(): ScenePrecomp {
+    return {
+        measured: false,
+        frameCount: 0,
+        startFrame: 0,
+        audioRequests: [],
+        assetRecords: new Map(),
+        lifespans: new Map(),
+    };
 }
 
 // ─── Timeline assembly ──────────────────────────────────────────────────────
@@ -323,11 +841,24 @@ export class Precomp {
  * scene its global `startFrame`, sum the total, and merge every scene's
  * scene-local asset usage into one absolute-frame asset map.
  *
- * Kept separate from the per-scene pass so both {@link Precomp.run} and
- * {@link Precomp.replaceScene} share the exact same assembly — the only thing
- * `replaceScene` changes is which scenes' passes are fresh vs. reused.
+ * Kept separate from the per-scene pass so every entry point shares the exact
+ * same assembly — the only thing they change is which scenes' passes are fresh,
+ * reused, or still-pending placeholders.
+ *
+ * Pure and cheap, which is what makes it safe to re-run on every progressive
+ * publish: it re-derives `startFrame`s, the merged asset map and open-audio
+ * resolution from scratch each time, so a growing set of measured scenes always
+ * yields a self-consistent result.
  */
-function assembleTimeline(perScene: ScenePrecomp[], buildErrors: BuildError[], fps: number): PrecompResult {
+function assembleTimeline(
+    perScene: ScenePrecomp[],
+    buildErrors: BuildError[],
+    fps: number,
+    complete: boolean = true,
+    timings?: PrecompTimings,
+    globals?: ProjectGlobals,
+    catalog?: AssetCatalog,
+): PrecompResult {
     let offset = 0;
     const scenes: ScenePrecomp[] = [];
     // Merge scene-local records into absolute-frame records, unioning ranges for
@@ -354,22 +885,61 @@ function assembleTimeline(perScene: ScenePrecomp[], buildErrors: BuildError[], f
     // scene-local `endAt` (= absoluteEnd - sceneOffset). A non-looped open request
     // ends at min(start + mediaDuration, projectEnd); a looped one runs to projectEnd.
     //
-    // This runs on every assembly (including HMR `replaceScene`) and is idempotent:
-    // the `open` marker is PRESERVED so editing a later scene that changes the total
-    // re-resolves the bed's end. Resolution writes into fresh copies so reused
-    // `prev.scenes` passes are never mutated.
+    // This runs on every assembly (including HMR `replaceScene` and every
+    // progressive publish from `runAsync`) and is idempotent: `endAt` is re-derived
+    // from `startAt`/`mediaDuration`/`loop` rather than from its own prior value, and
+    // the `open` marker is PRESERVED. So a bed resolved against a partial total while
+    // precomp is still running is simply re-resolved, correctly, once later scenes
+    // land — and editing a later scene that changes the total re-resolves it too.
+    // Resolution writes into fresh copies so cached per-scene passes are never mutated.
     for (let i = 0; i < scenes.length; i++) {
         scenes[i] = resolveOpenAudio(scenes[i], fps, totalDuration);
     }
 
+    // Project-level audio beds are bounded by the same total, and for the same
+    // reason re-derived here rather than cached: the total grows scene by scene
+    // while the background precomp runs.
+    const globalAudio = globals && catalog
+        ? resolveProjectAudio(globals, catalog, totalDuration, buildErrors)
+        : [];
+
     return {
         fps,
         scenes,
+        globalAudio,
         totalFrames,
         totalDuration,
         assets: buildAssetMap(mergedRecords, fps),
         buildErrors,
+        complete,
+        timings,
     };
+}
+
+/**
+ * Index reported for a {@link BuildError} that belongs to the project itself
+ * rather than to any one scene (a bad `audioTracks` entry). Negative so a
+ * consumer keying errors by scene simply never matches it.
+ */
+const PROJECT_SCENE_INDEX = -1;
+
+/**
+ * Resolve `audioTracks` into absolute-time requests, appending any problem
+ * (unknown `src`, inverted trim) to `buildErrors` so it surfaces in the player's
+ * errors panel instead of the track silently not playing.
+ */
+function resolveProjectAudio(
+    globals: ProjectGlobals,
+    catalog: AssetCatalog,
+    totalDuration: number,
+    buildErrors: BuildError[],
+): AudioRequest[] {
+    if (globals.audioTracks.length === 0) return [];
+    const { requests, errors } = resolveGlobalAudio(globals.audioTracks, catalog, totalDuration);
+    for (const message of errors) {
+        buildErrors.push({ sceneName: "audioTracks", sceneIndex: PROJECT_SCENE_INDEX, message });
+    }
+    return requests;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { AssetManager, AssetCatalog, AssetManifest, MeasureScope, Precomp, Scene, Size2D, StateEvaluator, AudioDevice, AudioRequest } from "@motion-script/core"
+import { AssetManager, AssetCatalog, AssetManifest, MeasureScope, Precomp, Scene, Size2D, StateEvaluator, AudioDevice, AudioRequest, ProjectGlobals, type GlobalLayerConfig } from "@motion-script/core"
 import { WebRenderContext } from "./render-context";
 import { WebStorageAdapter } from "./storage-adapter";
 import { getCanvasKit } from "./getter";
@@ -29,6 +29,10 @@ export type ScreenshotParams = {
     fps?: number;
     scale?: number;
     manifest?: AssetManifest;
+    /** Project-level nodes drawn over every scene (`ProjectConfig.overlays`). */
+    overlays?: GlobalLayerConfig[];
+    /** Project-level nodes drawn under every scene (`ProjectConfig.backgrounds`). */
+    backgrounds?: GlobalLayerConfig[];
     wasmUrl?: string;
     /** Which frame to capture (see {@link FrameSpec}). */
     frame: FrameSpec;
@@ -87,6 +91,8 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
         fps = 60,
         scale = 1,
         manifest = EMPTY_MANIFEST,
+        overlays,
+        backgrounds,
         wasmUrl,
         frame,
         format = "png",
@@ -113,6 +119,10 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
     renderContext.mount(offscreenCanvas);
     renderContext.pixelRatio = scale;
 
+    // Audio is irrelevant to a still, but the layers are not: the same instance
+    // is shared by the measuring and render passes, as in the exporter.
+    const globals = new ProjectGlobals({ overlays, backgrounds }, viewport);
+
     try {
         const precomp = new Precomp(
             scenes,
@@ -120,6 +130,7 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
             fps,
             assetCatalog,
             renderContext as unknown as MeasureScope,
+            { globals },
         ).run();
 
         const { totalFrames } = precomp;
@@ -133,7 +144,7 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
         const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.floor(requested)));
 
         const tracks = precomp.scenes.map(s => s.frameCount);
-        const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope);
+        const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope, globals);
         const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
 
         // stateAt replays from the owning scene's start to reach a mid-timeline

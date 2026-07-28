@@ -6,6 +6,7 @@ import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { MeasureScope } from "@/render/measure-scope";
 import { Scene } from "@/nodes/scene/scene-node";
+import { ProjectGlobals } from "./globals";
 import { now, yieldToScheduler } from "@/util/scheduler";
 
 /**
@@ -26,6 +27,8 @@ export type SeekCancel = () => boolean;
 /** Per-scene generator state, kept alive so we never replay a finished scene. */
 type SceneSlot = {
     scene: Scene;
+    /** Position of this slot in the timeline; the scene index global layers filter on. */
+    index: number;
     /** Absolute frame this scene starts at in the global timeline. */
     startFrame: number;
     /** Inclusive last frame for this scene (startFrame + duration - 1). */
@@ -79,6 +82,12 @@ export class StateEvaluator {
      */
     private measureScope: MeasureScope;
     /**
+     * The project's background/overlay layers, drawn around every scene. Not part
+     * of any scene tree — see {@link ProjectGlobals} — so the evaluator drives
+     * them itself, selecting the ones that apply as it enters each scene.
+     */
+    private readonly globals?: ProjectGlobals;
+    /**
      * Resolves when the in-flight {@link stateAtAsync} finishes, or `null` when
      * none is running. Serializes async replays so two can never interleave a
      * `resetSlot` into the shared {@link stage}.
@@ -108,25 +117,39 @@ export class StateEvaluator {
      *                can jump directly to the owning scene without scanning.
      * @param measureScope Text-measurement scope for the internal layout passes
      *                the replay loop runs between generator steps (see class doc).
+     * @param globals The project's global layers/audio. Pass the **same instance**
+     *                the {@link Precomp} was given (`precomp.globals`), so the
+     *                layers that draw are the ones whose assets were measured.
      */
-    constructor(scenes: Scene[], viewport: Size2D, fps: number, assets: AssetCatalog, tracks: number[], measureScope: MeasureScope) {
+    constructor(
+        scenes: Scene[],
+        viewport: Size2D,
+        fps: number,
+        assets: AssetCatalog,
+        tracks: number[],
+        measureScope: MeasureScope,
+        globals?: ProjectGlobals,
+    ) {
         this.fps = fps;
         this.viewport = viewport;
         this.scenes = scenes;
         this.assets = assets;
         this.measureScope = measureScope;
+        this.globals = globals;
         this.stage = new BuildStage<Scene>(viewport, fps);
 
         for (const s of scenes) {
             s.set({ width: viewport.width, height: viewport.height });
             s.setViewport(viewport);
         }
+        globals?.setViewport(viewport);
 
         let offset = 0;
         for (let i = 0; i < scenes.length; i++) {
             const duration = tracks[i] ?? 0;
             this.slots.push({
                 scene: scenes[i],
+                index: i,
                 startFrame: offset,
                 endFrame: offset + duration - 1,
                 generator: null,
@@ -137,7 +160,26 @@ export class StateEvaluator {
 
         if (this.slots.length > 0) {
             this._currentScene = this.slots[0].scene;
+            this.selectGlobals(0);
         }
+    }
+
+    /**
+     * Point the global layer stacks at the layers that apply to scene `index`,
+     * and bring them up to date with the catalog/context.
+     *
+     * Called whenever the evaluator enters a scene. Cheap — the selection is a
+     * filter over a handful of entries and the binds early-return once bound —
+     * so it runs on every replay rather than being guarded by a "did the scene
+     * change" flag that a hot-reload scene swap could invalidate.
+     */
+    private selectGlobals(index: number): void {
+        const globals = this.globals;
+        if (!globals) return;
+        const scene = this.scenes[index];
+        globals.select(index, scene?.name ?? `Scene ${index}`);
+        globals.bindAssets(this.assets);
+        globals.bindContext(ContextMap.EMPTY);
     }
 
     private _currentScene!: Scene;
@@ -160,8 +202,20 @@ export class StateEvaluator {
         for (const slot of this.slots) {
             if (frame >= slot.startFrame && frame <= slot.endFrame) return slot;
         }
-        // Past the last frame — return the last slot so currentScene stays valid.
-        return this.slots[this.slots.length - 1] ?? null;
+        // Past the last frame — fall back so currentScene stays valid. It must be
+        // the last **non-empty** slot, not simply the last one: while a background
+        // precomp is still measuring, scenes it hasn't reached sit at duration 0
+        // (`endFrame = startFrame - 1`, so they match nothing above). Returning one
+        // of those would make `beginReplay` reset and drive a scene the precomp
+        // pass is about to run itself — the exact collision the sequential
+        // invariant exists to prevent (see `Precomp`'s class doc).
+        for (let i = this.slots.length - 1; i >= 0; i--) {
+            if (this.slots[i].endFrame >= this.slots[i].startFrame) return this.slots[i];
+        }
+        // Every slot is empty: either a genuinely zero-length project, or nothing
+        // has been measured yet. Slot 0 is the only safe choice — it is the one the
+        // sequential pass measures first, so it can never be mid-flight elsewhere.
+        return this.slots[0] ?? null;
     }
 
     /**
@@ -188,8 +242,21 @@ export class StateEvaluator {
         // until this pass. Precomp lays out at the top of its loop before the
         // first `generator.next`; this gives the reset path the same guarantee.
         this.layoutScene(slot.scene);
+        // Layers run on the project clock, so a slot primed at its scene's local
+        // frame 0 still puts them at that scene's *global* start — a bed's fade or
+        // a background video is continuous across the cut rather than restarting.
+        this.globals?.ellapse(slot.startFrame * this.dt);
+        this.globals?.sample();
+        this.layoutGlobals();
         slot.generator = gen;
         slot.localFrame = 0;
+    }
+
+    /** Lay the active global layers out against the full viewport. */
+    private layoutGlobals(scope: MeasureScope = this.measureScope): void {
+        if (!this.globals) return;
+        const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
+        this.globals.layout(bounds, scope);
     }
 
     /**
@@ -203,15 +270,26 @@ export class StateEvaluator {
         scene.layout(bounds, this.measureScope);
     }
 
-    /** Lay out the current scene's node tree against the full viewport. */
+    /** Lay out the current scene's node tree — and the active global layers — against the full viewport. */
     layout(scope: MeasureScope = this.measureScope) {
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.currentScene.layout(bounds, scope);
+        this.layoutGlobals(scope);
     }
 
-    /** Render the current scene's node tree into `context`. */
+    /**
+     * Draw the frame: global backgrounds, the current scene, then global
+     * overlays.
+     *
+     * The scene paints its own `fill` over the backgrounds, so a background only
+     * shows through where that fill is absent (the default) or translucent — and
+     * because the layers sit outside the scene root, neither is touched by the
+     * scene camera or its clip.
+     */
     render(context: RenderContext) {
+        this.globals?.backgrounds.render(context);
         this.currentScene.render(context);
+        this.globals?.overlays.render(context);
     }
 
     /**
@@ -355,6 +433,9 @@ export class StateEvaluator {
         if (!targetSlot) return null;
 
         this._currentScene = targetSlot.scene;
+        // Before any reset/step below, so the layers a `resetSlot` primes and
+        // lays out are already the ones this scene includes.
+        this.selectGlobals(targetSlot.index);
 
         const localTarget = clampedFrame - targetSlot.startFrame;
 
@@ -393,6 +474,9 @@ export class StateEvaluator {
         // added this frame without re-firing init mid-tween.
         slot.scene.bindContext(ContextMap.EMPTY, false);
         slot.scene.ellapse(globalTime);
+        // Layers advance on the same global clock, so they neither restart nor
+        // jump at a scene cut.
+        this.globals?.ellapse(globalTime);
         // Lay out before stepping the generator so any post-layout state it
         // reads (an animated removeChildAt pinning to `measuredWidth`, the
         // hug/fill addChildAt measuring against `_lastScope`) is fresh for
@@ -404,6 +488,35 @@ export class StateEvaluator {
         // A synchronous stateAt (from a clock tick) can run resetSlot while an async
         // replay is parked, replacing the generator this slot points at.
         slot.generator!.next(dt);
+    }
+
+    /**
+     * Recompute every slot's global frame range from a new per-scene duration
+     * list, leaving generators and replay progress untouched.
+     *
+     * This is how a progressively-measured project grows: `Precomp.runAsync`
+     * publishes a longer timeline as each scene lands, and the slots have to
+     * follow. Deliberately *not* routed through {@link replaceScene}, which nulls
+     * the slot's generator — that would throw away a replay the playhead is
+     * currently sitting on and force a full re-drive from the scene's frame 0
+     * every time an unrelated later scene finished measuring.
+     *
+     * Safe against the live playhead because durations only ever get *appended*:
+     * a scene's `startFrame` shifts only when an **earlier** scene's duration
+     * changes, and under the sequential invariant an earlier scene is already
+     * final by the time the playhead can reach a later one. So `stepReplay`'s
+     * `globalTime` never jumps for the slot being replayed.
+     *
+     * @param tracks Per-scene frame counts in timeline order.
+     */
+    setTracks(tracks: number[]): void {
+        let offset = 0;
+        for (let i = 0; i < this.slots.length; i++) {
+            const duration = tracks[i] ?? 0;
+            this.slots[i].startFrame = offset;
+            this.slots[i].endFrame = offset + duration - 1;
+            offset += duration;
+        }
     }
 
     /**
@@ -436,13 +549,7 @@ export class StateEvaluator {
 
         // Recompute every slot's global frame range from the new track list — the
         // replaced scene's duration may have changed, shifting all later scenes.
-        let offset = 0;
-        for (let i = 0; i < this.slots.length; i++) {
-            const duration = tracks[i] ?? 0;
-            this.slots[i].startFrame = offset;
-            this.slots[i].endFrame = offset + duration - 1;
-            offset += duration;
-        }
+        this.setTracks(tracks);
 
         // If the replaced scene was on screen, point currentScene at the new
         // instance and force a re-evaluation on the next stateAt (its generator
@@ -453,12 +560,16 @@ export class StateEvaluator {
         }
     }
 
-    /** Dispose all scenes and drop generator references. */
+    /** Dispose all scenes and global layer frames, and drop generator references. */
     dispose(): void {
         this.disposed = true;
         for (const slot of this.slots) {
             slot.scene.dispose();
             slot.generator = null;
         }
+        // Frees the per-layer frames this run built. Layer nodes supplied as live
+        // instances in the config are detached rather than disposed, so the next
+        // controller (StrictMode double-mount, HMR) can adopt them intact.
+        this.globals?.dispose();
     }
 }

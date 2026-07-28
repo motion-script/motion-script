@@ -3,7 +3,27 @@ import type { ProjectConfig } from '@motion-script/player'
 import config from '~user-project'
 import assets from '~asset-manifest'
 import { PlayerApp } from '@motion-script/player';
+import { createPrecompProfile } from '@motion-script/core'
+import { createDevPrecompCache } from './precomp-cache'
 import '@motion-script/player/style.css';
+
+// One store for the page. Built at module scope so a re-render (or the HMR config
+// swap below) never hands the player a different instance and loses its memo.
+const precompCache = createDevPrecompCache()
+
+// `?profile` records where the precomp pass spends its time, broken down by the
+// per-frame phases it walks. Opt-in because it is diagnostics: off, the profiler
+// hooks are never-taken branches; on, it also disables the cache, since a pass
+// served from disk has no time to attribute and would report an empty profile.
+//
+// Read the breakdown from the console at any point via
+// `window.__motionScriptPrecompProfile.timings` — no need to guess when the
+// background pass finished.
+const profiling = new URLSearchParams(window.location.search).has('profile')
+const precompProfile = profiling ? createPrecompProfile() : undefined
+if (precompProfile) {
+  ;(window as unknown as Record<string, unknown>).__motionScriptPrecompProfile = precompProfile
+}
 
 // The mounted App registers its state setter here so the module-level HMR
 // handler below can push a freshly-edited project into the live React tree
@@ -38,7 +58,15 @@ function App() {
     return () => { pushConfig = null }
   }, [])
 
-  return <PlayerApp config={project} wasmUrl="/canvaskit.wasm" assets={assets} />
+  return (
+    <PlayerApp
+      config={project}
+      wasmUrl="/canvaskit.wasm"
+      assets={assets}
+      precompCache={profiling ? undefined : precompCache}
+      precompProfile={precompProfile}
+    />
+  )
 }
 
 export default App

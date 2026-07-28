@@ -236,6 +236,17 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     protected renderStateStack: NodeRenderState[] = [];
 
     /**
+     * Whether this context ever reads `NodeRenderState.rects`.
+     *
+     * True for anything that actually paints, since a fill with `space:'parent'`
+     * resolves against them. A context that only inspects *what* would be drawn —
+     * `TrackRenderContext`, which walks the same op lists to discover assets —
+     * never looks at them, and computing them costs an object allocation per node
+     * per frame. Nodes check this before doing that work; see `Node.beforeRender`.
+     */
+    readonly readsSpaceRects: boolean = true;
+
+    /**
      * Open a node draw scope. Must be paired with `end()`. Pushes the node's
      * id and {@link NodeRenderState} (gradient-space rects + per-frame motion)
      * for the duration of the scope.

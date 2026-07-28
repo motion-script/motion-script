@@ -185,7 +185,8 @@ areas under `packages/core/src`:
 - **`jsx/`** — the `jsx-runtime`/`jsx-dev-runtime` so scenes can use JSX to
   build the node tree.
 - **`project/`** — `createProject({ name, fps, scenes, theme })`, the entry
-  point of a renderable project.
+  point of a renderable project. Also the **project-level content** that spans
+  scenes rather than living in one — see [Project globals](#project-globals).
 - **`assets/`** — asset manifest and manager (fonts, images, audio).
 - **`platform/`** — seams a backend fills in: master clock, storage adapter.
 
@@ -257,6 +258,55 @@ once per instance, so there's no accumulation to guard against). A composite
 that instead needs *inherited context* (e.g. a theme from a provider node
 above it) should still build its structure in the constructor but override
 `resolveContext` to push those values onto its children via refs.
+
+### Project globals
+
+`createProject` takes three fields describing content that spans the whole
+project rather than one scene: `audioTracks` (beds laid straight on the project
+timeline), `backgrounds` (nodes drawn under every scene) and `overlays` (nodes
+drawn over every scene). Either layer list narrows to specific scenes with
+`include`/`exclude`, by scene name (matched case- and separator-insensitively,
+so `'cross-fade'` selects the scene the `?scene` transform named `CrossFade`) or
+by index.
+
+```ts
+createProject({
+    name: 'Reel', scenes: [intro, demo, outro],
+    audioTracks: [{ src: 'music.mp3', volume: 0.5, trimStart: 8, trimEnd: 40 }],
+    backgrounds: [() => <Image src="bg.jpg" width="fill" height="fill" />],
+    overlays: [{ node: () => <Watermark />, exclude: 'outro' }],
+});
+```
+
+Things to know when working on this:
+
+- **A layer is not in the scene tree.** `Scene.reset()` disposes and clears the
+  root's children on every pass, and there is no generator to re-add a config
+  node, so each layer gets its own viewport-sized `RootNode` frame owned by
+  `ProjectGlobals` (`packages/core/src/runtime/globals.ts`) for the life of the
+  runtime. That is also what gives layers their semantics: outside the scene
+  camera (`zoom`/`origin`/`heading`), outside its `clip`, and over its `overlay`
+  fill rather than under it.
+- **Declare layers as factories** (`() => <Watermark/>`). The project module is
+  evaluated before the runtime calls `setTheme`, so a node built inline at module
+  scope resolves theme tokens against an empty registry; the runtime invokes a
+  factory afterwards.
+- **One `ProjectGlobals` instance is shared** by `Precomp` and `StateEvaluator`,
+  exactly as the `Scene` instances are — read it off `precomp.globals`. The
+  precomp pass lays out, renders and audio-prepares the active layers alongside
+  each scene, which is what discovers their assets; measuring one set of nodes
+  and drawing another would silently mis-window those loads.
+- **Draw order is fixed by the evaluator**: `backgrounds → scene → overlays`. A
+  background is only visible where the scene's own `fill` is absent (the default)
+  or translucent.
+- **Beds are absolute, scene audio is not.** `PrecompResult.globalAudio` carries
+  project-second times, so `AssetManager`/the exporter schedule them with a zero
+  offset, unlike `ScenePrecomp.audioRequests`. They are re-resolved on every
+  timeline assembly, because the total duration grows as the background precomp
+  measures more scenes.
+- **`layerAppliesTo` is the single selection rule.** The player's timeline draws
+  each layer's bar from it, so what is shown and what actually renders cannot
+  disagree.
 
 ### `@motion-script/web` — the web rendering backend
 

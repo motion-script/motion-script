@@ -124,6 +124,29 @@ export function TrackRows({
             );
           }
 
+          // A project-level layer is active on the scenes its include/exclude
+          // select, which can be several disjoint stretches — one bar each, so
+          // the scenes it skips read as gaps. Tinted `primary` to separate them
+          // from the scene's own `bg-card` node bars.
+          if (node.segments) {
+            return (
+              <div key={node.id} className="border-b border-border/40"
+                style={{ position: "absolute", top: rowTop, left: 0, width: fullContentWidth, height: NODE_ROW_HEIGHT, zIndex: 2 }}>
+                {node.segments.map((seg, si) => {
+                  const startPx = paddingX + seg.startFrame * computedPxPerUnit + BAR_MARGIN_X;
+                  const barWidth = Math.max(4, (seg.endFrame - seg.startFrame) * computedPxPerUnit - BAR_MARGIN_X * 2);
+                  return (
+                    <div
+                      key={si}
+                      className="absolute rounded-xs bg-primary/35"
+                      style={{ left: startPx, top: BAR_PADDING_Y, width: barWidth, height: barHeight }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          }
+
           // Bound the bar to the node's lifespan. endFrame is the last frame the
           // node is present, so the bar spans through it (inclusive). Fall back to
           // the whole timeline only when lifespan data is missing.

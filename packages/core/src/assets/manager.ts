@@ -147,23 +147,29 @@ export class AssetManager {
         const srcs = new Set<string>();
         const seen = new Set<string>();
 
+        /** Admit `req` if it overlaps the scheduling window, shifted by its owner's offset. */
+        const consider = (req: AudioRequest, offsetSecs: number): void => {
+            const globalStart = offsetSecs + req.startAt;
+            const globalEnd = offsetSecs + req.endAt;
+
+            if (globalEnd < currentTime || globalStart > currentTime + 10) return;
+
+            const stableId = stableKey(req, offsetSecs);
+            if (seen.has(stableId)) return;
+            seen.add(stableId);
+
+            inWindow.push({ ...req, id: stableId, startAt: globalStart, endAt: globalEnd });
+            srcs.add(req.src);
+        };
+
         for (const scene of this.precomp.scenes) {
             const sceneOffsetSecs = scene.startFrame / this.precomp.fps;
-
-            for (const req of scene.audioRequests) {
-                const globalStart = sceneOffsetSecs + req.startAt;
-                const globalEnd = sceneOffsetSecs + req.endAt;
-
-                if (globalEnd < currentTime || globalStart > currentTime + 10) continue;
-
-                const stableId = stableKey(req, sceneOffsetSecs);
-                if (seen.has(stableId)) continue;
-                seen.add(stableId);
-
-                inWindow.push({ ...req, id: stableId, startAt: globalStart, endAt: globalEnd });
-                srcs.add(req.src);
-            }
+            for (const req of scene.audioRequests) consider(req, sceneOffsetSecs);
         }
+
+        // Project-level beds are already in absolute time (see
+        // `PrecompResult.globalAudio`), so they carry no offset.
+        for (const req of this.precomp.globalAudio) consider(req, 0);
 
         for (const src of srcs) {
             if (!this.audioDevice.has(src) && !this.audioFetching.has(src)) {

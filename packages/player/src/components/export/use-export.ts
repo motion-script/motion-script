@@ -40,6 +40,9 @@ export function useExport(): UseExportReturn {
     const viewport = useEditorStore(s => s.viewport);
     const fps = useEditorStore(s => s.fps);
     const projectName = useEditorStore(s => s.projectName);
+    const audioTracks = useEditorStore(s => s.audioTracks);
+    const overlays = useEditorStore(s => s.overlays);
+    const backgrounds = useEditorStore(s => s.backgrounds);
 
     const [status, setStatus] = useState<ExportStatus>("idle");
     const [totalProgress, setTotalProgress] = useState(0);
@@ -91,6 +94,9 @@ export function useExport(): UseExportReturn {
                             ? filename.replace(".mp4", `_${i + 1}.mp4`)
                             : filename,
                         manifest: assets,
+                        audioTracks,
+                        overlays,
+                        backgrounds,
                         signal: controller.signal,
                         onProgress: (p) => {
                             setSceneProgresses(prev => prev.map((sp, idx) =>
@@ -111,6 +117,9 @@ export function useExport(): UseExportReturn {
                     scale: exportScale,
                     filename,
                     manifest: assets,
+                    audioTracks,
+                    overlays,
+                    backgrounds,
                     signal: controller.signal,
                     onProgress: (p) => {
                         setTotalProgress(p);
@@ -134,7 +143,7 @@ export function useExport(): UseExportReturn {
                 setStatus("idle");
             }
         }
-    }, [status, selectedScenes, exportIndividually, exportScale, viewport, fps, assets, projectName]);
+    }, [status, selectedScenes, exportIndividually, exportScale, viewport, fps, assets, projectName, audioTracks, overlays, backgrounds]);
 
     return {
         status,

@@ -41,6 +41,13 @@ import { track3DResources } from "@/render3d/tracking";
  * chart slice would do `PathBuilder.toPathState({ width, height, centerBounds })`.
  */
 export class TrackRenderContext extends RenderContext {
+    /**
+     * Asset discovery never resolves a `space:'parent'` fill against its reference
+     * rect — it only needs to know *which* asset a fill names. Declaring that lets
+     * every node skip computing those rects during the precomp pass.
+     */
+    override readonly readsSpaceRects = false;
+
     constructor(private readonly tracker: AssetTracker) {
         super();
     }

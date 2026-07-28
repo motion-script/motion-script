@@ -43,12 +43,18 @@ export function NodeNamesColumn({
         {visible.map((node, vi) => {
           const i = startIndex + vi;
           const isSelected = node.id === selectedNodeId;
+          // Project-level rows (backgrounds/overlays/audio beds) aren't scene
+          // nodes: nothing to expand, nothing to inspect. They're tinted so the
+          // boundary with the scene's own tree below is obvious.
+          const isGlobal = node.global !== undefined;
           return (
             <div
               key={node.id}
               className={`group flex items-center gap-1 select-none border-b border-border/40 ${isSelected
                 ? "bg-primary/10 text-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                : isGlobal
+                  ? "bg-accent/25 text-muted-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 }`}
               style={{
                 position: "absolute",
@@ -62,13 +68,13 @@ export function NodeNamesColumn({
               }}
             >
               <span
-                className={`flex items-center justify-center shrink-0 rounded transition-colors ${node.hasChildren
+                className={`flex items-center justify-center shrink-0 rounded transition-colors ${node.hasChildren && !isGlobal
                   ? "cursor-pointer hover:bg-border text-muted-foreground hover:text-foreground"
                   : "pointer-events-none opacity-0"
                   }`}
                 style={{ width: 18, height: 18 }}
                 onClick={(e) => {
-                  if (!node.hasChildren) return;
+                  if (!node.hasChildren || isGlobal) return;
                   e.stopPropagation();
                   onToggle(node.id);
                 }}
@@ -84,14 +90,20 @@ export function NodeNamesColumn({
                 <NodeIcon type={node.type} />
               </span>
 
-              <button
-                className={`text-xs ml-1 text-left cursor-pointer ${isSelected ? "text-primary font-medium" : "text-inherit"}`}
-                style={{ background: "none", border: "none", padding: 0 }}
-                onClick={() => onNavigate(node.id)}
-                title={node.type}
-              >
-                {node.type}
-              </button>
+              {isGlobal ? (
+                <span className="text-xs ml-1 truncate" title={`${node.label} — project-wide`}>
+                  {node.label}
+                </span>
+              ) : (
+                <button
+                  className={`text-xs ml-1 text-left cursor-pointer ${isSelected ? "text-primary font-medium" : "text-inherit"}`}
+                  style={{ background: "none", border: "none", padding: 0 }}
+                  onClick={() => onNavigate(node.id)}
+                  title={node.type}
+                >
+                  {node.type}
+                </button>
+              )}
             </div>
           );
         })}

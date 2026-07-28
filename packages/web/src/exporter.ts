@@ -1,4 +1,4 @@
-import { AudioDevice, Scene, AssetManager, MeasureScope, Size2D, AudioRequest, AssetManifest, AssetCatalog, Precomp, StateEvaluator } from "@motion-script/core"
+import { AudioDevice, Scene, AssetManager, MeasureScope, Size2D, AudioRequest, AssetManifest, AssetCatalog, Precomp, StateEvaluator, ProjectGlobals, type AudioTrack, type GlobalLayerConfig } from "@motion-script/core"
 import {
     AudioBufferSource,
     BufferTarget,
@@ -21,6 +21,16 @@ export type ExportParams = {
     scale?: number;
     filename?: string;
     manifest?: AssetManifest;
+    /**
+     * Project-level audio beds (`ProjectConfig.audioTracks`), mixed into the
+     * exported track alongside the scenes' own audio. Bounded by the exported
+     * timeline, which for a scene subset is shorter than the whole project's.
+     */
+    audioTracks?: AudioTrack[];
+    /** Project-level nodes drawn over every exported scene (`ProjectConfig.overlays`). */
+    overlays?: GlobalLayerConfig[];
+    /** Project-level nodes drawn under every exported scene (`ProjectConfig.backgrounds`). */
+    backgrounds?: GlobalLayerConfig[];
     onProgress?: ExportProgressCallback;
     signal?: AbortSignal;
     wasmUrl?: string;
@@ -147,7 +157,9 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
         scale = 1,
         filename = 'export.mp4',
         manifest = EMPTY_MANIFEST,
-
+        audioTracks,
+        overlays,
+        backgrounds,
         onProgress,
         signal,
         wasmUrl,
@@ -178,18 +190,23 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     renderContext.mount(offscreenCanvas);
     renderContext.pixelRatio = scale;
 
+    // One instance, shared by the measuring pass and the render pass — the layers
+    // whose assets precomp registers must be the ones the frames actually draw.
+    const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
+
     const precomp = new Precomp(
         scenes,
         viewport,
         fps,
         assetCatalog,
         renderContext as unknown as MeasureScope,
+        { globals },
     ).run();
 
     const { totalFrames, totalDuration } = precomp;
     const tracks = precomp.scenes.map(s => s.frameCount);
 
-    const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope);
+    const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope, globals);
     const audioDevice = new NoopAudioDevice();
     const assetManager = new AssetManager(precomp, storageAdapter, audioDevice);
 
@@ -200,6 +217,10 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
         for (const req of scene.audioRequests) {
             sceneRequests.push({ request: req, globalOffset });
         }
+    }
+    // Project-level beds are already in absolute timeline time, so no offset.
+    for (const req of precomp.globalAudio) {
+        sceneRequests.push({ request: req, globalOffset: 0 });
     }
 
     const target = new BufferTarget();
