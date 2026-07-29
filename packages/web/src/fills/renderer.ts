@@ -1,5 +1,5 @@
 import type { CanvasKit, Image as CKImage, Paint } from "@motion-script/canvaskit";
-import type { FillResolved, RasterizedSurface } from "@motion-script/core";
+import type { FillResolved, RasterizedSurface, SurfaceSource3D } from "@motion-script/core";
 import type { WebStorageAdapter } from "../storage-adapter";
 import type { ShapeBounds } from "./handler";
 
@@ -50,7 +50,7 @@ export interface FillRendererContext {
      * context, which resets the shared paint.
      */
     rasterizeSurface: (
-        source: object,
+        source: SurfaceSource3D,
         width: number,
         height: number,
         pixelRatio: number,

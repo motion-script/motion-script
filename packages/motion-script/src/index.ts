@@ -121,6 +121,7 @@ export {
     normalizeQuaternion,
     resolveVector3,
     evaluateParametric,
+    resolveSurfaceSource,
 } from '@motion-script/core';
 export type {
     View3DProps,
@@ -141,6 +142,8 @@ export type {
     Texture3D,
     TextureOptions3D,
     SurfaceTexture3D,
+    SurfaceSource3D,
+    ResolvedSurfaceSource,
     Light3D,
     Camera3D,
     Fog3D,

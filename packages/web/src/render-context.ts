@@ -10,7 +10,8 @@ import {
     type BooleanOperation,
     Clip,
     type ClipOp,
-    Node as SceneNode,
+    resolveSurfaceSource,
+    type SurfaceSource3D,
     type EllipseState,
     type Fill,
     type FillResolved,
@@ -1685,21 +1686,20 @@ export class WebRenderContext extends RenderContext {
      * clock) was bound by whatever painted the 3D scene — see `Node.adoptDetached`.
      */
     private rasterizeSurfaceSource(
-        source: object,
+        source: SurfaceSource3D,
         width: number,
         height: number,
         pixelRatio: number,
     ): RasterizedSurface | null {
-        if (source instanceof Graphics) {
-            return this.rasterizeOffscreen(width, height, () => this.draw(source), pixelRatio);
+        const resolved = resolveSurfaceSource(source);
+        if (resolved.kind === "graphics") {
+            return this.rasterizeOffscreen(width, height, () => this.draw(resolved.graphics), pixelRatio);
         }
-        if (source instanceof SceneNode) {
-            return this.rasterizeOffscreen(width, height, () => {
-                source.layout({ x: 0, y: 0, width, height }, this);
-                source.render(this);
-            }, pixelRatio);
-        }
-        return null;
+        const node = resolved.node;
+        return this.rasterizeOffscreen(width, height, () => {
+            node.layout({ x: 0, y: 0, width, height }, this);
+            node.render(this);
+        }, pixelRatio);
     }
 
     /**

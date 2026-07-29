@@ -6,7 +6,8 @@ import { evaluateParametric } from '@/render3d/geometry';
 import {
     lerpVector3, lerpEuler3, slerpQuaternion, resolveVector3, quaternionFromEuler,
 } from '@/render3d/vector3';
-import { isDataTexture3D, isSurfaceTexture3D, texture3DSource } from '@/render3d/texture';
+import { isDataTexture3D, isSurfaceTexture3D, resolveSurfaceSource, texture3DSource } from '@/render3d/texture';
+import { Rect } from '@/nodes/geometry/rect-node';
 import { track3DResources } from '@/render3d/tracking';
 import type { AssetTracker } from '@/assets/tracker';
 
@@ -252,6 +253,17 @@ describe('Texture3D discrimination', () => {
         expect(texture3DSource(Tex.image('/wood.png'))).toBe('/wood.png');
         expect(texture3DSource(Tex.data(new Uint8Array(4), 1, 1))).toBeNull();
         expect(texture3DSource(Tex.surface(new Graphics(), 8, 8))).toBeNull();
+    });
+
+    // The two arms are drawn completely differently — a Graphics is replayed into
+    // a render context, a Node is laid out and rendered — so the narrowing is
+    // load-bearing, not cosmetic.
+    it('resolveSurfaceSource separates the two source arms', () => {
+        const graphics = new Graphics();
+        const node = new Rect({ width: 8, height: 8 });
+
+        expect(resolveSurfaceSource(graphics)).toEqual({ kind: 'graphics', graphics });
+        expect(resolveSurfaceSource(node)).toEqual({ kind: 'node', node });
     });
 
     it('track3DResources skips a surface map and still finds image maps', () => {

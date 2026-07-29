@@ -13,9 +13,8 @@ import { BooleanOperation } from "@/attributes/mask/boolean";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { forEachTexture3D } from "@/render3d/walk";
-import { isSurfaceTexture3D } from "@/render3d/texture";
+import { isSurfaceTexture3D, resolveSurfaceSource } from "@/render3d/texture";
 import type { Graphics3D } from "@/render3d/graphics3d";
-import { Node } from "@/nodes/base/node";
 
 /** Recursion cap for a surface source that itself paints a 3D fill. */
 const MAX_SURFACE_DEPTH = 4;
@@ -105,11 +104,11 @@ export class TrackRenderContext extends RenderContext {
             this.currentHeight = texture.height;
             this.surfaceDepth++;
             try {
-                const source = texture.source;
-                if (source instanceof Graphics) this.drawOps(source);
+                const source = resolveSurfaceSource(texture.source);
                 // A node subtree renders straight back into this context, which is
                 // what discovers its fonts and image fills.
-                else if (source instanceof Node) source.render(this);
+                if (source.kind === "graphics") this.drawOps(source.graphics);
+                else source.node.render(this);
             } finally {
                 this.surfaceDepth--;
                 this.currentWidth = priorWidth;

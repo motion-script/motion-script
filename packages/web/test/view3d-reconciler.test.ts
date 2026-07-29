@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import type * as THREE from "three";
-import { Geo, Graphics3D, Mat, Tex, type RasterizedSurface } from "@motion-script/core";
+import { Geo, Graphics, Graphics3D, Mat, Tex, type RasterizedSurface } from "@motion-script/core";
 import { loadView3D, threeModule } from "../src/three/bridge";
 import { View3DGraph } from "../src/three/reconciler";
 import { TextureResolver, type View3DAssets } from "../src/three/handlers/texture";
@@ -346,8 +346,8 @@ describe("surface textures", () => {
         return (scene.children[index] as THREE.Mesh).material as THREE.MeshBasicMaterial;
     }
 
-    /** A source is any object; the resolver only ever compares identity. */
-    const source = () => ({});
+    /** The resolver only ever compares descriptor identity, never the source. */
+    const source = () => new Graphics();
 
     it("resolves a surface map from the frame's buffers", () => {
         const graph = new View3DGraph(three);

@@ -1,6 +1,6 @@
 import {
     Graphics3D, View3D, Tex, property,
-    type Color, type NodeConfig, type View3DProps,
+    type Color, type NodeConfig, type SurfaceSource3D, type View3DProps,
 } from "motion-script";
 import { lerpColor, orbitOf, orbitPosition, resolveColor, snapFlag } from "./attributes";
 
@@ -9,7 +9,7 @@ export interface MonitorScreen {
     /** Stable identity for the texture cache — see {@link Tex.surface}. */
     key: string;
     /** A built `Graphics`, or a `Node` subtree. */
-    source: object;
+    source: SurfaceSource3D;
     /** Buffer resolution. Also sets the panel's aspect, so nothing stretches. */
     width: number;
     height: number;

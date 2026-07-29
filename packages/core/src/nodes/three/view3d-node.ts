@@ -2,12 +2,12 @@ import { RenderContext } from "@/render/render-context";
 import { Graphics3D } from "@/render3d/graphics3d";
 import { warmView3D } from "@/render3d/resources";
 import { forEachTexture3D } from "@/render3d/walk";
-import { isSurfaceTexture3D } from "@/render3d/texture";
+import { isSurfaceTexture3D, resolveSurfaceSource } from "@/render3d/texture";
 import type { Disposer } from "@/assets/record";
 import { Fills, resolveChainFill } from "@/attributes/shape/fill/chain";
 import { property } from "@/attributes/properties/decorator";
 import { Rect, RectProps } from "../geometry/rect-node";
-import { Node, NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node";
 
 export interface View3DProps extends RectProps {
     /**
@@ -144,7 +144,8 @@ export class View3D<P extends View3DProps = View3DProps> extends Rect<P> {
     private bindSurfaceSources(g3: Graphics3D): void {
         forEachTexture3D(g3, (texture) => {
             if (!isSurfaceTexture3D(texture)) return;
-            if (texture.source instanceof Node) this.adoptDetached(texture.source);
+            const source = resolveSurfaceSource(texture.source);
+            if (source.kind === "node") this.adoptDetached(source.node);
         });
     }
 

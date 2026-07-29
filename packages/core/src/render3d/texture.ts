@@ -1,4 +1,8 @@
 import type { Vector2 } from "@/attributes/layout/vector2";
+// Type-only, like `Color` above: `render3d` is pure data and never reaches into
+// the render or node layers at runtime. See SurfaceSource3D.
+import type { Graphics } from "@/render/graphics";
+import type { Node } from "@/nodes/base/node";
 
 /** How sampling behaves outside the 0–1 UV range. */
 export type TextureWrap3D = "clamp" | "repeat" | "mirror";
@@ -112,13 +116,37 @@ export interface SurfaceTexture3D extends TextureOptions3D {
 }
 
 /**
- * What a {@link SurfaceTexture3D} can be painted from.
+ * What a {@link SurfaceTexture3D} can be painted from: a built {@link Graphics}
+ * command list, or a {@link Node} subtree.
  *
- * Typed structurally rather than against `Graphics`/`Node` so `render3d` stays
- * free of both the render and node layers — the same reason the old name-keyed
- * form took `{ readonly textureName: string }`. The renderer narrows it.
+ * Both imports are **type-only**, exactly as `Color` is — `render3d` describes
+ * scenes as data and never reaches into the render or node layers at runtime, and
+ * a value import of `Node` here would close a real module cycle. Consumers narrow
+ * with {@link resolveSurfaceSource}.
  */
-export type SurfaceSource3D = object;
+export type SurfaceSource3D = Graphics | Node;
+
+/** A {@link SurfaceSource3D} narrowed to the arm its renderer should take. */
+export type ResolvedSurfaceSource =
+    | { kind: "graphics"; graphics: Graphics }
+    | { kind: "node"; node: Node };
+
+/**
+ * Narrow a surface source to the arm that knows how to draw it: a `Graphics` is
+ * replayed into a render context, a `Node` is laid out against the buffer and
+ * rendered.
+ *
+ * Structural rather than `instanceof`, because that would need value imports of
+ * both classes and close the cycle the type-only imports above avoid. `Graphics`
+ * is a command recorder and exposes `ops()`; a `Node` has no such method. The
+ * union makes any *other* value a type error, so this only has to separate two
+ * known shapes rather than validate an unknown one.
+ */
+export function resolveSurfaceSource(source: SurfaceSource3D): ResolvedSurfaceSource {
+    return typeof (source as Graphics).ops === "function"
+        ? { kind: "graphics", graphics: source as Graphics }
+        : { kind: "node", node: source as Node };
+}
 
 /**
  * A texture reference. A bare string is sugar for `{ src }`, so the common case

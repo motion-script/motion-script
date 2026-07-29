@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut, linear, parallel,
-    Graphics, Graphics3D, Rect, Tex, Text, View3D,
+    Graphics, Graphics3D, Rect, Tex, Text, View3D, type SurfaceSource3D,
 } from "motion-script";
 
 /**
@@ -30,7 +30,7 @@ const PANEL_H = PANEL_W * (SCREEN_H / SCREEN_W);
 const BEZEL = 0.12;
 
 /** A monitor: bezel box, screen quad just proud of its face, stalk and foot. */
-function monitor(g3: Graphics3D, key: string, source: object, x: number, yaw: number): Graphics3D {
+function monitor(g3: Graphics3D, key: string, source: SurfaceSource3D, x: number, yaw: number): Graphics3D {
     return g3.group({ position: [x, 0.35, 0], rotation: [0, yaw, 0], key: `monitor:${key}` }, m => m
         .box({
             width: PANEL_W + BEZEL * 2, height: PANEL_H + BEZEL * 2, depth: 0.18,
