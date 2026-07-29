@@ -10,6 +10,7 @@ import {
     type BooleanOperation,
     Clip,
     type ClipOp,
+    Node as SceneNode,
     type EllipseState,
     type Fill,
     type FillResolved,
@@ -28,9 +29,7 @@ import {
     type RectState,
     type ShapeAnchorInput,
     Graphics,
-    type Graphics3D,
     type GraphicsOp,
-    type Scene3DOpState,
     type RasterizedSurface,
     RenderContext,
     type RichTextState,
@@ -59,11 +58,10 @@ import {
 } from "@motion-script/core";
 
 
-// 3D backend. Only `scene3DBackend`/`requestScene3DWarm` are reached on a draw,
+// 3D backend. Only `view3DBackend`/`requestView3DWarm` are reached on a draw,
 // and both are cheap no-ops until three has been lazily imported — so a 2D-only
 // project never pulls in the three chunk.
-import { disposeScene3DBackend, scene3DBackend } from "./three/backend";
-import { requestScene3DWarm } from "./three/bridge";
+import { disposeView3DBackend, view3DBackend } from "./three/backend";
 import { disposeSharedRenderer } from "./three/renderer";
 import { disposeTextureCache } from "./three/handlers/texture";
 import { layoutRichText } from "./shapes/richtext";
@@ -319,7 +317,7 @@ export class WebRenderContext extends RenderContext {
 
     /**
      * Depth of nested {@link rasterizeOffscreen} passes. A `Surface2D` may hold a
-     * `Scene3D` which holds another `Surface2D`; the tree is finite so this can't
+     * `View3D` which holds another `Surface2D`; the tree is finite so this can't
      * actually run away, but a mistake here costs a full GPU readback per level,
      * so it's bounded rather than trusted.
      */
@@ -398,6 +396,17 @@ export class WebRenderContext extends RenderContext {
             (space) => this.spaceRect(space),
             this.storageAdapter,
             getWorldAlpha,
+            // The node stack, not ShapeHandler.currentNodeId — that one is set by
+            // beginNode with no counterpart in end(), so it goes stale once a
+            // child has rendered.
+            () => (this.currentNodeStack.length > 0 ? this.currentNodeId() : ""),
+            () => {
+                // Pixel ratio, parent scale and camera zoom, already folded
+                // together by the canvas matrix.
+                const m = this.currentCanvas.getTotalMatrix();
+                return Math.max(Math.hypot(m[0], m[3]), Math.hypot(m[1], m[4]), 1);
+            },
+            (source, width, height, ratio) => this.rasterizeSurfaceSource(source, width, height, ratio),
         );
 
         this.strokeHandler = new StrokeHandler(
@@ -425,16 +434,19 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.translate(logicalW / 2, logicalH / 2);
 
         // Bracket the pass so the 3D backend can tell which nodes drew this frame
-        // and free the graphs of ones that didn't (a removed Scene3D, a scene
+        // and free the graphs of ones that didn't (a removed View3D, a scene
         // switch). Cheap no-op before three has loaded.
-        const scene3D = scene3DBackend(this.storageAdapter);
-        scene3D?.beginFrame();
+        const view3D = view3DBackend(this.storageAdapter);
+        view3D?.beginFrame();
+        // Paint slots are per frame too, and key the 3D resources the sweep above
+        // releases — the two brackets must stay together.
+        this.fillHandler.beginFrame();
 
         this.isRendering = true;
         callback();
         this.isRendering = false;
 
-        scene3D?.sweep();
+        view3D?.sweep();
 
         this.currentCanvas.restore();
         this.surface.flush();
@@ -491,14 +503,12 @@ export class WebRenderContext extends RenderContext {
         this.clipRestoreStack.length = 0;
         this.deferredPaintsStack.length = 0;
         this.effectScopeStack.length = 0;
-        this.scene3DPaint?.delete();
-        this.scene3DPaint = undefined;
         // three's geometries, materials, textures and GL context are not
         // GC-managed, so dropping them here is what stops an HMR reload or scene
         // switch from accumulating GPU memory. Unlike CanvasKit's context (kept
         // alive deliberately above), the three renderer owns its own canvas and is
         // safe to drop — it is recreated on the next 3D frame.
-        disposeScene3DBackend();
+        disposeView3DBackend();
         disposeTextureCache();
         disposeSharedRenderer();
         EffectRegistry.disposeAll();
@@ -821,7 +831,6 @@ export class WebRenderContext extends RenderContext {
             case "mask": this._maskOp(op.options); break;
             case "applyMask": this._applyMask(); break;
             case "endMask": this._endMaskOp(); break;
-            case "scene3D": this._scene3D(op.graphics, op.state); break;
             // `effects` ops are handled directly in draw()'s segment loop (they
             // open/close a scoped filter layer), never dispatched here.
             case "effects": break;
@@ -1667,6 +1676,33 @@ export class WebRenderContext extends RenderContext {
     // ─── Offscreen rasterization ─────────────────────────────────────────────
 
     /**
+     * Rasterize a `Tex.surface` source — a built `Graphics`, or a detached `Node`
+     * subtree — into an offscreen buffer.
+     *
+     * A `Node` source is laid out here rather than by the scene tree, because it
+     * *isn't* in the tree: its box is the texture's resolution, so it is measured
+     * straight against that. Everything else it needs (asset catalog, context,
+     * clock) was bound by whatever painted the 3D scene — see `Node.adoptDetached`.
+     */
+    private rasterizeSurfaceSource(
+        source: object,
+        width: number,
+        height: number,
+        pixelRatio: number,
+    ): RasterizedSurface | null {
+        if (source instanceof Graphics) {
+            return this.rasterizeOffscreen(width, height, () => this.draw(source), pixelRatio);
+        }
+        if (source instanceof SceneNode) {
+            return this.rasterizeOffscreen(width, height, () => {
+                source.layout({ x: 0, y: 0, width, height }, this);
+                source.render(this);
+            }, pixelRatio);
+        }
+        return null;
+    }
+
+    /**
      * Draw `draw` into a fresh offscreen surface and read its pixels back.
      *
      * Same redirect `openForegroundCapture` performs — swap `currentCanvas` (every
@@ -1678,7 +1714,7 @@ export class WebRenderContext extends RenderContext {
      *
      * The readback is a real GPU→CPU stall (three has its own GL context, so there
      * is no shared texture to hand over). It is bounded by the surface's size,
-     * which is why `Surface2D` defaults to a pixel ratio of 1 and offers `static`.
+     * which is why `Tex.surface` defaults to a pixel ratio of 1.
      */
     override rasterizeOffscreen(
         width: number,
@@ -1691,7 +1727,7 @@ export class WebRenderContext extends RenderContext {
         if (this.rasterDepth >= MAX_RASTER_DEPTH) {
             console.warn(
                 `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
-                "A Surface2D is most likely nested inside itself via a Scene3D.",
+                "A Surface2D is most likely nested inside itself via a View3D.",
             );
             return null;
         }
@@ -1756,100 +1792,6 @@ export class WebRenderContext extends RenderContext {
         // Copy out of the wasm heap: the caller holds this across frames, and the
         // heap can be reallocated under it.
         return { pixels: new Uint8Array(pixels), width: deviceWidth, height: deviceHeight };
-    }
-
-    // ─── 3D ──────────────────────────────────────────────────────────────────
-
-    /**
-     * Dedicated paint for the 3D composite.
-     *
-     * Deliberately not the shared `this.paint`: that one carries whatever style the
-     * last fill left on it, and mutating it here would leak state into the next 2D
-     * draw of the same frame.
-     */
-    private scene3DPaint?: Paint;
-
-    /**
-     * Render a `Graphics3D` and composite it into the current node's box.
-     *
-     * Runs as an ordinary `Graphics` op, so everything already established for this
-     * node applies for free: the canvas matrix has positioned and scaled us, the
-     * active clip and mask confine us, `worldAlpha` carries inherited opacity, and
-     * ops recorded before/after this one paint below/above.
-     *
-     * Returns without drawing when the three runtime isn't resident yet, having
-     * registered the node for warming — the caller's existing re-render loop
-     * (`warmPendingVideo`) then repaints it, so an export never captures a frame
-     * with the 3D missing.
-     */
-    private _scene3D(graphics: Graphics3D, state: Scene3DOpState): void {
-        if (!this.isRendering || !this.surface) return;
-
-        const nodeId = this.currentNodeId();
-        const backend = scene3DBackend(this.storageAdapter);
-        if (!backend) {
-            requestScene3DWarm(nodeId);
-            return;
-        }
-
-        const { width, height } = state;
-        if (width <= 0 || height <= 0) return;
-
-        // Derive the device-pixel size from the live canvas matrix rather than
-        // `this.pixelRatio`, so a Scene3D inside a scaled parent, a zoomed Camera,
-        // or a `--scale 2` export each get a correctly-sized buffer automatically.
-        const matrix = this.currentCanvas.getTotalMatrix();
-        const scaleX = Math.hypot(matrix[0], matrix[3]);
-        const scaleY = Math.hypot(matrix[1], matrix[4]);
-        const ratio = Math.min(state.maxPixelRatio ?? 2, Math.max(scaleX, scaleY, 1));
-
-        const rendered = backend.render(
-            nodeId,
-            graphics,
-            Math.max(1, Math.ceil(width * ratio)),
-            Math.max(1, Math.ceil(height * ratio)),
-            { antialias: state.antialias !== false, surfaces: state.surfaces },
-        );
-
-        const image = this.storageAdapter.upload3DFrame(
-            nodeId, rendered.source, rendered.width, rendered.height,
-        );
-        if (!image) return;
-
-        const ck = this.canvasKit;
-        const paint = (this.scene3DPaint ??= new ck.Paint());
-        paint.setAntiAlias(true);
-        paint.setStyle(ck.PaintStyle.Fill);
-        // Pass-through opacity is folded into worldAlpha rather than isolated, so
-        // it has to be applied per-paint. The node's *blend* mode is deliberately
-        // NOT applied here: `transform()` already opened an isolating saveLayer
-        // carrying it, so applying it again would blend twice.
-        paint.setAlphaf(this.worldAlpha);
-        paint.setBlendMode(ck.BlendMode.SrcOver);
-
-        const halfW = width / 2;
-        const halfH = height / 2;
-        const dst = ck.LTRBRect(-halfW, -halfH, halfW, halfH);
-        const src = ck.LTRBRect(0, 0, rendered.width, rendered.height);
-
-        // `drawImageRect` can't round its own corners, and the node's `clip` prop
-        // only confines *children* (it's applied after renderSelf), so an explicit
-        // clip is needed here. Reuses the ordinary Clip path rather than building an
-        // RRect by hand, which gets per-corner radii and `cornerStyle`'s
-        // rounded-vs-angled distinction for free.
-        const rounded = state.cornerRadius !== undefined && state.cornerRadius !== 0;
-        if (rounded) {
-            this.beginClip(new Clip().rect({
-                width,
-                height,
-                cornerRadius: state.cornerRadius,
-                cornerStyle: state.cornerStyle,
-            }));
-        }
-
-        this.currentCanvas.drawImageRect(image, src, dst, paint);
-
-        if (rounded) this.endClip();
     }
 
     // ─── Boolean group ───────────────────────────────────────────────────────

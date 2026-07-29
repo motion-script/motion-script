@@ -45,6 +45,21 @@ export class FillHandler {
     // Accumulated pass-through alpha to fold into every fill (set by the owning
     // RenderContext as pass-through nodes fade). Defaults to 1.
     private getWorldAlpha: () => number;
+    private getNodeId: () => string;
+    private getDeviceScale: () => number;
+    private rasterizeSurface: FillRendererContext["rasterizeSurface"];
+
+    /**
+     * Per-frame paint slots: node id → resolved fill → index.
+     *
+     * Keyed by the fill object's *identity*, not by paint order, because one
+     * frame hands the very same `FillResolved` to the shadow pass, the fill pass
+     * and the inner-shadow pass — a counter would treat those as three different
+     * fills and, for a 3D fill, render the scene three times. Identity also keeps
+     * a slot stable across frames for any fixed scene structure, since the
+     * first-appearance order doesn't shift when unrelated layers come and go.
+     */
+    private slots = new Map<string, Map<FillResolved, number>>();
 
     // The bounds the next gradient/image shader should resolve against. Set per
     // fill/shape by applyFills before each applyPaint, so the no-arg
@@ -59,6 +74,9 @@ export class FillHandler {
         getSpaceRect: (space: FillSpace) => ShapeBounds | null,
         assets: WebStorageAdapter,
         getWorldAlpha: () => number = () => 1,
+        getNodeId: () => string = () => "",
+        getDeviceScale: () => number = () => 1,
+        rasterizeSurface: FillRendererContext["rasterizeSurface"] = () => null,
     ) {
         this.canvasKit = canvasKit;
         this.getPaint = getPaint;
@@ -67,12 +85,42 @@ export class FillHandler {
         this.getSpaceRect = getSpaceRect;
         this.assets = assets;
         this.getWorldAlpha = getWorldAlpha;
+        this.getNodeId = getNodeId;
+        this.getDeviceScale = getDeviceScale;
+        this.rasterizeSurface = rasterizeSurface;
         this.currentBounds = null;
     }
 
     /** Pass-through alpha to multiply into a paint's own opacity. */
     worldAlpha(): number {
         return this.getWorldAlpha();
+    }
+
+    /**
+     * Drop the frame's paint slots. Called once per render pass, alongside the 3D
+     * backend's own frame bracket.
+     *
+     * Deliberately *not* called from `rasterizeOffscreen`: a fill painted inside a
+     * rasterized buffer must get a slot distinct from one on the main canvas, and
+     * letting the counter run through the nested pass gives that for free.
+     */
+    beginFrame(): void {
+        this.slots.clear();
+    }
+
+    /** See {@link slots}. */
+    private paintSlot(fill: FillResolved): number {
+        const nodeId = this.getNodeId();
+        let perNode = this.slots.get(nodeId);
+        if (!perNode) {
+            perNode = new Map();
+            this.slots.set(nodeId, perNode);
+        }
+        const existing = perNode.get(fill);
+        if (existing !== undefined) return existing;
+        const slot = perNode.size;
+        perNode.set(fill, slot);
+        return slot;
     }
 
     // Union the shapes' paths into one, so a single fill (and its opacity)
@@ -143,6 +191,11 @@ export class FillHandler {
             // Renderers read this once per applyPaint; applyFills sets
             // currentBounds to the right space's rect just before each call.
             getShapeBounds: () => this.currentBounds,
+            nodeId: this.getNodeId(),
+            getDeviceScale: this.getDeviceScale,
+            paintSlot: (fill) => this.paintSlot(fill),
+            rasterizeSurface: this.rasterizeSurface,
+            preflighted: new Map(),
             offscreenCanvas: this.offscreenCanvas,
             offscreenCtx: this.offscreenCtx,
             transientImages: [],
@@ -150,6 +203,27 @@ export class FillHandler {
             drawShape: () => { },
             skipDefaultDraw: false,
         };
+    }
+
+    /** Results carried from {@link preflight} to each renderer's `applyPaint`. */
+    private preflighted = new Map<FillResolved, unknown>();
+
+    /**
+     * Run every fill's optional pre-paint pass, before the shared paint is
+     * configured — see {@link FillRenderer.preflight}.
+     *
+     * The bounds are set per fill exactly as the paint loop does, because a
+     * renderer sizing an offscreen buffer needs the same rect it will later shade.
+     */
+    private preflight(fills: FillResolved[], paint: Paint): void {
+        this.preflighted.clear();
+        const ctx = this.buildRendererCtx(paint);
+        ctx.preflighted = this.preflighted;
+        for (const fill of fills) {
+            this.currentBounds = this.boundsForSpace(fill.space ?? "local", null);
+            FillRenderRegistry.preflight(fill, ctx);
+        }
+        this.currentBounds = null;
     }
 
     /**
@@ -174,9 +248,17 @@ export class FillHandler {
         if (fills.length === 0) return false;
 
         const paint = this.getPaint();
+
+        // Offscreen work happens here, before the paint is configured. Anything
+        // that re-enters the render context resets the shared paint's alpha,
+        // blend and shader, so a renderer doing it from applyPaint would silently
+        // strip the very fill it was configuring.
+        this.preflight(fills, paint);
+
         paint.setStyle(this.canvasKit.PaintStyle.Fill);
 
         const rendererCtx = this.buildRendererCtx(paint);
+        rendererCtx.preflighted = this.preflighted;
         // Lets a renderer redraw the figure for extra passes (e.g. Echo's trail).
         rendererCtx.drawShape = (p: Paint) => this.drawShapes(p, shapes);
         const worldAlpha = this.getWorldAlpha();

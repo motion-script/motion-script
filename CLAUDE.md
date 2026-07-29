@@ -316,30 +316,43 @@ CanvasKit), `getCanvasKit` (loads/inits the WASM module), `EffectHandler` /
 `EffectRegistry` (`packages/web/src/effects/` — SkSL shader effects),
 `exportScenesAsVideo` (encodes frames to video via `mediabunny`),
 `WebAudioPlayer`, `WebMasterClock`, `WebMeasureScope`, `WebStorageAdapter`
-(browser implementations of `core`'s platform seams), and `Scene3DBackend`
-(three.js, lazily imported — see [3D](#3d-graphics3d-and-scene3d)).
+(browser implementations of `core`'s platform seams), and `View3DBackend`
+(three.js, lazily imported — see [3D](#3d-graphics3d-and-view3d)).
 
-### 3D: `Graphics3D` and `Scene3D`
+### 3D: `Graphics3D` and `View3D`
 
 3D follows the same split as 2D: `core` describes a scene as pure data
 (`packages/core/src/render3d/`), and `web` renders it (three.js lives there,
 never in core).
 
-**There is one 3D node, not a 3D node tree.** `NodeProps` are 2D concepts
-(`x`/`y`/`width`/`opacity`/`flex`/`padding`/anchors) that mean nothing for a mesh
-positioned in 3D space, so rather than neuter them on a dozen node types,
-everything inside a 3D scene is described with `Graphics3D` —
-**which makes `Graphics3D` the public 3D API**, not an internal builder like 2D
-`Graphics` is.
-
-`Scene3D` (`packages/core/src/nodes/three/scene3d-node.ts`) extends `Rect`, so it
-is an ordinary 2D node: it lays out in flex/stack groups, takes
-`cornerRadius`/`clip`, can be masked, blended and filtered, and can hold 2D
-children as a HUD over the 3D.
+**3D is a fill, so it paints through any shape path.** The renderer draws a scene
+to a texture and shades the shape's own path with it, which means 3D clips to
+whatever painted it — an `Ellipse`, a `Path`, a run of `Text` — stacks with the
+other fill layers, and inherits their `opacity`/`blend`/`space`:
 
 ```tsx
-<Scene3D width="fill" height="fill" cornerRadius={24}
-    scene={(g, t) => g
+<Ellipse fill={g3} />
+<Text text="DEPTH" fontSize={320} fill={Fills.view3D(g3)} />
+<Rect fill={["#0b0d12", g3, Fills.linearGradient(["transparent", "#000/60"])]} />
+```
+
+A bare `Graphics3D` coerces to a `view3D` fill exactly the way a bare CSS string
+coerces to a solid one (`resolveFill`, the single coercion point).
+
+**There is one 3D node, not a 3D node tree.** `NodeProps` are 2D concepts
+(`x`/`y`/`width`/`opacity`/`flex`/`padding`/anchors) that mean nothing for a mesh
+positioned in 3D space, so everything inside a 3D scene is described with
+`Graphics3D` instead.
+
+`View3D` (`packages/core/src/nodes/three/view3d-node.ts`) is **sugar over that
+fill**: a `Rect` that appends its scene to its own `fill`. So it lays out in
+flex/stack groups, takes `cornerRadius`/`clip`, can be masked, blended and
+filtered, and holds 2D children as a HUD over the 3D. For a reusable component,
+subclass it and override `buildGraphics3D()`.
+
+```tsx
+<View3D width="fill" height="fill" cornerRadius={24}
+    graphics3D={() => new Graphics3D()
         .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
         .ambient({ intensity: 0.4 })
         .directional({ intensity: 2.4, position: [4, 6, 3] })
@@ -350,13 +363,25 @@ children as a HUD over the 3D.
 
 Key things to know when working on this:
 
+- **`g` is a 2D `Graphics`; `g3` is a `Graphics3D`.** No exceptions, in code,
+  docs or examples. The two recorders take entirely different ops, and one scene
+  routinely holds both (a `Graphics3D` for the 3D, a `Graphics` for each
+  `Tex.surface` source), so a bare `g` must always mean the 2D one.
 - **Angles are degrees everywhere** (Euler rotations, spot cone angles, sweep
   arcs, UV rotation), matching 2D `rotation`. The backend converts.
-- **Animation is signals read inside the builder**, which re-runs every frame
-  inside the synchronous render pass — that is what makes 3D seekable. Nothing
-  accumulates; frame *N* is identical however the playhead got there. A signal
-  holding a non-number **must** be given a lerp (`createSignal(v, lerpVector3)`)
-  or it snaps at the end of the tween instead of interpolating.
+- **A `Graphics3D` is a value, never a builder.** Per-frame freshness comes from
+  *where it is produced*: `buildGraphics3D()` runs inside `renderSelf` every
+  frame, and a `graphics3D={() => …}` prop is an ordinary reactive binding. Frame
+  *N* is identical however the playhead got there — nothing accumulates.
+- **There is no `t`.** A bound prop re-evaluates when the *signals* it reads
+  change, and `clock.elapsed` is a plain field, not a signal — so
+  `graphics3D={() => build(this.clock.elapsed)}` computes **once and freezes**,
+  with no error and a plausible-looking still image. Drive procedural motion from
+  a tweened signal (which also puts it on the timeline, so it scrubs), or read
+  `this.clock.elapsed` inside `buildGraphics3D`, which does re-run every frame.
+- A signal holding a non-number **must** be given a lerp
+  (`createSignal(v, lerpVector3)`) or it snaps at the end of the tween instead of
+  interpolating.
 - **Colours are core's `Color`**, so `oklch()`, theme tokens and `"white/10"` all
   work. Note `parseColor` returns *gamma-encoded* sRGB, not linear-light — the
   backend declares `SRGBColorSpace` when handing values to three, and converts
@@ -372,67 +397,88 @@ Key things to know when working on this:
   The fields marked "structural" on `MaterialCommon3D` recompile the shader
   program; set them once rather than tweening them.
 
-Rendering path — a `scene3D` **`GraphicsOp`**, not a separate context method, so
-position in the op list is meaningful (2D `fill` before it paints beneath, a
-trailing `effects()` filters it, a `mask()` scope clips it):
+Rendering path — a **fill layer**, so position in the fill array is paint order
+and the shape's path is the clip:
 
 ```
-Scene3D.renderSelf → Graphics.scene3D(g3, state)   [core, pure data]
-  → WebRenderContext.applyOp "scene3D" → _scene3D()
-    → Scene3DBackend.render()   reconcile ops → cached THREE.Scene, render
-    → upload3DFrame()           makeImageFromTextureSource(…, srcIsPremul: true)
-    → drawImageRect()           into the node's rect, honouring worldAlpha
+View3D.renderSelf → Fills.view3D(g3)              [core, pure data]
+  → FillHandler.applyFills → View3DFillRenderer.preflight()
+      → rasterize any Tex.surface sources        (offscreen readPixels)
+      → View3DBackend.render()  reconcile ops → cached THREE.Scene, render
+      → upload3DFrame()         makeImageFromTextureSource(…, srcIsPremul: true)
+  → View3DFillRenderer.applyPaint → paint.setShader(image)
+  → FillHandler.drawShapes → drawPath / drawShapedRun
 ```
+
+Two rules that fall out of that, and are easy to break:
+
+- **All offscreen work goes in `preflight`, never `applyPaint`.** The paint is
+  shared across every fill in the array, and re-entering the render context
+  resets its alpha, blend mode and shader — silently stripping the opacity of the
+  fill being configured. `preflight` runs before the paint is touched.
+- **The renderer must not re-apply `worldAlpha` or `blend`.** `FillHandler`
+  already set both on the paint.
+
+Live 3D resources are keyed by **`${nodeId}#${paintSlot}`**, not by node: a node
+can carry two 3D fills, and a fill cross-fade transiently produces exactly that.
+The slot is allocated per frame off the resolved fill's *object identity*, because
+one frame hands the same fill to the shadow, fill and inner-shadow passes.
 
 The reconciler (`packages/web/src/three/reconciler.ts`) keeps one live three
 object per op, keyed by structural path, and mutates rather than rebuilds — a
 `Graphics3D` is rebuilt from scratch every frame but the GPU resources are not.
 
 three is reached through a lazy `import("three")`, so 2D-only projects never load
-it. `Scene3D.prepareRender()` warms it during precomp (before any frame draws) via
-core's `registerScene3DWarmup` seam; if a frame still beats it, the existing
+it. `View3D.prepareRender()` warms it during precomp (before any frame draws) via
+core's `registerView3DWarmup` seam; if a frame still beats it, the existing
 `warmPendingVideo` re-render loop covers it, so exports stay frame-accurate.
 Because the dev server's root is the player app, `vite-plugin` resolves `three`
 from `@motion-script/web`'s location and declares it in `optimizeDeps.include` —
 without that the dynamic import 504s under the headless CLI.
 
-#### 2D on 3D: `Surface2D`
+#### 2D on 3D: `Tex.surface`
 
-`Surface2D` (`packages/core/src/nodes/three/surface2d-node.ts`) is the bridge the
-other way: an ordinary `Rect` whose content is rendered to an offscreen buffer
-instead of the canvas, bound to any material map with `Tex.surface(name)`. Its
-`width`/`height` **are** the texture's resolution.
+The bridge the other way: 2D content rendered to an offscreen buffer and bound to
+any material map. `source` is a **value** — a built `Graphics`, or a `Node`
+subtree for anything wanting real layout, shaped `Text` or a loaded `Image` — and
+`width`/`height` *are* the texture's resolution.
 
 ```tsx
-<Scene3D scene={g => g.plane({ map: Tex.surface("screen") })}>
-    <Surface2D name="screen" width={1024} height={640} fill="#0b0d12"
-        graphics={(g, t) => g.line({ points: trace(t) }).stroke({ weight: 6 })}>
-        <Text text="CPU" fontSize={64} fill="white" />
-    </Surface2D>
-</Scene3D>
+const scope = new Graphics().line({ points: trace(phase()) }).stroke({ weight: 6 });
+const stats = <Rect group="column" padding={48}><Text text="CPU" fontSize={64} /></Rect>;
+
+<View3D graphics3D={() => new Graphics3D()
+    .plane({ map: Tex.surface(scope, 1024, 640) })
+    .plane({ map: Tex.surface(stats, 1024, 640), position: [5, 0, 0] })}
+/>
 ```
 
-- **It must be a child of the `Scene3D` that uses it.** Not a style preference:
-  `bindAssets`/`bindChildContext`/`tick` only reach mounted nodes, so a webfont or
-  an `<Image>` in a detached subtree never resolves. `Scene3D.renderSelf`
-  rasterizes its `Surface2D` children *before* building the `Graphics3D`, so the
-  texture is the current frame's — rendering them from the ordinary child walk
-  would leave the composite one frame stale and break scrub determinism.
-- `graphics` is not signal-backed, for the same reason `Scene3D.scene` isn't
-  (`Node._writeProp` would treat a function prop as a reactive binding). Use
-  `setGraphics`; animate *inside* the builder.
-- Path: `Surface2D.renderOffscreen` → `RenderContext.rasterizeOffscreen` (a seam,
-  `null` by default; `TrackRenderContext` overrides it to run `draw()` so precomp
-  still discovers the subtree's assets) → `WebRenderContext` swaps `currentCanvas`
-  + `activeSurface` onto a sized offscreen, `readPixels`, → `TextureResolver`
-  uploads into a `THREE.DataTexture` keyed by `owner=<Scene3D node id>`.
+- **A source is not a child, and has no name.** It is a value in a descriptor.
+  What tree membership used to supply — the asset catalog (a webfont never shapes
+  and an `<Image>` never loads without it), the resolved context map, and a
+  ticking clock — is instead handed over by whatever paints the scene, via
+  `Node.adoptDetached`. Layout is done on demand against `width`×`height`.
+- **Hoist the source; never build it inside the scene builder.** A fresh subtree
+  each frame re-binds, re-lays-out, defeats the texture cache and leaks.
+- **A conditionally emitted surface needs an explicit `key`.** The texture cache
+  is global and un-refcounted, so a shifting walk ordinal orphans the old
+  `THREE.DataTexture` rather than reusing it.
+- Path: `View3DFillRenderer.preflight` → `FillRendererContext.rasterizeSurface`
+  → `WebRenderContext` swaps `currentCanvas` + `activeSurface` onto a sized
+  offscreen, `readPixels` → `TextureResolver.setRasters` uploads into a
+  `THREE.DataTexture` keyed by descriptor identity + the owning fill slot.
+- **Precomp discovery is `TrackRenderContext.trackSurfaceSources`.** A source is
+  2D content one level below the scene, so only a walk *into* it finds its fonts
+  and image fills — `FillData.prepare` receives an `AssetTracker`, not a render
+  context, so the tracking context does it directly. Bounded by a depth cap, since
+  a surface can itself paint a 3D fill.
 - **`activeSurface`, not `this.surface`** — anything in `WebRenderContext` needing
   the size of *what is being drawn into* (device-space shader rect, `'global'` fill
   space, backdrop snapshot, compatible offscreen) must read it, or a node inside a
-  `Surface2D` gets the main canvas' dimensions.
+  surface gets the main canvas' dimensions.
 - **Cost**: three owns its own GL context, so there is no shared texture — every
   animated surface is a full GPU→CPU `readPixels` plus an upload per frame. Hence
-  a default pixel ratio of 1 and the `static` opt-out.
+  a default pixel ratio of 1.
 
 ### `@motion-script/canvaskit`
 

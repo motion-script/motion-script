@@ -75,15 +75,15 @@ function getRenderer(three: ThreeModule, antialias: boolean): THREE.WebGLRendere
  * Round a requested device size up to a stable, GPU-friendly buffer size that
  * never shrinks for this node. See {@link bufferSizes}.
  */
-function quantizeBuffer(nodeId: string, width: number, height: number): { width: number; height: number } {
+function quantizeBuffer(key: string, width: number, height: number): { width: number; height: number } {
     const wanted = {
         width: Math.min(maxTextureSize, Math.max(1, Math.ceil(width / SIZE_QUANTUM) * SIZE_QUANTUM)),
         height: Math.min(maxTextureSize, Math.max(1, Math.ceil(height / SIZE_QUANTUM) * SIZE_QUANTUM)),
     };
 
-    const current = bufferSizes.get(nodeId);
+    const current = bufferSizes.get(key);
     if (!current) {
-        bufferSizes.set(nodeId, wanted);
+        bufferSizes.set(key, wanted);
         return wanted;
     }
 
@@ -94,14 +94,14 @@ function quantizeBuffer(nodeId: string, width: number, height: number): { width:
         height: Math.max(current.height, wanted.height),
     };
     if (grown.width !== current.width || grown.height !== current.height) {
-        bufferSizes.set(nodeId, grown);
+        bufferSizes.set(key, grown);
     }
     return grown;
 }
 
 /** What the compositor needs to upload and place a rendered 3D frame. */
-export interface RenderedScene3D {
-    /** The renderer's canvas. Valid only until the next {@link renderScene3D}. */
+export interface RenderedView3D {
+    /** The renderer's canvas. Valid only until the next {@link renderView3D}. */
     source: HTMLCanvasElement;
     /** Device-pixel size of the drawing buffer — the source rect for the upload. */
     width: number;
@@ -116,17 +116,17 @@ export interface RenderedScene3D {
  * texture) before rendering another node — which the compositor does, since both
  * happen inside one synchronous draw call.
  */
-export function renderScene3D(
+export function renderView3D(
     three: ThreeModule,
-    nodeId: string,
+    key: string,
     scene: THREE.Scene,
     camera: THREE.Camera,
     width: number,
     height: number,
     options: { antialias?: boolean } = {},
-): RenderedScene3D {
+): RenderedView3D {
     const active = getRenderer(three, options.antialias !== false);
-    const size = quantizeBuffer(nodeId, width, height);
+    const size = quantizeBuffer(key, width, height);
 
     const current = active.getSize(new three.Vector2());
     if (current.x !== size.width || current.y !== size.height) {
@@ -189,6 +189,6 @@ export function disposeSharedRenderer(): void {
 }
 
 /** Forget a node's buffer size, so a removed node stops pinning a large buffer. */
-export function forgetScene3DBuffer(nodeId: string): void {
-    bufferSizes.delete(nodeId);
+export function forgetView3DBuffer(key: string): void {
+    bufferSizes.delete(key);
 }

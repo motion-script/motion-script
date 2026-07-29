@@ -231,7 +231,7 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      * origin at the centre, matching the space a node draws in — so `draw` can be
      * an ordinary `render()` call on a node subtree and needs no special casing.
      *
-     * This is what backs {@link SurfaceTexture3D}: `Scene3D` rasterizes each of
+     * This is what backs {@link SurfaceTexture3D}: `View3D` rasterizes each of
      * its `Surface2D` children through here, then hands the pixels to the 3D
      * backend as a texture. It runs *inside* the frame that consumes it, so a
      * scrubbed frame is identical to a played one.

@@ -1057,6 +1057,29 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
+     * Adopt a **detached** node for binding only — its asset catalog, inherited
+     * context and clock — without making it a child.
+     *
+     * Tree membership supplies three things a node cannot work without: the asset
+     * catalog (a webfont never shapes and an `<Image>` never loads without it),
+     * the resolved context map (theme tokens), and a ticking clock. Layout and
+     * painting are *not* among them. So a node used purely as a source of pixels —
+     * a `Tex.surface(...)` subtree rasterized onto 3D geometry — can be bound by
+     * whatever consumes it and laid out on demand, instead of having to sit in a
+     * particular place in the tree.
+     *
+     * Safe to call every frame: `bindAssets` short-circuits on an unchanged
+     * catalog, `resolveContext` is fired only on the adoptee's first bind, and
+     * `ellapse` is idempotent for a repeated time.
+     */
+    protected adoptDetached(node: Node): void {
+        const assets = this.tryAssets();
+        if (assets) node.bindAssets(assets);
+        if (this._contextBound) node.bindContext(this._context, !node._contextBound);
+        node.ellapse(this.clock.time);
+    }
+
+    /**
      * Opaque async setup needed **before layout** — e.g. {@link Code}'s syntax
      * grammar, which tokenization/measurement depends on. Runs in the precomp
      * pass ahead of {@link layout}, so the node cannot read its `layoutRect`

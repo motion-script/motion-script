@@ -72,7 +72,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
  *
  * - **A loader record.** `LoaderRecord.load` is a live closure owned by the
  *   requesting package, and a function cannot be revived from JSON. (No built-in
- *   path produces one today — the sole caller is gated behind a Scene3D resource
+ *   path produces one today — the sole caller is gated behind a View3D resource
  *   loader that nothing registers — so this is a guard against a future
  *   regression, not a common case.)
  * - **A curve-valued audio filter param.** `Curve` is a class whose segments carry

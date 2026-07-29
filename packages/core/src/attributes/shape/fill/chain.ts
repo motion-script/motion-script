@@ -6,6 +6,7 @@ import type { ImageFilter, VideoFilter } from "../filters/chain";
 import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageFit, ImageTransform } from "./implementations/image";
+import type { Graphics3D } from "@/render3d/graphics3d";
 
 /** Author-facing options for a {@link FillChain.video} layer. */
 export interface VideoFillOptions extends FillOptions {
@@ -117,6 +118,22 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'stripe' as const, gap, strokeWidth, angle, color }, common)]);
     }
 
+    /**
+     * Append a 3D scene, painted through the shape's own path.
+     *
+     * Takes a **built** {@link Graphics3D}, never a builder — per-frame freshness
+     * comes from where the value is produced (a `renderSelf`, or a `() => …`
+     * reactive binding), like every other fill.
+     *
+     * Note two same-type 3D layers hard-cut rather than cross-fading, because a
+     * command list has no meaningful in-between. To dissolve between two scenes,
+     * stack them and tween their opacities in opposite directions.
+     */
+    view3D(graphics3D: Graphics3D, options?: FillOptions & { maxPixelRatio?: number; antialias?: boolean }) {
+        const { maxPixelRatio, antialias, ...common } = options ?? {};
+        return new FillChain([...this.list, withOptions({ type: 'view3D' as const, graphics3D, maxPixelRatio, antialias }, common)]);
+    }
+
     /** Allows spreading the chain into an array: `[...Fills.color('red')]`. */
     *[Symbol.iterator]() {
         yield* this.list;
@@ -171,6 +188,8 @@ export const Fills = {
         new FillChain().noise(options),
     stripe: (options?: Parameters<FillChain['stripe']>[0]) =>
         new FillChain().stripe(options),
+    view3D: (graphics3D: Graphics3D, options?: Parameters<FillChain['view3D']>[1]) =>
+        new FillChain().view3D(graphics3D, options),
 };
 
 /**

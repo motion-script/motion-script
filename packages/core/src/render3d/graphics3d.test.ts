@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Graphics3D } from '@/render3d/graphics3d';
+import { Graphics } from '@/render/graphics';
 import { Geo, Mat, Tex } from '@/render3d/builders';
 import { evaluateParametric } from '@/render3d/geometry';
 import {
@@ -11,37 +12,37 @@ import type { AssetTracker } from '@/assets/tracker';
 
 describe('Graphics3D', () => {
     it('records drawables in order', () => {
-        const g = new Graphics3D()
+        const g3 = new Graphics3D()
             .ambient({ intensity: 0.4 })
             .box({ width: 2 })
             .sphere({ radius: 1 })
             .directional({ intensity: 2 });
 
-        expect(g.ops().map((o) => o.kind)).toEqual(['light', 'mesh', 'mesh', 'light']);
+        expect(g3.ops().map((o) => o.kind)).toEqual(['light', 'mesh', 'mesh', 'light']);
     });
 
     it('group(transform, build) brackets its children with push/pop', () => {
-        const g = new Graphics3D()
+        const g3 = new Graphics3D()
             .box()
             .group({ position: [1, 0, 0] }, (inner) => inner.sphere().torus())
             .plane();
 
-        expect(g.ops().map((o) => o.kind)).toEqual([
+        expect(g3.ops().map((o) => o.kind)).toEqual([
             'mesh', 'push', 'mesh', 'mesh', 'pop', 'mesh',
         ]);
-        expect(g.ops()[1]).toEqual({ kind: 'push', transform: { position: [1, 0, 0] } });
+        expect(g3.ops()[1]).toEqual({ kind: 'push', transform: { position: [1, 0, 0] } });
     });
 
     it('group() accepts a bare callback with no transform', () => {
-        const g = new Graphics3D().group((inner) => inner.box());
-        expect(g.ops().map((o) => o.kind)).toEqual(['push', 'mesh', 'pop']);
-        expect(g.ops()[0]).toEqual({ kind: 'push', transform: undefined });
+        const g3 = new Graphics3D().group((inner) => inner.box());
+        expect(g3.ops().map((o) => o.kind)).toEqual(['push', 'mesh', 'pop']);
+        expect(g3.ops()[0]).toEqual({ kind: 'push', transform: undefined });
     });
 
     it('assertBalanced throws on an unclosed push and passes for group()', () => {
         expect(() => new Graphics3D().push().box().assertBalanced()).toThrow(/unclosed push/);
         expect(() => new Graphics3D().pop().assertBalanced()).toThrow(/extra pop/);
-        expect(() => new Graphics3D().group((g) => g.box()).assertBalanced()).not.toThrow();
+        expect(() => new Graphics3D().group((g3) => g3.box()).assertBalanced()).not.toThrow();
         expect(() => new Graphics3D().box().assertBalanced()).not.toThrow();
     });
 
@@ -49,13 +50,13 @@ describe('Graphics3D', () => {
     // op, so the recorded list is the same whether the author used sugar or the
     // explicit `mesh(geometry, material, transform)` form.
     it('desugars a flat shorthand bag into geometry / material / transform', () => {
-        const g = new Graphics3D().box({
+        const g3 = new Graphics3D().box({
             width: 2, height: 3,
             color: 'red', roughness: 0.4,
             position: [1, 0, 0], rotation: [0, 90, 0],
         });
 
-        expect(g.ops()[0]).toEqual({
+        expect(g3.ops()[0]).toEqual({
             kind: 'mesh',
             geometry: { type: 'box', width: 2, height: 3 },
             material: { type: 'standard', color: 'red', roughness: 0.4 },
@@ -74,39 +75,39 @@ describe('Graphics3D', () => {
     });
 
     it('an explicit material wins over the shorthand fields', () => {
-        const g = new Graphics3D().box({
+        const g3 = new Graphics3D().box({
             width: 1,
             color: 'red',                                  // ignored
             material: Mat.phong({ color: 'blue', shininess: 40 }),
         });
-        expect((g.ops()[0] as { material: unknown }).material)
+        expect((g3.ops()[0] as { material: unknown }).material)
             .toEqual({ type: 'phong', color: 'blue', shininess: 40 });
     });
 
     it('unlit selects a basic material instead of standard', () => {
-        const g = new Graphics3D().box({ unlit: true, color: 'white' });
-        expect((g.ops()[0] as { material: unknown }).material)
+        const g3 = new Graphics3D().box({ unlit: true, color: 'white' });
+        expect((g3.ops()[0] as { material: unknown }).material)
             .toEqual({ type: 'basic', color: 'white' });
         // `unlit` is a shorthand directive, not a geometry param.
-        expect((g.ops()[0] as { geometry: unknown }).geometry).toEqual({ type: 'box' });
+        expect((g3.ops()[0] as { geometry: unknown }).geometry).toEqual({ type: 'box' });
     });
 
     it('a mesh always records a material, so the op needs no defaulting downstream', () => {
-        const g = new Graphics3D().box();
-        expect((g.ops()[0] as { material: unknown }).material).toEqual({ type: 'standard' });
+        const g3 = new Graphics3D().box();
+        expect((g3.ops()[0] as { material: unknown }).material).toEqual({ type: 'standard' });
         expect(new Graphics3D().mesh(Geo.sphere()).ops()[0]).toMatchObject({
             material: { type: 'standard' },
         });
     });
 
     it('omits transform entirely when the bag carries no placement', () => {
-        const g = new Graphics3D().box({ width: 1, color: 'red' });
-        expect((g.ops()[0] as { transform: unknown }).transform).toBeUndefined();
+        const g3 = new Graphics3D().box({ width: 1, color: 'red' });
+        expect((g3.ops()[0] as { transform: unknown }).transform).toBeUndefined();
     });
 
     it('splits a light bag into light params and placement', () => {
-        const g = new Graphics3D().directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true });
-        expect(g.ops()[0]).toEqual({
+        const g3 = new Graphics3D().directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true });
+        expect(g3.ops()[0]).toEqual({
             kind: 'light',
             light: { type: 'directional', intensity: 2.4 },
             transform: { position: [4, 6, 3], castShadow: true },
@@ -117,7 +118,7 @@ describe('Graphics3D', () => {
     // ordering that doesn't exist, so they're fields with query accessors,
     // mirroring how Graphics exposes groupOpacity()/groupTransform().
     it('scene settings are graphics-level fields, not ops', () => {
-        const g = new Graphics3D()
+        const g3 = new Graphics3D()
             .box()
             .perspective({ fov: 45 })
             .fog({ type: 'linear', color: 'black', near: 1, far: 10 })
@@ -125,17 +126,17 @@ describe('Graphics3D', () => {
             .shadows(true)
             .tone({ mapping: 'aces', exposure: 1.2 });
 
-        expect(g.ops().map((o) => o.kind)).toEqual(['mesh']);
-        expect(g.cameraDescriptor()).toEqual({ type: 'perspective', fov: 45 });
-        expect(g.fogDescriptor()).toEqual({ type: 'linear', color: 'black', near: 1, far: 10 });
-        expect(g.backgroundDescriptor()).toBe('#0b0d12');
-        expect(g.shadowSettings()).toEqual({ enabled: true });
-        expect(g.toneSettings()).toEqual({ mapping: 'aces', exposure: 1.2 });
+        expect(g3.ops().map((o) => o.kind)).toEqual(['mesh']);
+        expect(g3.cameraDescriptor()).toEqual({ type: 'perspective', fov: 45 });
+        expect(g3.fogDescriptor()).toEqual({ type: 'linear', color: 'black', near: 1, far: 10 });
+        expect(g3.backgroundDescriptor()).toBe('#0b0d12');
+        expect(g3.shadowSettings()).toEqual({ enabled: true });
+        expect(g3.toneSettings()).toEqual({ mapping: 'aces', exposure: 1.2 });
     });
 
     it('last writer wins for a scene setting', () => {
-        const g = new Graphics3D().perspective({ fov: 30 }).perspective({ fov: 60 });
-        expect(g.cameraDescriptor()).toEqual({ type: 'perspective', fov: 60 });
+        const g3 = new Graphics3D().perspective({ fov: 30 }).perspective({ fov: 60 });
+        expect(g3.cameraDescriptor()).toEqual({ type: 'perspective', fov: 60 });
     });
 
     it('fog() coerces a bare Color into linear fog', () => {
@@ -151,10 +152,10 @@ describe('Graphics3D', () => {
     });
 
     it('post() appends passes in order', () => {
-        const g = new Graphics3D()
+        const g3 = new Graphics3D()
             .post({ type: 'bloom', strength: 0.8 })
             .post([{ type: 'fxaa' }, { type: 'outline' }]);
-        expect(g.postEffects().map((e) => e.type)).toEqual(['bloom', 'fxaa', 'outline']);
+        expect(g3.postEffects().map((e) => e.type)).toEqual(['bloom', 'fxaa', 'outline']);
     });
 
     it('isEmpty is true until something drawable is recorded', () => {
@@ -167,8 +168,8 @@ describe('Graphics3D', () => {
     });
 
     it('line() accepts explicit points and flattens them into a buffer geometry', () => {
-        const g = new Graphics3D().line({ points: [[0, 0, 0], { x: 1, y: 2, z: 3 }], color: 'white' });
-        expect(g.ops()[0]).toEqual({
+        const g3 = new Graphics3D().line({ points: [[0, 0, 0], { x: 1, y: 2, z: 3 }], color: 'white' });
+        expect(g3.ops()[0]).toEqual({
             kind: 'line',
             geometry: { type: 'buffer', position: [0, 0, 0, 1, 2, 3] },
             material: { type: 'lineBasic', color: 'white' },
@@ -178,12 +179,12 @@ describe('Graphics3D', () => {
     });
 
     it('line() accepts a geometry (e.g. edges) and a segments mode', () => {
-        const g = new Graphics3D().line({
+        const g3 = new Graphics3D().line({
             geometry: Geo.edges(Geo.box({ width: 2 })),
             mode: 'segments',
             opacity: 0.4,
         });
-        const op = g.ops()[0] as { geometry: unknown; material: unknown; mode: string };
+        const op = g3.ops()[0] as { geometry: unknown; material: unknown; mode: string };
         expect(op.mode).toBe('segments');
         expect(op.geometry).toEqual({ type: 'edges', source: { type: 'box', width: 2 } });
         // An opacity shorthand implies transparency, or it would have no effect.
@@ -195,8 +196,8 @@ describe('Graphics3D', () => {
     });
 
     it('model() normalizes a single animation into an array', () => {
-        const g = new Graphics3D().model({ src: '/robot.glb', animation: { clip: 'walk', time: 1.5 } });
-        expect(g.ops()[0]).toMatchObject({
+        const g3 = new Graphics3D().model({ src: '/robot.glb', animation: { clip: 'walk', time: 1.5 } });
+        expect(g3.ops()[0]).toMatchObject({
             kind: 'model',
             src: '/robot.glb',
             animation: [{ clip: 'walk', time: 1.5 }],
@@ -205,8 +206,8 @@ describe('Graphics3D', () => {
 
     it('instances() records per-instance transforms and the count follows the array', () => {
         const placements = [{ position: [0, 0, 0] }, { position: [1, 0, 0] }] as const;
-        const g = new Graphics3D().instances(Geo.box(), Mat.standard(), placements);
-        expect(g.ops()[0]).toMatchObject({ kind: 'instances', instances: placements });
+        const g3 = new Graphics3D().instances(Geo.box(), Mat.standard(), placements);
+        expect(g3.ops()[0]).toMatchObject({ kind: 'instances', instances: placements });
     });
 });
 
@@ -222,10 +223,11 @@ describe('Geo / Mat / Tex builders', () => {
             .toEqual({ type: 'polyhedron', shape: 'icosahedron', detail: 2 });
     });
 
-    it('Tex.surface takes a name or the Surface2D itself', () => {
-        expect(Tex.surface('screen')).toEqual({ surface: 'screen' });
-        expect(Tex.surface({ textureName: 'screen' }, { flipY: false }))
-            .toEqual({ surface: 'screen', flipY: false });
+    it('Tex.surface takes a 2D source value plus its buffer size', () => {
+        const source = new Graphics();
+        expect(Tex.surface(source, 1024, 640)).toEqual({ source, width: 1024, height: 640 });
+        expect(Tex.surface(source, 1024, 640, { key: 'screen', flipY: false }))
+            .toEqual({ source, width: 1024, height: 640, key: 'screen', flipY: false });
     });
 });
 
@@ -233,7 +235,7 @@ describe('Texture3D discrimination', () => {
     it('separates the three texture forms', () => {
         const image = Tex.image('/wood.png');
         const data = Tex.data(new Uint8Array(4), 1, 1);
-        const surface = Tex.surface('screen');
+        const surface = Tex.surface(new Graphics(), 8, 8);
 
         expect(isDataTexture3D(data)).toBe(true);
         expect(isDataTexture3D(surface)).toBe(false);
@@ -249,7 +251,7 @@ describe('Texture3D discrimination', () => {
         expect(texture3DSource('/wood.png')).toBe('/wood.png');
         expect(texture3DSource(Tex.image('/wood.png'))).toBe('/wood.png');
         expect(texture3DSource(Tex.data(new Uint8Array(4), 1, 1))).toBeNull();
-        expect(texture3DSource(Tex.surface('screen'))).toBeNull();
+        expect(texture3DSource(Tex.surface(new Graphics(), 8, 8))).toBeNull();
     });
 
     it('track3DResources skips a surface map and still finds image maps', () => {
@@ -260,10 +262,10 @@ describe('Texture3D discrimination', () => {
             requestLoader: () => { },
         } as unknown as AssetTracker;
 
-        const g = new Graphics3D()
-            .plane({ map: Tex.surface('screen') })
+        const g3 = new Graphics3D()
+            .plane({ map: Tex.surface(new Graphics(), 8, 8) })
             .plane({ map: '/wood.png' });
-        track3DResources(g, tracker, 100, 100);
+        track3DResources(g3, tracker, 100, 100);
 
         expect(requested).toEqual(['/wood.png']);
     });

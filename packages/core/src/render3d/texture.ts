@@ -64,16 +64,61 @@ export interface DataTexture3D extends TextureOptions3D {
 }
 
 /**
- * A texture whose pixels are a 2D `Surface2D` child of the enclosing `Scene3D`,
- * rasterized offscreen every frame — the way to put Motion Script's own 2D
- * output (a `Graphics` command list, or a subtree of nodes) onto 3D geometry.
+ * A texture whose pixels are Motion Script's own 2D output, rasterized offscreen
+ * — the way to put a chart, a readout or a whole laid-out UI onto 3D geometry.
  *
- * `surface` matches the `Surface2D`'s `name`. It resolves per `Scene3D`, so two
- * viewports can each hold a `<Surface2D name="screen">` without colliding.
+ * `source` is a value, not a name and not a mounted node: either a built
+ * {@link Graphics} command list, or a `Node` subtree. Both are supplied directly,
+ * so there is no matching indirection and nothing has to live in a particular
+ * place in the scene tree.
+ *
+ *   g3.plane({ map: Tex.surface(scopeGraphics, 1024, 640) })
+ *   g3.plane({ map: Tex.surface(statsSubtree, 1024, 640) })
+ *
+ * A `Node` source is *adopted for binding* by whatever paints the scene — it gets
+ * that node's asset catalog, inherited context and clock, which is what makes a
+ * webfont shape and an `<Image>` load. It is never laid out or painted by the
+ * scene tree; it is measured against `width`×`height` and drawn into the buffer.
+ *
+ * **Hoist the source.** Building it fresh inside the scene builder allocates a new
+ * subtree every frame — re-binding, re-laying-out, defeating the texture cache and
+ * leaking. Declare it once and pass the same instance.
  */
 export interface SurfaceTexture3D extends TextureOptions3D {
-    surface: string;
+    /** A built `Graphics`, or a `Node` subtree. Typed structurally — see below. */
+    source: SurfaceSource3D;
+    /** Buffer width in pixels. This *is* the texture's resolution. */
+    width: number;
+    /** Buffer height in pixels. */
+    height: number;
+    /**
+     * Identity for the texture cache. Defaults to the source's position in the
+     * scene walk, which is stable for a scene that emits the same textures every
+     * frame. A texture emitted **conditionally** must pass an explicit key —
+     * otherwise its ordinal shifts when something before it disappears and the old
+     * GPU texture is orphaned rather than reused.
+     */
+    key?: string;
+    /**
+     * Ceiling on the buffer's device-pixel ratio. Default 1, i.e. the buffer is
+     * exactly `width` × `height`.
+     *
+     * Unlike a 2D node — which wants to match the display — a surface is sampled by
+     * a 3D material at whatever size the geometry occupies on screen, so the honest
+     * control is `width`/`height`. Raise this only when a surface is viewed close
+     * up and reads soft.
+     */
+    maxPixelRatio?: number;
 }
+
+/**
+ * What a {@link SurfaceTexture3D} can be painted from.
+ *
+ * Typed structurally rather than against `Graphics`/`Node` so `render3d` stays
+ * free of both the render and node layers — the same reason the old name-keyed
+ * form took `{ readonly textureName: string }`. The renderer narrows it.
+ */
+export type SurfaceSource3D = object;
 
 /**
  * A texture reference. A bare string is sugar for `{ src }`, so the common case
@@ -86,9 +131,9 @@ export function isDataTexture3D(texture: Texture3D): texture is DataTexture3D {
     return typeof texture !== "string" && "data" in texture;
 }
 
-/** True for the {@link SurfaceTexture3D} form — pixels come from a `Surface2D`. */
+/** True for the {@link SurfaceTexture3D} form — pixels are rasterized from 2D. */
 export function isSurfaceTexture3D(texture: Texture3D): texture is SurfaceTexture3D {
-    return typeof texture !== "string" && "surface" in texture;
+    return typeof texture !== "string" && "source" in texture;
 }
 
 /** Normalize the string shorthand to an {@link ImageTexture3D}. */

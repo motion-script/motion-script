@@ -14,5 +14,5 @@ import expensiveProject from './projects/expensive/expensive-project';
 import textProject from './projects/text/text-project';
 import threeProject from './projects/three/three-project';
 import globalsProject from './projects/globals/globals-project';
-export default globalsProject;
+export default threeProject;
 

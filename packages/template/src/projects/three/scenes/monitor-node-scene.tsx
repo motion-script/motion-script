@@ -1,61 +1,32 @@
 import {
-    createScene, createSignal, easeInOut, linear, parallel,
-    Graphics, Graphics3D, Rect, Tex, Text, View3D,
+    createRef, createScene, createSignal, easeInOut, linear, parallel,
+    Graphics, Rect, Text,
 } from "motion-script";
+import { MonitorWall, type MonitorScreen } from "../nodes/monitor-wall";
 
 /**
- * Two monitors, each showing a `Tex.surface` — 2D content rasterized offscreen
- * and bound to a 3D material.
+ * The {@link MonitorWall} node — the `Monitors` scene's inline rig promoted to a
+ * reusable node.
  *
- * The point of the scene is that the two screens are authored in the two ways a
- * surface source accepts, and both animate:
+ * The split is the point: the node owns the *rig* (camera, lighting, floor, fog,
+ * and a bezel/stalk/foot per screen), the scene owns the *content*. So this scene
+ * is three screen sources and a couple of `to()` calls, and adding a third
+ * monitor was adding a third entry — no placement maths in the scene at all.
  *
- *  - **left** — a built `Graphics` command list, whose trace is phase-driven.
- *  - **right** — a `Node` subtree (`Rect`/`Text` in a column layout), whose bars
- *    are driven by timeline signals.
+ * Both source kinds are here, and both animate:
  *
- * Neither is a child of the `View3D`, and neither has a name: they are values
- * handed to `Tex.surface`. The node binds a `Node` source to its own asset
- * catalog, context and clock, which is what lets its webfont shape.
+ *  - **scope / net** — a built `Graphics` command list, rebuilt each frame from
+ *    the signals it reads.
+ *  - **stats** — a `Node` subtree with real column layout and shaped `Text`,
+ *    whose bars follow timeline signals. It is never mounted in the scene tree;
+ *    `View3D` binds it to its own asset catalog, context and clock, which is what
+ *    lets the webfont shape.
  */
 
 const SCREEN_W = 1024;
 const SCREEN_H = 640;
 /** Inset of the screen's content from the buffer edge. */
 const INSET = 48;
-
-/** Panel size in world units, matching the buffer's aspect so nothing stretches. */
-const PANEL_W = 4;
-const PANEL_H = PANEL_W * (SCREEN_H / SCREEN_W);
-const BEZEL = 0.12;
-
-/** A monitor: bezel box, screen quad just proud of its face, stalk and foot. */
-function monitor(g3: Graphics3D, key: string, source: object, x: number, yaw: number): Graphics3D {
-    return g3.group({ position: [x, 0.35, 0], rotation: [0, yaw, 0], key: `monitor:${key}` }, m => m
-        .box({
-            width: PANEL_W + BEZEL * 2, height: PANEL_H + BEZEL * 2, depth: 0.18,
-            color: "#15181f", roughness: 0.55, metalness: 0.2,
-        })
-        // `unlit` so the screen reads as its own light source; a lit material
-        // would tint the texture with the scene's lighting and read muddy.
-        .plane({
-            width: PANEL_W, height: PANEL_H,
-            position: [0, 0, 0.095],
-            unlit: true,
-            map: Tex.surface(source, SCREEN_W, SCREEN_H, { key }),
-        })
-        .box({
-            width: 0.24, height: 0.9, depth: 0.24,
-            position: [0, -(PANEL_H / 2 + BEZEL) - 0.45, 0],
-            color: "#0f1218", roughness: 0.6,
-        })
-        .box({
-            width: 1.6, height: 0.1, depth: 0.7,
-            position: [0, -(PANEL_H / 2 + BEZEL) - 0.92, 0],
-            color: "#0f1218", roughness: 0.6,
-        }),
-    );
-}
 
 /** Oscilloscope trace, phase-shifted and enveloped so it lands on the axis. */
 function trace(phase: number, amplitude: number): { x: number; y: number }[] {
@@ -74,11 +45,15 @@ function trace(phase: number, amplitude: number): { x: number; y: number }[] {
 export default createScene(function* (stage) {
     stage.set({ fill: "#05070c" });
 
-    const orbit = createSignal(-18);        // camera yaw, degrees
-    const phase = createSignal(0);          // trace phase, radians
+    const wall = createRef<MonitorWall>();
+
+    // Phase is a tweened signal rather than elapsed time: it keeps the traces on
+    // the timeline, so they scrub and export frame-identically.
+    const phase = createSignal(0);
     const amplitude = createSignal(40);     // oscilloscope height, px
-    const cpu = createSignal(0.18);         // 0..1, drives the right screen's bars
+    const cpu = createSignal(0.18);         // 0..1, drives the stats screen's bars
     const memory = createSignal(0.44);
+    const throughput = createSignal(0.3);   // 0..1, drives the net screen's bars
 
     const barTrack = SCREEN_W - INSET * 2;
     // Reactive width: passing the callback lets the bar follow the signal without
@@ -119,8 +94,8 @@ export default createScene(function* (stage) {
     };
 
     // ── Screen 2: a node subtree, laid out normally ──────────────────────────
-    // Hoisted rather than rebuilt per frame: a fresh subtree each frame would
-    // re-bind, re-lay-out and defeat the texture cache. Its signals keep it live.
+    // Hoisted, not rebuilt per frame — a fresh subtree each frame would re-bind,
+    // re-lay-out and defeat the texture cache. Its signals keep it live.
     const stats = (
         <Rect width={SCREEN_W} height={SCREEN_H} fill={"#0b0d12"}
             group={"column"} padding={INSET} gap={22} align={"topLeft"}>
@@ -144,49 +119,83 @@ export default createScene(function* (stage) {
         </Rect>
     );
 
+    // ── Screen 3: added by handing over one more source ──────────────────────
+    const net = (): Graphics => {
+        const g = new Graphics();
+        const w = SCREEN_W - INSET * 2;
+        const h = SCREEN_H - INSET * 2;
+        const bars = 24;
+        const slot = w / bars;
+
+        g.rect({ width: SCREEN_W, height: SCREEN_H }).fill("#120a12");
+        g.rect({ width: w, height: h }).stroke({ weight: 2, fill: "#5a2450" });
+
+        // A scrolling traffic histogram. Height is a pure function of
+        // (index, phase), so it stays frame-exact under scrubbing.
+        for (let i = 0; i < bars; i++) {
+            const wave = Math.sin(i * 0.7 - phase() * 0.75) * 0.5 + 0.5;
+            const level = (0.15 + wave * 0.85) * throughput();
+            const barHeight = Math.max(6, level * (h - 90));
+            g.rect({
+                x: -w / 2 + slot * (i + 0.5),
+                y: -h / 2 + barHeight / 2 + 10,
+                width: slot * 0.6,
+                height: barHeight,
+                cornerRadius: 4,
+            }).fill("#e879f9");
+        }
+
+        g.text({
+            text: "NET  Mb/s",
+            fontFamily: "Pixelify Sans", fontSize: 34,
+            width: w, height: 40,
+            textAlign: "start",
+            y: h / 2 - 20,
+        }).fill("#e879f9");
+
+        return g;
+    };
+
+    // A reactive binding: it re-evaluates whenever a signal any source reads
+    // changes, which during a tween is every frame.
+    const screens = (): MonitorScreen[] => [
+        { key: "scope", source: scope(), width: SCREEN_W, height: SCREEN_H },
+        { key: "stats", source: stats, width: SCREEN_W, height: SCREEN_H },
+        { key: "net", source: net(), width: SCREEN_W, height: SCREEN_H },
+    ];
+
     stage.add(
-        <View3D
+        <MonitorWall
+            ref={wall}
             width={1760}
             height={960}
             cornerRadius={32}
-            graphics3D={() => {
-                const g3 = new Graphics3D();
-                const radians = (orbit() * Math.PI) / 180;
-                g3.perspective({
-                    position: [Math.sin(radians) * 13, 2.4, Math.cos(radians) * 13],
-                    lookAt: [0, 0.2, 0],
-                    fov: 42,
-                })
-                    .background("#080a10")
-                    .fog({ type: "linear", color: "#080a10", near: 15, far: 36 })
-                    .ambient({ intensity: 0.5 })
-                    .directional({ intensity: 1.8, position: [5, 8, 6] })
-                    .point({ intensity: 40, position: [0, 1, 5], color: "#5f7fd0" })
-                    .plane({
-                        width: 60, height: 60,
-                        rotation: [-90, 0, 0], position: [0, -2.1, 0],
-                        color: "#11141c", roughness: 0.85,
-                    });
-
-                monitor(g3, "scope", scope(), -3.1, 22);
-                monitor(g3, "stats", stats, 3.1, -22);
-                return g3;
-            }}
+            orbit={-18}
+            spacing={5.4}
+            toe={26}
+            zoom={18}
+            screens={screens}
         />,
     );
 
+    // The rig moves through `to()` on the node; the screens' contents move through
+    // their own signals. Neither knows about the other.
     yield* parallel(
         phase(16, 4, linear()),
-        orbit(16, 4, easeInOut("quad")),
+        wall().to({ orbit: 16 }, 4, easeInOut("quad")),
         amplitude(150, 2, easeInOut("quad")),
         cpu(0.86, 2.4, easeInOut("quad")),
         memory(0.62, 3, easeInOut("quad")),
+        throughput(0.85, 2.6, easeInOut("quad")),
     );
+
+    // Push in and warm the fill light.
     yield* parallel(
         phase(34, 4.5, linear()),
-        orbit(-16, 4, easeInOut("quad")),
+        wall().to({ orbit: -16, elevation: 22, zoom: 15, glow: "#d06f5f" }, 4, easeInOut("quad")),
         amplitude(70, 2.5, easeInOut("quad")),
         cpu(0.34, 2.5, easeInOut("quad")),
         memory(0.91, 2, easeInOut("quad")),
+        throughput(0.42, 3, easeInOut("quad")),
     );
 });

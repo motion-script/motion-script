@@ -31,6 +31,8 @@ import { NoiseFillProp, NoiseFillResolved } from "./implementations/noise";
 import { RadialGradientFillProp, RadialGradientFillResolved } from "./implementations/radial-gradient";
 import { StripeFillProp, StripeFillResolved } from "./implementations/stripe";
 import { VideoFillProp, VideoFillResolved } from "./implementations/video";
+import { View3DFillProp, View3DFillResolved } from "./implementations/view3d";
+import type { Graphics3D } from "@/render3d/graphics3d";
 
 /**
  * Loose fill value accepted by node `fill` props.
@@ -51,6 +53,10 @@ type WithCommon<T> = T & FillCommon;
 
 export type FillProp =
     | string
+    // A bare built scene is shorthand for a {@link View3DFillProp}, the same way a
+    // bare CSS string is shorthand for a solid fill. Both are coerced by the
+    // registry: `fill={["#0b0d12", g3]}`.
+    | Graphics3D
     | WithCommon<SolidFillProp>
     | WithCommon<NoiseFillProp>
     | WithCommon<StripeFillProp>
@@ -58,7 +64,8 @@ export type FillProp =
     | WithCommon<RadialGradientFillProp>
     | WithCommon<ConicGradientFillProp>
     | WithCommon<ImageFillProp>
-    | WithCommon<VideoFillProp>;
+    | WithCommon<VideoFillProp>
+    | WithCommon<View3DFillProp>;
 
 /** Fully resolved fill ready for the renderer. */
 export type FillResolved =
@@ -69,4 +76,5 @@ export type FillResolved =
     | WithCommon<RadialGradientFillResolved>
     | WithCommon<ConicGradientFillResolved>
     | WithCommon<ImageFillResolved>
-    | WithCommon<VideoFillResolved>;
+    | WithCommon<VideoFillResolved>
+    | WithCommon<View3DFillResolved>;

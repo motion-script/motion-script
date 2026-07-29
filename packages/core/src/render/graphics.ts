@@ -15,8 +15,6 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import { type Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
 import type { Alignment } from "@/attributes/layout/align";
 import type { MaskOptions } from "@/attributes/mask/mask";
-import type { Graphics3D } from "@/render3d/graphics3d";
-import type { Scene3DOpState } from "./descriptors/scene3d";
 
 /**
  * A union-level rotate/scale applied to the whole drawn silhouette. `center` is
@@ -61,8 +59,7 @@ export type GraphicsOp =
     | { kind: "mask"; options?: MaskOptions }
     | { kind: "applyMask" }
     | { kind: "endMask" }
-    | { kind: "effects"; effects: SceneEffect[] }
-    | { kind: "scene3D"; graphics: Graphics3D; state: Scene3DOpState };
+    | { kind: "effects"; effects: SceneEffect[] };
 
 const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
     "rect", "ellipse", "path", "line", "polygon", "polygram", "text", "richText",
@@ -211,29 +208,6 @@ export class Graphics {
     }
 
     // ─── 3D ──────────────────────────────────────────────────────────────────
-
-    /**
-     * Composite a rendered {@link Graphics3D} scene into a rect of
-     * `state.width` × `state.height`, centred on this graphics' local origin —
-     * "as if drawing a rect".
-     *
-     * Because it is an op like any other, position in the list is meaningful:
-     * shapes and paints recorded *before* it appear beneath the 3D (a gradient
-     * sky behind a transparent render), and anything after appears over it. It
-     * sits inside a `mask()`/`applyMask()` scope, and a trailing `effects()`
-     * filters it along with the rest of its group.
-     *
-     * A backend with no 3D support ignores the op and draws nothing extra — the
-     * 2D content in the same list is unaffected.
-     *
-     * Note this op declares no geometry: it contributes nothing to the shape
-     * accumulator, the union's bounding box, or a group transform's pivot
-     * measurement. It paints, it doesn't shape.
-     */
-    scene3D(graphics: Graphics3D, state: Scene3DOpState): this {
-        this._ops.push({ kind: "scene3D", graphics, state });
-        return this;
-    }
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 

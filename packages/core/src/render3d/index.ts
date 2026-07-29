@@ -64,7 +64,8 @@ export type {
 } from "./scene-settings";
 
 /** @internal */ export { track3DResources } from "./tracking";
+/** @internal */ export { forEachTexture3D, isTextureLike, TEXTURE_KEYS } from "./walk";
 
-export { registerScene3DWarmup, registerScene3DResourceLoader } from "./resources";
-export type { Scene3DWarmup, Scene3DResourceLoader, Scene3DResourceKind } from "./resources";
-/** @internal */ export { warmScene3D, scene3DResourceLoader, hasScene3DBackend } from "./resources";
+export { registerView3DWarmup, registerView3DResourceLoader } from "./resources";
+export type { View3DWarmup, View3DResourceLoader, View3DResourceKind } from "./resources";
+/** @internal */ export { warmView3D, view3DResourceLoader, hasView3DBackend } from "./resources";

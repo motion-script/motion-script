@@ -704,7 +704,7 @@ export class Precomp {
                     profile?.enter("layout");
                     scene.layout(layoutBounds, trackMeasureScope);
                     globals?.layout(layoutBounds, trackMeasureScope);
-                    // Reserved pre-render async setup; Scene3D warms three here.
+                    // Reserved pre-render async setup; View3D warms three here.
                     profile?.enter("prepareRender");
                     scene.prepareRenderAssets();
                     globals?.prepareRenderAssets();

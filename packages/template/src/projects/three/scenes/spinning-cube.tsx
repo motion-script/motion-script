@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut, easeOut, parallel, wait,
-    lerpVector3, Scene3D, type Vector3,
+    lerpVector3, View3D, Graphics3D, type Vector3,
 } from "motion-script";
 
 /**
@@ -24,28 +24,25 @@ export default createScene(function* (stage) {
     const rough = createSignal(0.9);
 
     stage.add(
-        <Scene3D
+        <View3D
             width={1600}
             height={900}
             cornerRadius={32}
-            scene={(g) => g
+            shadow={{ blur: 30, fill: 'red', offset: { x: 200, y: 200 } }}
+            // A reactive binding: it re-evaluates whenever a signal it reads
+            // changes, which during a tween is every frame.
+            graphics3D={() => new Graphics3D()
                 // Track the cube as it rises, rather than staring at the origin —
                 // otherwise the lift carries it out of frame.
                 .perspective({ position: [0, 2.5, 6], lookAt: lift(), fov: 45 })
-                .background("#0b0d12")
-                .fog({ type: "linear", color: "#0b0d12", near: 6, far: 18 })
-                .ambient({ intensity: 0.35 })
+
                 .directional({ intensity: 2.4, position: [4, 6, 3] })
                 .box({
                     width: 2, height: 2, depth: 2,
                     color: "#e0533d", roughness: rough(), metalness: 0.1,
                     position: lift(), rotation: [0, spin(), 0],
                 })
-                .plane({
-                    width: 40, height: 40,
-                    rotation: [-90, 0, 0], position: [0, -1.2, 0],
-                    color: "#1b2030", roughness: 0.8,
-                })
+
             }
         />,
     );

@@ -458,7 +458,7 @@ export class ShapeHandler {
     // ─── Nested render scope ───────────────────────────────────────────────────
 
     // Open a nested render of a *different* node subtree in the middle of this
-    // node's draw (a Surface2D rasterized offscreen by its Scene3D parent).
+    // node's draw (a Surface2D rasterized offscreen by its View3D parent).
     //
     // Unlike beginMeasure() the cross-frame cache stays **live**: the nested nodes
     // have real, stable ids of their own, so their shapes should be cached exactly

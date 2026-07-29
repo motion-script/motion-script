@@ -56,12 +56,12 @@ interface CachedObject {
 }
 
 /**
- * The live three scene for one `Scene3D` node.
+ * The live three scene for one `View3D` node.
  *
  * One graph per node instance: two 3D nodes in a project each need their own
  * scene, camera and cache, or they'd overwrite each other's objects.
  */
-export class Scene3DGraph {
+export class View3DGraph {
     private readonly scene: THREE.Scene;
     private camera: THREE.Camera;
     private readonly cache = new Map<string, CachedObject>();
@@ -73,12 +73,12 @@ export class Scene3DGraph {
     }
 
     /**
-     * Bring the live scene in line with `graphics`, and return what to render.
+     * Bring the live scene in line with `g3`, and return what to render.
      *
      * `width`/`height` are device pixels, used for the camera's aspect ratio.
      */
     sync(
-        graphics: Graphics3D,
+        g3: Graphics3D,
         width: number,
         height: number,
         textures: TextureResolver,
@@ -92,7 +92,7 @@ export class Scene3DGraph {
         const counters: number[] = [-1];
         const parents: THREE.Object3D[] = [this.scene];
 
-        for (const op of graphics.ops()) {
+        for (const op of g3.ops()) {
             if (op.kind === "pop") {
                 // Guard against a malformed list; Graphics3D.assertBalanced()
                 // normally catches this at the author's source first.
@@ -117,12 +117,12 @@ export class Scene3DGraph {
         this.sweep();
 
         // ── Scene settings ───────────────────────────────────────────────────
-        applyFog(three, this.scene, graphics.fogDescriptor());
-        applyBackground(three, this.scene, graphics.backgroundDescriptor(), textures);
-        applyEnvironment(three, this.scene, graphics.environmentDescriptor(), activeRenderer());
+        applyFog(three, this.scene, g3.fogDescriptor());
+        applyBackground(three, this.scene, g3.backgroundDescriptor(), textures);
+        applyEnvironment(three, this.scene, g3.environmentDescriptor(), activeRenderer());
 
-        const shadows = graphics.shadowSettings();
-        const tone = graphics.toneSettings();
+        const shadows = g3.shadowSettings();
+        const tone = g3.toneSettings();
         applyRendererSettings(three, {
             shadowsEnabled: shadows?.enabled === true,
             shadowType: shadowType(three, shadows?.type),
@@ -130,7 +130,7 @@ export class Scene3DGraph {
             toneMappingExposure: tone?.exposure ?? 1,
         });
 
-        this.resolveCamera(graphics.cameraDescriptor(), width, height);
+        this.resolveCamera(g3.cameraDescriptor(), width, height);
         return { scene: this.scene, camera: this.camera };
     }
 

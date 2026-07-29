@@ -21,8 +21,10 @@
  */
 
 import type * as THREE from "three";
-import type { RasterizedSurface, Texture3D, TextureColorSpace3D } from "@motion-script/core";
-import { isDataTexture3D, isSurfaceTexture3D, resolveTexture3D } from "@motion-script/core";
+import {
+    isDataTexture3D, isSurfaceTexture3D, resolveTexture3D,
+    type RasterizedSurface, type SurfaceTexture3D, type Texture3D, type TextureColorSpace3D,
+} from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { colorSpace as toColorSpace, deg, magFilter, minFilter, wrap } from "./constants";
 
@@ -31,11 +33,11 @@ import { colorSpace as toColorSpace, deg, magFilter, minFilter, wrap } from "./c
  * so the reconciler and texture cache stay testable without a real CanvasKit
  * surface.
  */
-export interface Scene3DAssets {
+export interface View3DAssets {
     /** Raw decoded RGBA pixels for an asset path, or null until loaded. */
     getImagePixels(src: string): { pixels: Uint8Array; width: number; height: number } | null;
     /** Free the CanvasKit composite texture held for a node that's gone away. */
-    release3DTexture(nodeId: string): void;
+    release3DTexture(key: string): void;
 }
 
 interface CachedTexture {
@@ -53,23 +55,23 @@ const cache = new Map<string, CachedTexture>();
  * resulting GPU textures.
  */
 export class TextureResolver {
-    /** The node whose surfaces {@link surfaces} belongs to — scopes the cache key. */
+    /** The 3D fill slot {@link rasters} belongs to — scopes the cache key. */
     private surfaceOwner = "";
-    private surfaces?: ReadonlyMap<string, RasterizedSurface>;
+    private rasters?: ReadonlyMap<SurfaceTexture3D, RasterizedSurface>;
 
     constructor(
         private readonly three: ThreeModule,
-        private readonly assets: Scene3DAssets,
+        private readonly assets: View3DAssets,
     ) { }
 
     /**
-     * Hand in this frame's `Surface2D` buffers for one `Scene3D`, before its graph
-     * syncs. Set per node rather than per frame because the resolver is shared
-     * across every 3D node and surface names are only unique within one.
+     * Hand in this frame's rasterized 2D buffers for one 3D fill slot, before its
+     * graph syncs. Keyed by descriptor identity, and scoped per slot because the
+     * resolver is shared across every 3D fill in the frame.
      */
-    setSurfaces(ownerNodeId: string, surfaces: ReadonlyMap<string, RasterizedSurface> | undefined): void {
-        this.surfaceOwner = ownerNodeId;
-        this.surfaces = surfaces;
+    setRasters(ownerKey: string, rasters: ReadonlyMap<SurfaceTexture3D, RasterizedSurface> | undefined): void {
+        this.surfaceOwner = ownerKey;
+        this.rasters = rasters;
     }
 
     /**
@@ -84,7 +86,7 @@ export class TextureResolver {
         // A surface is re-rasterized every frame, so it re-uploads unconditionally
         // rather than comparing a revision — the pixels are new by construction.
         if (isSurfaceTexture3D(resolved)) {
-            const raster = this.surfaces?.get(resolved.surface);
+            const raster = this.rasters?.get(resolved);
             if (!raster) return null;
             const cached = cache.get(key);
             if (cached?.resolved) {
@@ -240,8 +242,10 @@ export class TextureResolver {
  * image at different `repeat`s each get their own texture rather than fighting
  * over one.
  *
- * `surfaceOwner` scopes a {@link SurfaceTexture3D}: surface names are unique only
- * within one `Scene3D`, and this cache is global.
+ * A {@link SurfaceTexture3D} is keyed by its `key` (or its position in the scene
+ * walk) plus the owning slot, because its `source` is a live object that
+ * `JSON.stringify` cannot distinguish — every one of them would otherwise collapse
+ * onto a single cache entry and stomp each other frame to frame.
  */
 function textureKey(
     descriptor: Texture3D,
@@ -256,11 +260,14 @@ function textureKey(
         // Contents are handled by `revision`; including them would make the key
         // change on every mutation and orphan the texture each frame.
         if (key === "data" || key === "revision") continue;
+        // A `source` is a Graphics/Node instance: it serialises to `{}` or worse,
+        // so identity comes from `key` + owner below instead.
+        if (key === "source") continue;
         parts.push(`${key}=${JSON.stringify(bag[key])}`);
     }
     // A data texture has no src to key on, so fall back to its dimensions.
     if (isDataTexture3D(descriptor)) parts.push(`data=${descriptor.width}x${descriptor.height}`);
-    if (isSurfaceTexture3D(descriptor)) parts.push(`owner=${surfaceOwner}`);
+    if (isSurfaceTexture3D(descriptor)) parts.push(`owner=${surfaceOwner}`, `sfc=${descriptor.key ?? ""}`);
     parts.push(`cs=${defaultColorSpace}`);
     return parts.join("|");
 }

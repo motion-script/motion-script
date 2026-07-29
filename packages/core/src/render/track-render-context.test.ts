@@ -11,6 +11,9 @@ import { Rect } from '@/nodes/geometry/rect-node';
 import { Image } from '@/nodes/media/image-node';
 import { Video } from '@/nodes/media/video-node';
 import { Fills } from '@/attributes/shape/fill/chain';
+import { Text } from '@/nodes/text/text-node';
+import { Graphics3D } from '@/render3d/graphics3d';
+import { Tex } from '@/render3d/builders';
 import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
 
 const IMAGE_SRC = 'photo.png';
@@ -171,5 +174,59 @@ describe('TrackRenderContext', () => {
             ctx.screenshot();
             ctx.unmount();
         }).not.toThrow();
+    });
+});
+
+/**
+ * A `Tex.surface` source is 2D content one level below the 3D scene, and it is a
+ * value rather than a mounted child — so nothing walks it unless the tracking
+ * context does. If this regresses, the failure is silent and looks like a font
+ * that renders in the default face or an image that never appears.
+ */
+describe('3D surface sources', () => {
+    const scene = (map: unknown) => new Graphics3D().plane({ unlit: true, map } as never);
+
+    it('discovers a font used by a Graphics source', () => {
+        const source = new Graphics().text({
+            text: 'CPU', fontFamily: 'Pixelify Sans', fontWeight: 700, width: 512, height: 64,
+        });
+        const node = new Rect({ width: 200, height: 100 });
+        node.fill = scene(Tex.surface(source, 512, 256)) as never;
+
+        expect(trackFrom(node).assets.get('Pixelify Sans')).toMatchObject({ type: 'font' });
+    });
+
+    it('discovers an image fill nested inside a Graphics source', () => {
+        const source = new Graphics()
+            .rect({ width: 512, height: 256 })
+            .fill(Fills.image(IMAGE_SRC));
+        const node = new Rect({ width: 200, height: 100 });
+        node.fill = scene(Tex.surface(source, 512, 256)) as never;
+
+        expect(trackFrom(node).assets.get(IMAGE_SRC)).toBeTruthy();
+    });
+
+    // The arm that regresses most quietly: a detached subtree gets no asset
+    // catalog from the tree, so only this walk can reach its `Text`.
+    it('discovers a font used by a detached Node source', () => {
+        const source = new Rect({
+            width: 512, height: 256,
+            children: [new Text({ text: 'SYSTEM', fontFamily: 'Pixelify Sans' })],
+        });
+        const node = new Rect({ width: 200, height: 100 });
+        node.fill = scene(Tex.surface(source, 512, 256)) as never;
+
+        expect(trackFrom(node).assets.get('Pixelify Sans')).toMatchObject({ type: 'font' });
+    });
+
+    it('still finds the scene\'s own image maps alongside the surface', () => {
+        const source = new Graphics().rect({ width: 8, height: 8 });
+        const g3 = new Graphics3D()
+            .plane({ unlit: true, map: Tex.surface(source, 8, 8) })
+            .box({ map: IMAGE_SRC });
+        const node = new Rect({ width: 200, height: 100 });
+        node.fill = g3 as never;
+
+        expect(trackFrom(node).assets.get(IMAGE_SRC)).toBeTruthy();
     });
 });

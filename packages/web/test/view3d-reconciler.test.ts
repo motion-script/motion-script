@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import type * as THREE from "three";
 import { Geo, Graphics3D, Mat, Tex, type RasterizedSurface } from "@motion-script/core";
-import { loadScene3D, threeModule } from "../src/three/bridge";
-import { Scene3DGraph } from "../src/three/reconciler";
-import { TextureResolver, type Scene3DAssets } from "../src/three/handlers/texture";
+import { loadView3D, threeModule } from "../src/three/bridge";
+import { View3DGraph } from "../src/three/reconciler";
+import { TextureResolver, type View3DAssets } from "../src/three/handlers/texture";
 import type { ThreeModule } from "../src/three/bridge";
 
 /**
@@ -15,28 +15,28 @@ let three: ThreeModule;
 let textures: TextureResolver;
 
 /** No assets: texture-less descriptors never reach the resolver. */
-const assets: Scene3DAssets = {
+const assets: View3DAssets = {
     getImagePixels: () => null,
     release3DTexture: () => { },
 };
 
 beforeAll(async () => {
-    await loadScene3D();
+    await loadView3D();
     three = threeModule()!;
     textures = new TextureResolver(three, assets);
 });
 
 /** Reconcile a freshly-built Graphics3D into `graph`. */
-function sync(graph: Scene3DGraph, build: (g: Graphics3D) => unknown) {
-    const g = new Graphics3D();
-    build(g);
-    return graph.sync(g, 800, 600, textures);
+function sync(graph: View3DGraph, build: (g3: Graphics3D) => unknown) {
+    const g3 = new Graphics3D();
+    build(g3);
+    return graph.sync(g3, 800, 600, textures);
 }
 
-describe("Scene3DGraph reconciliation", () => {
+describe("View3DGraph reconciliation", () => {
     it("builds the described object graph", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.box().ambient());
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.box().ambient());
 
         expect(scene.children).toHaveLength(2);
         expect(scene.children[0].type).toBe("Mesh");
@@ -45,8 +45,8 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("nests group() children under a Group", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.box().group({ position: [1, 0, 0] }, (i) => i.sphere().sphere()));
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.box().group({ position: [1, 0, 0] }, (i) => i.sphere().sphere()));
 
         expect(scene.children).toHaveLength(2);
         const group = scene.children[1];
@@ -59,13 +59,13 @@ describe("Scene3DGraph reconciliation", () => {
     // The load-bearing performance property: an unchanged descriptor must reuse the
     // same GPU resources rather than reallocating them every frame.
     it("reuses the same object, geometry and material across frames", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ width: 2, color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ width: 2, color: "red" }));
         const mesh1 = first.scene.children[0] as never as { uuid: string; geometry: { uuid: string }; material: { uuid: string } };
         const ids = { object: mesh1.uuid, geometry: mesh1.geometry.uuid, material: mesh1.material.uuid };
 
-        const second = sync(graph, (g) => g.box({ width: 2, color: "red" }));
+        const second = sync(graph, (g3) => g3.box({ width: 2, color: "red" }));
         const mesh2 = second.scene.children[0] as never as typeof mesh1;
 
         expect(mesh2.uuid).toBe(ids.object);
@@ -75,25 +75,25 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("writes a changed transform in place, without rebuilding", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ position: [0, 0, 0] }));
+        const first = sync(graph, (g3) => g3.box({ position: [0, 0, 0] }));
         const uuid = first.scene.children[0].uuid;
 
-        const second = sync(graph, (g) => g.box({ position: [5, 1, 2] }));
+        const second = sync(graph, (g3) => g3.box({ position: [5, 1, 2] }));
         expect(second.scene.children[0].uuid).toBe(uuid);
         expect(second.scene.children[0].position.toArray()).toEqual([5, 1, 2]);
         graph.dispose();
     });
 
     it("writes a changed material colour in place, without recompiling", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ color: "red" }));
         const material1 = (first.scene.children[0] as never as { material: { uuid: string } }).material;
         const uuid = material1.uuid;
 
-        const second = sync(graph, (g) => g.box({ color: "blue" }));
+        const second = sync(graph, (g3) => g3.box({ color: "blue" }));
         const material2 = (second.scene.children[0] as never as { material: { uuid: string; color: { b: number } } }).material;
 
         // Same material object — a colour tween must never recompile the program.
@@ -105,14 +105,14 @@ describe("Scene3DGraph reconciliation", () => {
     // three geometries are immutable, so a parameter change *must* rebuild — this
     // is the expensive case the docs steer authors away from.
     it("rebuilds geometry when a parameter changes, and disposes the old one", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ width: 2 }));
+        const first = sync(graph, (g3) => g3.box({ width: 2 }));
         const old = (first.scene.children[0] as never as { geometry: { uuid: string } }).geometry;
         let disposed = false;
         old.addEventListener?.("dispose", () => { disposed = true; });
 
-        const second = sync(graph, (g) => g.box({ width: 4 }));
+        const second = sync(graph, (g3) => g3.box({ width: 4 }));
         const next = (second.scene.children[0] as never as { geometry: { uuid: string } }).geometry;
 
         expect(next.uuid).not.toBe(old.uuid);
@@ -121,13 +121,13 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("rebuilds when a structural material flag flips", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ color: "red" }));
         const before = (first.scene.children[0] as never as { material: { uuid: string } }).material.uuid;
 
         // `side` changes the compiled program, so it can't be mutated.
-        const second = sync(graph, (g) => g.box({ color: "red", side: "double" }));
+        const second = sync(graph, (g3) => g3.box({ color: "red", side: "double" }));
         const after = (second.scene.children[0] as never as { material: { uuid: string } }).material.uuid;
 
         expect(after).not.toBe(before);
@@ -135,10 +135,10 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("rebuilds when a slot changes op kind, rather than mutating the wrong type", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        sync(graph, (g) => g.box());
-        const { scene } = sync(graph, (g) => g.ambient());
+        sync(graph, (g3) => g3.box());
+        const { scene } = sync(graph, (g3) => g3.ambient());
 
         // The mesh is gone, not reinterpreted as a light.
         expect(scene.children).toHaveLength(1);
@@ -147,15 +147,15 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("removes and disposes an op that disappears", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box().sphere());
+        const first = sync(graph, (g3) => g3.box().sphere());
         expect(first.scene.children).toHaveLength(2);
         const orphan = (first.scene.children[1] as never as { geometry: { addEventListener?: Function } }).geometry;
         let disposed = false;
         orphan.addEventListener?.("dispose", () => { disposed = true; });
 
-        const second = sync(graph, (g) => g.box());
+        const second = sync(graph, (g3) => g3.box());
         expect(second.scene.children).toHaveLength(1);
         expect(disposed).toBe(true);
         graph.dispose();
@@ -164,13 +164,13 @@ describe("Scene3DGraph reconciliation", () => {
     // Without an explicit key, index-based identity means an op inserted ahead of
     // others shifts their slots. `key` is the documented opt-out.
     it("keeps identity across a conditional insert when given an explicit key", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.box({ key: "hero", width: 2 }));
+        const first = sync(graph, (g3) => g3.box({ key: "hero", width: 2 }));
         const uuid = first.scene.children[0].uuid;
 
         // A sphere now precedes the box, shifting its structural index from 0 to 1.
-        const second = sync(graph, (g) => g.sphere().box({ key: "hero", width: 2 }));
+        const second = sync(graph, (g3) => g3.sphere().box({ key: "hero", width: 2 }));
         const hero = second.scene.children.find((c) => c.uuid === uuid);
 
         expect(hero).toBeDefined();
@@ -178,18 +178,18 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("re-uploads a dynamic buffer geometry's contents without reallocating", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
         // One array reused across frames and mutated in place — the fast path for an
         // animated mesh, and invisible to identity comparison.
         const position = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
 
         type Geo3 = { uuid: string; getAttribute(n: string): { array: Float32Array } };
 
-        const first = sync(graph, (g) => g.mesh(Geo.buffer({ position }), Mat.basic()));
+        const first = sync(graph, (g3) => g3.mesh(Geo.buffer({ position }), Mat.basic()));
         const uuid = (first.scene.children[0] as never as { geometry: Geo3 }).geometry.uuid;
 
         position[3] = 5;
-        const second = sync(graph, (g) => g.mesh(Geo.buffer({ position }), Mat.basic()));
+        const second = sync(graph, (g3) => g3.mesh(Geo.buffer({ position }), Mat.basic()));
         const after = (second.scene.children[0] as never as { geometry: Geo3 }).geometry;
 
         expect(after.uuid).toBe(uuid);                       // not reallocated
@@ -198,12 +198,12 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("reallocates when a dynamic buffer's length changes", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const first = sync(graph, (g) => g.mesh(Geo.buffer({ position: new Float32Array(9) }), Mat.basic()));
+        const first = sync(graph, (g3) => g3.mesh(Geo.buffer({ position: new Float32Array(9) }), Mat.basic()));
         const before = (first.scene.children[0] as never as { geometry: { uuid: string } }).geometry.uuid;
 
-        const second = sync(graph, (g) => g.mesh(Geo.buffer({ position: new Float32Array(18) }), Mat.basic()));
+        const second = sync(graph, (g3) => g3.mesh(Geo.buffer({ position: new Float32Array(18) }), Mat.basic()));
         const after = (second.scene.children[0] as never as { geometry: { uuid: string } }).geometry.uuid;
 
         expect(after).not.toBe(before);
@@ -211,8 +211,8 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("evaluates a parametric geometry into a vertex grid", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.mesh(
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.mesh(
             Geo.parametric({ segments: 4, vertex: (u, v) => ({ x: u, y: 0, z: v }), computeNormals: true }),
             Mat.basic(),
         ));
@@ -224,44 +224,44 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("swaps the camera type and frames it to the given aspect", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const perspective = sync(graph, (g) => g.box().perspective({ fov: 60 }));
+        const perspective = sync(graph, (g3) => g3.box().perspective({ fov: 60 }));
         expect((perspective.camera as never as { isPerspectiveCamera?: boolean }).isPerspectiveCamera).toBe(true);
         expect((perspective.camera as never as { aspect: number }).aspect).toBeCloseTo(800 / 600, 5);
 
-        const ortho = sync(graph, (g) => g.box().orthographic({ frustumHeight: 10 }));
+        const ortho = sync(graph, (g3) => g3.box().orthographic({ frustumHeight: 10 }));
         expect((ortho.camera as never as { isOrthographicCamera?: boolean }).isOrthographicCamera).toBe(true);
         graph.dispose();
     });
 
     it("supplies a default camera when the scene declares none", () => {
-        const graph = new Scene3DGraph(three);
-        const { camera } = sync(graph, (g) => g.box());
+        const graph = new View3DGraph(three);
+        const { camera } = sync(graph, (g3) => g3.box());
 
-        // A bare `g.box()` must render something rather than a black frame.
+        // A bare `g3.box()` must render something rather than a black frame.
         expect(camera.position.z).toBeGreaterThan(0);
         graph.dispose();
     });
 
     it("applies fog and background as scene singletons, and clears them", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
 
-        const withSettings = sync(graph, (g) => g.box()
+        const withSettings = sync(graph, (g3) => g3.box()
             .fog({ type: "linear", color: "#102030", near: 2, far: 20 })
             .background("#010203"));
         expect((withSettings.scene.fog as never as { near: number }).near).toBe(2);
         expect(withSettings.scene.background).not.toBeNull();
 
-        const cleared = sync(graph, (g) => g.box().fog(null).background(null));
+        const cleared = sync(graph, (g3) => g3.box().fog(null).background(null));
         expect(cleared.scene.fog).toBeNull();
         expect(cleared.scene.background).toBeNull();
         graph.dispose();
     });
 
     it("writes per-instance matrices into an InstancedMesh", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.instances(
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.instances(
             Geo.box(), Mat.standard(),
             [{ position: [0, 0, 0] }, { position: [3, 0, 0] }],
         ));
@@ -273,8 +273,8 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("rebuilds an InstancedMesh when the instance count changes", () => {
-        const graph = new Scene3DGraph(three);
-        const build = (n: number) => (g: Graphics3D) => g.instances(
+        const graph = new View3DGraph(three);
+        const build = (n: number) => (g3: Graphics3D) => g3.instances(
             Geo.box(), Mat.standard(),
             Array.from({ length: n }, (_, i) => ({ position: [i, 0, 0] as [number, number, number] })),
         );
@@ -290,18 +290,18 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("picks the three class from a line's mode", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
         const points = [[0, 0, 0], [1, 1, 1], [2, 0, 0]] as [number, number, number][];
 
-        expect(sync(graph, (g) => g.line({ points })).scene.children[0].type).toBe("Line");
-        expect(sync(graph, (g) => g.line({ points, mode: "segments" })).scene.children[0].type).toBe("LineSegments");
-        expect(sync(graph, (g) => g.line({ points, mode: "loop" })).scene.children[0].type).toBe("LineLoop");
+        expect(sync(graph, (g3) => g3.line({ points })).scene.children[0].type).toBe("Line");
+        expect(sync(graph, (g3) => g3.line({ points, mode: "segments" })).scene.children[0].type).toBe("LineSegments");
+        expect(sync(graph, (g3) => g3.line({ points, mode: "loop" })).scene.children[0].type).toBe("LineLoop");
         graph.dispose();
     });
 
     it("derives an edges geometry from another geometry", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.line({
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.line({
             geometry: Geo.edges(Geo.box({ width: 2, height: 2, depth: 2 })),
             mode: "segments",
         }));
@@ -313,16 +313,16 @@ describe("Scene3DGraph reconciliation", () => {
     });
 
     it("converts author-facing degrees into radians", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.box({ rotation: [0, 180, 0] }));
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.box({ rotation: [0, 180, 0] }));
 
         expect(scene.children[0].rotation.y).toBeCloseTo(Math.PI, 6);
         graph.dispose();
     });
 
     it("frees every object on dispose", () => {
-        const graph = new Scene3DGraph(three);
-        const { scene } = sync(graph, (g) => g.box().sphere().ambient());
+        const graph = new View3DGraph(three);
+        const { scene } = sync(graph, (g3) => g3.box().sphere().ambient());
         expect(scene.children.length).toBeGreaterThan(0);
 
         graph.dispose();
@@ -331,10 +331,10 @@ describe("Scene3DGraph reconciliation", () => {
 });
 
 /**
- * `Tex.surface(...)` maps: pixels come from the `Surface2D` buffers `Scene3D`
- * rasterized this frame, handed in via `setSurfaces` rather than the asset
- * pipeline. Nothing here needs a CanvasKit surface — `RasterizedSurface` is a
- * plain byte buffer — so the whole resolution path is testable directly.
+ * `Tex.surface(...)` maps: pixels come from 2D content rasterized this frame and
+ * handed in via `setRasters`, keyed by descriptor identity rather than by name.
+ * Nothing here needs a CanvasKit surface — `RasterizedSurface` is a plain byte
+ * buffer — so the whole resolution path is testable directly.
  */
 describe("surface textures", () => {
     /** A distinguishable solid-colour buffer. */
@@ -346,13 +346,17 @@ describe("surface textures", () => {
         return (scene.children[index] as THREE.Mesh).material as THREE.MeshBasicMaterial;
     }
 
-    it("resolves a surface map from the frame's buffers", () => {
-        const graph = new Scene3DGraph(three);
-        const resolver = new TextureResolver(three, assets);
-        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 200)]]));
+    /** A source is any object; the resolver only ever compares identity. */
+    const source = () => ({});
 
-        const g = new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
-        const { scene } = graph.sync(g, 800, 600, resolver);
+    it("resolves a surface map from the frame's buffers", () => {
+        const graph = new View3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+        const tex = Tex.surface(source(), 2, 2);
+        resolver.setRasters("node-a#0", new Map([[tex, raster(2, 200)]]));
+
+        const g3 = new Graphics3D().plane({ unlit: true, map: tex });
+        const { scene } = graph.sync(g3, 800, 600, resolver);
 
         const map = materialOf(scene).map!;
         expect(map).toBeTruthy();
@@ -364,13 +368,13 @@ describe("surface textures", () => {
 
     // The material renders without the map rather than failing — same contract an
     // image texture has while its pixels are still decoding.
-    it("resolves to null when the named surface is absent", () => {
-        const graph = new Scene3DGraph(three);
+    it("resolves to null when the surface has not been rasterized", () => {
+        const graph = new View3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        resolver.setSurfaces("node-a", new Map());
+        resolver.setRasters("node-a#0", new Map());
 
-        const g = new Graphics3D().plane({ unlit: true, map: Tex.surface("missing") });
-        const { scene } = graph.sync(g, 800, 600, resolver);
+        const g3 = new Graphics3D().plane({ unlit: true, map: Tex.surface(source(), 2, 2) });
+        const { scene } = graph.sync(g3, 800, 600, resolver);
 
         expect(materialOf(scene).map).toBeNull();
         graph.dispose();
@@ -379,14 +383,15 @@ describe("surface textures", () => {
     // Re-rasterized every frame, so the buffer is reused and the pixels re-upload
     // in place — no per-frame allocation, no stale first frame.
     it("re-uploads into the same texture across frames", () => {
-        const graph = new Scene3DGraph(three);
+        const graph = new View3DGraph(three);
         const resolver = new TextureResolver(three, assets);
+        const tex = Tex.surface(source(), 2, 2, { key: "screen" });
+        const build = () => new Graphics3D().plane({ unlit: true, map: tex });
 
-        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 10)]]));
-        const build = () => new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
+        resolver.setRasters("node-a#0", new Map([[tex, raster(2, 10)]]));
         const first = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
 
-        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 250)]]));
+        resolver.setRasters("node-a#0", new Map([[tex, raster(2, 250)]]));
         const second = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
 
         expect(second).toBe(first);
@@ -394,22 +399,42 @@ describe("surface textures", () => {
         graph.dispose();
     });
 
-    // Surface names are only unique within one Scene3D, and the texture cache is
-    // global — so two viewports each owning a `name="screen"` must not share one.
-    it("scopes a surface name to its owning node", () => {
-        const graph = new Scene3DGraph(three);
+    // The texture cache is global, so two 3D fills — even two on the *same* node,
+    // which a fill cross-fade produces — must not share one texture.
+    it("scopes a surface to its owning fill slot", () => {
+        const graph = new View3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        const build = () => new Graphics3D().plane({ unlit: true, map: Tex.surface("screen") });
+        const tex = Tex.surface(source(), 2, 2, { key: "screen" });
+        const build = () => new Graphics3D().plane({ unlit: true, map: tex });
 
-        resolver.setSurfaces("node-a", new Map([["screen", raster(2, 10)]]));
+        resolver.setRasters("node-a#0", new Map([[tex, raster(2, 10)]]));
         const a = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
 
-        resolver.setSurfaces("node-b", new Map([["screen", raster(4, 250)]]));
+        resolver.setRasters("node-a#1", new Map([[tex, raster(4, 250)]]));
         const b = materialOf(graph.sync(build(), 800, 600, resolver).scene).map!;
 
         expect(b).not.toBe(a);
         expect(a.image.width).toBe(2);
         expect(b.image.width).toBe(4);
+        graph.dispose();
+    });
+
+    // Two structurally identical descriptors are still two textures: the source is
+    // a live object, so identity is all that can distinguish them.
+    it("keeps two distinct descriptors on separate textures", () => {
+        const graph = new View3DGraph(three);
+        const resolver = new TextureResolver(three, assets);
+        const left = Tex.surface(source(), 2, 2, { key: "left" });
+        const right = Tex.surface(source(), 4, 4, { key: "right" });
+
+        resolver.setRasters("node-a#0", new Map([[left, raster(2, 10)], [right, raster(4, 250)]]));
+        const { scene } = graph.sync(
+            new Graphics3D().plane({ unlit: true, map: left }).plane({ unlit: true, map: right }),
+            800, 600, resolver,
+        );
+
+        expect(materialOf(scene, 0).map!.image.width).toBe(2);
+        expect(materialOf(scene, 1).map!.image.width).toBe(4);
         graph.dispose();
     });
 });

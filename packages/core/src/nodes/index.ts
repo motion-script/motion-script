@@ -40,5 +40,4 @@ export * from "./media/image-node";
 export * from "./media/video-node";
 
 // 3D
-export * from "./three/scene3d-node";
-export * from "./three/surface2d-node";
+export * from "./three/view3d-node";

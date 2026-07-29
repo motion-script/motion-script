@@ -101,16 +101,15 @@ export type {
 } from '@motion-script/core';
 
 // ---------------------------------------------------------
-// 5b. 3D — the Scene3D node and the Graphics3D API
+// 5b. 3D — the View3D node and the Graphics3D API
 // ---------------------------------------------------------
 // There is one 3D node; everything inside it is described with `Graphics3D`.
 // `Geo`/`Mat`/`Tex` build the geometry/material/texture descriptors, and the lerps
 // are what make a Vector3/Euler/Quaternion signal interpolate rather than snap.
-// `Surface2D` is the 2D→3D bridge: a child of `Scene3D` whose 2D content is
+// `Surface2D` is the 2D→3D bridge: a child of `View3D` whose 2D content is
 // rasterized offscreen and bound to a material by `Tex.surface(name)`.
 export {
-    Scene3D,
-    Surface2D,
+    View3D,
     Graphics3D,
     Geo,
     Mat,
@@ -124,10 +123,7 @@ export {
     evaluateParametric,
 } from '@motion-script/core';
 export type {
-    Scene3DProps,
-    Scene3DBuilder,
-    Surface2DProps,
-    Surface2DBuilder,
+    View3DProps,
     Graphics3DOp,
     Vector3,
     Vector3Input,

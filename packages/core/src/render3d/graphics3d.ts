@@ -196,7 +196,7 @@ type ParamsOf<G> = Omit<G, "type">;
  * settings (camera, fog, background, environment, shadows, tone mapping, post
  * chain) held as fields and read back through query methods, exactly as
  * `Graphics` holds `opacity`/`rotation`/`scale`. Nothing here touches a renderer:
- * a built `Graphics3D` is handed to a `Graphics` via `g.scene3D(g3, state)`, and
+ * a built `Graphics3D` is handed to a `Graphics` via `g.view3D(g3, state)`, and
  * the backend replays it.
  *
  *   const g3 = new Graphics3D()

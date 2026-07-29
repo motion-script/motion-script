@@ -3,7 +3,7 @@ import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "./shapes/paragraph-cache";
 // Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
-import { warmPendingScene3D } from "./three/bridge";
+import { warmPendingView3D } from "./three/bridge";
 
 interface CachedPixels {
     width: number;
@@ -342,7 +342,7 @@ export class WebStorageAdapter extends StorageAdapter {
      * Persistent CanvasKit texture per 3D node, so a 60 fps 3D scene doesn't
      * allocate and free a GPU texture every frame.
      */
-    private scene3DTextures = new Map<string, CKImage>();
+    private view3DTextures = new Map<string, CKImage>();
 
     /**
      * Upload a 3D renderer's canvas into a GPU-resident CanvasKit image, creating
@@ -359,7 +359,7 @@ export class WebStorageAdapter extends StorageAdapter {
      * it must NOT be deleted after the draw, or the next frame loses its texture.
      */
     upload3DFrame(
-        nodeId: string,
+        key: string,
         source: HTMLCanvasElement | OffscreenCanvas | ImageBitmap,
         width: number,
         height: number,
@@ -375,13 +375,13 @@ export class WebStorageAdapter extends StorageAdapter {
             colorSpace: this.canvasKit.ColorSpace.SRGB,
         };
 
-        let image = this.scene3DTextures.get(nodeId);
+        let image = this.view3DTextures.get(key);
 
         // The buffer can grow (see the renderer's size quantisation); a texture is
         // fixed-size, so a size change needs a fresh one.
         if (image && (image.width() !== width || image.height() !== height)) {
             image.delete();
-            this.scene3DTextures.delete(nodeId);
+            this.view3DTextures.delete(key);
             image = undefined;
         }
 
@@ -391,7 +391,7 @@ export class WebStorageAdapter extends StorageAdapter {
             // makes for ImageBitmap.
             const made = surface.makeImageFromTextureSource(source as never, info, true);
             if (!made) return null;
-            this.scene3DTextures.set(nodeId, made);
+            this.view3DTextures.set(key, made);
             return made;
         }
 
@@ -400,9 +400,9 @@ export class WebStorageAdapter extends StorageAdapter {
     }
 
     /** Release a 3D node's texture — called when its node is swept. */
-    release3DTexture(nodeId: string): void {
-        this.scene3DTextures.get(nodeId)?.delete();
-        this.scene3DTextures.delete(nodeId);
+    release3DTexture(key: string): void {
+        this.view3DTextures.get(key)?.delete();
+        this.view3DTextures.delete(key);
     }
 
     // ─── Video ───────────────────────────────────────────────────────────────
@@ -423,8 +423,8 @@ export class WebStorageAdapter extends StorageAdapter {
         }
         // 3D composites are texture-backed too, so they're bound to the surface
         // that made them and must be dropped alongside the video textures.
-        for (const image of this.scene3DTextures.values()) image.delete();
-        this.scene3DTextures.clear();
+        for (const image of this.view3DTextures.values()) image.delete();
+        this.view3DTextures.clear();
 
         this.surface = surface;
     }
@@ -617,7 +617,7 @@ export class WebStorageAdapter extends StorageAdapter {
         );
         this.pendingEchoFrames.clear();
 
-        // 3D shares this hatch. A `scene3D` op that couldn't be drawn
+        // 3D shares this hatch. A `view3D` op that couldn't be drawn
         // synchronously — the three runtime still importing on a cold first frame —
         // registers itself, and every existing caller of this method (export,
         // screenshot, seek) already re-renders while it returns true. So 3D warms
@@ -625,7 +625,7 @@ export class WebStorageAdapter extends StorageAdapter {
         //
         // Drained before the early return below so a 3D-only scene, which queues no
         // video work at all, still gets its runtime loaded.
-        const warmed3D = await warmPendingScene3D();
+        const warmed3D = await warmPendingView3D();
 
         if (pending.length === 0 && echo.length === 0) return warmed3D;
         await Promise.all([
@@ -966,8 +966,8 @@ export class WebStorageAdapter extends StorageAdapter {
         this.imageCKCache.clear();
         this.imagePixels.clear();
 
-        for (const image of this.scene3DTextures.values()) image.delete();
-        this.scene3DTextures.clear();
+        for (const image of this.view3DTextures.values()) image.delete();
+        this.view3DTextures.clear();
 
         // Close window bitmaps, tracking them so shared echo entries aren't
         // double-closed below.

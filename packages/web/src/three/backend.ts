@@ -1,72 +1,83 @@
 /**
- * The live 3D backend: one three scene per `Scene3D` node, reconciled and
+ * The live 3D backend: one three scene per 3D fill *slot*, reconciled and
  * rendered on demand.
+ *
+ * The unit of identity is a {@link View3DSlotKey}, not a node — a node can carry
+ * more than one 3D fill, and a fill cross-fade transiently produces two.
  *
  * Split out of `./index` so non-barrel modules (the render context) can import
  * it directly — importing the barrel would trip `import-x/no-internal-modules`.
  */
 
 import type * as THREE from "three";
-import type { Graphics3D, RasterizedSurface } from "@motion-script/core";
+import type { Graphics3D, RasterizedSurface, SurfaceTexture3D } from "@motion-script/core";
 import { threeModule, type ThreeModule } from "./bridge";
-import { Scene3DGraph } from "./reconciler";
-import { forgetScene3DBuffer, renderScene3D, type RenderedScene3D } from "./renderer";
-import { TextureResolver, type Scene3DAssets } from "./handlers/texture";
+import { View3DGraph } from "./reconciler";
+import { forgetView3DBuffer, renderView3D, type RenderedView3D } from "./renderer";
+import { TextureResolver, type View3DAssets } from "./handlers/texture";
 
 /**
  * Renders `Graphics3D` scenes to a canvas, one live three scene per node.
  *
- * Only obtainable once three has loaded — see {@link scene3DBackend}.
+ * Only obtainable once three has loaded — see {@link view3DBackend}.
  */
-export class Scene3DBackend {
-    private readonly graphs = new Map<string, Scene3DGraph>();
+/**
+ * Identity of one live 3D scene: `${nodeId}#${paintSlot}`.
+ *
+ * Opaque to everything downstream — every consumer only uses it as a Map key, so
+ * per-slot sweeping falls out of the existing per-key logic with no extra rules.
+ */
+export type View3DSlotKey = string;
+
+export class View3DBackend {
+    private readonly graphs = new Map<View3DSlotKey, View3DGraph>();
     private readonly textures: TextureResolver;
     /** Frame counter, so graphs for removed nodes can be swept. */
     private frame = 0;
-    private readonly touched = new Set<string>();
+    private readonly touched = new Set<View3DSlotKey>();
 
     constructor(
         private readonly three: ThreeModule,
-        private readonly assets: Scene3DAssets,
+        private readonly assets: View3DAssets,
     ) {
         this.textures = new TextureResolver(three, assets);
     }
 
     /**
-     * Reconcile and render `graphics` for `nodeId` at the given device-pixel size.
+     * Reconcile and render `g3` for `key` at the given device-pixel size.
      *
      * Returns the renderer's canvas plus its buffer size. The canvas is shared and
      * reused, so the caller must upload it before rendering another node — which
      * the compositor does, both happening inside one synchronous draw.
      */
     render(
-        nodeId: string,
-        graphics: Graphics3D,
+        key: View3DSlotKey,
+        g3: Graphics3D,
         width: number,
         height: number,
         options: {
             antialias?: boolean;
-            /** This frame's `Surface2D` buffers, keyed by `textureName`. */
-            surfaces?: ReadonlyMap<string, RasterizedSurface>;
+            /** This frame's rasterized 2D buffers, keyed by descriptor identity. */
+            rasters?: ReadonlyMap<SurfaceTexture3D, RasterizedSurface>;
         } = {},
-    ): RenderedScene3D {
-        let graph = this.graphs.get(nodeId);
+    ): RenderedView3D {
+        let graph = this.graphs.get(key);
         if (!graph) {
-            graph = new Scene3DGraph(this.three);
-            this.graphs.set(nodeId, graph);
+            graph = new View3DGraph(this.three);
+            this.graphs.set(key, graph);
         }
-        this.touched.add(nodeId);
+        this.touched.add(key);
 
-        // Scoped per node: two Scene3Ds may each own a `name="screen"` surface, and
-        // the texture cache is global.
-        this.textures.setSurfaces(nodeId, options.surfaces);
-        const { scene, camera } = graph.sync(graphics, width, height, this.textures);
-        return renderScene3D(this.three, nodeId, scene, camera, width, height, options);
+        // Scoped per slot: the texture cache is global, and two fills can hold
+        // structurally identical surface descriptors.
+        this.textures.setRasters(key, options.rasters);
+        const { scene, camera } = graph.sync(g3, width, height, this.textures);
+        return renderView3D(this.three, key, scene, camera, width, height, options);
     }
 
     /**
      * Mark the start of a frame. The compositor calls this once per render pass so
-     * {@link sweep} can tell which nodes are gone.
+     * {@link sweep} can tell which slots are gone.
      */
     beginFrame(): void {
         this.frame++;
@@ -74,30 +85,30 @@ export class Scene3DBackend {
     }
 
     /**
-     * Drop the graphs of nodes that didn't render this frame — a `Scene3D` removed
-     * from the tree, or a scene switch. Mirrors the reconciler's own orphan sweep,
-     * one level up.
+     * Drop the graphs of slots that didn't render this frame — a fill removed, a
+     * node removed from the tree, or a scene switch. Mirrors the reconciler's own
+     * orphan sweep, one level up.
      */
     sweep(): void {
-        for (const [nodeId, graph] of this.graphs) {
-            if (this.touched.has(nodeId)) continue;
-            this.release(nodeId, graph);
-            this.graphs.delete(nodeId);
+        for (const [key, graph] of this.graphs) {
+            if (this.touched.has(key)) continue;
+            this.release(key, graph);
+            this.graphs.delete(key);
         }
     }
 
     /** Free every graph this backend owns. */
     dispose(): void {
-        for (const [nodeId, graph] of this.graphs) this.release(nodeId, graph);
+        for (const [key, graph] of this.graphs) this.release(key, graph);
         this.graphs.clear();
         this.touched.clear();
     }
 
-    /** Free everything held for one node: its scene, buffer size and CK texture. */
-    private release(nodeId: string, graph: Scene3DGraph): void {
+    /** Free everything held for one slot: its scene, buffer size and CK texture. */
+    private release(key: View3DSlotKey, graph: View3DGraph): void {
         graph.dispose();
-        forgetScene3DBuffer(nodeId);
-        this.assets.release3DTexture(nodeId);
+        forgetView3DBuffer(key);
+        this.assets.release3DTexture(key);
     }
 
     /** The three namespace, for callers that need a constant or type. */
@@ -106,7 +117,7 @@ export class Scene3DBackend {
     }
 }
 
-let backend: Scene3DBackend | null = null;
+let backend: View3DBackend | null = null;
 
 /**
  * The 3D backend, or `null` until three has loaded.
@@ -115,20 +126,20 @@ let backend: Scene3DBackend | null = null;
  * await. `null` means "draw the 2D parts and ask to be re-rendered", which the
  * existing warm-and-retry loop handles.
  */
-export function scene3DBackend(assets: Scene3DAssets): Scene3DBackend | null {
+export function view3DBackend(assets: View3DAssets): View3DBackend | null {
     const three = threeModule();
     if (!three) return null;
-    backend ??= new Scene3DBackend(three, assets);
+    backend ??= new View3DBackend(three, assets);
     return backend;
 }
 
 /** Tear down the backend. Called on render-context unmount/dispose. */
-export function disposeScene3DBackend(): void {
+export function disposeView3DBackend(): void {
     backend?.dispose();
     backend = null;
 }
 
 /** The three namespace once loaded, for tests and environment helpers. */
-export function scene3DModule(): typeof THREE | null {
+export function view3DModule(): typeof THREE | null {
     return threeModule();
 }

@@ -12,7 +12,13 @@ import { resolveShadowArray } from "@/attributes/shape/shadow/resolver";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { track3DResources } from "@/render3d/tracking";
+import { forEachTexture3D } from "@/render3d/walk";
+import { isSurfaceTexture3D } from "@/render3d/texture";
+import type { Graphics3D } from "@/render3d/graphics3d";
+import { Node } from "@/nodes/base/node";
+
+/** Recursion cap for a surface source that itself paints a 3D fill. */
+const MAX_SURFACE_DEPTH = 4;
 
 /**
  * A `RenderContext` that never draws anything — it walks the same `Graphics`
@@ -54,6 +60,9 @@ export class TrackRenderContext extends RenderContext {
 
     private currentWidth = 0;
     private currentHeight = 0;
+    private surfaceDepth = 0;
+    /** Deduped per `draw()`, so one source on several materials replays once. */
+    private readonly seenSurfaces = new Set<object>();
 
     private trackFont(fontFamily: string | undefined, fontWeight: number | string | undefined): void {
         if (!fontFamily) return;
@@ -64,7 +73,49 @@ export class TrackRenderContext extends RenderContext {
         if (!fills) return;
         for (const fill of fills) {
             prepareFill(fill, this.tracker, this.currentWidth, this.currentHeight);
+            if (fill.type === "view3D") this.trackSurfaceSources(fill.graphics3D);
         }
+    }
+
+    /**
+     * Walk into a 3D scene's `Tex.surface` sources.
+     *
+     * `prepareFill` covers the scene's *own* assets, but a surface source is 2D
+     * content one level down — a `Graphics` with a `text` op, or a node subtree
+     * with a webfont — and its assets are only discoverable by replaying it.
+     * Nothing else can do this: `FillData.prepare` receives an `AssetTracker`, not
+     * a render context, and this class is both the op walker and the only caller
+     * of `prepareFill`.
+     *
+     * Bounded by {@link MAX_SURFACE_DEPTH}, since a surface can itself hold a 3D
+     * fill holding that same surface.
+     */
+    private trackSurfaceSources(g3: Graphics3D): void {
+        if (this.surfaceDepth >= MAX_SURFACE_DEPTH) return;
+
+        forEachTexture3D(g3, (texture) => {
+            if (!isSurfaceTexture3D(texture)) return;
+            if (this.seenSurfaces.has(texture)) return;
+            this.seenSurfaces.add(texture);
+
+            const priorWidth = this.currentWidth;
+            const priorHeight = this.currentHeight;
+            // Size requests against the buffer, not the shape the 3D paints into.
+            this.currentWidth = texture.width;
+            this.currentHeight = texture.height;
+            this.surfaceDepth++;
+            try {
+                const source = texture.source;
+                if (source instanceof Graphics) this.drawOps(source);
+                // A node subtree renders straight back into this context, which is
+                // what discovers its fonts and image fills.
+                else if (source instanceof Node) source.render(this);
+            } finally {
+                this.surfaceDepth--;
+                this.currentWidth = priorWidth;
+                this.currentHeight = priorHeight;
+            }
+        });
     }
 
     /**
@@ -160,15 +211,6 @@ export class TrackRenderContext extends RenderContext {
                     for (const s of resolveShadowArray(op.shadows)) this.trackFills(s.fill);
                     break;
 
-                case "scene3D":
-                    // Size 3D texture requests off the composite rect, the same way
-                    // a 2D fill sizes off its shape — a texture on a small node
-                    // doesn't need full-resolution pixels.
-                    this.currentWidth = op.state.width;
-                    this.currentHeight = op.state.height;
-                    track3DResources(op.graphics, this.tracker, this.currentWidth, this.currentHeight);
-                    break;
-
                 // cut/mask/applyMask/endMask/effects carry no asset references.
                 case "effects":
                     this.trackEffects(op.effects);
@@ -198,10 +240,10 @@ export class TrackRenderContext extends RenderContext {
     }
 
     /**
-     * Nothing is rasterized here, but `draw` still has to *run*: it renders a
-     * `Surface2D`'s subtree, and that subtree's fonts and image fills are only
-     * discoverable by walking it. Skipping the callback would leave a `<Text>` on
-     * a 3D screen unshaped and an `<Image>` unloaded.
+     * Nothing is rasterized here, but `draw` still has to *run* — a caller that
+     * rasterizes a subtree only exposes that subtree's fonts and image fills by
+     * walking it. Skipping the callback would leave a `<Text>` unshaped and an
+     * `<Image>` unloaded.
      */
     override rasterizeOffscreen(_width: number, _height: number, draw: () => void): null {
         draw();

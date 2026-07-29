@@ -1,22 +1,16 @@
 import {
-    createScene, createSignal, easeInOut, parallel, wait, Geo, Mat, Scene3D,
+    createScene, createSignal, easeInOut, linear, parallel, Geo, Mat, View3D, Graphics3D,
     Effects,
     Rect,
 } from "motion-script";
 
 const RANGE = 10;
 const GRID = 70;
-/**
- * Constant on purpose. Phase is `time × speed`, so animating speed would
- * retroactively rescale all elapsed time and snap the wave. The animated control
- * is amplitude.
- */
-const SPEED = 1;
 
 /** Soft-denominator "sombrero" wave — numerically stable at r=0. */
-function sombrero(x: number, z: number, t: number): number {
+function sombrero(x: number, z: number, phase: number): number {
     const distance = Math.hypot(x, z);
-    return Math.sin(distance - t * 5) / Math.sqrt(distance * distance + 1);
+    return Math.sin(distance - phase) / Math.sqrt(distance * distance + 1);
 }
 
 /** `h` in 0..1 around the hue wheel → a CSS colour string. */
@@ -31,30 +25,34 @@ function heightColor(normalized: number): string {
  * bounding box and a wireframe edge overlay — all as plain descriptor data, with
  * no `three` import anywhere in this file.
  *
- * `t` (the second builder argument) is this node's elapsed time in seconds. Using
- * it rather than an accumulating clock is what keeps the wave seekable: frame N
- * computes the same vertex positions no matter how the playhead got there.
+ * The travelling wave is driven by a `phase` **signal** tweened linearly across
+ * the scene, not by the node's elapsed time. Two reasons: the builder is a
+ * reactive binding, which re-evaluates when the signals it reads change and would
+ * never see a clock tick; and a signal puts the motion on the timeline, so it
+ * scrubs and exports frame-identically like everything else.
  */
 export default createScene(function* (stage) {
     stage.set({ fill: "#05070c" });
 
     const amplitude = createSignal(2);
     const angle = createSignal(0);            // camera orbit, degrees
+    const phase = createSignal(0);            // travelling-wave phase, radians
 
     stage.add(
         <Rect stroke={{ weight: 4, fill: 'red' }} clip={true} width={800} height={800}>
 
 
-            <Scene3D
+            <View3D
                 width="fill"
                 height="fill"
 
-                scene={(g, t) => {
+                graphics3D={() => {
                     const amp = amplitude();
                     const a = angle();
+                    const p = phase();
                     const radians = (a * Math.PI) / 180;
 
-                    return g
+                    return new Graphics3D()
                         .perspective({
                             position: [Math.cos(radians) * 35, 18, Math.sin(radians) * 35],
                             lookAt: 0,
@@ -72,7 +70,7 @@ export default createScene(function* (stage) {
                                 vertex: (u, v) => {
                                     const x = (u - 0.5) * 2 * RANGE;
                                     const z = (v - 0.5) * 2 * RANGE;
-                                    return { x, y: sombrero(x, z, t * SPEED) * amp, z };
+                                    return { x, y: sombrero(x, z, p) * amp, z };
                                 },
                                 color: (_u, _v, p) => heightColor((p.y / amp + 1) / 2),
                                 computeNormals: true,
@@ -112,13 +110,16 @@ export default createScene(function* (stage) {
         </Rect>
     );
 
+    // Phase runs linearly the whole way, so the ripples travel at a constant rate
+    // regardless of what the camera and amplitude are doing.
     yield* parallel(
+        phase(20, 4, linear()),
         angle(180, 4, easeInOut("quad")),
         amplitude(5, 2.5, easeInOut("quad")),
     );
     yield* parallel(
+        phase(42.5, 4.5, linear()),
         angle(360, 4, easeInOut("quad")),
         amplitude(3, 3, easeInOut("quad")),
     );
-    yield* wait(0.5);
 });
