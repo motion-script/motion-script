@@ -188,10 +188,29 @@ function packTarballs(tarballByName, thirdPartyDeps) {
 }
 
 /**
+ * Packages that exist on this branch but not in the committed baseline.
+ *
+ * The baseline is a snapshot of an *older* library, so a package added since then
+ * legitimately has no tarball — and must not, or the baseline would no longer be
+ * the thing it claims to be. Listing it here is what distinguishes "new package"
+ * from "someone forgot to commit a tarball", which stays a hard error (see
+ * {@link collectFromExistingTarballs}).
+ *
+ * Entries are removed when the baseline is next advanced with `pnpm e2e:stable`,
+ * since the repack then produces the tarball for real.
+ */
+const NEW_SINCE_BASELINE = new Set([
+    // Extracted out of @motion-script/web; the baseline's `web` is self-contained
+    // and has no dependency on it, so the stable side renders without it.
+    '@motion-script/skia-render',
+]);
+
+/**
  * Reuse the tarballs already committed under stable/tarballs/ (the shared
  * baseline) instead of repacking. Fails loudly if any package's tarball is
  * missing, so a partial/forgotten commit surfaces immediately rather than
- * silently rendering against an incomplete baseline.
+ * silently rendering against an incomplete baseline — except for packages the
+ * baseline predates (see {@link NEW_SINCE_BASELINE}).
  */
 function collectFromExistingTarballs(tarballByName, thirdPartyDeps) {
     const missing = [];
@@ -199,6 +218,10 @@ function collectFromExistingTarballs(tarballByName, thirdPartyDeps) {
         const pkg = readPkg(path.join(repoRoot, rel));
         const tgz = path.join(tarballsDir, stableTarballName(pkg.name));
         if (!fs.existsSync(tgz)) {
+            if (NEW_SINCE_BASELINE.has(pkg.name)) {
+                console.log(`skipping ${pkg.name} — newer than the committed baseline`);
+                continue;
+            }
             missing.push(stableTarballName(pkg.name));
             continue;
         }
@@ -209,7 +232,8 @@ function collectFromExistingTarballs(tarballByName, thirdPartyDeps) {
     if (missing.length > 0) {
         throw new Error(
             `Missing committed stable tarball(s): ${missing.join(', ')}.\n` +
-            `Run \`pnpm e2e:stable\` (without --from-tarballs) to (re)generate and commit them.`,
+            `Run \`pnpm e2e:stable\` (without --from-tarballs) to (re)generate and commit them.\n` +
+            `If a package is genuinely new since the baseline, add it to NEW_SINCE_BASELINE instead.`,
         );
     }
 }

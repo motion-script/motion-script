@@ -164,30 +164,38 @@ function resolveCanvasKitWasm(): string | null {
 }
 
 /**
- * Locate `three`, which `@motion-script/web` loads lazily for 3D scenes.
+ * Locate `three`, which `@motion-script/skia-render` loads lazily for 3D scenes.
  *
  * Needed because the dev server's `root` is plugin-app, and `three` is a
- * dependency of `@motion-script/web` — so a bare `three` specifier isn't
+ * dependency of a *nested* workspace package — so a bare `three` specifier isn't
  * resolvable from the root and Vite reports "Failed to resolve dependency". This
- * resolves it from web's own location (mirroring how React is aliased from
- * wherever it happens to be installed) so the alias below can point at the real
- * file.
+ * resolves it from the owning package's own location (mirroring how React is
+ * aliased from wherever it happens to be installed) so the alias below can point
+ * at the real file.
+ *
+ * The owner is tried in order: `three` moved to `@motion-script/skia-render` when
+ * the renderer was extracted, but an older installed `@motion-script/web` still
+ * owns it, and either may be what a given project has. Under pnpm's non-hoisted
+ * layout the wrong guess simply doesn't resolve, so ordering is the whole fix.
  *
  * Returns null when three isn't installed, in which case no alias is registered
  * and 2D projects behave exactly as before.
  */
 function resolveThree(): string | null {
-    try {
-        const webPkg = requireFromPlugin.resolve('@motion-script/web/package.json');
-        return createRequire(webPkg).resolve('three');
-    } catch {
-        // Fall back to the plugin's own resolution paths (flat node_modules, or a
-        // project that depends on three directly).
+    for (const owner of ['@motion-script/skia-render', '@motion-script/web']) {
         try {
-            return requireFromPlugin.resolve('three');
+            const ownerPkg = requireFromPlugin.resolve(`${owner}/package.json`);
+            return createRequire(ownerPkg).resolve('three');
         } catch {
-            return null;
+            // Try the next owner.
         }
+    }
+    // Fall back to the plugin's own resolution paths (flat node_modules, or a
+    // project that depends on three directly).
+    try {
+        return requireFromPlugin.resolve('three');
+    } catch {
+        return null;
     }
 }
 

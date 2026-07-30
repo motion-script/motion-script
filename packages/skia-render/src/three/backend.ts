@@ -13,7 +13,7 @@ import type * as THREE from "three";
 import type { Graphics3D, RasterizedSurface, SurfaceTexture3D } from "@motion-script/core";
 import { threeModule, type ThreeModule } from "./bridge";
 import { View3DGraph } from "./reconciler";
-import { forgetView3DBuffer, renderView3D, type RenderedView3D } from "./renderer";
+import { view3DRendererHost, type RenderedView3D, type View3DRendererHost } from "./renderer-seam";
 import { TextureResolver, type View3DAssets } from "./handlers/texture";
 
 /**
@@ -36,9 +36,15 @@ export class View3DBackend {
     private frame = 0;
     private readonly touched = new Set<View3DSlotKey>();
 
+    /**
+     * `host` is held rather than looked up per call so {@link render} can return a
+     * non-nullable frame: {@link view3DBackend} only constructs a backend once a
+     * host is registered, so within an instance the renderer always exists.
+     */
     constructor(
         private readonly three: ThreeModule,
         private readonly assets: View3DAssets,
+        private readonly host: View3DRendererHost,
     ) {
         this.textures = new TextureResolver(three, assets);
     }
@@ -72,7 +78,7 @@ export class View3DBackend {
         // structurally identical surface descriptors.
         this.textures.setRasters(key, options.rasters);
         const { scene, camera } = graph.sync(g3, width, height, this.textures);
-        return renderView3D(this.three, key, scene, camera, width, height, options);
+        return this.host.render(this.three, key, scene, camera, width, height, options);
     }
 
     /**
@@ -107,7 +113,7 @@ export class View3DBackend {
     /** Free everything held for one slot: its scene, buffer size and CK texture. */
     private release(key: View3DSlotKey, graph: View3DGraph): void {
         graph.dispose();
-        forgetView3DBuffer(key);
+        this.host.forgetBuffer(key);
         this.assets.release3DTexture(key);
     }
 
@@ -120,16 +126,23 @@ export class View3DBackend {
 let backend: View3DBackend | null = null;
 
 /**
- * The 3D backend, or `null` until three has loaded.
+ * The 3D backend, or `null` until three has loaded *and* a platform renderer is
+ * registered.
  *
  * Synchronous by necessity — the render pass ends in `surface.flush()` and cannot
  * await. `null` means "draw the 2D parts and ask to be re-rendered", which the
  * existing warm-and-retry loop handles.
+ *
+ * The host check makes a 3D-less backend degrade through that same path rather
+ * than throwing mid-frame: a renderer with no GL context (a CPU-raster Node
+ * backend, say) registers nothing, and every 3D fill simply declines to paint.
  */
 export function view3DBackend(assets: View3DAssets): View3DBackend | null {
     const three = threeModule();
     if (!three) return null;
-    backend ??= new View3DBackend(three, assets);
+    const host = view3DRendererHost();
+    if (!host) return null;
+    backend ??= new View3DBackend(three, assets, host);
     return backend;
 }
 

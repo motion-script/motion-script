@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import type * as THREE from "three";
 import { Geo, Graphics, Graphics3D, Mat, Tex, type RasterizedSurface } from "@motion-script/core";
-import { loadView3D, threeModule } from "../src/three/bridge";
-import { View3DGraph } from "../src/three/reconciler";
-import { TextureResolver, type View3DAssets } from "../src/three/handlers/texture";
-import type { ThreeModule } from "../src/three/bridge";
+import { loadView3D, threeModule } from "@motion-script/skia-render/three/bridge";
+import { View3DGraph } from "@motion-script/skia-render/three/reconciler";
+import { TextureResolver, type View3DAssets } from "@motion-script/skia-render/three/handlers/texture";
+import type { ThreeModule } from "@motion-script/skia-render/three/bridge";
 
 /**
  * The reconciler needs no CanvasKit surface and no WebGL context — `sync()` only

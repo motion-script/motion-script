@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { FillResolved } from "@motion-script/core";
-import { FillHandler } from "../src/fills/handler";
+import { FillHandler } from "@motion-script/skia-render/fills/handler";
 
 /**
  * The paint-slot allocator, tested directly.
@@ -90,7 +90,7 @@ describe("FillHandler paint slots", () => {
 
 describe("FillRenderer.preflight seam", () => {
     it("is exposed on the registry and no-ops for fills without one", async () => {
-        const { FillRenderRegistry } = await import("../src/fills/registry");
+        const { FillRenderRegistry } = await import("@motion-script/skia-render/fills/registry");
         // A solid fill has no preflight; the registry must tolerate that silently
         // rather than throwing mid-frame.
         expect(() => FillRenderRegistry.preflight(fill("solid"), {} as never)).not.toThrow();
@@ -101,7 +101,7 @@ describe("FillRenderer.preflight seam", () => {
     // author has done nothing wrong and the pass runs whether or not a shadow was
     // authored.
     it("declines silently when nothing was preflighted", async () => {
-        const { FillRenderRegistry } = await import("../src/fills/registry");
+        const { FillRenderRegistry } = await import("@motion-script/skia-render/fills/registry");
         const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
 
         const painted = FillRenderRegistry.applyPaint(fill(), {

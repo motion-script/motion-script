@@ -1,5 +1,10 @@
 import type * as THREE from "three";
-import type { ThreeModule } from "./bridge";
+import type {
+    RenderedView3D,
+    ThreeModule,
+    View3DRendererHost,
+    View3DRendererSettings,
+} from "@motion-script/skia-render";
 
 /**
  * The single shared `WebGLRenderer` for every 3D node in the document.
@@ -99,15 +104,6 @@ function quantizeBuffer(key: string, width: number, height: number): { width: nu
     return grown;
 }
 
-/** What the compositor needs to upload and place a rendered 3D frame. */
-export interface RenderedView3D {
-    /** The renderer's canvas. Valid only until the next {@link renderView3D}. */
-    source: HTMLCanvasElement;
-    /** Device-pixel size of the drawing buffer — the source rect for the upload. */
-    width: number;
-    height: number;
-}
-
 /**
  * Render `scene` through `camera` at the given device-pixel size and return the
  * renderer's canvas for upload.
@@ -145,12 +141,7 @@ export function renderView3D(
 /** Apply renderer-level scene settings that live on the renderer, not the scene. */
 export function applyRendererSettings(
     three: ThreeModule,
-    settings: {
-        shadowsEnabled: boolean;
-        shadowType: THREE.ShadowMapType;
-        toneMapping: THREE.ToneMapping;
-        toneMappingExposure: number;
-    },
+    settings: View3DRendererSettings,
 ): void {
     if (!renderer) return;
     // Toggling shadow mapping recompiles every affected material, so only write
@@ -192,3 +183,29 @@ export function disposeSharedRenderer(): void {
 export function forgetView3DBuffer(key: string): void {
     bufferSizes.delete(key);
 }
+
+/**
+ * This package's implementation of the renderer seam
+ * `@motion-script/skia-render` declares.
+ *
+ * The reconciler and the 3D backend live in skia-render, which cannot import this
+ * module — that would be an upward package dependency. So the renderer is handed
+ * over instead, and everything above stays exactly as it was: module-level
+ * singletons behind free functions, with this object as the adapter.
+ *
+ * **Registered from `../index.ts`, deliberately not here.** After the extraction
+ * nothing in this package statically imports this module, and the package declares
+ * `sideEffects: false` — so a module-scope registration here could legitimately be
+ * tree-shaken away, and 3D would silently render nothing at all (`view3DBackend()`
+ * returns null forever, the warm loop gives up after its three passes, and frames
+ * ship with their 2D parts only and no error). It has to be in the barrel every
+ * consumer imports, which is the same argument the comment on
+ * `registerView3DBackend()` already makes.
+ */
+export const webView3DRendererHost: View3DRendererHost = {
+    render: renderView3D,
+    applySettings: applyRendererSettings,
+    active: activeRenderer,
+    forgetBuffer: forgetView3DBuffer,
+    dispose: disposeSharedRenderer,
+};

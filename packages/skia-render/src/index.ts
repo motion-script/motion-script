@@ -42,3 +42,34 @@ export type {
     EffectTarget,
     RenderEffect,
 } from "./effects/handler";
+
+// ─── The platform seam ───────────────────────────────────────────────────────
+
+export type {
+    SkiaAssets,
+    SkiaTextAssets,
+    SkiaImageAssets,
+    SkiaVideoAssets,
+    Skia3DAssets,
+    SkiaTextureSource,
+    DecodedPixels,
+} from "./assets";
+
+// ─── 3D ──────────────────────────────────────────────────────────────────────
+
+export {
+    View3DBackend, view3DBackend, disposeView3DBackend, view3DModule,
+} from "./three/backend";
+export {
+    loadView3D, threeModule, registerView3DBackend,
+    requestView3DWarm, warmPendingView3D, __resetView3DBridgeForTests,
+} from "./three/bridge";
+export { disposeTextureCache } from "./three/handlers/texture";
+export {
+    registerView3DRendererHost, view3DRendererHost, __resetView3DRendererHostForTests,
+} from "./three/renderer-seam";
+export type { ThreeModule } from "./three/bridge";
+export type { View3DAssets } from "./three/handlers/texture";
+export type {
+    RenderedView3D, View3DRendererHost, View3DRendererSettings,
+} from "./three/renderer-seam";

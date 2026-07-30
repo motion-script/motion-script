@@ -16,7 +16,11 @@ export {
 export {
     View3DBackend, view3DBackend, disposeView3DBackend, view3DModule,
 } from "./backend";
-export { disposeSharedRenderer } from "./renderer";
 export { disposeTextureCache } from "./handlers/texture";
-export type { RenderedView3D } from "./renderer";
+export {
+    registerView3DRendererHost, view3DRendererHost, __resetView3DRendererHostForTests,
+} from "./renderer-seam";
+export type {
+    RenderedView3D, View3DRendererHost, View3DRendererSettings,
+} from "./renderer-seam";
 export type { View3DAssets } from "./handlers/texture";

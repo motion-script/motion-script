@@ -5,8 +5,8 @@ import { resolveShadow, type ShadowResolved } from "@motion-script/core";
 // Relative imports: the browser harness has no vite-tsconfig-paths plugin.
 import { getCanvasKit } from "../src/getter";
 import { RectShape } from "@motion-script/skia-render/shapes/rect";
-import { StrokeHandler } from "../src/stroke/stroke-handler";
-import { FillHandler } from "../src/fills/handler";
+import { StrokeHandler } from "@motion-script/skia-render/stroke/stroke-handler";
+import { FillHandler } from "@motion-script/skia-render/fills/handler";
 
 let ck: CanvasKit;
 

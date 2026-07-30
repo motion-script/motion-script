@@ -29,7 +29,7 @@ import type {
     Camera3D, Color, Graphics3D, Graphics3DOp, Geometry3D, Material3D, Transform3D,
 } from "@motion-script/core";
 import type { ThreeModule } from "./bridge";
-import { activeRenderer, applyRendererSettings } from "./renderer";
+import { view3DRendererHost } from "./renderer-seam";
 import { shadowType, toneMapping, writeColor } from "./handlers/constants";
 import {
     createGeometry, geometrySignature, isDynamicGeometry,
@@ -119,11 +119,15 @@ export class View3DGraph {
         // ── Scene settings ───────────────────────────────────────────────────
         applyFog(three, this.scene, g3.fogDescriptor());
         applyBackground(three, this.scene, g3.backgroundDescriptor(), textures);
-        applyEnvironment(three, this.scene, g3.environmentDescriptor(), activeRenderer());
+        // The renderer is the platform's (see ./renderer-seam). A host that has no
+        // WebGL returns null here and environment maps are skipped, which is the
+        // same degradation as three not having loaded yet.
+        const host = view3DRendererHost();
+        applyEnvironment(three, this.scene, g3.environmentDescriptor(), host?.active() ?? null);
 
         const shadows = g3.shadowSettings();
         const tone = g3.toneSettings();
-        applyRendererSettings(three, {
+        host?.applySettings(three, {
             shadowsEnabled: shadows?.enabled === true,
             shadowType: shadowType(three, shadows?.type),
             toneMapping: toneMapping(three, tone?.mapping),

@@ -21,6 +21,12 @@ export default defineConfig({
     // re-optimize mid-run and reload the page, failing the in-flight dynamic
     // import with a 504. (The dev server hits the same problem — see
     // `optimizeDeps.include` in vite-plugin.)
+    //
+    // Note `three` is a runtime dependency of @motion-script/skia-render, not of
+    // this package — but it is a *devDependency* here, because pre-bundling it
+    // requires resolving it from this package's own root and pnpm's non-hoisted
+    // layout won't reach a nested package's dependency. Without that devDep this
+    // entry fails with "Failed to resolve dependency: three".
     // `mediabunny` is here for the same reason as `three`, one level removed: it's
     // a real dependency of `storage-adapter.ts`, but no test imported that module
     // until the video-window suite did, so Vite discovered it mid-run and reloaded

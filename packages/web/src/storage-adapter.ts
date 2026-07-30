@@ -3,7 +3,7 @@ import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "@motion-script/skia-render/shapes/paragraph-cache";
 // Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
-import { warmPendingView3D } from "./three/bridge";
+import { warmPendingView3D } from "@motion-script/skia-render/three/bridge";
 
 interface CachedPixels {
     width: number;

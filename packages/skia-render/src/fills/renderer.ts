@@ -1,12 +1,12 @@
 import type { CanvasKit, Image as CKImage, Paint } from "@motion-script/canvaskit";
 import type { FillResolved, RasterizedSurface, SurfaceSource3D } from "@motion-script/core";
-import type { WebStorageAdapter } from "../storage-adapter";
+import type { SkiaAssets } from "../assets";
 import type { ShapeBounds } from "./handler";
 
 export interface FillRendererContext {
     canvasKit: CanvasKit;
     paint: Paint;
-    assets: WebStorageAdapter;
+    assets: SkiaAssets;
     /**
      * Accumulated pass-through (node/group) alpha to fold into the fill. The
      * handler sets it on the paint via `setAlphaf` for shader-based fills, but a

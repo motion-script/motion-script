@@ -4,8 +4,8 @@ import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { resolveShadow } from "@motion-script/core";
 import { getCanvasKit } from "../src/getter";
 import { RectShape } from "@motion-script/skia-render/shapes/rect";
-import { StrokeHandler } from "../src/stroke/stroke-handler";
-import { FillHandler } from "../src/fills/handler";
+import { StrokeHandler } from "@motion-script/skia-render/stroke/stroke-handler";
+import { FillHandler } from "@motion-script/skia-render/fills/handler";
 
 let ck: CanvasKit;
 

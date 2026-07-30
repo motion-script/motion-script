@@ -62,9 +62,12 @@ import {
 // 3D backend. Only `view3DBackend`/`requestView3DWarm` are reached on a draw,
 // and both are cheap no-ops until three has been lazily imported — so a 2D-only
 // project never pulls in the three chunk.
-import { disposeView3DBackend, view3DBackend } from "./three/backend";
-import { disposeSharedRenderer } from "./three/renderer";
-import { disposeTextureCache } from "./three/handlers/texture";
+import { disposeView3DBackend, view3DBackend } from "@motion-script/skia-render/three/backend";
+// Through the seam rather than reaching into `./three/renderer` directly: the
+// render context is portable and the renderer is not, so it must not know which
+// platform owns the GL context.
+import { view3DRendererHost } from "@motion-script/skia-render/three/renderer-seam";
+import { disposeTextureCache } from "@motion-script/skia-render/three/handlers/texture";
 import { layoutRichText } from "@motion-script/skia-render/shapes/richtext";
 import { drawShapedRun } from "@motion-script/skia-render/shapes/paragraph-layout";
 import { measureTextCached } from "@motion-script/skia-render/shapes/paragraph-cache";
@@ -80,9 +83,9 @@ import { EffectRegistry } from "@motion-script/skia-render/effects/registry";
 import { resolveMotionBlur } from "@motion-script/skia-render/effects/motion-blur";
 import type { EffectHandler, EffectGeometry, EffectResources } from "@motion-script/skia-render/effects/handler";
 import { disposeSkSLCache } from "@motion-script/skia-render/sksl-cache";
-import { StrokeHandler } from "./stroke/stroke-handler";
+import { StrokeHandler } from "@motion-script/skia-render/stroke/stroke-handler";
 import { ShapeHandler } from "@motion-script/skia-render/shapes/shape-handler";
-import { FillHandler } from "./fills/handler";
+import { FillHandler } from "@motion-script/skia-render/fills/handler";
 import { WebStorageAdapter } from "./storage-adapter";
 import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
 
@@ -526,7 +529,7 @@ export class WebRenderContext extends RenderContext {
         // safe to drop — it is recreated on the next 3D frame.
         disposeView3DBackend();
         disposeTextureCache();
-        disposeSharedRenderer();
+        view3DRendererHost()?.dispose();
         EffectRegistry.disposeAll();
         disposeSkSLCache();
 

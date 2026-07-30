@@ -7,7 +7,7 @@ import {
     type FillResolved,
     type FillSpace,
 } from "@motion-script/core";
-import type { WebStorageAdapter } from "../storage-adapter";
+import type { SkiaAssets } from "../assets";
 import type { FillRendererContext } from "./renderer";
 import { FillRenderRegistry } from "./registry";
 import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
@@ -38,7 +38,7 @@ export class FillHandler {
     private getCanvas: () => import("@motion-script/canvaskit").Canvas;
     private getUnionBounds: () => ShapeBounds | null;
     private getSpaceRect: (space: FillSpace) => ShapeBounds | null;
-    private assets: WebStorageAdapter;
+    private assets: SkiaAssets;
     // Accumulated pass-through alpha to fold into every fill (set by the owning
     // RenderContext as pass-through nodes fade). Defaults to 1.
     private getWorldAlpha: () => number;
@@ -70,7 +70,7 @@ export class FillHandler {
         getCanvas: () => import("@motion-script/canvaskit").Canvas,
         getUnionBounds: () => ShapeBounds | null,
         getSpaceRect: (space: FillSpace) => ShapeBounds | null,
-        assets: WebStorageAdapter,
+        assets: SkiaAssets,
         getWorldAlpha: () => number = () => 1,
         getNodeId: () => string = () => "",
         getElapsed: () => number = () => 0,
