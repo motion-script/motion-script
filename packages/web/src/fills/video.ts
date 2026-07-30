@@ -1,20 +1,20 @@
-import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
+﻿import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { makeImageShader, applyMediaFilters } from "./image";
-import { getCanvasKitBlendMode } from "../blend";
+import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
 
 /**
  * Shades with the adapter-decoded video frame at the fill's current timestamp
  * and applies the fill's filter chain. Mirrors {@link ImageFillRenderer}; the
  * only difference is the per-timestamp frame lookup. The frame's CKImage is
  * adapter-owned (memoized per src in the adapter's videoCKCache) and released
- * when the playhead advances, so — like the image fill — it must NOT be pushed
+ * when the playhead advances, so â€” like the image fill â€” it must NOT be pushed
  * to `transientImages` (which gets `.delete()`'d after the draw).
  *
  * If the fill carries an `echo` filter, this renderer draws the WHOLE frame
- * stack itself — the current frame plus its trailing past frames, each at a
- * decaying weight and composited with the echo blend — and tells the handler to
+ * stack itself â€” the current frame plus its trailing past frames, each at a
+ * decaying weight and composited with the echo blend â€” and tells the handler to
  * skip its default pass (so the current frame isn't slammed opaque over the
  * faint trail, which would hide it). This mirrors After Effects' Echo Operator.
  */
@@ -25,7 +25,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
     applyPaint(fill: VideoFillResolved, ctx: FillRendererContext): boolean {
         if (!fill.src) return false;
         // The source time to show. Derived here, from how long the painting node
-        // has existed, unless the fill carries an explicit `timestamp` — so a
+        // has existed, unless the fill carries an explicit `timestamp` â€” so a
         // clip plays wherever it is painted without anything advancing it.
         const timestamp = resolveVideoTimestamp(
             fill,
@@ -43,7 +43,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
 
         if (echo && echo.echoes > 0 && echo.delay > 0) {
             this.drawEchoStack(fill, ctx, echo, img, timestamp);
-            // Handler skips its own draw — we've drawn the full stack. It still
+            // Handler skips its own draw â€” we've drawn the full stack. It still
             // clears the shader and frees transientImages afterward.
             ctx.skipDefaultDraw = true;
             return true;
@@ -64,7 +64,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
      * skipped, so the trail degrades gracefully and fills in as playback warms.
      *
      * @param current the adapter-owned current-frame image (already fetched)
-     * @param timestamp the resolved source time `current` was fetched at — taps
+     * @param timestamp the resolved source time `current` was fetched at â€” taps
      *                  walk back from it, so it must be the same value
      */
     private drawEchoStack(
@@ -81,16 +81,16 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         // actual draws/textures to MAX_ECHOES.
         const taps = Math.min(Math.max(0, Math.floor(echo.echoes)), VideoFillRenderer.MAX_ECHOES);
 
-        // Base paint alpha the handler would have used (fill opacity × pass-through).
+        // Base paint alpha the handler would have used (fill opacity Ã— pass-through).
         const baseAlpha = (fill.opacity ?? 1) * ctx.worldAlpha;
         const bounds = ctx.getShapeBounds();
 
-        // Oldest → newest so newer (brighter) taps composite over older ones.
+        // Oldest â†’ newest so newer (brighter) taps composite over older ones.
         for (let n = taps; n >= 1; n--) {
             const ts = timestamp - n * echo.delay;
             if (ts < 0) continue;
             const tap = ctx.assets.getVideoFrameImage(fill.src, ts);
-            if (!tap) continue; // not warm yet — warmPendingVideo() decodes it for the re-render
+            if (!tap) continue; // not warm yet â€” warmPendingVideo() decodes it for the re-render
 
             ctx.transientImages.push(tap); // handler frees after the draw
             paint.setShader(makeImageShader(tap, fill, canvasKit, bounds));

@@ -10,6 +10,7 @@
     [
       "@motion-script/core",
       "@motion-script/canvaskit",
+      "@motion-script/skia-render",
       "@motion-script/web",
       "@motion-script/react",
       "@motion-script/player",

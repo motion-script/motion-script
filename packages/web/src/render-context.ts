@@ -1,4 +1,4 @@
-import type {
+﻿import type {
     CanvasKit,
     Canvas,
     Surface,
@@ -60,37 +60,37 @@ import {
 
 
 // 3D backend. Only `view3DBackend`/`requestView3DWarm` are reached on a draw,
-// and both are cheap no-ops until three has been lazily imported — so a 2D-only
+// and both are cheap no-ops until three has been lazily imported â€” so a 2D-only
 // project never pulls in the three chunk.
 import { disposeView3DBackend, view3DBackend } from "./three/backend";
 import { disposeSharedRenderer } from "./three/renderer";
 import { disposeTextureCache } from "./three/handlers/texture";
-import { layoutRichText } from "./shapes/richtext";
-import { drawShapedRun } from "./shapes/paragraph-layout";
-import { measureTextCached } from "./shapes/paragraph-cache";
-import { layoutTextSegments, runCenter } from "./shapes/text-segments";
-import { RectShape } from "./shapes/rect";
-import { EllipseShape } from "./shapes/ellipse";
-import { PolygonShape } from "./shapes/polygon";
-import { PolygramShape } from "./shapes/polygram";
-import { PathShape } from "./shapes/path";
-import { LineShape } from "./shapes/line";
-import type { CurrentShape } from "./shapes/shape-handler";
-import { EffectRegistry } from "./effects/registry";
-import { resolveMotionBlur } from "./effects/motion-blur";
-import type { EffectHandler, EffectGeometry, EffectResources } from "./effects/handler";
-import { disposeSkSLCache } from "./sksl-cache";
+import { layoutRichText } from "@motion-script/skia-render/shapes/richtext";
+import { drawShapedRun } from "@motion-script/skia-render/shapes/paragraph-layout";
+import { measureTextCached } from "@motion-script/skia-render/shapes/paragraph-cache";
+import { layoutTextSegments, runCenter } from "@motion-script/skia-render/shapes/text-segments";
+import { RectShape } from "@motion-script/skia-render/shapes/rect";
+import { EllipseShape } from "@motion-script/skia-render/shapes/ellipse";
+import { PolygonShape } from "@motion-script/skia-render/shapes/polygon";
+import { PolygramShape } from "@motion-script/skia-render/shapes/polygram";
+import { PathShape } from "@motion-script/skia-render/shapes/path";
+import { LineShape } from "@motion-script/skia-render/shapes/line";
+import type { CurrentShape } from "@motion-script/skia-render/shapes/shape-handler";
+import { EffectRegistry } from "@motion-script/skia-render/effects/registry";
+import { resolveMotionBlur } from "@motion-script/skia-render/effects/motion-blur";
+import type { EffectHandler, EffectGeometry, EffectResources } from "@motion-script/skia-render/effects/handler";
+import { disposeSkSLCache } from "@motion-script/skia-render/sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
-import { ShapeHandler } from "./shapes/shape-handler";
+import { ShapeHandler } from "@motion-script/skia-render/shapes/shape-handler";
 import { FillHandler } from "./fills/handler";
 import { WebStorageAdapter } from "./storage-adapter";
-import { getCanvasKitBlendMode } from "./blend";
+import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
 
 type DeferredPaintCall =
     | { kind: 'fill'; shapes: CurrentShape[]; fills: FillResolved[]; shadows: ShadowResolved[] | null }
     | { kind: 'stroke'; shapes: CurrentShape[]; strokes: StrokeResolved[]; shadows: ShadowResolved[] | null };
 
-// ─── y-up → canvas-y flip ────────────────────────────────────────────────────
+// â”€â”€â”€ y-up â†’ canvas-y flip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Per-shape descriptor coordinates are authored y-UP (y=100 is 100px ABOVE the
 // origin, matching node x/y and the pivot/anchor vocabulary). The canvas the
 // shapes are drawn into is y-DOWN. Rather than scatter `-y` through the
@@ -101,7 +101,7 @@ type DeferredPaintCall =
 // its geometry is rebuilt symmetrically about the new center, so symmetric shapes
 // are correct with nothing more. Vertically-asymmetric features must also be
 // reflected so the shape isn't mirrored: a rect's per-corner radii/styles swap
-// top↔bottom, and a partial ellipse's arc reverses (negate startAngle + sweep).
+// topâ†”bottom, and a partial ellipse's arc reverses (negate startAngle + sweep).
 // Line points and path commands carry their own per-point y, negated individually.
 
 /** Negate a scalar y, treating undefined as 0 (the descriptor default). */
@@ -110,7 +110,7 @@ const negY = (y: number | undefined): number => -(y ?? 0);
 /**
  * Collapse any cardinal-anchor positioning into a concrete y-up centre `x`/`y`
  * and `pivot`, *then* negate that centre's y to canvas space. Anchor resolution
- * (`resolveShapeAnchor`) is done entirely in y-up (target y-up → centre y-up,
+ * (`resolveShapeAnchor`) is done entirely in y-up (target y-up â†’ centre y-up,
  * pivot y-up); only the final centre y is flipped here. The resolved x/y/pivot
  * replace the op's positioning inputs and the anchor keys are stripped, so the
  * later `with*Descriptor` sees a plain canvas-space centre and no anchor.
@@ -212,7 +212,7 @@ function flipPathCommandY(cmd: PathCommand): PathCommand {
 
 function flipPathY(state: Partial<PathState>): Partial<PathState> {
     const out: Partial<PathState> = { ...state, y: negY(state.y) };
-    // PathCommand[] is authored y-up — mirror every command. A raw SVG `d` string
+    // PathCommand[] is authored y-up â€” mirror every command. A raw SVG `d` string
     // is interpreted in its own coordinate space (the path self-centers on its
     // bbox), so it is left untouched; use a command array for y-up authoring.
     if (Array.isArray(state.data)) {
@@ -254,7 +254,7 @@ function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
 }
 
 /**
- * Geometry for the ImageFilter path, where only the box *size* is meaningful —
+ * Geometry for the ImageFilter path, where only the box *size* is meaningful â€”
  * a composed `ImageFilter` is positioned by the layer it is attached to, so a
  * centre would be meaningless. Filters here are authored in logical px and the
  * CTM scales them, hence `scale: 1`. (The shader path builds a full
@@ -300,7 +300,7 @@ function applySegmentOpacityToStrokes(strokes: StrokeResolved[], segmentOpacity:
 }
 
 /**
- * CanvasKit/Skia implementation of {@link RenderContext} — the main render
+ * CanvasKit/Skia implementation of {@link RenderContext} â€” the main render
  * loop driving a mounted `<canvas>` (or an offscreen one during export).
  * Owns the WebGL surface and the per-frame draw stack (transforms, clips,
  * masks, camera, backdrop effects); delegates shape/fill/stroke painting to
@@ -317,9 +317,9 @@ export class WebRenderContext extends RenderContext {
      * The surface `currentCanvas` belongs to.
      *
      * Normally the mounted one, but {@link rasterizeOffscreen} swaps both in
-     * lockstep. Anything that needs the *size of what is being drawn into* — the
+     * lockstep. Anything that needs the *size of what is being drawn into* â€” the
      * device-space shader rect, the `'global'` fill space, a backdrop snapshot,
-     * a compatible offscreen — must read this rather than `this.surface`, or a
+     * a compatible offscreen â€” must read this rather than `this.surface`, or a
      * node inside a `Surface2D` gets the main canvas' dimensions.
      */
     private activeSurface!: Surface;
@@ -341,7 +341,7 @@ export class WebRenderContext extends RenderContext {
 
     // Accumulated "world" alpha for pass-through nodes. A pass-through node does
     // not isolate, so its opacity is folded into every paint it draws (and into
-    // its descendants') instead of being realised through a group saveLayer —
+    // its descendants') instead of being realised through a group saveLayer â€”
     // this is what lets a fill's blend mode keep mixing against the backdrop
     // while the node fades. begin() snapshots the inherited alpha, transform()
     // multiplies in the node's own opacity (pass-through) or resets to 1 inside
@@ -405,7 +405,7 @@ export class WebRenderContext extends RenderContext {
             (space) => this.spaceRect(space),
             this.storageAdapter,
             getWorldAlpha,
-            // The node stack, not ShapeHandler.currentNodeId — that one is set by
+            // The node stack, not ShapeHandler.currentNodeId â€” that one is set by
             // beginNode with no counterpart in end(), so it goes stale once a
             // child has rendered.
             () => (this.currentNodeStack.length > 0 ? this.currentNodeId() : ""),
@@ -451,7 +451,7 @@ export class WebRenderContext extends RenderContext {
         const view3D = view3DBackend(this.storageAdapter);
         view3D?.beginFrame();
         // Paint slots are per frame too, and key the 3D resources the sweep above
-        // releases — the two brackets must stay together.
+        // releases â€” the two brackets must stay together.
         this.fillHandler.beginFrame();
         // Which clip texture is claimed by which timestamp is also per pass, so a
         // second time of the same clip is served its own image (see
@@ -505,7 +505,7 @@ export class WebRenderContext extends RenderContext {
         if (this.surface) {
             this.surface.dispose();
         }
-        // Intentionally do NOT call loseContext() on the canvas — the canvas
+        // Intentionally do NOT call loseContext() on the canvas â€” the canvas
         // element survives this component (HMR/StrictMode remount it), and a
         // fresh CanvasKit surface needs a live WebGL context to attach to.
         this.mounted = false;
@@ -523,7 +523,7 @@ export class WebRenderContext extends RenderContext {
         // GC-managed, so dropping them here is what stops an HMR reload or scene
         // switch from accumulating GPU memory. Unlike CanvasKit's context (kept
         // alive deliberately above), the three renderer owns its own canvas and is
-        // safe to drop — it is recreated on the next 3D frame.
+        // safe to drop â€” it is recreated on the next 3D frame.
         disposeView3DBackend();
         disposeTextureCache();
         disposeSharedRenderer();
@@ -547,7 +547,7 @@ export class WebRenderContext extends RenderContext {
         this.surface = surface;
         this.mounted = true;
         // Hand the live surface to the adapter so video frames upload straight to
-        // GPU texture (Surface.makeImageFromTextureSource) — no CPU readback.
+        // GPU texture (Surface.makeImageFromTextureSource) â€” no CPU readback.
         this.storageAdapter.setSurface(surface);
     }
 
@@ -604,14 +604,14 @@ export class WebRenderContext extends RenderContext {
     }
 
 
-    // ─── Draw commands ───────────────────────────────────────────────────────
+    // â”€â”€â”€ Draw commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Replay a built {@link Graphics} command list against this context. Shape
      * ops accumulate into the shape handler; paint ops (fill/stroke/shadow) paint
      * the accumulated shapes as one combined surface; cut/mask ops composite.
      *
-     * A paint-only Graphics (no shape ops — e.g. the fill/stroke applied to a
+     * A paint-only Graphics (no shape ops â€” e.g. the fill/stroke applied to a
      * boolean result after `endBoolean()`) does NOT reset the shape handler, so
      * it styles whatever surface is currently active.
      */
@@ -633,7 +633,7 @@ export class WebRenderContext extends RenderContext {
         // Graphics-level rotation/scale transforms the whole union as one figure.
         // It's realised as a canvas matrix about the pivot (default: the union's
         // bbox centre, sized in a throwaway measurement pass) wrapping the entire
-        // op replay — so the combined silhouette turns/grows together and the CTM
+        // op replay â€” so the combined silhouette turns/grows together and the CTM
         // change flows into fill/stroke space resolution.
         const groupTransform = graphics.groupTransform();
         let pushedTransform = false;
@@ -652,7 +652,7 @@ export class WebRenderContext extends RenderContext {
         // `effects()` scopes like `fill()`: each `effects` op filters the shape
         // group accumulated since the previous one. The filtered saveLayer must be
         // opened *before* that group's shapes are drawn, but the op is recorded
-        // *after* them — so pre-scan the op list into segments (a run of ops ending
+        // *after* them â€” so pre-scan the op list into segments (a run of ops ending
         // in an `effects` op) and open the layer at each such segment's first op.
         const ops = graphics.ops();
         const segmentStartFilter = this.buildEffectSegments(graphics);
@@ -683,7 +683,7 @@ export class WebRenderContext extends RenderContext {
             if (op.kind === "effects") {
                 // Close the group: pop this segment's layer and start a fresh
                 // shape accumulation, so shapes after the effects op render
-                // unfiltered — the same boundary `fill()` establishes.
+                // unfiltered â€” the same boundary `fill()` establishes.
                 if (pushedEffectLayer) {
                     this.currentCanvas.restore();
                     effectFilter?.delete?.();
@@ -696,7 +696,7 @@ export class WebRenderContext extends RenderContext {
 
             this.applyOp(op);
         }
-        // Defensive: an unterminated segment (should not happen — a segment is only
+        // Defensive: an unterminated segment (should not happen â€” a segment is only
         // recorded when it ends in an effects op) still unwinds its layer.
         if (pushedEffectLayer) {
             this.currentCanvas.restore();
@@ -730,9 +730,9 @@ export class WebRenderContext extends RenderContext {
         // Track the start of the *current shape group*, mirroring the shape
         // accumulator's own boundaries (see `_fill` + the `paintApplied` reset in
         // the shape ops). A group begins at the first shape op drawn after a paint
-        // (`fill`/`stroke`/`shadow`) or after an `effects` op — exactly where the
+        // (`fill`/`stroke`/`shadow`) or after an `effects` op â€” exactly where the
         // renderer resets its accumulator. An `effects` op then filters only *its*
-        // group `[groupStart, i]`, not everything back to the previous effects op —
+        // group `[groupStart, i]`, not everything back to the previous effects op â€”
         // so already-painted content before it (e.g. gridlines/axis, each closed by
         // their own fill) is NOT swept into the first bar's filter.
         let groupStart = 0;
@@ -745,7 +745,7 @@ export class WebRenderContext extends RenderContext {
             const op = ops[i];
             if (isShape(op.kind)) {
                 // A shape after a paint (or after an effects reset) starts a fresh
-                // group — the accumulator resets here in the real replay.
+                // group â€” the accumulator resets here in the real replay.
                 if (paintApplied) {
                     groupStart = i;
                     paintApplied = false;
@@ -779,11 +779,11 @@ export class WebRenderContext extends RenderContext {
      * Resolve a graphics-level rotate/scale `center` into a concrete local-space
      * pivot point.
      *
-     *  - An explicit {@link Vector2} is already in local space — passed straight
+     *  - An explicit {@link Vector2} is already in local space â€” passed straight
      *    through, with no measurement pass.
-     *  - A **named anchor** (`'topRight'`, …) or `undefined` (default) is resolved
+     *  - A **named anchor** (`'topRight'`, â€¦) or `undefined` (default) is resolved
      *    against the union's bounding box, sized in a throwaway measurement pass:
-     *    `undefined` → the box centre; a name → the corresponding box corner/edge.
+     *    `undefined` â†’ the box centre; a name â†’ the corresponding box corner/edge.
      *
      * The box is sized by building only the shape ops (skipping paint/compositing/
      * text) into a suspended-cache scope so the real paint pass is unaffected.
@@ -791,14 +791,14 @@ export class WebRenderContext extends RenderContext {
      * text only).
      */
     private resolveGroupCenter(graphics: Graphics, center: Alignment | undefined): Vector2 {
-        // Explicit pixel pivot — no need to size the union.
+        // Explicit pixel pivot â€” no need to size the union.
         if (center !== undefined && typeof center !== "string") {
             return { x: center.x, y: center.y };
         }
 
         this.shapeHandler.beginMeasure();
         for (const op of graphics.ops()) {
-            // Measure in the same y-up→canvas-flipped space the paint pass draws
+            // Measure in the same y-upâ†’canvas-flipped space the paint pass draws
             // in (see flip* helpers / applyOp), so the union bbox the pivot is
             // resolved against matches the rendered geometry.
             switch (op.kind) {
@@ -822,7 +822,7 @@ export class WebRenderContext extends RenderContext {
         if (center === undefined) return { x: cx, y: cy };
 
         // Named anchor: normalised [-1,1] (y-up) scaled onto the box, y flipped
-        // to the renderer's y-down local space — so 'topRight' lands at the box's
+        // to the renderer's y-down local space â€” so 'topRight' lands at the box's
         // top-right corner. Matches how node/per-shape pivots map onto their box.
         const a = resolvePivot(center);
         const halfW = (bounds.right - bounds.left) / 2;
@@ -890,12 +890,12 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.translate(-pivotX, -pivotY);
 
         // Backdrop-mode effects run on the backdrop layer (applyBackdropEffects),
-        // not the node's own content — exclude them from the foreground filter chain.
+        // not the node's own content â€” exclude them from the foreground filter chain.
         const foregroundEffects = effects.filter((e) => e.mode !== "backdrop");
         let effectFilter: any = null;
         if (foregroundEffects.length > 0) {
             // Motion blur needs the node's live velocity, which static effect data
-            // can't carry — resolve each `motionBlur` against the current node's
+            // can't carry â€” resolve each `motionBlur` against the current node's
             // render state here, then hand the renderer a concrete directional
             // smear. Effects without motion blur skip the copy entirely.
             const resolved = this.resolveMotionBlurEffects(foregroundEffects);
@@ -908,8 +908,8 @@ export class WebRenderContext extends RenderContext {
             // into a group, then composite back with the node's blend mode and
             // opacity (scaled by the inherited pass-through alpha). An effect
             // filter, when present, rides on the same layer. Descendants paint at
-            // full alpha inside the group — the group's contribution is scaled on
-            // composite-back — so reset worldAlpha to 1 for the layer's lifetime.
+            // full alpha inside the group â€” the group's contribution is scaled on
+            // composite-back â€” so reset worldAlpha to 1 for the layer's lifetime.
             this.layerPaint.setAlphaf(this.worldAlpha * (opacity < 1 ? opacity : 1));
             this.layerPaint.setBlendMode(getCanvasKitBlendMode(this.canvasKit, blend as any));
             this.layerPaint.setImageFilter(effectFilter ?? null);
@@ -922,7 +922,7 @@ export class WebRenderContext extends RenderContext {
         } else {
             // Pass-through: fold opacity into the accumulated alpha (carried into
             // every paint) instead of isolating. Effects still need their own
-            // buffer — push an effect-only layer (no opacity, that's in the
+            // buffer â€” push an effect-only layer (no opacity, that's in the
             // paints) when one is present.
             if (effectFilter != null) {
                 this.layerPaint.setAlphaf(1);
@@ -985,7 +985,7 @@ export class WebRenderContext extends RenderContext {
             if (!m) return null;
             const inv = this.canvasKit.Matrix.invert(m);
             if (!inv) return null;
-            // Surface corners in device px → local space. Inside a Surface2D the
+            // Surface corners in device px â†’ local space. Inside a Surface2D the
             // "viewport" is that surface's buffer, which is what a `global` fill
             // should span there.
             const w = this.activeSurface.width();
@@ -1137,11 +1137,11 @@ export class WebRenderContext extends RenderContext {
         const resolved = resolveFillArray(fills);
         if (resolved.length === 0) {
             // An empty fill paints nothing, but the shapes it was applied to were
-            // still "consumed" by this draw() — mark the pass applied so the next
+            // still "consumed" by this draw() â€” mark the pass applied so the next
             // `_path` resets and starts a fresh shape set. Without this a fill-less
             // node (e.g. a stroke-only Path, whose renderSelf still emits an empty
             // fill) leaves its silhouette accumulated, so the later stroke pass
-            // sees a *duplicate* shape and unions/concats two copies — distorting
+            // sees a *duplicate* shape and unions/concats two copies â€” distorting
             // the stroked outline.
             this.shapeHandler.paintApplied = true;
             return;
@@ -1250,7 +1250,7 @@ export class WebRenderContext extends RenderContext {
         this.shapeHandler.cut();
     }
 
-    // ─── Camera viewport ─────────────────────────────────────────────────────
+    // â”€â”€â”€ Camera viewport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private cameraRestoreStack: number[] = [];
 
@@ -1289,7 +1289,7 @@ export class WebRenderContext extends RenderContext {
         }
     }
 
-    // ─── Clip scope ──────────────────────────────────────────────────────────
+    // â”€â”€â”€ Clip scope â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     beginClip(clip: Clip): void {
         if (!this.isRendering) {
@@ -1301,7 +1301,7 @@ export class WebRenderContext extends RenderContext {
         this.clipRestoreStack.push(1);
 
         const ops = clip.ops();
-        // Fast path — a single shape with no cut clips natively (clipRect/clipRRect
+        // Fast path â€” a single shape with no cut clips natively (clipRect/clipRRect
         // for axis-aligned rects/ellipses), no combined path needed.
         if (ops.length === 1 && ops[0].kind !== "cut") {
             const shape = this.buildClipShapeOp(ops[0]);
@@ -1400,7 +1400,7 @@ export class WebRenderContext extends RenderContext {
         return combined;
     }
 
-    // ─── Effect scope (filters + shader effects, foreground or backdrop) ─────────
+    // â”€â”€â”€ Effect scope (filters + shader effects, foreground or backdrop) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     // One entry per open beginEffectScope/endEffectScope pair. `canvasRestores`
     // counts saveLayer()s pushed in begin (the backdrop filter layer) that end()
@@ -1416,8 +1416,8 @@ export class WebRenderContext extends RenderContext {
      * Open an effect scope over the node (see {@link RenderContext.beginEffectScope}).
      * Effects are routed by the renderer, not the caller:
      *
-     * - ImageFilter-composable effects (blur, grayscale, …) — only meaningful for
-     *   the backdrop here (foreground filters ride the node's transform layer) —
+     * - ImageFilter-composable effects (blur, grayscale, â€¦) â€” only meaningful for
+     *   the backdrop here (foreground filters ride the node's transform layer) â€”
      *   are composed into one filter and seeded into a backdrop saveLayer.
      * - Shader effects (bulge, magnify, posterize, backdrop SkSL) are dispatched to
      *   their {@link EffectHandler} handler. Backdrop ones snapshot the surface and
@@ -1465,7 +1465,7 @@ export class WebRenderContext extends RenderContext {
             // Opened in *reverse* author order, because the node's content is
             // drawn into the innermost (last-opened) capture and endEffectScope
             // unwinds inner-first. Reversing here makes effects[0] the innermost
-            // scope, so it is the first to see the raw content — matching the
+            // scope, so it is the first to see the raw content â€” matching the
             // ImageFilter path, where index 0 is likewise applied first. Opening
             // in author order would run the chain backwards.
             for (let i = shaderEffects.length - 1; i >= 0; i--) {
@@ -1504,7 +1504,7 @@ export class WebRenderContext extends RenderContext {
      *
      * Per-effect handlers author filters in *logical* px, but a `saveLayer` backdrop
      * filter runs in *device* space, so the composed logical filter `F` is wrapped
-     * `scale(pr) ∘ F ∘ scale(1/pr)` to behave as it would in the foreground.
+     * `scale(pr) âˆ˜ F âˆ˜ scale(1/pr)` to behave as it would in the foreground.
      */
     private openBackdropFilterLayer(effects: SceneEffect[], width: number, height: number): boolean {
         const ck = this.canvasKit;
@@ -1530,7 +1530,7 @@ export class WebRenderContext extends RenderContext {
 
     /**
      * Snapshot the backdrop (the content beneath the node), build the handler's
-     * lens shader from it, and repaint it warped in device space — confined to the
+     * lens shader from it, and repaint it warped in device space â€” confined to the
      * active silhouette clip. Used for magnify, backdrop posterize, backdrop SkSL.
      */
     private paintBackdropShaderEffect(
@@ -1543,7 +1543,7 @@ export class WebRenderContext extends RenderContext {
         if (width <= 0 || height <= 0) return;
 
         // The node is already translated to its centre, so the CTM maps local
-        // origin → device centre and its scale converts logical size to device px.
+        // origin â†’ device centre and its scale converts logical size to device px.
         const m = this.currentCanvas.getTotalMatrix();
         // A backdrop snapshot fully covers the surface, so it always samples with
         // Clamp regardless of the handler's foreground tile preference.
@@ -1615,8 +1615,8 @@ export class WebRenderContext extends RenderContext {
         const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         // A null lens means the effect is a no-op at these settings (zero radius,
-        // zero amount, …). Drawing was already redirected into the offscreen, so
-        // the content still has to be painted back — dropping it here would make
+        // zero amount, â€¦). Drawing was already redirected into the offscreen, so
+        // the content still has to be painted back â€” dropping it here would make
         // a neutral effect erase the node, which is exactly the state every
         // "animate the effect on from nothing" tween starts in.
         this.paintShaderInDeviceSpace(lens ?? content, m);
@@ -1624,7 +1624,7 @@ export class WebRenderContext extends RenderContext {
         content.delete();
         snapshot.delete();
         offscreen.delete();
-        // `extra` belongs to the handler's own cache — it decides the lifetime.
+        // `extra` belongs to the handler's own cache â€” it decides the lifetime.
     }
 
     /**
@@ -1692,16 +1692,16 @@ export class WebRenderContext extends RenderContext {
         this.currentCanvas.restore();
     }
 
-    // ─── Offscreen rasterization ─────────────────────────────────────────────
+    // â”€â”€â”€ Offscreen rasterization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
-     * Rasterize a `Tex.surface` source — a built `Graphics`, or a detached `Node`
-     * subtree — into an offscreen buffer.
+     * Rasterize a `Tex.surface` source â€” a built `Graphics`, or a detached `Node`
+     * subtree â€” into an offscreen buffer.
      *
      * A `Node` source is laid out here rather than by the scene tree, because it
      * *isn't* in the tree: its box is the texture's resolution, so it is measured
      * straight against that. Everything else it needs (asset catalog, context,
-     * clock) was bound by whatever painted the 3D scene — see `Node.adoptDetached`.
+     * clock) was bound by whatever painted the 3D scene â€” see `Node.adoptDetached`.
      */
     private rasterizeSurfaceSource(
         source: SurfaceSource3D,
@@ -1723,14 +1723,14 @@ export class WebRenderContext extends RenderContext {
     /**
      * Draw `draw` into a fresh offscreen surface and read its pixels back.
      *
-     * Same redirect `openForegroundCapture` performs — swap `currentCanvas` (every
+     * Same redirect `openForegroundCapture` performs â€” swap `currentCanvas` (every
      * handler reads it through a live closure, so they all follow) and restore it
-     * afterwards — but sized to the requested box rather than the whole canvas,
+     * afterwards â€” but sized to the requested box rather than the whole canvas,
      * and with the CTM *reset* rather than replicated: the buffer is its own
      * coordinate space, origin at the centre, exactly as `executePass` sets up the
      * main canvas. That's what lets `draw` be an ordinary `node.render(this)`.
      *
-     * The readback is a real GPU→CPU stall (three has its own GL context, so there
+     * The readback is a real GPUâ†’CPU stall (three has its own GL context, so there
      * is no shared texture to hand over). It is bounded by the surface's size,
      * which is why `Tex.surface` defaults to a pixel ratio of 1.
      */
@@ -1744,7 +1744,7 @@ export class WebRenderContext extends RenderContext {
         if (!(width > 0) || !(height > 0)) return null;
         if (this.rasterDepth >= MAX_RASTER_DEPTH) {
             console.warn(
-                `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
+                `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep â€” skipping. ` +
                 "A Surface2D is most likely nested inside itself via a View3D.",
             );
             return null;
@@ -1775,7 +1775,7 @@ export class WebRenderContext extends RenderContext {
 
         this.currentCanvas = offCanvas;
         this.activeSurface = offscreen;
-        // The buffer is a fresh composite, not a layer over the canvas — inherited
+        // The buffer is a fresh composite, not a layer over the canvas â€” inherited
         // opacity is the *3D material's* business, not the texture's.
         this.worldAlpha = 1;
         this.rasterDepth++;
@@ -1794,7 +1794,7 @@ export class WebRenderContext extends RenderContext {
         offscreen.flush();
         const snapshot = offscreen.makeImageSnapshot();
         // Unpremultiplied so the bytes drop straight into a three DataTexture,
-        // whose default `premultiplyAlpha` is false — the same read `screenshot()`
+        // whose default `premultiplyAlpha` is false â€” the same read `screenshot()`
         // does for ImageData.
         const pixels = snapshot?.readPixels(0, 0, {
             width: deviceWidth,
@@ -1812,7 +1812,7 @@ export class WebRenderContext extends RenderContext {
         return { pixels: new Uint8Array(pixels), width: deviceWidth, height: deviceHeight };
     }
 
-    // ─── Boolean group ───────────────────────────────────────────────────────
+    // â”€â”€â”€ Boolean group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     beginBoolean(op: BooleanOperation): void {
         if (!this.isRendering) {
@@ -1830,7 +1830,7 @@ export class WebRenderContext extends RenderContext {
         this.shapeHandler.endBoolean();
     }
 
-    // ─── Mask group ──────────────────────────────────────────────────────────
+    // â”€â”€â”€ Mask group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     beginMask(options?: MaskOptions): void {
         if (!this.isRendering) {

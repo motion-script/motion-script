@@ -12,6 +12,7 @@ const EXTERNAL = [
   'react/jsx-runtime',
   'react/jsx-dev-runtime',
   '@motion-script/core',
+  '@motion-script/skia-render',
   '@motion-script/web',
 ];
 // Also externalize deep subpath imports (e.g. "@motion-script/core/jsx/...").

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll } from "vitest";
+﻿import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Surface } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { resolveShadow } from "@motion-script/core";
 import { getCanvasKit } from "../src/getter";
-import { RectShape } from "../src/shapes/rect";
+import { RectShape } from "@motion-script/skia-render/shapes/rect";
 import { StrokeHandler } from "../src/stroke/stroke-handler";
 import { FillHandler } from "../src/fills/handler";
 

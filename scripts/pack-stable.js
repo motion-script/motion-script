@@ -54,10 +54,16 @@ const stableModules = path.join(stableRoot, 'node_modules');
  * packages that lack `"private": true` — i.e. the ones that get published and
  * that an end-user project installs. The e2e scenes import core / code / latex;
  * the vite-plugin pulls in web / player / react / canvaskit at render time.
+ *
+ * Order matters: a package must appear after everything it depends on, so
+ * skia-render sits between core and web (web is a thin binding layer over it).
+ * A package missing from this list installs an incomplete baseline and the
+ * pixel-diff silently compares against a broken stable build.
  */
 const PACKAGES = [
     'packages/canvaskit',
     'packages/core',
+    'packages/skia-render',
     'packages/web',
     'packages/react',
     'packages/player',

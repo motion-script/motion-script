@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { resolveMotionBlur } from "@/effects/motion-blur";
+﻿import { describe, it, expect } from "vitest";
+import { resolveMotionBlur } from "@motion-script/skia-render/effects/motion-blur";
 import type { MotionBlurEffect } from "@motion-script/core";
 
 const base: MotionBlurEffect = {
@@ -17,7 +17,7 @@ describe("resolveMotionBlur", () => {
     it("smears along the velocity direction with length = displacement * shutter * strength", () => {
         const r = resolveMotionBlur(base, { x: 100, y: 0 }, dt);
         expect(r).not.toBeNull();
-        // length 100% * strength 1 → full per-frame displacement (100 px/s * dt).
+        // length 100% * strength 1 â†’ full per-frame displacement (100 px/s * dt).
         expect(r!.radius).toBeCloseTo(100 * dt, 6);
         expect(r!.angle).toBeCloseTo(0, 6);
         expect(r!.phase).toBe(0);
@@ -25,7 +25,7 @@ describe("resolveMotionBlur", () => {
 
     it("scales the smear by length% and strength", () => {
         const r = resolveMotionBlur({ ...base, length: 50, strength: 2 }, { x: 100, y: 0 }, dt);
-        // 0.5 * 2 = 1.0 → same as the nominal case above.
+        // 0.5 * 2 = 1.0 â†’ same as the nominal case above.
         expect(r!.radius).toBeCloseTo(100 * dt, 6);
     });
 

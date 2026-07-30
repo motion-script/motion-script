@@ -4,8 +4,10 @@
 export { WebRenderContext } from "./render-context";
 export { WebStorageAdapter } from "./storage-adapter";
 export { getCanvasKit } from "./getter";
-export { EffectRegistry } from "./effects";
-export type { EffectHandler, EffectGeometry, EffectResources, EffectTarget, RenderEffect } from "./effects";
+// Re-exported from @motion-script/skia-render, whose canonical home these are —
+// kept on this barrel so the specifier consumers already use keeps resolving.
+export { EffectRegistry } from "@motion-script/skia-render";
+export type { EffectHandler, EffectGeometry, EffectResources, EffectTarget, RenderEffect } from "@motion-script/skia-render";
 export { exportScenesAsVideo, type ExportParams, type ExportProgressCallback } from "./exporter";
 export { exportScreenshot, type ScreenshotParams, type ScreenshotResult, type ScreenshotFormat, type FrameSpec } from "./screenshot";
 export { WebAudioDevice as WebAudioPlayer } from "./audio/player";

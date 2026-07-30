@@ -1,4 +1,4 @@
-import type {
+﻿import type {
     CanvasKit,
     Paint,
 } from "@motion-script/canvaskit";
@@ -10,7 +10,7 @@ import {
 import type { WebStorageAdapter } from "../storage-adapter";
 import type { FillRendererContext } from "./renderer";
 import { FillRenderRegistry } from "./registry";
-import { getCanvasKitBlendMode } from "../blend";
+import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
 
 export type { FillRenderer } from "./renderer";
 export type { FillRendererContext } from "./renderer";
@@ -51,11 +51,11 @@ export class FillHandler {
     private rasterizeSurface: FillRendererContext["rasterizeSurface"];
 
     /**
-     * Per-frame paint slots: node id → resolved fill → index.
+     * Per-frame paint slots: node id â†’ resolved fill â†’ index.
      *
      * Keyed by the fill object's *identity*, not by paint order, because one
      * frame hands the very same `FillResolved` to the shadow pass, the fill pass
-     * and the inner-shadow pass — a counter would treat those as three different
+     * and the inner-shadow pass â€” a counter would treat those as three different
      * fills and, for a 3D fill, render the scene three times. Identity also keeps
      * a slot stable across frames for any fixed scene structure, since the
      * first-appearance order doesn't shift when unrelated layers come and go.
@@ -154,9 +154,9 @@ export class FillHandler {
 
     // Bounds for a fill, given its space. The drawn shapes are always painted as
     // one unit, so every space resolves against a single rect:
-    //   local  → the shape's own (union) bounds — pinned to the figure.
-    //   parent → the parent node's layout rect.
-    //   global → the render viewport.
+    //   local  â†’ the shape's own (union) bounds â€” pinned to the figure.
+    //   parent â†’ the parent node's layout rect.
+    //   global â†’ the render viewport.
     // parent/global fall back to the union bounds when no reference rect exists.
     boundsForSpace(
         space: FillSpace,
@@ -214,7 +214,7 @@ export class FillHandler {
 
     /**
      * Run every fill's optional pre-paint pass, before the shared paint is
-     * configured — see {@link FillRenderer.preflight}.
+     * configured â€” see {@link FillRenderer.preflight}.
      *
      * The bounds are set per fill exactly as the paint loop does, because a
      * renderer sizing an offscreen buffer needs the same rect it will later shade.

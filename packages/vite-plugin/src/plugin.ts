@@ -547,6 +547,7 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         // nested layout makes more than one reachable.
                         dedupe: [
                             '@motion-script/core',
+                            '@motion-script/skia-render',
                             '@motion-script/web',
                             '@motion-script/canvaskit',
                         ],
@@ -588,7 +589,12 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         // externalizes it, so the optimizer would otherwise fold a stale
                         // react into the player chunk. Excluding them lets Vite re-read the
                         // rebuilt dist. Dedupe (above) still guarantees a single instance.
-                        exclude: ['@motion-script/core', '@motion-script/web', '@motion-script/react'],
+                        exclude: [
+                            '@motion-script/core',
+                            '@motion-script/skia-render',
+                            '@motion-script/web',
+                            '@motion-script/react',
+                        ],
                     },
 
                     build: {

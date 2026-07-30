@@ -99,6 +99,25 @@ importers:
         specifier: ^2.9.14
         version: 2.9.18
 
+  packages/animation:
+    dependencies:
+      motion-script:
+        specifier: workspace:*
+        version: link:../motion-script
+    devDependencies:
+      '@motion-script/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@motion-script/vite-plugin':
+        specifier: workspace:*
+        version: link:../vite-plugin
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)
+
   packages/canvaskit: {}
 
   packages/cli:
@@ -627,6 +646,43 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/skia-render:
+    dependencies:
+      three:
+        specifier: 'catalog:'
+        version: 0.185.1
+    devDependencies:
+      '@motion-script/canvaskit':
+        specifier: workspace:*
+        version: link:../canvaskit
+      '@motion-script/core':
+        specifier: workspace:*
+        version: link:../core
+      '@types/three':
+        specifier: 'catalog:'
+        version: 0.185.1
+      concurrently:
+        specifier: 'catalog:'
+        version: 9.2.3
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.4(jiti@2.7.0)
+      eslint-import-resolver-typescript:
+        specifier: 'catalog:'
+        version: 4.4.5(eslint-plugin-import-x@4.16.2(@typescript-eslint/utils@8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-node@0.3.10)(eslint@9.39.4(jiti@2.7.0)))(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import-x:
+        specifier: 'catalog:'
+        version: 4.16.2(@typescript-eslint/utils@8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-node@0.3.10)(eslint@9.39.4(jiti@2.7.0))
+      tsc-alias:
+        specifier: 'catalog:'
+        version: 1.8.17
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.61.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+
   packages/template:
     dependencies:
       motion-script:
@@ -712,6 +768,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@motion-script/skia-render':
+        specifier: workspace:^
+        version: link:../skia-render
       mediabunny:
         specifier: 'catalog:'
         version: 1.49.0

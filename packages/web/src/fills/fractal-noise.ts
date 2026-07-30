@@ -1,6 +1,6 @@
-import type { FractalNoiseFillResolved } from "@motion-script/core";
+﻿import type { FractalNoiseFillResolved } from "@motion-script/core";
 import type { Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "../sksl-cache";
+import { getOrCompileSkSL } from "@motion-script/skia-render/sksl-cache";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 
 /** Ceiling on ramp stops the shader carries as uniforms. */
@@ -13,8 +13,8 @@ const MAX_STOPS = 8;
  * simplex noise both build on it; worley uses it to place one feature point per
  * cell.
  *
- * Simplex here is the 2D skewed-grid formulation — three corner contributions
- * rather than the four bilinear taps value noise needs — which is what removes
+ * Simplex here is the 2D skewed-grid formulation â€” three corner contributions
+ * rather than the four bilinear taps value noise needs â€” which is what removes
  * the axis-aligned blockiness value noise shows at low octave counts.
  */
 const NOISE_LIB = `
@@ -83,15 +83,15 @@ float worleyNoise(vec2 p) {
  * compile-time loop bounds and array sizes, and `getOrCompileSkSL` keys by source
  * so each distinct combination compiles exactly once. It is also why `basis`,
  * `octaves` and the stop count snap rather than interpolating in the fill's
- * `lerp` — tweening any of them would compile a program per frame.
+ * `lerp` â€” tweening any of them would compile a program per frame.
  *
  * `ridged` gets its **own accumulation**, not just a different sample expression.
- * Folding simplex about its midpoint (`1 − |2n − 1|`) turns the noise's zero
+ * Folding simplex about its midpoint (`1 âˆ’ |2n âˆ’ 1|`) turns the noise's zero
  * crossings into crests, but plainly summing those octaves is nearly flat: each
  * octave concentrates around the fold's mean, and averaging five of them
  * concentrates it far harder, so the whole field lands in the top of the ramp and
- * reads as a solid colour. The Musgrave weighting — square each octave and
- * multiply it by the previous one — is what restores the range, because a crest
+ * reads as a solid colour. The Musgrave weighting â€” square each octave and
+ * multiply it by the previous one â€” is what restores the range, because a crest
  * only survives where the coarser octave was *also* a crest. That is also what
  * produces the sharp branching ridges the basis is named for.
  */
@@ -132,7 +132,7 @@ uniform float u_seed;
 uniform float u_cos;         // field rotation, precomputed
 uniform float u_sin;
 uniform float u_contrast;
-uniform float u_alpha;       // fill opacity × worldAlpha
+uniform float u_alpha;       // fill opacity Ã— worldAlpha
 uniform vec4  u_colors[${stops}];
 uniform float u_stops[${stops}];
 
@@ -149,7 +149,7 @@ vec4 main(vec2 fragCoord) {
     float total = 0.0;
     vec2 q = base;
 ${accumulate}
-    // Normalising by the summed amplitudes keeps the field in 0–1 whatever the
+    // Normalising by the summed amplitudes keeps the field in 0â€“1 whatever the
     // gain, so changing octaves or gain re-textures without also re-exposing.
     float n = clamp(sum / max(total, 0.0001), 0.0, 1.0);
 
@@ -170,13 +170,13 @@ ${accumulate}
 }
 
 /**
- * Fractal (fBm) noise fill — the first fill rendered by a shader rather than by
+ * Fractal (fBm) noise fill â€” the first fill rendered by a shader rather than by
  * generating pixels on the CPU.
  *
  * That is deliberate: the speckle `NoiseFillRenderer` paints is one hash per
  * pixel and cheap enough in JS, but fBm is `octaves` hashes per pixel, which at
  * 1080p is tens of millions per frame. It also means the field costs nothing to
- * animate — `offset` and `seed` are uniforms, so a flowing field is not a
+ * animate â€” `offset` and `seed` are uniforms, so a flowing field is not a
  * per-frame texture rebuild the way an animated speckle fill would be.
  */
 export class FractalNoiseFillRenderer extends FillRenderer<FractalNoiseFillResolved> {
@@ -186,7 +186,7 @@ export class FractalNoiseFillRenderer extends FillRenderer<FractalNoiseFillResol
      * Not cached by key, unlike the gradient renderers: an animated field
      * changes its uniforms every frame, so a keyed cache would allocate a shader
      * per frame and never hit. Instead exactly one is kept alive and released
-     * when the next fill is configured — by which point the previous fill's
+     * when the next fill is configured â€” by which point the previous fill's
      * shapes have been drawn, since the handler paints each fill before moving
      * to the next.
      */

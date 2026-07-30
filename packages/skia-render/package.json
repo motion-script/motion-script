@@ -1,12 +1,12 @@
 {
-  "name": "@motion-script/web",
+  "name": "@motion-script/skia-render",
   "version": "2.11.3",
   "type": "module",
-  "description": "Browser rendering backend for Motion Script, powered by Skia/CanvasKit.",
+  "description": "Backend-agnostic Skia/CanvasKit renderer for Motion Script. Holds the shape, fill, stroke, effect, text and 3D logic; platform specifics (surface creation, media decode, encoding, audio) are injected.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/motion-script/motion-script.git",
-    "directory": "packages/web"
+    "directory": "packages/skia-render"
   },
   "sideEffects": false,
   "keywords": [],
@@ -24,13 +24,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
     }
   },
   "scripts": {
     "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
     "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
-    "test": "vitest",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -42,21 +45,15 @@
     "@motion-script/canvaskit": "workspace:*",
     "@motion-script/core": "workspace:*",
     "@types/three": "catalog:",
-    "@vitest/browser": "catalog:",
-    "@vitest/browser-playwright": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import-x": "catalog:",
-    "playwright": "^1.60.0",
     "tsc-alias": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:",
-    "vitest": "catalog:"
+    "typescript-eslint": "catalog:"
   },
   "dependencies": {
-    "@motion-script/skia-render": "workspace:^",
-    "mediabunny": "catalog:",
     "three": "catalog:"
   }
 }
