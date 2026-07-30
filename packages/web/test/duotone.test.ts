@@ -1,10 +1,10 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { duotoneMatrix } from "@motion-script/skia-render/effects/duotone";
 
 const BLACK = [0, 0, 0, 1];
 const WHITE = [1, 1, 1, 1];
 
-// 4Ã—5 row-major, rows [R,G,B,A], columns [R,G,B,A,1].
+// 4×5 row-major, rows [R,G,B,A], columns [R,G,B,A,1].
 const IDENTITY = [
     1, 0, 0, 0, 0,
     0, 1, 0, 0, 0,
@@ -12,7 +12,7 @@ const IDENTITY = [
     0, 0, 0, 1, 0,
 ];
 
-/** Apply a 4Ã—5 colour matrix to a straight RGBA colour. */
+/** Apply a 4×5 colour matrix to a straight RGBA colour. */
 function apply(matrix: number[], [r, g, b, a]: number[]): number[] {
     const channel = (row: number) =>
         matrix[row * 5] * r +
@@ -29,7 +29,7 @@ describe("duotoneMatrix", () => {
         m.forEach((v, i) => expect(v).toBeCloseTo(IDENTITY[i], 6));
     });
 
-    it("maps a blackâ†’white ramp to plain luminance", () => {
+    it("maps a black→white ramp to plain luminance", () => {
         const m = duotoneMatrix(1, BLACK, WHITE);
         // Pure red carries only its BT.709 share of the luminance.
         const [r, g, b] = apply(m, [1, 0, 0, 1]);
@@ -65,7 +65,7 @@ describe("duotoneMatrix", () => {
         expect(half[1]).toBeCloseTo((0 + full[1]) / 2, 6);
     });
 
-    it("ignores the ramp colours' alpha â€” they name tones, not inks", () => {
+    it("ignores the ramp colours' alpha — they name tones, not inks", () => {
         const opaque = duotoneMatrix(1, [0.2, 0.2, 0.2, 1], [0.9, 0.9, 0.9, 1]);
         const translucent = duotoneMatrix(1, [0.2, 0.2, 0.2, 0.1], [0.9, 0.9, 0.9, 0.3]);
         expect(translucent).toEqual(opaque);

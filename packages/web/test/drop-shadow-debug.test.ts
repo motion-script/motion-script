@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Surface } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { resolveShadow } from "@motion-script/core";

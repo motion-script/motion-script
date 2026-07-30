@@ -1,4 +1,4 @@
-﻿import type { ImageFillResolved, MediaFilter } from "@motion-script/core";
+import type { ImageFillResolved, MediaFilter } from "@motion-script/core";
 import { isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
@@ -11,7 +11,7 @@ export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
         if (!fill.src) return false;
         const img = ctx.assets.getCKImage(fill.src);
         if (!img) return false;
-        // Adapter-owned CKImage â€” do NOT push to transientImages (which gets
+        // Adapter-owned CKImage — do NOT push to transientImages (which gets
         // .delete()'d after the draw). The adapter releases the texture when
         // the underlying pixels are evicted.
         ctx.paint.setShader(makeImageShader(img, fill, ctx.canvasKit, ctx.getShapeBounds()));
@@ -23,7 +23,7 @@ export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
 /**
  * Apply the fill's pixel filters to the paint's image filter slot. Filters are
  * composed in array order (first filter is innermost). Video-only filters
- * (`posterizeTime`, `echo`) are skipped here â€” they are handled by the video
+ * (`posterizeTime`, `echo`) are skipped here — they are handled by the video
  * fill's per-frame update (posterizeTime) or a dedicated multi-pass draw (echo),
  * not the CanvasKit image-filter chain. Callers (FillHandler) clear the image
  * filter after drawing.
@@ -36,7 +36,7 @@ export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: F
     }
     const composed = EffectRegistry.compose(pixel, ctx.canvasKit, {
         width: 0, height: 0, centerX: 0, centerY: 0, scale: 1, time: 0,
-        // A media filter is a colour transform on the fill's own pixels â€” it has
+        // A media filter is a colour transform on the fill's own pixels — it has
         // no node motion of its own, and every velocity-derived effect is a shader.
         velocity: { x: 0, y: 0 }, angularVelocity: 0,
     });
@@ -44,7 +44,7 @@ export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: F
 }
 
 /**
- * Compute the imageâ†’canvas transform (3Ã—3 matrix as a 9-tuple, row-major)
+ * Compute the image→canvas transform (3×3 matrix as a 9-tuple, row-major)
  * for a given fill descriptor and the destination bounds. This is exactly the
  * same matrix used by the image shader, so contour paths transformed by it
  * land on the visible image's pixel positions.
@@ -78,7 +78,7 @@ export function computeImageMatrix(
             sx = (fill as any).scaling ?? 1; sy = (fill as any).scaling ?? 1;
             tx = bounds.left; ty = bounds.top;
         } else {
-            // "fill" (default): cover â€” scale uniformly to fill the bounds,
+            // "fill" (default): cover — scale uniformly to fill the bounds,
             // cropping the overflow with the image centered (Figma-style).
             const scale = Math.max(shapeW / imgW, shapeH / imgH);
             sx = scale; sy = scale;

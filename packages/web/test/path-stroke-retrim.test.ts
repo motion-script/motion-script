@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Canvas, Path as CKPath } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { getCanvasKit } from "../src/getter";
@@ -45,7 +45,7 @@ const TRI = "M 0 -100 L 87 50 L -87 50 Z";
 
 describe("PathShape stroke path under retrim (start/end tween)", () => {
     it("rebuilds the open stroke path to the *current* trim after retrim", () => {
-        // Build at end:0.3 (a first frame), then scrub forward via retrim â€” the
+        // Build at end:0.3 (a first frame), then scrub forward via retrim — the
         // path cache's trim-only fast path. The stroke path must track each new
         // range, not freeze at the construction-time trim.
         const shape = new PathShape(ck, getCanvas, { data: TRI, start: 0, end: 0.3 });
@@ -58,7 +58,7 @@ describe("PathShape stroke path under retrim (start/end tween)", () => {
             return totalLength(sp!);
         };
 
-        // Lengths must increase monotonically as `end` grows â€” a frozen (stale)
+        // Lengths must increase monotonically as `end` grows — a frozen (stale)
         // stroke path would report the same length regardless of the new range.
         const l4 = lenAt(0.4);
         const l6 = lenAt(0.6);

@@ -63,8 +63,6 @@ export interface FillRendererContext {
         height: number,
         pixelRatio: number,
     ) => RasterizedSurface | null;
-    offscreenCanvas: HTMLCanvasElement | null;
-    offscreenCtx: CanvasRenderingContext2D | null;
     /**
      * CKImages the renderer materialized for this fill. The handler deletes
      * them after the fill's shapes are drawn so GPU memory is bounded to one

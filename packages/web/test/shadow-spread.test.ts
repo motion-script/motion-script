@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Canvas, Path as CKPath } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 // Relative imports (not the "@/" tsconfig alias): the browser test harness has
@@ -28,8 +28,8 @@ describe("shadow spread paths", () => {
         const path = rect.spreadPath(10)!;
         expect(path).not.toBeNull();
         const b = bounds(path);
-        // 10px on each side â†’ +20 in each dimension, centred on the original.
-        // 100Ã—60 about the origin spans [-50,-30,50,30]; +10 â†’ [-60,-40,60,40].
+        // 10px on each side → +20 in each dimension, centred on the original.
+        // 100×60 about the origin spans [-50,-30,50,30]; +10 → [-60,-40,60,40].
         expect(b.w).toBeCloseTo(120, 3);
         expect(b.h).toBeCloseTo(80, 3);
         expect(b.left).toBeCloseTo(-60, 3);
@@ -48,7 +48,7 @@ describe("shadow spread paths", () => {
 
     it("returns null when a negative spread collapses the rectangle", () => {
         const rect = new RectShape(ck, getCanvas, { x: 0, y: 0, width: 40, height: 40 });
-        // âˆ’20 on each side removes the full 40px width.
+        // −20 on each side removes the full 40px width.
         expect(rect.spreadPath(-20)).toBeNull();
     });
 

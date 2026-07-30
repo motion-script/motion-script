@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Canvas } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 // Relative imports (not the "@/" tsconfig alias): the browser test harness has
@@ -66,7 +66,7 @@ describe("ellipse ratio geometry", () => {
     });
 
     it("partial arc: ratio 0 is a solid wedge reaching the centre", () => {
-        // A 220Â° wedge centred at angle 0 still reaches the centre (0,0).
+        // A 220° wedge centred at angle 0 still reaches the centre (0,0).
         const g = describePath({ x: 0, y: 0, width: W, height: H, sweep: 220, ratio: 0 });
         expect(g.contours).toBe(1);
         expect(g.allClosed).toBe(true);
@@ -82,7 +82,7 @@ describe("ellipse ratio geometry", () => {
     });
 
     // The bug: animating `ratio` from 1 down used to flip the path topology and
-    // make the stroke pop. Verify the family is CONTINUOUS â€” outer extent is
+    // make the stroke pop. Verify the family is CONTINUOUS — outer extent is
     // pinned across the whole range, and the enclosed band grows monotonically
     // (measured via the closed sector's perimeter length) without a sudden jump.
     it("partial arc: geometry is continuous as ratio decreases from 1", () => {
@@ -91,14 +91,14 @@ describe("ellipse ratio geometry", () => {
             describePath({ x: 0, y: 0, width: W, height: H, sweep: 220, ratio: r }),
         );
 
-        // Outer extent (right edge at +halfWidth) is identical for every ratio â€”
+        // Outer extent (right edge at +halfWidth) is identical for every ratio —
         // ratio only moves the INNER edge, never the outer silhouette.
         for (const s of samples) {
             expect(s.right).toBeCloseTo(W / 2, 0);
         }
 
         // Within the sector family (ratio in (0,1)) the topology is constant: a
-        // single closed contour at every step. The OLD code flipped openâ†”closed
+        // single closed contour at every step. The OLD code flipped open↔closed
         // here, which is exactly what made the stroke pop.
         for (let i = 1; i < samples.length - 1; i++) {
             expect(samples[i].contours).toBe(1);
@@ -110,33 +110,33 @@ describe("ellipse ratio geometry", () => {
         // edges move, so step-to-step change stays bounded.
         for (let i = 2; i < samples.length - 1; i++) {
             const step = Math.abs(samples[i].totalLength - samples[i - 1].totalLength);
-            expect(step).toBeLessThan(W); // < one outer half-extent per 0.1â€“0.2 ratio step
+            expect(step).toBeLessThan(W); // < one outer half-extent per 0.1–0.2 ratio step
         }
 
         // A near-1 ratio is a razor-thin band: its perimeter is close to twice the
-        // bare arc length (out-and-back), not some wildly different value â€” i.e. it
+        // bare arc length (out-and-back), not some wildly different value — i.e. it
         // is the smooth limit of the family, the property the old code broke.
         const bareArc = samples[0].totalLength;       // ratio 1, open arc
         const thinBand = samples[1].totalLength;      // ratio 0.99, closed sector
         expect(thinBand).toBeGreaterThan(bareArc);    // closed band is longer
-        expect(thinBand).toBeLessThan(bareArc * 2.2); // but ~2Ã— the arc, not a blowup
+        expect(thinBand).toBeLessThan(bareArc * 2.2); // but ~2× the arc, not a blowup
     });
 
     // The lower end of the range (the scene animates ratio all the way to 0): a
     // near-0 sector and the ratio-0 wedge should be the same closed shape with
-    // nearly the same perimeter â€” no pop as the inner edge reaches the centre.
-    it("partial arc: sector â†’ wedge is continuous as ratio reaches 0", () => {
+    // nearly the same perimeter — no pop as the inner edge reaches the centre.
+    it("partial arc: sector → wedge is continuous as ratio reaches 0", () => {
         const nearZero = describePath({ x: 0, y: 0, width: W, height: H, sweep: 220, ratio: 0.02 });
         const wedge = describePath({ x: 0, y: 0, width: W, height: H, sweep: 220, ratio: 0 });
         expect(nearZero.contours).toBe(1);
         expect(nearZero.allClosed).toBe(true);
         expect(wedge.contours).toBe(1);
-        // Perimeters within a few percent â€” the inner arc has shrunk to nearly a
+        // Perimeters within a few percent — the inner arc has shrunk to nearly a
         // point and the radial edges nearly meet at the centre.
         expect(Math.abs(nearZero.totalLength - wedge.totalLength)).toBeLessThan(wedge.totalLength * 0.05);
     });
 
-    it("full ellipse: annulus â†’ disk is continuous as ratio reaches 0", () => {
+    it("full ellipse: annulus → disk is continuous as ratio reaches 0", () => {
         const nearZero = describePath({ x: 0, y: 0, width: W, height: H, sweep: 360, ratio: 0.02 });
         const disk = describePath({ x: 0, y: 0, width: W, height: H, sweep: 360, ratio: 0 });
         // Outer silhouette identical; the hole has shrunk to a near-point.

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import type { CanvasKit, Surface } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { resolveShadow, type ShadowResolved } from "@motion-script/core";
@@ -14,9 +14,9 @@ beforeAll(async () => {
     ck = await getCanvasKit(wasmUrl);
 });
 
-// Render a 200Ã—200 rect (filled white) centred at the surface middle, with the
+// Render a 200×200 rect (filled white) centred at the surface middle, with the
 // given inner shadow, into a raster surface. Returns a pixel sampler in surface
-// space. The rect spans [40,40]â€“[160,160] on a 200Ã—200 surface.
+// space. The rect spans [40,40]–[160,160] on a 200×200 surface.
 function renderInnerShadow(shadow: ShadowResolved) {
     const W = 200, H = 200;
     const surface = ck.MakeSurface(W, H) as Surface;
@@ -74,7 +74,7 @@ const isShadowed = ([r, g, b, a]: number[]) => a > 200 && r < 120 && g < 120 && 
 describe("inner shadow spread (rendered)", () => {
     it("a large positive spread fills the interior shadow right up to the edge", () => {
         // spread 80 on a 120px-half-size rect: contour shrinks well past collapse,
-        // so the whole interior should be shadowed â€” including the top-left corner
+        // so the whole interior should be shadowed — including the top-left corner
         // that previously fell outside the region's padded rect.
         const shadow = resolveShadow({ blur: 6, fill: "black", spread: 80, offset: { x: 0, y: 0 }, inner: true });
         const at = renderInnerShadow(shadow);

@@ -1,10 +1,10 @@
-﻿import { FontStyle, MeasureScope } from "@motion-script/core";
+import { FontStyle, MeasureScope } from "@motion-script/core";
 import { WebStorageAdapter } from "./storage-adapter";
 import { measureTextCached } from "@motion-script/skia-render/shapes/paragraph-cache";
 
 /**
  * {@link MeasureScope} implementation used by layout (auto/hug sizing) to
- * measure text width before drawing â€” routes through the same paragraph
+ * measure text width before drawing — routes through the same paragraph
  * layout path as rendering so the measured width matches the drawn width
  * exactly, including letter-spacing and font-matching behavior.
  */

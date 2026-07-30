@@ -1,8 +1,8 @@
-﻿import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
+import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
 import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "@motion-script/skia-render/shapes/paragraph-cache";
-// Type-only three usage keeps this a real lazy boundary â€” see three/bridge.ts.
+// Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
 import { warmPendingView3D } from "./three/bridge";
 
 interface CachedPixels {
@@ -24,7 +24,7 @@ interface VideoSession {
     height: number;
     /**
      * One persistent GPU texture-backed image, reused across frames via
-     * Surface.updateTextureFromSource â€” so advancing the playhead is a single
+     * Surface.updateTextureFromSource — so advancing the playhead is a single
      * in-place texture blit, with no CPU readback or per-frame image allocation.
      */
     textureImage: CKImage | null;
@@ -35,7 +35,7 @@ interface VideoSession {
 }
 
 /**
- * A texture-backed image plus the quantized timestamp currently uploaded into it â€”
+ * A texture-backed image plus the quantized timestamp currently uploaded into it —
  * the session's own pairing, factored out so the extra playhead slots
  * ({@link WebStorageAdapter.claimVideoFrame}) reuse their textures the same way.
  */
@@ -64,7 +64,7 @@ function isSvgSrc(src: string): boolean {
 
 
 /**
- * Browser implementation of {@link StorageAdapter} â€” owns all async asset
+ * Browser implementation of {@link StorageAdapter} — owns all async asset
  * decoding (images, video, audio, fonts) so the render loop can stay
  * synchronous. Caches decoded results keyed by source URL/family and exposes
  * synchronous getters (`getCKImage`, `getVideoFrame`, `getAudioBuffer`,
@@ -93,7 +93,7 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Decoded past frames the Echo filter needs, kept in a SEPARATE cache so the
      * forward/back window eviction (which is centered on the current playhead)
-     * never drops them â€” echo taps reach intentionally outside that window. Keyed
+     * never drops them — echo taps reach intentionally outside that window. Keyed
      * by quantized source timestamp; bounded by trimming to the most-recently
      * requested {@link ECHO_CACHE_LIMIT} per src.
      */
@@ -124,19 +124,19 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Quantized timestamps claimed per src during the current render pass, in claim
      * order (see {@link claimVideoFrame}): index 0 holds the session's own texture,
-     * index *n* holds {@link videoAltSlots} slot *nâˆ’1*. Cleared by
+     * index *n* holds {@link videoAltSlots} slot *n−1*. Cleared by
      * {@link beginRenderPass}.
      */
     private videoFrameClaims = new Map<string, number[]>();
     /**
-     * Extra textures per src â€” one per *simultaneously visible* time of that clip
+     * Extra textures per src — one per *simultaneously visible* time of that clip
      * beyond the first. Persistent and updated in place exactly like a session's
      * own texture, so a second playhead costs a blit per frame, not an allocation.
      */
     private videoAltSlots = new Map<string, VideoTextureSlot[]>();
     /**
      * Whether playback is live. When false (paused / scrubbing settled), the
-     * adapter does no look-ahead prefetch â€” it decodes only the exact frame the
+     * adapter does no look-ahead prefetch — it decodes only the exact frame the
      * current render needs, so a paused clip never drains a backlog of stale
      * decode jobs onto the canvas. Toggled by the playback controller.
      */
@@ -166,13 +166,13 @@ export class WebStorageAdapter extends StorageAdapter {
     private fontEpoch = 0;
 
     /**
-     * Frames to keep cached in the dominant direction of motion. With a 1400Ã—800
-     * RGBA frame at ~4.5 MB, 96 frames â‰ˆ 430 MB of GPU memory â€” generous but
+     * Frames to keep cached in the dominant direction of motion. With a 1400×800
+     * RGBA frame at ~4.5 MB, 96 frames ≈ 430 MB of GPU memory — generous but
      * bounded regardless of clip length.
      */
     private static readonly FORWARD_WINDOW_FRAMES = 96;
     /**
-     * Smaller back-window â€” enough to absorb brief reverses without re-decoding,
+     * Smaller back-window — enough to absorb brief reverses without re-decoding,
      * but not so large that ping-pong loops eat all VRAM.
      */
     private static readonly BACK_WINDOW_FRAMES = 32;
@@ -183,7 +183,7 @@ export class WebStorageAdapter extends StorageAdapter {
      */
     private static readonly ECHO_CACHE_LIMIT = 48;
     /**
-     * Max extra textures per src (see {@link videoAltSlots}) â€” i.e. how many
+     * Max extra textures per src (see {@link videoAltSlots}) — i.e. how many
      * different times of one clip can be on screen together. Generous for a
      * comparison grid; past it the last slot is reused.
      */
@@ -200,7 +200,7 @@ export class WebStorageAdapter extends StorageAdapter {
         return this.canvasKit;
     }
 
-    // â”€â”€â”€ Image â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Image ───────────────────────────────────────────────────────────────
 
     /**
      * Fetches and decodes `src` to RGBA pixels (cached for later GPU upload via
@@ -250,8 +250,8 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Rasterize an SVG to RGBA pixels. Unlike raster formats, SVG is vector, so
      * we render it at the size it's *drawn* on screen rather than its nominal
-     * `viewBox` size â€” a 48Ã—48 logo placed in a 512px box must rasterize at
-     * ~512px (Ã— devicePixelRatio) to stay sharp. `createImageBitmap` can't
+     * `viewBox` size — a 48×48 logo placed in a 512px box must rasterize at
+     * ~512px (× devicePixelRatio) to stay sharp. `createImageBitmap` can't
      * decode SVG reliably across browsers (Chrome throws on an SVG Blob), so we
      * decode through an `HTMLImageElement`, which every browser supports.
      */
@@ -306,7 +306,7 @@ export class WebStorageAdapter extends StorageAdapter {
      * Pick the raster size for an SVG, *preserving its intrinsic aspect ratio*.
      * The decoded image must keep the SVG's true proportions so the downstream
      * fit/crop/fill shader matrix (see computeImageMatrix) can position it like
-     * any raster image â€” if we instead stretched the SVG to the layout box here,
+     * any raster image — if we instead stretched the SVG to the layout box here,
      * its aspect ratio would already be baked in and `fit` would be a no-op.
      *
      * We compute one uniform scale: how big the SVG renders on screen (the
@@ -333,7 +333,7 @@ export class WebStorageAdapter extends StorageAdapter {
         const boxH = height > 0 ? Math.min(height, this.viewport.height) : 0;
         const onScreen = Math.max(boxW, boxH);
 
-        // Scale the longest intrinsic side up to the on-screen footprint Ã— dpr.
+        // Scale the longest intrinsic side up to the on-screen footprint × dpr.
         const longestIntrinsic = Math.max(intrinsicW, intrinsicH);
         const scale = onScreen > 0 ? (onScreen * dpr) / longestIntrinsic : 1;
 
@@ -361,13 +361,13 @@ export class WebStorageAdapter extends StorageAdapter {
      *
      * The 3D backend needs raw bytes rather than a CanvasKit image ({@link
      * getCKImage}) because it uploads them into a WebGL texture on its own
-     * context. Same cache, same decode â€” just a different destination.
+     * context. Same cache, same decode — just a different destination.
      */
     getImagePixels(src: string): { pixels: Uint8Array; width: number; height: number } | null {
         return this.imagePixels.get(src) ?? null;
     }
 
-    // â”€â”€â”€ 3D compositing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── 3D compositing ──────────────────────────────────────────────────────
 
     /**
      * Persistent CanvasKit texture per 3D node, so a 60 fps 3D scene doesn't
@@ -377,13 +377,13 @@ export class WebStorageAdapter extends StorageAdapter {
 
     /**
      * Upload a 3D renderer's canvas into a GPU-resident CanvasKit image, creating
-     * the texture on first use and updating it in place afterwards â€” the same
+     * the texture on first use and updating it in place afterwards — the same
      * pattern decoded video frames use ({@link uploadFrame}).
      *
      * `srcIsPremul: true` is load-bearing. three's `WebGLRenderer` defaults to
      * `premultipliedAlpha: true`, so its canvas holds premultiplied pixels; the
      * third argument defaults to *unpremultiplied*, and omitting it makes Skia
-     * premultiply already-premultiplied data â€” which shows up as dark fringes on
+     * premultiply already-premultiplied data — which shows up as dark fringes on
      * every antialiased 3D edge.
      *
      * The returned image is owned by this adapter (keyed by node), not the caller:
@@ -418,7 +418,7 @@ export class WebStorageAdapter extends StorageAdapter {
 
         if (!image) {
             // CanvasKit's TextureSource type omits canvas elements, though the
-            // underlying texImage2D upload accepts them â€” same cast the video path
+            // underlying texImage2D upload accepts them — same cast the video path
             // makes for ImageBitmap.
             const made = surface.makeImageFromTextureSource(source as never, info, true);
             if (!made) return null;
@@ -430,19 +430,19 @@ export class WebStorageAdapter extends StorageAdapter {
         return image;
     }
 
-    /** Release a 3D node's texture â€” called when its node is swept. */
+    /** Release a 3D node's texture — called when its node is swept. */
     release3DTexture(key: string): void {
         this.view3DTextures.get(key)?.delete();
         this.view3DTextures.delete(key);
     }
 
-    // â”€â”€â”€ Video â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Video ───────────────────────────────────────────────────────────────
 
     /**
      * Receive the GPU surface so decoded video frames can upload straight to
      * texture. Called by the render context on mount/unmount. A texture-backed
      * image is only valid for the surface that made it, so swapping surfaces
-     * (unmount â†’ remount, HMR) invalidates each session's cached image; it is
+     * (unmount → remount, HMR) invalidates each session's cached image; it is
      * lazily recreated against the new surface on the next frame.
      */
     setSurface(surface: Surface | null): void {
@@ -474,7 +474,7 @@ export class WebStorageAdapter extends StorageAdapter {
     }
 
     /**
-     * Open a streaming decode session for `src` (deduped â€” runs once per clip,
+     * Open a streaming decode session for `src` (deduped — runs once per clip,
      * like {@link loadImage}) and warm the first frame around `trimStart` so the
      * first synchronous render hits cache. The rest of the clip is *not* decoded
      * up front; frames stream in on-demand as {@link getVideoFrame} advances the
@@ -522,7 +522,7 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Synchronously return the GPU image for the frame at `timestamp` (source
      * seconds). The session keeps one texture-backed image and updates it in place
-     * (Surface.updateTextureFromSource) from the decoded {@link ImageBitmap} â€”
+     * (Surface.updateTextureFromSource) from the decoded {@link ImageBitmap} —
      * advancing the playhead is a single GPU blit, no CPU readback and no per-frame
      * allocation. On a miss it records the exact frame (for a blocking re-render)
      * and, while playing, primes the sequential decoder; it returns the nearest
@@ -546,7 +546,7 @@ export class WebStorageAdapter extends StorageAdapter {
         const haveExact = !!frame && this.quantizeTs(frame.timestamp, session.frameStep) === exactKey;
 
         if (!haveExact) {
-            // Not warm yet â€” let a blocking caller (seek/screenshot/export) decode it
+            // Not warm yet — let a blocking caller (seek/screenshot/export) decode it
             // and re-render. While playing, also drive the sequential decoder forward.
             this.pendingVideoFrames.set(src, timestamp);
             if (this.playing) this.driveSequentialDecode(src, timestamp);
@@ -573,7 +573,7 @@ export class WebStorageAdapter extends StorageAdapter {
      *
      * A session's texture is updated in place and Skia doesn't resolve a draw until
      * the surface flushes, so two draws of the *same* clip at *different* times
-     * would both sample whatever was uploaded last â€” one loop mode wearing
+     * would both sample whatever was uploaded last — one loop mode wearing
      * another's frame, or a torn read painting black. So each distinct timestamp a
      * pass asks for gets its own texture: the first claim takes the session's, the
      * rest take {@link videoAltSlots} by claim order. Two draws asking for the same
@@ -582,13 +582,13 @@ export class WebStorageAdapter extends StorageAdapter {
      *
      * Slots are persistent and updated in place exactly like the session's own, so
      * a *scrubbing* timestamp costs one blit per frame rather than a new texture.
-     * Every returned image is adapter-owned â€” callers keep `getVideoFrame`'s
+     * Every returned image is adapter-owned — callers keep `getVideoFrame`'s
      * do-not-delete contract, unlike the Echo path's caller-owned taps.
      *
      * Like the primary path, a time whose exact frame isn't decoded yet paints the
      * nearest decoded one rather than nothing (never blank mid-stream), registers
      * the miss for {@link warmPendingVideo} so blocking callers land it exactly,
-     * and â€” while playing â€” starts the decode immediately, since the sequential
+     * and — while playing — starts the decode immediately, since the sequential
      * prefetch window only follows the *primary* playhead.
      */
     claimVideoFrame(src: string, timestamp: number): CKImage | null {
@@ -600,7 +600,7 @@ export class WebStorageAdapter extends StorageAdapter {
         let claims = this.videoFrameClaims.get(src);
         if (!claims) { claims = []; this.videoFrameClaims.set(src, claims); }
 
-        // Already claimed for this time in this pass â€” reuse that texture.
+        // Already claimed for this time in this pass — reuse that texture.
         const claimed = claims.indexOf(key);
         if (claimed === 0) return session.textureImage;
         if (claimed > 0) return this.videoAltSlots.get(src)?.[claimed - 1]?.image ?? null;
@@ -615,7 +615,7 @@ export class WebStorageAdapter extends StorageAdapter {
         }
 
         // Beyond the slot cap, reuse the last one. That reintroduces the collision
-        // for the overflow draws only, rather than dropping them â€” a scene with
+        // for the overflow draws only, rather than dropping them — a scene with
         // this many simultaneous times of one clip is pathological.
         const slot = Math.min(claims.length - 1, WebStorageAdapter.ALT_SLOT_LIMIT - 1);
         const image = this.uploadAltFrame(src, session, timestamp, slot);
@@ -631,7 +631,7 @@ export class WebStorageAdapter extends StorageAdapter {
         this.videoAltSlots.clear();
     }
 
-    /** Upload the frame for a non-primary timestamp into its slot â€” see {@link claimVideoFrame}. */
+    /** Upload the frame for a non-primary timestamp into its slot — see {@link claimVideoFrame}. */
     private uploadAltFrame(
         src: string,
         session: VideoSession,
@@ -678,7 +678,7 @@ export class WebStorageAdapter extends StorageAdapter {
     ): DecodedVideoFrame | null {
         const step = session.frameStep;
         const clamped = Math.max(0, Math.min(timestamp, session.durationSec));
-        // The echo cache first â€” its entries survive the playhead window's
+        // The echo cache first — its entries survive the playhead window's
         // eviction, which is centred on the *primary* head and so routinely
         // excludes wherever this one is looking.
         const echo = this.videoEchoFrames.get(src);
@@ -688,13 +688,13 @@ export class WebStorageAdapter extends StorageAdapter {
             this.nearestWithin(window, clamped, step);
         if (exact) return exact;
 
-        // Queue it on the echo hatch â€” a per-src *set*, so several concurrent
+        // Queue it on the echo hatch — a per-src *set*, so several concurrent
         // heads all get warmed, unlike pendingVideoFrames' one-per-src slot.
         let set = this.pendingEchoFrames.get(src);
         if (!set) { set = new Set(); this.pendingEchoFrames.set(src, set); }
         set.add(clamped);
         // While playing there is no blocking caller to drain that hatch, and the
-        // sequential prefetch only runs ahead of the primary head â€” so start this
+        // sequential prefetch only runs ahead of the primary head — so start this
         // one's decode now or it would never arrive.
         if (this.playing) void this.decodeEchoFrameAt(src, clamped);
 
@@ -710,7 +710,7 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * The decoded length of `src` in seconds, or `0` when its session hasn't
      * opened yet (or the src isn't a video). Read as a video fill resolves its
-     * own timestamp â€” the loop cycle and the `trimEnd` default come from it.
+     * own timestamp — the loop cycle and the `trimEnd` default come from it.
      *
      * This is the *container's* duration rather than the build-time manifest's,
      * so looping still works for a source whose manifest probe couldn't read one.
@@ -724,20 +724,20 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Like {@link getVideoFrame}, but returns an INDEPENDENT, caller-owned image
      * for a past `timestamp` instead of the shared per-session texture. Used by
-     * the video Echo filter, which needs several frames resident at once â€” calling
+     * the video Echo filter, which needs several frames resident at once — calling
      * getVideoFrame twice would clobber the single session texture. Returns the
      * nearest already-decoded frame within the warm window, or null if none is
      * decoded (the caller simply skips that echo tap, so a cold seek degrades to
      * the current frame and the trail fills in as playback warms the back window).
      *
      * The caller OWNS the returned image and must push it to `transientImages` so
-     * the fill handler deletes it after the draw â€” that bounds GPU memory to the
+     * the fill handler deletes it after the draw — that bounds GPU memory to the
      * tap count for the duration of one shape's draw.
      *
      * On a miss (the exact past frame isn't decoded yet) it records the timestamp
      * for {@link warmPendingVideo} and returns null, so the tap is skipped this
      * pass and a blocking caller (seek/screenshot/export) decodes it and re-renders
-     * â€” making the trail frame-accurate. During live playback the back-window
+     * — making the trail frame-accurate. During live playback the back-window
      * fills these in, so misses settle within a frame or two.
      */
     getVideoFrameImage(src: string, timestamp: number): CKImage | null {
@@ -747,7 +747,7 @@ export class WebStorageAdapter extends StorageAdapter {
         const clamped = Math.max(0, Math.min(timestamp, session.durationSec));
         const step = session.frameStep;
         // The decoded sample for a requested time lands on the source's own frame
-        // grid, which may quantize to an adjacent key â€” so match the NEAREST frame
+        // grid, which may quantize to an adjacent key — so match the NEAREST frame
         // within half a frame step (like the playback path's nearestDecoded) rather
         // than an exact key. Prefer the dedicated echo cache, then a frame already
         // warm in the playback window (lets live playback skip a decode round-trip).
@@ -755,7 +755,7 @@ export class WebStorageAdapter extends StorageAdapter {
             this.nearestWithin(this.videoEchoFrames.get(src), clamped, step) ??
             this.nearestWithin(this.videoFrames.get(src), clamped, step);
         if (!frame) {
-            // Not decoded â€” register it so warmPendingVideo() decodes it into the
+            // Not decoded — register it so warmPendingVideo() decodes it into the
             // echo cache for the next (re-)render. Skip this tap for now.
             let set = this.pendingEchoFrames.get(src);
             if (!set) { set = new Set(); this.pendingEchoFrames.set(src, set); }
@@ -801,7 +801,7 @@ export class WebStorageAdapter extends StorageAdapter {
     /**
      * Decode every exact frame a prior render asked for but couldn't satisfy, and
      * report whether there were any. A blocking caller (seek / screenshot / export)
-     * renders once, awaits this, and re-renders if it returns true â€” guaranteeing
+     * renders once, awaits this, and re-renders if it returns true — guaranteeing
      * the still is frame-accurate even on a cold jump, without any render site
      * needing to know the per-fill playback math. Returns false once everything the
      * last render asked for is warm, so the re-render loop terminates.
@@ -819,7 +819,7 @@ export class WebStorageAdapter extends StorageAdapter {
         this.pendingEchoFrames.clear();
 
         // 3D shares this hatch. A `view3D` op that couldn't be drawn
-        // synchronously â€” the three runtime still importing on a cold first frame â€”
+        // synchronously — the three runtime still importing on a cold first frame —
         // registers itself, and every existing caller of this method (export,
         // screenshot, seek) already re-renders while it returns true. So 3D warms
         // up frame-accurately without any of those call sites knowing about it.
@@ -838,7 +838,7 @@ export class WebStorageAdapter extends StorageAdapter {
 
     /**
      * Sequentially decode forward from `timestamp` to fill the window ahead, using
-     * mediabunny's monotonic pipeline (each packet decoded at most once) â€” far
+     * mediabunny's monotonic pipeline (each packet decoded at most once) — far
      * cheaper than a random `getCanvas` per frame. At most one pass runs per src at
      * a time; it stops as soon as playback pauses or the playhead jumps away.
      */
@@ -863,7 +863,7 @@ export class WebStorageAdapter extends StorageAdapter {
                     if (!store.has(key)) {
                         store.set(key, { timestamp: wrapped.timestamp, bitmap: await this.snapshot(wrapped.canvas) });
                     }
-                    // Bail if the playhead jumped backward/away or playback paused â€”
+                    // Bail if the playhead jumped backward/away or playback paused —
                     // a fresh pass will be started for the new position.
                     const head = this.videoPlayhead.get(src) ?? timestamp;
                     if (!this.playing || head < timestamp - step || head > end) break;
@@ -905,14 +905,14 @@ export class WebStorageAdapter extends StorageAdapter {
 
     /**
      * Decode a single past frame into the dedicated {@link videoEchoFrames} cache
-     * for the Echo filter. Like {@link decodeAt} but it does NOT window-evict â€” echo
+     * for the Echo filter. Like {@link decodeAt} but it does NOT window-evict — echo
      * taps reach intentionally outside the playback window, so they must survive the
      * current playhead's eviction. Bounds the cache to {@link ECHO_CACHE_LIMIT}
      * frames per src (oldest-inserted dropped first). Idempotent per quantized ts.
      *
      * Concurrent calls for the same frame join one decode: a second playhead asks
      * every frame until its frame lands ({@link decodedFrameFor}), and each decode
-     * is an async `getCanvas` â€” without this, one cold scrub would queue the same
+     * is an async `getCanvas` — without this, one cold scrub would queue the same
      * seek dozens of times.
      */
     private decodeEchoFrameAt(src: string, timestampSec: number): Promise<void> {
@@ -1060,14 +1060,14 @@ export class WebStorageAdapter extends StorageAdapter {
                 };
             }
         } catch {
-            // ignore â€” fall through to defaults
+            // ignore — fall through to defaults
         }
         return { frameStep: 1 / 30, width: target?.width ?? 1, height: target?.height ?? 1 };
     }
 
     /**
      * Pick the decode resolution for a video, preserving aspect ratio, the same
-     * way {@link imageTargetPixels} does for images â€” downscale only when the
+     * way {@link imageTargetPixels} does for images — downscale only when the
      * on-screen target is smaller than the source.
      */
     private videoTargetPixels(src: string, width: number, height: number): { width: number; height: number } | null {
@@ -1105,7 +1105,7 @@ export class WebStorageAdapter extends StorageAdapter {
         );
     }
 
-    // â”€â”€â”€ Audio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Audio ───────────────────────────────────────────────────────────────
 
     /** Fetches and decodes `src` into a Web Audio `AudioBuffer`, cached for {@link getAudioBuffer}. No-op if already cached. */
     async loadAudio(
@@ -1133,13 +1133,13 @@ export class WebStorageAdapter extends StorageAdapter {
         return this.audioBuffers.get(src) ?? null;
     }
 
-    // â”€â”€â”€ Font â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Font ────────────────────────────────────────────────────────────────
 
-    /** Registers every weight/slant file for `fontFamily` with the shared {@link TypefaceFontProvider} under the bare family name (once per family â€” see {@link registeredFontFamilies}); enables dynamic/tweenable weight matching at draw time. */
+    /** Registers every weight/slant file for `fontFamily` with the shared {@link TypefaceFontProvider} under the bare family name (once per family — see {@link registeredFontFamilies}); enables dynamic/tweenable weight matching at draw time. */
     async loadFont(key: string, fontFamily: string, _fontWeight: number): Promise<void> {
         // Register every weight/slant of the family under its bare family name so
         // CanvasKit's matcher (see resolveTypeface) can pick the closest file for
-        // any requested weight â€” that's what gives us dynamic, tween-able weights
+        // any requested weight — that's what gives us dynamic, tween-able weights
         // instead of needing an exact `family@weight` file. Done once per family.
         if (this.registeredFontFamilies.has(fontFamily)) return;
 
@@ -1177,7 +1177,7 @@ export class WebStorageAdapter extends StorageAdapter {
         return this.fontEpoch;
     }
 
-    // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Lifecycle ───────────────────────────────────────────────────────────
 
     dispose(): void {
         if (this.disposed) return;

@@ -1,4 +1,4 @@
-﻿import type {
+import type {
     CanvasKit,
     Paint,
 } from "@motion-script/canvaskit";
@@ -33,9 +33,6 @@ export interface DrawnShape {
  * applyFills runs, every required CKImage is already cached.
  */
 export class FillHandler {
-    offscreenCanvas: HTMLCanvasElement | null = null;
-    offscreenCtx: CanvasRenderingContext2D | null = null;
-
     private canvasKit: CanvasKit;
     private getPaint: () => Paint;
     private getCanvas: () => import("@motion-script/canvaskit").Canvas;
@@ -51,11 +48,11 @@ export class FillHandler {
     private rasterizeSurface: FillRendererContext["rasterizeSurface"];
 
     /**
-     * Per-frame paint slots: node id â†’ resolved fill â†’ index.
+     * Per-frame paint slots: node id → resolved fill → index.
      *
      * Keyed by the fill object's *identity*, not by paint order, because one
      * frame hands the very same `FillResolved` to the shadow pass, the fill pass
-     * and the inner-shadow pass â€” a counter would treat those as three different
+     * and the inner-shadow pass — a counter would treat those as three different
      * fills and, for a 3D fill, render the scene three times. Identity also keeps
      * a slot stable across frames for any fixed scene structure, since the
      * first-appearance order doesn't shift when unrelated layers come and go.
@@ -154,9 +151,9 @@ export class FillHandler {
 
     // Bounds for a fill, given its space. The drawn shapes are always painted as
     // one unit, so every space resolves against a single rect:
-    //   local  â†’ the shape's own (union) bounds â€” pinned to the figure.
-    //   parent â†’ the parent node's layout rect.
-    //   global â†’ the render viewport.
+    //   local  → the shape's own (union) bounds — pinned to the figure.
+    //   parent → the parent node's layout rect.
+    //   global → the render viewport.
     // parent/global fall back to the union bounds when no reference rect exists.
     boundsForSpace(
         space: FillSpace,
@@ -172,10 +169,19 @@ export class FillHandler {
         }
     }
 
-    dispose(): void {
-        this.offscreenCanvas = null;
-        this.offscreenCtx = null;
-    }
+    /**
+     * Nothing to release: the handler owns no CanvasKit objects of its own (the
+     * paint and canvas belong to the render context, and per-fill
+     * `transientImages` are freed inside `applyFills`). Kept because
+     * `RenderContext.dispose()` calls it and a handler that later acquires its own
+     * resources should already have the hook.
+     *
+     * Deliberately does *not* call `FillRenderRegistry.disposeRenderers()`: that
+     * registry is static and shared by every live render context, so freeing its
+     * renderers' caches here would pull shaders out from under a second context
+     * (the player's, while an export's context is torn down).
+     */
+    dispose(): void { }
 
     getCanvasKitBlendMode(blend: BlendMode): any {
         return getCanvasKitBlendMode(this.canvasKit, blend);
@@ -200,8 +206,6 @@ export class FillHandler {
             paintSlot: (fill) => this.paintSlot(fill),
             rasterizeSurface: this.rasterizeSurface,
             preflighted: new Map(),
-            offscreenCanvas: this.offscreenCanvas,
-            offscreenCtx: this.offscreenCtx,
             transientImages: [],
             // Replaced per applyFills() call with a closure over the current shapes.
             drawShape: () => { },
@@ -214,7 +218,7 @@ export class FillHandler {
 
     /**
      * Run every fill's optional pre-paint pass, before the shared paint is
-     * configured â€” see {@link FillRenderer.preflight}.
+     * configured — see {@link FillRenderer.preflight}.
      *
      * The bounds are set per fill exactly as the paint loop does, because a
      * renderer sizing an offscreen buffer needs the same rect it will later shade.
@@ -287,10 +291,6 @@ export class FillHandler {
             this.currentBounds = bounds;
             rendererCtx.skipDefaultDraw = false;
             if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
-
-            // Sync back mutable fields written by renderers
-            this.offscreenCanvas = rendererCtx.offscreenCanvas;
-            this.offscreenCtx = rendererCtx.offscreenCtx;
 
             // A renderer (e.g. Echo) may have drawn the figure itself; otherwise
             // perform the default single pass with the prepared paint.
