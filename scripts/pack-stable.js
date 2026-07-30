@@ -200,9 +200,8 @@ function packTarballs(tarballByName, thirdPartyDeps) {
  * since the repack then produces the tarball for real.
  */
 const NEW_SINCE_BASELINE = new Set([
-    // Extracted out of @motion-script/web; the baseline's `web` is self-contained
-    // and has no dependency on it, so the stable side renders without it.
-    '@motion-script/skia-render',
+    // (empty) — @motion-script/skia-render lived here while the baseline predated
+    // it; the baseline has since been advanced and now ships its tarball.
 ]);
 
 /**
