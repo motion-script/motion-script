@@ -1,6 +1,6 @@
 import type { EffectGeometry, EffectHandler, EffectResources } from "./handler";
 import type { CanvasKit, Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { type TextureEffect } from "@motion-script/core";
 
 /**

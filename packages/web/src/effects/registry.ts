@@ -35,6 +35,12 @@ import { streakEffectHandler } from "./streak";
 import { godRaysEffectHandler } from "./god-rays";
 import { oilPaintEffectHandler } from "./oil-paint";
 import { textureEffectHandler } from "./texture";
+import { displaceEffectHandler } from "./displace";
+import { waveEffectHandler } from "./wave";
+import { twirlEffectHandler } from "./twirl";
+import { progressiveBlurEffectHandler } from "./progressive-blur";
+import { kaleidoscopeEffectHandler } from "./kaleidoscope";
+import { trailsEffectHandler } from "./trails";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -178,6 +184,12 @@ EffectRegistry.register(streakEffectHandler);
 EffectRegistry.register(godRaysEffectHandler);
 EffectRegistry.register(oilPaintEffectHandler);
 EffectRegistry.register(textureEffectHandler);
+EffectRegistry.register(displaceEffectHandler);
+EffectRegistry.register(waveEffectHandler);
+EffectRegistry.register(twirlEffectHandler);
+EffectRegistry.register(progressiveBlurEffectHandler);
+EffectRegistry.register(kaleidoscopeEffectHandler);
+EffectRegistry.register(trailsEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the

@@ -225,6 +225,8 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `effect-chain-order`: Two shader effects in opposite orders must differ (author-order guard)
 - [ ] `effect-sksl-custom`: Custom SkSL shader as layer effect
 - [ ] `effect-sksl-backdrop`: Custom SkSL shader processing backdrop
+- [ ] `preset-vhs`: A five-effect chain spanning both effect surfaces (shader/filter partition guard)
+- [ ] `preset-comic`: halftone `separation: 'cmyk'` on a process screen
 
 ---
 
@@ -385,13 +387,3 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `opacity-stroke`: Stroke-level opacity animated
 - [ ] `opacity-passthrough-vs-normal`: Pass-through vs normal node blend isolation with semi-transparent children
 
----
-
-## Presets
-
-- [ ] `preset-riso`: Presets.riso ramping in from its no-op state
-- [ ] `preset-vhs`: Presets.vhs ramping in from its no-op state
-- [ ] `preset-crt`: Presets.crt ramping in from its no-op state
-- [ ] `preset-gameboy`: Presets.gameboy ramping in (also guards chain order)
-- [ ] `preset-comic`: Presets.comic on a CMYK process screen
-- [ ] `preset-paper`: Presets.paper — the texture-based material template

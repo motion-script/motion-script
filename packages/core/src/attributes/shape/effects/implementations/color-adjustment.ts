@@ -20,6 +20,15 @@ export interface ColorAdjustmentEffect extends ModedEffect {
     contrast?: number;
     /** 0…3 (1 = unchanged). Scales colour saturation uniformly. */
     saturation?: number;
+    /**
+     * Hue rotation in **degrees** (0 = unchanged). Wraps, so a linear tween over
+     * 360 cycles the whole wheel and lands back where it started.
+     *
+     * The luma-preserving rotation, so shifting hue does not also change how
+     * light anything reads — unlike `invert({ channel: 'hue' })`, which is the
+     * fixed 180° case of this and stays for symmetry with the other inversions.
+     */
+    hue?: number;
     /** −1…1 (0 = unchanged). Boosts muted colours more than already-vivid ones. */
     vibrance?: number;
     /** −1…1 (0 = unchanged). Lifts or crushes the shadow end. */
@@ -38,6 +47,7 @@ export const colorAdjustmentEffect: EffectData<ColorAdjustmentEffect> = {
         brightness: lerpNumber(from.brightness ?? 0, to.brightness ?? 0, t),
         contrast: lerpNumber(from.contrast ?? 1, to.contrast ?? 1, t),
         saturation: lerpNumber(from.saturation ?? 1, to.saturation ?? 1, t),
+        hue: lerpNumber(from.hue ?? 0, to.hue ?? 0, t),
         vibrance: lerpNumber(from.vibrance ?? 0, to.vibrance ?? 0, t),
         shadows: lerpNumber(from.shadows ?? 0, to.shadows ?? 0, t),
         highlights: lerpNumber(from.highlights ?? 0, to.highlights ?? 0, t),
@@ -49,6 +59,7 @@ export const colorAdjustmentEffect: EffectData<ColorAdjustmentEffect> = {
         a.brightness === b.brightness &&
         a.contrast === b.contrast &&
         a.saturation === b.saturation &&
+        a.hue === b.hue &&
         a.vibrance === b.vibrance &&
         a.shadows === b.shadows &&
         a.highlights === b.highlights &&

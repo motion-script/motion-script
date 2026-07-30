@@ -1,7 +1,7 @@
 
 
 import { createScene, createRef, Node, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
-import { STAGE, SAMPLES, TRAVELLING_SAMPLE, sampleGrid, sampleRow } from "./effect-demo";
+import { STAGE, SAMPLES, TRAVELLING_SAMPLE, sampleGrid, sampleRow } from "../../../shared/effect-demo";
 
 const LABEL = 'Motion blur';
 

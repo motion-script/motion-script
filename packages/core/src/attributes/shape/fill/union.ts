@@ -28,6 +28,7 @@ import { ConicGradientFillProp, ConicGradientFillResolved } from "./implementati
 import { ImageFillProp, ImageFillResolved } from "./implementations/image";
 import { LinearGradientFillProp, LinearGradientFillResolved } from "./implementations/linear-gradient";
 import { NoiseFillProp, NoiseFillResolved } from "./implementations/noise";
+import { FractalNoiseFillProp, FractalNoiseFillResolved } from "./implementations/fractal-noise";
 import { RadialGradientFillProp, RadialGradientFillResolved } from "./implementations/radial-gradient";
 import { StripeFillProp, StripeFillResolved } from "./implementations/stripe";
 import { VideoFillProp, VideoFillResolved } from "./implementations/video";
@@ -59,6 +60,7 @@ export type FillProp =
     | Graphics3D
     | WithCommon<SolidFillProp>
     | WithCommon<NoiseFillProp>
+    | WithCommon<FractalNoiseFillProp>
     | WithCommon<StripeFillProp>
     | WithCommon<LinearGradientFillProp>
     | WithCommon<RadialGradientFillProp>
@@ -71,6 +73,7 @@ export type FillProp =
 export type FillResolved =
     | WithCommon<SolidFillResolved>
     | WithCommon<NoiseFillResolved>
+    | WithCommon<FractalNoiseFillResolved>
     | WithCommon<StripeFillResolved>
     | WithCommon<LinearGradientFillResolved>
     | WithCommon<RadialGradientFillResolved>

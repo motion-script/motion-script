@@ -17,6 +17,7 @@ export type { ConicGradientFillProp, ConicGradientFillResolved } from './impleme
 export type { ImageFit as ImageFillMode, ImageTransform, ImageFillProp, ImageFillResolved } from './implementations/image';
 export type { LinearGradientFillProp, LinearGradientFillResolved } from './implementations/linear-gradient';
 export type { NoiseFillProp, NoiseFillResolved } from './implementations/noise';
+export type { FractalNoiseFillProp, FractalNoiseFillResolved, FractalNoiseBasis } from './implementations/fractal-noise';
 export type { RadialGradientFillProp, RadialGradientFillResolved } from './implementations/radial-gradient';
 export type { StripeFillProp, StripeFillResolved } from './implementations/stripe';
 export type { VideoFillProp, VideoFillResolved } from './implementations/video';

@@ -35,6 +35,12 @@ import { streakEffect } from "./implementations/streak";
 import { godRaysEffect } from "./implementations/god-rays";
 import { oilPaintEffect } from "./implementations/oil-paint";
 import { textureEffect } from "./implementations/texture";
+import { displaceEffect } from "./implementations/displace";
+import { waveEffect } from "./implementations/wave";
+import { twirlEffect } from "./implementations/twirl";
+import { progressiveBlurEffect } from "./implementations/progressive-blur";
+import { kaleidoscopeEffect } from "./implementations/kaleidoscope";
+import { trailsEffect } from "./implementations/trails";
 import { EffectData, EffectSurface } from "./effect-data";
 import type { AssetTracker } from "@/assets/tracker";
 
@@ -75,7 +81,21 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["godRays", godRaysEffect as EffectData<SceneEffect>],
     ["oilPaint", oilPaintEffect as EffectData<SceneEffect>],
     ["texture", textureEffect as EffectData<SceneEffect>],
+    ["displace", displaceEffect as EffectData<SceneEffect>],
+    ["wave", waveEffect as EffectData<SceneEffect>],
+    ["twirl", twirlEffect as EffectData<SceneEffect>],
+    ["progressiveBlur", progressiveBlurEffect as EffectData<SceneEffect>],
+    ["kaleidoscope", kaleidoscopeEffect as EffectData<SceneEffect>],
+    ["trails", trailsEffect as EffectData<SceneEffect>],
 ]);
+
+/**
+ * Every registered effect type, in registration order.
+ *
+ * The roster itself, so a contract test can sweep the whole set rather than a
+ * hand-kept list that silently misses whatever was added last.
+ */
+export const effectTypes = (): string[] => [...EFFECTS.keys()];
 
 /**
  * How a backend must realise `effect` — see {@link EffectSurface}. Unknown types

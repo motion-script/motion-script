@@ -4,7 +4,17 @@ sidebar_position: 26
 
 # Color Adjustment
 
-Photographic grading — brightness, contrast, saturation, vibrance, shadows, highlights, temperature and tint — as a scene effect. The grading panel `ImageFilters.colorAdjustment` gives an image fill, available on **any node**.
+Photographic grading — brightness, contrast, saturation, hue, vibrance, shadows, highlights, temperature and tint — as a scene effect. The grading panel `ImageFilters.colorAdjustment` gives an image fill, available on **any node**.
+
+## Hue rotation
+
+`hue` rotates the colour wheel by an angle in degrees, preserving luma — so colours change without anything changing how light it reads. It wraps, which means a linear tween over `360` cycles the whole wheel and lands exactly back where it started:
+
+```tsx
+yield* card.to({ effects: Effects.colorAdjustment({ hue: 360 }) }, 4, linear);
+```
+
+`Effects.invert({ channel: 'hue' })` is the fixed 180° case of the same rotation, kept for symmetry with the other channel inversions.
 
 ![Color adjustment effect demo](/effects/color-adjustment.png)
 
@@ -33,6 +43,7 @@ Every field is optional and defaults to neutral.
 | `brightness` | `number` | `0` | −1…1. Shifts overall lightness without clipping the way exposure does |
 | `contrast` | `number` | `1` | 0…2. Spreads highlights and shadows further apart |
 | `saturation` | `number` | `1` | 0…3. Scales color saturation uniformly |
+| `hue` | `number` | `0` | Hue rotation in **degrees**, luma-preserving. Wraps at 360 |
 | `vibrance` | `number` | `0` | −1…1. Boosts muted colors more than already-vivid ones |
 | `shadows` | `number` | `0` | −1…1. Lifts or crushes the shadow end |
 | `highlights` | `number` | `0` | −1…1. Brightens or rolls off the highlight end |

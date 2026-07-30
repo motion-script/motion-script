@@ -265,12 +265,8 @@ import s_opacity_node from './opacity-node?scene';
 import s_opacity_fill from './opacity-fill?scene';
 import s_opacity_stroke from './opacity-stroke?scene';
 import s_opacity_passthrough_vs_normal from './opacity-passthrough-vs-normal?scene';
-import s_preset_riso from './preset-riso?scene';
 import s_preset_vhs from './preset-vhs?scene';
-import s_preset_crt from './preset-crt?scene';
-import s_preset_gameboy from './preset-gameboy?scene';
 import s_preset_comic from './preset-comic?scene';
-import s_preset_paper from './preset-paper?scene';
 
 /** Every e2e scene instance, in TESTS.md order. Feeds createProject({ scenes }). */
 export const scenes: Scene[] = [
@@ -536,12 +532,8 @@ export const scenes: Scene[] = [
     s_opacity_fill,
     s_opacity_stroke,
     s_opacity_passthrough_vs_normal,
-    s_preset_riso,
     s_preset_vhs,
-    s_preset_crt,
-    s_preset_gameboy,
     s_preset_comic,
-    s_preset_paper,
 ];
 
 export interface SceneMeta {
@@ -819,10 +811,6 @@ export const catalog: SceneMeta[] = [
     { id: "opacity-fill", name: "OpacityFill", section: "Opacity & Visibility", description: "Fill-level opacity animated independently of node" },
     { id: "opacity-stroke", name: "OpacityStroke", section: "Opacity & Visibility", description: "Stroke-level opacity animated" },
     { id: "opacity-passthrough-vs-normal", name: "OpacityPassthroughVsNormal", section: "Opacity & Visibility", description: "Pass-through vs normal node blend isolation with semi-transparent children" },
-    { id: "preset-riso", name: "PresetRiso", section: "Presets", description: "Presets.riso ramping in from its no-op state" },
-    { id: "preset-vhs", name: "PresetVhs", section: "Presets", description: "Presets.vhs ramping in from its no-op state" },
-    { id: "preset-crt", name: "PresetCrt", section: "Presets", description: "Presets.crt ramping in from its no-op state" },
-    { id: "preset-gameboy", name: "PresetGameboy", section: "Presets", description: "Presets.gameboy ramping in (also guards chain order)" },
-    { id: "preset-comic", name: "PresetComic", section: "Presets", description: "Presets.comic on a CMYK process screen" },
-    { id: "preset-paper", name: "PresetPaper", section: "Presets", description: "Presets.paper \u2014 the texture-based material template" },
+    { id: "preset-vhs", name: "PresetVhs", section: "Effects", description: "a five-effect chain spanning both effect surfaces" },
+    { id: "preset-comic", name: "PresetComic", section: "Effects", description: "halftone cmyk separation on a process screen" },
 ];

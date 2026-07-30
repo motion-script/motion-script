@@ -1,6 +1,6 @@
 import type { SkSLEffect } from "@motion-script/core";
 import { getCanvasKitBlendMode } from "../blend";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import type { EffectHandler } from "./handler";
 
 /** Uniform values, flattened to the single float array SkSL expects. */

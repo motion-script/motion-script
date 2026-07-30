@@ -13,6 +13,8 @@ export interface ColorAdjustmentFilter {
     contrast?: number;
     /** 0 to 3 (1 = unchanged). Scales color saturation uniformly. */
     saturation?: number;
+    /** Hue rotation in degrees (0 = unchanged), luma-preserving. Wraps at 360. */
+    hue?: number;
     /** -1 to 1 (0 = unchanged). Boosts muted colors more than vibrant ones. */
     vibrance?: number;
     /** -1 to 1 (0 = unchanged). Lifts or crushes shadow regions. */
@@ -33,6 +35,7 @@ export const colorAdjustmentFilter: FilterData<ColorAdjustmentFilter> = {
         brightness: lerpNumber(from.brightness ?? 0, to.brightness ?? 0, t),
         contrast: lerpNumber(from.contrast ?? 1, to.contrast ?? 1, t),
         saturation: lerpNumber(from.saturation ?? 1, to.saturation ?? 1, t),
+        hue: lerpNumber(from.hue ?? 0, to.hue ?? 0, t),
         vibrance: lerpNumber(from.vibrance ?? 0, to.vibrance ?? 0, t),
         shadows: lerpNumber(from.shadows ?? 0, to.shadows ?? 0, t),
         highlights: lerpNumber(from.highlights ?? 0, to.highlights ?? 0, t),
@@ -44,6 +47,7 @@ export const colorAdjustmentFilter: FilterData<ColorAdjustmentFilter> = {
         a.brightness === b.brightness &&
         a.contrast === b.contrast &&
         a.saturation === b.saturation &&
+        a.hue === b.hue &&
         a.vibrance === b.vibrance &&
         a.shadows === b.shadows &&
         a.highlights === b.highlights &&

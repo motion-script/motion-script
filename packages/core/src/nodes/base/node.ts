@@ -12,6 +12,7 @@ import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
 import { Disposer } from "@/assets/record";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
+import { effectsProperty, paddingProperty, pivotProperty } from "@/attributes/properties/typed";
 import {
     applyProp,
     applySnapshotLayer,
@@ -27,8 +28,8 @@ import { addChildAtAnimated, removeChildAtAnimated, reparentAnimated } from "./n
 import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
-import { Alignment, resolvePivot } from "@/attributes/layout/align";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { Alignment } from "@/attributes/layout/align";
 import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAnchorProps } from "@/attributes/layout/anchor-resolve";
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
@@ -45,10 +46,9 @@ import { NodeRenderState, RenderContext, SpaceRects } from "@/render/render-cont
 import { Clip } from "@/render/clip";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput, expandSize } from "@/attributes/layout/size";
-import { Effect, resolveChainEffects } from "@/attributes/shape/effects/chain";
-import { Padding, PaddingResolved, resolvePadding } from "@/attributes/layout/padding";
-import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
-import { lerpEffectArray } from "@/attributes/shape/effects/registry";
+import { Effect } from "@/attributes/shape/effects/chain";
+import { Padding, PaddingResolved } from "@/attributes/layout/padding";
+import { lerpSizeInput } from "@/layout/tweens";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
 import { MeasureScope } from "@/render/measure-scope";
 import { nodePath } from "@/project/tree";
@@ -313,10 +313,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: 0 }) declare rotation: number;
     @property({ default: 1 }) declare opacity: number;
     @property({ default: 'pass-through' }) declare blend: NodeBlendMode;
-    @property({ default: [], tween: lerpEffectArray, mapper: resolveChainEffects }) declare effects: Effect;
-    @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare padding: Padding;
+    @effectsProperty() declare effects: Effect;
+    @paddingProperty() declare padding: Padding;
 
-    @property({ default: { x: 0, y: 0 }, mapper: (v: Alignment) => resolvePivot(v), tween: lerpVector2 })
+    @pivotProperty()
     declare readonly pivot: Alignment;
 
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */

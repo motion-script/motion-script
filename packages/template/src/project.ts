@@ -2,6 +2,7 @@ import { createProject } from 'motion-script';
 
 
 import effectsProject from './projects/effects/effects-project';
+import presetsProject from './projects/presets/presets-project';
 import fillsProject from './projects/fills/fills-project';
 import blendsProject from './projects/blends/blends-project';
 import drawProject from './projects/draw/draw-project';
@@ -14,5 +15,5 @@ import expensiveProject from './projects/expensive/expensive-project';
 import textProject from './projects/text/text-project';
 import threeProject from './projects/three/three-project';
 import globalsProject from './projects/globals/globals-project';
-export default threeProject;
+export default effectsProject;
 

@@ -1,6 +1,6 @@
 import { Effects as FX } from "motion-script";
 import { createScene } from "motion-script";
-import { effectDemo } from "./effect-demo";
+import { effectDemo } from "../../../shared/effect-demo";
 
 // `standard` is plain ASCII, so it renders in any Latin font. The `blocks` and
 // `braille` ramps look better but need a font that actually covers those

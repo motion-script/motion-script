@@ -1,11 +1,11 @@
 import { property } from "@/attributes/properties/decorator";
+import { strokeProperty } from "@/attributes/properties/typed";
 import { NodeConfig } from "../base/node";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { PathCommand } from "@/render/descriptors/path";
-import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
-import { resolveStrokeArray, Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { lerpNumber } from "@/tween/lerp";
 import { ViewportPattern } from "./viewport-pattern-node";
@@ -57,7 +57,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
     @property({ default: 1 }) declare readonly subdivisions: number;
     // Asymmetric accessor like `ShapeNode.stroke`: reads yield `StrokeResolved[]`,
     // writes accept the loose `Stroke`. Runtime accessor installed by @property.
-    @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
+    @strokeProperty()
     get subStroke(): StrokeResolved[] { return undefined!; }
     set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })

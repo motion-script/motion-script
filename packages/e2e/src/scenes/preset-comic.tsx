@@ -1,7 +1,25 @@
-import { createScene, createRef, Rect, Image, Presets, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Image, Effects, EffectChain, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link Presets.comic}: the Comic recipe on a CMYK process screen. */
+/**
+ * Coverage for `halftone`'s `'cmyk'` separation — `effect-halftone` screens in
+ * mono, and the two take different paths.
+ *
+ * The separation is what makes a process screen work at all: an RGB screen has
+ * no K plate, so every neutral prints three overlapping colour dots and the page
+ * turns to confetti. With darkness on its own plate, paper stays paper and the
+ * inks only carry hue.
+ */
+const at = (t: number, neutral: number, full: number) => neutral + (full - neutral) * t;
+
+/** Flat colour behind a process dot screen. */
+const comic = (amount: number): EffectChain => Effects
+    .halftone({ size: at(amount, 0.5, 7), angle: 15, separation: 'cmyk' })
+    .colorAdjustment({
+        saturation: at(amount, 1, 1.35),
+        contrast: at(amount, 1, 1.15),
+    });
+
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const photo = createRef<Image>();
@@ -9,11 +27,11 @@ export default createScene(function* (stage) {
         <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
             <Rect width={480} height={320} cornerRadius={20} clip={true} group={'stack'}>
                 <Image ref={photo} src={'./cat.jpg'} fit={'fill'} width={'fill'} height={'fill'}
-                    effects={Presets.comic(0)} />
+                    effects={comic(0)} />
             </Rect>
         </Rect>,
     );
 
-    yield* photo().to({ effects: Presets.comic(1) }, 1.2, easeInOut('quad'));
+    yield* photo().to({ effects: comic(1) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

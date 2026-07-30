@@ -247,7 +247,6 @@ export {
     Effects,
     FX,
     EffectChain,
-    Presets,
     ImageFilters,
     VideoFilters,
     FilterChain,
@@ -304,29 +303,6 @@ export type {
     GodRaysOptions,
     OilPaintOptions,
     TextureOptions,
-} from '@motion-script/core';
-
-/** Per-preset options. Every preset takes one of these, or the bare `amount`. */
-export type {
-    PresetOptions,
-    RisoOptions,
-    NewsprintOptions,
-    BlueprintOptions,
-    PhotocopyOptions,
-    VhsOptions,
-    CrtOptions,
-    GlitchOptions,
-    GameboyOptions,
-    ScreenPrintOptions,
-    ThermalPrintOptions,
-    PencilSketchOptions,
-    ChalkOptions,
-    ComicOptions,
-    AnamorphicGlareOptions,
-    GodRaysPresetOptions,
-    OilPaintingOptions,
-    PaperOptions,
-    NeonOptions,
 } from '@motion-script/core';
 
 /** Effect data types, for naming an effect value or building one by hand. */
@@ -456,9 +432,27 @@ export type {
 // ---------------------------------------------------------
 export {
     property,
+    // Attribute-typed variants: `@property` with the mapper/tween pair for a
+    // known attribute already filled in, so a custom node declares a paint or
+    // layout prop without importing the resolver/lerp pair behind it.
+    fillProperty,
+    strokeProperty,
+    shadowProperty,
+    effectsProperty,
+    colorProperty,
+    cornerRadiusProperty,
+    cornerStyleProperty,
+    pathProperty,
+    paddingProperty,
+    alignProperty,
+    pivotProperty,
+    vector2Property,
+    sizeProperty,
+    textProperty,
 } from '@motion-script/core';
 export type {
     PropOptions,
+    AttributePropOptions,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

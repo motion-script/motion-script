@@ -1,6 +1,6 @@
 import type { EffectGeometry, EffectHandler } from "./handler";
 import type { CanvasKit, Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { type RadialBlurEffect } from "@motion-script/core";
 
 /** Tap-count bounds. The upper end caps how many shader variants can be cached. */

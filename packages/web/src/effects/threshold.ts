@@ -1,6 +1,6 @@
 import type { EffectHandler } from "./handler";
 import type { CanvasKit, Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { type ThresholdEffect } from "@motion-script/core";
 
 /**

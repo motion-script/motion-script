@@ -327,7 +327,7 @@
     "id": "video-speed",
     "name": "VideoSpeed",
     "section": "Media",
-    "description": "Video node at 2\u00d7 speed"
+    "description": "Video node at 2× speed"
   },
   {
     "id": "video-loop",
@@ -789,7 +789,7 @@
     "id": "effect-directional-blur",
     "name": "EffectDirectionalBlur",
     "section": "Effects",
-    "description": "Motion blur along 45\u00b0 axis"
+    "description": "Motion blur along 45° axis"
   },
   {
     "id": "effect-directional-blur-backdrop",
@@ -951,13 +951,13 @@
     "id": "effect-halftone",
     "name": "EffectHalftone",
     "section": "Effects",
-    "description": "45\u00b0 dot screen at increasing cell size"
+    "description": "45° dot screen at increasing cell size"
   },
   {
     "id": "effect-dither",
     "name": "EffectDither",
     "section": "Effects",
-    "description": "Bayer 8\u00d78 ordered dither down to 1-bit"
+    "description": "Bayer 8×8 ordered dither down to 1-bit"
   },
   {
     "id": "effect-duotone",
@@ -1017,7 +1017,7 @@
     "id": "effect-oil-paint",
     "name": "EffectOilPaint",
     "section": "Effects",
-    "description": "Kuwahara brushwork \u2014 flat strokes with edges intact"
+    "description": "Kuwahara brushwork — flat strokes with edges intact"
   },
   {
     "id": "effect-texture",
@@ -1077,7 +1077,7 @@
     "id": "filter-color-matrix",
     "name": "FilterColorMatrix",
     "section": "Image Filters",
-    "description": "Arbitrary 4\u00d75 color matrix transform"
+    "description": "Arbitrary 4×5 color matrix transform"
   },
   {
     "id": "filter-curves",
@@ -1572,39 +1572,15 @@
     "description": "Pass-through vs normal node blend isolation with semi-transparent children"
   },
   {
-    "id": "preset-riso",
-    "name": "PresetRiso",
-    "section": "Presets",
-    "description": "Presets.riso ramping in from its no-op state"
-  },
-  {
     "id": "preset-vhs",
     "name": "PresetVhs",
-    "section": "Presets",
-    "description": "Presets.vhs ramping in from its no-op state"
-  },
-  {
-    "id": "preset-crt",
-    "name": "PresetCrt",
-    "section": "Presets",
-    "description": "Presets.crt ramping in from its no-op state"
-  },
-  {
-    "id": "preset-gameboy",
-    "name": "PresetGameboy",
-    "section": "Presets",
-    "description": "Presets.gameboy ramping in (also guards chain order)"
+    "section": "Effects",
+    "description": "a five-effect chain spanning both effect surfaces"
   },
   {
     "id": "preset-comic",
     "name": "PresetComic",
-    "section": "Presets",
-    "description": "Presets.comic on a CMYK process screen"
-  },
-  {
-    "id": "preset-paper",
-    "name": "PresetPaper",
-    "section": "Presets",
-    "description": "Presets.paper \u2014 the texture-based material template"
+    "section": "Effects",
+    "description": "halftone cmyk separation on a process screen"
   }
 ]

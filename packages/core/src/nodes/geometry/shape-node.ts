@@ -4,6 +4,7 @@ import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
 import { resolveStrokeArray, StrokeResolved, type Stroke } from "@/attributes/shape/stroke/mapper";
 import { resolveShadowArray, ShadowResolved, type Shadow } from "@/attributes/shape/shadow/resolver";
+import { fillProperty, shadowProperty, strokeProperty } from "@/attributes/properties/typed";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 
@@ -58,18 +59,18 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     // the mapper), and consumers that need the resolved shape cast at the read
     // site — see `tick`/`prepare`/`*To` and the `Graphics` paint calls.
     // Stroke weight feeds Rect.effectivePadding(), which insets children.
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    @fillProperty()
     declare fill: Fill;
 
     // Same paint type/mapper/tween as `fill`; differs only in draw order —
     // painted over fill + children and under the stroke (see renderOverlay).
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    @fillProperty()
     declare overlay: Fill;
 
-    @property({ default: [], mapper: resolveStrokeArray, tween: lerpStrokeArray })
+    @strokeProperty()
     declare stroke: Stroke;
 
-    @property({ default: [], mapper: resolveShadowArray, tween: lerpShadowArray })
+    @shadowProperty()
     declare shadow: Shadow;
 
     @property({ default: 0 })
@@ -104,14 +105,7 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
         watch("overlay", d => { this._hasDynamicOverlay = d; });
     }
 
-    protected override reinitProps(force = false): void {
-        // Recreating disposed signals needs a fresh subscription; a forced reset
-        // of live signals already has one, so don't double-subscribe.
-        const recreating = !this.__signals;
-        if (this.__signals && !force) return;
-        super.reinitProps(force);
-        if (recreating) this.watchFillForDynamic();
-    }
+
 
     public tick(time: number): void {
         if (!this._hasDynamicFill && !this._hasDynamicOverlay) return;

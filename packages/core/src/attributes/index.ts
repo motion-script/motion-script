@@ -17,3 +17,10 @@ export * from './text/align';
 export * from './text/lerp';
 export * from './text/span';
 export { property, PropOptions } from './properties/decorator';
+export {
+    fillProperty, strokeProperty, shadowProperty, effectsProperty, colorProperty,
+    cornerRadiusProperty, cornerStyleProperty, pathProperty,
+    paddingProperty, alignProperty, pivotProperty, vector2Property, sizeProperty,
+    textProperty,
+} from './properties/typed';
+export type { AttributePropOptions } from './properties/typed';

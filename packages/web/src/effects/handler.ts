@@ -96,6 +96,31 @@ export interface EffectResources {
      * effect that instead drew something would flash.
      */
     getImage(src: string): CKImage | null;
+
+    /**
+     * The snapshot the `content` child shader wraps, for the rare effect that
+     * needs the *pixels* rather than just a shader over them — currently only
+     * `trails`, which keeps past snapshots to composite a motion trail.
+     *
+     * Null on the ImageFilter path and for media filters, where no snapshot was
+     * taken. **Borrowed, not owned**: it is deleted as soon as the draw that
+     * produced it finishes, so anything retaining it past this call must copy.
+     */
+    readonly contentSnapshot: CKImage | null;
+
+    /**
+     * Stable identity for the effect scope being rendered — node id plus effect
+     * type. The key an effect caches per-instance state under, so two nodes
+     * carrying the same effect don't share a buffer.
+     */
+    readonly scopeKey: string;
+
+    /**
+     * Seconds the node has existed (`NodeRenderState.elapsed`), or 0 when
+     * unknown. The same value {@link EffectGeometry.time} carries, exposed here
+     * because {@link EffectHandler.resources} runs before geometry is built.
+     */
+    readonly time: number;
 }
 
 /**

@@ -99,6 +99,59 @@ Pass an array to layer fills bottom to top:
 
 ---
 
+## Procedural fills
+
+Two fills generate their own pixels rather than taking a colour or an image.
+
+### Noise — speckle
+
+`Fills.noise` paints sparse per-pixel speckle: dust, static, stipple.
+
+```tsx
+<Rect fill={['#0D0F15', Fills.noise({ density: 0.4, color: 'white', opacity: 0.15 })]} />
+```
+
+Tween `seed` in whole steps to make the static crawl.
+
+### Fractal noise — fields
+
+`Fills.fractalNoise` is a continuous *field* rather than speckle — several octaves of smooth noise summed at rising frequency and falling amplitude, which is what produces cloud, smoke, marble, wood, terrain and plasma.
+
+```tsx
+// Drifting cloud
+<Rect fill={Fills.fractalNoise({ basis: 'value', colors: ['#10131b', '#6990DD'] })} />
+
+// Marble veining
+<Rect fill={Fills.fractalNoise({ basis: 'ridged', octaves: 5, colors: ['#1a1206', '#F5C26B'] })} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `basis` | `'value' \| 'simplex' \| 'ridged' \| 'worley'` | `'simplex'` | Which noise function the octaves come from |
+| `octaves` | `number` | `4` | How many octaves are summed, `1`–`8`. Each one doubles the cost |
+| `frequency` | `number \| { x, y }` | `3` | Cycles of the first octave across the shape |
+| `lacunarity` | `number` | `2` | Frequency multiplier per octave |
+| `gain` | `number` | `0.5` | Amplitude multiplier per octave |
+| `seed` | `number` | `0` | Field offset — random-access into the noise |
+| `offset` | `{ x, y }` | `{ x: 0, y: 0 }` | Pan through the field, in cycles |
+| `angle` | `number` | `0` | Rotation of the field in degrees |
+| `colors` | `Color[]` | `['black', 'white']` | Colours the 0–1 field maps onto, low to high |
+| `stops` | `number[]` | evenly spaced | Positions of each colour in `0`–`1` |
+| `contrast` | `number` | `1` | Steepen (>1) or flatten (\<1) the field before the ramp |
+
+**Choosing a basis:**
+
+- **`'value'`** — the cheapest and softest: clouds, haze, paper fibre, subtle mottling.
+- **`'simplex'`** — more even, fewer axis-aligned artefacts. The right default for anything organic seen up close.
+- **`'ridged'`** — sharp branching crests: mountains, lightning, veins, marble.
+- **`'worley'`** — cellular distance, so it gives edges rather than blur: scales, cracked earth, caustics, stained glass.
+
+**Animating:** tween `offset` to travel *through* the field (it flows); tween `seed` to shift to a different field entirely (it churns). `basis` and `octaves` snap rather than interpolating, because both are baked into the compiled shader.
+
+It composes with the effect layer rather than duplicating it — [duotone](../effects/duotone) over it is marble, [threshold](../effects/threshold) over it is an organic matte, [posterize](../effects/posterize) over it is topographic banding, and [displace](../effects/displace) is water.
+
+---
+
 ## Fill types reference
 
 | Type | Required props | Optional props |
@@ -108,6 +161,9 @@ Pass an array to layer fills bottom to top:
 | `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
 | `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
 | `'image'` | `src` | `fit`, `scaling`, `filters`, `opacity`, `blend` |
+| `'noise'` | – | `size`, `density`, `color`, `seed`, `opacity`, `blend` |
+| `'fractalNoise'` | – | `basis`, `octaves`, `frequency`, `lacunarity`, `gain`, `seed`, `offset`, `angle`, `colors`, `stops`, `contrast`, `opacity`, `blend` |
+| `'stripe'` | – | `gap`, `strokeWidth`, `angle`, `color`, `opacity`, `blend` |
 
 ---
 

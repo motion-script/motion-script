@@ -27,6 +27,7 @@ import textShadow from './scenes/text-shadow?scene';
 import polygon from './scenes/polygon-scene?scene';
 import cornerStyles from './scenes/corner-styles-scene?scene';
 import fillArrayLerp from './scenes/fill-lerp?scene';
+import fractalNoise from './scenes/fractal-noise?scene';
 
 /**
  * A project that walks through every fill, stroke, and shadow case, one
@@ -46,6 +47,7 @@ export default createProject({
     },
     scenes: [
         fillArrayLerp,
+        fractalNoise,
         alignmentStroke,
         capJoinStroke,
         cornerStyles,

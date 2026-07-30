@@ -7,14 +7,15 @@ import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
-import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
-import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
-import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
+import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
+import { alignProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { lerpSizeInput } from "@/layout/tweens";
 
 
@@ -54,16 +55,16 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     // Declared as the loose `Alignment` so one @property covers both assignment
     // (`this.align = 'center'`) and reads. At runtime the accessor stores the
     // resolved per-axis `Vector2` pivot; readers cast at the read site.
-    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    @alignProperty()
     declare align: Alignment;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment (`this.cornerRadius = 8`) and reads. At runtime the
     // accessor stores the resolved per-corner value; readers that need the
     // resolved shape cast at the read site (none here — RectState/Clip accept the
     // loose type).
-    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    @cornerRadiusProperty()
     declare cornerRadius: RectCornerRadius;
-    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    @cornerStyleProperty()
     declare cornerStyle: RectCornerStyle;
 
     declare group: LayoutMode;

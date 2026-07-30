@@ -12,7 +12,7 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { PaddingResolved } from "@/attributes/layout/padding";
 import { MeasureScope } from "@/render/measure-scope";
-import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { resolveFillArray, lerpFillArray, updateFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
@@ -20,6 +20,7 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
+import { alignProperty, fillProperty } from "@/attributes/properties/typed";
 
 /** @internal */
 export interface RootProps extends NodeProps {
@@ -78,16 +79,16 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // Author-facing paint props. Like Rect, the declared type is the loose
     // `Fill` so assignment (`this.fill = 'red'`) and reads share one type; the
     // @property accessor stores the *resolved* value via the mapper.
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    @fillProperty()
     declare fill: Fill;
-    @property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })
+    @fillProperty()
     declare overlay: Fill;
 
     // ---- Layout container -------------------------------------------------
     @property({ default: 0 }) declare readonly gap: GapSize;
     // Declared loose as `Alignment` (covers `this.align = 'center'`); the
     // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
-    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    @alignProperty()
     declare align: Alignment;
     // `group` has a closure-based tween (the engine captures the in-flight
     // blend), so it's applied via applyProp rather than a static @property.

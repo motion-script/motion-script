@@ -8,16 +8,17 @@ import { PaddingResolved } from "@/attributes/layout/padding";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Alignment, resolveAlign, lerpAlign } from "@/attributes/layout/align";
+import { Alignment } from "@/attributes/layout/align";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
 import { Node, NodeConfig } from "../base/node";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
-import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
-import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
+import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
+import { alignProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 
 
 export type { FlexDirection, GapSize } from "@/layout/flex";
@@ -64,13 +65,13 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     @property({ default: 0 }) declare readonly gap: GapSize;
     // Stored resolved as a per-axis `Vector2` pivot; the loose `Alignment`
     // declared type covers both named-string assignment and reads. See Rect.
-    @property({ default: "center", mapper: (v: Alignment) => resolveAlign(v), tween: lerpAlign })
+    @alignProperty()
     declare align: Alignment;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment and reads; the accessor stores the resolved value. See Rect.
-    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    @cornerRadiusProperty()
     declare cornerRadius: RectCornerRadius;
-    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    @cornerStyleProperty()
     declare cornerStyle: RectCornerStyle;
 
     /** Main axis this container lays its children along. */

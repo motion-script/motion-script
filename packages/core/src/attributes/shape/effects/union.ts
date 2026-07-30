@@ -33,6 +33,12 @@ import type { StreakEffect } from "./implementations/streak";
 import type { GodRaysEffect } from "./implementations/god-rays";
 import type { OilPaintEffect } from "./implementations/oil-paint";
 import type { TextureEffect } from "./implementations/texture";
+import type { DisplaceEffect } from "./implementations/displace";
+import type { WaveEffect } from "./implementations/wave";
+import type { TwirlEffect } from "./implementations/twirl";
+import type { ProgressiveBlurEffect } from "./implementations/progressive-blur";
+import type { KaleidoscopeEffect } from "./implementations/kaleidoscope";
+import type { TrailsEffect } from "./implementations/trails";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -70,4 +76,10 @@ export type SceneEffect =
     | StreakEffect
     | GodRaysEffect
     | OilPaintEffect
-    | TextureEffect;
+    | TextureEffect
+    | DisplaceEffect
+    | WaveEffect
+    | TwirlEffect
+    | ProgressiveBlurEffect
+    | KaleidoscopeEffect
+    | TrailsEffect;

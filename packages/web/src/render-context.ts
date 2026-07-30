@@ -5,6 +5,7 @@ import type {
     Paint,
     Path as CKPath,
     Shader,
+    Image as CKImage,
 } from "@motion-script/canvaskit";
 import {
     type BooleanOperation,
@@ -79,7 +80,7 @@ import type { CurrentShape } from "./shapes/shape-handler";
 import { EffectRegistry } from "./effects/registry";
 import { resolveMotionBlur } from "./effects/motion-blur";
 import type { EffectHandler, EffectGeometry, EffectResources } from "./effects/handler";
-import { disposeSkSLCache } from "./effects/sksl-cache";
+import { disposeSkSLCache } from "./sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
 import { FillHandler } from "./fills/handler";
@@ -1536,7 +1537,7 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
+        const extra = handler.resources?.(effect, ck, this.effectResources(effect, snapshot)) ?? [];
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         if (lens == null) {
             // Unlike the foreground path there is nothing to paint back: the
@@ -1597,7 +1598,7 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             tm, tm, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
+        const extra = handler.resources?.(effect, ck, this.effectResources(effect, snapshot)) ?? [];
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         // A null lens means the effect is a no-op at these settings (zero radius,
         // zero amount, …). Drawing was already redirected into the offscreen, so
@@ -1617,7 +1618,7 @@ export class WebRenderContext extends RenderContext {
      * registry, its epoch (so a late-loading family invalidates any cached
      * bake), and a way to make an offscreen matching the draw surface's format.
      */
-    private effectResources(): EffectResources {
+    private effectResources(effect: SceneEffect, contentSnapshot: CKImage | null): EffectResources {
         return {
             fontMgr: this.storageAdapter.getFontMgr(),
             fontEpoch: this.storageAdapter.getFontEpoch(),
@@ -1630,6 +1631,12 @@ export class WebRenderContext extends RenderContext {
                 });
             },
             getImage: (src) => this.storageAdapter.getCKImage(src),
+            contentSnapshot,
+            // Node plus effect type: two nodes with the same effect must not
+            // share cached per-instance state, and one node's two different
+            // effects must not either.
+            scopeKey: `${this.currentNodeId()}#${effect.type}`,
+            time: this.currentRenderState()?.elapsed ?? 0,
         };
     }
 

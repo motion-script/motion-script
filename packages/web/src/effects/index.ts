@@ -45,4 +45,4 @@ export { skslEffectHandler } from "./sksl";
 export { motionBlurEffectHandler, resolveMotionBlur } from "./motion-blur";
 export type { MotionBlurResolved } from "./motion-blur";
 
-export { getOrCompileSkSL, disposeSkSLCache } from "./sksl-cache";
+export { getOrCompileSkSL, disposeSkSLCache } from "../sksl-cache";

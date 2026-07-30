@@ -1,6 +1,6 @@
 import { Effects as FX } from "motion-script";
 import { createScene } from "motion-script";
-import { effectDemo } from "./effect-demo";
+import { effectDemo } from "../../../shared/effect-demo";
 
 /** Figma-style backdrop blur — `blur` with `{ mode: "backdrop" }` blurs the content
  *  beneath the node, clipped to its silhouette, leaving the node's edges sharp. */

@@ -1,6 +1,6 @@
 import { Effects } from "motion-script";
 import { createScene } from "motion-script";
-import { effectDemo } from "./effect-demo";
+import { effectDemo } from "../../../shared/effect-demo";
 
 export default createScene(effectDemo({
         label: 'Directional blur',

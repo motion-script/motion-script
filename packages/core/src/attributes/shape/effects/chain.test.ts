@@ -161,6 +161,66 @@ describe('FX builders', () => {
         expect('blendMode' in effect).toBe(false);
     });
 
+    it('displace defaults to the rg channel and a signed midpoint', () => {
+        expect([...Effects.displace({ src: 'map.png' })]).toEqual([
+            { type: 'displace', src: 'map.png', amount: { x: 20, y: 20 }, channel: 'rg', midpoint: 0.5, scale: 1, angle: 0 },
+        ]);
+    });
+
+    it('displace spreads a scalar amount across both axes', () => {
+        expect([...Effects.displace({ src: 'map.png', amount: 8 })]).toEqual([
+            { type: 'displace', src: 'map.png', amount: { x: 8, y: 8 }, channel: 'rg', midpoint: 0.5, scale: 1, angle: 0 },
+        ]);
+    });
+
+    it('wave reads a scalar amplitude as transverse (Y only)', () => {
+        // A wave displacing along its own travel direction just smears, so the
+        // terse form is the one that actually ripples.
+        expect([...Effects.wave(20)]).toEqual([
+            { type: 'wave', amplitude: { x: 0, y: 20 }, wavelength: 120, phase: 0, shape: 'linear', angle: 0, center: { x: 0.5, y: 0.5 } },
+        ]);
+    });
+
+    it('wave accepts a per-axis amplitude', () => {
+        const [effect] = [...Effects.wave({ amplitude: { x: 6, y: 0 }, shape: 'radial' })];
+        expect(effect).toMatchObject({ type: 'wave', amplitude: { x: 6, y: 0 }, shape: 'radial' });
+    });
+
+    it('twirl takes angle as the scalar', () => {
+        expect([...Effects.twirl(90)]).toEqual([
+            { type: 'twirl', angle: 90, radius: 1, center: { x: 0.5, y: 0.5 } },
+        ]);
+    });
+
+    it('progressiveBlur defaults to a downward linear ramp', () => {
+        expect([...Effects.progressiveBlur(24)]).toEqual([
+            { type: 'progressiveBlur', radius: 24, shape: 'linear', start: 0, end: 1, angle: 90, center: { x: 0.5, y: 0.5 }, samples: 20 },
+        ]);
+    });
+
+    it('kaleidoscope rounds segments and defaults to a full fold', () => {
+        expect([...Effects.kaleidoscope({ segments: 6.4 })]).toEqual([
+            { type: 'kaleidoscope', segments: 6, angle: 0, center: { x: 0.5, y: 0.5 }, offset: 0, amount: 1 },
+        ]);
+    });
+
+    it('trails rounds echoes and defaults to a screen blend', () => {
+        expect([...Effects.trails(8)]).toEqual([
+            { type: 'trails', echoes: 8, delay: 1 / 24, decay: 0.72, blend: 'screen' },
+        ]);
+    });
+
+    it('the new warps all carry mode like every other effect', () => {
+        for (const chain of [
+            Effects.wave({ amplitude: 4, mode: 'backdrop' }),
+            Effects.twirl({ angle: 30, mode: 'backdrop' }),
+            Effects.displace({ src: 'm.png', mode: 'backdrop' }),
+            Effects.progressiveBlur({ radius: 8, mode: 'backdrop' }),
+        ]) {
+            expect([...chain][0]).toMatchObject({ mode: 'backdrop' });
+        }
+    });
+
     it('FX is an alias for Effects', () => {
         expect(FX).toBe(Effects);
     });

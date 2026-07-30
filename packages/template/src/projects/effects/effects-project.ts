@@ -32,31 +32,24 @@ import rgbShift from './scenes/rgb-shift?scene';
 import scanlines from './scenes/scanlines?scene';
 import blockDisplace from './scenes/block-displace?scene';
 import bitCrush from './scenes/bit-crush?scene';
-import presetRiso from './scenes/preset-riso?scene';
-import presetNewsprint from './scenes/preset-newsprint?scene';
-import presetBlueprint from './scenes/preset-blueprint?scene';
-import presetPhotocopy from './scenes/preset-photocopy?scene';
-import presetVhs from './scenes/preset-vhs?scene';
-import presetCrt from './scenes/preset-crt?scene';
-import presetGlitch from './scenes/preset-glitch?scene';
-import presetGameboy from './scenes/preset-gameboy?scene';
 import ascii from './scenes/ascii?scene';
 import streak from './scenes/streak?scene';
 import godRays from './scenes/god-rays?scene';
 import oilPaint from './scenes/oil-paint?scene';
 import texture from './scenes/texture?scene';
-import presetScreenPrint from './scenes/preset-screen-print?scene';
-import presetThermalPrint from './scenes/preset-thermal-print?scene';
-import presetPencilSketch from './scenes/preset-pencil-sketch?scene';
-import presetChalk from './scenes/preset-chalk?scene';
-import presetNeon from './scenes/preset-neon?scene';
-import presetComic from './scenes/preset-comic?scene';
-import presetAnamorphic from './scenes/preset-anamorphic-glare?scene';
-import presetOilPainting from './scenes/preset-oil-painting?scene';
-import presetPaper from './scenes/preset-paper?scene';
+import displace from './scenes/displace?scene';
+import wave from './scenes/wave?scene';
+import twirl from './scenes/twirl?scene';
+import progressiveBlur from './scenes/progressive-blur?scene';
+import kaleidoscope from './scenes/kaleidoscope?scene';
+import trails from './scenes/trails?scene';
+import hue from './scenes/hue?scene';
 
 /**
  * A project that walks through every built-in effect, one scene per effect.
+ *
+ * Composed looks live in the sibling `presets` project — this one stays a
+ * reference for what each effect does on its own.
  *
  * Not auto-run by the vite plugin (which discovers `src/project.ts`). To preview
  * it, point the `@motion-script/vite-plugin` `entry` option at this file, or
@@ -102,28 +95,18 @@ export default createProject({
         scanlines,
         blockDisplace,
         bitCrush,
-        presetRiso,
-        presetNewsprint,
-        presetBlueprint,
-        presetPhotocopy,
-        presetVhs,
-        presetCrt,
-        presetGlitch,
-        presetGameboy,
         ascii,
         streak,
         godRays,
         oilPaint,
         texture,
-        presetScreenPrint,
-        presetThermalPrint,
-        presetPencilSketch,
-        presetChalk,
-        presetNeon,
-        presetComic,
-        presetAnamorphic,
-        presetOilPainting,
-        presetPaper,
+        displace,
+        wave,
+        twirl,
+        progressiveBlur,
+        kaleidoscope,
+        trails,
+        hue,
     ],
     theme: {
         colors: {

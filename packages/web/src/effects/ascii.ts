@@ -1,5 +1,5 @@
 import type { EffectGeometry, EffectHandler, EffectResources } from "./handler";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { resolveAsciiCharset, resolveEffectColor, type AsciiEffect } from "@motion-script/core";
 import { GlyphAtlasCache, atlasCell, atlasGlyphCount } from "./glyph-atlas";
 

@@ -1,0 +1,71 @@
+---
+sidebar_position: 41
+---
+
+# Trails
+
+Composites the node with a trail of its own **past frames**, each delayed by `delay` seconds and faded by a `decay` factor.
+
+The node-level counterpart of the video `echo` filter, sharing its vocabulary deliberately: same fields, same meaning, different scope. Where `echo` reaches back into a decoded video's own frames, this reaches back into what the *node* drew — so it trails text, shapes, a whole subtree, or a 3D view.
+
+## Usage
+
+```tsx
+import { Effects } from 'motion-script';
+
+// A short, tight trail
+<Text text="FAST" effects={Effects.trails(6)} />
+
+// Longer and more separated
+<Ellipse effects={Effects.trails({ echoes: 12, delay: 1 / 15, decay: 0.85 })} />
+
+// Ghosts behind rather than screened over
+<Rect effects={Effects.trails({ echoes: 8, blend: 'normal' })} />
+```
+
+Only a node that **moves** shows a trail. A node sitting still stacks its whole history in one place, which merely brightens it.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'trails'` | – | Effect identifier |
+| `echoes` | `number` | `6` | Past-frame taps drawn behind the current frame, capped at `16`. `0` = off |
+| `delay` | `number` | `1 / 24` | Delay between successive taps, in seconds |
+| `decay` | `number` | `0.72` | Per-tap alpha multiplier; tap `n` is drawn at `decay ** n` |
+| `blend` | `BlendMode` | `'screen'` | How the taps composite. `'screen'`, `'add'` and `'normal'` are implemented; anything else falls back to `'screen'` |
+
+## History dependence
+
+Unlike every other effect here, this one is **history-dependent**: frame *N* is built from frames *N−1, N−2, …*, so it cannot be derived from the playhead alone. Two consequences worth knowing before reaching for it:
+
+- **Linear playback and exports are correct.** The exporter renders forward frame by frame, so the history is exactly what the trail needs.
+- **Scrubbing backwards rebuilds it.** Jumping the playhead discards the history and the trail fills back in over the next `echoes × delay` seconds — the same way `echo` refills after a cold seek.
+
+A single-frame render (`ms screenshot`) has no history at all, so the effect is a no-op there. Use `ms export` to see it.
+
+For a trail that *is* a pure function of the playhead, tween a stack of offset copies instead: more work to author, but frame-exact under scrubbing.
+
+## Cost
+
+Each tap is a full-surface texture, so memory is `echoes × frame size` — roughly 8 MB per tap at 1080p, which is why `echoes` is capped at 16. History is pushed on a `delay` cadence rather than every frame, so a tap is genuinely `delay` seconds old whatever the frame rate, and a 60 fps render does not hold 60 textures per second of trail.
+
+## Animating
+
+`echoes` rounds rather than snapping, so a tween from `0` grows the trail instead of popping it in at the midpoint.
+
+```tsx
+import { createScene, Ellipse, Effects, easeInOut } from 'motion-script';
+
+export default createScene(function* (stage) {
+  const dot = stage.add(<Ellipse width={80} height={80} fill="#6990DD" />);
+
+  dot.set({ effects: Effects.trails({ echoes: 0 }) });
+  yield* dot.to({ effects: Effects.trails({ echoes: 10, decay: 0.8 }) }, 0.5);
+  yield* dot.moveX(600, 1.2, easeInOut('quad'));
+});
+```
+
+## See also
+
+- [Motion blur](./motion-blur) — smears within a single frame's shutter, rather than keeping discrete past frames

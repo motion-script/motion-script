@@ -6,6 +6,7 @@ import type { ImageFilter, VideoFilter } from "../filters/chain";
 import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageFit, ImageTransform } from "./implementations/image";
+import type { FractalNoiseFillProp } from "./implementations/fractal-noise";
 import type { Graphics3D } from "@/render3d/graphics3d";
 
 /** Author-facing options for a {@link FillChain.video} layer. */
@@ -106,10 +107,32 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'conic-gradient' as const, colors, stops, center, startAngle }, common)]);
     }
 
-    /** Append a noise fill. */
-    noise(options?: FillOptions & { size?: Vector2; density?: number; color?: Color }) {
-        const { size, density, color, ...common } = options ?? {};
-        return new FillChain([...this.list, withOptions({ type: 'noise' as const, size, density, color }, common)]);
+    /** Append a noise (speckle) fill. Tween `seed` to make the static crawl. */
+    noise(options?: FillOptions & { size?: Vector2; density?: number; color?: Color; seed?: number }) {
+        const { size, density, color, seed, ...common } = options ?? {};
+        return new FillChain([...this.list, withOptions({ type: 'noise' as const, size, density, color, seed }, common)]);
+    }
+
+    /**
+     * Append a fractal (fBm) noise fill — a continuous field rather than the
+     * speckle {@link noise} paints. Cloud, marble, smoke, terrain, plasma.
+     *
+     * Tween `offset` to travel through the field (it flows); tween `seed` to
+     * shift to a different field entirely (it churns).
+     */
+    fractalNoise(options?: FillOptions & Omit<FractalNoiseFillProp, 'type' | 'opacity' | 'blend'>) {
+        const {
+            basis, octaves, frequency, lacunarity, gain, seed, offset, angle,
+            colors, stops, contrast, ...common
+        } = options ?? {};
+        return new FillChain([...this.list, withOptions(
+            {
+                type: 'fractalNoise' as const,
+                basis, octaves, frequency, lacunarity, gain, seed, offset, angle,
+                colors, stops, contrast,
+            },
+            common,
+        )]);
     }
 
     /** Append a stripe (hatch) fill. */
@@ -186,6 +209,8 @@ export const Fills = {
         new FillChain().conicGradient(colors, options),
     noise: (options?: Parameters<FillChain['noise']>[0]) =>
         new FillChain().noise(options),
+    fractalNoise: (options?: Parameters<FillChain['fractalNoise']>[0]) =>
+        new FillChain().fractalNoise(options),
     stripe: (options?: Parameters<FillChain['stripe']>[0]) =>
         new FillChain().stripe(options),
     view3D: (graphics3D: Graphics3D, options?: Parameters<FillChain['view3D']>[1]) =>

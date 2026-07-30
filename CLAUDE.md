@@ -259,6 +259,38 @@ that instead needs *inherited context* (e.g. a theme from a provider node
 above it) should still build its structure in the constructor but override
 `resolveContext` to push those values onto its children via refs.
 
+**Declaring animatable props — use the attribute-typed decorators.** A rich
+attribute is only declarative and tweenable because its `@property` carries the
+matching *mapper* (loose author input → resolved value) and *tween* (how the
+resolved value interpolates). `@fillProperty` and friends
+(`packages/core/src/attributes/properties/typed.ts`) pre-bake each pair, so a
+custom node never has to know that `resolveFillArray` goes with `lerpFillArray`
+— several of those halves are `@internal` and were only reachable by copying an
+incantation out of `ShapeNode`:
+
+```tsx
+class Card extends Rect<CardProps> {
+    @fillProperty({ default: "white/10" }) declare glow: Fill;
+    @strokeProperty() declare edge: Stroke;
+    @cornerRadiusProperty({ default: 12 }) declare notch: RectCornerRadius;
+}
+// <Card glow="red" /> · card().to({ glow: Fills.linearGradient([...]) }, 0.6)
+```
+
+Each takes the same options as `@property` (`default`, plus `mapper`/`tween` to
+override the built-in pair). The set covers `fill`, `stroke`, `shadow`,
+`effects`, `color`, `cornerRadius`, `cornerStyle`, `path`, `padding`, `align`,
+`pivot`, `vector2`, `size` and `text`. The built-in nodes declare their own
+props through them, so **there is one definition of each attribute's
+mapper/tween pair** — add the next kind there rather than inline at a call site.
+
+Two things the decorator does *not* do: the field is still declared with the
+**loose author-facing type** (`Fill`, not `FillResolved[]`) so assignment and
+reads share one type — cast at the read site, as `ShapeNode` does; and the node
+still has to *paint* the prop (`ctx.draw(g.fill(this.glow as FillResolved[]))`).
+Assets referenced by a fill are discovered from that draw, so nothing extra is
+needed to make images/videos/3D surfaces load.
+
 ### Project globals
 
 `createProject` takes three fields describing content that spans the whole

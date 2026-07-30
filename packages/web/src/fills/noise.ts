@@ -1,12 +1,30 @@
 import type { NoiseFillResolved } from "@motion-script/core";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 
-/** Cache key → CanvasKit Image holding the noise tile. */
+/**
+ * Cache key → CanvasKit Image holding the noise tile.
+ *
+ * Bounded, because `seed` is animatable: a tween walks through a fresh key every
+ * frame, so an unbounded map would retain one full-size texture per frame of the
+ * animation. Insertion-ordered eviction is the right policy here — the oldest
+ * entry is the one a moving seed is least likely to come back to.
+ */
+const MAX_CACHED_TILES = 24;
 const noiseCache = new Map<string, any>();
+
+function cacheTile(key: string, image: any): void {
+    noiseCache.set(key, image);
+    while (noiseCache.size > MAX_CACHED_TILES) {
+        const oldest = noiseCache.keys().next();
+        if (oldest.done) break;
+        noiseCache.get(oldest.value)?.delete?.();
+        noiseCache.delete(oldest.value);
+    }
+}
 
 function buildCacheKey(fill: NoiseFillResolved, w: number, h: number): string {
     const [r, g, b, a] = fill.color;
-    return `${w}x${h}|${fill.size.x},${fill.size.y}|${fill.density}|${r},${g},${b},${a}`;
+    return `${w}x${h}|${fill.size.x},${fill.size.y}|${fill.density}|${fill.seed}|${r},${g},${b},${a}`;
 }
 
 /** PCG-style 2D hash — fully decorrelated on both axes. Returns [0, 1). */
@@ -35,6 +53,11 @@ function generateNoiseData(
     const gx = Math.max(1, Math.round(fill.size.x));
     const gy = Math.max(1, Math.round(fill.size.y));
     const density = Math.min(1, Math.max(0, fill.density));
+    // Quantised because the field is regenerated (and re-cached) whenever it
+    // changes: a continuously-varying seed would rebuild the tile every frame
+    // for a pattern the eye reads as random either way. Whole steps give
+    // distinct fields, which is what animating the speckle actually wants.
+    const seed = Math.round(fill.seed);
 
     const data = new Uint8Array(width * height * 4);
 
@@ -43,10 +66,10 @@ function generateNoiseData(
         for (let px = 0; px < width; px++) {
             const bx = Math.floor(px / gx);
             // Two independent hash calls with different salts — no axis correlation
-            const rnd = hash2(bx, by, 0);
+            const rnd = hash2(bx, by, seed);
             const idx = (py * width + px) * 4;
             if (rnd < density) {
-                const brightness = hash2(bx, by, 1);
+                const brightness = hash2(bx, by, seed + 1);
                 data[idx]     = Math.round(gr * brightness);
                 data[idx + 1] = Math.round(gg * brightness);
                 data[idx + 2] = Math.round(gb * brightness);
@@ -88,7 +111,7 @@ export class NoiseFillRenderer extends FillRenderer<NoiseFillResolved> {
                 4 * w,
             );
             if (!img) return false;
-            noiseCache.set(key, img);
+            cacheTile(key, img);
         }
 
         const tx = bounds?.left ?? 0;

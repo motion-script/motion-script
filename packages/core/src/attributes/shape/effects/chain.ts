@@ -16,6 +16,9 @@ import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 import type { CurvesChannel } from "../filters/implementations/curves";
 import type { BitCrushPalette } from "./implementations/bit-crush";
 import type { AsciiCharset } from "./implementations/ascii";
+import type { DisplaceChannel } from "./implementations/displace";
+import type { WaveShape } from "./implementations/wave";
+import type { ProgressiveBlurShape } from "./implementations/progressive-blur";
 
 /**
  * Every effect builder takes **exactly one argument**: an options object
@@ -385,6 +388,102 @@ export interface OilPaintOptions extends EffectOptions {
     radius?: number;
 }
 
+/**
+ * Displacement map. Scalar shorthand sets `amount` on both axes.
+ *
+ * `mode: 'backdrop'` displaces what is painted beneath the node instead — i.e.
+ * refraction through the node's silhouette.
+ */
+export interface DisplaceOptions extends EffectOptions {
+    /** Map image path, resolved like an image fill's `src`. */
+    src: string;
+    /** Displacement in px — a number for both axes, or per-axis via `{ x, y }` (default 20). */
+    amount?: number | Vector2;
+    /** Which channels of the map are read (default `'rg'`). */
+    channel?: DisplaceChannel;
+    /** The map value meaning "don't move" (default 0.5, what signed maps use). */
+    midpoint?: number;
+    /** 1 covers the node once; 2 tiles it at half size (default 1). */
+    scale?: number;
+    /** Map rotation in degrees (default 0). */
+    angle?: number;
+}
+
+/** Sine warp. Scalar shorthand sets `amplitude` on the Y axis — the everyday ripple. */
+export interface WaveOptions extends EffectOptions {
+    /** Peak displacement in px — a number (Y only), or per-axis via `{ x, y }` (default 20). */
+    amplitude?: number | Vector2;
+    /** Distance between crests in px (default 120). */
+    wavelength?: number;
+    /** Phase in degrees; tween over 360 for one seamless loop (default 0). */
+    phase?: number;
+    /** Parallel bands or concentric rings (default `'linear'`). */
+    shape?: WaveShape;
+    /** Direction the crests advance along, in degrees (default 0). `'linear'` only. */
+    angle?: number;
+    /** Ring origin in 0–1 layer coords (default middle). `'radial'` only. */
+    center?: Vector2;
+}
+
+/** Twirl / swirl vortex. Scalar shorthand sets `angle`. */
+export interface TwirlOptions extends EffectOptions {
+    /** Rotation at the centre in degrees (default 180). */
+    angle?: number;
+    /** 0–1 radius of influence (default 1 — the whole node). */
+    radius?: number;
+    /** Vortex centre in 0–1 layer coords (default middle). */
+    center?: Vector2;
+}
+
+/**
+ * Blur that ramps across the node. Scalar shorthand sets `radius`.
+ *
+ * `mode: 'backdrop'` gives the frosted panel whose blur fades out rather than
+ * ending at a hard edge.
+ */
+export interface ProgressiveBlurOptions extends EffectOptions {
+    /** Blur spread in px at the far end of the ramp (default 24). */
+    radius?: number;
+    /** Ramp layout (default `'linear'`). */
+    shape?: ProgressiveBlurShape;
+    /** 0–1 where the blur starts building (default 0). */
+    start?: number;
+    /** 0–1 where it reaches `radius` (default 1). */
+    end?: number;
+    /** Ramp direction in degrees; 0 = left-to-right (default 90, i.e. downward). */
+    angle?: number;
+    /** Ramp origin in 0–1 layer coords (default middle). `'radial'` only. */
+    center?: Vector2;
+    /** Taps averaged at full radius, 2–32 (default 20). */
+    samples?: number;
+}
+
+/** Mirrored wedges around a point. Scalar shorthand sets `segments`. */
+export interface KaleidoscopeOptions extends EffectOptions {
+    /** Number of mirrored wedges; below 2 is a no-op (default 6). */
+    segments?: number;
+    /** Rotation of the pattern in degrees — animate to sweep the source (default 0). */
+    angle?: number;
+    /** Fold origin in 0–1 layer coords (default middle). */
+    center?: Vector2;
+    /** Radial offset of the sampled wedge (default 0). */
+    offset?: number;
+    /** 0–1 blend from the original to the folded pattern — the handle to ramp it on (default 1). */
+    amount?: number;
+}
+
+/** Motion trails from past frames. Scalar shorthand sets `echoes`. */
+export interface TrailsOptions extends EffectOptions {
+    /** Past-frame taps drawn behind the current frame (default 6). */
+    echoes?: number;
+    /** Delay between taps in seconds (default 1 / 24). */
+    delay?: number;
+    /** Per-tap alpha multiplier (default 0.72). */
+    decay?: number;
+    /** How the taps composite (default `'screen'`). */
+    blend?: BlendMode;
+}
+
 /** Colour-depth reduction. Scalar shorthand sets `bits`. */
 export interface BitCrushOptions extends EffectOptions {
     /** Bits per channel when `palette` is `'none'`, 1–8 (default 3). */
@@ -401,6 +500,18 @@ const ZERO: Vector2 = { x: 0, y: 0 };
 /** Normalise {@link PixelateOptions.blocks} to a per-axis count. */
 const toBlocks = (blocks: number | Vector2): Vector2 =>
     typeof blocks === "number" ? { x: blocks, y: blocks } : blocks;
+
+/** Normalise a scalar-or-vector px option to both axes. */
+const toBothAxes = (value: number | Vector2): Vector2 =>
+    typeof value === "number" ? { x: value, y: value } : value;
+
+/**
+ * Normalise {@link WaveOptions.amplitude}. A bare number means the Y axis only —
+ * a wave that displaces along its own direction of travel just smears, so the
+ * transverse case is the one worth spelling `20` for.
+ */
+const toAmplitude = (value: number | Vector2): Vector2 =>
+    typeof value === "number" ? { x: 0, y: value } : value;
 
 /**
  * Immutable, chainable list of scene effects.
@@ -957,6 +1068,128 @@ export class EffectChain {
         return this.append(withEffectOptions(effect, { mode }));
     }
 
+    /**
+     * Append a displacement map — the content resampled at a position pushed
+     * around by a second image, rather than recoloured.
+     *
+     * With `{ mode: 'backdrop' }` the displacement runs on what is painted
+     * beneath the node and is clipped to its silhouette, which is refraction:
+     * the scene bends through the shape while the shape's own edges stay sharp.
+     */
+    displace(options: DisplaceOptions) {
+        const o = options;
+        return this.append(withEffectOptions(
+            {
+                type: "displace" as const,
+                src: o.src,
+                amount: toBothAxes(o.amount ?? 20),
+                channel: o.channel ?? "rg",
+                midpoint: o.midpoint ?? 0.5,
+                scale: o.scale ?? 1,
+                angle: o.angle ?? 0,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a sine warp. Tween `phase` over 360 to make the wave travel — it
+     * wraps, so a linear tween loops seamlessly.
+     */
+    wave(options?: number | WaveOptions) {
+        const o = scalarOptions(options, "amplitude");
+        return this.append(withEffectOptions(
+            {
+                type: "wave" as const,
+                amplitude: toAmplitude(o.amplitude ?? 20),
+                wavelength: o.wavelength ?? 120,
+                phase: o.phase ?? 0,
+                shape: o.shape ?? "linear",
+                angle: o.angle ?? 0,
+                center: o.center ?? CENTER,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a twirl / swirl vortex — a rotation about `center` that falls off
+     * with distance, so the middle spins while the rim stays pinned.
+     */
+    twirl(options?: number | TwirlOptions) {
+        const o = scalarOptions(options, "angle");
+        return this.append(withEffectOptions(
+            {
+                type: "twirl" as const,
+                angle: o.angle ?? 180,
+                radius: o.radius ?? 1,
+                center: o.center ?? CENTER,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a blur whose radius ramps across the node rather than being
+     * uniform. With `{ mode: 'backdrop' }` this is the frosted panel whose blur
+     * fades out instead of ending at a hard edge.
+     */
+    progressiveBlur(options?: number | ProgressiveBlurOptions) {
+        const o = scalarOptions(options, "radius");
+        return this.append(withEffectOptions(
+            {
+                type: "progressiveBlur" as const,
+                radius: o.radius ?? 24,
+                shape: o.shape ?? "linear",
+                start: o.start ?? 0,
+                end: o.end ?? 1,
+                angle: o.angle ?? 90,
+                center: o.center ?? CENTER,
+                samples: o.samples ?? 20,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a kaleidoscope fold. Animating `angle` sweeps fresh source material
+     * through the sampled wedge while the pattern itself stays locked — which is
+     * not what rotating the node does.
+     */
+    kaleidoscope(options?: number | KaleidoscopeOptions) {
+        const o = scalarOptions(options, "segments");
+        return this.append(withEffectOptions(
+            {
+                type: "kaleidoscope" as const,
+                segments: Math.round(o.segments ?? 6),
+                angle: o.angle ?? 0,
+                center: o.center ?? CENTER,
+                offset: o.offset ?? 0,
+                amount: o.amount ?? 1,
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append motion trails — the node composited with a trail of its own past
+     * frames. History-dependent, so it is exact under linear playback and export
+     * and refills after a backwards scrub; see {@link TrailsEffect}.
+     */
+    trails(options?: number | TrailsOptions) {
+        const o = scalarOptions(options, "echoes");
+        return this.append(withEffectOptions(
+            {
+                type: "trails" as const,
+                echoes: Math.round(o.echoes ?? 6),
+                delay: o.delay ?? 1 / 24,
+                decay: o.decay ?? 0.72,
+                blend: o.blend ?? "screen",
+            },
+            o,
+        ));
+    }
+
     /** Allows spreading the chain into an array: `[...FX.blur(5)]`. */
     *[Symbol.iterator]() {
         yield* this.list;
@@ -1030,6 +1263,13 @@ export const Effects = {
     godRays: (options?: number | GodRaysOptions) => new EffectChain().godRays(options),
     oilPaint: (options?: number | OilPaintOptions) => new EffectChain().oilPaint(options),
     texture: (options: TextureOptions) => new EffectChain().texture(options),
+    displace: (options: DisplaceOptions) => new EffectChain().displace(options),
+    wave: (options?: number | WaveOptions) => new EffectChain().wave(options),
+    twirl: (options?: number | TwirlOptions) => new EffectChain().twirl(options),
+    progressiveBlur: (options?: number | ProgressiveBlurOptions) =>
+        new EffectChain().progressiveBlur(options),
+    kaleidoscope: (options?: number | KaleidoscopeOptions) => new EffectChain().kaleidoscope(options),
+    trails: (options?: number | TrailsOptions) => new EffectChain().trails(options),
 };
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */

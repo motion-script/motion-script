@@ -59,6 +59,31 @@ function saturationMatrix(s: number): number[] {
     ];
 }
 
+/**
+ * Luma-preserving hue rotation by `deg` degrees.
+ *
+ *     a_ij = L_j + cos·(δ_ij − L_j) + sin·S_ij
+ *
+ * The same construction `invert({ channel: 'hue' })` uses — that case is exactly
+ * this at cos = −1, sin = 0, which collapses to `2·L_j − δ_ij`. Keeping one
+ * formula means a 180° hue rotation and a 180° hue *invert* cannot disagree.
+ *
+ * `S` is the standard sin term (it is what SVG/CSS `hue-rotate` specifies), and
+ * its constants pair with the BT.709 weights used throughout this package.
+ */
+function hueMatrix(deg: number): number[] {
+    const rad = (deg * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    // prettier-ignore
+    return [
+        LR + c * (1 - LR) + s * -LR,     LG + c * -LG + s * -LG,        LB + c * -LB + s * (1 - LB),     0, 0,
+        LR + c * -LR      + s * 0.143,   LG + c * (1 - LG) + s * 0.140, LB + c * -LB + s * -0.283,       0, 0,
+        LR + c * -LR      + s * -(1 - LR), LG + c * -LG + s * LG,       LB + c * (1 - LB) + s * LB,      0, 0,
+        0,                               0,                             0,                               1, 0,
+    ];
+}
+
 function temperatureMatrix(t: number): number[] {
     return [
         1, 0, 0, 0,  t * 0.1,
@@ -134,6 +159,12 @@ export const colorAdjustmentEffectHandler: EffectHandler<ColorAdjustmentFilter |
 
         const s = effect.saturation ?? 1;
         if (s !== 1) apply(saturationMatrix(s));
+
+        // Wrapped so a tween past 360 keeps rotating instead of building a
+        // needlessly large angle, and so 360 is exactly identity (no-op) rather
+        // than a matrix of accumulated float error.
+        const hue = ((effect.hue ?? 0) % 360 + 360) % 360;
+        if (hue !== 0) apply(hueMatrix(hue));
 
         // Vibrance: approximate as a lighter saturation pass (muted colors benefit more)
         const v = effect.vibrance ?? 0;

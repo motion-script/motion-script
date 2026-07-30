@@ -7,9 +7,9 @@ import { FrameGenerator } from "@/tween/generator";
 
 
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
-import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCornerRadius } from "@/attributes/shape/corners/corner-radius";
-import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
-import { property } from "@/attributes/properties/decorator";
+import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
+import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
+import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { NodeConfig } from "../base/node";
 
@@ -45,9 +45,9 @@ export class Camera extends ShapeNode<CameraProps> {
     /** View rotation in degrees (default: 0). */
     declare heading: number;
 
-    @property({ default: 0, mapper: (v: RectCornerRadius, p?: CornerRadiusResolved) => resolveCornerRadius(v, p), tween: lerpCornerRadius })
+    @cornerRadiusProperty()
     declare cornerRadius: RectCornerRadius;
-    @property({ default: "rounded", mapper: (v: RectCornerStyle, p?: CornerStyleResolved) => resolveCornerStyle(v, p), tween: lerpCornerStyle })
+    @cornerStyleProperty()
     declare cornerStyle: RectCornerStyle;
 
     constructor(props: NodeConfig<Camera, CameraProps>) {

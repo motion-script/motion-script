@@ -1,6 +1,6 @@
 import type { EffectGeometry, EffectHandler } from "./handler";
 import type { CanvasKit, Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "./sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { resolveEffectColor, type VignetteEffect } from "@motion-script/core";
 
 /**
