@@ -2,6 +2,7 @@ import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from 
 import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "@motion-script/skia-render/shapes/paragraph-cache";
+import type { SkiaAssets, SkiaTextureSource } from "@motion-script/skia-render/assets";
 // Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
 import { warmPendingView3D } from "@motion-script/skia-render/three/bridge";
 
@@ -71,7 +72,7 @@ function isSvgSrc(src: string): boolean {
  * `getFontMgr`) that the render context reads during a frame, after the
  * corresponding `loadX()`/prefetch has resolved for that frame's assets.
  */
-export class WebStorageAdapter extends StorageAdapter {
+export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
     private canvasKit: CanvasKit;
     private fontMgr: TypefaceFontProvider;
     private disposed: boolean = false;
@@ -391,7 +392,12 @@ export class WebStorageAdapter extends StorageAdapter {
      */
     upload3DFrame(
         key: string,
-        source: HTMLCanvasElement | OffscreenCanvas | ImageBitmap,
+        // Widened to the seam's opaque handle: the 3D renderer that produced this
+        // is platform code and so is this upload, but the value travels between
+        // them through skia-render, which must not name a DOM type. In this
+        // backend it is always one of HTMLCanvasElement | OffscreenCanvas |
+        // ImageBitmap, which is what the cast below asserts.
+        source: SkiaTextureSource,
         width: number,
         height: number,
     ): CKImage | null {
