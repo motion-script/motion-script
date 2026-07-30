@@ -1,4 +1,13 @@
-import { AudioDevice, Scene, AssetManager, MeasureScope, Size2D, AudioRequest, AssetManifest, AssetCatalog, Precomp, StateEvaluator, ProjectGlobals, type AudioTrack, type GlobalLayerConfig } from "@motion-script/core"
+import {
+    AssetCatalog, type AssetManifest, type AudioTrack,
+    type GlobalLayerConfig, type Scene, type Size2D,
+} from "@motion-script/core";
+import {
+    renderTimeline,
+    type AudioMixer,
+    type ScheduledAudioRequest,
+    type VideoFrameSink,
+} from "@motion-script/skia-render/export";
 import {
     AudioBufferSource,
     BufferTarget,
@@ -50,7 +59,7 @@ const EMPTY_MANIFEST: AssetManifest = {
     font: {},
 };
 
-// ── Audio mixing helpers ─────────────────────────────────────────────────────
+// ── Audio mixing ─────────────────────────────────────────────────────────────
 
 /** Fetches and decodes an audio source against a scratch `OfflineAudioContext` (decoding requires a context but doesn't render through it). */
 async function fetchAudioBuffer(src: string, ctx: OfflineAudioContext): Promise<AudioBuffer> {
@@ -60,94 +69,141 @@ async function fetchAudioBuffer(src: string, ctx: OfflineAudioContext): Promise<
 }
 
 /**
- * Renders every scheduled audio request into a single timeline-length buffer
- * via an `OfflineAudioContext` graph (gain nodes for per-request volume,
- * looping/trimming per request) — done once after the full video pass so the
- * mux step gets one continuous track instead of per-frame audio scheduling.
+ * Web Audio implementation of the mixer seam.
+ *
+ * Renders every scheduled request into a single timeline-length buffer via an
+ * `OfflineAudioContext` graph (gain per request, looping/trimming, the same
+ * filter chain the live `WebAudioDevice` builds) — done once after the full video
+ * pass so the mux step gets one continuous track instead of per-frame scheduling.
  */
-async function mixAudio(
-    requests: Array<{ request: AudioRequest; globalOffset: number }>,
-    totalDuration: number,
-    sampleRate: number = 44100,
-): Promise<AudioBuffer | null> {
-    if (requests.length === 0) return null;
+class WebAudioMixer implements AudioMixer<AudioBuffer> {
+    async mix(
+        requests: readonly ScheduledAudioRequest[],
+        totalDuration: number,
+        sampleRate: number = 44100,
+    ): Promise<AudioBuffer | null> {
+        if (requests.length === 0) return null;
 
-    const uniqueSrcs = [...new Set(requests.map(r => r.request.src))];
-    const scratchCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
+        const uniqueSrcs = [...new Set(requests.map(r => r.request.src))];
+        const scratchCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
 
-    const decoded = new Map<string, AudioBuffer>();
-    await Promise.all(uniqueSrcs.map(async (src) => {
-        decoded.set(src, await fetchAudioBuffer(src, scratchCtx));
-    }));
+        const decoded = new Map<string, AudioBuffer>();
+        await Promise.all(uniqueSrcs.map(async (src) => {
+            decoded.set(src, await fetchAudioBuffer(src, scratchCtx));
+        }));
 
-    const mixCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
+        const mixCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
 
-    for (const { request: req, globalOffset } of requests) {
-        const srcBuffer = decoded.get(req.src);
-        if (!srcBuffer) continue;
+        for (const { request: req, globalOffset } of requests) {
+            const srcBuffer = decoded.get(req.src);
+            if (!srcBuffer) continue;
 
-        const globalStart = globalOffset + req.startAt;
-        const globalEnd = req.endAt !== null
-            ? globalOffset + req.endAt
-            : totalDuration;
+            const globalStart = globalOffset + req.startAt;
+            const globalEnd = req.endAt !== null
+                ? globalOffset + req.endAt
+                : totalDuration;
 
-        const clipDuration = Math.min(globalEnd - globalStart, totalDuration - globalStart);
-        if (clipDuration <= 0) continue;
+            const clipDuration = Math.min(globalEnd - globalStart, totalDuration - globalStart);
+            if (clipDuration <= 0) continue;
 
-        const source = mixCtx.createBufferSource();
-        source.buffer = srcBuffer;
-        source.loop = req.loop;
+            const source = mixCtx.createBufferSource();
+            source.buffer = srcBuffer;
+            source.loop = req.loop;
 
-        const rate = effectiveSpeed(req.filters);
-        if (rate !== 1) source.playbackRate.value = rate;
+            const rate = effectiveSpeed(req.filters);
+            if (rate !== 1) source.playbackRate.value = rate;
 
-        const gain = mixCtx.createGain();
-        gain.gain.value = req.volume;
+            const gain = mixCtx.createGain();
+            gain.gain.value = req.volume;
 
-        // Filter chain sits between the source and the per-request gain, matching
-        // the live WebAudioDevice graph so exports sound identical to preview.
-        const graph = buildAudioFilterGraph(mixCtx, source, req.filters ?? []);
-        graph.output.connect(gain);
-        gain.connect(mixCtx.destination);
+            // Filter chain sits between the source and the per-request gain, matching
+            // the live WebAudioDevice graph so exports sound identical to preview.
+            const graph = buildAudioFilterGraph(mixCtx, source, req.filters ?? []);
+            graph.output.connect(gain);
+            gain.connect(mixCtx.destination);
 
-        // start()'s 3rd arg is a source-buffer duration, so a sped-up clip consumes
-        // proportionally more buffer over the same span of scene time.
-        source.start(globalStart, req.trimStart, clipDuration * rate);
-        for (const osc of graph.oscillators) osc.start(globalStart);
+            // start()'s 3rd arg is a source-buffer duration, so a sped-up clip consumes
+            // proportionally more buffer over the same span of scene time.
+            source.start(globalStart, req.trimStart, clipDuration * rate);
+            for (const osc of graph.oscillators) osc.start(globalStart);
+        }
+
+        return mixCtx.startRendering();
     }
-
-    return mixCtx.startRendering();
 }
 
-/** Hands control back to the browser between frame batches so the export doesn't block the main thread (and stays cancellable/responsive). */
-function yieldToMain(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
-}
+// ── Video sink ───────────────────────────────────────────────────────────────
 
 /**
- * Audio for exports is mixed offline via {@link mixAudio} at the end of the
- * run, so the AssetManager just needs an AudioDevice-shaped sink that does
- * nothing during the per-frame pass.
+ * mediabunny/WebCodecs implementation of the frame sink.
+ *
+ * Wraps the very `<canvas>` CanvasKit draws into, so `addFrame` costs nothing but
+ * a timestamp — WebCodecs pulls the pixels from the canvas itself, with no
+ * GPU→CPU readback. That is why the seam signals a frame rather than passing one.
  */
-class NoopAudioDevice extends AudioDevice {
-    has(_src: string): boolean { return true; }
-    async append(_src: string, _data: ArrayBuffer): Promise<void> { }
-    retain(_keep: ReadonlySet<string>): void { }
-    schedule(_requests: readonly AudioRequest[]): void { }
-    syncTo(_sceneTime: number): void { }
-    play(_time: number, _speed: number, _reverse: boolean): void { }
-    stop(): void { }
+class MediabunnyVideoSink implements VideoFrameSink<AudioBuffer> {
+    private readonly target = new BufferTarget();
+    private readonly output: Output;
+    private readonly video: CanvasSource;
+    private audio: AudioBufferSource | null = null;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.video = new CanvasSource(canvas, {
+            codec: 'avc',
+            bitrate: 10_000_000,
+            // Pin to the software encoder with fixed rate control so every platform
+            // produces the same output. Without this, WebCodecs' `no-preference`
+            // default lets each OS pick its own HW encoder (VideoToolbox on macOS,
+            // Media Foundation/NVENC on Windows), which have different quality/
+            // color tuning at the same nominal bitrate — same settings, different
+            // result.
+            hardwareAcceleration: 'prefer-software',
+            bitrateMode: 'constant',
+        });
+        this.output = new Output({ format: new Mp4OutputFormat(), target: this.target });
+    }
+
+    async start(info: { fps: number; hasAudio: boolean }): Promise<void> {
+        this.output.addVideoTrack(this.video, { frameRate: info.fps });
+        // Tracks must be declared before the muxer starts, which is why the
+        // orchestrator reports this rather than leaving it to be inferred.
+        if (info.hasAudio) {
+            this.audio = new AudioBufferSource({ codec: 'aac', bitrate: 192_000 });
+            this.output.addAudioTrack(this.audio);
+        }
+        await this.output.start();
+    }
+
+    async addFrame(timestamp: number, duration: number): Promise<void> {
+        await this.video.add(timestamp, duration);
+    }
+
+    async addAudio(mixed: AudioBuffer): Promise<void> {
+        if (!this.audio) return;
+        await this.audio.add(mixed);
+    }
+
+    async finalize(): Promise<Uint8Array> {
+        this.video.close();
+        this.audio?.close();
+        await this.output.finalize();
+        const buffer = this.target.buffer;
+        if (!buffer) throw new Error('Export produced no data');
+        return new Uint8Array(buffer);
+    }
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
 /**
  * Renders `scenes` frame-by-frame to an offscreen canvas and muxes the result
- * into an MP4 via mediabunny: drives the same {@link WebRenderContext}/
- * {@link StateEvaluator} pipeline as live playback, captures each frame to the
- * video track, mixes all audio offline at the end (see {@link mixAudio}), then
- * finalizes and either triggers a browser download or returns the MP4 bytes
- * (see `returnBytes`). Honors `signal` for cancellation between frames.
+ * into an MP4 via mediabunny.
+ *
+ * The frame loop itself — precomp, state evaluation, the warm-and-re-render retry
+ * that keeps every frame accurate, audio scheduling, progress and cancellation —
+ * lives in `@motion-script/skia-render`'s `renderTimeline`. What this function
+ * supplies is the browser-specific half: a canvas to draw into, a WebCodecs sink,
+ * a Web Audio mixer, and the `<a download>` delivery.
  */
 export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Array | void> {
     const {
@@ -169,138 +225,43 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     if (scenes.length === 0) return;
     signal?.throwIfAborted();
 
-    const resolution: Size2D = {
-        width: viewport.width * scale,
-        height: viewport.height * scale,
-    };
-    const frameDuration = 1 / fps;
-
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = resolution.width;
-    offscreenCanvas.height = resolution.height;
+    offscreenCanvas.width = viewport.width * scale;
+    offscreenCanvas.height = viewport.height * scale;
     offscreenCanvas.style.display = 'none';
     document.body.appendChild(offscreenCanvas);
-
-
 
     const canvasKit = await getCanvasKit(wasmUrl);
     const assetCatalog = new AssetCatalog(manifest);
     const storageAdapter = new WebStorageAdapter(canvasKit, assetCatalog, viewport, fps);
     const renderContext = new WebRenderContext(canvasKit, storageAdapter);
     renderContext.mount(offscreenCanvas);
-    renderContext.pixelRatio = scale;
 
-    // One instance, shared by the measuring pass and the render pass — the layers
-    // whose assets precomp registers must be the ones the frames actually draw.
-    const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
-
-    const precomp = new Precomp(
-        scenes,
-        viewport,
-        fps,
-        assetCatalog,
-        renderContext as unknown as MeasureScope,
-        { globals },
-    ).run();
-
-    const { totalFrames, totalDuration } = precomp;
-    const tracks = precomp.scenes.map(s => s.frameCount);
-
-    const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope, globals);
-    const audioDevice = new NoopAudioDevice();
-    const assetManager = new AssetManager(precomp, storageAdapter, audioDevice);
-
-    // Collect audio requests with global offsets from precomp.
-    const sceneRequests: Array<{ request: AudioRequest; globalOffset: number }> = [];
-    for (const scene of precomp.scenes) {
-        const globalOffset = scene.startFrame / fps;
-        for (const req of scene.audioRequests) {
-            sceneRequests.push({ request: req, globalOffset });
-        }
-    }
-    // Project-level beds are already in absolute timeline time, so no offset.
-    for (const req of precomp.globalAudio) {
-        sceneRequests.push({ request: req, globalOffset: 0 });
-    }
-
-    const target = new BufferTarget();
-    const videoSource = new CanvasSource(offscreenCanvas, {
-        codec: 'avc',
-        bitrate: 10_000_000,
-        // Pin to the software encoder with fixed rate control so every platform
-        // produces the same output. Without this, WebCodecs' `no-preference`
-        // default lets each OS pick its own HW encoder (VideoToolbox on macOS,
-        // Media Foundation/NVENC on Windows), which have different quality/
-        // color tuning at the same nominal bitrate — same settings, different
-        // result.
-        hardwareAcceleration: 'prefer-software',
-        bitrateMode: 'constant',
-    });
-
-    const output = new Output({ format: new Mp4OutputFormat(), target });
-    output.addVideoTrack(videoSource, { frameRate: fps });
-
-    let audioSource: AudioBufferSource | null = null;
-    if (sceneRequests.length > 0) {
-        audioSource = new AudioBufferSource({ codec: 'aac', bitrate: 192_000 });
-        output.addAudioTrack(audioSource);
-    }
-
-    await output.start();
-
+    let bytes: Uint8Array | undefined;
     try {
-        let globalTime = 0;
-        for (let f = 0; f < totalFrames; f++) {
-            signal?.throwIfAborted();
-
-            await assetManager.loadAt(f);
-            stateEvaluator.stateAt(f);
-            stateEvaluator.layout(renderContext as unknown as MeasureScope);
-            // Render, then warm any exact video frames the render needed but the
-            // window didn't have yet and re-render, so every exported frame is
-            // frame-accurate. Bounded — the second pass renders from the warm cache.
-            for (let pass = 0; pass < 3; pass++) {
-                await renderContext.execute(() => {
-                    stateEvaluator.render(renderContext);
-                });
-                if (!(await storageAdapter.warmPendingVideo())) break;
-            }
-
-            await videoSource.add(globalTime, frameDuration);
-            globalTime += frameDuration;
-            onProgress?.((f + 1) / totalFrames * (audioSource ? 0.85 : 1));
-
-            if ((f + 1) % 4 === 0) await yieldToMain();
-        }
-
-        videoSource.close();
-
-        if (audioSource) {
-            const mixed = await mixAudio(sceneRequests, totalDuration);
-            if (mixed) {
-                await audioSource.add(mixed);
-            }
-            audioSource.close();
-            onProgress?.(0.97);
-        }
-
-        await output.finalize();
-        onProgress?.(1);
+        bytes = await renderTimeline<AudioBuffer>({
+            scenes, viewport, fps, scale, manifest, audioTracks, overlays, backgrounds,
+            renderContext, storageAdapter, assetCatalog,
+            sink: new MediabunnyVideoSink(offscreenCanvas),
+            mixer: new WebAudioMixer(),
+            onProgress,
+            signal,
+        }) as Uint8Array | undefined;
     } finally {
         renderContext.dispose();
         document.body.removeChild(offscreenCanvas);
     }
 
-    const buffer = target.buffer;
-    if (!buffer) throw new Error('Export produced no data');
+    if (!bytes) return;
 
     // Headless callers capture the bytes and write them to disk themselves,
     // so skip the DOM-based download path entirely.
-    if (returnBytes) {
-        return new Uint8Array(buffer);
-    }
+    if (returnBytes) return bytes;
 
-    const blob = new Blob([buffer], { type: 'video/mp4' });
+    // The sink builds this Uint8Array over a whole, plain ArrayBuffer, so the cast
+    // is sound — TS only balks because the generic parameter admits a
+    // SharedArrayBuffer, which a BlobPart may not be.
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'video/mp4' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

@@ -43,6 +43,24 @@ export type {
     RenderEffect,
 } from "./effects/handler";
 
+// ─── Export orchestration ────────────────────────────────────────────────────
+//
+// The frame loop is portable; the codec is injected. Declare a `VideoFrameSink`
+// over mediabunny, ffmpeg, NVENC or anything else and `renderTimeline` drives it.
+
+export { renderTimeline, renderFrameAt, NoopAudioDevice } from "./export";
+export type {
+    VideoFrameSink,
+    AudioMixer,
+    ImageEncoder,
+    ScheduledAudioRequest,
+    ScreenshotFormat,
+    FrameSpec,
+    RenderTimelineParams,
+    RenderFrameParams,
+    RenderedFrame,
+} from "./export";
+
 // ─── The platform seam ───────────────────────────────────────────────────────
 
 export type {

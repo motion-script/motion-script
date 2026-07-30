@@ -1,7 +1,15 @@
-import { AssetManager, AssetCatalog, AssetManifest, MeasureScope, Precomp, Scene, Size2D, StateEvaluator, AudioDevice, AudioRequest, ProjectGlobals, type GlobalLayerConfig } from "@motion-script/core"
+import { AssetCatalog, type AssetManifest, type GlobalLayerConfig, type Scene, type Size2D } from "@motion-script/core";
+import {
+    renderFrameAt,
+    type FrameSpec,
+    type ImageEncoder,
+    type ScreenshotFormat,
+} from "@motion-script/skia-render/export";
 import { WebRenderContext } from "./render-context";
 import { WebStorageAdapter } from "./storage-adapter";
 import { getCanvasKit } from "./getter";
+
+export type { ScreenshotFormat, FrameSpec };
 
 const EMPTY_MANIFEST: AssetManifest = {
     image: {},
@@ -9,19 +17,6 @@ const EMPTY_MANIFEST: AssetManifest = {
     audio: {},
     font: {},
 };
-
-/** Image formats a screenshot can be encoded to. */
-export type ScreenshotFormat = "png" | "jpeg";
-
-/**
- * How the requested frame is addressed: an explicit global frame index, the
- * timeline's first frame, or its last. The CLI resolves `[time]` to a frame
- * (round(time * fps)) before calling, so only frame-addressed specs reach here.
- */
-export type FrameSpec =
-    | { kind: "frame"; frame: number }
-    | { kind: "first" }
-    | { kind: "last" };
 
 export type ScreenshotParams = {
     scenes: Scene[];
@@ -52,37 +47,47 @@ export type ScreenshotResult = {
 };
 
 /**
- * Audio is irrelevant to a still capture, but `AssetManager` needs an
- * `AudioDevice`-shaped sink, so feed it a no-op one (mirrors the exporter).
+ * Browser implementation of the image-encoder seam.
+ *
+ * This CanvasKit build ships no wasm image encoders, so a snapshot is encoded
+ * through a 2D canvas. `toDataURL` is the only encode path a browser offers
+ * synchronously, hence the base64 round-trip back to bytes.
  */
-class NoopAudioDevice extends AudioDevice {
-    has(_src: string): boolean { return true; }
-    async append(_src: string, _data: ArrayBuffer): Promise<void> { }
-    retain(_keep: ReadonlySet<string>): void { }
-    schedule(_requests: readonly AudioRequest[]): void { }
-    syncTo(_sceneTime: number): void { }
-    play(_time: number, _speed: number, _reverse: boolean): void { }
-    stop(): void { }
-}
+class CanvasImageEncoder implements ImageEncoder {
+    encode(
+        pixels: Uint8Array,
+        width: number,
+        height: number,
+        format: ScreenshotFormat,
+        quality?: number,
+    ): Uint8Array {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Screenshot encode: could not get a 2d context.");
+        // `pixels` is unpremultiplied RGBA8888, which is exactly ImageData's layout.
+        ctx.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0);
 
-/** Decode a `data:` URL's base64 payload into raw bytes. */
-function dataUrlToBytes(dataUrl: string): Uint8Array {
-    const comma = dataUrl.indexOf(",");
-    const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
+        const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+        const dataUrl = canvas.toDataURL(mime, quality);
+        const comma = dataUrl.indexOf(",");
+        const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    }
 }
 
 /**
- * Renders a single frame of `scenes` to an image, reusing the exact same
- * {@link Precomp}/{@link StateEvaluator}/{@link WebRenderContext} pipeline as
- * {@link exportScenesAsVideo} — so a screenshot is the same render the user
- * previews and exports, just captured at one frame.
+ * Renders a single frame of `scenes` to an image.
  *
- * Returns the captured frame index (after clamping the requested spec to the
- * valid range), the total frame count, and the encoded image bytes.
+ * The frame resolution, precomp and warm-and-re-render retry all live in
+ * `@motion-script/skia-render`'s `renderFrameAt`, shared with the video path — so
+ * a screenshot is the same render the export would produce at that frame. This
+ * function supplies the browser half: a canvas to draw into and a 2D-canvas
+ * encoder.
  */
 export async function exportScreenshot(params: ScreenshotParams): Promise<ScreenshotResult> {
     const {
@@ -101,14 +106,9 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
 
     if (scenes.length === 0) throw new Error("No scenes to screenshot.");
 
-    const resolution: Size2D = {
-        width: viewport.width * scale,
-        height: viewport.height * scale,
-    };
-
     const offscreenCanvas = document.createElement("canvas");
-    offscreenCanvas.width = resolution.width;
-    offscreenCanvas.height = resolution.height;
+    offscreenCanvas.width = viewport.width * scale;
+    offscreenCanvas.height = viewport.height * scale;
     offscreenCanvas.style.display = "none";
     document.body.appendChild(offscreenCanvas);
 
@@ -117,58 +117,14 @@ export async function exportScreenshot(params: ScreenshotParams): Promise<Screen
     const storageAdapter = new WebStorageAdapter(canvasKit, assetCatalog, viewport, fps);
     const renderContext = new WebRenderContext(canvasKit, storageAdapter);
     renderContext.mount(offscreenCanvas);
-    renderContext.pixelRatio = scale;
-
-    // Audio is irrelevant to a still, but the layers are not: the same instance
-    // is shared by the measuring and render passes, as in the exporter.
-    const globals = new ProjectGlobals({ overlays, backgrounds }, viewport);
 
     try {
-        const precomp = new Precomp(
-            scenes,
-            viewport,
-            fps,
-            assetCatalog,
-            renderContext as unknown as MeasureScope,
-            { globals },
-        ).run();
-
-        const { totalFrames } = precomp;
-        if (totalFrames === 0) throw new Error("Timeline has no frames to capture.");
-
-        // Resolve the spec to a concrete global frame, then clamp into range.
-        const requested =
-            frame.kind === "first" ? 0
-                : frame.kind === "last" ? totalFrames - 1
-                    : frame.frame;
-        const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.floor(requested)));
-
-        const tracks = precomp.scenes.map(s => s.frameCount);
-        const stateEvaluator = new StateEvaluator(scenes, viewport, fps, assetCatalog, tracks, renderContext as unknown as MeasureScope, globals);
-        const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
-
-        // stateAt replays from the owning scene's start to reach a mid-timeline
-        // frame, so a single still is correct without a frame-by-frame pass.
-        await assetManager.loadAt(targetFrame);
-        stateEvaluator.stateAt(targetFrame);
-        stateEvaluator.layout(renderContext as unknown as MeasureScope);
-        // Render once, then warm any exact video frames the render asked for but
-        // the window didn't have yet and re-render — so a mid-clip still is
-        // frame-accurate. Bounded (decoding is monotonic; the second pass is warm).
-        for (let pass = 0; pass < 3; pass++) {
-            await renderContext.execute(() => {
-                stateEvaluator.render(renderContext);
-            });
-            if (!(await storageAdapter.warmPendingVideo())) break;
-        }
-
-        const mime = format === "jpeg" ? "image/jpeg" : "image/png";
-        const dataUrl = renderContext.screenshot(mime, quality);
-        if (!dataUrl) throw new Error("Screenshot capture produced no data.");
-
-        stateEvaluator.dispose();
-
-        return { frame: targetFrame, totalFrames, bytes: dataUrlToBytes(dataUrl) };
+        return await renderFrameAt({
+            scenes, viewport, fps, scale, manifest, overlays, backgrounds,
+            renderContext, storageAdapter, assetCatalog,
+            frame, format, quality,
+            encoder: new CanvasImageEncoder(),
+        });
     } finally {
         renderContext.dispose();
         document.body.removeChild(offscreenCanvas);
