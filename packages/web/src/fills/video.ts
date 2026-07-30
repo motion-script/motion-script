@@ -1,4 +1,4 @@
-import type { VideoFillResolved, VideoEchoFilter } from "@motion-script/core";
+import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { makeImageShader, applyMediaFilters } from "./image";
@@ -24,7 +24,17 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
 
     applyPaint(fill: VideoFillResolved, ctx: FillRendererContext): boolean {
         if (!fill.src) return false;
-        const img = ctx.assets.getVideoFrame(fill.src, fill.timestamp);
+        // The source time to show. Derived here, from how long the painting node
+        // has existed, unless the fill carries an explicit `timestamp` — so a
+        // clip plays wherever it is painted without anything advancing it.
+        const timestamp = resolveVideoTimestamp(
+            fill,
+            ctx.elapsed,
+            ctx.assets.getVideoDuration(fill.src),
+        );
+        // claim, not getVideoFrame: several fills can be showing different times
+        // of one clip in this frame, and they must not share its one texture.
+        const img = ctx.assets.claimVideoFrame(fill.src, timestamp);
         if (!img) return false;
 
         const echo = fill.filters?.find(
@@ -32,7 +42,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         );
 
         if (echo && echo.echoes > 0 && echo.delay > 0) {
-            this.drawEchoStack(fill, ctx, echo, img);
+            this.drawEchoStack(fill, ctx, echo, img, timestamp);
             // Handler skips its own draw — we've drawn the full stack. It still
             // clears the shader and frees transientImages afterward.
             ctx.skipDefaultDraw = true;
@@ -54,12 +64,15 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
      * skipped, so the trail degrades gracefully and fills in as playback warms.
      *
      * @param current the adapter-owned current-frame image (already fetched)
+     * @param timestamp the resolved source time `current` was fetched at — taps
+     *                  walk back from it, so it must be the same value
      */
     private drawEchoStack(
         fill: VideoFillResolved,
         ctx: FillRendererContext,
         echo: VideoEchoFilter,
         current: CKImage,
+        timestamp: number,
     ): void {
         const { paint, canvasKit } = ctx;
         const decay = echo.decay ?? 0.5;
@@ -74,7 +87,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
 
         // Oldest → newest so newer (brighter) taps composite over older ones.
         for (let n = taps; n >= 1; n--) {
-            const ts = fill.timestamp - n * echo.delay;
+            const ts = timestamp - n * echo.delay;
             if (ts < 0) continue;
             const tap = ctx.assets.getVideoFrameImage(fill.src, ts);
             if (!tap) continue; // not warm yet — warmPendingVideo() decodes it for the re-render

@@ -44,8 +44,8 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `playing` | `boolean` | `true` | Whether playback advances each frame |
-| `timestamp` | `number` | – | Starting offset into the source in seconds. Defaults to `trimStart` or `0` |
+| `playing` | `boolean` | `true` | Whether playback advances with the node's clock |
+| `timestamp` | `number \| null` | – | **Explicit** source time in seconds. Omit it and the picture is timed from the moment this node appeared; set it to drive the playhead yourself, or `null` to hand it back |
 | `trimStart` | `number` | – | Starting point within the source file in seconds |
 | `trimEnd` | `number` | – | Ending point within the source file in seconds |
 | `speed` | `number` | `1` | Playback-rate multiplier (affects both picture and audio) |
@@ -67,9 +67,22 @@ export default createScene(function* (stage) {
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius (clips the frame) |
 | `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape |
 
+## Playback timing
+
+The frame shown is worked out as the node paints, from **how long the node has
+existed** — a `Video` added 3s into a scene opens on its first frame, not 3s in.
+Nothing advances it per frame, so a given frame renders the same whether you
+scrubbed to it, exported it, or played into it.
+
+`timestamp` overrides that: set it and the node shows exactly that source time.
+It is the time-remap knob — tween it to scrub the clip, or pair it with
+`playing: false` to hold a single frame. Set it to `null` to hand the playhead
+back to the clock (`set()` merges a partial, so `undefined` won't clear it). A
+paused clip with no `timestamp` sits on its first frame (`trimStart`).
+
 ## Animating
 
-Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with `.to()`. For playback control, set `playing` and `timestamp` directly:
+Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with `.to()`. For playback control, set `timestamp` and `playing`:
 
 ```tsx
 import { createScene, Video, createRef, easeInOut, wait } from '@motion-script/core';
@@ -92,13 +105,16 @@ export default createScene(function* (stage) {
   // Fade in
   yield* clip().to({ opacity: 1, cornerRadius: 0 }, 0.8, easeInOut);
 
-  // Pause mid-playback
+  // Freeze on the frame 3s into the clip
   yield* wait(3);
-  clip().set({ playing: false });
+  clip().set({ playing: false, timestamp: 3 });
 
-  // Resume
-  yield* wait(1);
-  clip().set({ playing: true });
+  // Scrub it by hand while frozen
+  yield* clip().to({ timestamp: 8 }, 2, easeInOut);
+
+  // Hand the playhead back to the clock, which never stopped — so it resumes
+  // where an unpaused clip would be
+  clip().set({ playing: true, timestamp: null });
 });
 ```
 
@@ -125,7 +141,7 @@ export default createScene(function* (stage) {
 
 - `Video` extends `Rect`, so children can be placed on top of the video frame (for subtitles, overlays, etc.).
 - Set `muted: true` to suppress audio while keeping the picture, which is useful when compositing multiple video layers.
-- `playing: false` freezes both picture and sound.
+- `playing: false` freezes both picture and sound; add a `timestamp` to choose which frame it holds.
 - `loop: 'reverse'` plays the clip backward when it reaches the end.
 - See [Audio Filters](../attributes/audio) for the full list of audio filters.
 - See [Image Filters](../image-filters/overview) for the full list of visual filters that can be applied to the frame.

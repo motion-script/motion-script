@@ -139,7 +139,6 @@ export const fractalNoiseFill: FillData<FractalNoiseFillResolved> = {
         contrast: lerpNumber(a.contrast, b.contrast, t),
         opacity: lerpNumber(a.opacity ?? 1, b.opacity ?? 1, t),
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.basis === b.basis &&
         a.octaves === b.octaves &&

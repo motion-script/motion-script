@@ -64,11 +64,6 @@ export const view3DFill: FillData<View3DFillResolved> = {
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
 
-    // Not `dynamic`: the scene is rebuilt by its producer, not advanced by the
-    // fill. Marking it dynamic would rebuild the whole fill array every frame to
-    // hand back the same value.
-    update: (previous) => previous,
-
     // Reference identity is the only comparison a Graphics3D supports — it has no
     // structural hash and `ops()` returns its live array. Nothing in the codebase
     // calls this today; it exists to satisfy the interface.

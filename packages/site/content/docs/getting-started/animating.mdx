@@ -26,6 +26,21 @@ export default createScene(function* (stage) {
 });
 ```
 
+A ref can also be declared as any **base class** of the node it is attached to,
+which is how one handle holds whichever shape a factory happened to build:
+
+```tsx
+const shape = createRef<ShapeNode>();
+
+<Rect ref={shape} />      // ✔ a Rect is a ShapeNode
+<Ellipse ref={shape} />   // ✔ so is an Ellipse
+```
+
+`shape()` then types as a `ShapeNode`, so you get the props every shape shares
+(`fill`, `stroke`, `shadow`, …) but not `Rect`'s own `cornerRadius`. The reverse
+— `createRef<Rect>()` on a `<Text>` — stays a type error, since that ref would be
+handed a `Text` at runtime while every read still claimed it was a `Rect`.
+
 ## Animate with `.to()`
 
 Every node has a `.to()` method. You give it the properties to change and how long it should take, then `yield*` it to play the animation.

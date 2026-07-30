@@ -233,6 +233,7 @@ export type {
     Fill,
     FillChain,
     FillOptions,
+    VideoFillOptions,
     // The colour type every fill, stroke, shadow and 3D material accepts —
     // a CSS string (incl. `oklch()`, theme tokens, `"white/10"`) or a
     // pre-normalized RGBA tuple.
@@ -422,6 +423,7 @@ export {
 } from '@motion-script/core';
 export type {
     Reference,
+    RefTarget,
     Context,
     DataRecord,
     ParseCSVOptions,

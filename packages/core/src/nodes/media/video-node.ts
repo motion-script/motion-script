@@ -9,7 +9,7 @@ import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { AssetTracker } from "@/assets/tracker";
-import { resolveFill, updateFill } from "@/attributes/shape/fill/registry";
+import { resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
 import { Sound } from "@/attributes/audio/sound";
 import { AudioFilterItem } from "@/attributes/audio/filters/union";
@@ -23,10 +23,15 @@ export interface VideoProps extends RectProps {
     scaling?: number;
     /** Visual filters applied to the rendered frame (blur, color, posterizeTime, echo, …). */
     filters?: VideoFilter;
-    /** Whether playback advances each frame (drives both picture and sound). Default true. */
+    /** Whether playback advances with the node's clock (drives both picture and sound). Default true. */
     playing?: boolean;
-    /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
-    timestamp?: number;
+    /**
+     * Explicit source time to show, in seconds. Omit it (the default) and the
+     * picture is timed from the moment this node appeared; set it to drive the
+     * playhead yourself, and set it to `null` to hand the playhead back to the
+     * clock (`set()` merges a partial, so `undefined` won't clear it).
+     */
+    timestamp?: number | null;
     trimStart?: number;
     trimEnd?: number;
     /** Playback-rate multiplier for both picture and audio. Default 1. */
@@ -47,8 +52,8 @@ export interface VideoProps extends RectProps {
  * A video. Like {@link Image}, layout and child positioning are inherited
  * wholesale from {@link Rect} — a Video lays out its children exactly like a
  * Rect, just with a *playing* video painted in place of the rect's fill. The
- * frame is drawn through the dynamic `video` fill, whose timestamp this node
- * advances each tick.
+ * frame is drawn through a `video` fill, which resolves the source time to show
+ * from this node's clock as it paints.
  *
  * Unlike Image, a Video also plays its own audio track: an internal {@link Sound}
  * (whose `src` is the same file) is scheduled on the scene's audio timeline,
@@ -65,7 +70,7 @@ export class Video extends Rect {
     declare filters?: (MediaFilter | VideoMediaFilter)[];
 
     @property({ default: true }) declare playing: boolean;
-    @property() declare timestamp?: number;
+    @property() declare timestamp?: number | null;
     @property() declare trimStart?: number;
     @property() declare trimEnd?: number;
     @property() declare speed?: number;
@@ -78,11 +83,11 @@ export class Video extends Rect {
     declare audioFilters?: AudioFilterItem[];
 
     /**
-     * The live `video` fill state, advanced each tick by the fill's own dynamic
-     * `update()` (loop / trim / clamp logic). `renderSelf` paints this — so the
-     * picture reuses the exact playback model authors get from `Fills.video(...)`,
-     * rather than re-deriving timestamps here. Rebuilt from props when the source
-     * or any playback knob changes (see {@link videoKey}).
+     * The `video` fill state `renderSelf` paints — so the picture reuses the
+     * exact playback model authors get from `Fills.video(...)`, rather than
+     * re-deriving timestamps here. The fill carries no timestamp of its own: it
+     * resolves one as it paints, from this node's clock. Rebuilt from props when
+     * the source or any playback knob changes (see {@link videoKey}).
      */
     private _video: VideoFillResolved | null = null;
     private _videoKey: string = "";
@@ -108,8 +113,7 @@ export class Video extends Rect {
         ].join('|');
     }
 
-    /** (Re)build the resolved video fill from current props, preserving the
-     * advanced timestamp across rebuilds that don't reset playback. */
+    /** (Re)build the resolved video fill from current props. */
     private syncVideo(): void {
         if (!this.src) {
             this._video = null;
@@ -118,7 +122,6 @@ export class Video extends Rect {
         }
         const key = this.videoKey();
         if (key === this._videoKey && this._video) return;
-        const prevTimestamp = this._video?.timestamp;
         this._videoKey = key;
         const prop: VideoFillProp = {
             type: 'video',
@@ -128,7 +131,7 @@ export class Video extends Rect {
             scaling: this.scaling,
             filters: this.filters,
             playing: this.playing,
-            timestamp: this.timestamp ?? prevTimestamp ?? this.trimStart ?? 0,
+            timestamp: this.timestamp,
             trimStart: this.trimStart,
             trimEnd: this.trimEnd,
             speed: this.speed,
@@ -173,12 +176,10 @@ export class Video extends Rect {
         });
     }
 
+    // Only the sound is advanced here — the picture's timestamp is derived from
+    // this node's clock as the fill paints (see `resolveVideoTimestamp`).
     override tick(time: number): void {
         super.tick(time);
-        this.syncVideo();
-        if (this._video) {
-            this._video = updateFill(this._video, time, this.assets) as VideoFillResolved;
-        }
         this.syncSound();
         this._sound?.tick(time);
     }

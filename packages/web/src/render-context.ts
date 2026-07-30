@@ -5,7 +5,6 @@ import type {
     Paint,
     Path as CKPath,
     Shader,
-    Image as CKImage,
 } from "@motion-script/canvaskit";
 import {
     type BooleanOperation,
@@ -262,8 +261,16 @@ function filterMode(ck: CanvasKit, mode: "linear" | "nearest") {
  * {@link EffectGeometry} from the CTM in `shaderGeometry`.)
  */
 function boxGeometry(width: number, height: number): EffectGeometry {
-    return { width, height, centerX: 0, centerY: 0, scale: 1, time: 0 };
+    return {
+        width, height, centerX: 0, centerY: 0, scale: 1, time: 0,
+        // Motion is meaningless on this path: an ImageFilter is positioned by the
+        // layer it attaches to, and every velocity-derived effect is a shader.
+        velocity: ZERO_VELOCITY, angularVelocity: 0,
+    };
 }
+
+/** Shared "no motion" vector, so the common case allocates nothing per frame. */
+const ZERO_VELOCITY = { x: 0, y: 0 } as const;
 
 /** Nesting ceiling for {@link WebRenderContext.rasterizeOffscreen}. */
 const MAX_RASTER_DEPTH = 4;
@@ -402,6 +409,9 @@ export class WebRenderContext extends RenderContext {
             // beginNode with no counterpart in end(), so it goes stale once a
             // child has rendered.
             () => (this.currentNodeStack.length > 0 ? this.currentNodeId() : ""),
+            // The painting node's age, for fills that resolve themselves against
+            // the clock (video). Same source the time-based effects read.
+            () => this.currentRenderState()?.elapsed ?? 0,
             () => {
                 // Pixel ratio, parent scale and camera zoom, already folded
                 // together by the canvas matrix.
@@ -443,6 +453,10 @@ export class WebRenderContext extends RenderContext {
         // Paint slots are per frame too, and key the 3D resources the sweep above
         // releases — the two brackets must stay together.
         this.fillHandler.beginFrame();
+        // Which clip texture is claimed by which timestamp is also per pass, so a
+        // second time of the same clip is served its own image (see
+        // WebStorageAdapter.claimVideoFrame).
+        this.storageAdapter.beginRenderPass();
 
         this.isRendering = true;
         callback();
@@ -1537,7 +1551,7 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const extra = handler.resources?.(effect, ck, this.effectResources(effect, snapshot)) ?? [];
+        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         if (lens == null) {
             // Unlike the foreground path there is nothing to paint back: the
@@ -1598,7 +1612,7 @@ export class WebRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             tm, tm, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
-        const extra = handler.resources?.(effect, ck, this.effectResources(effect, snapshot)) ?? [];
+        const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
         const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
         // A null lens means the effect is a no-op at these settings (zero radius,
         // zero amount, …). Drawing was already redirected into the offscreen, so
@@ -1618,7 +1632,7 @@ export class WebRenderContext extends RenderContext {
      * registry, its epoch (so a late-loading family invalidates any cached
      * bake), and a way to make an offscreen matching the draw surface's format.
      */
-    private effectResources(effect: SceneEffect, contentSnapshot: CKImage | null): EffectResources {
+    private effectResources(): EffectResources {
         return {
             fontMgr: this.storageAdapter.getFontMgr(),
             fontEpoch: this.storageAdapter.getFontEpoch(),
@@ -1631,12 +1645,6 @@ export class WebRenderContext extends RenderContext {
                 });
             },
             getImage: (src) => this.storageAdapter.getCKImage(src),
-            contentSnapshot,
-            // Node plus effect type: two nodes with the same effect must not
-            // share cached per-instance state, and one node's two different
-            // effects must not either.
-            scopeKey: `${this.currentNodeId()}#${effect.type}`,
-            time: this.currentRenderState()?.elapsed ?? 0,
         };
     }
 
@@ -1649,13 +1657,16 @@ export class WebRenderContext extends RenderContext {
     private shaderGeometry(m: number[], width: number, height: number): EffectGeometry {
         const sx = Math.hypot(m[0], m[3]);
         const sy = Math.hypot(m[1], m[4]);
+        const rs = this.currentRenderState();
         return {
             centerX: m[2],
             centerY: m[5],
             width: width * sx,
             height: height * sy,
             scale: sx,
-            time: this.currentRenderState()?.elapsed ?? 0,
+            time: rs?.elapsed ?? 0,
+            velocity: rs?.velocity ?? ZERO_VELOCITY,
+            angularVelocity: rs?.angularVelocity ?? 0,
         };
     }
 

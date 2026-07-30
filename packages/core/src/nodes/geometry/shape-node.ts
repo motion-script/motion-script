@@ -1,4 +1,4 @@
-import { resolveFillArray, lerpFillArray, updateFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
 
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
@@ -11,7 +11,7 @@ import { Fill } from "@/attributes/shape/fill/chain";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { property } from "@/attributes/properties/decorator";
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node, NodeProps } from "../base/node";
 import { TweenOptions } from "@/tween/lerp";
 import { wait } from "@/tween/wait";
 import { FrameGenerator } from "@/tween/generator";
@@ -51,7 +51,7 @@ export interface ShapeProps extends NodeProps {
 }
 
 
-export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
+export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<P> {
 
     // Author-facing paint props. The declared type is the loose `Fill`/`Stroke`/
     // `Shadow` so assignment (`this.fill = 'red'`) and reads share one simple
@@ -79,47 +79,11 @@ export abstract class ShapeNode<P extends ShapeProps> extends Node<P> {
     @property({ default: 1 })
     declare end: number;
 
-    // Cached: does any current fill / overlay need a per-frame update() (e.g.
-    // video)? Static fills (solid, gradients, noise, image) have an identity
-    // update, so there's nothing to recompute each frame and tick() can skip.
-    private _hasDynamicFill = false;
-    private _hasDynamicOverlay = false;
-
-    constructor(props: NodeConfig<any, P>) {
-        super(props);
-        this.watchFillForDynamic();
-    }
-
-    // Track whether the current fill / overlay needs per-frame updates. Re-run
-    // after the signals are re-created (reinitProps) so a reused scene root keeps
-    // a live subscription rather than a stale one pointing at a disposed cell.
-    private watchFillForDynamic(): void {
-        const watch = (key: "fill" | "overlay", set: (dynamic: boolean) => void) => {
-            const cell = this.__signals?.get(key);
-            if (!cell) return;
-            const refresh = () => set(hasDynamicFill(cell.get() as FillResolved[]));
-            refresh();
-            cell.subscribe(refresh);
-        };
-        watch("fill", d => { this._hasDynamicFill = d; });
-        watch("overlay", d => { this._hasDynamicOverlay = d; });
-    }
-
-
-
-    public tick(time: number): void {
-        if (!this._hasDynamicFill && !this._hasDynamicOverlay) return;
-        const patch: Partial<P> = {};
-        if (this._hasDynamicFill) {
-            const fills = this.fill as FillResolved[];
-            (patch as { fill?: FillResolved[] }).fill = fills.map(fill => updateFill(fill, time, this.assets));
-        }
-        if (this._hasDynamicOverlay) {
-            const overlays = this.overlay as FillResolved[];
-            (patch as { overlay?: FillResolved[] }).overlay = overlays.map(fill => updateFill(fill, time, this.assets));
-        }
-        this.set(patch);
-    }
+    // No per-frame fill bookkeeping: a time-dependent fill (video) resolves its
+    // own timestamp as it paints, from the node's clock — see
+    // `resolveVideoTimestamp`. That is what lets one live anywhere paint is
+    // accepted (stroke, shadow, a custom node's raw `Graphics`) rather than only
+    // on the nodes that remembered to advance it from tick().
 
     protected abstract override renderSelf(ctx: RenderContext): void;
 

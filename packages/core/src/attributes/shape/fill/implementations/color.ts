@@ -35,6 +35,5 @@ export const colorFill: FillData<SolidFillResolved> = {
         ],
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
-    update: (previous) => previous,
     equals: (a, b) => a.color === b.color,
 };

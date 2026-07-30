@@ -49,7 +49,6 @@ export const stripeFill: FillData<StripeFillResolved> = {
         ] : (a.color ?? b.color),
         opacity: lerpNumber(a.opacity ?? 1, b.opacity ?? 1, t),
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.gap === b.gap &&
         a.strokeWidth === b.strokeWidth &&

@@ -67,7 +67,6 @@ export const noiseFill: FillData<NoiseFillResolved> = {
         ],
         opacity: lerpNumber(a.opacity ?? 1, b.opacity ?? 1, t),
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.size.x === b.size.x && a.size.y === b.size.y &&
         a.density === b.density &&

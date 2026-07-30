@@ -36,6 +36,9 @@ export function applyMediaFilters(fill: { filters?: { type: string }[] }, ctx: F
     }
     const composed = EffectRegistry.compose(pixel, ctx.canvasKit, {
         width: 0, height: 0, centerX: 0, centerY: 0, scale: 1, time: 0,
+        // A media filter is a colour transform on the fill's own pixels — it has
+        // no node motion of its own, and every velocity-derived effect is a shader.
+        velocity: { x: 0, y: 0 }, angularVelocity: 0,
     });
     ctx.paint.setImageFilter(composed);
 }

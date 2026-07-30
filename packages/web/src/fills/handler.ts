@@ -46,6 +46,7 @@ export class FillHandler {
     // RenderContext as pass-through nodes fade). Defaults to 1.
     private getWorldAlpha: () => number;
     private getNodeId: () => string;
+    private getElapsed: () => number;
     private getDeviceScale: () => number;
     private rasterizeSurface: FillRendererContext["rasterizeSurface"];
 
@@ -75,6 +76,7 @@ export class FillHandler {
         assets: WebStorageAdapter,
         getWorldAlpha: () => number = () => 1,
         getNodeId: () => string = () => "",
+        getElapsed: () => number = () => 0,
         getDeviceScale: () => number = () => 1,
         rasterizeSurface: FillRendererContext["rasterizeSurface"] = () => null,
     ) {
@@ -86,6 +88,7 @@ export class FillHandler {
         this.assets = assets;
         this.getWorldAlpha = getWorldAlpha;
         this.getNodeId = getNodeId;
+        this.getElapsed = getElapsed;
         this.getDeviceScale = getDeviceScale;
         this.rasterizeSurface = rasterizeSurface;
         this.currentBounds = null;
@@ -192,6 +195,7 @@ export class FillHandler {
             // currentBounds to the right space's rect just before each call.
             getShapeBounds: () => this.currentBounds,
             nodeId: this.getNodeId(),
+            elapsed: this.getElapsed(),
             getDeviceScale: this.getDeviceScale,
             paintSlot: (fill) => this.paintSlot(fill),
             rasterizeSurface: this.rasterizeSurface,

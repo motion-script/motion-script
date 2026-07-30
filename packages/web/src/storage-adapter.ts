@@ -35,6 +35,16 @@ interface VideoSession {
 }
 
 /**
+ * A texture-backed image plus the quantized timestamp currently uploaded into it —
+ * the session's own pairing, factored out so the extra playhead slots
+ * ({@link WebStorageAdapter.claimVideoFrame}) reuse their textures the same way.
+ */
+interface VideoTextureSlot {
+    image: CKImage | null;
+    uploadedTs: number | null;
+}
+
+/**
  * A decoded video frame cached as an immutable {@link ImageBitmap}. Bitmaps are
  * GPU-friendly texture sources (no CPU pixel readback) and cheap to keep, so the
  * window holds a few around the playhead to absorb small back-scrubs without
@@ -109,6 +119,21 @@ export class WebStorageAdapter extends StorageAdapter {
      * only fills during live playback, would otherwise hold just one frame).
      */
     private pendingEchoFrames = new Map<string, Set<number>>();
+    /** In-flight echo/extra-playhead decodes, keyed `src#quantizedTs`, so callers join one seek. */
+    private echoDecodes = new Map<string, Promise<void>>();
+    /**
+     * Quantized timestamps claimed per src during the current render pass, in claim
+     * order (see {@link claimVideoFrame}): index 0 holds the session's own texture,
+     * index *n* holds {@link videoAltSlots} slot *n−1*. Cleared by
+     * {@link beginRenderPass}.
+     */
+    private videoFrameClaims = new Map<string, number[]>();
+    /**
+     * Extra textures per src — one per *simultaneously visible* time of that clip
+     * beyond the first. Persistent and updated in place exactly like a session's
+     * own texture, so a second playhead costs a blit per frame, not an allocation.
+     */
+    private videoAltSlots = new Map<string, VideoTextureSlot[]>();
     /**
      * Whether playback is live. When false (paused / scrubbing settled), the
      * adapter does no look-ahead prefetch — it decodes only the exact frame the
@@ -157,6 +182,12 @@ export class WebStorageAdapter extends StorageAdapter {
      * trimmed LRU-style so an animated `delay`/`echoes` can't grow it unbounded.
      */
     private static readonly ECHO_CACHE_LIMIT = 48;
+    /**
+     * Max extra textures per src (see {@link videoAltSlots}) — i.e. how many
+     * different times of one clip can be on screen together. Generous for a
+     * comparison grid; past it the last slot is reused.
+     */
+    private static readonly ALT_SLOT_LIMIT = 16;
 
     constructor(canvasKit: CanvasKit, catalog: AssetCatalog, viewport: Size2D, fps: number) {
         super(catalog, viewport);
@@ -421,6 +452,9 @@ export class WebStorageAdapter extends StorageAdapter {
             session.textureImage = null;
             session.uploadedTs = null;
         }
+        // Same story for the extra per-timestamp images: texture-backed, so bound
+        // to the surface that made them. Rebuilt on demand against the new one.
+        this.clearVideoAltSlots();
         // 3D composites are texture-backed too, so they're bound to the surface
         // that made them and must be dropped alongside the video textures.
         for (const image of this.view3DTextures.values()) image.delete();
@@ -493,6 +527,10 @@ export class WebStorageAdapter extends StorageAdapter {
      * allocation. On a miss it records the exact frame (for a blocking re-render)
      * and, while playing, primes the sequential decoder; it returns the nearest
      * already-decoded frame so the picture never goes blank mid-stream.
+     *
+     * Because that texture is shared per src and updated in place, a *drawing*
+     * caller should go through {@link claimVideoFrame}, which owns the rule for
+     * what happens when one frame needs two different times of the same clip.
      */
     getVideoFrame(src: string, timestamp: number): CKImage | null {
         const session = this.videoSessions.get(src);
@@ -518,6 +556,169 @@ export class WebStorageAdapter extends StorageAdapter {
 
         if (!frame) return null;
         return this.uploadFrame(src, session, frame);
+    }
+
+    /**
+     * Start a render pass: forget which timestamp each clip's shared texture was
+     * claimed for (see {@link claimVideoFrame}). Called by the render context
+     * alongside its other per-pass brackets.
+     */
+    beginRenderPass(): void {
+        this.videoFrameClaims.clear();
+    }
+
+    /**
+     * The image to paint `src` at `timestamp` with, for one draw in the current
+     * render pass. **This, not {@link getVideoFrame}, is what a fill should call.**
+     *
+     * A session's texture is updated in place and Skia doesn't resolve a draw until
+     * the surface flushes, so two draws of the *same* clip at *different* times
+     * would both sample whatever was uploaded last — one loop mode wearing
+     * another's frame, or a torn read painting black. So each distinct timestamp a
+     * pass asks for gets its own texture: the first claim takes the session's, the
+     * rest take {@link videoAltSlots} by claim order. Two draws asking for the same
+     * time share, which is the common case (one clip painted as fill + stroke +
+     * text is a single claim).
+     *
+     * Slots are persistent and updated in place exactly like the session's own, so
+     * a *scrubbing* timestamp costs one blit per frame rather than a new texture.
+     * Every returned image is adapter-owned — callers keep `getVideoFrame`'s
+     * do-not-delete contract, unlike the Echo path's caller-owned taps.
+     *
+     * Like the primary path, a time whose exact frame isn't decoded yet paints the
+     * nearest decoded one rather than nothing (never blank mid-stream), registers
+     * the miss for {@link warmPendingVideo} so blocking callers land it exactly,
+     * and — while playing — starts the decode immediately, since the sequential
+     * prefetch window only follows the *primary* playhead.
+     */
+    claimVideoFrame(src: string, timestamp: number): CKImage | null {
+        const session = this.videoSessions.get(src);
+        if (!session || !this.surface) return null;
+        if (!Number.isFinite(timestamp)) timestamp = 0;
+
+        const key = this.quantizeTs(timestamp, session.frameStep);
+        let claims = this.videoFrameClaims.get(src);
+        if (!claims) { claims = []; this.videoFrameClaims.set(src, claims); }
+
+        // Already claimed for this time in this pass — reuse that texture.
+        const claimed = claims.indexOf(key);
+        if (claimed === 0) return session.textureImage;
+        if (claimed > 0) return this.videoAltSlots.get(src)?.[claimed - 1]?.image ?? null;
+
+        if (claims.length === 0) {
+            const image = this.getVideoFrame(src, timestamp);
+            // Record what the texture actually holds, not what was asked for: a
+            // miss paints the nearest decoded frame, and a later draw wanting
+            // *that* frame can then share it rather than taking a slot of its own.
+            if (image) claims.push(session.uploadedTs ?? key);
+            return image;
+        }
+
+        // Beyond the slot cap, reuse the last one. That reintroduces the collision
+        // for the overflow draws only, rather than dropping them — a scene with
+        // this many simultaneous times of one clip is pathological.
+        const slot = Math.min(claims.length - 1, WebStorageAdapter.ALT_SLOT_LIMIT - 1);
+        const image = this.uploadAltFrame(src, session, timestamp, slot);
+        if (image) claims.push(key);
+        return image;
+    }
+
+    /** Free every alt-slot texture (surface swap, teardown). */
+    private clearVideoAltSlots(): void {
+        for (const slots of this.videoAltSlots.values()) {
+            for (const slot of slots) slot.image?.delete();
+        }
+        this.videoAltSlots.clear();
+    }
+
+    /** Upload the frame for a non-primary timestamp into its slot — see {@link claimVideoFrame}. */
+    private uploadAltFrame(
+        src: string,
+        session: VideoSession,
+        timestamp: number,
+        slotIndex: number,
+    ): CKImage | null {
+        const surface = this.surface;
+        if (!surface) return null;
+        const frame = this.decodedFrameFor(src, session, timestamp);
+        if (!frame) return null;
+
+        let slots = this.videoAltSlots.get(src);
+        if (!slots) { slots = []; this.videoAltSlots.set(src, slots); }
+        let slot = slots[slotIndex];
+        if (!slot) { slot = { image: null, uploadedTs: null }; slots[slotIndex] = slot; }
+
+        const key = this.quantizeTs(frame.timestamp, session.frameStep);
+        if (slot.image && slot.uploadedTs === key) return slot.image;
+        if (!slot.image) {
+            slot.image = surface.makeImageFromTextureSource(frame.bitmap, {
+                width: session.width,
+                height: session.height,
+                alphaType: this.canvasKit.AlphaType.Unpremul,
+                colorType: this.canvasKit.ColorType.RGBA_8888,
+                colorSpace: this.canvasKit.ColorSpace.SRGB,
+            });
+        } else {
+            surface.updateTextureFromSource(slot.image, frame.bitmap);
+        }
+        slot.uploadedTs = slot.image ? key : null;
+        return slot.image;
+    }
+
+    /**
+     * The decoded frame to show a non-primary playhead at `timestamp`: the exact
+     * one when it's warm, otherwise the nearest decoded (so the picture degrades
+     * like the primary path instead of blanking) with the exact one queued for
+     * decode. Null only when nothing at all is decoded for the clip yet.
+     */
+    private decodedFrameFor(
+        src: string,
+        session: VideoSession,
+        timestamp: number,
+    ): DecodedVideoFrame | null {
+        const step = session.frameStep;
+        const clamped = Math.max(0, Math.min(timestamp, session.durationSec));
+        // The echo cache first — its entries survive the playhead window's
+        // eviction, which is centred on the *primary* head and so routinely
+        // excludes wherever this one is looking.
+        const echo = this.videoEchoFrames.get(src);
+        const window = this.videoFrames.get(src);
+        const exact =
+            this.nearestWithin(echo, clamped, step) ??
+            this.nearestWithin(window, clamped, step);
+        if (exact) return exact;
+
+        // Queue it on the echo hatch — a per-src *set*, so several concurrent
+        // heads all get warmed, unlike pendingVideoFrames' one-per-src slot.
+        let set = this.pendingEchoFrames.get(src);
+        if (!set) { set = new Set(); this.pendingEchoFrames.set(src, set); }
+        set.add(clamped);
+        // While playing there is no blocking caller to drain that hatch, and the
+        // sequential prefetch only runs ahead of the primary head — so start this
+        // one's decode now or it would never arrive.
+        if (this.playing) void this.decodeEchoFrameAt(src, clamped);
+
+        const nearEcho = echo ? this.nearestDecoded(echo, clamped, step) : null;
+        const nearWindow = window ? this.nearestDecoded(window, clamped, step) : null;
+        if (!nearEcho) return nearWindow;
+        if (!nearWindow) return nearEcho;
+        return Math.abs(nearEcho.timestamp - clamped) <= Math.abs(nearWindow.timestamp - clamped)
+            ? nearEcho
+            : nearWindow;
+    }
+
+    /**
+     * The decoded length of `src` in seconds, or `0` when its session hasn't
+     * opened yet (or the src isn't a video). Read as a video fill resolves its
+     * own timestamp — the loop cycle and the `trimEnd` default come from it.
+     *
+     * This is the *container's* duration rather than the build-time manifest's,
+     * so looping still works for a source whose manifest probe couldn't read one.
+     * Before the session exists there is no frame to paint either, so the
+     * unlooped fallback is never actually seen.
+     */
+    getVideoDuration(src: string): number {
+        return this.videoSessions.get(src)?.durationSec ?? 0;
     }
 
     /**
@@ -708,14 +909,36 @@ export class WebStorageAdapter extends StorageAdapter {
      * taps reach intentionally outside the playback window, so they must survive the
      * current playhead's eviction. Bounds the cache to {@link ECHO_CACHE_LIMIT}
      * frames per src (oldest-inserted dropped first). Idempotent per quantized ts.
+     *
+     * Concurrent calls for the same frame join one decode: a second playhead asks
+     * every frame until its frame lands ({@link decodedFrameFor}), and each decode
+     * is an async `getCanvas` — without this, one cold scrub would queue the same
+     * seek dozens of times.
      */
-    private async decodeEchoFrameAt(src: string, timestampSec: number): Promise<void> {
+    private decodeEchoFrameAt(src: string, timestampSec: number): Promise<void> {
         const session = this.videoSessions.get(src);
-        if (!session || !Number.isFinite(timestampSec)) return;
+        if (!session || !Number.isFinite(timestampSec)) return Promise.resolve();
         const clamped = Math.max(0, Math.min(timestampSec, session.durationSec));
         const key = this.quantizeTs(clamped, session.frameStep);
+        if (this.videoEchoFrames.get(src)?.has(key)) return Promise.resolve();
+
+        const id = `${src}#${key}`;
+        const inFlight = this.echoDecodes.get(id);
+        if (inFlight) return inFlight;
+        const decode = this.decodeEchoFrameNow(src, session, clamped, key)
+            .finally(() => this.echoDecodes.delete(id));
+        this.echoDecodes.set(id, decode);
+        return decode;
+    }
+
+    /** {@link decodeEchoFrameAt}'s body, past the dedup gate. */
+    private async decodeEchoFrameNow(
+        src: string,
+        session: VideoSession,
+        clamped: number,
+        key: number,
+    ): Promise<void> {
         let store = this.videoEchoFrames.get(src);
-        if (store?.has(key)) return;
         // Already warm in the playback window? Copy the reference in rather than re-decode.
         const windowed = this.videoFrames.get(src)?.get(key);
 
@@ -985,9 +1208,12 @@ export class WebStorageAdapter extends StorageAdapter {
             session.input.dispose();
         }
         this.videoSessions.clear();
+        this.clearVideoAltSlots();
         this.videoPlayhead.clear();
+        this.videoFrameClaims.clear();
         this.pendingVideoFrames.clear();
         this.pendingEchoFrames.clear();
+        this.echoDecodes.clear();
         this.surface = null;
 
 

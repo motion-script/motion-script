@@ -1,5 +1,4 @@
 import { AssetTracker } from "@/assets/tracker";
-import { AssetCatalog } from "@/assets/catalog";
 import { FillProp, FillResolved, FillSpace } from "./union";
 import { Fill, resolveChainFill } from "./chain";
 import { canCoerce, coercePair } from "./coerce";
@@ -25,14 +24,7 @@ export interface FillData<T extends FillResolved> {
     resolve(prop: any): T;
     equals(a: T, b: T): boolean;
     lerp(from: FillResult<T>, to: FillResult<T>, t: number): FillResult<T>;
-    update(previous: FillResult<T>, globalTime: number, assets: AssetCatalog): FillResult<T>;
     prepare?(fill: T, registry: AssetTracker, width: number, height: number): void;
-    /**
-     * True when `update()` is time-dependent and must run every frame (e.g.
-     * video, which advances its timestamp). Static fills (solid, gradients,
-     * noise, image) have an identity `update` and can be skipped each frame.
-     */
-    dynamic?: boolean;
 }
 
 const FILLS = new Map<string, FillData<FillResolved>>([
@@ -139,19 +131,6 @@ export function lerpFillArray(from: FillResolved[], to: FillResolved[], t: numbe
         }
     }
     return result;
-}
-
-export function updateFill(fill: FillResolved, globalTime: number, assets: AssetCatalog): FillResolved {
-    if (!FILLS.has(fill.type)) return fill;
-    return { ...fill, ...get(fill.type).update(fill, globalTime, assets) };
-}
-
-/** True if any fill in the array is time-dependent and needs a per-frame update. */
-export function hasDynamicFill(fills: FillResolved[]): boolean {
-    for (let i = 0; i < fills.length; i++) {
-        if (FILLS.get(fills[i].type)?.dynamic) return true;
-    }
-    return false;
 }
 
 export function prepareFill(fill: FillResolved, tracker: AssetTracker, width: number, height: number): void {

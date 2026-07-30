@@ -130,14 +130,6 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
         this.applyProp<LayoutMode>("group", initial, { tween: this._groupLayout.groupTween });
     }
 
-    // Re-apply Rect's constructor-specific prop defaults after the base class
-    // re-creates its signals. Only runs when signals were disposed; the explicit
-    // values get re-set when the scene is rebuilt, so defaults are a fine baseline.
-    protected override reinitProps(force = false): void {
-        if (this.__signals && !force) return;
-        super.reinitProps(force);
-        this.applyGroupProp("stack");
-    }
 
     // ---- Drawing ----------------------------------------------------------
 

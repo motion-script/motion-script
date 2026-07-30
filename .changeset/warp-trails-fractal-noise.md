@@ -30,10 +30,17 @@ backdrop blur cannot express.
 Animating `angle` sweeps fresh source material through the sampled wedge while
 the pattern stays locked, which is not what rotating the node does.
 
-**`trails`** — composites the node with a trail of its own past frames, the
-node-level counterpart of the video `echo` filter and sharing its vocabulary.
-Note it is history-dependent: exact under linear playback and export, and it
-refills after a backwards scrub, exactly as `echo` does after a cold seek.
+**`trails`** — echoes the node along its own motion, the node-level counterpart
+of the video `echo` filter and sharing its vocabulary. Derived from the node's
+sampled velocity exactly as `motionBlur` is, rather than from a buffer of past
+frames, which keeps it a pure function of the playhead: a backward scrub lands on
+the same trail a forward play would, and a single-frame render shows it in full.
+The trade is that a tap extrapolates along the current velocity, so a trail
+spanning a sharp curve straightens.
+
+`EffectGeometry` gains `velocity` and `angularVelocity` so a shader effect can
+read the node's sampled motion directly, instead of every velocity-derived effect
+needing its own resolve step the way `motionBlur` has.
 
 **`colorAdjustment({ hue })`** — luma-preserving hue rotation in degrees, on both
 the scene effect and the media filter. `invert({ channel: 'hue' })` is the fixed

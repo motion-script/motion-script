@@ -291,6 +291,13 @@ still has to *paint* the prop (`ctx.draw(g.fill(this.glow as FillResolved[]))`).
 Assets referenced by a fill are discovered from that draw, so nothing extra is
 needed to make images/videos/3D surfaces load.
 
+A fill needs nothing per-frame either. A video fill resolves the source frame to
+show *as it paints* (`resolveVideoTimestamp`, against the painting node's
+`NodeRenderState.elapsed`), so it plays in a custom node's `Graphics`, a stroke
+or a shadow with no `tick` override — and frame *N* is identical however the
+playhead reached it. `FillData` has no `update`/`dynamic` hook; a new fill kind
+that varies with time reads the clock at paint time the same way.
+
 ### Project globals
 
 `createProject` takes three fields describing content that spans the whole

@@ -48,7 +48,6 @@ export const radialGradientFill: FillData<RadialGradientFillResolved> = {
         radius: lerpNumber(a.radius, b.radius, t),
         opacity: lerpNumber(a.opacity ?? 1, b.opacity ?? 1, t),
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.center.x === b.center.x && a.center.y === b.center.y &&
         a.radius === b.radius &&

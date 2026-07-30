@@ -56,7 +56,6 @@ export const imageFill: FillData<ImageFillResolved> = {
         scaling: a.scaling ?? b.scaling,
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
-    update: (previous) => previous,
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
         manager.requestImage(fill.src, width, height);

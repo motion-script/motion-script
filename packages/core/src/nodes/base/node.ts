@@ -5,7 +5,7 @@ import { FrameGenerator } from "@/tween/generator";
 import { AnimationBuilder } from "@/tween/animation-builder";
 import { prepareNumericCellTween } from "@/tween/prepare";
 import { TweenStepper } from "@/tween/stepper";
-import { Reference } from "@/util/reference";
+import { RefTarget } from "@/util/reference";
 import { Context, ContextMap } from "@/util/context";
 import { Random } from "@/util/random";
 import { AssetCatalog } from "@/assets/catalog";
@@ -69,7 +69,13 @@ export type { WorldTransform } from "@/attributes/layout/world-transform";
 export type { PropInput, PropInputs } from "@/attributes/properties/inputs";
 
 export interface NodeMetadata<T extends Node> {
-    ref?: Reference<T>;
+    /**
+     * Handle written with this node at construction. Typed as {@link RefTarget}
+     * rather than `Reference<T>` so a ref declared as one of `T`'s *supertypes*
+     * is accepted (`createRef<ShapeNode>()` on a `<Rect>`) — see the note there
+     * for why that direction is the sound one.
+     */
+    ref?: RefTarget<T>;
 }
 
 /**

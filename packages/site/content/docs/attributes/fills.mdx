@@ -86,6 +86,46 @@ Colors accept any CSS color string (`'red'`, `'#ff0000'`, `'rgb(255,0,0)'`, `'hs
 
 ---
 
+## Video fill
+
+A playing clip, painted through whatever shape carries it — so it is clipped to
+an ellipse, a path, or a run of text just like any other fill.
+
+```tsx
+<Ellipse fill={Fills.video('./clip.mp4', { fit: 'fill' })} width={400} height={400} />
+```
+
+The frame it shows is worked out as it paints, from **how long the node carrying
+the fill has existed** — so the clip runs on its own wherever paint is accepted:
+a `fill`, an `overlay`, inside a `stroke` or `shadow`, or in a custom node's raw
+`Graphics`. Nothing has to advance it, and a frame looks the same whether you
+scrubbed to it, exported it, or played into it.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the frame fills the shape |
+| `playing` | `boolean` | `true` | Whether the clip advances with the node's clock |
+| `timestamp` | `number \| null` | – | **Explicit** source time in seconds. Set it to drive the playhead yourself; omit it (or pass `null`) to let the clip play |
+| `playStart` | `number` | `0` | Seconds after the node appears before playback begins |
+| `trimStart` / `trimEnd` | `number` | – | Region of the source to play |
+| `speed` | `number` | `1` | Playback-rate multiplier |
+| `loop` | `'forward' \| 'reverse' \| 'none'` | `'none'` | Loop behaviour at `trimEnd` |
+| `duration` | `number` | trimmed length | Length of one loop cycle |
+
+`timestamp` is the time-remap knob: tween it to scrub the clip, or set it with
+`playing: false` to hold one frame. A paused clip with no `timestamp` sits on its
+first frame.
+
+Cross-fading a video in over a node that already existed opens the clip partway
+through — the node's age is the playback clock. Give it `playStart` to line the
+start back up:
+
+```tsx
+yield* rect().fillTo(Fills.video('./clip.mp4', { playStart: 4 }), 0.5); // 4s into the node's life
+```
+
+---
+
 ## Multiple fills
 
 Pass an array to layer fills bottom to top:
@@ -161,6 +201,7 @@ It composes with the effect layer rather than duplicating it — [duotone](../ef
 | `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
 | `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
 | `'image'` | `src` | `fit`, `scaling`, `filters`, `opacity`, `blend` |
+| `'video'` | `src` | `fit`, `scaling`, `filters`, `playing`, `timestamp`, `playStart`, `trimStart`, `trimEnd`, `speed`, `loop`, `duration`, `opacity`, `blend` |
 | `'noise'` | – | `size`, `density`, `color`, `seed`, `opacity`, `blend` |
 | `'fractalNoise'` | – | `basis`, `octaves`, `frequency`, `lacunarity`, `gain`, `seed`, `offset`, `angle`, `colors`, `stops`, `contrast`, `opacity`, `blend` |
 | `'stripe'` | – | `gap`, `strokeWidth`, `angle`, `color`, `opacity`, `blend` |

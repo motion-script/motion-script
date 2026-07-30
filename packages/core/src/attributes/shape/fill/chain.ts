@@ -15,12 +15,18 @@ export interface VideoFillOptions extends FillOptions {
     transform?: ImageTransform;
     scaling?: number;
     filters?: VideoFilter;
-    /** Starting offset into the source, in seconds. Defaults to `trimStart` (or 0). */
-    timestamp?: number;
-    /** Whether playback advances each frame. Defaults to `true`. */
+    /**
+     * Explicit source time to paint, in seconds. Omit it and the clip plays by
+     * itself, timed from the moment the node painting it appeared — set it only
+     * to drive the playhead yourself (`null` hands the playhead back).
+     */
+    timestamp?: number | null;
+    /** Whether playback advances with the node's clock. Defaults to `true`. */
     playing?: boolean;
     trimStart?: number;
     trimEnd?: number;
+    /** Seconds after the painting node appears before playback begins. Default `0`. */
+    playStart?: number;
     speed?: number;
     loop?: 'forward' | 'reverse' | 'none';
     duration?: number;
@@ -75,16 +81,21 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'image' as const, src, fit: fit ?? mode, transform, scaling, filters: imageFilters }, common)]);
     }
 
-    /** Append a video fill from `src`. Plays by default, advancing its timestamp each frame. */
+    /**
+     * Append a video fill from `src`. Plays by default: its source timestamp is
+     * derived as it paints, from how long the node carrying the fill has
+     * existed — so the clip runs wherever the fill is used (fill, overlay,
+     * stroke, shadow, a custom node's `Graphics`) with nothing to advance.
+     */
     video(src: string, options?: VideoFillOptions) {
-        const { fit: mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, speed, loop, duration, ...common } = options ?? {};
+        const { fit: mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
             mode, transform, scaling, filters: filters && resolveChainFilters(filters),
-            timestamp: timestamp ?? trimStart ?? 0,
+            timestamp,
             playing: playing ?? true,
-            trimStart, trimEnd, speed, loop, duration,
+            trimStart, trimEnd, playStart, speed, loop, duration,
         }, common)]);
     }
 

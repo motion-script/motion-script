@@ -23,6 +23,14 @@ export interface FillRendererContext {
      */
     nodeId: string;
     /**
+     * How long the node being painted has existed, in seconds
+     * (`NodeRenderState.elapsed`). Time-based fills resolve themselves against
+     * it as they paint — a video fill derives the source timestamp to show from
+     * it — so playback follows from *when the node appeared* and needs nothing
+     * advancing it per frame. Same deferred-mask caveat as {@link nodeId}.
+     */
+    elapsed: number;
+    /**
      * Scale factor from the live canvas matrix — pixel ratio, parent scale and
      * camera zoom folded together. A **function** because reading the matrix
      * allocates in wasm and almost no fill needs it.

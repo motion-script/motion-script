@@ -15,7 +15,7 @@ import { MeasureScope } from "@/render/measure-scope";
 import { Alignment } from "@/attributes/layout/align";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
-import { resolveFillArray, lerpFillArray, updateFill, hasDynamicFill } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { Node, NodeConfig, NodeProps } from "../base/node";
@@ -106,14 +106,9 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // engine so Rect and RootNode don't each carry a copy.
     private readonly _groupLayout = new GroupLayout(this);
 
-    // Does the current fill / overlay need a per-frame update() (e.g. video)?
-    private _hasDynamicFill = false;
-    private _hasDynamicOverlay = false;
-
     constructor(props: NodeConfig<RootNode, RootProps>) {
         super(props);
         this.applyGroupProp(props.group ?? "stack");
-        this.watchFillForDynamic();
     }
 
     // group's tween captures the engine's in-flight blend, so it can't be a
@@ -123,32 +118,13 @@ export class RootNode extends Node<RootProps> implements GroupHost {
         this.applyProp<LayoutMode>("group", initial, { tween: this._groupLayout.groupTween });
     }
 
-    // Track whether the current fill / overlay needs per-frame updates. Re-run
-    // after the signals are re-created (reinitProps) so a reused scene root keeps
-    // a live subscription rather than a stale one pointing at a disposed cell.
-    private watchFillForDynamic(): void {
-        const watch = (key: "fill" | "overlay", set: (dynamic: boolean) => void) => {
-            const cell = this.__signals?.get(key);
-            if (!cell) return;
-            const refresh = () => set(hasDynamicFill(cell.get() as FillResolved[]));
-            refresh();
-            cell.subscribe(refresh);
-        };
-        watch("fill", d => { this._hasDynamicFill = d; });
-        watch("overlay", d => { this._hasDynamicOverlay = d; });
-    }
-
     // Re-apply the constructor-specific prop defaults after the base class
     // re-creates its signals (disposed-then-reused root), or — with `force` —
     // resets live-but-tweened props back to their defaults before a rebuild.
     protected override reinitProps(force = false): void {
-        // Recreating disposed signals needs a fresh fill subscription; a forced
-        // reset of live signals already has one, so don't double-subscribe.
-        const recreating = !this.__signals;
         if (this.__signals && !force) return;
         super.reinitProps(force);
         this.applyGroupProp("stack");
-        if (recreating) this.watchFillForDynamic();
     }
 
     // ---- GroupHost --------------------------------------------------------
@@ -214,22 +190,6 @@ export class RootNode extends Node<RootProps> implements GroupHost {
         yield* tween(duration, t => {
             this.set({ overlay: lerp(from, target, ease ? ease(t) : t) });
         });
-    }
-
-    // ---- Asset / per-frame paint ------------------------------------------
-
-    public override tick(time: number): void {
-        if (!this._hasDynamicFill && !this._hasDynamicOverlay) return;
-        const patch: Partial<RootProps> = {};
-        if (this._hasDynamicFill) {
-            const fills = this.fill as FillResolved[];
-            patch.fill = fills.map(fill => updateFill(fill, time, this.assets)) as Fill;
-        }
-        if (this._hasDynamicOverlay) {
-            const overlays = this.overlay as FillResolved[];
-            patch.overlay = overlays.map(fill => updateFill(fill, time, this.assets)) as Fill;
-        }
-        this.set(patch);
     }
 
     // ---- Measure / layout -------------------------------------------------

@@ -48,7 +48,6 @@ export const linearGradientFill: FillData<LinearGradientFillResolved> = {
         end: lerpVector2(a.end, b.end, t),
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.start.x === b.start.x && a.start.y === b.start.y &&
         a.end.x === b.end.x && a.end.y === b.end.y &&

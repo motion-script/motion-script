@@ -3,33 +3,36 @@ import type { BlendMode } from "../../fill/blend";
 import type { ModedEffect, EffectData } from "../effect-data";
 
 /**
- * Motion trails — the node composited with a trail of its own **past frames**,
- * each delayed by `delay` seconds and faded by a `decay` factor.
+ * Motion trails — the node echoed along its own motion, each tap `delay` seconds
+ * further back and faded by a `decay` factor.
  *
  * The node-level counterpart of the video `echo` filter, and it shares that
  * filter's vocabulary deliberately: same fields, same meaning, different scope.
- * Where `echo` reaches back into a decoded video's own frames, this reaches back
- * into what the *node* drew — so it trails text, shapes, a whole subtree, or a
- * 3D view.
+ * Where `echo` reaches back into a decoded video's own frames, this echoes what
+ * the *node* drew — so it trails text, shapes, a whole subtree, or a 3D view.
  *
- * Unlike every other effect here, this one is **history-dependent**: frame *N*
- * is built from frames *N−1, N−2, …*, so it cannot be derived from the playhead
- * alone. Two consequences worth knowing before reaching for it:
+ * **Velocity-derived, not frame-buffered**, exactly like {@link MotionBlurEffect}.
+ * Each tap reconstructs where the node was by undoing `delay × n` of its sampled
+ * motion, which keeps the effect a pure function of the playhead: motion is
+ * sampled on every *advanced* frame rather than every rendered one, so a
+ * backward scrub lands on the same trail a forward play would. A frame-history
+ * implementation cannot do that — seeking replays the scene generator without
+ * drawing the frames it passes through, so there is no history to rebuild from.
  *
- * - **Linear playback and exports are correct.** The exporter renders forward
- *   frame by frame, so the history is exactly what the trail needs.
- * - **Scrubbing backwards rebuilds it.** Jumping the playhead discards the
- *   history and the trail fills back in over the next `echoes × delay` seconds,
- *   the same way `echo` refills after a cold seek.
+ * The trade is that a tap extrapolates along the *current* velocity rather than
+ * following the node's actual past path, so a trail spanning a sharp curve
+ * straightens out. Motion blur makes the same approximation across one frame;
+ * here it spans `echoes × delay`, so keep the trail short relative to how fast
+ * the path turns.
  *
- * For a trail that *is* a pure function of the playhead, tween a stack of
- * offset copies instead — more work to author, but frame-exact under scrubbing.
+ * A node that is not moving has no trail and renders untouched, rather than
+ * stacking `echoes` copies of itself into a glow.
  */
 export interface TrailsEffect extends ModedEffect {
     type: "trails";
-    /** Number of past-frame taps drawn behind the current frame. 0 = off. */
+    /** Number of echo taps drawn behind the node. 0 = off. */
     echoes: number;
-    /** Delay between successive taps, in seconds. */
+    /** How far back each successive tap reaches, in seconds. */
     delay: number;
     /** Per-tap alpha multiplier; tap `n` is drawn at `decay ** n`. */
     decay: number;
@@ -55,7 +58,6 @@ export const trailsEffect: EffectData<TrailsEffect> = {
         a.decay === b.decay &&
         a.blend === b.blend &&
         a.mode === b.mode,
-    // Needs the node's own content snapshotted so past snapshots can be kept and
-    // recomposited — the foreground-capture path, not a composable filter.
+    // Resamples the content at displaced positions, one per tap.
     surface: "shader",
 };

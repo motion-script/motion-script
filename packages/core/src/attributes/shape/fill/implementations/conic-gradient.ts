@@ -48,7 +48,6 @@ export const conicGradientFill: FillData<ConicGradientFillResolved> = {
         startAngle: lerpNumber(a.startAngle ?? 0, b.startAngle ?? 0, t),
         opacity: lerpNumber(a.opacity ?? 1, b.opacity ?? 1, t),
     }),
-    update: (previous) => previous,
     equals: (a, b) =>
         a.center.x === b.center.x && a.center.y === b.center.y &&
         (a.startAngle ?? 0) === (b.startAngle ?? 0) &&
