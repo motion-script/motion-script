@@ -1582,5 +1582,23 @@
     "name": "PresetComic",
     "section": "Effects",
     "description": "halftone cmyk separation on a process screen"
+  },
+  {
+    "id": "view3d-basic",
+    "name": "View3dBasic",
+    "section": "3D",
+    "description": "Lit box rotating in a View3D — the baseline 3D render path"
+  },
+  {
+    "id": "view3d-fill-shape",
+    "name": "View3dFillShape",
+    "section": "3D",
+    "description": "3D painted as a fill through an Ellipse path, not a rect"
+  },
+  {
+    "id": "view3d-tex-surface",
+    "name": "View3dTexSurface",
+    "section": "3D",
+    "description": "Tex.surface: 2D Graphics rasterized and bound to a material map"
   }
 ]

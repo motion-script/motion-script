@@ -103,6 +103,9 @@ import s_fill_image from './fill-image?scene';
 import s_fill_video from './fill-video?scene';
 import s_fill_noise from './fill-noise?scene';
 import s_fill_stripe from './fill-stripe?scene';
+import s_view3d_basic from './view3d-basic?scene';
+import s_view3d_fill_shape from './view3d-fill-shape?scene';
+import s_view3d_tex_surface from './view3d-tex-surface?scene';
 import s_fill_space_local from './fill-space-local?scene';
 import s_fill_space_parent from './fill-space-parent?scene';
 import s_fill_space_global from './fill-space-global?scene';
@@ -370,6 +373,9 @@ export const scenes: Scene[] = [
     s_fill_video,
     s_fill_noise,
     s_fill_stripe,
+    s_view3d_basic,
+    s_view3d_fill_shape,
+    s_view3d_tex_surface,
     s_fill_space_local,
     s_fill_space_parent,
     s_fill_space_global,
@@ -813,4 +819,7 @@ export const catalog: SceneMeta[] = [
     { id: "opacity-passthrough-vs-normal", name: "OpacityPassthroughVsNormal", section: "Opacity & Visibility", description: "Pass-through vs normal node blend isolation with semi-transparent children" },
     { id: "preset-vhs", name: "PresetVhs", section: "Effects", description: "a five-effect chain spanning both effect surfaces" },
     { id: "preset-comic", name: "PresetComic", section: "Effects", description: "halftone cmyk separation on a process screen" },
+    { id: "view3d-basic", name: "View3dBasic", section: "3D", description: "Lit box rotating in a View3D — the baseline 3D render path" },
+    { id: "view3d-fill-shape", name: "View3dFillShape", section: "3D", description: "3D painted as a fill through an Ellipse path, not a rect" },
+    { id: "view3d-tex-surface", name: "View3dTexSurface", section: "3D", description: "Tex.surface: 2D Graphics rasterized and bound to a material map" },
 ];
