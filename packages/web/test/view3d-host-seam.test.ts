@@ -50,12 +50,12 @@ describe("the 3D renderer seam", () => {
         // The real assertion of this file. Importing the barrel must install the
         // host — that is the whole contract, and it is what a tree-shaken
         // registration would break.
-        await import("@motion-script/web");
+        await import("../src");
         expect(view3DRendererHost()).not.toBeNull();
     });
 
     it("exposes the five members the backend and reconciler call", async () => {
-        await import("@motion-script/web");
+        await import("../src");
         const host = view3DRendererHost()!;
         expect(typeof host.render).toBe("function");
         expect(typeof host.applySettings).toBe("function");
@@ -65,7 +65,7 @@ describe("the 3D renderer seam", () => {
     });
 
     it("reports no live renderer before anything has been rendered", async () => {
-        await import("@motion-script/web");
+        await import("../src");
         // `active()` feeds PMREMGenerator for environment maps; null is the correct
         // answer before first use, and the reconciler must tolerate it.
         expect(view3DRendererHost()!.active()).toBeNull();

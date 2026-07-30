@@ -1,6 +1,6 @@
 import type { FractalNoiseFillResolved } from "@motion-script/core";
 import type { Shader } from "@motion-script/canvaskit";
-import { getOrCompileSkSL } from "@motion-script/skia-render/sksl-cache";
+import { getOrCompileSkSL } from "../sksl-cache";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 
 /** Ceiling on ramp stops the shader carries as uniforms. */

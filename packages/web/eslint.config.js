@@ -68,4 +68,15 @@ export default defineConfig([
       "import-x/no-internal-modules": "off",
     },
   },
+  {
+    // Tests may import the barrel: `view3d-host-seam.test.ts` exists precisely to
+    // assert that importing it registers the 3D renderer host, which is a
+    // side effect no other module can stand in for. The rule protects
+    // tree-shaking and cycle-freedom in shipped code, neither of which a test
+    // file affects.
+    files: ["test/**/*.ts"],
+    rules: {
+      "import-x/no-internal-modules": "off",
+    },
+  },
 ]);

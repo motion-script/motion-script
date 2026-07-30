@@ -2,7 +2,7 @@ import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } f
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { makeImageShader, applyMediaFilters } from "./image";
-import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
+import { getCanvasKitBlendMode } from "../blend";
 
 /**
  * Shades with the adapter-decoded video frame at the fill's current timestamp

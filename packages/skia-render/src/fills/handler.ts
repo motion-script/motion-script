@@ -10,7 +10,7 @@ import {
 import type { SkiaAssets } from "../assets";
 import type { FillRendererContext } from "./renderer";
 import { FillRenderRegistry } from "./registry";
-import { getCanvasKitBlendMode } from "@motion-script/skia-render/blend";
+import { getCanvasKitBlendMode } from "../blend";
 
 export type { FillRenderer } from "./renderer";
 export type { FillRendererContext } from "./renderer";

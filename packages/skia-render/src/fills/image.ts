@@ -3,7 +3,7 @@ import { isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { type ShapeBounds } from "./handler";
-import { EffectRegistry } from "@motion-script/skia-render/effects/registry";
+import { EffectRegistry } from "../effects/registry";
 
 /** Shades with the adapter-decoded image and applies the fill's filter chain. */
 export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
