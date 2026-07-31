@@ -8,7 +8,6 @@
 "motion-script": minor
 "@motion-script/player": minor
 "@motion-script/react": minor
-"@motion-script/skia-render": minor
 "@motion-script/vite-plugin": minor
 "@motion-script/web": minor
 ---
