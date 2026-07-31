@@ -3,8 +3,8 @@
 <img src="assets/logo_label.png" alt="Motion Script" width="320" />
 
 
-An open-source motion design tool, inspired by tools like Manim, that helps
-developers and educators create animations from the browser.
+An open-source motion design tool, inspired by tools like Manim and Motion Canvas, that helps
+developers and educators create animations from the browser. 
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@motion-script/create.svg)](https://www.npmjs.com/package/@motion-script/create)
