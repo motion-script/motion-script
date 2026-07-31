@@ -1,5 +1,11 @@
 # @motion-script/canvaskit
 
+## 2.13.0
+
+### Minor Changes
+
+- 84148d8: Add 3D graphics that uses Three js internally and provides graphics/pixijs inspired syntax. Also added a bunch of new effects along with some layout fixes.
+
 ## 2.11.3
 
 ### Patch Changes
