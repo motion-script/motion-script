@@ -57,6 +57,19 @@ jobs:
         run: pnpm test
 
   e2e-visual:
+    # Skip the render/pixel-diff on the Changesets "Version Packages" PR. Its
+    # diff is only version bumps, CHANGELOG entries, the lockfile and deleted
+    # .changeset/*.md — nothing that can move a pixel — and this job is by far
+    # the most expensive thing in the repo's CI.
+    #
+    # Deliberately a job-level `if:` rather than a workflow-level `paths-ignore`:
+    # a skipped job still reports a check run (conclusion `skipped`), which
+    # branch protection treats as passing. A workflow skipped by a path filter
+    # never creates the check at all, so a required check would hang at
+    # "Expected — waiting for status" and the PR could never merge.
+    #
+    # `head_ref` is empty on push/workflow_dispatch, so those always run.
+    if: github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
