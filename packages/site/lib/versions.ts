@@ -60,11 +60,12 @@ export function versionContentDir(version: DocVersion): string {
 
 /**
  * Root directory holding a version's API (typedoc) markdown. The latest API is
- * sourced from the generated tree in the old-site package; older versions are
- * snapshotted inside this package under content/versioned_api/version-<id>.
+ * generated from the packages' source into content/api by `build:api` (see
+ * scripts/build-api.mjs) and is gitignored; older versions are snapshotted
+ * inside this package under content/versioned_api/version-<id>.
  */
 export function versionApiDir(version: DocVersion): string {
-  if (version.latest) return path.join(process.cwd(), "..", "old-site", "api")
+  if (version.latest) return path.join(process.cwd(), "content/api")
   return path.join(process.cwd(), "content/versioned_api", `version-${version.version}`)
 }
 

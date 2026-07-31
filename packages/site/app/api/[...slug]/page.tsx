@@ -72,7 +72,13 @@ export default async function ApiPage({ params }: Props) {
     },
   )
 
+  // `format: 'md'` compiles these as plain markdown rather than MDX. Typedoc
+  // output is full of literal braces and angle brackets in prose (`= { x, y }`,
+  // `Signal<T>`) and of indented code blocks, and MDX would read the first as
+  // JSX expressions and refuse the second, which it dropped support for. The
+  // component map and the rest of the pipeline are unchanged.
   const code = await compile(rewritten, {
+    format: 'md',
     outputFormat: 'function-body',
     remarkPlugins: [remarkGfm],
     rehypePlugins: [rehypeSlug, rehypeHighlight],

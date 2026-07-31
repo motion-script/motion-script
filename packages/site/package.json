@@ -5,10 +5,11 @@
   "private": true,
   "scripts": {
     "build:player": "node scripts/build-player.mjs",
+    "build:api": "node scripts/build-api.mjs",
     "build:search": "node --import ./scripts/ts-resolve.mjs lib/build-search-index.ts",
-    "predev": "pnpm build:player && pnpm build:search",
+    "predev": "pnpm build:player && pnpm build:api && pnpm build:search",
     "dev": "next dev",
-    "prebuild": "pnpm build:player && pnpm build:search",
+    "prebuild": "pnpm build:player && pnpm build:api && pnpm build:search",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
