@@ -1,6 +1,6 @@
 {
   "name": "motion-script",
-  "version": "2.11.3",
+  "version": "2.13.0",
   "type": "module",
   "description": "Engine-agnostic animation library for Motion Script: scenes, nodes, signals, tweens, layout, and the JSX runtime.",
   "repository": {
