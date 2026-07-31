@@ -1,6 +1,6 @@
 {
   "name": "@motion-script/skia-render",
-  "version": "2.11.3",
+  "version": "2.12.0",
   "type": "module",
   "description": "Backend-agnostic Skia/CanvasKit renderer for Motion Script. Holds the shape, fill, stroke, effect, text and 3D logic; platform specifics (surface creation, media decode, encoding, audio) are injected.",
   "repository": {
