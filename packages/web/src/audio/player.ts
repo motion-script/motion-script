@@ -14,7 +14,7 @@ type ActiveSource = {
 /**
  * Web Audio implementation of {@link AudioDevice} — decodes and caches source
  * buffers, then schedules/plays {@link AudioRequest}s as `AudioBufferSourceNode`s
- * through a shared master gain (for global mute). `schedule` registers the
+ * through a shared master gain (global mute and volume). `schedule` registers the
  * active set of requests for the current frame; `syncTo` then starts/stops
  * sources to match `sceneTime`, so playback follows scrubbing and seeks.
  */
@@ -28,6 +28,7 @@ export class WebAudioDevice extends AudioDevice {
     private disposed: boolean = false;
     private masterGain: GainNode;
     private muted = false;
+    private volume = 1;
 
     constructor(context?: AudioContext) {
         super();
@@ -98,8 +99,9 @@ export class WebAudioDevice extends AudioDevice {
         const liveIds = new Set<string>();
 
         for (const req of this.scheduled) {
-            const end = req.endAt ?? Infinity;
-            const isInWindow = sceneTime >= req.startAt && sceneTime < end;
+            // `endAt` is `Infinity` for an open clip, so the comparison needs no
+            // nullish fallback — see AudioRequest.endAt.
+            const isInWindow = sceneTime >= req.startAt && sceneTime < req.endAt;
             if (!isInWindow) continue;
 
             liveIds.add(req.id);
@@ -129,7 +131,17 @@ export class WebAudioDevice extends AudioDevice {
 
     setMuted(muted: boolean): void {
         this.muted = muted;
-        this.masterGain.gain.value = muted ? 0 : 1;
+        this.applyMasterGain();
+    }
+
+    setVolume(volume: number): void {
+        this.volume = Math.max(0, volume);
+        this.applyMasterGain();
+    }
+
+    /** Mute and volume are held separately so unmuting restores the set level. */
+    private applyMasterGain(): void {
+        this.masterGain.gain.value = this.muted ? 0 : this.volume;
     }
 
     /** Starts a buffer source mid-clip if `sceneTime` lands after the request's start — `audioOffset` accounts for the request's trim, the elapsed time since `startAt`, and any speed (playbackRate) change. */

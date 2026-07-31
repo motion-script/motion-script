@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { LayerStack, ProjectGlobals, layerAppliesTo, resolveGlobalAudio } from "@/runtime/globals";
+import { LayerStack, ProjectGlobals, audioTimelineDuration, layerAppliesTo, resolveGlobalAudio } from "@/runtime/globals";
 import { AudioFilters } from "@/attributes/audio/filters/chain";
 import { AssetTracker } from "@/assets/tracker";
 import { Node } from "@/nodes/base/node";
@@ -135,6 +135,69 @@ describe("resolveGlobalAudio", () => {
         );
         expect(requests).toHaveLength(2);
         expect(requests[0].id).not.toBe(requests[1].id);
+    });
+});
+
+describe("audioTimelineDuration", () => {
+    const catalog = (durations: Record<string, number> = {}, missing?: Set<string>) =>
+        asCatalog(new FakeAssetCatalog(durations, missing));
+
+    it("is zero for no tracks", () => {
+        expect(audioTimelineDuration([], catalog())).toBe(0);
+    });
+
+    it("reaches the end of the furthest track, not the sum of them", () => {
+        const duration = audioTimelineDuration(
+            [{ src: "a.mp3" }, { src: "b.mp3", startAt: 2 }],
+            catalog({ "a.mp3": 4, "b.mp3": 3 }),
+        );
+        // a ends at 4, b at 2+3=5 — overlapping clips stack, they don't queue.
+        expect(duration).toBe(5);
+    });
+
+    it("measures the trimmed length, not the source's", () => {
+        const duration = audioTimelineDuration(
+            [{ src: "a.mp3", startAt: 10, trimStart: 5, trimEnd: 8 }],
+            catalog({ "a.mp3": 60 }),
+        );
+        expect(duration).toBe(13);
+    });
+
+    it("ignores looping tracks, which have no end of their own", () => {
+        const duration = audioTimelineDuration(
+            [{ src: "bed.mp3", loop: true }, { src: "vo.mp3", startAt: 1 }],
+            catalog({ "bed.mp3": 30, "vo.mp3": 2 }),
+        );
+        expect(duration).toBe(3);
+    });
+
+    it("is zero when every track loops, so the caller must set a duration", () => {
+        const duration = audioTimelineDuration(
+            [{ src: "bed.mp3", loop: true }],
+            catalog({ "bed.mp3": 30 }),
+        );
+        expect(duration).toBe(0);
+    });
+
+    it("skips tracks it cannot resolve rather than throwing", () => {
+        const duration = audioTimelineDuration(
+            [{ src: "nope.mp3" }, { src: "a.mp3", startAt: 1 }],
+            catalog({ "a.mp3": 2 }, new Set(["nope.mp3"])),
+        );
+        expect(duration).toBe(3);
+    });
+
+    it("agrees with resolveGlobalAudio — nothing is clipped at its own duration", () => {
+        const tracks = [{ src: "a.mp3" }, { src: "b.mp3", startAt: 2 }];
+        const assets = catalog({ "a.mp3": 4, "b.mp3": 3 });
+
+        const duration = audioTimelineDuration(tracks, assets);
+        const { requests } = resolveGlobalAudio(tracks, assets, duration);
+
+        // The whole point of deriving the duration first: resolving against it
+        // must keep every clip whole, including the one that defined it.
+        expect(requests).toHaveLength(2);
+        expect(Math.max(...requests.map(r => r.endAt))).toBe(duration);
     });
 });
 

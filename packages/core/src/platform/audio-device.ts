@@ -44,6 +44,16 @@ export abstract class AudioDevice {
      */
     setMuted(_muted: boolean): void {}
 
+    /**
+     * Set the linear gain applied to all output, on top of each request's own
+     * `volume`. Independent of {@link setMuted} — unmuting restores this level
+     * rather than resetting to 1, so a host can hold a volume slider and a mute
+     * button without the two clobbering each other.
+     *
+     * Default is a no-op, as for {@link setMuted}.
+     */
+    setVolume(_volume: number): void {}
+
     dispose(): void {
         this.stop();
     }

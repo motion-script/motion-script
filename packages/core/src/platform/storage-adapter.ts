@@ -9,6 +9,24 @@ export abstract class StorageAdapter {
         this.catalog = catalog;
         this.viewport = viewport;
     }
+
+    /**
+     * Point the adapter at a different asset catalog, keeping every decode it has
+     * already cached.
+     *
+     * Safe because the catalog supplies *metadata* (durations, intrinsic sizes)
+     * while the caches are keyed by source URL: a src the new catalog drops leaves
+     * an orphaned decode, and a src it adds simply isn't cached yet. Neither is a
+     * correctness problem, which is what lets a long-lived renderer take an
+     * updated manifest without paying to re-decode everything still in use.
+     *
+     * The viewport deliberately has no such setter — it clamps the resolution
+     * images are decoded *at*, so changing it makes cached decodes genuinely
+     * wrong, and the adapter has to be rebuilt.
+     */
+    setCatalog(catalog: AssetCatalog): void {
+        this.catalog = catalog;
+    }
     /**
      * Every asset src whose loadXxx is currently in flight, mapped to its
      * pending promise. The render path awaits these to guarantee no draw

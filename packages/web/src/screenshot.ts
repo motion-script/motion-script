@@ -1,22 +1,8 @@
-import { AssetCatalog, type AssetManifest, type GlobalLayerConfig, type Scene, type Size2D } from "@motion-script/core";
-import {
-    renderFrameAt,
-    type FrameSpec,
-    type ImageEncoder,
-    type ScreenshotFormat,
-} from "@motion-script/skia-render/export";
-import { WebRenderContext } from "./render-context";
-import { WebStorageAdapter } from "./storage-adapter";
-import { getCanvasKit } from "./getter";
+import type { AssetManifest, GlobalLayerConfig, Scene, Size2D, Theme, Variables } from "@motion-script/core";
+import type { FrameSpec, ScreenshotFormat } from "@motion-script/skia-render/export";
+import { createStillRenderer, type FrameRef, type StillSource } from "./still";
 
 export type { ScreenshotFormat, FrameSpec };
-
-const EMPTY_MANIFEST: AssetManifest = {
-    image: {},
-    video: {},
-    audio: {},
-    font: {},
-};
 
 export type ScreenshotParams = {
     scenes: Scene[];
@@ -24,13 +10,17 @@ export type ScreenshotParams = {
     fps?: number;
     scale?: number;
     manifest?: AssetManifest;
+    /** Project theme, applied before the frame builds so color tokens resolve. */
+    theme?: Theme;
+    /** Project variables, readable in scene generators via `stage.variables(...)`. */
+    variables?: Variables;
     /** Project-level nodes drawn over every scene (`ProjectConfig.overlays`). */
     overlays?: GlobalLayerConfig[];
     /** Project-level nodes drawn under every scene (`ProjectConfig.backgrounds`). */
     backgrounds?: GlobalLayerConfig[];
     wasmUrl?: string;
-    /** Which frame to capture (see {@link FrameSpec}). */
-    frame: FrameSpec;
+    /** Which frame to capture. Defaults to the timeline's first. */
+    frame?: FrameRef;
     /** Encoding format (default "png"). */
     format?: ScreenshotFormat;
     /** JPEG quality in [0,1] (ignored for png; default 0.92). */
@@ -40,93 +30,47 @@ export type ScreenshotParams = {
 export type ScreenshotResult = {
     /** The actual global frame that was captured (after clamping/resolution). */
     frame: number;
-    /** Total frames in the timeline, so callers can validate / report. */
+    /**
+     * Frames in the measured timeline. Capturing an early frame measures only the
+     * scenes up to the one owning it, so this is the project's total **only when
+     * {@link measuredAll} is true** — a `"last"` capture always is.
+     */
     totalFrames: number;
+    /** True when every scene was measured, so {@link totalFrames} is the real total. */
+    measuredAll: boolean;
     /** Encoded image bytes. */
     bytes: Uint8Array;
 };
 
 /**
- * Browser implementation of the image-encoder seam.
- *
- * This CanvasKit build ships no wasm image encoders, so a snapshot is encoded
- * through a 2D canvas. `toDataURL` is the only encode path a browser offers
- * synchronously, hence the base64 round-trip back to bytes.
- */
-class CanvasImageEncoder implements ImageEncoder {
-    encode(
-        pixels: Uint8Array,
-        width: number,
-        height: number,
-        format: ScreenshotFormat,
-        quality?: number,
-    ): Uint8Array {
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Screenshot encode: could not get a 2d context.");
-        // `pixels` is unpremultiplied RGBA8888, which is exactly ImageData's layout.
-        ctx.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0);
-
-        const mime = format === "jpeg" ? "image/jpeg" : "image/png";
-        const dataUrl = canvas.toDataURL(mime, quality);
-        const comma = dataUrl.indexOf(",");
-        const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        return bytes;
-    }
-}
-
-/**
  * Renders a single frame of `scenes` to an image.
  *
- * The frame resolution, precomp and warm-and-re-render retry all live in
- * `@motion-script/skia-render`'s `renderFrameAt`, shared with the video path — so
- * a screenshot is the same render the export would produce at that frame. This
- * function supplies the browser half: a canvas to draw into and a 2D-canvas
- * encoder.
+ * A one-shot wrapper over {@link StillRenderer}: create, render, encode, dispose.
+ * It therefore takes the same path as a live preview, and as the video export at
+ * that frame — there is one renderer, not three.
+ *
+ * For anything that captures **repeatedly** — a thumbnail builder, a preview that
+ * repaints as the user edits — hold a {@link StillRenderer} instead. This function
+ * builds and tears down a WebGL surface per call, which is the right trade for one
+ * capture and the wrong one for a hundred.
  */
 export async function exportScreenshot(params: ScreenshotParams): Promise<ScreenshotResult> {
     const {
-        scenes,
-        viewport = { width: 1920, height: 1080 },
-        fps = 60,
-        scale = 1,
-        manifest = EMPTY_MANIFEST,
-        overlays,
-        backgrounds,
-        wasmUrl,
-        frame,
-        format = "png",
-        quality = 0.92,
+        scenes, viewport, fps, scale, manifest, theme, variables,
+        overlays, backgrounds, wasmUrl,
+        frame, format = "png", quality = 0.92,
     } = params;
 
     if (scenes.length === 0) throw new Error("No scenes to screenshot.");
 
-    const offscreenCanvas = document.createElement("canvas");
-    offscreenCanvas.width = viewport.width * scale;
-    offscreenCanvas.height = viewport.height * scale;
-    offscreenCanvas.style.display = "none";
-    document.body.appendChild(offscreenCanvas);
-
-    const canvasKit = await getCanvasKit(wasmUrl);
-    const assetCatalog = new AssetCatalog(manifest);
-    const storageAdapter = new WebStorageAdapter(canvasKit, assetCatalog, viewport, fps);
-    const renderContext = new WebRenderContext(canvasKit, storageAdapter);
-    renderContext.mount(offscreenCanvas);
+    const renderer = await createStillRenderer({
+        viewport, fps, scale, manifest, theme, variables, overlays, backgrounds, wasmUrl,
+    });
 
     try {
-        return await renderFrameAt({
-            scenes, viewport, fps, scale, manifest, overlays, backgrounds,
-            renderContext, storageAdapter, assetCatalog,
-            frame, format, quality,
-            encoder: new CanvasImageEncoder(),
-        });
+        const drawn = await renderer.render(scenes as StillSource, { frame });
+        return { ...drawn, bytes: await renderer.toBytes({ format, quality }) };
     } finally {
-        renderContext.dispose();
-        document.body.removeChild(offscreenCanvas);
+        renderer.dispose();
     }
 }

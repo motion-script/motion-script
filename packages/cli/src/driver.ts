@@ -87,8 +87,13 @@ export type DriverScreenshotOptions = {
 export type ScreenshotResult = {
     /** The actual global frame captured (after clamping to the valid range). */
     frame: number;
-    /** Total frames in the timeline. */
+    /** Frames in the measured timeline. Only the real total when `measuredAll`. */
     totalFrames: number;
+    /**
+     * True when every scene was measured. An early-frame capture stops once the
+     * owning scene is measured, leaving `totalFrames` covering only that prefix.
+     */
+    measuredAll: boolean;
     /** Decoded image bytes. */
     bytes: Uint8Array;
 };
@@ -383,6 +388,7 @@ export class HeadlessDriver {
         return {
             frame: result.frame,
             totalFrames: result.totalFrames,
+            measuredAll: result.measuredAll,
             bytes: Buffer.from(result.base64, 'base64'),
         };
     }

@@ -4,8 +4,6 @@ import {
 } from "@motion-script/core";
 import {
     renderTimeline,
-    type AudioMixer,
-    type ScheduledAudioRequest,
     type VideoFrameSink,
 } from "@motion-script/skia-render/export";
 import {
@@ -18,7 +16,7 @@ import {
 import { WebRenderContext } from "./render-context";
 import { WebStorageAdapter } from "./storage-adapter";
 import { getCanvasKit } from "./getter";
-import { buildAudioFilterGraph, effectiveSpeed } from "./audio/filter-graph";
+import { WebAudioMixer } from "./audio/mixer";
 
 /** Reports export progress in [0, 1]; video encoding occupies most of the range, audio mixing/finalize the tail. */
 export type ExportProgressCallback = (progress: number) => void;
@@ -60,77 +58,9 @@ const EMPTY_MANIFEST: AssetManifest = {
 };
 
 // ── Audio mixing ─────────────────────────────────────────────────────────────
-
-/** Fetches and decodes an audio source against a scratch `OfflineAudioContext` (decoding requires a context but doesn't render through it). */
-async function fetchAudioBuffer(src: string, ctx: OfflineAudioContext): Promise<AudioBuffer> {
-    const response = await fetch(src);
-    const arrayBuffer = await response.arrayBuffer();
-    return ctx.decodeAudioData(arrayBuffer);
-}
-
-/**
- * Web Audio implementation of the mixer seam.
- *
- * Renders every scheduled request into a single timeline-length buffer via an
- * `OfflineAudioContext` graph (gain per request, looping/trimming, the same
- * filter chain the live `WebAudioDevice` builds) — done once after the full video
- * pass so the mux step gets one continuous track instead of per-frame scheduling.
- */
-class WebAudioMixer implements AudioMixer<AudioBuffer> {
-    async mix(
-        requests: readonly ScheduledAudioRequest[],
-        totalDuration: number,
-        sampleRate: number = 44100,
-    ): Promise<AudioBuffer | null> {
-        if (requests.length === 0) return null;
-
-        const uniqueSrcs = [...new Set(requests.map(r => r.request.src))];
-        const scratchCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
-
-        const decoded = new Map<string, AudioBuffer>();
-        await Promise.all(uniqueSrcs.map(async (src) => {
-            decoded.set(src, await fetchAudioBuffer(src, scratchCtx));
-        }));
-
-        const mixCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
-
-        for (const { request: req, globalOffset } of requests) {
-            const srcBuffer = decoded.get(req.src);
-            if (!srcBuffer) continue;
-
-            const globalStart = globalOffset + req.startAt;
-            const globalEnd = req.endAt !== null
-                ? globalOffset + req.endAt
-                : totalDuration;
-
-            const clipDuration = Math.min(globalEnd - globalStart, totalDuration - globalStart);
-            if (clipDuration <= 0) continue;
-
-            const source = mixCtx.createBufferSource();
-            source.buffer = srcBuffer;
-            source.loop = req.loop;
-
-            const rate = effectiveSpeed(req.filters);
-            if (rate !== 1) source.playbackRate.value = rate;
-
-            const gain = mixCtx.createGain();
-            gain.gain.value = req.volume;
-
-            // Filter chain sits between the source and the per-request gain, matching
-            // the live WebAudioDevice graph so exports sound identical to preview.
-            const graph = buildAudioFilterGraph(mixCtx, source, req.filters ?? []);
-            graph.output.connect(gain);
-            gain.connect(mixCtx.destination);
-
-            // start()'s 3rd arg is a source-buffer duration, so a sped-up clip consumes
-            // proportionally more buffer over the same span of scene time.
-            source.start(globalStart, req.trimStart, clipDuration * rate);
-            for (const osc of graph.oscillators) osc.start(globalStart);
-        }
-
-        return mixCtx.startRendering();
-    }
-}
+//
+// The mix itself lives in ./audio/mixer, shared with the standalone
+// `AudioTimeline` so a preview and the file it exports cannot drift apart.
 
 // ── Video sink ───────────────────────────────────────────────────────────────
 

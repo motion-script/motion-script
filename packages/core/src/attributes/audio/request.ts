@@ -19,7 +19,17 @@ export interface AudioRequest {
     /** The scene timestamp when the audio should START playing. */
     startAt: number; // in seconds
 
-    /** The scene timestamp when the audio should STOP playing. (Optional) */
+    /**
+     * The scene timestamp when the audio should STOP playing.
+     *
+     * Always a number, and **`Infinity` is the open/unbounded sentinel** — never
+     * `null` or `undefined`. A `startSound` left running carries `Infinity` until
+     * {@link open} resolution pins it to the project end, and `Sound.playRanges`
+     * is the one place it is projected to `null`, for display only.
+     *
+     * So test it with `Number.isFinite(endAt)`. A `?? Infinity` or `!== null`
+     * guard is dead code that reads as if the field were nullable.
+     */
     endAt: number; // in seconds
 
     /**

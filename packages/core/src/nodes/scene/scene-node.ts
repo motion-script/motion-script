@@ -437,3 +437,61 @@ function mergeStage(stage: BuildStage<Scene>, scene: Scene): Stage {
 export function createScene(generator: SceneGenerator): Scene {
     return new Scene(generator);
 }
+
+/**
+ * A still's content: a factory that returns the tree to draw, authors the root
+ * through the {@link Stage} it is given, or does both.
+ *
+ * A **factory**, never a node — see {@link createStill} for why that is a
+ * correctness requirement rather than a style preference.
+ */
+export type StillContent = (stage: Stage) => Node | Node[] | void;
+
+/**
+ * Create a single-frame scene — a thumbnail, a poster frame, a still export.
+ *
+ *   createStill(() => <Rect width="fill" height="fill" fill="bg" />)
+ *
+ * Sugar over {@link createScene} with a generator body that never yields, which
+ * is already exactly one frame: the priming `next()` reports done immediately,
+ * but the precomp loop still processes frame 0 in full before it breaks, so the
+ * scene measures `frameCount === 1`. Nothing about rendering it differs from an
+ * animated scene — it is the same build → layout → render pass, so a still and
+ * frame 0 of the equivalent animation are the same image.
+ *
+ * ### Why a factory, and not a node
+ *
+ * A scene body runs **more than once per rendered frame**: the precomp measures
+ * the scene, then the evaluator replays it, and {@link Scene.reset} disposes and
+ * clears the root's children between passes. A node captured in a closure is
+ * therefore disposed before its second use, and re-adding it puts a torn-down
+ * tree into layout — which surfaces as an undefined padding/size deep inside the
+ * layout engine, not as anything that names the real cause.
+ *
+ * So the factory is what makes the still rebuildable, and it is enforced: passing
+ * a node throws immediately rather than failing obscurely later. (It also fixes
+ * the same theme-timing problem a project `GlobalLayer` has — a node built at
+ * module scope resolves its tokens against whatever registry existed then.)
+ *
+ * Scene-level props go through the stage, and may be combined with a returned tree:
+ *
+ *   createStill(stage => {
+ *     stage.set({ fill: 'bg' });
+ *     return <Text text={title} fontSize={120} />;
+ *   });
+ */
+export function createStill(content: StillContent): Scene {
+    if (content instanceof Node || Array.isArray(content)) {
+        throw new TypeError(
+            "createStill() takes a factory, not a node — write createStill(() => <Rect/>). " +
+            "A scene is built more than once per frame and its children are disposed between " +
+            "passes, so a node captured outside the factory is torn down before its second use.",
+        );
+    }
+    return createScene(function* (stage) {
+        // A `() => Node` factory ignores the argument, so both shapes — "build me
+        // a tree" and "author the stage" — go through this one call.
+        const nodes = content(stage);
+        if (nodes) stage.add(nodes);
+    });
+}

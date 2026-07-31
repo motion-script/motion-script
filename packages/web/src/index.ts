@@ -10,7 +10,24 @@ export { EffectRegistry } from "@motion-script/skia-render";
 export type { EffectHandler, EffectGeometry, EffectResources, EffectTarget, RenderEffect } from "@motion-script/skia-render";
 export { exportScenesAsVideo, type ExportParams, type ExportProgressCallback } from "./exporter";
 export { exportScreenshot, type ScreenshotParams, type ScreenshotResult, type ScreenshotFormat, type FrameSpec } from "./screenshot";
+// Single frames as a first-class capability: one long-lived renderer that repaints
+// into a canvas the host owns, for thumbnails and still previews. `exportScreenshot`
+// above is the one-shot wrapper over it.
+export { StillRenderer, createStillRenderer } from "./still";
+export type {
+    StillRendererOptions,
+    RenderStillOptions,
+    EncodeStillOptions,
+    StillSource,
+    FrameRef,
+} from "./still";
 export { WebAudioDevice as WebAudioPlayer } from "./audio/player";
+// Stacked-audio playback and mixdown. Also on the `@motion-script/web/audio`
+// subpath, which is the import to prefer — it reaches these without loading
+// CanvasKit, since none of it draws.
+export { AudioTimeline, createAudioTimeline } from "./audio/timeline";
+export type { AudioTimelineOptions, MixdownOptions } from "./audio/timeline";
+export { mixAudio, encodeWav, type MixAudioOptions } from "./audio/mixer";
 export { WebMeasureScope } from "./measure-scope";
 export { WebMasterClock } from "./master-clock";
 

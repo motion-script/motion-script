@@ -43,8 +43,14 @@ export type HeadlessScreenshotOptions = {
 export type HeadlessScreenshotResult = {
     /** The actual global frame captured (after clamping to the valid range). */
     frame: number;
-    /** Total frames in the timeline, so the CLI can validate/report. */
+    /** Frames in the measured timeline. Only the real total when `measuredAll`. */
     totalFrames: number;
+    /**
+     * True when every scene was measured. Capturing an early frame stops as soon
+     * as the owning scene is measured, so `totalFrames` covers only that prefix
+     * and must not be reported as the timeline's length.
+     */
+    measuredAll: boolean;
     /** Encoded image bytes, base64-encoded for the Playwright bridge. */
     base64: string;
 };
@@ -215,18 +221,17 @@ export function installHeadlessBridge(): void {
                 throw new Error('No scenes to screenshot.');
             }
 
-            // Same theme + variables setup as export() — without it, color tokens
-            // and stage.variables(...) lookups resolve to nothing and the still
-            // renders with wrong values.
-            setTheme(config.theme);
-            setVariables(config.variables);
-
             const result = await exportScreenshot({
                 scenes,
                 viewport: config.viewport,
                 fps: config.fps,
                 scale,
                 manifest: assets,
+                // Applied by the renderer itself now. Without them, color tokens
+                // and stage.variables(...) lookups resolve to nothing and the
+                // still renders with wrong values.
+                theme: config.theme,
+                variables: config.variables,
                 overlays: config.overlays,
                 backgrounds: config.backgrounds,
                 wasmUrl: '/canvaskit.wasm',
@@ -237,6 +242,7 @@ export function installHeadlessBridge(): void {
             return {
                 frame: result.frame,
                 totalFrames: result.totalFrames,
+                measuredAll: result.measuredAll,
                 base64: toBase64(result.bytes),
             };
         },

@@ -48,7 +48,7 @@ export type {
 // The frame loop is portable; the codec is injected. Declare a `VideoFrameSink`
 // over mediabunny, ffmpeg, NVENC or anything else and `renderTimeline` drives it.
 
-export { renderTimeline, renderFrameAt, NoopAudioDevice } from "./export";
+export { renderTimeline, renderFrameAt, drawFrameAt, NoopAudioDevice } from "./export";
 export type {
     VideoFrameSink,
     AudioMixer,
@@ -59,6 +59,8 @@ export type {
     RenderTimelineParams,
     RenderFrameParams,
     RenderedFrame,
+    DrawFrameParams,
+    DrawnFrame,
 } from "./export";
 
 // ─── The platform seam ───────────────────────────────────────────────────────

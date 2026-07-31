@@ -352,9 +352,15 @@ async function runScreenshot(projectRoot: string, args: minimist.ParsedArgs): Pr
 
             const sizeKb = (result.bytes.length / 1024).toFixed(1);
             const timeAtFrame = (result.frame / fps).toFixed(2);
+            // Only report a denominator we actually know: capturing an early
+            // frame measures just the scenes up to it, so the timeline's real
+            // length is unknown unless the whole thing was measured.
+            const position = result.measuredAll
+                ? `frame ${result.frame} / ${result.totalFrames}`
+                : `frame ${result.frame}`;
             console.log(
                 `  ${kleur.green('✓')} ${path.relative(projectRoot, dest)} ` +
-                kleur.dim(`(frame ${result.frame} / ${result.totalFrames}, ${timeAtFrame}s, ${sizeKb} KB)`),
+                kleur.dim(`(${position}, ${timeAtFrame}s, ${sizeKb} KB)`),
             );
         };
 

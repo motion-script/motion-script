@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { createScene } from "./scene-node";
+import { createScene, createStill } from "./scene-node";
 import { RootNode } from "./root-node";
 import { Rect } from "../geometry/rect-node";
 import { BuildStage } from "@/render/build-stage";
+import { Precomp } from "@/runtime/precompisition";
+import { asCatalog, FakeAssetCatalog, FakeMeasureScope } from "@/runtime/runtime.fixtures";
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 30;
@@ -14,6 +16,84 @@ describe("Scene root", () => {
         expect(scene.root.width).toBe("fill");
         expect(scene.root.height).toBe("fill");
         expect(scene.root.group).toBe("stack");
+    });
+});
+
+describe("createStill", () => {
+    /**
+     * Run the still's body and leave the tree standing.
+     *
+     * Deliberately not a precomp: `Precomp` calls `scene.reset()`, which disposes
+     * and clears the root's children, so the tree is gone by the time a pass
+     * returns. Building directly is what lets these assert on what was added.
+     */
+    function build(scene: ReturnType<typeof createStill>) {
+        const stage = new BuildStage<typeof scene>(VIEWPORT, FPS);
+        const it = scene.build(stage);
+        let step = it.next(1 / FPS);
+        while (!step.done) step = it.next(1 / FPS);
+        return scene;
+    }
+
+    it("measures exactly one frame", () => {
+        // The load-bearing claim: a body that never yields still gets frame 0
+        // processed in full before the loop breaks, so the still is renderable
+        // rather than a zero-length scene the timeline skips.
+        const scene = createStill(() => new Rect({ width: 10, height: 10 }));
+        const result = new Precomp(
+            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasureScope(),
+        ).run();
+        expect(result.totalFrames).toBe(1);
+        expect(result.scenes[0].frameCount).toBe(1);
+        expect(result.buildErrors).toEqual([]);
+    });
+
+    it("survives being rebuilt, which every render does at least twice", () => {
+        // Precomp measures the scene, then the evaluator replays it, and
+        // `Scene.reset()` disposes the children in between. A factory builds a
+        // fresh tree each pass; a captured node would be used after disposal.
+        const scene = createStill(() => new Rect({ width: 10, height: 10 }));
+        const catalog = asCatalog(new FakeAssetCatalog());
+
+        expect(() => {
+            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasureScope()).run();
+            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasureScope()).run();
+        }).not.toThrow();
+        expect(scene.root.children).toHaveLength(0);
+    });
+
+    it("rejects a node, whose second use would be after disposal", () => {
+        expect(() => createStill(new Rect({ width: 10, height: 10 }) as never))
+            .toThrow(/takes a factory/);
+        expect(() => createStill([new Rect({ width: 10, height: 10 })] as never))
+            .toThrow(/takes a factory/);
+    });
+
+    it("adds every node a factory returns", () => {
+        const rects = [new Rect({ width: 1, height: 1 }), new Rect({ width: 2, height: 2 })];
+        const children = build(createStill(() => rects)).root.children;
+        expect(rects.every(r => children.includes(r))).toBe(true);
+    });
+
+    it("adds what a builder returns", () => {
+        const rect = new Rect({ width: 10, height: 10 });
+        expect(build(createStill(() => rect)).root.children).toContain(rect);
+    });
+
+    it("lets a builder author the stage and return nothing", () => {
+        const scene = build(createStill(stage => { stage.set({ fill: "red" }); }));
+        expect(scene.root.children).toHaveLength(0);
+        expect(scene.root.fill).toBeTruthy();
+    });
+
+    it("lets a builder do both — set root props and return a tree", () => {
+        const rect = new Rect({ width: 10, height: 10 });
+        const scene = build(createStill(stage => {
+            stage.set({ fill: "red" });
+            return rect;
+        }));
+        expect(scene.root.children).toContain(rect);
+        expect(scene.root.fill).toBeTruthy();
     });
 });
 

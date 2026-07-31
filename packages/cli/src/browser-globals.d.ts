@@ -25,7 +25,13 @@ interface MotionScriptHeadlessBridge {
         frame: MotionScriptFrameSpec;
         scale?: number;
         format?: 'png' | 'jpeg';
-    }): Promise<{ frame: number; totalFrames: number; base64: string }>;
+    }): Promise<{
+        frame: number;
+        /** Frames in the measured timeline — only the real total when `measuredAll`. */
+        totalFrames: number;
+        measuredAll: boolean;
+        base64: string;
+    }>;
 }
 
 interface Window {

@@ -383,6 +383,85 @@ export interface GlobalAudioResolution {
  * resolved against a partial duration while the background precomp is still
  * measuring is simply re-resolved, correctly, once the rest lands.
  */
+/**
+ * One track's geometry before any timeline bounds it: where it starts, where it
+ * reads from in the source, and how much timeline the trimmed source occupies.
+ *
+ * Shared by {@link resolveGlobalAudio} and {@link audioTimelineDuration} so the
+ * two cannot disagree about a track's footprint — a duration derived by one rule
+ * and clipped by another silently drops the tail of the longest bed.
+ */
+type TrackGeometry =
+    | { ok: true; startAt: number; trimStart: number; length: number; sound: Sound }
+    | { ok: false; error: string };
+
+function resolveTrack(track: AudioTrack, index: number, catalog: AssetCatalog): TrackGeometry {
+    const startAt = Math.max(0, track.startAt ?? 0);
+
+    let sourceLength: number;
+    try {
+        sourceLength = catalog.getMediaDuration(track.src);
+    } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+
+    const trimStart = Math.max(0, track.trimStart ?? 0);
+    const trimEnd = Math.min(track.trimEnd ?? sourceLength, sourceLength);
+    const trimmed = Math.max(0, trimEnd - trimStart);
+    if (trimmed <= 0) {
+        return {
+            ok: false,
+            error: `audioTracks[${index}] ("${track.src}"): trimEnd (${trimEnd}s) must be greater than trimStart (${trimStart}s).`,
+        };
+    }
+
+    // Borrow `Sound` purely for its resolved filter chain and its
+    // source-length → timeline-length conversion, so a global bed and a
+    // scene's `playSound` agree on how a speed filter (scalar or curve)
+    // changes a clip's footprint.
+    const sound = new Sound({
+        src: track.src,
+        volume: track.volume,
+        loop: track.loop,
+        trimStart,
+        trimEnd,
+        filters: track.filters,
+    });
+
+    return { ok: true, startAt, trimStart, length: sound.sceneDurationFor(trimmed), sound };
+}
+
+/**
+ * The natural length of a set of {@link AudioTrack}s standing on their own: the
+ * furthest point any non-looping track reaches.
+ *
+ * {@link resolveGlobalAudio} clips every track to a duration the caller already
+ * knows, because a project bed must never lengthen the project. A timeline made
+ * *only* of audio has no scenes to take that duration from, so it needs this
+ * first — resolving against a duration of 0 yields nothing at all.
+ *
+ * A looping track contributes nothing here: it runs until the timeline ends, so
+ * it can't be what decides where the timeline ends. If every track loops the
+ * result is 0 and the caller must supply a duration of its own.
+ *
+ * Tracks that fail to resolve (unknown `src`, inverted trim) are skipped —
+ * {@link resolveGlobalAudio} is where those surface as errors, and reporting
+ * them twice for one bad track would double every message.
+ */
+export function audioTimelineDuration(
+    tracks: readonly AudioTrack[],
+    catalog: AssetCatalog,
+): number {
+    let end = 0;
+    for (let i = 0; i < tracks.length; i++) {
+        if (tracks[i].loop) continue;
+        const geometry = resolveTrack(tracks[i], i, catalog);
+        if (!geometry.ok) continue;
+        end = Math.max(end, geometry.startAt + geometry.length);
+    }
+    return end;
+}
+
 export function resolveGlobalAudio(
     tracks: readonly AudioTrack[],
     catalog: AssetCatalog,
@@ -393,42 +472,14 @@ export function resolveGlobalAudio(
 
     for (let i = 0; i < tracks.length; i++) {
         const track = tracks[i];
-        const startAt = Math.max(0, track.startAt ?? 0);
-
-        let sourceLength: number;
-        try {
-            sourceLength = catalog.getMediaDuration(track.src);
-        } catch (err) {
-            errors.push(err instanceof Error ? err.message : String(err));
+        const geometry = resolveTrack(track, i, catalog);
+        if (!geometry.ok) {
+            errors.push(geometry.error);
             continue;
         }
+        const { startAt, trimStart, length, sound } = geometry;
 
-        const trimStart = Math.max(0, track.trimStart ?? 0);
-        const trimEnd = Math.min(track.trimEnd ?? sourceLength, sourceLength);
-        const trimmed = Math.max(0, trimEnd - trimStart);
-        if (trimmed <= 0) {
-            errors.push(
-                `audioTracks[${i}] ("${track.src}"): trimEnd (${trimEnd}s) must be greater than trimStart (${trimStart}s).`,
-            );
-            continue;
-        }
-
-        // Borrow `Sound` purely for its resolved filter chain and its
-        // source-length → timeline-length conversion, so a global bed and a
-        // scene's `playSound` agree on how a speed filter (scalar or curve)
-        // changes a clip's footprint.
-        const sound = new Sound({
-            src: track.src,
-            volume: track.volume,
-            loop: track.loop,
-            trimStart,
-            trimEnd,
-            filters: track.filters,
-        });
-
-        const naturalEnd = track.loop
-            ? totalDuration
-            : startAt + sound.sceneDurationFor(trimmed);
+        const naturalEnd = track.loop ? totalDuration : startAt + length;
         const endAt = Math.min(naturalEnd, totalDuration);
         // A bed that begins at or after the project's end contributes nothing.
         // Silent, not an error: the timeline grows scene by scene during the

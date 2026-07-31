@@ -1,7 +1,8 @@
 import {
     AssetCatalog, AssetManager, AudioDevice, type AudioRequest, type AssetManifest,
-    type GlobalLayerConfig, type AudioTrack, MeasureScope, Precomp, ProjectGlobals,
-    type Scene, type Size2D, StateEvaluator, type StorageAdapter, yieldToScheduler,
+    type GlobalLayerConfig, type AudioTrack, MeasureScope, Precomp, type PrecompResult,
+    ProjectGlobals, type Scene, type Size2D, StateEvaluator, type StorageAdapter,
+    yieldToScheduler,
 } from "@motion-script/core";
 import type { SkiaAssets } from "./assets";
 import type { SkiaRenderContext } from "./render-context";
@@ -155,15 +156,47 @@ async function renderWarmFrame(
     }
 }
 
+/**
+ * Measure only as much of the timeline as `frame` needs.
+ *
+ * A still at frame *f* has no use for the scenes after the one owning *f*, and
+ * measuring a scene costs roughly a render frame per frame (see
+ * `Precomp.precompScene`). The exception is `last`, which cannot be located
+ * without measuring everything.
+ *
+ * Scenes past the stopping point come back as zero-length placeholders, so
+ * `totalFrames` covers only the measured prefix — which is exactly what the
+ * caller's clamp needs. Either the loop stopped early, in which case the target
+ * is inside the prefix and below `totalFrames`; or it ran out of scenes, in
+ * which case `totalFrames` is the true total and clamping to it is right.
+ */
+function precompUpTo(precomper: Precomp, frame: FrameSpec): PrecompResult {
+    if (frame.kind === "last") return precomper.run();
+
+    const target = frame.kind === "first" ? 0 : Math.max(0, Math.floor(frame.frame));
+    let measured = 0;
+    return precomper.runUntil((_index, scene) => {
+        measured += scene.frameCount;
+        return measured > target;
+    });
+}
+
+interface PrepareOptions {
+    audioTracks?: AudioTrack[];
+    /** Measure only up to the scene owning this frame; omit to measure everything. */
+    upTo?: FrameSpec;
+}
+
 /** Build the precomp + evaluator pair both entry points drive. */
-function prepare(params: CommonParams, audioTracks?: AudioTrack[]) {
+function prepare(params: CommonParams, options: PrepareOptions = {}) {
     const { scenes, viewport, fps, assetCatalog, renderContext, overlays, backgrounds } = params;
     // One instance, shared by the measuring pass and the render pass — the layers
     // whose assets precomp registers must be the ones the frames actually draw.
-    const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
+    const globals = new ProjectGlobals({ audioTracks: options.audioTracks, overlays, backgrounds }, viewport);
     const measureScope = renderContext as unknown as MeasureScope;
 
-    const precomp = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, { globals }).run();
+    const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, { globals });
+    const precomp = options.upTo ? precompUpTo(precomper, options.upTo) : precomper.run();
     const tracks = precomp.scenes.map(s => s.frameCount);
     const stateEvaluator = new StateEvaluator(
         scenes, viewport, fps, assetCatalog, tracks, measureScope, globals,
@@ -215,7 +248,7 @@ export async function renderTimeline<TAudio>(
 
     renderContext.pixelRatio = scale;
     const { precomp, stateEvaluator, measureScope } = prepare(
-        { ...params, manifest: params.manifest ?? EMPTY_MANIFEST }, audioTracks,
+        { ...params, manifest: params.manifest ?? EMPTY_MANIFEST }, { audioTracks },
     );
 
     const { totalFrames, totalDuration } = precomp;
@@ -264,63 +297,104 @@ export async function renderTimeline<TAudio>(
     return bytes;
 }
 
-export interface RenderFrameParams extends CommonParams {
+export interface DrawFrameParams extends CommonParams {
     scale?: number;
     frame: FrameSpec;
+}
+
+export interface DrawnFrame {
+    /** The frame actually drawn, after clamping the request into range. */
+    frame: number;
+    /**
+     * Frames in the timeline that was measured.
+     *
+     * **Only the project's total when {@link measuredAll} is true.** Drawing an
+     * early frame measures only the scenes up to the one owning it (see
+     * {@link precompUpTo}), so this covers that prefix — don't present it as a
+     * timeline length without checking.
+     */
+    totalFrames: number;
+    /**
+     * True when every scene was measured, so {@link totalFrames} is the real
+     * total. False when the pass stopped early.
+     */
+    measuredAll: boolean;
+}
+
+/**
+ * Draw one frame of `scenes` into the caller's render context and leave it on
+ * the surface.
+ *
+ * Same precomp/evaluator/warm-retry path as {@link renderTimeline}, so a still is
+ * the same render the video would produce at that frame — `stateAt` replays from
+ * the owning scene's start, so no frame-by-frame pass is needed.
+ *
+ * Split out from {@link renderFrameAt} because *what happens to the frame* varies
+ * while the drawing does not: a screenshot encodes it, a live preview leaves it
+ * on a visible canvas and draws the next one over it. The context is the
+ * caller's throughout — this neither creates, resizes nor disposes it — so a host
+ * holding one surface can call this repeatedly and keep both the surface and the
+ * storage adapter's decode cache warm.
+ */
+export async function drawFrameAt(params: DrawFrameParams): Promise<DrawnFrame> {
+    const { scale = 1, frame } = params;
+    const harness: RenderHarness = params;
+    const { renderContext, storageAdapter } = harness;
+
+    if (params.scenes.length === 0) throw new Error("No scenes to render.");
+
+    renderContext.pixelRatio = scale;
+    const { precomp, stateEvaluator, measureScope } = prepare(
+        { ...params, manifest: params.manifest ?? EMPTY_MANIFEST },
+        { upTo: frame },
+    );
+
+    try {
+        const { totalFrames } = precomp;
+        if (totalFrames === 0) throw new Error("Timeline has no frames to capture.");
+
+        const requested =
+            frame.kind === "first" ? 0
+                : frame.kind === "last" ? totalFrames - 1
+                    : frame.frame;
+        const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.floor(requested)));
+
+        const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
+        await assetManager.loadAt(targetFrame);
+        stateEvaluator.stateAt(targetFrame);
+        stateEvaluator.layout(measureScope);
+        await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
+
+        return { frame: targetFrame, totalFrames, measuredAll: precomp.complete };
+    } finally {
+        // The pass flushed the surface before returning, so the pixels survive the
+        // tree being torn down here. In `finally` so a throw mid-draw doesn't leak
+        // a live scene graph.
+        stateEvaluator.dispose();
+    }
+}
+
+export interface RenderFrameParams extends DrawFrameParams {
     encoder: ImageEncoder;
     format?: ScreenshotFormat;
     quality?: number;
 }
 
-export interface RenderedFrame {
-    /** The frame actually captured, after clamping the request into range. */
-    frame: number;
-    totalFrames: number;
+export interface RenderedFrame extends DrawnFrame {
     bytes: Uint8Array;
 }
 
-/**
- * Render one frame of `scenes` and encode it.
- *
- * Reuses the same precomp/evaluator/warm-retry path as {@link renderTimeline}, so
- * a still is the same render the video would produce at that frame — `stateAt`
- * replays from the owning scene's start, so no frame-by-frame pass is needed.
- */
+/** Draw one frame of `scenes` via {@link drawFrameAt} and encode it. */
 export async function renderFrameAt(params: RenderFrameParams): Promise<RenderedFrame> {
-    const { scale = 1, frame, encoder, format = "png", quality = 0.92 } = params;
-    const harness: RenderHarness = params;
-    const { renderContext, storageAdapter } = harness;
+    const { encoder, format = "png", quality = 0.92, renderContext } = params;
 
-    if (params.scenes.length === 0) throw new Error("No scenes to screenshot.");
-
-    renderContext.pixelRatio = scale;
-    const { precomp, stateEvaluator, measureScope } = prepare({
-        ...params,
-        manifest: params.manifest ?? EMPTY_MANIFEST,
-    });
-
-    const { totalFrames } = precomp;
-    if (totalFrames === 0) throw new Error("Timeline has no frames to capture.");
-
-    const requested =
-        frame.kind === "first" ? 0
-            : frame.kind === "last" ? totalFrames - 1
-                : frame.frame;
-    const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.floor(requested)));
-
-    const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
-    await assetManager.loadAt(targetFrame);
-    stateEvaluator.stateAt(targetFrame);
-    stateEvaluator.layout(measureScope);
-    await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
+    const drawn = await drawFrameAt(params);
 
     const snapshot = renderContext.snapshotPixels();
     if (!snapshot) throw new Error("Screenshot capture produced no data.");
 
-    stateEvaluator.dispose();
     return {
-        frame: targetFrame,
-        totalFrames,
+        ...drawn,
         bytes: encoder.encode(snapshot.pixels, snapshot.width, snapshot.height, format, quality),
     };
 }
