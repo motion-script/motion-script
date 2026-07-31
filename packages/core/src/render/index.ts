@@ -20,6 +20,7 @@
 
 /** @internal */ export { Clip } from './clip';
 /** @internal */ export type { ClipOp, ClipShapeOp } from './clip';
+/** @internal */ export { containsClip, containsOps, pointInPolygon, nearPolyline, distanceToSegment, polygonVertices, polygramVertices } from './clip-contains';
 
 /** @internal */ export { RenderContext, Render2DContext } from './render-context';
 /** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface } from './render-context';

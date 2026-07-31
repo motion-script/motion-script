@@ -35,9 +35,16 @@ export interface WaveformInfo {
     endTime: number | null;
 }
 
-/** @internal */
 export interface TreeState {
+    /** Per-instance UUID. Changes on every rebuild — key on {@link path} instead. */
     id: string;
+    /**
+     * Structural path from the scene root (`""` for the root, `"0.2"` for the
+     * third child of the first). Stable across rebuilds — unlike `id` — so a host
+     * can key selection, expansion, and overrides on it. It is also what
+     * `getNodeBox` / `setNodeOverride` accept.
+     */
+    path: string;
     type: string;
     meta?: Record<string, unknown>;
     /** Audio clips owned by this node, for waveform rendering in the timeline. */

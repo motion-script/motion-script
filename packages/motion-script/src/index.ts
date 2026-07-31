@@ -491,3 +491,23 @@ export type {
     LatexToken,
     LatexPathResult,
 } from '@motion-script/latex';
+
+// ---------------------------------------------------------
+// 20. Editor selection — node boxes, hit testing, transient overrides
+// ---------------------------------------------------------
+// The geometry an editor needs to lay a selection gizmo over the canvas: where a
+// node's pixels landed, and which node is under a point. Both are pure functions
+// over a scene's node tree, so a host can use them directly; a player embedding
+// reaches the same thing through `MotionPlayer`'s ref (`getNodeBox`, `pickNode`,
+// `setNodeOverride`). Points and boxes are in viewport space — origin at the
+// viewport centre, y-up.
+export {
+    nodeBox,
+    pickNode,
+    collectBoxes,
+} from '@motion-script/core';
+export type {
+    NodeBox,
+    NodeOverride,
+    TreeState,
+} from '@motion-script/core';

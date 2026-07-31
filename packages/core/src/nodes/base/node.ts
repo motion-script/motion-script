@@ -96,6 +96,21 @@ function wigglePhase(key: string): number {
 export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
 
 /**
+ * The camera props a node pushes around its children — the three inputs
+ * `RenderContext.beginCamera` takes beyond the viewport rect. See
+ * {@link Node._cameraScope}.
+ */
+/** @internal */
+export interface CameraScope {
+    /** World point (y-up) the viewport centres on. */
+    origin: Vector2;
+    /** Uniform zoom factor. */
+    zoom: number;
+    /** Viewport rotation in degrees; the renderer applies it as `rotate(-heading)`. */
+    heading: number;
+}
+
+/**
  * Call-wide options for {@link Node.wiggle}, the trailing bag that shapes every
  * prop in the call (mirrors how `TweenOptions` bundles `ease`/`lerp`/`delay`).
  */
@@ -359,6 +374,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /** The allocated bounding box from the last layout pass. Reactive — reads inside callbacks are tracked. */
     protected get layoutRect(): BoxBounds { return this._layoutRect.get(); }
+
+    /**
+     * The allocated layout cell, exposed for the picking walk in
+     * `runtime/node-picking.ts` — it needs a camera node's viewport rect, which
+     * is `layoutRect` and nothing else. `@internal`; authors read
+     * `measuredWidth`/`measuredHeight`/`global`.
+     */
+    /** @internal */
+    get measuredRect(): BoxBounds { return this.layoutRect; }
 
     protected _children: Node[] = [];
 
@@ -1265,7 +1289,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * the renderer pushes in {@link applyTransform}/`RenderContext.transform`.
      * Composed with the parent chain by {@link worldMatrix}.
      */
-    private _localMatrix(): Matrix2D {
+    /** @internal Composed with the camera scopes in between by `runtime/node-picking.ts`. */
+    _localMatrix(): Matrix2D {
         const r = this.layoutRect;
         const cx = (r?.x ?? 0) + this.x;
         const cy = (r?.y ?? 0) - this.y;
@@ -1553,6 +1578,89 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * and so behave the same way for `clip` and effect area.
      */
     protected clipSelf(): Clip | null { return null; }
+
+    /**
+     * The camera scope this node pushes around its **children** (`beginCamera`),
+     * or `null` when it pushes none. Only {@link RootNode} and `Camera` override
+     * it, and each returns non-null exactly when its `renderChildren` actually
+     * opens a camera — so a consumer can reproduce the renderer's transform *and*
+     * its viewport clip without knowing which classes have a camera.
+     *
+     * Read by `runtime/node-picking.ts`: a camera is applied at render time only,
+     * so it is not part of {@link worldMatrix}, and a node's on-screen box would
+     * be offset without it. `@internal`.
+     */
+    /** @internal */
+    _cameraScope(): CameraScope | null { return null; }
+
+    /**
+     * Whether the renderer confines this node's children to its own box — either
+     * because `clip` is set *and* the node has an outline to clip to (a bare
+     * `clip` with no {@link clipSelf} is a no-op, see {@link applyClip}), or
+     * because it opens a camera scope, which clips to the viewport rect.
+     *
+     * Read by `runtime/node-picking.ts`: a point outside a confining node cannot
+     * hit anything inside it, so the whole subtree is skipped. `@internal`.
+     */
+    /** @internal */
+    _confinesChildren(): boolean {
+        if (this._cameraScope() !== null) return true;
+        if (!this.clip) return false;
+        const clip = this.clipSelf();
+        return clip !== null && !clip.isEmpty();
+    }
+
+    /**
+     * Whether `local` — a point in this node's local space (centred on the node,
+     * y-up, rotation and scale already removed) — is inside the node, within
+     * `tolerance` scene units of its edge.
+     *
+     * The default is the layout box, which is the right answer for containers,
+     * text, and media: their box *is* their extent. {@link ShapeNode} narrows it
+     * to the node's declared {@link clipSelf} outline. Custom nodes that draw
+     * their own content can override this so selection follows what they actually
+     * paint.
+     *
+     * `tolerance` is grab-slop, applied outward. An editor passes its
+     * zoom-corrected pixel slop so the grab area stays constant on screen
+     * regardless of preview zoom.
+     */
+    protected hitTestSelf(local: Vector2, tolerance: number): boolean {
+        const b = this._localBounds();
+        return Math.abs(local.x - b.x) <= b.width / 2 + tolerance
+            && Math.abs(local.y - b.y) <= b.height / 2 + tolerance;
+    }
+
+    /**
+     * The extent of this node's ink in its own local space — what an editor draws
+     * a selection box around, and the region the default {@link hitTestSelf}
+     * grabs.
+     *
+     * The returned {@link BoxBounds} is **y-up and relative to the node's own
+     * centre**: `x`/`y` are where the ink's centre sits relative to the node,
+     * normally `(0, 0)`. That is a different space from `layoutRect`, which is
+     * the same type but canvas y-down and relative to the parent — see
+     * `BoxBounds`, which deliberately does not encode a space.
+     *
+     * Defaults to the layout box, centred on the node, which is right for every
+     * node whose drawing fills its cell. It is a separate seam from the layout
+     * rect because for some nodes the two genuinely differ: a {@link Line}'s
+     * `points` are drawn relative to its centre and never reach the layout engine,
+     * so its ink can be both a different size *and* off-centre. Overriding this
+     * fixes the box and the grab region together, without perturbing layout —
+     * which a `measure()` override would.
+     *
+     * `@internal`; override it on a custom node whose drawing is not its cell.
+     */
+    /** @internal */
+    _localBounds(): BoxBounds {
+        return { x: 0, y: 0, width: this.measuredWidth, height: this.measuredHeight };
+    }
+
+    /** @internal Dispatch seam so `node-picking.ts` can reach the protected override. */
+    _hitTestSelf(local: Vector2, tolerance: number): boolean {
+        return this.hitTestSelf(local, tolerance);
+    }
 
     /**
      * An optional clip path that cuts through this node's *own* content **and**

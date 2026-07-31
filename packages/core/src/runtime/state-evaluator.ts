@@ -412,6 +412,30 @@ export class StateEvaluator {
     }
 
     /**
+     * Force the next {@link stateAt} to actually re-evaluate the current frame,
+     * by rewinding the owning slot and dropping the memo that makes a repeat call
+     * a no-op.
+     *
+     * Needed by `PlaybackController.clearNodeOverrides`: a transient override is
+     * written straight onto a live signal, so the only way back to the
+     * scene-authored value is to let the generator author it again. That means a
+     * genuine replay from the slot's frame 0 — {@link beginReplay}'s early return
+     * would otherwise leave the overridden value on screen, and clearing
+     * `_currentFrame` alone would not rewind the generator far enough to rewrite
+     * anything.
+     *
+     * A no-op before the first evaluation. `@internal`.
+     */
+    /** @internal */
+    invalidate(): void {
+        if (this._currentFrame < 0) return;
+        const slot = this.slotAt(this._currentFrame);
+        if (!slot) return;
+        this.resetSlot(slot);
+        this._currentFrame = -1;
+    }
+
+    /**
      * Resolve a replay target: pick the owning slot, make it current, and reset it
      * if the target is behind where its generator already stands (or it was never
      * primed). Returns `null` when there is nothing to do — the frame is already

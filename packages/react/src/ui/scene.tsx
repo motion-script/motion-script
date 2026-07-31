@@ -10,9 +10,12 @@ import {
     type Theme,
     type Variables,
     type Scene,
+    type NodeBox,
+    type NodeOverride,
     type NodeState,
     type Size2D,
     type TreeState,
+    type Vector2,
     type WaveformInfo,
     type AudioTrack,
     type GlobalLayerConfig,
@@ -130,6 +133,32 @@ export interface FrameHandle {
      * a full reload). No-op before the controller mounts.
      */
     hotReplaceScene: (scene: Scene) => number;
+
+    // ---- Direct manipulation ----------------------------------------------
+    // Enough to build a selection gizmo over the canvas: where a node is, what
+    // is under the pointer, and a write path that doesn't rebuild the scene.
+    // Points are in viewport space — origin at the viewport centre, y-up, in the
+    // `viewport` pixels this player was given.
+
+    /** On-screen box of one node at the current frame, keyed by {@link TreeState.path}. */
+    getNodeBox: (path: string) => NodeBox | null;
+    /** Every visible node's box, in draw order. */
+    getNodeBoxes: () => NodeBox[];
+    /**
+     * Topmost node under a viewport-space point. `tolerance` is grab-slop in
+     * scene units — divide the desired screen slop by the host's preview zoom.
+     */
+    pickNode: (point: Vector2, tolerance?: number) => NodeBox | null;
+    /**
+     * Layer transient props over a node for direct manipulation, without
+     * rebuilding the scene (which would tear down the render surface). Call
+     * {@link repaint} after. Clear them once the host has committed the value.
+     */
+    setNodeOverride: (path: string, props: NodeOverride) => void;
+    /** Drop one node's overrides, or all of them when `path` is omitted. */
+    clearNodeOverrides: (path?: string) => void;
+    /** Re-layout and repaint the current frame — no generator replay. */
+    repaint: () => void;
 }
 
 /**
@@ -328,6 +357,14 @@ export function MotionPlayer({
                 onLoadingChangeRef.current?.(false);
                 return index;
             },
+            getNodeBox: (path: string) => controllerRef.current?.getNodeBox(path) ?? null,
+            getNodeBoxes: () => controllerRef.current?.getNodeBoxes() ?? [],
+            pickNode: (point: Vector2, tolerance?: number) =>
+                controllerRef.current?.pickNode(point, tolerance) ?? null,
+            setNodeOverride: (path: string, props: NodeOverride) =>
+                controllerRef.current?.setNodeOverride(path, props),
+            clearNodeOverrides: (path?: string) => controllerRef.current?.clearNodeOverrides(path),
+            repaint: () => controllerRef.current?.repaint(),
         }),
         [],
     );

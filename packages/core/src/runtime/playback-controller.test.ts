@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PlaybackController, ControllerParams } from '@/runtime/playback-controller';
 import { Precomp } from '@/runtime/precompisition';
+import { Rect } from '@/nodes/geometry/rect-node';
+import { createScene } from '@/nodes/scene/scene-node';
+import { createRef } from '@/util/reference';
 import {
     FakeScene,
     FakeNode,
@@ -308,10 +311,11 @@ describe('PlaybackController – screenshot & introspection', () => {
         // scene at global offset 0 → frames 0..9), attached as absolute frames.
         expect(controller.getTreeState()).toEqual({
             id: 'root',
+            path: '',
             type: 'Scene',
             startFrame: 0,
             endFrame: 9,
-            children: [{ id: 'child', type: 'Rect', startFrame: 0, endFrame: 9, children: [] }],
+            children: [{ id: 'child', path: '0', type: 'Rect', startFrame: 0, endFrame: 9, children: [] }],
         });
     });
 
@@ -327,6 +331,188 @@ describe('PlaybackController – screenshot & introspection', () => {
     it('returns null for an unknown node id', () => {
         const { controller } = makeController();
         expect(controller.getNodeState('does-not-exist')).toBeNull();
+    });
+});
+
+/**
+ * Direct manipulation runs against the *real* scene graph — `FakeScene.root`
+ * hands back a throwaway `FakeNode` per call, which has no layout, no transform
+ * and no identity across calls, so none of this could be exercised through it.
+ */
+describe('PlaybackController – direct manipulation', () => {
+    const FPS = 10;
+
+    /**
+     * `FakeRenderContext` implements only `execute`/`screenshot`, which is enough
+     * for a `FakeScene` (it never draws). A real scene graph calls the whole
+     * `RenderContext` surface, so stub the rest as no-ops — the geometry under
+     * test comes from layout, not from anything the context returns.
+     */
+    function nullRenderContext(): FakeRenderContext {
+        const base = new FakeRenderContext();
+        return new Proxy(base, {
+            get(target, prop, receiver) {
+                if (prop in target) return Reflect.get(target, prop, receiver);
+                return () => undefined;
+            },
+        });
+    }
+
+    function makeRealController() {
+        const card = createRef<Rect>();
+        const scene = createScene(function* (stage) {
+            stage.add(
+                new Rect({
+                    ref: card,
+                    width: 100,
+                    height: 60,
+                    children: [new Rect({ width: 20, height: 20 })],
+                }),
+            );
+            // 10 frames of motion, so a replay has something to overwrite.
+            yield* card().to({ x: 200 }, 1);
+            for (let i = 0; i < 5; i++) yield;
+        });
+
+        const viewport = { width: 800, height: 600 };
+        const scenes = [scene];
+        const measureScope = new FakeMeasureScope();
+        const catalog = asCatalog(new FakeAssetCatalog());
+        const rc = nullRenderContext();
+        const clock = new FakeClock();
+
+        const controller = new PlaybackController({
+            renderContext: asRenderContext(rc),
+            measureScope,
+            storageAdapter: asStorage(new FakeStorageAdapter()),
+            masterClock: clock,
+            audioDevice: new FakeAudioDevice(),
+            assets: catalog,
+            precomposition: new Precomp(scenes, viewport, FPS, catalog, measureScope),
+            fps: FPS,
+            viewport,
+            scenes,
+        } as unknown as ControllerParams);
+
+        return { controller, card, rc, clock };
+    }
+
+    it('exposes a structural path on every tree node', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        const tree = controller.getTreeState()!;
+        expect(tree.path).toBe('');
+        expect(tree.children[0].path).toBe('0');
+        expect(tree.children[0].children[0].path).toBe('0.0');
+    });
+
+    it('getNodeBox resolves a path to an on-screen box', async () => {
+        const { controller, card } = makeRealController();
+        await controller.seek(0);
+
+        const box = controller.getNodeBox('0')!;
+        expect(box.id).toBe(card().id);
+        expect(box.type).toBe('Rect');
+        expect(box.width).toBe(100);
+        expect(box.height).toBe(60);
+        expect(box.center.x).toBeCloseTo(0, 6);
+        expect(box.center.y).toBeCloseTo(0, 6);
+        // The nested child resolves too.
+        expect(controller.getNodeBox('0.0')!.width).toBe(20);
+    });
+
+    it('getNodeBox returns null for a path the tree does not have', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        expect(controller.getNodeBox('7')).toBeNull();
+        expect(controller.getNodeBox('0.9.3')).toBeNull();
+    });
+
+    it('getNodeBoxes walks the whole scene in draw order', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        expect(controller.getNodeBoxes().map(b => b.path)).toEqual(['0', '0.0']);
+    });
+
+    it('pickNode finds the node under a viewport point, and the topmost one', async () => {
+        const { controller, card } = makeRealController();
+        await controller.seek(0);
+
+        // Dead centre is the inner 20×20 child, painted over its parent.
+        expect(controller.pickNode({ x: 0, y: 0 })!.path).toBe('0.0');
+        // Off the child but still on the card.
+        expect(controller.pickNode({ x: 40, y: 0 })!.id).toBe(card().id);
+        // Off both.
+        expect(controller.pickNode({ x: 300, y: 0 })).toBeNull();
+    });
+
+    it('setNodeOverride moves the live node and survives a seek away and back', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(10);
+        // Frame 10 is the end of the tween, so the scene puts the card at x=200.
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(200, 6);
+
+        controller.setNodeOverride('0', { x: -150 });
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(-150, 6);
+
+        // A backward seek replays the generator from frame 0, which rewrites `x`
+        // — the override is re-applied after every evaluation, so it still wins.
+        await controller.seek(3);
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(-150, 6);
+        await controller.seek(10);
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(-150, 6);
+    });
+
+    it('merges successive overrides for the same node', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        controller.setNodeOverride('0', { x: 40 });
+        controller.setNodeOverride('0', { y: 25 });
+        const center = controller.getNodeBox('0')!.center;
+        expect(center.x).toBeCloseTo(40, 6);
+        expect(center.y).toBeCloseTo(25, 6);
+    });
+
+    it('clearNodeOverrides restores the generator-authored value', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(10);
+        controller.setNodeOverride('0', { x: -150 });
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(-150, 6);
+
+        controller.clearNodeOverrides();
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(200, 6);
+    });
+
+    it('clearNodeOverrides(path) drops only that node', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        controller.setNodeOverride('0', { x: 40 });
+        controller.setNodeOverride('0.0', { x: 10 });
+
+        controller.clearNodeOverrides('0.0');
+        expect(controller.getNodeBox('0')!.center.x).toBeCloseTo(40, 6);
+        // The child is back on its parent's centre (its own x reset to 0).
+        expect(controller.getNodeBox('0.0')!.center.x).toBeCloseTo(40, 6);
+    });
+
+    it('repaint renders the current frame without advancing it', async () => {
+        const { controller, rc, clock } = makeRealController();
+        await controller.seek(4);
+        const before = rc.renderCount;
+        const time = clock.currentTime;
+
+        controller.repaint();
+
+        expect(rc.renderCount).toBe(before + 1);
+        expect(clock.currentTime).toBe(time);
+        expect(controller.currentFrame).toBe(4);
+    });
+
+    it('an override on a stale path is silently ignored', async () => {
+        const { controller } = makeRealController();
+        await controller.seek(0);
+        expect(() => controller.setNodeOverride('9.9', { x: 1 })).not.toThrow();
+        expect(controller.getNodeBox('0')!.center.x).toBe(0);
     });
 });
 

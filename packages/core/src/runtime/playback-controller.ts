@@ -13,6 +13,16 @@ import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
 import { Node } from "@/nodes/base/node";
 import { Scene } from "@/nodes/scene/scene-node";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { NodeBox, collectBoxes, nodeBox, pickNode } from "./node-picking";
+
+/**
+ * Transient prop values layered over a node's evaluated state — see
+ * {@link PlaybackController.setNodeOverride}. Keys are prop names the node
+ * accepts (`x`, `y`, `rotation`, `width`, …).
+ */
+export type NodeOverride = Record<string, unknown>;
+
 /** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
     renderContext: RenderContext;
@@ -99,6 +109,12 @@ export class PlaybackController {
     readonly viewport: Size2D;
     /** The precomp runner, kept so a single scene can be re-run on hot reload. */
     private readonly precomper: Precomp;
+    /**
+     * Transient prop values re-applied after every state evaluation, keyed by
+     * structural path so they survive a scene rebuild. See
+     * {@link setNodeOverride}.
+     */
+    private readonly overrides = new Map<string, NodeOverride>();
     /** Latest assembled precomp result. Swapped wholesale on a scene replace. */
     precomp: PrecompResult;
 
@@ -323,6 +339,9 @@ export class PlaybackController {
         if (this.disposed) return;
         this.stateEvaluator.stateAt(frame, isCancelled);
         if (isCancelled?.()) return;
+        // After the generators, before layout: an override must beat whatever the
+        // scene evaluated to, and be visible to the layout pass that follows.
+        this.applyOverrides();
         this.stateEvaluator.layout(this.measureScope);
         this.renderContext.execute(() => {
             this.stateEvaluator.render(this.renderContext);
@@ -344,6 +363,7 @@ export class PlaybackController {
         if (this.disposed) return false;
         const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled, this.replayBudgetMs);
         if (!reached || this.disposed || isCancelled?.()) return false;
+        this.applyOverrides();
         this.stateEvaluator.layout(this.measureScope);
         this.renderContext.execute(() => {
             this.stateEvaluator.render(this.renderContext);
@@ -535,6 +555,116 @@ export class PlaybackController {
         return { id: node.id, type: node.name, properties: node.properties };
     }
 
+    // ---- Direct manipulation ----------------------------------------------
+    // Where a node's pixels are, what is under a point, and a write path fast
+    // enough for a drag. See `runtime/node-picking.ts` for the geometry.
+
+    /**
+     * The on-screen box of one node at the current frame, or `null` when the path
+     * does not resolve (or no scene is active). See {@link NodeBox}.
+     *
+     * @param path Structural path from {@link TreeState.path}.
+     */
+    getNodeBox(path: string): NodeBox | null {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return null;
+        const node = findNodeByPath(scene.root, path);
+        return node ? nodeBox(node, path) : null;
+    }
+
+    /**
+     * Every visible node's box in draw order — for hover highlights, marquee
+     * selection, and snap guides. One tree walk instead of N {@link getNodeBox}
+     * calls.
+     */
+    getNodeBoxes(): NodeBox[] {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return [];
+        const out: NodeBox[] = [];
+        collectBoxes(scene.root, "", out, true);
+        return out;
+    }
+
+    /**
+     * The topmost node under a viewport-space point (origin at the viewport
+     * centre, y-up), or `null`. `tolerance` is grab-slop in **scene units** —
+     * pass the host's pixel slop divided by its preview zoom so the grab area
+     * stays constant on screen. See {@link pickNode}.
+     */
+    pickNode(point: Vector2, tolerance = 0): NodeBox | null {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return null;
+        return pickNode(scene.root, point, tolerance);
+    }
+
+    /**
+     * Layer transient prop values over a node, on top of whatever the scene's
+     * generators evaluate to. Re-applied after every state evaluation and before
+     * layout, so they hold across frame changes and backward-seek replays until
+     * cleared.
+     *
+     * This exists for direct manipulation: an editor dragging a node needs the
+     * rendered node to follow the pointer at pointer rate, and rebuilding the
+     * `Scene` for that is not viable — a host's `scenes` array is an input to the
+     * player's mount effect, so a rebuild disposes and re-creates the render
+     * surface. Overrides move the live node instead: no precomp, no teardown.
+     *
+     * They are **not** persistence. The host commits the value to its own model
+     * on drop and clears the override; the next rebuild carries the same value in
+     * through the scene, and nothing is left behind.
+     *
+     * @param path  Structural path from {@link TreeState.path} (stable across
+     *              rebuilds, unlike a node id).
+     * @param props Any props the node accepts — `{ x, y }`, `{ rotation }`,
+     *              `{ width, height }`. Merged over any existing override.
+     */
+    setNodeOverride(path: string, props: NodeOverride): void {
+        const existing = this.overrides.get(path);
+        this.overrides.set(path, existing ? { ...existing, ...props } : { ...props });
+        this.applyOverrides();
+    }
+
+    /**
+     * Drop one node's overrides, or all of them when `path` is omitted, and
+     * repaint so the node snaps back to its scene-authored state.
+     *
+     * An override is written straight onto a live signal, so simply forgetting it
+     * would leave the last dragged value on screen. The value can only come back
+     * from the generator that authored it, which means replaying the current
+     * scene — so this rebuilds that scene's node tree (node `id`s change; keep
+     * keying on paths). Cheap enough for a pointer-*up*, which is the only place
+     * it belongs; never call it per `pointermove`.
+     */
+    clearNodeOverrides(path?: string): void {
+        const cleared = path === undefined
+            ? (this.overrides.size > 0 && (this.overrides.clear(), true))
+            : this.overrides.delete(path);
+        // Nothing was held, so nothing is stale — skip the replay entirely.
+        if (!cleared) return;
+        const frame = this.stateEvaluator.currentFrame;
+        this.stateEvaluator.invalidate();
+        this.renderAt(frame);
+    }
+
+    /**
+     * Re-lay-out and repaint the current frame without re-running any generator.
+     * Cheap enough for a pointer-rate drag loop: `stateAt` early-returns for the
+     * frame that is already current, so this is layout + draw only.
+     */
+    repaint(): void {
+        this.renderAt(this.stateEvaluator.currentFrame);
+    }
+
+    /** Write every held override onto its node. No-op when none are set. */
+    private applyOverrides(): void {
+        if (this.overrides.size === 0) return;
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return;
+        for (const [path, props] of this.overrides) {
+            findNodeByPath(scene.root, path)?.set(props as never);
+        }
+    }
+
     play(speed: number = 1, reverse: boolean = false): void {
         this.lastPlaySpeed = speed;
         this.lastPlayReverse = reverse;
@@ -580,6 +710,7 @@ function nodeToTreeState(
 ): TreeState {
     const state: TreeState = {
         id: node.id,
+        path,
         type: node.name,
         children: node.children.map((c, i) =>
             nodeToTreeState(c, nodePath(path, i), lifespans, sceneStart, waveformsByPath)),
@@ -618,6 +749,22 @@ function waveformsByOwner(requests: readonly AudioRequest[]): Map<string, Wavefo
         else byPath.set(path, [info]);
     }
     return byPath;
+}
+
+/**
+ * Resolve a structural path (`""` = root, `"0.2"` = third child of the first) to
+ * its node, or `null` when the tree no longer has that slot. The counterpart to
+ * {@link nodePath}, which builds the same keys during the tree walk.
+ */
+function findNodeByPath(root: Node, path: string): Node | null {
+    if (path === "") return root;
+    let node: Node = root;
+    for (const seg of path.split(".")) {
+        const next = node.children[Number(seg)];
+        if (!next) return null;
+        node = next;
+    }
+    return node;
 }
 
 function findNode(root: Node, id: string): Node | null {

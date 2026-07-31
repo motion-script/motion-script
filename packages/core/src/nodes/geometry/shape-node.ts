@@ -10,6 +10,8 @@ import { Fill } from "@/attributes/shape/fill/chain";
 
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
+import { containsClip } from "@/render/clip-contains";
+import { Vector2 } from "@/attributes/layout/vector2";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeProps } from "../base/node";
 import { TweenOptions } from "@/tween/lerp";
@@ -116,6 +118,20 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
         if (stroke.length === 0) return;
         const g = this.shapeGraphics();
         if (g) ctx.draw(g.stroke(stroke));
+    }
+
+    /**
+     * Shapes hit on their outline, not their box: a click in the empty corner of
+     * a star's bounding box should fall through to whatever is behind it. The
+     * outline is the very one this node already declares for clipping
+     * ({@link Node.clipSelf}), so what is grabbable and what is drawn can never
+     * drift. Shapes that declare no outline (Text, RichText, Path) keep the base
+     * box test, which is what selection should do for them anyway.
+     */
+    protected override hitTestSelf(local: Vector2, tolerance: number): boolean {
+        const clip = this.clipSelf();
+        if (!clip || clip.isEmpty()) return super.hitTestSelf(local, tolerance);
+        return containsClip(clip, local, tolerance);
     }
 
     *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {

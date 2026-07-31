@@ -11,7 +11,7 @@ import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
-import { NodeConfig } from "../base/node";
+import { CameraScope, NodeConfig } from "../base/node";
 
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
@@ -131,6 +131,13 @@ export class Camera extends ShapeNode<CameraProps> {
     // world, and an explicit `width`/`height`/`'fill'` still resolves as given.
 
     // ---- Rendering --------------------------------------------------------
+
+    // Always non-null: unlike RootNode there is no at-rest fast path below, so
+    // the camera scope (and its viewport clip) is pushed on every frame even when
+    // the transform itself is the identity.
+    override _cameraScope(): CameraScope {
+        return { origin: this.origin, zoom: this.zoom, heading: this.heading };
+    }
 
     // Render the world through the camera viewport transform instead of the
     // straight `renderChildren` ShapeNode uses for its content.

@@ -18,7 +18,7 @@ import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { CameraScope, Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 import { alignProperty, fillProperty } from "@/attributes/properties/typed";
 
@@ -243,6 +243,15 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // world through the camera viewport transform, the same way the Camera node
     // does. When the camera is at rest (zoom 1, no heading, origin at 0) this is
     // the identity, so a plain layout root pays nothing extra.
+    // Non-null exactly when renderChildren below opens a camera, so a consumer
+    // reproducing the render transform (node picking) inserts the same scope in
+    // the same place — and skips it on the at-rest fast path, where the renderer
+    // pushes nothing at all.
+    override _cameraScope(): CameraScope | null {
+        if (this.zoom === 1 && this.heading === 0 && this.origin.x === 0 && this.origin.y === 0) return null;
+        return { origin: this.origin, zoom: this.zoom, heading: this.heading };
+    }
+
     override renderChildren(ctx: RenderContext): void {
         if (this.zoom === 1 && this.heading === 0 && this.origin.x === 0 && this.origin.y === 0) {
             super.renderChildren(ctx);

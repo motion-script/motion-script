@@ -1,0 +1,206 @@
+import { Node } from "@/nodes/base/node";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { Matrix2D, identity, multiply, invert, applyToPoint, cameraMatrix, translation } from "@/attributes/layout/matrix2d";
+import { worldAnchors } from "@/nodes/base/node-transform";
+import { nodePath } from "@/project/tree";
+
+/**
+ * Pure geometry for editor-style direct manipulation: where a node's pixels
+ * landed, and which node is under a point. No controller state, so it can be
+ * exercised against hand-built node trees.
+ *
+ * **Space.** Everything here is in *viewport space*: origin at the viewport
+ * centre, y-up, units = the viewport pixels the player was given. That is the
+ * same space `Node.global` reports, plus the camera — see {@link renderMatrix}.
+ */
+
+/**
+ * A node's on-screen box at the current frame, in viewport space (origin at the
+ * viewport centre, y-up).
+ *
+ * Unlike {@link Node.global} this folds in any active camera scope, so it
+ * describes where the node's pixels actually landed — which is what an editor
+ * overlay needs in order to draw a selection box over them.
+ */
+export interface NodeBox {
+    /** Per-instance id — changes on every rebuild. Use {@link path} to key across rebuilds. */
+    id: string;
+    /** Structural path from the scene root (`""` is the root); stable across rebuilds. */
+    path: string;
+    /** Node class name, e.g. `Rect`, `Text`. */
+    type: string;
+    /** Corners in draw order, viewport space. Rotated/scaled — not axis-aligned. */
+    topLeft: Vector2;
+    topRight: Vector2;
+    bottomRight: Vector2;
+    bottomLeft: Vector2;
+    center: Vector2;
+    /**
+     * Size of the box before rotation/scale, in scene units — the node's layout
+     * size for everything whose drawing fills its cell, and the ink's own extent
+     * where the two differ (see {@link Node._localBounds}; a `Line` reports the
+     * span of its `points`, not its layout rect).
+     */
+    width: number;
+    height: number;
+    /** Folded rotation (degrees clockwise) and uniform scale, camera included. */
+    rotation: number;
+    scale: number;
+    /** Effective alpha; `0` means the node is present but invisible. */
+    opacity: number;
+}
+
+/**
+ * The renderer's CTM at `node` — every ancestor's local matrix from the scene
+ * root down, with a camera scope inserted wherever an ancestor pushes one
+ * ({@link Node._cameraScope}; `RootNode`/`Camera` call `beginCamera` between
+ * their own transform and their children's).
+ *
+ * Mirrors the render walk exactly, including the camera's `translate(rect.x,
+ * -rect.y)` — if a box ever disagrees with the pixels, the divergence is here.
+ */
+function renderMatrix(node: Node): Matrix2D {
+    const chain: Node[] = [];
+    for (let n: Node | null = node; n; n = n.parent) chain.push(n);
+    chain.reverse();
+
+    let m = identity();
+    for (let i = 0; i < chain.length; i++) {
+        const n = chain[i];
+        m = multiply(m, n._localMatrix());
+        // A camera applies to the node's *children*, so it is skipped on the leaf.
+        if (i < chain.length - 1) {
+            const cam = n._cameraScope();
+            if (cam) {
+                const r = n.measuredRect;
+                m = multiply(m, cameraMatrix(r.x, -r.y, cam.origin, cam.zoom, cam.heading));
+            }
+        }
+    }
+    return m;
+}
+
+/**
+ * Folded rotation / scale / opacity from the scene root down to `node`, matching
+ * the renderer's nested transforms and its pass-through alpha fold. The same
+ * accumulation {@link Node.global} does, extended with the camera scopes: a
+ * camera multiplies the scale by its `zoom` and adds `-heading` to the rotation
+ * (the renderer applies `rotate(-heading)`).
+ */
+function foldedTransform(node: Node): { rotation: number; scale: number; opacity: number } {
+    let rotation = 0;
+    let scale = 1;
+    let opacity = 1;
+    for (let n: Node | null = node; n; n = n.parent) {
+        rotation += n.rotation;
+        scale *= n.scale;
+        opacity *= n.opacity;
+        // Skip the node's own camera: it scopes its children, not itself.
+        const cam = n !== node ? n._cameraScope() : null;
+        if (cam) {
+            rotation -= cam.heading;
+            scale *= cam.zoom;
+        }
+    }
+    return { rotation, scale, opacity };
+}
+
+/** Build the viewport-space box for `node` at the current frame. */
+export function nodeBox(node: Node, path: string): NodeBox {
+    const b = node._localBounds();
+    // `worldAnchors` maps offsets centred on the matrix's origin, so shift the
+    // matrix onto the bounds' own centre first — that is what lets a node whose
+    // ink is off-centre (a Line) report a box that actually sits on the ink.
+    // The matrix is canvas y-down; the bounds are y-up, hence the sign on y.
+    const m = b.x === 0 && b.y === 0
+        ? renderMatrix(node)
+        : multiply(renderMatrix(node), translation(b.x, -b.y));
+    const anchors = worldAnchors(m, b.width / 2, b.height / 2);
+    const folded = foldedTransform(node);
+    return {
+        id: node.id,
+        path,
+        type: node.name,
+        topLeft: anchors.topLeft,
+        topRight: anchors.topRight,
+        bottomRight: anchors.bottomRight,
+        bottomLeft: anchors.bottomLeft,
+        center: anchors.center,
+        width: b.width,
+        height: b.height,
+        rotation: folded.rotation,
+        scale: folded.scale,
+        opacity: folded.opacity,
+    };
+}
+
+/**
+ * The topmost node whose hit region contains `point` (viewport space, y-up,
+ * origin at the viewport centre), or `null`. Children paint over their parent and
+ * later siblings over earlier ones, so the walk tests children last-to-first
+ * before falling back to the node itself.
+ *
+ * Skips fully transparent nodes — a scene built with spawn delays keeps
+ * not-yet-visible nodes in the tree at `opacity: 0`, and those must not be
+ * selectable. A node that clips (or pushes a camera, which clips to its viewport)
+ * confines its subtree: a point outside its box cannot hit anything inside it.
+ * The scene root is never returned; it is the stage, not a selectable node.
+ *
+ * The hit region is {@link Node.hitTestSelf} — the rotated layout box by default,
+ * narrowed to the declared outline for shapes. A click in the corner of a rect's
+ * box selects it; a click in the empty notch of a star's box does not.
+ *
+ * `tolerance` is grab-slop in scene units, applied outward from the ink. A host
+ * passes its zoom-corrected pixel slop so the grab area stays constant on screen.
+ * It is what makes thin shapes reachable.
+ *
+ * Cost: {@link renderMatrix} walks to the root per node, making a pick O(depth²).
+ * Scene trees here are shallow (tens of nodes, depth < 10), so this is fine at
+ * pointer rate. If it ever matters, thread the parent's accumulated matrix down
+ * through the walk instead of recomputing — a change confined to this file.
+ */
+export function pickNode(root: Node, point: Vector2, tolerance = 0): NodeBox | null {
+    return pickIn(root, "", point, tolerance, true);
+}
+
+function pickIn(node: Node, path: string, point: Vector2, tolerance: number, isRoot: boolean): NodeBox | null {
+    if (node.opacity === 0) return null;
+
+    const inside = containsPoint(node, point, tolerance);
+    // A clipping node (or one that opens a camera viewport) gates its subtree.
+    if (!inside && node._confinesChildren()) return null;
+
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i--) {
+        const hit = pickIn(children[i], nodePath(path, i), point, tolerance, false);
+        if (hit) return hit;
+    }
+
+    if (isRoot) return null;
+    return inside ? nodeBox(node, path) : null;
+}
+
+/**
+ * Collect every visible node's box in draw order (parents before children, so a
+ * host can paint them in the order the renderer did). Skips `opacity: 0` nodes
+ * and the scene root, matching {@link pickNode}.
+ */
+export function collectBoxes(node: Node, path: string, out: NodeBox[], isRoot: boolean): void {
+    if (node.opacity === 0) return;
+    if (!isRoot) out.push(nodeBox(node, path));
+    const children = node.children;
+    for (let i = 0; i < children.length; i++) {
+        collectBoxes(children[i], nodePath(path, i), out, false);
+    }
+}
+
+/** Map `point` into `node`'s local space and ask the node whether it was hit. */
+function containsPoint(node: Node, point: Vector2, tolerance: number): boolean {
+    const inv = invert(renderMatrix(node));
+    if (!inv) return false;                       // zero scale — nothing to hit
+    // The render matrix works in canvas (y-down) space; `worldAnchors` flips y in
+    // and back out, so the inverse does the same to land in the node's centred,
+    // y-up local frame — the space `hitTestSelf` and the clip descriptors use.
+    const p = applyToPoint(inv, { x: point.x, y: -point.y });
+    return node._hitTestSelf({ x: p.x, y: -p.y }, tolerance);
+}

@@ -94,8 +94,8 @@ describe('TrackRenderContext', () => {
     });
 
     it('sizes a fill by the shape it actually paints, not the node\'s own layoutRect', () => {
-        // Mirrors packages/animation's Bar, which intentionally draws a bar
-        // rect smaller than its own layout box.
+        // A custom node that intentionally draws a rect smaller than its own
+        // layout box — the fill must be sized by what is painted, not the cell.
         class Bar extends Node {
             protected override renderSelf(ctx: RenderContext): void {
                 ctx.draw(new Graphics().rect({ width: 40, height: 30 }).fill(Fills.image(IMAGE_SRC)));

@@ -55,6 +55,55 @@ export function applyToPoint(m: Matrix2D, p: Vector2): Vector2 {
 }
 
 /**
+ * The inverse transform, or `null` when `m` is singular (a zero scale collapses
+ * the plane, so no inverse exists). Used to map a viewport-space point back into
+ * a node's local space for hit testing.
+ */
+/** @internal */
+export function invert(m: Matrix2D): Matrix2D | null {
+    const det = m.a * m.d - m.b * m.c;
+    if (det === 0 || !Number.isFinite(det)) return null;
+    const inv = 1 / det;
+    return {
+        a: m.d * inv,
+        b: -m.b * inv,
+        c: -m.c * inv,
+        d: m.a * inv,
+        e: (m.c * m.f - m.d * m.e) * inv,
+        f: (m.b * m.e - m.a * m.f) * inv,
+    };
+}
+
+/**
+ * The viewport transform a camera scope pushes, in canvas (y-down) space — a
+ * literal transcription of `RenderContext.beginCamera`:
+ *
+ *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-origin.x, +origin.y)
+ *
+ * `origin` is a y-up world point, hence the sign flip on its y. `vx`/`vy` are the
+ * viewport centre the camera's callers pass (`layoutRect.x`, `-layoutRect.y`).
+ * Kept next to {@link nodeLocalMatrix} so the two stay in step with the renderer.
+ */
+/** @internal */
+export function cameraMatrix(
+    vx: number, vy: number, origin: Vector2, zoom: number, heading: number,
+): Matrix2D {
+    const rad = (-heading * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    // rotate(-heading) · scale(zoom), the same clockwise canvas convention as
+    // nodeLocalMatrix's R·S block.
+    const a = zoom * cos;
+    const b = zoom * sin;
+    const c = zoom * -sin;
+    const d = zoom * cos;
+    // Fold the trailing translate(-origin.x, +origin.y) into e/f.
+    const tx = -origin.x;
+    const ty = origin.y;
+    return { a, b, c, d, e: vx + a * tx + c * ty, f: vy + b * tx + d * ty };
+}
+
+/**
  * Build the local transform for a node, matching the renderer's
  * `RenderContext.transform` exactly (canvas y-down space):
  * `T(cx + pivotX, cy + pivotY) · R(deg) · S(scale) · T(-pivotX, -pivotY)`.

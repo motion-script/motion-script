@@ -60,7 +60,7 @@ build (e2e-visual).
 ### Visually verifying a change with `ms screenshot`
 
 `@motion-script/cli` (`ms`) is a devDependency of every example/test project
-(`packages/template`, `packages/animation`, `packages/e2e`). It boots a real
+(`packages/template`, `packages/e2e`). It boots a real
 Vite dev server (via `@motion-script/vite-plugin`) headlessly with Playwright
 Chromium, so it needs the libraries built at least once first — run
 `pnpm build:lib` (or rebuild the specific package you touched) on a fresh
@@ -573,8 +573,8 @@ Standalone scene components (syntax-highlighted code blocks; LaTeX math) that
   first build the player app (`build:app`) and the search index.
 - **`e2e`** — visual regression: renders every scene against a committed
   "stable" tarball baseline and the branch's "lib" build, then pixel-diffs.
-- **`template`** / **`animation`** — example projects (scene demos) used to
-  exercise the engine during development, not shipped.
+- **`template`** — an example project (scene demos) used to exercise the
+  engine during development, not shipped.
 
 ## Notes
 
