@@ -19,17 +19,18 @@
       "@motion-script/latex",
       "@motion-script/code",
       "@motion-script/cli",
-      "motion-script",
-      "@motion-script/site",
-      "@motion-script/e2e",
-      "@motion-script/template"
+      "motion-script"
     ]
   ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [],
+  "ignore": [
+    "@motion-script/site",
+    "@motion-script/e2e",
+    "@motion-script/template"
+  ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true
   }
