@@ -20,6 +20,10 @@ const sitePublicPlayer = path.resolve(packageRoot, '..', 'site', 'public', 'play
 
 export default defineConfig({
   root: appRoot,
+  // `root` is examples/, which has no public/ of its own — point Vite at the
+  // package's public folder (the same one the dev server serves) so the tab
+  // icon index.html references is emitted alongside the bundle.
+  publicDir: path.resolve(packageRoot, 'public'),
   // Served from /player/ on the site, so asset URLs must be prefixed.
   base: '/player/',
   plugins: [react(), tailwindcss()],

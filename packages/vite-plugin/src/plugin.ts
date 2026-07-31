@@ -146,6 +146,46 @@ const RESOLVED_ASSET_MANIFEST_ID = '\0~asset-manifest';
 const DEFAULT_ASSETS_DIR = path.resolve(__dirname, 'plugin-app', 'public');
 
 /**
+ * Content types for the static files the dev middleware below serves out of
+ * plugin-app's and the user's `public/` folders.
+ *
+ * Vite's own static middleware sets these; ours has to do it by hand. Missing
+ * headers are not harmless: a browser sniffs a PNG or an ICO happily, but an
+ * SVG is never sniffed, so `<link rel="icon" href="/icon.svg">` silently shows
+ * no tab icon at all unless the response says `image/svg+xml`. Same story for
+ * fonts and JSON. Unknown extensions are left header-less rather than guessed
+ * as octet-stream, which browsers treat as a download.
+ */
+const STATIC_CONTENT_TYPES: Record<string, string> = {
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.avif': 'image/avif',
+    '.ico': 'image/x-icon',
+    '.json': 'application/json',
+    '.txt': 'text/plain; charset=utf-8',
+    '.csv': 'text/csv; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.wasm': 'application/wasm',
+    '.ttf': 'font/ttf',
+    '.otf': 'font/otf',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.flac': 'audio/flac',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.mov': 'video/quicktime',
+};
+
+/**
  * Locate canvaskit.wasm inside the installed @motion-script/canvaskit
  * package. Returns null when it can't be resolved (the user must then provide
  * the wasm themselves). Used both to serve it in dev and to emit it into the
@@ -417,6 +457,8 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                         const url = (req as { url?: string }).url ?? '/';
                         const filePath = path.join(dir, url.split('?')[0]);
                         if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                            const type = STATIC_CONTENT_TYPES[path.extname(filePath).toLowerCase()];
+                            if (type) res.setHeader('Content-Type', type);
                             res.end(fs.readFileSync(filePath));
                         } else {
                             next();
