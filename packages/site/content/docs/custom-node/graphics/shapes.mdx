@@ -1,0 +1,205 @@
+---
+sidebar_position: 2
+---
+
+# Shapes
+
+Eight methods declare geometry. Each takes one options object:
+
+```tsx
+new Graphics()
+  .rect({ width: 200, height: 120, cornerRadius: 16 })
+  .ellipse({ x: 140, y: 0, width: 80, height: 80 })
+  .fill('royalblue');
+```
+
+Shapes recorded before a paint call are combined into one surface and painted together. See [Painting](./painting).
+
+## Props every shape takes
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `x` / `y` | `number` | `0` | Centre of the shape. `y` is up |
+| `width` / `height` | `number` | `0` | Size of the shape's box |
+| `rotation` | `number` | `0` | Degrees, applied to this shape only |
+| `scale` | `number` | `1` | Applied to this shape only |
+| `pivot` | `Vector2 \| AlignKey` | centre | Pivot for this shape's rotation and scale |
+| `opacity` | `number` | `1` | Alpha for this shape |
+| `blend` | `BlendMode` | `'pass-through'` | How this shape mixes with what is under it |
+| `start` / `end` | `number` | `0` / `1` | Trim the outline, for draw-on animation |
+
+`rotation` and `scale` here affect one shape. To turn the whole figure at once, use the [graphics-level modifiers](./transforms).
+
+### Positioning by anchor
+
+`x` and `y` place the shape's centre. Instead you can pass one of the nine anchors, whose value is the point that anchor lands on:
+
+```tsx
+// Top-right corner sits at (200, 150)
+new Graphics().rect({ topRight: { x: 200, y: 150 }, width: 120, height: 60 });
+```
+
+The anchors are `center`, `topLeft`, `topCenter`, `topRight`, `centerLeft`, `centerRight`, `bottomLeft`, `bottomCenter`, `bottomRight`.
+
+Pass at most one, and never together with `x`, `y` or `pivot`. Both mistakes throw rather than being ignored.
+
+An anchor also sets the shape's `pivot`, so a `rotation` turns about the pinned corner:
+
+```tsx
+.rect({ bottomLeft: { x: -200, y: -100 }, width: 100, height: 100, rotation: 15 })
+```
+
+## `rect`
+
+```tsx
+.rect({ width: 200, height: 120, cornerRadius: 16, cornerStyle: 'rounded' })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `cornerRadius` | `number \| RectCornerRadius` | `0` | One radius, or one per corner |
+| `cornerStyle` | `RectCornerStyle` | `'rounded'` | How the corner is cut |
+
+Corner values take the same forms as the [`cornerRadius` attribute](/docs/attributes/corners).
+
+## `ellipse`
+
+```tsx
+.ellipse({ width: 200, height: 200 })              // circle
+.ellipse({ width: 240, height: 120 })              // oval
+.ellipse({ width: 200, height: 200, sweep: 90 })   // quarter pie
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sweep` | `number` | `360` | Arc length in degrees |
+| `startAngle` | `number` | `0` | Where the arc begins, in degrees. `0` is 3 o'clock |
+| `ratio` | `number` | `1` | Inner radius as a fraction of the outer, so the size of the hole |
+
+`ratio` makes a ring without cutting one circle out of another:
+
+```tsx
+.ellipse({ width: 300, height: 300, ratio: 0 })               // solid disk
+.ellipse({ width: 300, height: 300, ratio: 0.7 })             // donut
+.ellipse({ width: 300, height: 300, ratio: 0.7, sweep: 120 }) // ring segment
+.ellipse({ width: 300, height: 300, ratio: 0, sweep: 120 })   // pie wedge
+```
+
+Both ends of the range give a solid ellipse: at `0` there is no hole, and at the default `1` the hole reaches the outer edge. The useful values are in between, and animating `ratio` opens the hole smoothly.
+
+For a progress ring, set `startAngle: -90` so the arc starts at 12 o'clock.
+
+## `polygon` and `polygram`
+
+Regular polygons and stars.
+
+```tsx
+.polygon({ width: 160, height: 160, sides: 6, cornerRadius: 8 })  // hexagon
+.polygram({ width: 160, height: 160, sides: 5, ratio: 0.5 })      // 5-point star
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of points |
+| `ratio` | `number` | `0.5` | Polygram only. Inner radius as a fraction of the outer |
+| `cornerRadius` | `number` | `0` | Rounds the vertices |
+| `cornerStyle` | `CornerStyle` | `'rounded'` | How each vertex is cut |
+
+## `line`
+
+A polyline through explicit points.
+
+```tsx
+.line({
+  points: [{ x: -200, y: -60 }, { x: -60, y: 40 }, { x: 80, y: -20 }, { x: 200, y: 90 }],
+  radius: 12,
+})
+.stroke({ weight: 6, fill: '#6990DD' })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `Vector2[]` | `[]` | The path, in local coordinates |
+| `radius` | `number` | `0` | Corner rounding at each joint |
+| `closed` | `boolean` | `false` | Join the last point back to the first |
+
+A `line` is an open outline, so it is normally painted with `.stroke()`. Set `closed: true` to make it fillable.
+
+`line` does not take the anchor props, since its geometry is already explicit points.
+
+## `path`
+
+Vector paths, from an SVG `d` string, a command array, or a `PathBuilder`.
+
+```tsx
+import { Graphics, PathBuilder } from 'motion-script';
+
+// From an SVG string, straight out of Figma or Illustrator
+.path({ data: 'M 0 -60 L 52 40 L -52 40 Z' })
+
+// Built in code
+.path(
+  new PathBuilder()
+    .moveTo(-100, 0)
+    .bezierCurveTo(-100, 80, 100, 80, 100, 0)
+    .close(),
+)
+```
+
+`PathBuilder` has `moveTo`, `lineTo`, `bezierCurveTo`, `quadraticCurveTo`, `arc` and `close`. Pass the builder itself to `.path()` and it is converted for you.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `string \| PathCommand[]` | `''` | SVG path data, or typed commands |
+| `centerBounds` | `[minX, minY, maxX, maxY]` | – | Frame to centre the path against |
+
+A path positions itself from its own data rather than from `x` and `y`. By default it centres on its own bounding box, which is right for a lone path and wrong when several paths belong to one figure, since each would centre separately. Give them all the same `centerBounds` and they share one frame:
+
+```tsx
+const frame: [number, number, number, number] = [-300, -300, 300, 300];
+
+new Graphics()
+  .path(bodyPath.toPathState({ centerBounds: frame }))
+  .path(wingPath.toPathState({ centerBounds: frame }))
+  .fill('tomato');
+```
+
+`PathBuilder.toPathState(props)` attaches the frame, or any other shape prop, to a built path.
+
+## `text` and `richText`
+
+Text as part of a drawing rather than as a node. Use it for axis labels, legends and callouts, where a `Text` node would be more machinery than the job needs.
+
+```tsx
+.text({ text: '0.5', x: 120, y: -40, fontSize: 24 })
+.fill('white/70')
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | `''` | The string to draw |
+| `fontSize` | `number \| 'autofit'` | `16` | Size in px |
+| `fontFamily` | `string` | `'Arial'` | Family. It must be in the project's font manifest |
+| `fontWeight` | `number` | `400` | Weight |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Style |
+| `letterSpacing` | `number` | `0` | Extra tracking |
+| `lineHeight` | `number` | `0` | Line box height |
+| `textAlign` | `TextAlign` | `'center'` | Alignment within `width` |
+| `wrap` | `boolean` | `false` | Wrap to `width` |
+| `path` | `PathData` | `null` | Wrap the glyphs along a path |
+
+`richText` takes `spans` instead of `text`, for runs with mixed styling. It is the drawn form of the [`RichText` node](/docs/nodes/rich-text).
+
+Anything that needs layout, measurement, or animation with `.to()` should be a [`Text` node](/docs/nodes/text).
+
+## Drawing on with `start` and `end`
+
+Every shape takes `start` and `end`, the same outline trim the shape nodes have:
+
+```tsx
+new Graphics()
+  .path({ data: signature, end: progress })
+  .stroke({ weight: 8, fill: 'white' });
+```
+
+`progress` is just a number read while building, so it can come from a signal or a node property.

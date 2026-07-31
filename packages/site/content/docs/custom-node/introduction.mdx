@@ -1,0 +1,285 @@
+---
+sidebar_position: 1
+---
+
+# Introduction
+
+The built-in nodes cover most of what a scene needs. When they do not, you write your own. A custom node is an ordinary class that extends `Node` and paints whatever it likes during the render pass, while still laying out, animating and nesting like any other node.
+
+There are two things a custom node can draw:
+
+* **2D figures**, with the [Graphics](./graphics/overview) API. Shapes, paints, cuts and masks recorded into one list.
+* **3D scenes**, with the [3D Graphics](./graphics-3d/overview) API. Meshes, lights and a camera.
+
+Both work the same way. You build a value, then hand it over inside `renderSelf`.
+
+## Your first custom node
+
+```tsx
+import { Node, RenderContext, Graphics } from 'motion-script';
+
+class Blob extends Node {
+  protected renderSelf(ctx: RenderContext): void {
+    ctx.draw(
+      new Graphics()
+        .ellipse({ width: 200, height: 200 })
+        .fill('tomato'),
+    );
+  }
+}
+```
+
+```tsx
+<Blob width={400} height={400}>
+  <Text text="hello" fontSize={48} />
+</Blob>
+```
+
+`renderSelf` draws this node only. Children still render on top of it, so the `Text` sits over the blob. The node accepts anchors, participates in flex layout, and takes a `ref` like anything else.
+
+## Choosing a base class
+
+Extend the one whose behaviour you want to keep.
+
+| Base | You get | Use when |
+|---|---|---|
+| `Node` | Layout, transform, children. Nothing drawn | The drawing is entirely yours |
+| `ShapeNode` | `fill`, `stroke`, `shadow`, `start`/`end` props | You want the standard paint props on your figure |
+| `Rect` or another shape | Everything above, plus that shape's geometry, `cornerRadius` and `clip` | You are extending an existing shape |
+| `View3D` | A rect that paints a 3D scene | You are building a reusable 3D component |
+
+Extending `ShapeNode` gives your node `fill`/`stroke`/`shadow` props that you can read straight into your paint calls:
+
+```tsx
+import { ShapeNode, ShapeProps, RenderContext, Graphics, property } from 'motion-script';
+
+export interface GaugeProps extends ShapeProps {
+  value: number;
+}
+
+export class Gauge extends ShapeNode<GaugeProps> {
+  @property({ default: 0 }) declare readonly value: number;
+
+  protected renderSelf(ctx: RenderContext): void {
+    ctx.draw(
+      new Graphics()
+        .ellipse({
+          width: 300, height: 300, ratio: 0.75,
+          startAngle: -90, sweep: 360 * this.value,
+        })
+        .shadow(this.shadow)
+        .fill(this.fill)
+        .stroke(this.stroke),
+    );
+  }
+}
+```
+
+```tsx
+<Gauge value={0.35} fill="#6990DD" />
+```
+
+## Adding props
+
+`@property` declares an animatable prop. Give it a default, and read it while drawing:
+
+```tsx
+@property({ default: 0 }) declare readonly value: number;
+```
+
+That is all a number needs. Anything richer, such as a fill, a colour or a corner radius, needs a mapper and a tween as well, or `.to()` will snap instead of animating. The attribute-typed decorators carry the right pair for you:
+
+```tsx
+@fillProperty({ default: 'white/10' }) declare glow: Fill;
+@colorProperty({ default: 'white' }) declare ink: Color;
+```
+
+See [Properties](./properties) for the full set and the rules around them.
+
+## Animating a drawing
+
+You cannot animate a recorded drawing command, because the list is already built. Animation comes from the fact that **`renderSelf` runs every frame**, so the figure is rebuilt from whatever the current values are.
+
+### From node props
+
+```tsx
+const gauge = createRef<Gauge>();
+
+stage.add(<Gauge ref={gauge} value={0} fill="#6990DD" />);
+
+yield* gauge().to({ value: 0.8 }, 1.2, easeInOut('quad'));
+```
+
+This is the right choice for a reusable component. The animation surface is the node's props, exactly like a built-in node.
+
+### From a signal
+
+For a one-off figure in a scene, a signal is less ceremony:
+
+```tsx
+const progress = createSignal(0);
+
+class Trace extends Node {
+  protected renderSelf(ctx: RenderContext): void {
+    ctx.draw(
+      new Graphics()
+        .path({ data: route, end: progress() })
+        .stroke({ weight: 8, fill: 'white' }),
+    );
+  }
+}
+
+yield* progress(1, 2, easeInOut('quad'));
+```
+
+### From the clock
+
+For motion that is not driven by a tween, read the node's clock inside `renderSelf`:
+
+```tsx
+protected renderSelf(ctx: RenderContext): void {
+  const t = this.clock.elapsed;
+  ctx.draw(new Graphics().rect({ rotation: t * 90, width: 100, height: 100 }).fill('white'));
+}
+```
+
+:::caution
+`clock.elapsed` is a plain field, not a signal. Reading it inside `renderSelf` is fine, because that runs every frame. Reading it inside a reactive binding such as `someProp={() => f(this.clock.elapsed)}` is not: the binding only re-evaluates when the signals it reads change, so it computes once and freezes, with no error and a still image that looks plausible.
+
+A tweened signal is usually better anyway, since it puts the motion on the timeline and scrubs.
+:::
+
+## Never accumulate
+
+Build a new value every frame. Do not keep one on the instance and append to it:
+
+```tsx
+// Wrong. Commands pile up forever, and the figure depends on how the
+// playhead got here rather than where it is.
+private g = new Graphics();
+protected renderSelf(ctx: RenderContext) {
+  this.g.rect({ /* ... */ });
+  ctx.draw(this.g);
+}
+```
+
+```tsx
+// Right. Frame 10 looks the same however you reached it.
+protected renderSelf(ctx: RenderContext) {
+  ctx.draw(new Graphics().rect({ /* ... */ }));
+}
+```
+
+Rebuilding is cheap. A drawing is an array of plain objects, and the renderer does the expensive work.
+
+## Composite nodes
+
+If your component is really several nodes arranged together, do not draw it. Build the subtree in the constructor:
+
+```tsx
+class BadgeGroup extends Node<BadgeGroupProps> {
+  readonly rowRef = createRef<Rect>();
+
+  constructor(props?: NodeConfig<BadgeGroup, BadgeGroupProps>) {
+    super(props);
+    this.add(
+      <Rect ref={this.rowRef} group="row" gap={32}>
+        {(props?.labels ?? []).map(label => (
+          <Rect width={180} height={180} cornerRadius={24}>
+            <Text text={label} fontSize={56} />
+          </Rect>
+        ))}
+      </Rect>,
+    );
+  }
+}
+```
+
+The constructor is the right place because composition only needs props, and it runs once per instance, so there is nothing to accumulate. Expose a ref for anything a scene should animate:
+
+```tsx
+yield* badge().rowRef().to({ gap: 80 }, 1.2);
+```
+
+Rule of thumb: if the pieces need layout, refs or independent animation, they are nodes. If they are one figure that happens to have many parts, they are drawing commands.
+
+## A worked example
+
+A bar chart node: gridlines, bars and labels, all drawn, with one prop that animates the whole thing.
+
+```tsx
+import {
+  ShapeNode, ShapeProps, RenderContext, Graphics, Fills, property,
+} from 'motion-script';
+
+export interface BarChartProps extends ShapeProps {
+  data: number[];
+  /** 0 is flat, 1 is full height. Animate this to grow the bars in. */
+  progress: number;
+}
+
+export class BarChart extends ShapeNode<BarChartProps> {
+  @property({ default: [] }) declare readonly data: number[];
+  @property({ default: 1 }) declare readonly progress: number;
+
+  protected renderSelf(ctx: RenderContext): void {
+    const data = this.data;
+    if (data.length === 0) return;
+
+    const w = 800, h = 400;
+    const max = Math.max(...data);
+    const slot = w / data.length;
+    const barWidth = slot * 0.6;
+
+    // Gridlines. Open outlines take one stroke each, see Painting.
+    for (let i = 0; i <= 4; i++) {
+      const y = -h / 2 + (h * i) / 4;
+      ctx.draw(
+        new Graphics()
+          .line({ points: [{ x: -w / 2, y }, { x: w / 2, y }] })
+          .stroke({ weight: 2, fill: 'white/25' }),
+      );
+    }
+
+    // Bars, as one family with a single gradient across all of them.
+    const bars = new Graphics();
+    data.forEach((value, i) => {
+      bars.rect({
+        bottomCenter: { x: -w / 2 + slot * (i + 0.5), y: -h / 2 },
+        width: barWidth,
+        height: (value / max) * h * this.progress,
+        cornerRadius: 8,
+      });
+    });
+    ctx.draw(bars.fill(Fills.linearGradient(['#6990DD', '#E8617C'])));
+
+    // Labels, in their own group so the gradient does not reach them.
+    const labels = new Graphics();
+    data.forEach((value, i) => {
+      labels.text({
+        text: String(value),
+        x: -w / 2 + slot * (i + 0.5),
+        y: -h / 2 - 36,
+        fontSize: 28,
+      });
+    });
+    ctx.draw(labels.fill('white/70'));
+  }
+}
+```
+
+```tsx
+const chart = createRef<BarChart>();
+
+stage.add(
+  <BarChart ref={chart} data={[3, 7, 5, 9, 4, 6]} progress={0} width={900} height={500} />,
+);
+
+yield* chart().to({ progress: 1 }, 1.4, easeOut('quad'));
+```
+
+## Next
+
+* [Properties](./properties) for the knobs a node exposes, and how to make them animate.
+* [Graphics](./graphics/overview) for the 2D drawing API.
+* [3D Graphics](./graphics-3d/overview) for meshes, lights and cameras.

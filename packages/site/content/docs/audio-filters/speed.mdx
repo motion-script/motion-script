@@ -9,7 +9,7 @@ Changes the clip's playback rate. Because the underlying audio engine resamples 
 ## Usage
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 // Via AudioFilters builder — play at 1.5× speed
 const clip = new Sound({ src: './beat.mp3', filters: AudioFilters.speed(1.5) });
@@ -30,7 +30,7 @@ const clip = new Sound({ src: './beat.mp3', filters: [{ type: 'speed', value: 1.
 Animate speed to simulate a tape machine winding up or winding down:
 
 ```tsx
-import { Sound, AudioFilters, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { Sound, AudioFilters, tween, lerpNumber, easeOut } from 'motion-script';
 
 const clip = new Sound({ src: './vinyl.mp3', filters: AudioFilters.speed(0.1) });
 clip.start();

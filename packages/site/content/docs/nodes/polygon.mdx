@@ -13,7 +13,7 @@ A regular convex polygon inscribed within the node's layout rect. All sides and 
 ## Usage
 
 ```tsx
-import { createScene, Polygon } from '@motion-script/core';
+import { createScene, Polygon } from 'motion-script';
 
 export default createScene(function* (stage) {
   // Hexagon
@@ -46,7 +46,7 @@ export default createScene(function* (stage) {
 All props animate with `.to()`. Animate `sides` to morph between polygon shapes, or `cornerRadius` to round out vertices:
 
 ```tsx
-import { createScene, Polygon, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Polygon, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const shape = createRef<Polygon>();

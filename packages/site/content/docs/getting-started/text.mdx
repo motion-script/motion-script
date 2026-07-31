@@ -13,7 +13,7 @@ Shapes are great, but most animations need words. Let's add a title to our scene
 `Text` works just like any other node: add it with `stage.add()` and style it with props.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Text, createRef } from '@motion-script/core';
+import { createScene, Text, createRef } from 'motion-script';
 
 export default createScene(function* (stage) {
   const title = createRef<Text>();
@@ -42,7 +42,7 @@ The props you'll reach for most:
 Text animates exactly like the square did. A common move is to fade and drift it into place. We can play both at once with `parallel`, which you met on the last page.
 
 ```tsx
-import { parallel, easeOut } from '@motion-script/core';
+import { parallel, easeOut } from 'motion-script';
 
 // start invisible and slightly high
 stage.add(
@@ -72,7 +72,7 @@ yield* title().append(' Script', 1);
 **Add some color.** A `fill` can be a gradient, not just a flat color. Build one with the `Fills` helper:
 
 ```tsx
-import { Fills } from '@motion-script/core';
+import { Fills } from 'motion-script';
 
 <Text
   text="Motion Script"

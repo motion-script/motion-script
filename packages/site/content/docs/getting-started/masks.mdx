@@ -15,7 +15,7 @@ You create one with `MaskGroup`. The rule to remember: the **first child is the 
 Here we use a circle to clip our card. Only the part of the card inside the circle shows.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, MaskGroup, Ellipse, Rect, Text } from '@motion-script/core';
+import { createScene, MaskGroup, Ellipse, Rect, Text } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -40,7 +40,7 @@ The mask shape's color doesn't matter in `vector` mode, only its outline. We use
 This is the payoff. Start the mask circle tiny, then grow it to reveal the card behind it. Grab the mask with a ref and animate it like anything else.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from '@motion-script/core';
+import { createScene, MaskGroup, Ellipse, Rect, Text, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const reveal = createRef<Ellipse>();
@@ -70,7 +70,7 @@ The card irises open from a point. That's the same `.to()` you've used the whole
 Any node can be the mask, even text. Use a word as the mask and a colorful fill as the content, and the color shows *through the letters*.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, MaskGroup, Text, Rect, Fills } from '@motion-script/core';
+import { createScene, MaskGroup, Text, Rect, Fills } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(

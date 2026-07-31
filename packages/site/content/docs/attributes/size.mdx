@@ -146,7 +146,7 @@ yield* box().to({ size: 400 }, 0.8, easeOut);
 Fixed sizes animate smoothly with `.to()`. Switching between fixed and `'fill'`/`'hug'` also cross-fades:
 
 ```tsx
-import { createScene, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();

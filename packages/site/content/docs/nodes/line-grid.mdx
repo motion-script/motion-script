@@ -13,7 +13,7 @@ A rectangular grid of lines filling the node's layout rect. `divisions` sets how
 ## Usage
 
 ```tsx
-import { createScene, LineGrid } from '@motion-script/core';
+import { createScene, LineGrid } from 'motion-script';
 
 export default createScene(function* (stage) {
   // Simple 4×4 grid
@@ -56,7 +56,7 @@ The standard `stroke` prop (from `ShapeNode`) styles the major division lines.
 All props animate with `.to()`. Animate `divisions` to reveal or collapse the grid, or `origin` to scroll it:
 
 ```tsx
-import { createScene, LineGrid, createRef, easeOut } from '@motion-script/core';
+import { createScene, LineGrid, createRef, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const grid = createRef<LineGrid>();

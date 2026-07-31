@@ -1,0 +1,72 @@
+---
+sidebar_position: 41
+---
+
+# Trails
+
+Echoes the node along its own motion — each tap `delay` seconds further back, faded by a `decay` factor.
+
+The node-level counterpart of the video `echo` filter, sharing its vocabulary deliberately: same fields, same meaning, different scope. Where `echo` reaches back into a decoded video's own frames, this echoes what the *node* drew — so it trails text, shapes, a whole subtree, or a 3D view.
+
+![Trails effect demo](/effects/trails.png)
+
+## Usage
+
+```tsx
+import { Effects } from 'motion-script';
+
+// A short, tight trail
+<Text text="FAST" effects={Effects.trails(6)} />
+
+// Longer and more separated
+<Ellipse effects={Effects.trails({ echoes: 12, delay: 1 / 15, decay: 0.85 })} />
+
+// Ghosts behind rather than screened over
+<Rect effects={Effects.trails({ echoes: 8, blend: 'normal' })} />
+```
+
+Only a node that **moves** shows a trail. A static node renders untouched rather than stacking copies of itself into a glow.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'trails'` | – | Effect identifier |
+| `echoes` | `number` | `6` | Echo taps drawn behind the node, capped at `16`. `0` = off |
+| `delay` | `number` | `1 / 24` | How far back each successive tap reaches, in seconds |
+| `decay` | `number` | `0.72` | Per-tap alpha multiplier; tap `n` is drawn at `decay ** n` |
+| `blend` | `BlendMode` | `'screen'` | How the taps composite. `'screen'`, `'add'` and `'normal'` are implemented; anything else falls back to `'screen'` |
+
+## How it's derived
+
+Trails are computed from the node's **sampled velocity**, exactly as [motion blur](./motion-blur) is — not from a buffer of past frames. Each tap reconstructs where the node was by undoing `delay × n` of its motion (translation and rotation both).
+
+That is what makes the effect a pure function of the playhead. Motion is sampled on every *advanced* frame rather than every rendered one, so a backward scrub lands on exactly the trail a forward play would — and a single-frame render (`ms screenshot`) shows the full trail rather than nothing. A frame-history implementation cannot do that: seeking replays the scene generator without drawing the frames it passes through, so there would be no history to rebuild from.
+
+The trade is that a tap extrapolates along the *current* velocity rather than following the node's actual past path, so **a trail spanning a sharp curve straightens out**. Motion blur makes the same approximation across a single frame; here it spans `echoes × delay`, so keep the trail short relative to how fast the path turns.
+
+Content that changes without moving — text retyping, a fill cross-fading — is echoed at its current appearance, not its past one.
+
+## Cost
+
+Each tap is one extra sample of the node's content in the trail shader. There is no frame buffer and no per-tap texture, so cost scales with `echoes` alone and memory is unaffected.
+
+## Animating
+
+`echoes` rounds rather than snapping, so a tween from `0` grows the trail instead of popping it in at the midpoint.
+
+```tsx
+import { createScene, Ellipse, Effects, easeInOut } from 'motion-script';
+
+export default createScene(function* (stage) {
+  const dot = stage.add(<Ellipse width={80} height={80} fill="#6990DD" />);
+
+  dot.set({ effects: Effects.trails({ echoes: 0 }) });
+  yield* dot.to({ effects: Effects.trails({ echoes: 10, decay: 0.8 }) }, 0.5);
+  yield* dot.moveX(600, 1.2, easeInOut('quad'));
+});
+```
+
+## See also
+
+- [Motion blur](./motion-blur) — smears continuously within a single frame's shutter, where this leaves discrete separated ghosts across a much longer span. Both read the same sampled velocity, so they stack cleanly

@@ -1,0 +1,225 @@
+---
+sidebar_position: 2
+---
+
+# Properties
+
+A property is what makes a custom node's knob behave like a built-in one. It accepts loose author input, works in JSX, works with `set()`, works as a reactive binding, and animates with `.to()`.
+
+```tsx
+import { property } from 'motion-script';
+
+class Gauge extends ShapeNode<GaugeProps> {
+  @property({ default: 0 }) declare readonly value: number;
+}
+```
+
+```tsx
+<Gauge value={0.35} />
+yield* gauge().to({ value: 0.8 }, 1.2, easeInOut('quad'));
+```
+
+That is the whole story for a number. Everything else on this page exists because anything richer than a number needs two extra pieces.
+
+## A property has two halves
+
+Under the loose type you write is a resolved value the node actually uses. Two functions bridge them:
+
+* A **mapper**, which turns loose author input into the resolved value. `'red'` becomes a fill layer, `12` becomes four corner radii, `'topLeft'` becomes a pivot vector.
+* A **tween**, which says how the resolved value interpolates. Two fill arrays lerp layer by layer, two corner sets lerp per corner, two colours lerp per channel.
+
+`@property` takes both:
+
+```tsx
+@property({ default: 'red', mapper: resolveFillArray, tween: lerpFillArray })
+declare glow: Fill;
+```
+
+## Why this matters: the silent failure
+
+`.to()` only animates keys that are numeric or that carry a `tween`. A property declared without one **snaps to its final value at the end of the tween** instead of interpolating. There is no warning, no type error, and no exception. You just get a jump.
+
+```tsx
+// Snaps. The colour appears at the last frame.
+@property({ default: 'red' }) declare tint: Color;
+
+// Interpolates.
+@colorProperty({ default: 'red' }) declare tint: Color;
+```
+
+The same is true of a mapper. Without one, `glow="red"` stores the string `'red'` rather than a fill layer, and whatever paints it gets a string it cannot use.
+
+## The attribute-typed decorators
+
+Getting the pair right means knowing which `resolveX` goes with which `lerpX`, and several of those halves are internal and not exported at all. The typed decorators pre-bake each pair, so there is one definition of every attribute's mapper and tween and you never copy an incantation out of a built-in node.
+
+```tsx
+import { fillProperty, strokeProperty, cornerRadiusProperty } from 'motion-script';
+
+class Card extends Rect<CardProps> {
+  @fillProperty({ default: 'white/10' }) declare glow: Fill;
+  @strokeProperty() declare edge: Stroke;
+  @cornerRadiusProperty({ default: 12 }) declare notch: RectCornerRadius;
+}
+```
+
+```tsx
+<Card glow="red" />
+yield* card().to({ glow: Fills.linearGradient(['#6990DD', '#E8617C']) }, 0.6);
+```
+
+`@fillProperty()` is exactly `@property({ default: [], mapper: resolveFillArray, tween: lerpFillArray })`. Nothing downstream changes. Only the declaration gets shorter and correct by construction.
+
+### The full set
+
+| Decorator | Author type | Default | Accepts |
+|---|---|---|---|
+| `@fillProperty` | `Fill` | `[]` | Everything `fill` takes: a CSS string, a fill object, a `Fills` chain, or an array. Lerps layer by layer |
+| `@strokeProperty` | `Stroke` | `[]` | Everything `stroke` takes, including layered strokes |
+| `@shadowProperty` | `Shadow` | `[]` | Everything `shadow` takes |
+| `@effectsProperty` | `Effect` | `[]` | One effect, an array, or an `Effects` chain |
+| `@colorProperty` | `Color` | `'black'` | CSS strings, `oklch()`, theme tokens, `'white/10'`. Lerps per channel |
+| `@cornerRadiusProperty` | `RectCornerRadius` | `0` | Uniform, per corner or per axis. Lerps per corner |
+| `@cornerStyleProperty` | `RectCornerStyle` | `'rounded'` | `'rounded'` or `'angled'`, per corner |
+| `@pathProperty` | `PathData` | `''` | An SVG string or command list. Morphs between arbitrary shapes |
+| `@paddingProperty` | `Padding` | `0` | Scalar, symmetric or per edge. Lerps per edge |
+| `@alignProperty` | `Alignment` | `'center'` | A named position, resolved to a per-axis vector. `'left'` to `'right'` slides |
+| `@pivotProperty` | `Alignment` | `{ x: 0, y: 0 }` | Like `@alignProperty`, but with the pivot convention that `Node.pivot` uses |
+| `@vector2Property` | `Vector2` | `{ x: 0, y: 0 }` | A plain 2D point, lerped component-wise |
+| `@sizeProperty` | `SizeInput` | `'fill'` | A pixel number or `'fill'` / `'hug'`. Numbers interpolate, keywords snap |
+| `@textProperty` | `string` | `''` | A string, tweened character by character so `to()` types rather than snaps |
+
+Every one takes the same options as `@property`.
+
+| Option | Description |
+|---|---|
+| `default` | Initial value, in the **loose** author form. Used when the key is absent from the constructor props |
+| `mapper` | Override the built-in mapper for a one-off case |
+| `tween` | Override the built-in tween |
+
+Each declaration gets its own default, so two properties declared with `@fillProperty()` never share one array.
+
+## Declare the loose type, cast when you read
+
+This trips people up. The field is declared with the **author-facing** type so assignment and reads share one type, but the accessor stores the **resolved** value. Cast at the read site, which is exactly what the built-in nodes do:
+
+```tsx
+class Card extends Rect<CardProps> {
+  @fillProperty({ default: 'white/10' }) declare glow: Fill;
+
+  protected renderSelf(ctx: RenderContext): void {
+    ctx.draw(
+      new Graphics()
+        .rect({ width: 400, height: 240, cornerRadius: 24 })
+        .fill(this.glow as FillResolved[]),
+    );
+  }
+}
+```
+
+So `<Card glow="red" />` type-checks against `Fill`, and `this.glow` inside the node is already the resolved array the paint call wants.
+
+## The decorator does not paint
+
+Declaring a property gives you the input handling, the storage and the animation. The node still has to draw the thing:
+
+```tsx
+ctx.draw(g.fill(this.glow as FillResolved[]));
+```
+
+Assets the value references, such as an image fill, are discovered from that draw call, so nothing extra is needed to make them load.
+
+## `@colorProperty` is not a fill
+
+`@colorProperty` stores a normalised `[r, g, b, a]` tuple. That is the right thing for a colour you want to interpolate, but it is not a paint layer on its own. Hand it to a fill:
+
+```tsx
+@colorProperty({ default: '#6990DD' }) declare ink: Color;
+
+// In renderSelf
+g.fill(Fills.color(this.ink))
+```
+
+For a property that is itself a paint layer, with gradients, images and blend modes, use `@fillProperty` instead.
+
+## Everything else works unchanged
+
+A typed property is an ordinary property, so all the usual machinery applies.
+
+```tsx
+// JSX
+<Card glow="lime" fx={Effects.blur(4)} />
+
+// set()
+card().set({ glow: Fills.radialGradient(['white', 'transparent']) });
+
+// A reactive binding, re-evaluated when the signals it reads change
+<Card glow={() => theme() === 'dark' ? '#0b0d12' : 'white'} />
+
+// to(), using the attribute's own lerp
+yield* card().to({ glow: '#ffffff', notch: 48 }, 1, easeInOut('quad'));
+```
+
+## Rolling your own pair
+
+When no decorator fits, write the pair yourself. The usual case is a value that is neither a number nor a built-in attribute.
+
+A boolean needs a tween or `.to()` will not drive it at all:
+
+```tsx
+function snapFlag(from: boolean, to: boolean, t: number): boolean {
+  return t < 1 ? from : to;
+}
+
+@property({ default: true, tween: snapFlag }) declare floor: boolean;
+```
+
+A custom object needs both halves:
+
+```tsx
+interface Range { min: number; max: number }
+
+const resolveRange = (v: Range | number): Range =>
+  typeof v === 'number' ? { min: 0, max: v } : v;
+
+const lerpRange = (from: Range, to: Range, t: number): Range => ({
+  min: from.min + (to.min - from.min) * t,
+  max: from.max + (to.max - from.max) * t,
+});
+
+@property({ default: 1, mapper: resolveRange, tween: lerpRange })
+declare span: Range | number;
+```
+
+`lerpNumber`, `lerpVector2`, `lerpVector3`, `lerpEuler3` and `slerpQuaternion` are all exported if you are composing a tween out of parts.
+
+A mapper receives the previous resolved value as its second argument when one exists, which is how the partial forms work. That is what lets `cornerRadius` accept `{ topLeft: 8 }` and keep the other three corners.
+
+## Inheritance
+
+Properties are collected down the prototype chain, base class first, so a subclass sees everything its base declared and can add to it. Redeclaring a key the base already declared is ignored rather than overriding it, so pick a new name instead of shadowing.
+
+```tsx
+class Card extends Rect<CardProps> {
+  @fillProperty({ default: 'white/10' }) declare glow: Fill;   // added
+  // `fill`, `stroke`, `shadow`, `cornerRadius`, ... all inherited from Rect
+}
+```
+
+Props interfaces follow the same shape. Extend the base's props type and add your keys:
+
+```tsx
+export interface CardProps extends RectProps {
+  glow: Fill;
+  notch: RectCornerRadius;
+}
+```
+
+## Checklist
+
+* Numbers need nothing.
+* Anything else needs a `tween`, or `.to()` silently snaps.
+* Anything with loose author input needs a `mapper`.
+* For the standard attribute kinds, use the typed decorator rather than wiring the pair by hand.
+* Declare the loose type, cast when you read.
+* The decorator handles the value. Your `renderSelf` still has to paint it.

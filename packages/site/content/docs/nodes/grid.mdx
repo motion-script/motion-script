@@ -13,7 +13,7 @@ A CSS/Tailwind-style grid container. Lays children into N equal-width columns; r
 ## Usage
 
 ```tsx
-import { createScene, Grid, Rect } from '@motion-script/core';
+import { createScene, Grid, Rect } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -62,7 +62,7 @@ These props are set on children of a `Grid`, not on the `Grid` itself:
 All props animate with `.to()`. Animate `columns` to reflow the grid, or `gap` to expand/collapse spacing:
 
 ```tsx
-import { createScene, Grid, Rect, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Grid, Rect, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const grid = createRef<Grid>();

@@ -9,7 +9,7 @@ Applies a Gaussian blur directly to the image texture. `value` is the blur radiu
 ## Usage
 
 ```tsx
-import { ImageFilters } from '@motion-script/core';
+import { ImageFilters } from 'motion-script';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
   filters={ImageFilters.blur(8)}
@@ -29,4 +29,4 @@ filters={[{ type: 'blur', value: 8 }]}
 ## Notes
 
 - Applied at the image texture level, before compositing.
-- For blur on an entire node (including its children), use the [Blur Node Effect](../effects/blur) instead.
+- For blur on an entire node (including its children), use the [Blur Node Effect](../effects/implementations/blur) instead.

@@ -13,7 +13,7 @@ Right now our square just sits there. Let's make it move. This is where the scen
 To animate a node, you need a handle to it. Create one with `createRef`, attach it with `ref={...}`, and call it like a function to get the node back.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, createRef } from '@motion-script/core';
+import { createScene, Rect, createRef } from 'motion-script';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();
@@ -60,7 +60,7 @@ yield* box().to({ x: 400, rotate: 180, fill: '#e84393' }, 1);
 Here's our scene so far, with the square sliding and spinning into place:
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, createRef } from '@motion-script/core';
+import { createScene, Rect, createRef } from 'motion-script';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();
@@ -80,7 +80,7 @@ export default createScene(function* (stage) {
 A plain animation moves at a constant speed, which can look robotic. An **easing** function changes the pacing, like starting slow and speeding up. Pass one as the third argument to `.to()`.
 
 ```tsx
-import { easeOut } from '@motion-script/core';
+import { easeOut } from 'motion-script';
 
 yield* box().to({ x: 400 }, 1, easeOut('back'));
 ```
@@ -92,7 +92,7 @@ yield* box().to({ x: 400 }, 1, easeOut('back'));
 To hold for a moment, use `wait`:
 
 ```tsx
-import { wait } from '@motion-script/core';
+import { wait } from 'motion-script';
 
 yield* box().to({ x: 400 }, 1, easeOut('back'));
 yield* wait(0.5);          // hold for half a second
@@ -106,7 +106,7 @@ Animations written one after another play **in sequence**, each starting when th
 Sometimes you want things to happen together. Wrap them in `parallel` and they all start at once:
 
 ```tsx
-import { parallel } from '@motion-script/core';
+import { parallel } from 'motion-script';
 
 yield* parallel(
   box().to({ x: 400 }, 1),

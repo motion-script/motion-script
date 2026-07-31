@@ -1,0 +1,180 @@
+---
+sidebar_position: 3
+---
+
+# Scene setup
+
+Camera, lights and the scene-wide settings. These are the calls that decide how a scene reads before you add a single object.
+
+## Camera
+
+A scene has one camera. Setting it twice keeps the last value.
+
+```tsx
+.perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `position` | `Vector3Input` | origin | Where the camera sits |
+| `lookAt` | `Vector3Input` | – | Point to aim at. A bare `0` means the origin |
+| `fov` | `number` | – | Vertical field of view in degrees |
+| `near` / `far` | `number` | – | Clip planes |
+| `zoom` | `number` | `1` | Zoom factor |
+
+`.orthographic()` gives a parallel projection instead, for isometric looks. It takes `frustumHeight` or explicit `left`/`right`/`top`/`bottom`.
+
+```tsx
+.orthographic({ frustumHeight: 8, position: [6, 6, 6], lookAt: 0 })
+```
+
+Every position accepts three forms: `[x, y, z]`, `{ x, y, z }`, or a single number for all three axes.
+
+Leave the camera out entirely and the renderer supplies a default framing, which is handy while you are still placing objects.
+
+## Lights
+
+Six light types. Each takes its own parameters plus a placement in the same flat options object.
+
+```tsx
+.ambient({ intensity: 0.4 })
+.directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true })
+.point({ intensity: 40, position: [0, 1, 5], color: '#5f7fd0' })
+.spot({ intensity: 30, position: [0, 6, 0], angle: 25, penumbra: 0.4 })
+.hemisphere({ skyColor: '#8ec5ff', groundColor: '#2b2118', intensity: 0.8 })
+.rectArea({ intensity: 6, width: 4, height: 2, position: [0, 3, 2] })
+```
+
+| Light | Parameters | Use for |
+|---|---|---|
+| `ambient` | `color`, `intensity` | A flat floor of light so nothing is pure black |
+| `directional` | `color`, `intensity`, `target`, `shadow` | Sun. Parallel rays from a direction |
+| `point` | `color`, `intensity`, `distance`, `decay`, `shadow` | A bulb radiating in all directions |
+| `spot` | `color`, `intensity`, `target`, `angle`, `penumbra`, `distance`, `decay`, `shadow` | A cone. `angle` and `penumbra` shape the edge |
+| `hemisphere` | `skyColor`, `groundColor`, `intensity` | Outdoor bounce, sky above and ground below |
+| `rectArea` | `color`, `intensity`, `width`, `height` | A soft panel, like a studio softbox |
+
+A reliable starting point is one `ambient` at low intensity plus one `directional` for shape. Add a `point` or `spot` after that for accents.
+
+Spot cone angles are in degrees, like every other angle.
+
+## Background
+
+What fills the pixels no geometry covers. The default is transparent, so the 2D scene behind shows through.
+
+```tsx
+.background('#0b0d12')                                   // solid colour
+.background({ type: 'transparent' })                     // the default
+.background({ type: 'texture', texture: 'sky.jpg' })     // flat image
+.background({ type: 'equirect', texture: 'pano.jpg' })   // 360 panorama
+.background({ type: 'cubemap', faces: [px, nx, py, ny, pz, nz] })
+```
+
+Cubemap faces are in the order `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`.
+
+## Environment
+
+Image-based lighting: light the scene with an environment rather than with discrete lights. This is what makes metals read as metal. Without something to reflect, a metallic surface renders black.
+
+```tsx
+.environment({ type: 'room' })                                    // built in, no asset
+.environment({ type: 'equirect', src: 'studio.hdr', intensity: 1 })
+.environment({ type: 'cubemap', faces: [...] })
+```
+
+`{ type: 'room' }` is a built-in studio interior and needs no asset, which makes it the fastest fix for a black-looking metal.
+
+## Fog
+
+Fades distant geometry toward a colour.
+
+```tsx
+.fog('#0b0d12')                                                     // linear, in that colour
+.fog({ type: 'linear', color: '#0b0d12', near: 15, far: 36 })
+.fog({ type: 'exponential', color: '#0b0d12', density: 0.02 })
+.fog(null)                                                          // off
+```
+
+Linear fog is predictable and easy to tune. Exponential falls off more naturally and is controlled by one `density`.
+
+Set the fog colour to the background colour and objects fade into the backdrop rather than into a visible seam.
+
+## Shadows
+
+Shadows are off by default, because enabling them recompiles every material that receives one. Treat it as setup rather than something to animate.
+
+```tsx
+.shadows(true)
+.shadows({ enabled: true, type: 'pcfSoft', mapSize: 2048 })
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | `boolean` | – | Turn shadow mapping on |
+| `type` | `'basic' \| 'pcf' \| 'pcfSoft' \| 'vsm'` | `'pcfSoft'` | How shadow maps are filtered |
+| `mapSize` | `number` | – | Default shadow-map resolution |
+
+Turning shadows on is only half of it. Lights opt in with their own `shadow` field, and objects opt in with `castShadow` and `receiveShadow`:
+
+```tsx
+new Graphics3D()
+  .shadows(true)
+  .directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true, shadow: { mapSize: 2048 } })
+  .box({ width: 2, color: 'tomato', castShadow: true })
+  .plane({ width: 40, height: 40, rotation: [-90, 0, 0], position: [0, -1, 0], receiveShadow: true })
+```
+
+## Tone mapping
+
+How bright colour is mapped into displayable range.
+
+```tsx
+.tone({ mapping: 'aces', exposure: 1.1 })
+```
+
+| Mode | Notes |
+|---|---|
+| `'none'` | Clips highlights |
+| `'linear'` | Straight scale |
+| `'reinhard'` | Gentle rolloff |
+| `'cineon'` | Film-style curve |
+| `'aces'` | The filmic default most renderers use |
+| `'agx'` | Modern filmic, holds saturation in highlights |
+| `'neutral'` | Conservative, close to the source colours |
+
+`exposure` is applied before the mapping. A material can opt out with `toneMapped: false`, which is useful for overlays that must keep an exact colour.
+
+## Post effects
+
+Full-frame passes applied after the scene renders, in the order given.
+
+```tsx
+.post({ type: 'bloom', strength: 0.8, radius: 0.4, threshold: 0.85 })
+.post([{ type: 'ssao', radius: 8 }, { type: 'fxaa' }])
+```
+
+| Effect | Parameters | What it does |
+|---|---|---|
+| `bloom` | `strength`, `radius`, `threshold` | Bleeds light from bright pixels. What makes `emissive` glow |
+| `ssao` | `radius`, `intensity` | Contact shadows in creases |
+| `outline` | `color`, `thickness` | Draws an outline around geometry |
+| `dof` | `focus`, `aperture`, `maxBlur` | Depth of field |
+| `fxaa` / `smaa` | – | Post-process antialiasing |
+| `shaderPass` | `fragment`, `uniforms` | Anything expressible as one fragment pass |
+
+Post-processing forces the render through an offscreen target, which changes the compositing path. A scene with any post effect costs more than one without, even a cheap effect.
+
+## Putting it together
+
+```tsx
+new Graphics3D()
+  .perspective({ position: [0, 3, 9], lookAt: [0, 1, 0], fov: 42 })
+  .background('#080a10')
+  .environment({ type: 'room' })
+  .fog({ type: 'linear', color: '#080a10', near: 12, far: 30 })
+  .shadows({ enabled: true, mapSize: 2048 })
+  .tone({ mapping: 'aces', exposure: 1 })
+  .ambient({ intensity: 0.35 })
+  .directional({ intensity: 2.2, position: [5, 8, 6], castShadow: true })
+  .post({ type: 'bloom', threshold: 0.8 })
+```

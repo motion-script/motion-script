@@ -1,0 +1,150 @@
+---
+sidebar_position: 7
+---
+
+# 2D on 3D
+
+`Tex.surface` renders 2D MotionScript content into an offscreen buffer and binds it to any material map. It is how you put a chart on a monitor, a label on a sign, or a whole layout on a curved panel.
+
+```tsx
+import { Graphics, Tex, View3D, Graphics3D } from 'motion-script';
+
+const panel = new Graphics()
+  .rect({ width: 512, height: 512 })
+  .fill('#101826')
+  .rect({ x: 0, y: 96, width: 384, height: 160 })
+  .fill('#4f8ef7');
+
+<View3D
+  graphics3D={() => new Graphics3D()
+    .perspective({ position: [0, 0, 4.2], lookAt: 0, fov: 45 })
+    .ambient({ intensity: 0.8 })
+    .plane({ width: 3, height: 3, map: Tex.surface(panel, 512, 512), unlit: true })}
+/>
+```
+
+## The source is a value
+
+`Tex.surface(source, width, height, options?)` takes two kinds of source:
+
+* A built [`Graphics`](../graphics/overview), for anything you can draw directly.
+* A `Node` subtree, for anything that needs real layout, shaped `Text` or a loaded `Image`.
+
+```tsx
+const scope = new Graphics().line({ points: trace }).stroke({ weight: 6, fill: '#6990DD' });
+const stats = <Rect group="column" padding={48} gap={16}>
+  <Text text="CPU" fontSize={64} fill="white" />
+  <Text text="42%" fontSize={96} fill="#6990DD" />
+</Rect>;
+
+g3.plane({ map: Tex.surface(scope, 1024, 640) })
+  .plane({ map: Tex.surface(stats, 1024, 640), position: [5, 0, 0] });
+```
+
+A node source does not have to live anywhere in the scene tree. It is a value in a descriptor, so `View3D` hands it the asset catalog, context and clock it would otherwise get from a parent.
+
+`width` and `height` are the buffer's resolution in pixels, and they also set the panel's aspect. Match your plane's proportions to them or the texture will stretch.
+
+## Hoist the source
+
+Build the source once, outside the scene builder. Rebuilding it every frame re-lays-out the subtree, defeats the texture cache, and leaks.
+
+```tsx
+// Right: built once, at module or scene scope
+const panel = new Graphics().rect({ width: 512, height: 512 }).fill('#101826');
+
+<View3D graphics3D={() => new Graphics3D().plane({ map: Tex.surface(panel, 512, 512) })} />
+```
+
+```tsx
+// Wrong: a fresh subtree every frame
+<View3D graphics3D={() => new Graphics3D()
+  .plane({ map: Tex.surface(new Graphics().rect({ /* ... */ }), 512, 512) })}
+/>
+```
+
+The source itself can still animate. A `Graphics` source built from signals is fine, because the value changes while the identity stays put.
+
+## Give a conditional surface a key
+
+The texture cache is global. If a surface is emitted conditionally, its position in the scene can shift between frames, which orphans the old texture instead of reusing it. Pass an explicit `key`:
+
+```tsx
+screens.forEach(screen => {
+  g3.plane({
+    width: 4,
+    height: 4 * (screen.height / screen.width),
+    map: Tex.surface(screen.source, screen.width, screen.height, { key: screen.id }),
+  });
+});
+```
+
+## Options
+
+`Tex.surface` takes all the [texture options](./materials#textures), plus:
+
+| Option | Type | Description |
+|---|---|---|
+| `key` | `string` | Stable identity for the texture cache |
+| `maxPixelRatio` | `number` | Ceiling on the buffer's device-pixel ratio. Default 1 |
+
+## Use an unlit material for screens
+
+A screen should read as its own light source. A lit material tints the texture with the scene's lighting and looks muddy:
+
+```tsx
+.plane({ width, height, position: [0, 0, 0.095], unlit: true, map: Tex.surface(source, w, h) })
+```
+
+## Cost
+
+The 3D renderer owns its own graphics context, so there is no shared texture. Every animated surface costs a full read back from the GPU plus an upload, once per frame. That is why the default pixel ratio is 1.
+
+Practical consequences:
+
+* Keep buffer resolutions as small as the content allows.
+* A static surface is much cheaper than an animated one, because the cache can hold it.
+* A handful of surfaces is fine. Dozens of animated ones will not be.
+
+## A worked example
+
+A rig of monitors, where the node owns the hardware and the scene owns the content:
+
+```tsx
+interface Screen {
+  id: string;
+  source: SurfaceSource3D;
+  width: number;
+  height: number;
+}
+
+function monitorWall(screens: Screen[], spacing = 6): Graphics3D {
+  const g3 = new Graphics3D()
+    .perspective({ position: [0, 1, 13], lookAt: [0, 0.2, 0], fov: 42 })
+    .background('#080a10')
+    .ambient({ intensity: 0.5 })
+    .directional({ intensity: 1.8, position: [5, 8, 6] })
+    .point({ intensity: 40, position: [0, 1, 5], color: '#5f7fd0' });
+
+  const half = ((screens.length - 1) / 2) * spacing;
+
+  screens.forEach((screen, i) => {
+    const x = i * spacing - half;
+    const width = 4;
+    const height = width * (screen.height / screen.width);
+
+    g3.group({ position: [x, 0.35, 0], key: `monitor:${screen.id}` }, m => m
+      .box({ width: width + 0.24, height: height + 0.24, depth: 0.18, color: '#15181f', roughness: 0.55 })
+      .plane({
+        width, height,
+        position: [0, 0, 0.095],
+        unlit: true,
+        map: Tex.surface(screen.source, screen.width, screen.height, { key: screen.id }),
+      }));
+  });
+
+  return g3;
+}
+```
+
+Adding a third monitor is adding a third entry. The panel takes each buffer's own aspect, so a screen authored at any resolution shows its texture unstretched.

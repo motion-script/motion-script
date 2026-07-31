@@ -9,7 +9,7 @@ Modulates the clip's amplitude with a low-frequency oscillator (LFO), creating a
 ## Usage
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 // Via AudioFilters builder — 5 Hz pulse at 60% depth
 const clip = new Sound({ src: './piano.mp3', filters: AudioFilters.tremolo({ rate: 5, depth: 0.6 }) });
@@ -34,7 +34,7 @@ const clip = new Sound({
 Ramp up the tremolo rate and depth dynamically:
 
 ```tsx
-import { Sound, AudioFilters, tween, lerpNumber } from '@motion-script/core';
+import { Sound, AudioFilters, tween, lerpNumber } from 'motion-script';
 
 const clip = new Sound({ src: './pad.mp3', filters: AudioFilters.tremolo({ rate: 1, depth: 0 }) });
 clip.start();

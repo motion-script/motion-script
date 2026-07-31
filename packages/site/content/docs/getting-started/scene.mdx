@@ -15,7 +15,7 @@ Let's start with the absolute basics: a scene, a single shape, and getting it on
 Everything in MotionScript lives inside a **scene**. You create one with `createScene`, passing a generator function that describes your animation. Export it as the file's default so it can be imported with the `?scene` suffix.
 
 ```tsx title="src/scenes/my-scene.tsx"
-import { createScene } from '@motion-script/core';
+import { createScene } from 'motion-script';
 
 export default createScene(function* (stage) {
   // your animation goes here
@@ -29,7 +29,7 @@ The `*` in front of `function` makes it a generator. Don't worry about what that
 A scene starts empty. To put something on screen, you create a **node** and add it with `stage.add()`. Let's add a blue rounded square using the `Rect` node.
 
 ```tsx title="src/scenes/my-scene.tsx"
-import { createScene, Rect } from '@motion-script/core';
+import { createScene, Rect } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -53,7 +53,7 @@ Your scene won't run on its own. A **project** ties one or more scenes together 
 Import each scene with the `?scene` suffix and list it directly:
 
 ```ts title="src/project.ts"
-import { createProject } from '@motion-script/core';
+import { createProject } from 'motion-script';
 import myScene from './scenes/my-scene?scene';
 
 export default createProject({
@@ -85,7 +85,7 @@ returns one. Write the factory in a shared file, then call it per `?scene` file
 (one instance per file keeps the hot-reload boundary intact):
 
 ```tsx title="src/scenes/card.ts"
-import type { SceneGenerator } from '@motion-script/core';
+import type { SceneGenerator } from 'motion-script';
 export const card = (color: string): SceneGenerator =>
   function* (stage) {
     stage.add(<Rect fill={color} width={200} height={200} />);
@@ -93,7 +93,7 @@ export const card = (color: string): SceneGenerator =>
 ```
 
 ```tsx title="src/scenes/blue-card.tsx"
-import { createScene } from '@motion-script/core';
+import { createScene } from 'motion-script';
 import { card } from './card';
 export default createScene(card('royalblue'));
 ```

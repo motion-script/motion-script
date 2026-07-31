@@ -13,7 +13,7 @@ Circles, ovals, and arcs. Control the arc extent with `startAngle` and `sweep`.
 ## Usage
 
 ```tsx
-import { createScene, Ellipse } from '@motion-script/core';
+import { createScene, Ellipse } from 'motion-script';
 
 export default createScene(function* (stage) {
   // Full circle
@@ -38,14 +38,14 @@ export default createScene(function* (stage) {
 |---|---|---|---|
 | `startAngle` | `number` | `0` | Starting angle of the arc in degrees (0 = right/3 o'clock, clockwise) |
 | `sweep` | `number` | `360` | Angular extent of the arc in degrees. `360` = full ellipse |
-| `ratio` | `number` | `1` | Width-to-height ratio override |
+| `ratio` | `number` | `1` | Inner radius as a fraction of the outer, so the size of the hole. `0` is a solid disk, `0.5` a donut. At the default `1` the hole reaches the outer edge, which fills as a solid ellipse again |
 
 ## Animating
 
 All props animate with `.to()`. Animate `sweep` to create a progress ring or pie chart:
 
 ```tsx
-import { createScene, Ellipse, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Ellipse, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const ring = createRef<Ellipse>();

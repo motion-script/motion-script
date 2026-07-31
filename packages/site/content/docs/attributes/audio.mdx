@@ -9,7 +9,7 @@ sidebar_position: 9
 ## Basic usage
 
 ```tsx
-import { Sound } from '@motion-script/core';
+import { Sound } from 'motion-script';
 
 export default createScene(function* (stage) {
   const clip = new Sound({ src: './music.mp3' });
@@ -86,7 +86,7 @@ sfx.stop();
 The `AudioFilters` builder chains filters fluently. Filters apply in order from index 0 (closest to the source):
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 const processed = new Sound({
   src: './voice.mp3',

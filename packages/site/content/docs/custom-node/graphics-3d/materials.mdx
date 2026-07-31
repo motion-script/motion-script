@@ -1,0 +1,160 @@
+---
+sidebar_position: 5
+---
+
+# Materials and textures
+
+A material decides how a surface responds to light. The [shorthand fields](./objects#material-shorthand) cover most cases. `Mat` builds a full descriptor when you need one.
+
+```tsx
+import { Mat, Tex } from 'motion-script';
+
+const brushed = Mat.standard({
+  color: '#c9ccd4',
+  roughness: 0.35,
+  metalness: 0.9,
+  normalMap: Tex.image('brushed-normal.png', { repeat: [4, 4] }),
+});
+
+g3.mesh(Geo.cylinder({ radius: 1, height: 0.2 }), brushed);
+```
+
+Hoist and share materials. One material across many meshes compiles one shader program instead of one per mesh.
+
+## Choosing a material
+
+| Builder | Lit | Use for |
+|---|---|---|
+| `Mat.standard` | yes | The default. Physically based, `roughness` and `metalness` |
+| `Mat.physical` | yes | Clearcoat, transmission, sheen, iridescence. Costs more per pixel |
+| `Mat.basic` | no | Flat colour. Screens, overlays, anything that is its own light source |
+| `Mat.lambert` | yes | Cheap diffuse, no specular highlight |
+| `Mat.phong` | yes | Classic specular highlight via `shininess` and `specular` |
+| `Mat.toon` | yes | Banded cel shading |
+| `Mat.normal` | no | Colours surfaces by their normal. A debugging view |
+| `Mat.depth` | no | Colours by distance from the camera |
+| `Mat.matcap` | no | Lighting baked into a lookup texture. Cheap and stylised |
+| `Mat.points` | no | Point clouds |
+| `Mat.lineBasic` / `Mat.lineDashed` | no | Lines |
+| `Mat.sprite` | no | Camera-facing quads |
+| `Mat.shadow` | – | Catches shadows on an otherwise invisible surface |
+| `Mat.shader` | – | Raw GLSL |
+
+Reach for `Mat.standard` by default. Use `Mat.physical` only when a surface genuinely needs glass, car paint or fabric.
+
+## Common fields
+
+Every material takes these:
+
+| Field | Type | Description |
+|---|---|---|
+| `opacity` | `number` | Alpha. Needs `transparent: true` to have an effect |
+| `transparent` | `boolean` | Enable alpha blending |
+| `alphaTest` | `number` | Discard fragments below this alpha |
+| `side` | `'front' \| 'back' \| 'double'` | Which faces are drawn |
+| `wireframe` | `boolean` | Draw edges only |
+| `blending` | `'normal' \| 'additive' \| 'subtractive' \| 'multiply' \| 'none'` | How the colour combines with the framebuffer |
+| `vertexColors` | `boolean` | Read per-vertex colour from the geometry |
+| `toneMapped` | `boolean` | Include this material in tone mapping |
+| `depthWrite` / `depthTest` | `boolean` | Depth buffer behaviour |
+| `visible` | `boolean` | Draw at all |
+
+`side: 'back'` with `depthWrite: false` is the usual recipe for a translucent shell that should not occlude what is inside it.
+
+## Maps
+
+Most lit materials accept the same texture slots:
+
+| Slot | What it does |
+|---|---|
+| `map` | Base colour |
+| `normalMap` | Surface detail, with `normalScale` |
+| `roughnessMap` / `metalnessMap` | Per-pixel roughness and metalness |
+| `aoMap` | Baked ambient occlusion, with `aoMapIntensity` |
+| `alphaMap` | Per-pixel alpha |
+| `emissiveMap` | Where the surface emits, with `emissive` and `emissiveIntensity` |
+| `displacementMap` | Moves vertices, with `displacementScale` and `displacementBias` |
+| `envMap` | Reflections, with `envMapIntensity` |
+| `lightMap` | Baked lighting, with `lightMapIntensity` |
+
+## Textures
+
+A bare string works anywhere a texture is expected, so `Tex.image` is only needed when you want sampler options:
+
+```tsx
+.plane({ width: 4, height: 4, map: 'floor.jpg' })
+.plane({ width: 4, height: 4, map: Tex.image('floor.jpg', { repeat: [4, 4], wrapS: 'repeat', wrapT: 'repeat' }) })
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `wrapS` / `wrapT` | `'clamp' \| 'repeat' \| 'mirror'` | Behaviour past the edge |
+| `repeat` | `Vector2` | Tiling |
+| `offset` | `Vector2` | Pan |
+| `rotation` | `number` | Rotation in degrees |
+| `center` | `Vector2` | Pivot for the rotation |
+| `magFilter` / `minFilter` | `'nearest' \| 'linear'` | Sampling. `'nearest'` for pixel art |
+| `anisotropy` | `number` | Sharpness at grazing angles |
+| `flipY` | `boolean` | Flip vertically |
+| `colorSpace` | `'srgb' \| 'linear'` | Use `'linear'` for data maps like normals |
+
+Images go through the ordinary asset pipeline, so the pixels are resident before the frame that needs them draws.
+
+`Tex.data` builds a texture from raw RGBA bytes, which is how you make gradient ramps, noise and lookup tables:
+
+```tsx
+Tex.data(bytes, 256, 1, { magFilter: 'linear' })
+```
+
+`Tex.surface` renders 2D MotionScript content into a texture. See [2D on 3D](./surfaces).
+
+## Metals need something to reflect
+
+A `standard` or `physical` material with high `metalness` renders black unless the scene has an environment to reflect. The fastest fix needs no asset:
+
+```tsx
+new Graphics3D()
+  .environment({ type: 'room' })
+  .sphere({ radius: 1, color: '#c9ccd4', metalness: 1, roughness: 0.15 })
+```
+
+See [Environment](./scene#environment).
+
+## Physical extras
+
+`Mat.physical` adds the fields that make glass, coated and fabric surfaces:
+
+| Field | For |
+|---|---|
+| `clearcoat`, `clearcoatRoughness` | Car paint, lacquer |
+| `transmission`, `thickness`, `ior` | Glass and liquids |
+| `attenuationColor`, `attenuationDistance` | Tinting through a volume |
+| `sheen`, `sheenColor`, `sheenRoughness` | Cloth |
+| `iridescence`, `iridescenceIOR` | Soap film, oil slick |
+| `specularIntensity`, `specularColor` | Non-metal specular tint |
+| `anisotropy`, `anisotropyRotation` | Brushed metal, hair |
+
+## Raw GLSL
+
+`Mat.shader` is the full escape hatch:
+
+```tsx
+Mat.shader({
+  vertex: vertexSource,
+  fragment: fragmentSource,
+  uniforms: { uTime: phase(), uColor: [1, 0.3, 0.2] },
+})
+```
+
+Uniform values are free to animate. Changing the shader source recompiles the program, so keep the source constant and drive it through uniforms.
+
+## Escape hatches, in order
+
+When a descriptor does not expose what you need, work down this list:
+
+1. The full parameter surface on the named descriptor.
+2. Arbitrary vertex data with `Geo.buffer` or `Geo.parametric`.
+3. Raw GLSL with `Mat.shader`.
+4. A `params` object, passed straight through to the underlying renderer object.
+
+`params` is available on geometries, materials, lights, cameras and post effects. It is the last resort, since what it accepts is renderer-specific.

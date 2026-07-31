@@ -1,0 +1,141 @@
+---
+sidebar_position: 5
+---
+
+# Transforms and effects
+
+Four methods act on the drawn result rather than declaring geometry: `rotation`, `scale`, `opacity` and `effects`.
+
+## Two levels of transform
+
+`rotation` and `scale` exist in two places and mean different things.
+
+### Per shape
+
+Passed inside a shape's own options:
+
+```tsx
+.rect({ width: 100, height: 100, rotation: 30 })
+```
+
+Baked into that shape's geometry before it joins the group. Every other shape is untouched. Use it to tilt one element of a figure.
+
+### Per graphics
+
+Called on the chain:
+
+```tsx
+new Graphics()
+  .rect({ width: 100, height: 100 })
+  .ellipse({ x: 120, y: 0, width: 80, height: 80 })
+  .fill('white')
+  .rotation(30);          // turns the whole figure
+```
+
+Applied to the combined result as one transform, so the whole drawing turns together and keeps its internal arrangement.
+
+```tsx
+// Two rects that each lean 15 degrees, in a figure turned 45 degrees
+new Graphics()
+  .rect({ x: -80, y: 0, width: 60, height: 200, rotation: 15 })
+  .rect({ x:  80, y: 0, width: 60, height: 200, rotation: 15 })
+  .fill('white')
+  .rotation(45);
+```
+
+These are setters, not appenders. Calling `.rotation()` twice keeps the last value, and position in the chain does not matter for them.
+
+### Pivots
+
+Both levels take a pivot.
+
+Per shape it is the `pivot` prop, which accepts a `Vector2` or a named anchor:
+
+```tsx
+.rect({ width: 100, height: 100, rotation: 30, pivot: 'bottomLeft' })
+```
+
+Per graphics it is the second argument, resolved against the figure's bounding box:
+
+```tsx
+.rotation(30, 'topRight')          // turn about the figure's top-right corner
+.scale(1.4, { x: 0, y: -120 })     // grow about an explicit point
+```
+
+Omit it and both pivot about the centre, of the shape's box or of the figure's box.
+
+## `opacity`
+
+Set on the graphics, and unlike a per-shape `opacity` it composites the whole drawing into one layer first:
+
+```tsx
+new Graphics()
+  .ellipse({ x: -40, y: 0, width: 160, height: 160 })
+  .ellipse({ x:  40, y: 0, width: 160, height: 160 })
+  .fill('white')
+  .opacity(0.4);
+```
+
+The two circles overlap, and the overlap is not darker. The figure fades as one. Setting `opacity: 0.4` on each shape instead would double up where they cross.
+
+Like `rotation` and `scale` it is a setter, so the last call wins and it applies to everything in the list.
+
+## `effects`
+
+`effects()` runs a filter over the drawing. It takes anything the [`effects` attribute](/docs/effects/introduction) takes: one effect, an array, or an `Effects` chain.
+
+```tsx
+import { Graphics, Effects } from 'motion-script';
+
+new Graphics()
+  .ellipse({ width: 200, height: 200 })
+  .fill('#6990DD')
+  .effects(Effects.blur(24));
+```
+
+### It scopes like `fill`
+
+`effects()` is not a setter. It applies to the shapes and paints recorded since the previous `effects()` call, or since the start, and then closes that group. Shapes after it start fresh and unfiltered.
+
+```tsx
+new Graphics()
+  .ellipse({ x: -60, y: 0, width: 200, height: 200 })
+  .ellipse({ x:  60, y: 0, width: 200, height: 200 })
+  .fill('#6990DD')
+  .effects(Effects.blur(16))     // blurs those two circles together
+
+  .rect({ width: 300, height: 8 })
+  .fill('white');                 // sharp, drawn over the blur
+```
+
+Because the group is composited before filtering, the effect reads the group's combined outline. A blur bleeds across the shared edge rather than around each circle separately.
+
+A second `effects()` later filters only the later group:
+
+```tsx
+  .path(glowShape).fill('#F5C26B').effects(Effects.bloom({ threshold: 0.2 }))
+  .path(flatShape).fill('white').effects(Effects.grayscale(1))
+```
+
+### What a group covers
+
+A group starts at the first shape after a paint or after an `effects()` call, so content already closed off by its own paint is not swept into a later effect:
+
+```tsx
+new Graphics()
+  .rect({ width: 800, height: 400, cornerRadius: 12 })
+  .fill('#141824')                             // closes the backdrop group
+
+  .rect({ width: 60, height: 200 })
+  .fill('#6990DD')
+  .effects(Effects.bloom({ threshold: 0.3 })); // only the bar glows
+```
+
+## Summary
+
+| Method | Kind | Applies to | Repeat behaviour |
+|---|---|---|---|
+| shape `rotation` / `scale` | shape prop | that shape only | per shape |
+| `.rotation()` / `.scale()` | setter | the whole figure | last call wins |
+| `.opacity()` | setter | the whole figure, as one layer | last call wins |
+| `.effects()` | operation | the current group, then closes it | each call filters its own group |

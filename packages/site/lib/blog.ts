@@ -52,7 +52,10 @@ function getExcerpt(content: string): string {
 
 function readPost(filePath: string): BlogPost | null {
   try {
-    const src = fs.readFileSync(filePath, 'utf8')
+    // Normalise CRLF up front — posts authored on Windows otherwise carry a
+    // trailing `\r` on every line, which breaks line-anchored markdown parsing
+    // downstream (see readSource in lib/docs.ts).
+    const src = fs.readFileSync(filePath, 'utf8').replace(/\r\n?/g, '\n')
     const { data, content } = matter(src)
 
     const slug: string = data.slug ?? path.basename(filePath, '.mdx').replace(/^\d{4}-\d{2}-\d{2}-/, '')

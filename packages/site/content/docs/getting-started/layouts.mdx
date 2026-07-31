@@ -15,7 +15,7 @@ Here's the trick: a `Rect` isn't just a shape, it's also a container. Give it a 
 Set `group="row"` to place children side by side, or `group="column"` to stack them top to bottom. Add `gap` for spacing and `padding` for breathing room around the edges.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, Text } from '@motion-script/core';
+import { createScene, Rect, Text } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -70,7 +70,7 @@ Now the square and the title are centered within the card.
 Here's the fun part: layout props are animatable just like everything else. Grab the container with a ref and animate its `gap` to spread the contents apart, or even switch it from a column to a row.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, Text, createRef, easeOut } from '@motion-script/core';
+import { createScene, Rect, Text, createRef, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const card = createRef<Rect>();

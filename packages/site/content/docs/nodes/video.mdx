@@ -13,7 +13,7 @@ Renders a playing video. Layout and child positioning are inherited from `Rect`:
 ## Usage
 
 ```tsx
-import { createScene, Video } from '@motion-script/core';
+import { createScene, Video } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -85,7 +85,7 @@ paused clip with no `timestamp` sits on its first frame (`trimStart`).
 Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with `.to()`. For playback control, set `timestamp` and `playing`:
 
 ```tsx
-import { createScene, Video, createRef, easeInOut, wait } from '@motion-script/core';
+import { createScene, Video, createRef, easeInOut, wait } from 'motion-script';
 
 export default createScene(function* (stage) {
   const clip = createRef<Video>();

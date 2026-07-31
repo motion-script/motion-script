@@ -9,7 +9,7 @@ Adds a delayed, fading repeat of the signal: a feedback echo (simple delay line)
 ## Usage
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 // Via AudioFilters builder — 300 ms delay, 40% feedback, default 50% wet mix
 const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.echo({ delay: 0.3, feedback: 0.4 }) });
@@ -38,7 +38,7 @@ const clip = new Sound({
 Fade the echo in to add spaciousness over time:
 
 ```tsx
-import { Sound, AudioFilters, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { Sound, AudioFilters, tween, lerpNumber, easeOut } from 'motion-script';
 
 const clip = new Sound({ src: './narration.mp3', filters: AudioFilters.echo({ delay: 0.4, feedback: 0.5, mix: 0 }) });
 clip.start();

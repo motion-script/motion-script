@@ -38,6 +38,18 @@ function DocItem({ item, depth = 0 }: { item: SidebarItem; depth?: number }) {
   return <CategoryItem item={item} depth={depth} pathname={pathname} />
 }
 
+// The one category that starts open when nothing inside it is active, so the
+// sidebar leads with the intro path instead of every section unfurled at once.
+const DEFAULT_OPEN_CATEGORY = 'getting-started'
+
+function containsActive(items: SidebarItem[], pathname: string): boolean {
+  return items.some((child) =>
+    child.type === 'doc'
+      ? pathname === slugToHref(child.slug)
+      : containsActive(child.items, pathname),
+  )
+}
+
 function CategoryItem({
   item,
   depth,
@@ -47,11 +59,21 @@ function CategoryItem({
   depth: number
   pathname: string
 }) {
-  // Auto-expand if any child is active
-  const isChildActive = item.items.some((child) =>
-    child.type === 'doc' ? pathname === slugToHref(child.slug) : false,
-  )
-  const [open, setOpen] = useState(isChildActive || depth === 0)
+  // Auto-expand the category holding the current page (at any nesting level);
+  // otherwise only Getting Started is open, and the rest start collapsed.
+  const isChildActive = containsActive(item.items, pathname)
+  const [open, setOpen] = useState(isChildActive || item.slug === DEFAULT_OPEN_CATEGORY)
+
+  // The sidebar lives in the docs layout, so it survives client-side navigation
+  // and the state above is never re-initialised. Now that categories start
+  // collapsed, navigating into one (via search, prev/next, or a link in the body)
+  // has to open it, or the current page's own entry stays hidden. Adjusting
+  // during render rather than in an effect avoids a second render pass.
+  const [wasChildActive, setWasChildActive] = useState(isChildActive)
+  if (isChildActive !== wasChildActive) {
+    setWasChildActive(isChildActive)
+    if (isChildActive) setOpen(true)
+  }
 
   return (
     <div>

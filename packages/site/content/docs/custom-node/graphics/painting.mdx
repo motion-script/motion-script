@@ -1,0 +1,122 @@
+---
+sidebar_position: 3
+---
+
+# Painting
+
+Three methods put pixels down: `fill`, `stroke` and `shadow`. Each one paints the shapes recorded since the last paint, then closes that group.
+
+```tsx
+new Graphics()
+  .rect({ width: 200, height: 200 })
+  .ellipse({ x: 140, y: 0, width: 120, height: 120 })
+  .fill('royalblue')      // paints the rect and the ellipse together
+```
+
+## Shapes gather until you paint
+
+Every shape joins an accumulator. A paint empties it onto the canvas. The next shape after a paint starts a new group.
+
+```tsx
+new Graphics()
+  .rect({ x: -100, y: 0, width: 120, height: 120 })
+  .rect({ x:  100, y: 0, width: 120, height: 120 })
+  .fill(Fills.linearGradient(['#6990DD', '#E8617C']))  // one gradient across both
+
+  .ellipse({ width: 60, height: 60 })
+  .fill('white');                                       // new group, its own paint
+```
+
+The gradient in the first group maps across the combined bounds of the two rects. Two `Rect` nodes side by side cannot do that, because each resolves its own gradient in its own box.
+
+## Several paints on one group
+
+The accumulator only resets on the next shape, so consecutive paint calls all target the same shapes:
+
+```tsx
+new Graphics()
+  .path(figure)
+  .shadow({ blur: 24, fill: 'black/40', offset: { x: 0, y: 8 } })
+  .fill('#1e293b')
+  .stroke({ weight: 3, fill: 'white/20' })
+```
+
+They land in the order you wrote them: shadow underneath, then the fill, then the stroke on top.
+
+## `fill`
+
+Takes anything the [`fill` attribute](/docs/attributes/fills) takes: a CSS string, a fill object, a `Fills` chain, or an array of layers.
+
+```tsx
+.fill('tomato')
+.fill('white/10')                                    // colour with alpha
+.fill(Fills.linearGradient(['#6990DD', '#E8617C']))
+.fill(Fills.radialGradient(['white', 'transparent'], { radius: 200 }))
+.fill(Fills.image('texture.jpg'))
+.fill(['#0b0d12', Fills.noise({ density: 0.4, color: 'white', opacity: 0.15 })])
+```
+
+Assets a fill references are discovered from the drawing itself, so an image fill inside a `Graphics` loads with no extra setup.
+
+## `stroke`
+
+Takes anything the [`stroke` attribute](/docs/attributes/strokes) takes.
+
+```tsx
+.stroke({ weight: 6, fill: '#6990DD' })
+.stroke({ weight: 2, fill: 'white/40', align: 'inside' })
+.stroke([{ weight: 8, fill: 'black' }, { weight: 4, fill: 'white' }])
+```
+
+Open shapes, meaning a `line` or a `path` that is not closed, are normally stroked rather than filled.
+
+:::caution
+Give each open shape its own paint call. Closed shapes batch into one stroke correctly, but a group holding more than one open outline currently draws nothing.
+
+```tsx
+// Nothing draws
+.line({ points: rowA })
+.line({ points: rowB })
+.stroke({ weight: 1, fill: 'white/15' })
+
+// One stroke per open outline
+.line({ points: rowA }).stroke({ weight: 1, fill: 'white/15' })
+.line({ points: rowB }).stroke({ weight: 1, fill: 'white/15' })
+```
+:::
+
+## `shadow`
+
+Takes anything the [`shadow` attribute](/docs/attributes/shadows) takes. Since the group is painted as one surface, the shadow follows the combined outline rather than each shape's:
+
+```tsx
+new Graphics()
+  .rect({ width: 200, height: 120, cornerRadius: 16 })
+  .ellipse({ x: 90, y: 0, width: 120, height: 120 })
+  .shadow({ blur: 30, fill: 'black/50', offset: { x: 0, y: 12 } })
+  .fill('#1e293b');
+```
+
+One shadow under the whole figure, with no seam where the rect and ellipse overlap.
+
+## Reading group boundaries
+
+A group starts at the first shape after a paint, or after an [`effects`](./transforms#effects) call. That is what gradients, shadows, cuts and effects all read.
+
+```tsx
+new Graphics()
+  // Backdrop
+  .rect({ width: 800, height: 400, cornerRadius: 12 })
+  .rect({ y: 230, width: 800, height: 48, cornerRadius: 12 })
+  .fill(Fills.linearGradient(['#141824', '#0b0d12']))
+
+  // The data path
+  .line({ points: series, radius: 8 })
+  .stroke({ weight: 6, fill: '#6990DD' })
+
+  // The label
+  .text({ text: 'Q3', x: 220, y: 90, fontSize: 28 })
+  .fill('white/70');
+```
+
+Grouping by paint style is also the cheaper shape: one paint per family instead of one per shape.

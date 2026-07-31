@@ -13,7 +13,7 @@ Renders mixed-style text. Style is defined as a tree of `TextSpan` objects, and 
 ## Usage
 
 ```tsx
-import { createScene, RichText } from '@motion-script/core';
+import { createScene, RichText } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -90,7 +90,7 @@ Children inherit their parent span's styles and can override selectively:
 Animate any top-level prop with `.to()`. To animate individual span styles, reassign `spans` inside a `tween`:
 
 ```tsx
-import { createScene, RichText, createRef, tween, easeOut } from '@motion-script/core';
+import { createScene, RichText, createRef, tween, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const label = createRef<RichText>();

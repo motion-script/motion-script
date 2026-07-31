@@ -9,7 +9,7 @@ Scales the clip's amplitude by a linear factor. Use it to raise or lower the vol
 ## Usage
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 // Via AudioFilters builder
 const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.gain(1.5) });
@@ -30,7 +30,7 @@ const clip = new Sound({ src: './voice.mp3', filters: [{ type: 'gain', value: 1.
 Interpolate `value` inside a `tween` to fade volume in or out:
 
 ```tsx
-import { Sound, AudioFilters, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { Sound, AudioFilters, tween, lerpNumber, easeOut } from 'motion-script';
 
 const clip = new Sound({ src: './music.mp3', filters: AudioFilters.gain(0) });
 clip.start();

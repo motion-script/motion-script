@@ -1,0 +1,114 @@
+---
+sidebar_position: 1
+---
+
+# 3D Graphics
+
+MotionScript draws 3D with the same split it uses for everything else. You describe a scene as plain data with `Graphics3D`, and the renderer turns it into pixels. Nothing in your project imports a 3D engine.
+
+```tsx
+import { View3D, Graphics3D } from 'motion-script';
+
+<View3D
+  width={1600}
+  height={900}
+  graphics3D={() => new Graphics3D()
+    .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+    .ambient({ intensity: 0.4 })
+    .directional({ intensity: 2.4, position: [4, 6, 3] })
+    .box({ width: 2, color: 'tomato', roughness: 0.3 })}
+/>
+```
+
+That is a complete 3D scene: a camera, two lights and a lit cube.
+
+## A 3D scene is a fill
+
+The 3D scene is not a special kind of node. It is a **fill**, the same as a colour, a gradient or an image. The renderer draws the scene to a texture and paints it through whatever shape asked for it.
+
+Three things follow, and they are the reason 3D is built this way:
+
+* **3D clips to any shape.** An ellipse, a path, or a run of text can all carry a 3D fill and confine it to their own outline.
+* **3D stacks with other fills.** It is one layer in the fill array, so paint order, `opacity` and `blend` work as usual.
+* **3D needs no special node.** [`View3D`](./view3d) is convenience on top of the fill, not machinery.
+
+```tsx
+<Ellipse width={420} height={420} fill={() => scene()} />
+<Text text="DEPTH" fontSize={320} fill={() => scene()} />
+<Rect fill={() => ['#0b0d12', Fills.view3D(scene())]} />
+```
+
+A bare `Graphics3D` coerces to a 3D fill the same way a bare CSS string coerces to a solid colour.
+
+## There is no 3D node tree
+
+Everything inside a 3D scene is described with `Graphics3D`, never with nodes. Node props are 2D concepts, so `x`, `y`, `width`, `opacity`, `flex`, `padding` and anchors mean nothing for a mesh positioned in 3D space.
+
+```tsx
+new Graphics3D()
+  .perspective({ position: [0, 2, 6], lookAt: 0 })
+  .directional({ intensity: 2, position: [4, 6, 3] })
+  .box({ width: 2, color: 'tomato' })
+  .group({ position: [3, 0, 0] }, g => g.sphere({ radius: 0.8, color: 'cyan' }))
+```
+
+## Rules that apply everywhere
+
+**Angles are degrees.** Euler rotations, spotlight cone angles, sweep arcs and texture rotation are all degrees, matching 2D `rotation`. You never write `Math.PI`.
+
+**Colours are ordinary colours.** `'tomato'`, `'#e0533d'`, `oklch(...)`, theme tokens and `'white/10'` all work, exactly as in 2D.
+
+**A `Graphics3D` is a value, not a builder you keep.** Build a new one each frame. Freshness comes from where it is produced, and the same frame always looks the same however you reached it.
+
+**Signals holding non-numbers need a lerp.** `createSignal({ x: 0, y: 0, z: 0 }, lerpVector3)`, otherwise the value snaps at the end of the tween instead of interpolating. See [Animating](./animating).
+
+## The pages
+
+| Page | What it covers |
+|---|---|
+| [View3D](./view3d) | The node, its props, and painting 3D through other shapes |
+| [Scene setup](./scene) | Camera, lights, background, fog, shadows, tone mapping, post effects |
+| [Objects](./objects) | Meshes, geometry, groups, instances, lines, points, sprites and models |
+| [Materials and textures](./materials) | Choosing a material, maps, and the shader escape hatch |
+| [Animating](./animating) | Driving a scene from signals, and what is cheap to change |
+| [2D on 3D](./surfaces) | Rendering 2D content onto geometry with `Tex.surface` |
+
+## A first scene
+
+```tsx
+import {
+  createScene, createSignal, easeInOut, lerpVector3, parallel,
+  View3D, Graphics3D, type Vector3,
+} from 'motion-script';
+
+export default createScene(function* (stage) {
+  stage.set({ fill: '#05070c' });
+
+  const spin = createSignal(0);                                    // degrees
+  const lift = createSignal<Vector3>({ x: 0, y: 0, z: 0 }, lerpVector3);
+
+  stage.add(
+    <View3D
+      width={1600}
+      height={900}
+      cornerRadius={32}
+      graphics3D={() => new Graphics3D()
+        .perspective({ position: [0, 2.5, 6], lookAt: lift(), fov: 45 })
+        .ambient({ intensity: 0.4 })
+        .directional({ intensity: 2.4, position: [4, 6, 3] })
+        .box({
+          width: 2, height: 2, depth: 2,
+          color: '#e0533d', roughness: 0.4, metalness: 0.1,
+          position: lift(), rotation: [0, spin(), 0],
+        })}
+    />,
+  );
+
+  yield* parallel(
+    spin(720, 3, easeInOut('quad')),
+    lift({ x: 0, y: 1.5, z: 0 }, 1.5, easeInOut('quad')),
+  );
+});
+```
+
+The builder runs every frame and reads `spin()` and `lift()` at that frame's values, so nothing accumulates and scrubbing backwards lands on exactly the same pixels as playing forwards.

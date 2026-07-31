@@ -13,7 +13,7 @@ An invisible horizontal flex container. Lays its children out left-to-right, hon
 ## Usage
 
 ```tsx
-import { createScene, Row, Rect, Text } from '@motion-script/core';
+import { createScene, Row, Rect, Text } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -43,7 +43,7 @@ export default createScene(function* (stage) {
 All props animate with `.to()`:
 
 ```tsx
-import { createScene, Row, Rect, createRef, easeOut } from '@motion-script/core';
+import { createScene, Row, Rect, createRef, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const row = createRef<Row>();

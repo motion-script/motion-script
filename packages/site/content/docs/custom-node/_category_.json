@@ -1,0 +1,8 @@
+{
+  "label": "Custom Node",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Build your own nodes: animatable properties, 2D figures with the Graphics API, and 3D scenes with Graphics3D, all from a node's own render pass."
+  }
+}

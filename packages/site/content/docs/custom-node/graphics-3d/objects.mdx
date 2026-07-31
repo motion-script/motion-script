@@ -1,0 +1,221 @@
+---
+sidebar_position: 4
+---
+
+# Objects
+
+Everything you put in a 3D scene: meshes, groups, and the specialised drawables for crowds, lines, sprites and loaded models.
+
+## Meshes
+
+Fourteen shorthand methods create a mesh from one flat options object that mixes the geometry's own parameters, a placement, and a material.
+
+```tsx
+.box({ width: 2, height: 2, depth: 2, color: 'tomato', roughness: 0.3, position: [0, 1, 0] })
+```
+
+| Method | Main parameters |
+|---|---|
+| `box` | `width`, `height`, `depth`, `widthSegments`, `heightSegments`, `depthSegments` |
+| `sphere` | `radius`, `widthSegments`, `heightSegments`, `phiStart`, `phiLength`, `thetaStart`, `thetaLength` |
+| `plane` | `width`, `height`, `widthSegments`, `heightSegments` |
+| `cylinder` | `radiusTop`, `radiusBottom`, `height`, `radialSegments`, `openEnded` |
+| `cone` | `radius`, `height`, `radialSegments`, `openEnded` |
+| `torus` | `radius`, `tube`, `radialSegments`, `tubularSegments`, `arc` |
+| `torusKnot` | `radius`, `tube`, `tubularSegments`, `radialSegments`, `p`, `q` |
+| `circle` | `radius`, `segments`, `thetaStart`, `thetaLength` |
+| `ring` | `innerRadius`, `outerRadius`, `thetaSegments`, `thetaStart`, `thetaLength` |
+| `capsule` | `radius`, `height`, `capSegments`, `radialSegments` |
+| `polyhedron` | `shape`, `radius`, `detail` |
+| `extrude` | `shape`, `depth`, `bevel`, `bevelThickness`, `bevelSize` |
+| `lathe` | `points`, `segments`, `phiStart`, `phiLength` |
+| `tube` | `points`, `radius`, `tubularSegments`, `radialSegments`, `closed` |
+
+All angle parameters are degrees.
+
+`extrude` takes the same path data the 2D [`Path` node](/docs/nodes/path) takes, so an existing outline becomes a solid with no new vocabulary:
+
+```tsx
+.extrude({ shape: 'M 0 -60 L 52 40 L -52 40 Z', depth: 20, bevel: true, bevelSize: 2 })
+```
+
+## Placement
+
+Every mesh, light and group takes the same placement fields.
+
+| Field | Type | Description |
+|---|---|---|
+| `position` | `Vector3Input` | Position in the parent's space |
+| `rotation` | `Vector3Input \| Euler3` | Euler rotation in degrees |
+| `quaternion` | `Quaternion` | Rotation as a quaternion. Wins over `rotation` |
+| `scale` | `Vector3Input` | Per-axis scale, or one number for all three |
+| `lookAt` | `Vector3Input` | Point to orient toward. Wins over both rotations |
+| `visible` | `boolean` | Hide without removing |
+| `castShadow` | `boolean` | Cast into shadow maps |
+| `receiveShadow` | `boolean` | Receive shadows |
+| `renderOrder` | `number` | Draw-order override for transparent sorting |
+| `key` | `string` | Explicit identity. See [Animating](./animating#keys) |
+
+## Material shorthand
+
+The same options object also accepts the common material fields, so the usual case is one flat call:
+
+```tsx
+.sphere({ radius: 1, color: 'cyan', roughness: 0.2, metalness: 0.8 })
+.plane({ width: 10, height: 10, color: '#11141c', roughness: 0.85 })
+.torus({ radius: 1.4, tube: 0.08, unlit: true, color: 'white' })
+```
+
+`color`, `opacity`, `transparent`, `roughness`, `metalness`, `emissive`, `emissiveIntensity`, `map`, `normalMap`, `roughnessMap`, `metalnessMap`, `aoMap`, `alphaMap`, `envMapIntensity`, `wireframe`, `flatShading`, `side`, `vertexColors`, `depthWrite`, `depthTest`, `blending`, `alphaTest` and `toneMapped` are all accepted this way.
+
+`unlit: true` uses a `basic` material instead of `standard`, which is right for anything that should read as its own light source rather than being shaded by the scene.
+
+For full control, pass a `material` built with `Mat`. See [Materials and textures](./materials).
+
+## Groups
+
+`group()` nests objects so they inherit a transform. Prefer the callback form, which cannot be left unbalanced.
+
+```tsx
+new Graphics3D()
+  .group({ position: [3, 0, 0], rotation: [0, 45, 0] }, g => g
+    .sphere({ radius: 0.8, color: 'cyan' })
+    .box({ width: 0.4, position: [0, 1.2, 0] }))
+```
+
+`push()` and `pop()` do the same thing imperatively. An unbalanced pair throws when the scene is drawn, rather than silently reparenting everything after it.
+
+## Explicit geometry and material
+
+`mesh()` takes a geometry and a material as separate values, built with `Geo` and `Mat`. Hoist them and share them across meshes, since the renderer uploads a shared geometry to the GPU once no matter how many meshes reference it:
+
+```tsx
+import { Geo, Mat } from 'motion-script';
+
+const brick = Geo.box({ width: 1, height: 0.5, depth: 0.5 });
+const red = Mat.standard({ color: 'tomato', roughness: 0.4 });
+
+new Graphics3D()
+  .mesh(brick, red, { position: [0, 0, 0] })
+  .mesh(brick, red, { position: [1, 0, 0] })   // same GPU buffer, same shader
+```
+
+`Geo` also has entries the shorthand methods do not: `tetrahedron`, `octahedron`, `icosahedron`, `dodecahedron`, `buffer`, `parametric`, `edges`, `wireframe` and `model`.
+
+### `Geo.buffer`
+
+Raw vertex data, for any mesh you can compute:
+
+```tsx
+Geo.buffer({
+  position: [/* x, y, z, x, y, z, ... */],
+  index: [/* triangle indices */],
+  computeNormals: true,
+})
+```
+
+`normal`, `uv` and `color` are optional. Set `staticData: true` once the arrays stop changing so the renderer skips re-uploading them, and bump `revision` when you mutate an array in place.
+
+### `Geo.parametric`
+
+A surface sampled over a grid, which is the friendlier form of `Geo.buffer` for waves, terrain and ribbons:
+
+```tsx
+Geo.parametric({
+  segments: [70, 70],
+  vertex: (u, v) => {
+    const x = (u - 0.5) * 20;
+    const z = (v - 0.5) * 20;
+    return { x, y: wave(x, z, phase()), z };
+  },
+  color: (u, v, p) => heightColor(p.y),
+  computeNormals: true,
+})
+```
+
+`u` and `v` both run from 0 to 1. The callbacks are evaluated into vertex buffers when you record the op, so the descriptor stays plain data. Per-vertex colour needs `vertexColors: true` on the material.
+
+### `Geo.edges` and `Geo.wireframe`
+
+Derived line geometry from another geometry. `edges` gives the hard edges only, which is a clean outline. `wireframe` gives every triangle edge.
+
+```tsx
+.line({
+  geometry: Geo.edges(Geo.box({ width: 4, height: 4, depth: 4 })),
+  mode: 'segments',
+  color: 'white',
+  opacity: 0.4,
+})
+```
+
+## Instances
+
+Thousands of copies of one geometry in a single draw call. This is how you put a crowd on screen, since one mesh per copy will not keep up.
+
+```tsx
+.instances(
+  Geo.box({ width: 0.2 }),
+  Mat.standard({ color: 'cyan' }),
+  positions.map(p => ({ position: p, rotation: [0, p.x * 20, 0] })),
+  { colors: tints },
+)
+```
+
+The instance array's length is the instance count. Each entry is a full placement. `colors` tints per instance and needs a material that reads instance colour.
+
+## Lines
+
+```tsx
+.line({ points: [[0, 0, 0], [1, 2, 0], [3, 1, 2]], color: '#6990DD', width: 2 })
+.line({ geometry: Geo.edges(box), mode: 'segments', color: 'white', opacity: 0.4 })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `Vector3Input[]` | – | Explicit points. Give either this or `geometry` |
+| `geometry` | `Geometry3D` | – | A geometry to draw as lines |
+| `mode` | `'strip' \| 'segments' \| 'loop'` | `'strip'` | Connect in order, as disjoint pairs, or closed |
+| `color` | `Color` | – | Shorthand for a line material |
+| `width` | `number` | – | Line width |
+| `dashed` | `boolean` | `false` | Use a dashed line material |
+
+## Points
+
+A point cloud, one dot per vertex of the geometry:
+
+```tsx
+.points(Geo.buffer({ position: cloud }), Mat.points({ size: 0.05, color: 'white' }))
+```
+
+## Sprites
+
+A camera-facing textured quad, which always presents flat to the viewer:
+
+```tsx
+.sprite({ map: 'spark.png', position: [0, 2, 0], scale: 0.5 })
+```
+
+## Models
+
+Load a glTF, GLB or OBJ file:
+
+```tsx
+.model({ src: 'robot.glb', position: [0, 0, 0], scale: 0.5 })
+```
+
+| Prop | Type | Description |
+|---|---|---|
+| `src` | `string` | Path in the asset manifest |
+| `animation` | `ModelAnimation3D \| ModelAnimation3D[]` | Clips to sample |
+| `override` | `Record<string, Material3D>` | Replace materials by mesh or material name |
+
+Baked animation is sampled at an explicit time rather than advanced by a delta, which is what keeps a model frame-identical when you scrub:
+
+```tsx
+.model({
+  src: 'robot.glb',
+  animation: [{ clip: 'Walk', time: walkTime(), weight: 1 }],
+})
+```
+
+`clip` is a name or an index, and defaults to the first clip. Give several entries with `weight` values to cross-fade between them.

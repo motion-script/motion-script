@@ -9,7 +9,7 @@ Attenuates frequencies below the cutoff, letting the highs through. Useful for r
 ## Usage
 
 ```tsx
-import { Sound, AudioFilters } from '@motion-script/core';
+import { Sound, AudioFilters } from 'motion-script';
 
 // Via AudioFilters builder — remove everything below 200 Hz
 const clip = new Sound({ src: './voice.mp3', filters: AudioFilters.highpass(200) });
@@ -34,7 +34,7 @@ const clip = new Sound({ src: './voice.mp3', filters: [{ type: 'highpass', frequ
 Sweep the cutoff frequency to create a filter-open effect:
 
 ```tsx
-import { Sound, AudioFilters, tween, lerpNumber } from '@motion-script/core';
+import { Sound, AudioFilters, tween, lerpNumber } from 'motion-script';
 
 const clip = new Sound({ src: './music.mp3', filters: AudioFilters.highpass(2000) });
 clip.start();

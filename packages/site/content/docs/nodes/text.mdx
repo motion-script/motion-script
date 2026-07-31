@@ -13,7 +13,7 @@ Renders a string with a single consistent style. Like all shape nodes it support
 ## Usage
 
 ```tsx
-import { createScene, Text } from '@motion-script/core';
+import { createScene, Text } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -55,7 +55,7 @@ export default createScene(function* (stage) {
 All text props animate with `.to()`. Use `append` and `prepend` to animate characters being typed in:
 
 ```tsx
-import { createScene, Text, createRef, easeOut } from '@motion-script/core';
+import { createScene, Text, createRef, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const label = createRef<Text>();

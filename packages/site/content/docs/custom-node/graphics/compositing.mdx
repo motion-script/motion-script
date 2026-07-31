@@ -1,0 +1,119 @@
+---
+sidebar_position: 4
+---
+
+# Cuts and masks
+
+Two tools for the two ways one shape can shape another. `cut()` subtracts, and the mask scope clips.
+
+## `cut()`
+
+`cut()` takes the shape declared immediately before it and subtracts it from everything declared before that in the current group. The result stays in the accumulator, so the next paint sees one figure with a hole in it.
+
+```tsx
+new Graphics()
+  .rect({ width: 240, height: 240, cornerRadius: 24 })   // the body
+  .ellipse({ width: 100, height: 100 })                  // the cutter
+  .cut()
+  .fill(Fills.linearGradient(['#6990DD', '#E8617C']));
+```
+
+The gradient maps across the ring that is left, and you can see through the hole to whatever is behind the node. That is the difference between cutting and drawing a background-coloured circle on top.
+
+Chain them to punch several holes:
+
+```tsx
+new Graphics()
+  .rect({ width: 400, height: 200, cornerRadius: 16 })
+  .ellipse({ x: -80, y: 0, width: 60, height: 60 })
+  .cut()
+  .rect({ x: 80, y: 0, width: 120, height: 40, cornerRadius: 20 })
+  .cut()
+  .fill('#1e293b');
+```
+
+Each `cut()` consumes only the shape immediately before it, so the code reads in the order it runs.
+
+:::tip
+`cut()` and the `BooleanGroup` node solve the same problem at different scales. Use `BooleanGroup` when the operands are real nodes you want to lay out and animate on their own. Use `cut()` when the hole is part of one drawn figure.
+:::
+
+## The mask scope
+
+`cut()` subtracts geometry. A mask keeps content only where a drawn shape covers it, alpha included, which is how a gradient, an image or a striped band shows through the shape of something else.
+
+Three calls bracket it:
+
+```tsx
+new Graphics()
+  .mask()          // everything from here is the mask
+  .path(figure)
+  .fill('white')
+  .applyMask()     // everything from here is the content
+  .rect({ width: 800, height: 800 })
+  .fill(Fills.linearGradient(['#6990DD', '#E8617C']))
+  .endMask();      // close the scope
+```
+
+* Shapes between `mask()` and `applyMask()` are the mask. Paint them, normally with plain white, since only their coverage matters.
+* Shapes between `applyMask()` and `endMask()` are the content.
+* Only content under the mask survives.
+
+`mask()` takes the same options the [`MaskGroup` node](/docs/getting-started/masks) takes:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `'alpha' \| 'vector' \| 'luminance'` | `'alpha'` | What of the mask is read: its rendered alpha, its path, or its luminance |
+| `inverted` | `boolean` | `false` | Show content where the mask is not |
+| `apply` | `'fill' \| 'stroke' \| both` | all | Which paint layers get masked. The rest draw on top |
+
+### A live example
+
+The mask is a drawing scope, not a static clip. Anything you can draw can be the mask, including a mask with a `cut()` hole in it, so the content shows through the shape and the hole both:
+
+```tsx
+const g = new Graphics().mask({ mode: 'alpha' });
+
+// Mask: a figure with an eye punched out of it.
+g.rect({ width: 360, height: 500, cornerRadius: 90 })
+  .ellipse({ x: -150, y: 180, width: 300, height: 300 })
+  .ellipse({ x: -150, y: 180, width: 100, height: 100 })
+  .cut()
+  .fill('white');
+
+g.applyMask();
+
+// Content: diagonal colour stripes, offset by a value that changes over time.
+const colors = ['#6990DD', '#E8617C', '#F5C26B', '#7ED6A5'];
+for (let i = -8; i <= 8; i++) {
+  g.rect({
+    x: i * 160 + shift,
+    y: 0,
+    width: 120,
+    height: 1600,
+    rotation: 30,
+  }).fill(colors[((i % colors.length) + colors.length) % colors.length]);
+}
+
+g.endMask();
+```
+
+Slide `shift` and the stripes travel under a stationary figure.
+
+### Rules
+
+* It all happens inside one `draw()` call. A mask scope does not span two `Graphics`.
+* Close every `mask()` with an `endMask()`. Operations recorded after an unclosed scope keep landing inside it.
+* Masks and cuts compose within the current paint group. Neither starts a new group.
+
+## Choosing between them
+
+| You want | Use |
+|---|---|
+| A hole in a solid figure | `cut()` |
+| A shape trimmed by another shape's outline | `cut()` |
+| A gradient, image or pattern confined to a silhouette | mask scope |
+| Content that moves under a stationary window | mask scope |
+| Soft or partial coverage | mask scope |
+
+`cut()` is a geometry operation, so it is exact and cheap. A mask is a compositing operation, so it costs a layer but can express coverage a path cannot.

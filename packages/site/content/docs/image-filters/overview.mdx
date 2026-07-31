@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Image Filters Overview
 
-Image filters are pixel-level operations applied to `Image` nodes and `image` fill types via the `filters` prop. Unlike [Node Effects](../effects/blur) (which apply after the entire node is composited), image filters operate directly on the image texture before it is drawn.
+Image filters are pixel-level operations applied to `Image` nodes and `image` fill types via the `filters` prop. Unlike [Node Effects](../effects/introduction) (which apply after the entire node is composited), image filters operate directly on the image texture before it is drawn.
 
 ## Where filters apply
 
@@ -21,7 +21,7 @@ Image filters are pixel-level operations applied to `Image` nodes and `image` fi
 The `ImageFilters` builder provides a chainable API: each method returns a new immutable `FilterChain`.
 
 ```tsx
-import { ImageFilters } from '@motion-script/core';
+import { ImageFilters } from 'motion-script';
 
 <Image src="./photo.jpg" fit="fill" width={600} height={400}
   filters={ImageFilters.grayscale(1).blur(3).colorAdjustment({ brightness: 0.1 })}

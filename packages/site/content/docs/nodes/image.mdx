@@ -13,7 +13,7 @@ Renders an image file. Layout, padding, and child positioning are inherited from
 ## Usage
 
 ```tsx
-import { createScene, Image } from '@motion-script/core';
+import { createScene, Image } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -54,7 +54,7 @@ export default createScene(function* (stage) {
 Animate standard node props like `opacity`, `scale`, `cornerRadius`, or `x`/`y`. For image filters, animate inside a `tween`:
 
 ```tsx
-import { createScene, Image, ImageFilters, createRef, tween, lerpNumber, easeOut } from '@motion-script/core';
+import { createScene, Image, ImageFilters, createRef, tween, lerpNumber, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const photo = createRef<Image>();

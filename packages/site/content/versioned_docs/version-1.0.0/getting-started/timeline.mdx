@@ -14,7 +14,7 @@ In `1.0.0`, you could build an animation imperatively by pushing steps onto a
 `Timeline` and playing it back, instead of (or alongside) `yield*`.
 
 ```tsx
-import { makeScene, Rect, createRef, Timeline } from '@motion-script/core';
+import { makeScene, Rect, createRef, Timeline } from 'motion-script';
 
 export default makeScene(function* (view) {
   const box = createRef<Rect>();

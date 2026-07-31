@@ -25,7 +25,7 @@ In `1.0.0` every animation is a **Scene**, created with `makeScene` (renamed to
 `view` and use `yield*` to drive animations.
 
 ```tsx
-import { makeScene, Rect, createRef, waitFor } from '@motion-script/core';
+import { makeScene, Rect, createRef, waitFor } from 'motion-script';
 
 export default makeScene(function* (view) {
   const box = createRef<Rect>();

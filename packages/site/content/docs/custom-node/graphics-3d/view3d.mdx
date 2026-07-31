@@ -1,0 +1,145 @@
+---
+sidebar_position: 2
+---
+
+# View3D
+
+`View3D` is a `Rect` that appends a 3D scene to its own fill. Because it is a rect, it lays out in flex and stack groups, takes `cornerRadius` and `clip`, can be masked, blended and filtered, and holds 2D children as an overlay on top of the 3D.
+
+```tsx
+<View3D
+  width="fill"
+  height="fill"
+  cornerRadius={24}
+  graphics3D={() => new Graphics3D()
+    .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+    .ambient({ intensity: 0.4 })
+    .directional({ intensity: 2.4, position: [4, 6, 3] })
+    .box({ width: 2, color: 'tomato', roughness: 0.3 })}
+/>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `graphics3D` | `Graphics3D` | – | The scene to draw. A built value, never a builder callback |
+| `maxPixelRatio` | `number` | `2` | Ceiling on the 3D buffer's device-pixel ratio |
+| `antialias` | `boolean` | `true` | Multisample the 3D pass |
+
+It also takes every [`Rect`](/docs/nodes/rect) prop.
+
+`maxPixelRatio` is the knob for an expensive scene. Lower it and the 3D renders into a smaller buffer that is scaled up when composited, trading sharpness for fill rate.
+
+### Size defaults
+
+A 3D viewport has no natural size and should not be sized by its overlay children, since hugging a label would collapse the viewport to the size of the text. So `View3D` defaults to `width: 'fill'` and `height: 'fill'` whether or not it has children. Give it an explicit size when you want one.
+
+### `graphics3D` takes a value
+
+The prop holds a built `Graphics3D`, not a function that returns one. Writing `graphics3D={() => ...}` is an ordinary reactive binding, exactly like any other prop, and it re-evaluates when the signals it reads change.
+
+## Paint order
+
+The fill stack decides everything, with no special cases:
+
+1. Your own `fill` layers.
+2. The 3D scene.
+3. Children and `overlay`.
+4. `stroke`.
+
+So a `fill` paints beneath the 3D, and children paint over it as a heads-up display:
+
+```tsx
+<View3D width={1200} height={700} fill="#8b1e3f" cornerRadius={48} graphics3D={scene}>
+  <Rect group="column" gap={8} padding={32} align="topLeft">
+    <Text text="Turntable" fontSize={48} fill="white" />
+    <Text text="45 rpm" fontSize={28} fill="white/60" />
+  </Rect>
+</View3D>
+```
+
+The red fill shows through wherever the 3D render is transparent, which by default is everywhere no geometry covers.
+
+`cornerRadius` and `cornerStyle` confine the 3D, because it is painted through the rect's own path.
+
+## 3D through other shapes
+
+`View3D` is convenience. The primitive is the fill, so any shape can carry a 3D scene:
+
+```tsx
+import { Ellipse, Path, Text, Fills, Graphics3D } from 'motion-script';
+
+function scene(color: string): Graphics3D {
+  return new Graphics3D()
+    .perspective({ position: [0, 1.6, 5], lookAt: 0, fov: 45 })
+    .ambient({ intensity: 0.45 })
+    .directional({ intensity: 2.6, position: [4, 6, 3] })
+    .torusKnot({ radius: 1.1, tube: 0.36, color, roughness: 0.25, metalness: 0.4 });
+}
+
+// The ellipse's own path is the clip, so there is no rectangular bleed.
+<Ellipse width={420} height={420} fill={() => scene('#e0533d')} />
+
+// An arbitrary path works the same way.
+<Path
+  width={420}
+  height={420}
+  data="M50,88 C-20,45 8,2 50,26 C92,2 120,45 50,88 Z"
+  fill={() => Fills.view3D(scene('#4ea1ff'))}
+/>
+
+// Text has no single path, so it draws per glyph and carries the scene across the run.
+<Text text="DEPTH" fontSize={260} fill={() => scene('#3ddc84')} />
+```
+
+## Stacking two scenes
+
+A fill array can hold more than one 3D layer:
+
+```tsx
+<Rect
+  width={720}
+  height={720}
+  cornerRadius={32}
+  fill={() => [
+    '#0b0d12',
+    Fills.view3D(knot('#e0533d', -0.7)),
+    Fills.view3D(knot('#4ea1ff', 0.7), { opacity: 0.55 }),
+  ]}
+/>
+```
+
+Each layer keeps its own scene graph and GPU buffers, so the two render independently.
+
+## Reusable 3D components
+
+Subclass `View3D` and override `buildGraphics3D()`. It runs inside the render pass on every frame, so every signal read there samples the current frame.
+
+```tsx
+import { View3D, Graphics3D, createSignal } from 'motion-script';
+
+class Turntable extends View3D {
+  readonly angle = createSignal(0);
+
+  protected override buildGraphics3D(): Graphics3D {
+    const a = (this.angle() * Math.PI) / 180;
+    return new Graphics3D()
+      .perspective({ position: [Math.cos(a) * 6, 2, Math.sin(a) * 6], lookAt: 0, fov: 45 })
+      .ambient({ intensity: 0.4 })
+      .directional({ intensity: 2.4, position: [4, 6, 3] })
+      .torus({ radius: 1.5, tube: 0.4, color: 'tomato' });
+  }
+}
+```
+
+Add `@property` fields for anything a scene should animate with `.to()`, exactly as for any other custom node. See [Properties](../properties).
+
+## Cost
+
+The 3D pass renders into its own buffer and is composited into the 2D frame. It is not free, so the usual levers are:
+
+* Lower `maxPixelRatio` on large viewports.
+* Turn `antialias` off when the scene has no long straight edges.
+* Prefer `.instances()` over many separate meshes. See [Objects](./objects#instances).
+* Avoid tweening geometry parameters. See [Animating](./animating#what-is-cheap-to-change).

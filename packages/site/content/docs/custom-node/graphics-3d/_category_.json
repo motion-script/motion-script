@@ -1,0 +1,8 @@
+{
+  "label": "3D Graphics",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Meshes, materials, lights and cameras, described as plain data with Graphics3D and painted into a 2D scene."
+  }
+}

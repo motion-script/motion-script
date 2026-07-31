@@ -21,8 +21,8 @@ npm install @motion-script/code
 ## Basic usage
 
 ```tsx
-import { createScene, createRef } from '@motion-script/core';
-import { Code, lines, word } from '@motion-script/code';
+import { createScene, createRef } from 'motion-script';
+import { Code, lines, word } from 'motion-script';
 
 export default createScene(function* (stage) {
   const ref = createRef<Code>();
@@ -94,7 +94,7 @@ yield* ref().remove(lines(2), 0.4);
 Import range helpers from `@motion-script/code`:
 
 ```tsx
-import { lines, word } from '@motion-script/code';
+import { lines, word } from 'motion-script';
 
 // Select line 2 (1-indexed)
 lines(2)
@@ -109,8 +109,8 @@ word(3, 10, 9)
 ## Full example
 
 ```tsx
-import { createScene, createRef, wait, parallel, easeOut } from '@motion-script/core';
-import { Code, lines, word } from '@motion-script/code';
+import { createScene, createRef, wait, parallel, easeOut } from 'motion-script';
+import { Code, lines, word } from 'motion-script';
 
 export default createScene(function* (stage) {
   const ref = createRef<Code>();

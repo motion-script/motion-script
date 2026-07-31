@@ -1,0 +1,8 @@
+{
+  "label": "Graphics",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "The 2D drawing API. Record shapes, paint, cuts, masks, transforms and effects into one list and draw them as a single figure."
+  }
+}

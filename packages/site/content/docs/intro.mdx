@@ -47,7 +47,7 @@ pnpm create @motion-script@latest
 Every animation is a **Scene**, created by passing a generator function to `createScene` and exporting it as the file's default. Inside that function you add nodes to the `stage` and use `yield*` to drive animations frame by frame.
 
 ```tsx
-import { createScene, Rect, createRef, wait } from '@motion-script/core';
+import { createScene, Rect, createRef, wait } from 'motion-script';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();

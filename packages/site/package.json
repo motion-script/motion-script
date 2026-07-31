@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build:player": "pnpm --filter @motion-script/player build:app",
+    "build:player": "node scripts/build-player.mjs",
     "build:search": "node --import ./scripts/ts-resolve.mjs lib/build-search-index.ts",
     "predev": "pnpm build:player && pnpm build:search",
     "dev": "next dev",

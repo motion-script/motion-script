@@ -13,7 +13,7 @@ A star polygon. Alternates outer and inner vertices to form a star shape. Lower 
 ## Usage
 
 ```tsx
-import { createScene, Polygram } from '@motion-script/core';
+import { createScene, Polygram } from 'motion-script';
 
 export default createScene(function* (stage) {
   // Classic 5-pointed star
@@ -47,7 +47,7 @@ export default createScene(function* (stage) {
 All props animate with `.to()`. Animate `ratio` to collapse points in or out, or `sides` to morph between star shapes:
 
 ```tsx
-import { createScene, Polygram, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Polygram, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const star = createRef<Polygram>();

@@ -196,7 +196,7 @@ export function getApiContent(slug: string[]): ApiPageContent | null {
   ]
   for (const filePath of candidates) {
     try {
-      const src = fs.readFileSync(filePath, "utf8")
+      const src = fs.readFileSync(filePath, "utf8").replace(/\r\n?/g, "\n")
       const titleMatch = src.match(/^#\s+(.+)$/m)
       const title = titleMatch ? titleMatch[1].replace(/\\</g, "<").replace(/\\>/g, ">") : docSlug[docSlug.length - 1]
       return { content: src, title }

@@ -13,7 +13,7 @@ Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-wri
 ## Usage
 
 ```tsx
-import { createScene, Path } from '@motion-script/core';
+import { createScene, Path } from 'motion-script';
 
 export default createScene(function* (stage) {
   // Triangle from an SVG d string
@@ -65,7 +65,7 @@ type PathCommand =
 Animate `start`/`end` to draw on or erase the path:
 
 ```tsx
-import { createScene, Path, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Path, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const shape = createRef<Path>();

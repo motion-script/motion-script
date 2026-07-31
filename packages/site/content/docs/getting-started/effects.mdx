@@ -13,7 +13,7 @@ Our card is laid out nicely. Now let's make it pop. **Effects** are visual filte
 The simplest effect is a blur. Reach for the `Effects` builder and pass it to a node.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, Text, Effects } from '@motion-script/core';
+import { createScene, Rect, Text, Effects } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
@@ -39,7 +39,7 @@ That blurs the whole card, square, text, and all. Because the effect is on the c
 Effects shine when you animate them. A classic move is to start blurry and snap into focus. Animate the blur with `.to()` like any other property.
 
 ```tsx title="src/scenes/my-scene.ts"
-import { createScene, Rect, Text, createRef, Effects, easeOut } from '@motion-script/core';
+import { createScene, Rect, Text, createRef, Effects, easeOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const card = createRef<Rect>();

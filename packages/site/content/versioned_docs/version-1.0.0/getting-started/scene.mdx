@@ -8,7 +8,7 @@ A scene is a generator function passed to `makeScene`. In `1.0.0` the function
 receives a `view` — the root container every node is added to.
 
 ```tsx
-import { makeScene, Circle, createRef } from '@motion-script/core';
+import { makeScene, Circle, createRef } from 'motion-script';
 
 export default makeScene(function* (view) {
   const dot = createRef<Circle>();

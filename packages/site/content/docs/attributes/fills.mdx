@@ -188,7 +188,7 @@ Tween `seed` in whole steps to make the static crawl.
 
 **Animating:** tween `offset` to travel *through* the field (it flows); tween `seed` to shift to a different field entirely (it churns). `basis` and `octaves` snap rather than interpolating, because both are baked into the compiled shader.
 
-It composes with the effect layer rather than duplicating it — [duotone](../effects/duotone) over it is marble, [threshold](../effects/threshold) over it is an organic matte, [posterize](../effects/posterize) over it is topographic banding, and [displace](../effects/displace) is water.
+It composes with the effect layer rather than duplicating it — [duotone](../effects/implementations/duotone) over it is marble, [threshold](../effects/implementations/threshold) over it is an organic matte, [posterize](../effects/implementations/posterize) over it is topographic banding, and [displace](../effects/implementations/displace) is water.
 
 ---
 
@@ -213,7 +213,7 @@ It composes with the effect layer rather than duplicating it — [duotone](../ef
 Fill colors and gradient stops are all animatable with `.to()`:
 
 ```tsx
-import { createScene, Rect, createRef, easeInOut } from '@motion-script/core';
+import { createScene, Rect, createRef, easeInOut } from 'motion-script';
 
 export default createScene(function* (stage) {
   const box = createRef<Rect>();

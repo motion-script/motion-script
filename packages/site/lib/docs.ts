@@ -34,10 +34,20 @@ export interface SidebarDoc {
 
 export type SidebarItem = SidebarCategory | SidebarDoc
 
+// Every content read goes through here so the rest of the module only ever sees
+// `\n`. Content files are authored on both Windows and macOS/Linux, so roughly
+// three quarters of them are checked out with CRLF endings — and markdown
+// parsing that splits on "\n" then anchors with `$` (extractTocEntries) silently
+// matches nothing when a stray `\r` sits at the end of every line. That is what
+// left most pages with an empty "On this page" panel and no heading entries in
+// the search index.
+function readSource(filePath: string): string {
+  return fs.readFileSync(filePath, "utf8").replace(/\r\n?/g, "\n")
+}
+
 function readFrontmatter(filePath: string): { title?: string; sidebar_position?: number } {
   try {
-    const src = fs.readFileSync(filePath, "utf8")
-    const { data } = matter(src)
+    const { data } = matter(readSource(filePath))
     return data
   } catch {
     return {}
@@ -46,7 +56,7 @@ function readFrontmatter(filePath: string): { title?: string; sidebar_position?:
 
 function getTitleFromFile(filePath: string): string {
   try {
-    const src = fs.readFileSync(filePath, "utf8")
+    const src = readSource(filePath)
     // Try frontmatter title first
     const { data, content } = matter(src)
     if (data.title) return data.title
@@ -215,13 +225,26 @@ function slugify(text: string): string {
     .replace(/[\s_]+/g, '-')
 }
 
+// The heading as a reader sees it. rehype-slug builds the anchor from the
+// *rendered* text, so `## \`Geo.buffer\`` becomes "Geo.buffer" on the page —
+// leaving the markers in would show raw backticks and asterisks in the contents
+// panel and in search results.
+function stripInlineMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // links keep only their label
+    .replace(/[`*_]/g, "")
+    .trim()
+}
+
 export function extractTocEntries(markdown: string): TocEntry[] {
   const entries: TocEntry[] = []
-  for (const line of markdown.split('\n')) {
-    const m2 = line.match(/^##\s+(.+)$/)
-    const m3 = line.match(/^###\s+(.+)$/)
-    if (m2) entries.push({ id: slugify(m2[1].trim()), text: m2[1].trim(), depth: 2 })
-    else if (m3) entries.push({ id: slugify(m3[1].trim()), text: m3[1].trim(), depth: 3 })
+  // Split on either ending: readSource already normalises the docs, but this is
+  // also handed raw typedoc output by the API pages and the search indexer.
+  for (const line of markdown.split(/\r\n?|\n/)) {
+    const match = line.match(/^(##|###)\s+(.+)$/)
+    if (!match) continue
+    const text = stripInlineMarkdown(match[2])
+    entries.push({ id: slugify(text), text, depth: match[1] === "##" ? 2 : 3 })
   }
   return entries
 }
@@ -284,8 +307,7 @@ export function getDocContent(slug: string[]): { content: string; meta: DocMeta 
   if (docSlug.length === 0) return null
   const filePath = docFilePath(version, docSlug)
   try {
-    const src = fs.readFileSync(filePath, "utf8")
-    const { data, content } = matter(src)
+    const { data, content } = matter(readSource(filePath))
     const title = data.title ?? content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? docSlug[docSlug.length - 1]
     return {
       content,
