@@ -74,10 +74,16 @@ jobs:
         with:
           version: pnpm version-packages
           publish: pnpm release
-          # All packages are version-locked (see .changeset/config.json `linked`),
-          # so `changeset publish` emits 10 per-package tags and the action would
-          # otherwise create 10 near-identical GitHub Releases. Disable that and
-          # cut a single consolidated `v<version>` release in the next step.
+          # All packages are version-locked (see .changeset/config.json `fixed`),
+          # so `changeset publish` emits one tag per published package and the
+          # action would otherwise create that many near-identical GitHub
+          # Releases. Disable that and cut a single consolidated `v<version>`
+          # release in the next step.
+          #
+          # Only the 12 public packages are published or tagged: `changeset
+          # publish` filters on `!packageJson.private`, and `privatePackages`
+          # defaults to `{ version: true, tag: false }`. So `site`, `e2e` and
+          # `template` ride the same version number without reaching npm.
           createGithubReleases: false
           commit: "ci: release packages"
           title: "ci: release packages"
