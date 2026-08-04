@@ -1,8 +1,13 @@
 import { useState } from "react";
+import { Gauge } from "lucide-react";
 import { useEditorStore } from "@/providers/editor-provider";
 import { ErrorsDialog } from "../errors/errors-dialog";
 import type { BuildError } from "@/stores/editor-store";
 import { Logo } from "../theme/logo";
+
+// Shared by every row of the panel's footer (docs, issues, simple player) so
+// they stay one visual block.
+const FOOTER_ITEM = "flex items-center gap-2 px-3 py-2 border-t shrink-0 text-xs font-medium text-muted-foreground bg-muted/30 hover:bg-muted/50 hover:text-foreground transition-colors";
 
 // `onSceneSelect` lets a host (e.g. the mobile drawer) react after a scene tile
 // is clicked — used to close the drawer once the user picks a scene.
@@ -13,6 +18,7 @@ export function ScenePanel({ onSceneSelect }: { onSceneSelect?: () => void } = {
     const setCurrentFrame = useEditorStore(s => s.setCurrentFrame);
     const setIsPlaying = useEditorStore(s => s.setIsPlaying);
     const buildErrors = useEditorStore(s => s.buildErrors);
+    const setSimplePlayer = useEditorStore(s => s.setSimplePlayer);
 
     const [dialogErrors, setDialogErrors] = useState<BuildError[] | null>(null);
 
@@ -104,9 +110,9 @@ export function ScenePanel({ onSceneSelect }: { onSceneSelect?: () => void } = {
                     href="https://motionscript.dev/docs/intro"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-3 border-t shrink-0 text-sm font-medium text-muted-foreground bg-muted/30 hover:bg-muted/50 hover:text-foreground transition-colors"
+                    className={FOOTER_ITEM}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4 shrink-0">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                     </svg>
                     <span className="hover:underline">Documentation</span>
@@ -116,13 +122,23 @@ export function ScenePanel({ onSceneSelect }: { onSceneSelect?: () => void } = {
                     href="https://github.com/motion-script/motion-script/issues"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-3 border-t shrink-0 text-sm font-medium text-muted-foreground bg-muted/30 hover:bg-muted/50 hover:text-foreground transition-colors"
+                    className={FOOTER_ITEM}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4 shrink-0">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                     </svg>
                     <span className="hover:underline">Report New Issue</span>
                 </a>
+
+                <button
+                    type="button"
+                    onClick={() => setSimplePlayer(true)}
+                    title="Preview with a minimal transport — no timeline, node tree or rulers. If playback only stutters outside it, the cost is the editor UI rather than the render."
+                    className={`${FOOTER_ITEM} text-left cursor-pointer`}
+                >
+                    <Gauge className="size-4 shrink-0" strokeWidth={1.5} />
+                    <span className="hover:underline">Simple Player</span>
+                </button>
 
             </div>
 

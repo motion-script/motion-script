@@ -6,6 +6,7 @@ import { TimelineRuler } from "@/components/timeline/timeline";
 import { VideoPreview } from "./video-preview";
 import { PlaybackControls } from "./playback-controls";
 import { ScenePanel } from "./scene-panel";
+import { SimpleControls } from "./simple-controls";
 import { useExport } from "../export/use-export";
 import { ExportDialog } from "../export/export-dialog";
 import { ExportButton } from "../export/export-button";
@@ -33,6 +34,8 @@ export function EditorLayout() {
     const playerLayout = useEditorStore(s => s.playerLayout);
     const isFullscreen = useEditorStore(s => s.isFullscreen);
     const setIsFullscreen = useEditorStore(s => s.setIsFullscreen);
+    const simplePlayer = useEditorStore(s => s.simplePlayer);
+    const setSimplePlayer = useEditorStore(s => s.setSimplePlayer);
 
     const frameRef = useRef<FrameHandle>(null);
     const fullscreenContainerRef = useRef<HTMLDivElement | null>(null);
@@ -149,12 +152,12 @@ export function EditorLayout() {
                     </div>
                 ) : (
                     <div className="flex flex-1 min-h-0">
-                        {!isMobile && (
+                        {!isMobile && !simplePlayer && (
                             <div className="w-64 shrink-0  rounded-lg m-1 mr-0  bg-panel  flex flex-col min-h-0">
                                 <ScenePanel />
                             </div>
                         )}
-                        {isMobile && (
+                        {isMobile && !simplePlayer && (
                             <Drawer open={sceneDrawerOpen} onOpenChange={setSceneDrawerOpen}>
                                 <DrawerContent side="left" showCloseButton={false} className="p-0">
                                     <ScenePanel onSceneSelect={() => setSceneDrawerOpen(false)} />
@@ -163,7 +166,7 @@ export function EditorLayout() {
                         )}
                         <main className="flex-1 flex flex-col min-w-0 px-1">
                             {(() => {
-                                const isRow = playerLayout === "row";
+                                const isRow = playerLayout === "row" && !simplePlayer;
 
                                 // The preview block: header, the video preview, and the
                                 // transport. The transport always sits directly below the
@@ -171,9 +174,9 @@ export function EditorLayout() {
                                 const previewBlock = (
                                     <div className="flex flex-col h-full min-h-0 min-w-0">
                                         {/* Top bar */}
-                                        <header className="grid grid-cols-3 items-center h-11 px-4 border-b mt-1 rounded-t-lg bg-panel shrink-0">
+                                        <header className={`items-center h-11 px-4 border-b mt-1 rounded-t-lg bg-panel shrink-0 ${simplePlayer ? "flex justify-between gap-2" : "grid grid-cols-3"}`}>
                                             <div className="flex items-center gap-2 min-w-0">
-                                                {isMobile && (
+                                                {isMobile && !simplePlayer && (
                                                     <Button
                                                         variant="ghost"
                                                         size="icon-sm"
@@ -186,23 +189,33 @@ export function EditorLayout() {
                                                 )}
                                                 <span className="text-sm font-medium text-muted-foreground truncate">{projectName}</span>
                                             </div>
-                                            <div className="flex items-center justify-center">
-                                                <PreviewZoomControls />
-                                            </div>
-                                            <div className="flex items-center justify-end gap-2">
-                                                <ErrorsButton />
-                                                <ExportButton exportState={exportState} onOpenDialog={openExportDialog} />
-                                            </div>
+                                            {simplePlayer ? (
+                                                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setSimplePlayer(false)}>
+                                                    Exit Simple Player
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center justify-center">
+                                                        <PreviewZoomControls />
+                                                    </div>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <ErrorsButton />
+                                                        <ExportButton exportState={exportState} onOpenDialog={openExportDialog} />
+                                                    </div>
+                                                </>
+                                            )}
                                         </header>
                                         <div className="flex-1 flex flex-col min-h-0 min-w-0" ref={setVideoSlot} />
                                         {/* In column mode the transport lives inside the
                                             timeline toolbar; in row mode it sits here under
-                                            the preview (the toolbar is a narrow left column). */}
-                                        {isRow && <PlaybackControls />}
+                                            the preview (the toolbar is a narrow left column).
+                                            Simple mode has no toolbar at all, so it carries
+                                            its own stripped-down transport. */}
+                                        {simplePlayer ? <SimpleControls /> : isRow && <PlaybackControls />}
                                     </div>
                                 );
 
-                                const timelinePane = (
+                                const timelinePane = simplePlayer ? null : (
                                     <div className={isRow ? "h-full min-h-0 min-w-0" : "h-full min-h-0 min-w-0 pb-1"}>
                                         <TimelineRuler />
                                     </div>
@@ -213,15 +226,26 @@ export function EditorLayout() {
                                 //            side-by-side timeline takes the majority.
                                 //   column → two rows [preview 2fr / timeline 1fr]:
                                 //            stacked preview takes the majority.
-                                return isRow ? (
-                                    <div className="grid grid-cols-[2fr_1fr] gap-1 flex-1 min-h-0">
-                                        {timelinePane}
+                                //   simple → the preview alone, filling the pane.
+                                //
+                                // One element with the timeline on either side of the preview
+                                // rather than a branch per layout, so `previewBlock` keeps the
+                                // same child index in all three. React reconciles children by
+                                // position: were it to move, the slot div below it would be a
+                                // new DOM node, the portal's container would change, and the
+                                // mounted player — CanvasKit surface, decoded assets, measured
+                                // scenes — would be torn down and rebuilt on every toggle.
+                                return (
+                                    <div className={
+                                        simplePlayer
+                                            ? "flex flex-col flex-1 min-h-0 pb-1"
+                                            : isRow
+                                                ? "grid grid-cols-[2fr_1fr] gap-1 flex-1 min-h-0"
+                                                : "grid grid-rows-[2fr_1fr] gap-1 flex-1 min-h-0"
+                                    }>
+                                        {isRow ? timelinePane : null}
                                         {previewBlock}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-rows-[2fr_1fr] gap-1 flex-1 min-h-0">
-                                        {previewBlock}
-                                        {timelinePane}
+                                        {isRow ? null : timelinePane}
                                     </div>
                                 );
                             })()}

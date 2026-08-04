@@ -71,6 +71,7 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const showShimmer = useDelayedFlag(isSeeking && !isPlaying);
     const setRootNode = useEditorStore(s => s.setRootNode);
     const setBuildErrors = useEditorStore(s => s.setBuildErrors);
+    const simplePlayer = useEditorStore(s => s.simplePlayer);
     const snapshotRequested = useEditorStore(s => s.snapshotRequested);
     const completeSnapshot = useEditorStore(s => s.completeSnapshot);
     const registerHotReplace = useEditorStore(s => s.registerHotReplace);
@@ -88,13 +89,19 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
     const isScrubbingRef = useRef(isScrubbing);
     useEffect(() => { isScrubbingRef.current = isScrubbing; }, [isScrubbing]);
 
+    // Same reason: simple mode is read through a ref so entering or leaving it
+    // doesn't hand MotionPlayer a fresh set of callbacks.
+    const simplePlayerRef = useRef(simplePlayer);
+    useEffect(() => { simplePlayerRef.current = simplePlayer; }, [simplePlayer]);
+
     const handleLoadingChange = useCallback((loading: boolean) => {
         setIsSeeking(loading);
         if (!loading && frameRef.current) {
             // getTreeState walks the whole node tree and its result re-renders the
             // timeline's node list. Skip it mid-drag (the flush on drag end below
-            // catches up); durations are cheap and needed on first load.
-            if (!isScrubbingRef.current) setRootNode(frameRef.current.getTreeState());
+            // catches up) and in simple mode, where nothing consumes it; durations
+            // are cheap and needed on first load.
+            if (!isScrubbingRef.current && !simplePlayerRef.current) setRootNode(frameRef.current.getTreeState());
             setDuration(frameRef.current.getDuration());
             setSceneDurations(frameRef.current.getSceneDurations());
             // Beds are bounded by the measured duration, so they're re-read
@@ -121,7 +128,9 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
 
     const handleFrameChange = useCallback((frame: number) => {
         setCurrentFrame(frame);
-        if (!isScrubbingRef.current && frameRef.current) setRootNode(frameRef.current.getTreeState());
+        // The per-frame tree walk — the single biggest slice of the editor's
+        // playback overhead, and the first thing simple mode drops.
+        if (!isScrubbingRef.current && !simplePlayerRef.current && frameRef.current) setRootNode(frameRef.current.getTreeState());
 
         const duration = frameRef.current?.getDuration() ?? 0;
         const totalFrames = Math.round(duration * fps);
@@ -161,6 +170,14 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
         }
         prevScrubbingRef.current = isScrubbing;
     }, [isScrubbing, frameRef, setRootNode]);
+
+    // Leaving simple mode catches up the same way a drag does: the tree wasn't
+    // walked while it was on, so the timeline would otherwise show whatever
+    // frame was current when it was entered.
+    useEffect(() => {
+        if (simplePlayer || !frameRef.current) return;
+        setRootNode(frameRef.current.getTreeState());
+    }, [simplePlayer, frameRef, setRootNode]);
 
     useEffect(() => {
         if (!snapshotRequested || !frameRef.current) return;
@@ -346,10 +363,12 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
         return ticks;
     };
 
-    const horizontalTicks = buildTicks(containerSize.w, previewPan.x)
+    // Both ruler axes are rebuilt on every render, and this component re-renders
+    // on every frame — so simple mode skips the work rather than just hiding it.
+    const horizontalTicks = simplePlayer ? [] : buildTicks(containerSize.w, previewPan.x)
         .filter(t => t.pos >= 16 && t.pos <= containerSize.w - 4);
 
-    const verticalTicks = buildTicks(containerSize.h, previewPan.y)
+    const verticalTicks = simplePlayer ? [] : buildTicks(containerSize.h, previewPan.y)
         .filter(t => t.pos >= 16 && t.pos <= containerSize.h - 4);
 
     return (
@@ -360,10 +379,12 @@ export function VideoPreview({ frameRef }: { frameRef: React.RefObject<FrameHand
                 style={{
                     containerType: 'size',
                     cursor: isDragging ? 'grabbing' : 'default',
-                    backgroundImage:
-                        'linear-gradient(to right, color-mix(in oklch, var(--timeline-grid-line) 15%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklch, var(--timeline-grid-line) 15%, transparent) 1px, transparent 1px)',
-                    backgroundSize: `${35 * previewZoom}px ${35 * previewZoom}px`,
-                    backgroundPosition: `calc(50% + ${previewPan.x}px) calc(50% + ${previewPan.y}px)`,
+                    ...(simplePlayer ? {} : {
+                        backgroundImage:
+                            'linear-gradient(to right, color-mix(in oklch, var(--timeline-grid-line) 15%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklch, var(--timeline-grid-line) 15%, transparent) 1px, transparent 1px)',
+                        backgroundSize: `${35 * previewZoom}px ${35 * previewZoom}px`,
+                        backgroundPosition: `calc(50% + ${previewPan.x}px) calc(50% + ${previewPan.y}px)`,
+                    }),
                 }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
