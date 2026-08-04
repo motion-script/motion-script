@@ -21,6 +21,8 @@ export type UseExportReturn = {
     setExportIndividually: (v: boolean) => void;
     exportScale: number;
     setExportScale: (v: number) => void;
+    includeAudio: boolean;
+    setIncludeAudio: (v: boolean) => void;
     startExport: () => Promise<void>;
     cancelExport: () => void;
     resetExport: () => void;
@@ -32,6 +34,17 @@ function buildFilename(projectName: string): string {
     const time = now.toTimeString().slice(0, 8).replace(/:/g, "-"); // HH-MM-SS
     const slug = projectName.trim().replace(/\s+/g, "_") || "export";
     return `${slug}_${date}_${time}.mp4`;
+}
+
+/**
+ * Strip only the characters that are illegal in a filename across platforms
+ * (path separators and the Windows-reserved set), preserving case and spaces so
+ * the file is named exactly after the scene. Mirrors the CLI's `sanitizeFilename`,
+ * which already names `ms export --split` output this way.
+ */
+function sceneFilename(name: string): string {
+    const cleaned = name.replace(/[/\\:*?"<>|]/g, "").replace(/[. ]+$/, "").trim();
+    return `${cleaned || "scene"}.mp4`;
 }
 
 export function useExport(): UseExportReturn {
@@ -50,6 +63,7 @@ export function useExport(): UseExportReturn {
     const [selectedScenes, setSelectedScenes] = useState<Scene[]>([]);
     const [exportIndividually, setExportIndividually] = useState(false);
     const [exportScale, setExportScale] = useState(1);
+    const [includeAudio, setIncludeAudio] = useState(true);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -90,13 +104,15 @@ export function useExport(): UseExportReturn {
                         viewport,
                         fps,
                         scale: exportScale,
-                        filename: scenesToExport.length > 1
-                            ? filename.replace(".mp4", `_${i + 1}.mp4`)
-                            : filename,
+                        // One file per scene, so the scene names it — a folder of
+                        // `Project_2026-08-04_11-20-06_3.mp4` says nothing about
+                        // which clip is which. Matches `ms export --split`.
+                        filename: sceneFilename(scenesToExport[i].name),
                         manifest: assets,
                         audioTracks,
                         overlays,
                         backgrounds,
+                        includeAudio,
                         signal: controller.signal,
                         onProgress: (p) => {
                             setSceneProgresses(prev => prev.map((sp, idx) =>
@@ -120,6 +136,7 @@ export function useExport(): UseExportReturn {
                     audioTracks,
                     overlays,
                     backgrounds,
+                    includeAudio,
                     signal: controller.signal,
                     onProgress: (p) => {
                         setTotalProgress(p);
@@ -143,7 +160,7 @@ export function useExport(): UseExportReturn {
                 setStatus("idle");
             }
         }
-    }, [status, selectedScenes, exportIndividually, exportScale, viewport, fps, assets, projectName, audioTracks, overlays, backgrounds]);
+    }, [status, selectedScenes, exportIndividually, exportScale, includeAudio, viewport, fps, assets, projectName, audioTracks, overlays, backgrounds]);
 
     return {
         status,
@@ -155,6 +172,8 @@ export function useExport(): UseExportReturn {
         setExportIndividually,
         exportScale,
         setExportScale,
+        includeAudio,
+        setIncludeAudio,
         startExport,
         cancelExport,
         resetExport,

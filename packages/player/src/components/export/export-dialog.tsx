@@ -112,6 +112,8 @@ export function ExportDialog({ open, onOpenChange, exportState }: ExportDialogPr
         setExportIndividually,
         exportScale,
         setExportScale,
+        includeAudio,
+        setIncludeAudio,
         startExport,
         cancelExport,
         resetExport,
@@ -151,19 +153,36 @@ export function ExportDialog({ open, onOpenChange, exportState }: ExportDialogPr
                         {/* Settings above table */}
                         <div className="px-4 pb-3 flex flex-col gap-3 border-b">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                    <Checkbox
-                                        id="export-individually"
-                                        checked={exportIndividually}
-                                        onCheckedChange={(v) => setExportIndividually(!!v)}
-                                        disabled={isExporting}
-                                    />
-                                    <label
-                                        htmlFor="export-individually"
-                                        className="text-xs text-muted-foreground cursor-pointer select-none"
-                                    >
-                                        Export individually
-                                    </label>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="export-individually"
+                                            checked={exportIndividually}
+                                            onCheckedChange={(v) => setExportIndividually(!!v)}
+                                            disabled={isExporting}
+                                        />
+                                        <label
+                                            htmlFor="export-individually"
+                                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                                        >
+                                            Export individually
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="export-include-audio"
+                                            checked={includeAudio}
+                                            onCheckedChange={(v) => setIncludeAudio(!!v)}
+                                            disabled={isExporting}
+                                        />
+                                        <label
+                                            htmlFor="export-include-audio"
+                                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                                            title="Uncheck to render a silent file — no audio track is written at all."
+                                        >
+                                            Include audio
+                                        </label>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-muted-foreground">Scale</span>

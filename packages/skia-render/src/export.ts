@@ -225,6 +225,15 @@ export interface RenderTimelineParams<TAudio> extends CommonParams {
     audioTracks?: AudioTrack[];
     sink: VideoFrameSink<TAudio>;
     mixer?: AudioMixer<TAudio>;
+    /**
+     * Set false to render a silent file: no mix, and no audio track declared on
+     * the container at all.
+     *
+     * Distinct from muting. The scenes' audio is still *precomped* — a sound is
+     * scheduled by the same generator that drives the visuals, so skipping that
+     * would change the frames — it simply is not encoded.
+     */
+    includeAudio?: boolean;
     onProgress?: (progress: number) => void;
     signal?: AbortSignal;
 }
@@ -239,7 +248,7 @@ export interface RenderTimelineParams<TAudio> extends CommonParams {
 export async function renderTimeline<TAudio>(
     params: RenderTimelineParams<TAudio>,
 ): Promise<Uint8Array | void> {
-    const { fps, scale = 1, viewport, sink, mixer, onProgress, signal, audioTracks } = params;
+    const { fps, scale = 1, viewport, sink, mixer, onProgress, signal, audioTracks, includeAudio = true } = params;
     const harness: RenderHarness = params;
     const { renderContext, storageAdapter } = harness;
 
@@ -254,7 +263,7 @@ export async function renderTimeline<TAudio>(
     const { totalFrames, totalDuration } = precomp;
     const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
     const scheduled = collectAudio(precomp, fps);
-    const wantsAudio = scheduled.length > 0 && mixer !== undefined;
+    const wantsAudio = includeAudio && scheduled.length > 0 && mixer !== undefined;
 
     await sink.start({
         width: viewport.width * scale,

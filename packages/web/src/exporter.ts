@@ -38,6 +38,11 @@ export type ExportParams = {
     overlays?: GlobalLayerConfig[];
     /** Project-level nodes drawn under every exported scene (`ProjectConfig.backgrounds`). */
     backgrounds?: GlobalLayerConfig[];
+    /**
+     * Set false to produce a silent MP4 — no AAC track is added to the
+     * container and the mix is skipped entirely. Defaults to true.
+     */
+    includeAudio?: boolean;
     onProgress?: ExportProgressCallback;
     signal?: AbortSignal;
     wasmUrl?: string;
@@ -146,6 +151,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
         audioTracks,
         overlays,
         backgrounds,
+        includeAudio = true,
         onProgress,
         signal,
         wasmUrl,
@@ -171,6 +177,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     try {
         bytes = await renderTimeline<AudioBuffer>({
             scenes, viewport, fps, scale, manifest, audioTracks, overlays, backgrounds,
+            includeAudio,
             renderContext, storageAdapter, assetCatalog,
             sink: new MediabunnyVideoSink(offscreenCanvas),
             mixer: new WebAudioMixer(),
