@@ -1,4 +1,4 @@
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { SizeInput } from "@/attributes/layout/size";
 import { lerpNumber } from "@/tween/lerp";
 
@@ -9,7 +9,7 @@ export function lerpSizeInput(from: SizeInput, to: SizeInput, t: number): SizeIn
     return t === 1 ? to : from;
 }
 
-export function lerpEdgeInset(from: PaddingResolved, to: PaddingResolved, t: number): PaddingResolved {
+export function lerpInsets(from: InsetsResolved, to: InsetsResolved, t: number): InsetsResolved {
     return {
         left: lerpNumber(from.left, to.left, t),
         right: lerpNumber(from.right, to.right, t),

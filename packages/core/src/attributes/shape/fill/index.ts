@@ -7,14 +7,14 @@ export type { NormalizedColor, Color } from './color/parser';
 export type { FillProp, FillResolved, FillSpace, FillCommon } from './union';
 
 export { Fills, FillChain, resolveChainFill } from './chain';
-export type { Fill, FillOptions, VideoFillOptions } from './chain';
+export type { Fill, FillOptions, VideoFillOptions, MediaPlacementOptions } from './chain';
 
 export type { FillData } from './registry';
 export { resolveFill, resolveFillArray, lerpFill, lerpFillArray, canLerpFill, prepareFill } from './registry';
 
 export type { SolidFillProp, SolidFillResolved } from './implementations/color';
 export type { ConicGradientFillProp, ConicGradientFillResolved } from './implementations/conic-gradient';
-export type { ImageFit as ImageFillMode, ImageTransform, ImageFillProp, ImageFillResolved } from './implementations/image';
+export type { ImageFit, ImageCrop, ImageMatrix, ImageFillProp, ImageFillResolved } from './implementations/image';
 export type { LinearGradientFillProp, LinearGradientFillResolved } from './implementations/linear-gradient';
 export type { NoiseFillProp, NoiseFillResolved } from './implementations/noise';
 export type { FractalNoiseFillProp, FractalNoiseFillResolved, FractalNoiseBasis } from './implementations/fractal-noise';

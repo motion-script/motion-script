@@ -1,23 +1,23 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
     FillSpace, FillResolved, property,
-    Alignment,
-    resolvePivot,
+    Anchor,
+    resolveAnchor,
     lerpVector2,
 
 } from "motion-script";
 
 
 export interface TextDrawShapeProps extends ShapeProps {
-    textAlignment: Alignment;
+    textAlignment: Anchor;
 
 }
 
 
 export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
 
-    @property({ default: { x: 0, y: 0 }, mapper: (v: Alignment) => resolvePivot(v), tween: lerpVector2 })
-    declare textAlignment: Alignment;
+    @property({ default: { x: 0, y: 0 }, mapper: (v: Anchor) => resolveAnchor(v), tween: lerpVector2 })
+    declare textAlignment: Anchor;
 
 
     constructor(props: NodeConfig<TextDrawShape, TextDrawShapeProps>) {

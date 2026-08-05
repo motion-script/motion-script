@@ -55,7 +55,7 @@ export default createScene(function* (stage) {
         yield* wait(0.5);
         // Pan the left grid one full cell diagonally — it tiles to stay full —
         // while the right grid densifies its subdivisions.
-        yield* pan().to({ origin: { x: 130, y: 130 } }, 2);
+        yield* pan().to({ offset: { x: 130, y: 130 } }, 2);
         yield* fine().to({ subdivisions: 4 }, 1.5);
         yield* wait(1);
 });

@@ -2,7 +2,11 @@ import type { BlendMode } from '../blend';
 import type { MediaFilter, VideoMediaFilter } from '../../filters/union';
 import type { PosterizeTimeFilter } from '../../filters/implementations/posterize-time';
 import type { FillData } from '../registry';
-import type { ImageFit, ImageTransform } from './image';
+import type { ImageCrop, ImageFit, ImageMatrix } from './image';
+import { lerpImagePlacement, resolveImagePlacement } from './image';
+import type { Anchor } from '@/attributes/layout/anchor';
+import type { InsetsResolved } from '@/attributes/layout/insets';
+import type { Vector2 } from '@/attributes/layout/vector2';
 import { lerpNumber } from '@/tween/lerp';
 import { lerpOptionalFilters, prepareFilter } from '../../filters/registry';
 
@@ -12,9 +16,16 @@ type VideoFillFilter = MediaFilter | VideoMediaFilter;
 export interface VideoFillProp {
     type: 'video';
     src: string;
-    mode?: ImageFit;
-    transform?: ImageTransform;
-    scaling?: number;
+    /** How the (cropped) frame is scaled into the node's bounds. Defaults to `'fill'`. */
+    fit?: ImageFit;
+    /** Window onto the source frame, applied before `fit`. See {@link ImageCrop}. */
+    crop?: ImageCrop;
+    /** Magnification on top of the fitted scale. See {@link ImageFillProp.zoom}. */
+    zoom?: number;
+    /** The point held fixed as `zoom` scales. See {@link ImageFillProp.anchor}. */
+    anchor?: Anchor;
+    /** Raw frame→shape matrix; wins over everything above. See {@link ImageFillProp.matrix}. */
+    matrix?: ImageMatrix;
     /**
      * Source time to paint, in seconds — an **explicit override**. Omit it (the
      * default) and the timestamp is derived at draw time from how long the node
@@ -50,9 +61,11 @@ export interface VideoFillProp {
 export interface VideoFillResolved {
     type: 'video';
     src: string;
-    mode?: ImageFit;
-    transform?: ImageTransform;
-    scaling?: number;
+    fit?: ImageFit;
+    crop?: InsetsResolved;
+    zoom?: number;
+    anchor?: Vector2;
+    matrix?: ImageMatrix;
     /** Explicit source time, or `undefined`/`null` to derive it — see {@link VideoFillProp.timestamp}. */
     timestamp?: number | null;
     playing: boolean;
@@ -141,12 +154,16 @@ function posterizeTimestamp(fill: VideoFillResolved, start: number, timestamp: n
 }
 
 export const videoFill: FillData<VideoFillResolved> = {
-    resolve: (prop: VideoFillProp) => ({ ...prop, playing: prop.playing ?? true }),
+    // See `imageFill.resolve` for why `crop`/`anchor` are destructured out.
+    resolve: ({ crop, anchor, ...prop }: VideoFillProp): VideoFillResolved => ({
+        ...prop,
+        ...resolveImagePlacement({ crop, anchor }),
+        playing: prop.playing ?? true,
+    }),
     lerp: (a, b, t) => ({
         src: t < 0.5 ? a.src : b.src,
-        mode: a.mode ?? b.mode,
-        transform: a.transform ?? b.transform,
-        scaling: a.scaling ?? b.scaling,
+        fit: a.fit ?? b.fit,
+        ...lerpImagePlacement(a, b, t),
         loop: t < 0.5 ? a.loop : b.loop,
         duration: t < 0.5 ? a.duration : b.duration,
         trimStart: t < 0.5 ? a.trimStart : b.trimStart,

@@ -12,7 +12,7 @@ import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
 import { Disposer } from "@/assets/record";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
-import { effectsProperty, paddingProperty, pivotProperty } from "@/attributes/properties/typed";
+import { effectsProperty, insetsProperty, anchorProperty } from "@/attributes/properties/typed";
 import {
     applyProp,
     applySnapshotLayer,
@@ -29,7 +29,7 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Alignment } from "@/attributes/layout/align";
+import { Anchor } from "@/attributes/layout/anchor";
 import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAnchorProps } from "@/attributes/layout/anchor-resolve";
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
@@ -47,7 +47,7 @@ import { Clip } from "@/render/clip";
 import { TransformState } from "@/render/descriptors/transform";
 import { Size2D, SizeInput, expandSize } from "@/attributes/layout/size";
 import { Effect } from "@/attributes/shape/effects/chain";
-import { Padding, PaddingResolved } from "@/attributes/layout/padding";
+import { Insets, InsetsResolved } from "@/attributes/layout/insets";
 import { lerpSizeInput } from "@/layout/tweens";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
 import { MeasureScope } from "@/render/measure-scope";
@@ -102,8 +102,8 @@ export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
  */
 /** @internal */
 export interface CameraScope {
-    /** World point (y-up) the viewport centres on. */
-    origin: Vector2;
+    /** World point (y-up) the viewport centres on — what the camera is aimed at. */
+    lookAt: Vector2;
     /** Uniform zoom factor. */
     zoom: number;
     /** Viewport rotation in degrees; the renderer applies it as `rotate(-heading)`. */
@@ -162,7 +162,7 @@ export interface NodeProps {
     blend: NodeBlendMode;
     effects: Effect;
     /** Inner spacing between this node's edges and its content/children. */
-    padding: Padding;
+    padding: Insets;
     /** When true, content drawn outside this node's outline is clipped away (see {@link Node.clipSelf}). */
     clip: boolean;
     /**
@@ -178,7 +178,7 @@ export interface NodeProps {
      * {@link Vector2}: `(0,0)`=center, `(-1,1)`=top-left, `(1,-1)`=bottom-right. Set
      * automatically when an anchor *positioning* prop is used.
      */
-    pivot: Alignment;
+    pivot: Anchor;
 
     // ---- Anchor-based positioning -----------------------------------------
     // Pass any one of these instead of (or in addition to) x/y.
@@ -335,10 +335,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @property({ default: 1 }) declare opacity: number;
     @property({ default: 'pass-through' }) declare blend: NodeBlendMode;
     @effectsProperty() declare effects: Effect;
-    @paddingProperty() declare padding: Padding;
+    @insetsProperty() declare padding: Insets;
 
-    @pivotProperty()
-    declare readonly pivot: Alignment;
+    @anchorProperty()
+    declare readonly pivot: Anchor;
 
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
     @property({ default: false }) declare clip: boolean;
@@ -1822,7 +1822,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * call this.
      */
     protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
-        layoutGroupChildren(this._children, rect, scope, this.padding as PaddingResolved);
+        layoutGroupChildren(this._children, rect, scope, this.padding as InsetsResolved);
     }
 
     /**
@@ -1857,7 +1857,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // size. A non-hug axis gives children its resolved size to measure
         // against; a hug axis exposes the full available space. Padding insets
         // the area children see and is added back onto the hugged size.
-        const pad = this.padding as PaddingResolved;
+        const pad = this.padding as InsetsResolved;
         const outerW = widthIsHug ? maxW : resolveSize(this.width, maxW, 0);
         const outerH = heightIsHug ? maxH : resolveSize(this.height, maxH, 0);
         const innerW = Math.max(0, outerW - pad.left - pad.right);

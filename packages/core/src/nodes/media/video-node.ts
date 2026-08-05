@@ -3,7 +3,11 @@ import { Graphics } from "@/render/graphics";
 import { VideoFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaFilter, VideoMediaFilter } from "@/attributes/shape/filters/union";
-import { ImageFit, ImageTransform } from "@/attributes/shape/fill/implementations/image";
+import { ImageCrop, ImageFit, ImageMatrix } from "@/attributes/shape/fill/implementations/image";
+import { Anchor } from "@/attributes/layout/anchor";
+import { InsetsResolved } from "@/attributes/layout/insets";
+import { Vector2 } from "@/attributes/layout/vector2";
+import { anchorProperty, insetsProperty } from "@/attributes/properties/typed";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
@@ -17,10 +21,16 @@ import { AudioFilter, resolveAudioFilters, AudioFilters } from "@/attributes/aud
 
 export interface VideoProps extends RectProps {
     src?: string;
-    /** Fit mode for the painted frame (fill | fit | crop | tile). Default 'fill'. */
+    /** How the (cropped) frame is scaled into the node's bounds. Default 'fill'. */
     fit?: ImageFit;
-    transform?: ImageTransform;
-    scaling?: number;
+    /** Window onto the source frame, in fractions of its own size, applied before `fit`. */
+    crop?: ImageCrop;
+    /** Magnification on top of the fitted scale. `1` (default) is the fitted size. */
+    zoom?: number;
+    /** The point held fixed as `zoom` scales; also the alignment when it doesn't cover. */
+    anchor?: Anchor;
+    /** Raw frame→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds. */
+    matrix?: ImageMatrix;
     /** Visual filters applied to the rendered frame (blur, color, posterizeTime, echo, …). */
     filters?: VideoFilter;
     /** Whether playback advances with the node's clock (drives both picture and sound). Default true. */
@@ -60,12 +70,14 @@ export interface VideoProps extends RectProps {
  * trimmed/sped/looped to match the picture. Set `muted` to drop the sound while
  * keeping the picture; `playing: false` freezes both.
  */
-export class Video extends Rect {
+export class Video extends Rect<VideoProps> {
 
     @property() declare src?: string;
     @property() declare fit?: ImageFit;
-    @property() declare transform?: ImageTransform;
-    @property() declare scaling?: number;
+    @insetsProperty() declare crop: ImageCrop;
+    @property({ default: 1 }) declare zoom: number;
+    @anchorProperty() declare anchor: Anchor;
+    @property() declare matrix?: ImageMatrix;
     @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
     declare filters?: (MediaFilter | VideoMediaFilter)[];
 
@@ -106,8 +118,14 @@ export class Video extends Rect {
 
     /** Identity of the props that define the video fill; a change rebuilds it. */
     private videoKey(): string {
+        // `crop`/`anchor` read back resolved (an object), so they are flattened
+        // here rather than stringified — a tweened crop changes every frame and
+        // must invalidate the cached fill, or the picture would freeze mid-tween.
+        const crop = this.crop as InsetsResolved;
+        const anchor = this.anchor as unknown as Vector2;
         return [
-            this.src ?? '', this.fit ?? '', this.scaling ?? '', this.playing ? 1 : 0,
+            this.src ?? '', this.fit ?? '', this.zoom, this.playing ? 1 : 0,
+            crop.left, crop.right, crop.top, crop.bottom, anchor.x, anchor.y,
             this.timestamp ?? '', this.trimStart ?? '', this.trimEnd ?? '',
             this.speed ?? '', this.loop ?? '', this.duration ?? '',
         ].join('|');
@@ -126,9 +144,11 @@ export class Video extends Rect {
         const prop: VideoFillProp = {
             type: 'video',
             src: this.src,
-            mode: this.fit,
-            transform: this.transform,
-            scaling: this.scaling,
+            fit: this.fit,
+            crop: this.crop,
+            zoom: this.zoom,
+            anchor: this.anchor,
+            matrix: this.matrix,
             filters: this.filters,
             playing: this.playing,
             timestamp: this.timestamp,

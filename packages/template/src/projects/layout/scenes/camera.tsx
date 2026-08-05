@@ -30,5 +30,5 @@ export default createScene(function* (stage) {
 
         </Camera>);
 
-        yield* cameraRef().to({ origin: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
+        yield* cameraRef().to({ lookAt: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
 });

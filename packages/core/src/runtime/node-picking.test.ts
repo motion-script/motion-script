@@ -134,7 +134,7 @@ describe('nodeBox – camera', () => {
     });
 
     it('pans by the camera origin', () => {
-        const root = new RootNode({ origin: { x: 50, y: 0 } });
+        const root = new RootNode({ lookAt: { x: 50, y: 0 } });
         const child = new Tile({ x: 50, y: 0 });
         root.addChild(child);
         place(root, { x: 0, y: 0, width: 800, height: 600 });
@@ -145,7 +145,7 @@ describe('nodeBox – camera', () => {
     });
 
     it('folds a camera heading into the reported rotation', () => {
-        const root = new RootNode({ heading: 90, zoom: 1, origin: { x: 0, y: 0 } });
+        const root = new RootNode({ heading: 90, zoom: 1, lookAt: { x: 0, y: 0 } });
         const child = new Tile({});
         root.addChild(child);
         place(root, { x: 0, y: 0, width: 800, height: 600 });

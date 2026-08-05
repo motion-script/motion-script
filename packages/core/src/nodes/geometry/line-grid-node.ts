@@ -12,7 +12,7 @@ import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding } from "@/layout/padding";
 
@@ -38,11 +38,11 @@ export interface LineGridProps extends ShapeProps {
     subStroke?: Stroke;
     /**
      * Pixel offset that pans the whole grid. Every line shifts by
-     * `(origin.x, origin.y)`; lines wrap and tile so the rect always stays full,
-     * so animating `origin` scrolls the grid continuously behind the fixed rect.
+     * `(offset.x, offset.y)`; lines wrap and tile so the rect always stays full,
+     * so animating `offset` scrolls the grid continuously behind the fixed rect.
      * Defaults to `{ x: 0, y: 0 }` (the grid centred in the rect).
      */
-    origin: Vector2;
+    offset: Vector2;
 }
 
 /**
@@ -69,7 +69,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     get subStroke(): StrokeResolved[] { return undefined!; }
     set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
-    declare readonly origin: Vector2;
+    declare readonly offset: Vector2;
 
     constructor(props: NodeConfig<LineGrid, LineGridProps>) {
         super(props);
@@ -95,7 +95,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         const size = super.measure(constraints, scope);
         // Measure children so they have a resolved size for layout(); the result
         // doesn't change the grid's own size (it never hugs its children).
-        const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding as PaddingResolved);
+        const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding as InsetsResolved);
         const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
         for (const child of this.children) child.measure(childConstraints, scope);
         return size;
@@ -104,7 +104,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         this.setLayoutRect(rect);
 
-        const pad = this.padding as PaddingResolved;
+        const pad = this.padding as InsetsResolved;
         const inner = applyPadding(rect.width, rect.height, pad);
         // Centre of the padded content box, in this node's local space (origin =
         // grid centre, matching how shapes are drawn).
@@ -135,7 +135,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         const subdivisions = Math.max(1, Math.floor(this.subdivisions));
 
         // Grid lines are centered strokes (open paths have no inside/outside, so
-        // alignment is meaningless). They run edge-to-edge and pan with `origin`,
+        // alignment is meaningless). They run edge-to-edge and pan with `offset`,
         // so their ends can fall outside the rect — clip them to it and overscan
         // the tiling by half the thickest stroke, so a thick line slides out under
         // the clip instead of popping in and out at the boundary as the grid scrolls.
@@ -169,9 +169,9 @@ export class LineGrid extends ShapeNode<LineGridProps> {
 
     // Build the grid lines as multi-subpath SVG paths, split into the major
     // (division) lines and the minor (subdivision) lines. Lines are tiled by the
-    // minor step and panned by `origin`: every position within the rect (grown by
+    // minor step and panned by `offset`: every position within the rect (grown by
     // `overscan` so thick lines clip out smoothly) is emitted regardless of the
-    // offset, so the rect always stays full and animating `origin` scrolls the
+    // offset, so the rect always stays full and animating `offset` scrolls the
     // grid. A tile whose index aligns to the division grid is major; the rest are
     // minor. Drawn as single paths so each trailing stroke paints every subpath as
     // one union, with no destructive boolean op (which would erase the open lines).
@@ -187,12 +187,12 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         const insetX = width / 2 - overscan;
         const insetY = height / 2 - overscan;
 
-        // Tile each axis by the minor step, panned by `origin`; lines span the full
+        // Tile each axis by the minor step, panned by `offset`; lines span the full
         // cross-axis (clipped to the rect by the caller) and overscan the boundary
         // so a thick line slides out under the clip instead of popping.
         return gridLinePaths(
-            { min: -insetX, max: insetX, step: innerW / cols, offset: this.origin.x },
-            { min: -insetY, max: insetY, step: innerH / cols, offset: this.origin.y },
+            { min: -insetX, max: insetX, step: innerW / cols, offset: this.offset.x },
+            { min: -insetY, max: insetY, step: innerH / cols, offset: this.offset.y },
             subdivisions,
             overscan,
         );

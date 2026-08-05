@@ -1,13 +1,13 @@
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpNumber } from "@/tween/lerp";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Alignment } from "@/attributes/layout/align";
+import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, FlexDirection, GapSize } from "@/layout/flex";
 import { Node } from "@/nodes/base/node";
 
@@ -26,13 +26,13 @@ export interface GroupHost {
     readonly group: LayoutMode;
     readonly gap: GapSize;
     /**
-     * The `align` prop, declared loose (`Alignment`) to match how containers
+     * The `align` prop, declared loose (`Anchor`) to match how containers
      * type it; at runtime the accessor stores the resolved per-axis `Vector2`
      * pivot, which the engine reads via {@link resolvedAlign}.
      */
-    readonly align: Alignment;
+    readonly align: Anchor;
     /** Effective content padding (base padding plus any stroke intrusion). */
-    effectivePadding(): PaddingResolved;
+    effectivePadding(): InsetsResolved;
 }
 
 interface FlexNodeMeasure {
@@ -217,7 +217,7 @@ export class GroupLayout {
         measure: NodeMeasureResult,
         innerWidth: number,
         innerHeight: number,
-        padding: PaddingResolved,
+        padding: InsetsResolved,
     ): BoxBounds[] {
         if (measure.kind === "stack") {
             return this.computeStackLayouts(rect, measure, padding);
@@ -298,7 +298,7 @@ export class GroupLayout {
         };
     }
 
-    private computeStackLayouts(rect: BoxBounds, measure: StackNodeMeasure, pad: PaddingResolved): BoxBounds[] {
+    private computeStackLayouts(rect: BoxBounds, measure: StackNodeMeasure, pad: InsetsResolved): BoxBounds[] {
         const innerW = Math.max(0, rect.width - pad.left - pad.right);
         const innerH = Math.max(0, rect.height - pad.top - pad.bottom);
         const offsetX = (pad.left - pad.right) / 2;

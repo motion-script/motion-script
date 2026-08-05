@@ -4,10 +4,10 @@ import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
-import { Alignment } from "@/attributes/layout/align";
+import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
@@ -15,7 +15,7 @@ import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { Node, NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
-import { alignProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
+import { anchorProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { lerpSizeInput } from "@/layout/tweens";
 
 
@@ -35,7 +35,7 @@ export interface RectProps extends ShapeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: Alignment;
+    align: Anchor;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
     cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
@@ -52,11 +52,11 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Declared as the loose `Alignment` so one @property covers both assignment
+    // Declared as the loose `Anchor` so one @property covers both assignment
     // (`this.align = 'center'`) and reads. At runtime the accessor stores the
     // resolved per-axis `Vector2` pivot; readers cast at the read site.
-    @alignProperty()
-    declare align: Alignment;
+    @anchorProperty()
+    declare align: Anchor;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment (`this.cornerRadius = 8`) and reads. At runtime the
     // accessor stores the resolved per-corner value; readers that need the
@@ -167,9 +167,9 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     // strokes (align 0) half, outside strokes (align +1) none. The intrusion is
     // weight·(1 - align)/2.
     // Public so the shared GroupLayout engine can read it via the GroupHost interface.
-    effectivePadding(): PaddingResolved {
+    effectivePadding(): InsetsResolved {
         let extra = 0;
-        const p = this.padding as PaddingResolved;
+        const p = this.padding as InsetsResolved;
         const strokes = this.stroke as StrokeResolved[];
         if (!strokes || !(Symbol.iterator in Object(strokes))) {
             return p;

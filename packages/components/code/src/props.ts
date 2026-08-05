@@ -1,4 +1,4 @@
-import { PaddingProps, NodeProps } from '@motion-script/core';
+import { InsetsProps, NodeProps } from '@motion-script/core';
 import { CodeTheme } from './style';
 
 export interface CodeProps extends NodeProps {
@@ -12,5 +12,5 @@ export interface CodeProps extends NodeProps {
     letterSpacing: number;
     showLineNumbers: boolean;
     lineNumberGap: number;
-    padding: PaddingProps;
+    padding: InsetsProps;
 }

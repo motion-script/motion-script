@@ -21,7 +21,7 @@ export default createScene(function* (stage) {
       width={760}
       height={380}
       zoom={1}
-      origin={{ x: 0, y: 0 }}
+      lookAt={{ x: 0, y: 0 }}
       fill="#0a090e"
       cornerRadius={18}
     >
@@ -38,7 +38,7 @@ export default createScene(function* (stage) {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `zoom` | `number` | `1` | Magnification factor. Values > 1 zoom in; < 1 zoom out |
-| `origin` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport |
+| `lookAt` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport — what the camera is aimed at. Same word as `Graphics3D.perspective({ lookAt })` |
 | `heading` | `number` | `0` | Camera rotation in degrees (clockwise) |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the card and the viewport clip |
 | `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the card |
@@ -64,13 +64,13 @@ export default createScene(function* (stage) {
   );
 
   // Pan to the gold box on the right
-  yield* cam().to({ origin: { x: 240, y: 0 } }, 1.2, easeInOut);
+  yield* cam().to({ lookAt: { x: 240, y: 0 } }, 1.2, easeInOut);
 
   // Zoom in on it
   yield* cam().to({ zoom: 1.8 }, 0.8, easeInOut);
 
   // Pull back home
-  yield* cam().to({ origin: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
+  yield* cam().to({ lookAt: { x: 0, y: 0 }, zoom: 1 }, 1.2, easeInOut);
 });
 ```
 
@@ -78,5 +78,5 @@ export default createScene(function* (stage) {
 
 - The Camera runs no flex or stack layout. Children are positioned stack-style (centered), then viewed through the camera transform.
 - The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
-- `origin` is in world-space coordinates relative to the children's own origin, not screen coordinates.
+- `lookAt` is in world-space coordinates relative to the children's own origin, not screen coordinates.
 - `heading` rotates the camera's view, not the children: the world stays fixed and the camera turns.

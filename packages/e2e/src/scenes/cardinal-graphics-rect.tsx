@@ -1,18 +1,18 @@
 import {
     createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
-    AlignKey, Alignment, property, resolvePivot, easeInOut,
+    AnchorKey, Anchor, property, resolveAnchor, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
 
 /** All nine named anchors, laid out to mirror their on-screen meaning. */
-const ANCHORS: AlignKey[] = [
+const ANCHORS: AnchorKey[] = [
     'topLeft', 'topCenter', 'topRight',
     'centerLeft', 'center', 'centerRight',
     'bottomLeft', 'bottomCenter', 'bottomRight',
 ];
 
 interface PivotRectProps extends ShapeProps {
-    anchor: Alignment;
+    anchor: Anchor;
     shapeRotation: number;
     shapeScale: number;
 }
@@ -25,8 +25,8 @@ interface PivotRectProps extends ShapeProps {
  * grows about that same pivot.
  */
 class PivotRect extends ShapeNode<PivotRectProps> {
-    @property({ default: 'center', mapper: (v: Alignment) => resolvePivot(v) })
-    declare readonly anchor: Alignment;
+    @property({ default: 'center', mapper: (v: Anchor) => resolveAnchor(v) })
+    declare readonly anchor: Anchor;
     @property({ default: 0 }) declare readonly shapeRotation: number;
     @property({ default: 1 }) declare readonly shapeScale: number;
 

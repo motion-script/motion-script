@@ -1,5 +1,5 @@
 import {
-    createScene, createRef, Text, Rect, Fills, Alignment,
+    createScene, createRef, Text, Rect, Fills, Anchor,
     easeInOut, sequence, parallel,
 } from "motion-script";
 import { DrawnPivotText } from "../nodes/drawn-pivot-text";
@@ -41,7 +41,7 @@ export default createScene(function* (stage) {
     // The three pivots, given as named anchors (resolved against the word's
     // estimated box inside DrawnPivotText). A pivot can also be an explicit
     // Vector2 in local pixels — the named anchors are the convenient shorthand.
-    const pivots: { label: string; pivot: Alignment }[] = [
+    const pivots: { label: string; pivot: Anchor }[] = [
         { label: 'center', pivot: 'center' },
         { label: 'centerLeft', pivot: 'centerLeft' },
         { label: 'bottomCenter', pivot: 'bottomCenter' },

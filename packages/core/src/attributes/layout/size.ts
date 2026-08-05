@@ -19,7 +19,7 @@ export type SizeInput = SizeType | number;
 /**
  * Expand the `size` shorthand into `width`/`height` on a props-like object, in
  * place. `size` is sugar for "the same value on both axes"; explicit `width`/
- * `height` take precedence over it (same precedence as {@link resolvePadding}'s
+ * `height` take precedence over it (same precedence as {@link resolveInsets}'s
  * side-vs-shorthand rule), so `{ size: 200, width: 100 }` keeps `width: 100` and
  * only fills in `height: 200`. No-op when `size` is absent. The reactive-binding
  * form (`size: () => SizeInput`) is supported — both axes are bound to the same

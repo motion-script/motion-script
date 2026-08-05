@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { getPropertyMeta } from '@/attributes/properties/decorator';
 import {
-    alignProperty,
+    anchorProperty,
     colorProperty,
     cornerRadiusProperty,
     effectsProperty,
     fillProperty,
-    paddingProperty,
+    insetsProperty,
     pathProperty,
-    pivotProperty,
     shadowProperty,
     sizeProperty,
     strokeProperty,
@@ -70,9 +69,8 @@ describe('attribute-typed property decorators', () => {
         expect(metaFor(colorProperty()).default).toBe('black');
         expect(metaFor(cornerRadiusProperty()).default).toBe(0);
         expect(metaFor(pathProperty()).default).toBe('');
-        expect(metaFor(paddingProperty()).default).toBe(0);
-        expect(metaFor(alignProperty()).default).toBe('center');
-        expect(metaFor(pivotProperty()).default).toEqual({ x: 0, y: 0 });
+        expect(metaFor(insetsProperty()).default).toBe(0);
+        expect(metaFor(anchorProperty()).default).toBe('center');
         expect(metaFor(vector2Property()).default).toEqual({ x: 0, y: 0 });
         expect(metaFor(sizeProperty()).default).toBe('fill');
         expect(metaFor(textProperty()).default).toBe('');

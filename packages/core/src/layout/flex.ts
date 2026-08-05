@@ -1,6 +1,6 @@
 
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { clamp } from "@/util/clamp";
@@ -86,7 +86,7 @@ export interface FlexLayoutInput<C extends FlexChild = FlexChild> {
     innerHeight: number;
     gap: GapSize;
     alignment: FlexAlignment;
-    padding: PaddingResolved;
+    padding: InsetsResolved;
 }
 
 /**

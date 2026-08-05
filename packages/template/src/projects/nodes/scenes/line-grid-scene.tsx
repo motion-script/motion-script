@@ -49,11 +49,11 @@ export default createScene(function* (stage) {
         );
 
         yield* parallel(
-            panRef().to({ origin: { x: 120, y: 120 } }, 2.0, easeInOut('quad')),
+            panRef().to({ offset: { x: 120, y: 120 } }, 2.0, easeInOut('quad')),
             fineRef().to({ subdivisions: 5 }, 2.0, easeInOut('quad')),
         );
         yield* parallel(
-            panRef().to({ origin: { x: 0, y: 0 } }, 1.5, easeInOut('quad')),
+            panRef().to({ offset: { x: 0, y: 0 } }, 1.5, easeInOut('quad')),
             fineRef().to({ subdivisions: 1 }, 1.5, easeInOut('quad')),
         );
         yield* wait(0.5);

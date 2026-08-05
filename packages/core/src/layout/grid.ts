@@ -1,6 +1,6 @@
 
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Size2D } from "@/attributes/layout/size";
 
@@ -167,7 +167,7 @@ export function layoutGrid(
     rect: BoxBounds,
     colGap: number,
     rowGap: number,
-    padding: PaddingResolved,
+    padding: InsetsResolved,
 ): BoxBounds[] {
     // Compute cumulative row starts (top-down, relative to inner top-left)
     const rowStarts: number[] = [];

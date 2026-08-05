@@ -2,7 +2,7 @@ import { createScene, createRef, Camera, GridPattern, Rect, Ellipse, Fills, ease
 import { holdTail } from './_lib';
 
 /**
- * Camera pan: the `origin` (world-space focus point) slides laterally while
+ * Camera pan: the `lookAt` (world-space focus point) slides laterally while
  * `zoom` and `heading` stay fixed, so the grid and the landmark shapes scroll
  * across the viewport. The mid frame catches the world part-way through the
  * pan, with different shapes framed than at the start.
@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
             height={'fill'}
             zoom={1}
             heading={0}
-            origin={{ x: -260, y: 0 }}
+            lookAt={{ x: -260, y: 0 }}
         >
             <GridPattern
                 cellSize={120}
@@ -33,7 +33,7 @@ export default createScene(function* (stage) {
         </Camera>,
     );
 
-    // Pan only the origin: from the left landmark across to the right one.
-    yield* camera().to({ origin: { x: 260, y: 0 } }, 1.4, easeInOut('quad'));
+    // Pan only the lookAt: from the left landmark across to the right one.
+    yield* camera().to({ lookAt: { x: 260, y: 0 } }, 1.4, easeInOut('quad'));
     yield* holdTail(1.4);
 });

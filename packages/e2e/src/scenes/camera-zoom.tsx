@@ -12,6 +12,6 @@ export default createScene(function* (stage) {
         </Camera>,
     );
 
-    yield* camera().to({ zoom: 2.4, origin: { x: 120, y: 0 } }, 1.4, easeInOut('quad'));
+    yield* camera().to({ zoom: 2.4, lookAt: { x: 120, y: 0 } }, 1.4, easeInOut('quad'));
     yield* holdTail(1.4);
 });

@@ -200,7 +200,7 @@ describe("getNodeBox lands on the pixels Skia drew", () => {
     });
 
     it("under a panned camera", async () => {
-        const { reported, drawn } = await boxAndPixels({ origin: { x: 30, y: 20 } });
+        const { reported, drawn } = await boxAndPixels({ lookAt: { x: 30, y: 20 } });
         // The camera centres on the card, so it lands dead centre on screen.
         expect(reported).toEqual({ minX: 80, maxX: 119, minY: 88, maxY: 111 });
         expectAligned(reported, drawn);
@@ -210,7 +210,7 @@ describe("getNodeBox lands on the pixels Skia drew", () => {
         const { reported, drawn } = await boxAndPixels({
             zoom: 1.2,
             heading: 20,
-            origin: { x: 10, y: -5 },
+            lookAt: { x: 10, y: -5 },
         });
         expectAligned(reported, drawn);
     });
@@ -364,7 +364,7 @@ describe("pickNode agrees with the pixels", () => {
     it("picks the node at a point that is red, and nothing where it is not", async () => {
         // A pan, so the card moves *off* the position it occupies at rest — a
         // zoom grows it about the centre and would keep covering that point.
-        const { controller } = mount([cardScene({ origin: { x: 30, y: 20 } })]);
+        const { controller } = mount([cardScene({ lookAt: { x: 30, y: 20 } })]);
         await controller.seek(0);
 
         // The camera centres on the card, so the viewport centre is now on it.

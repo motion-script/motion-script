@@ -21,11 +21,11 @@ import { RectCornerRadius, CornerRadiusResolved, resolveCornerRadius, lerpCorner
 import { RectCornerStyle, CornerStyleResolved, resolveCornerStyle, lerpCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { lerpPath } from "@/attributes/shape/path/morph";
 
-import { Padding, PaddingResolved, resolvePadding } from "@/attributes/layout/padding";
-import { Alignment, resolveAlign, resolvePivot, lerpAlign } from "@/attributes/layout/align";
+import { Insets, InsetsResolved, resolveInsets } from "@/attributes/layout/insets";
+import { Anchor, resolveAnchor, lerpAnchor } from "@/attributes/layout/anchor";
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { SizeInput } from "@/attributes/layout/size";
-import { lerpEdgeInset, lerpSizeInput } from "@/layout/tweens";
+import { lerpInsets, lerpSizeInput } from "@/layout/tweens";
 
 import { lerpText } from "@/attributes/text/lerp";
 import { PathData } from "@/render/descriptors/path";
@@ -173,32 +173,28 @@ export const pathProperty = attributeProperty<PathData, PathData>(
 
 // ---- Layout ---------------------------------------------------------------
 
-/** A padding property: scalar, symmetric or per-edge, tweened per edge. */
-export const paddingProperty = attributeProperty<Padding, PaddingResolved>(
+/** An edge-inset property: scalar, symmetric or per-edge, tweened per edge. */
+export const insetsProperty = attributeProperty<Insets, InsetsResolved>(
     () => 0,
-    resolvePadding,
-    lerpEdgeInset,
+    resolveInsets,
+    lerpInsets,
 );
 
 /**
- * An alignment property: a named position (`'center'`, `'topLeft'`, …) resolved
- * to a per-axis {@link Vector2} pivot (x: -1 left … +1 right, y: -1 bottom …
- * +1 top), tweened as a vector so `'left' → 'right'` slides.
+ * An anchor property: a named position (`'center'`, `'topLeft'`, …) resolved to
+ * a per-axis {@link Vector2} in `[-1, 1]` (x: -1 left … +1 right, y: -1 bottom …
+ * +1 top), tweened as a vector so `'centerLeft' → 'centerRight'` slides.
+ *
+ * One decorator for every "which point of this box" prop — `Node.pivot`, a
+ * container's `align`, an image fill's `anchor`. They previously had two
+ * decorators (`alignProperty`/`pivotProperty`) that differed only in whether the
+ * default was spelled `'center'` or `{ x: 0, y: 0 }` — the same value either side
+ * of {@link resolveAnchor}.
  */
-export const alignProperty = attributeProperty<Alignment, Vector2>(
+export const anchorProperty = attributeProperty<Anchor, Vector2>(
     () => "center",
-    (v: Alignment) => resolveAlign(v),
-    lerpAlign,
-);
-
-/**
- * A pivot property: like {@link alignProperty} but resolved with the pivot
- * convention (`'center'` → `{ x: 0, y: 0 }`), matching `Node.pivot`.
- */
-export const pivotProperty = attributeProperty<Alignment, Vector2>(
-    () => ({ x: 0, y: 0 }),
-    (v: Alignment) => resolvePivot(v),
-    lerpVector2,
+    (v: Anchor) => resolveAnchor(v),
+    lerpAnchor,
 );
 
 /** A plain 2D point property, tweened component-wise. */

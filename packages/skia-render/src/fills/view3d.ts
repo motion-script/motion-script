@@ -110,7 +110,7 @@ export class View3DFillRenderer extends FillRenderer<View3DFillResolved> {
         // past the bounds, where clamping would smear the edge pixels instead of
         // drawing nothing.
         const ck = ctx.canvasKit as any;
-        const matrix = computeImageMatrix(image.width(), image.height(), { mode: "stretch" }, ctx.getShapeBounds());
+        const matrix = computeImageMatrix(image.width(), image.height(), { fit: "stretch" }, ctx.getShapeBounds());
         ctx.paint.setShader(
             image.makeShaderOptions(ck.TileMode.Decal, ck.TileMode.Decal, ck.FilterMode.Linear, ck.MipmapMode.None, matrix),
         );

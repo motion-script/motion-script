@@ -142,15 +142,15 @@ describe("Scene.build merged stage", () => {
         expect(scene.root.zoom).toBe(3);
     });
 
-    it("forwards camera commands (zoomTo/headingTo/originTo) onto the root", () => {
+    it("forwards camera commands (zoomTo/headingTo/panTo) onto the root", () => {
         const scene = drive(function* (stage) {
             yield* stage.zoomTo(4, 0);
             yield* stage.headingTo(45, 0);
-            yield* stage.originTo({ x: 20, y: -10 }, 0);
+            yield* stage.panTo({ x: 20, y: -10 }, 0);
         });
         expect(scene.root.zoom).toBe(4);
         expect(scene.root.heading).toBe(45);
-        expect(scene.root.origin).toEqual({ x: 20, y: -10 });
+        expect(scene.root.lookAt).toEqual({ x: 20, y: -10 });
     });
 
     it("forwards the fillTo paint command onto the root", () => {

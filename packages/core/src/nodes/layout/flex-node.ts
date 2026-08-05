@@ -4,11 +4,11 @@ import { Size2D } from "@/attributes/layout/size";
 import { MeasureScope } from "@/render/measure-scope";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Alignment } from "@/attributes/layout/align";
+import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
 import { Node, NodeConfig } from "../base/node";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
@@ -18,7 +18,7 @@ import { Clip } from "@/render/clip";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { property } from "@/attributes/properties/decorator";
-import { alignProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
+import { anchorProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 
 
 export type { FlexDirection, GapSize } from "@/layout/flex";
@@ -32,7 +32,7 @@ export interface FlexProps extends ShapeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: Alignment;
+    align: Anchor;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
     cornerRadius: RectCornerRadius;
     /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
@@ -63,10 +63,10 @@ interface FlexMeasureCache {
 export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNode<P> {
 
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Stored resolved as a per-axis `Vector2` pivot; the loose `Alignment`
+    // Stored resolved as a per-axis `Vector2` pivot; the loose `Anchor`
     // declared type covers both named-string assignment and reads. See Rect.
-    @alignProperty()
-    declare align: Alignment;
+    @anchorProperty()
+    declare align: Anchor;
     // Declared as the loose `RectCornerRadius`/`RectCornerStyle` so one @property
     // covers both assignment and reads; the accessor stores the resolved value. See Rect.
     @cornerRadiusProperty()
@@ -135,8 +135,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     // as Rect.effectivePadding. The intrusion of a stroke is weight·(1 - align)/2:
     // inside strokes (align -1) intrude their full weight, centered (align 0) half,
     // outside (align +1) none.
-    private effectivePadding(): PaddingResolved {
-        const p = this.padding as PaddingResolved;
+    private effectivePadding(): InsetsResolved {
+        const p = this.padding as InsetsResolved;
         const strokes = this.stroke as StrokeResolved[];
         if (!strokes || !(Symbol.iterator in Object(strokes))) return p;
         let extra = 0;

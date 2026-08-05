@@ -78,15 +78,15 @@ export function invert(m: Matrix2D): Matrix2D | null {
  * The viewport transform a camera scope pushes, in canvas (y-down) space — a
  * literal transcription of `RenderContext.beginCamera`:
  *
- *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-origin.x, +origin.y)
+ *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-lookAt.x, +lookAt.y)
  *
- * `origin` is a y-up world point, hence the sign flip on its y. `vx`/`vy` are the
+ * `lookAt` is a y-up world point, hence the sign flip on its y. `vx`/`vy` are the
  * viewport centre the camera's callers pass (`layoutRect.x`, `-layoutRect.y`).
  * Kept next to {@link nodeLocalMatrix} so the two stay in step with the renderer.
  */
 /** @internal */
 export function cameraMatrix(
-    vx: number, vy: number, origin: Vector2, zoom: number, heading: number,
+    vx: number, vy: number, lookAt: Vector2, zoom: number, heading: number,
 ): Matrix2D {
     const rad = (-heading * Math.PI) / 180;
     const cos = Math.cos(rad);
@@ -97,9 +97,9 @@ export function cameraMatrix(
     const b = zoom * sin;
     const c = zoom * -sin;
     const d = zoom * cos;
-    // Fold the trailing translate(-origin.x, +origin.y) into e/f.
-    const tx = -origin.x;
-    const ty = origin.y;
+    // Fold the trailing translate(-lookAt.x, +lookAt.y) into e/f.
+    const tx = -lookAt.x;
+    const ty = lookAt.y;
     return { a, b, c, d, e: vx + a * tx + c * ty, f: vy + b * tx + d * ty };
 }
 
@@ -108,7 +108,7 @@ export function cameraMatrix(
  * `RenderContext.transform` exactly (canvas y-down space):
  * `T(cx + pivotX, cy + pivotY) · R(deg) · S(scale) · T(-pivotX, -pivotY)`.
  *
- * @param cx       Canvas-space x of the node's layout-cell origin.
+ * @param cx       Canvas-space x of the node's layout-cell lookAt.
  * @param cy       Canvas-space y of the node's layout-cell origin (y-down).
  * @param rotation Rotation in degrees, clockwise (canvas convention).
  * @param scale    Uniform scale factor.

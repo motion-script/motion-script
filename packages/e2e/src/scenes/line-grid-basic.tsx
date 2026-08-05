@@ -23,6 +23,6 @@ export default createScene(function* (stage) {
     );
 
     // Pan one full cell diagonally; the grid tiles to stay full as it scrolls.
-    yield* grid().to({ origin: { x: 80, y: 80 } }, 1.4, easeInOut('quad'));
+    yield* grid().to({ offset: { x: 80, y: 80 } }, 1.4, easeInOut('quad'));
     yield* holdTail(1.4);
 });

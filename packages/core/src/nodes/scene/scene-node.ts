@@ -6,8 +6,8 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { LayoutMode } from "@/layout/group-engine";
 import { GapSize } from "@/layout/flex";
-import { Alignment } from "@/attributes/layout/align";
-import { Padding } from "@/attributes/layout/padding";
+import { Anchor } from "@/attributes/layout/anchor";
+import { Insets } from "@/attributes/layout/insets";
 import { EasingFunction } from "@/tween/ease/type";
 import { TweenOptions } from "@/tween/lerp";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
@@ -163,9 +163,9 @@ export class Scene {
         return this.root.zoomTo(zoom, duration, ease);
     }
 
-    /** Animate the camera focus point (`origin`) — the world point at viewport centre. */
-    originTo(origin: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
-        return this.root.originTo(origin, duration, ease);
+    /** Animate the camera focus point (`lookAt`) — the world point at viewport centre. */
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
+        return this.root.panTo(lookAt, duration, ease);
     }
 
     /** Animate the camera view rotation (`heading`) in degrees. */
@@ -203,12 +203,12 @@ export class Scene {
     get gap(): GapSize { return this.root.gap; }
 
     /** Alignment of the root's children within the viewport. */
-    get align(): Alignment { return this.root.align; }
-    set align(value: Alignment) { this.root.align = value; }
+    get align(): Anchor { return this.root.align; }
+    set align(value: Anchor) { this.root.align = value; }
 
     /** Inner spacing between the viewport edges and the root's children. */
-    get padding(): Padding { return this.root.padding; }
-    set padding(value: Padding) { this.root.padding = value; }
+    get padding(): Insets { return this.root.padding; }
+    set padding(value: Insets) { this.root.padding = value; }
 
     // ── Camera (forward to the root) ──
 
@@ -217,8 +217,8 @@ export class Scene {
     set zoom(value: number) { this.root.zoom = value; }
 
     /** World-space point that maps to the centre of the viewport. */
-    get origin(): Vector2 { return this.root.origin; }
-    set origin(value: Vector2) { this.root.origin = value; }
+    get origin(): Vector2 { return this.root.lookAt; }
+    set origin(value: Vector2) { this.root.lookAt = value; }
 
     /** Camera view rotation in degrees (clockwise). */
     get heading(): number { return this.root.heading; }

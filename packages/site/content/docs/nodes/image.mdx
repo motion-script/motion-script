@@ -34,8 +34,10 @@ export default createScene(function* (stage) {
 |---|---|---|---|
 | `src` | `string` | – | Path to the image file |
 | `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the image fills the node's bounds |
-| `scaling` | `number` | – | Scale multiplier applied to the image before fitting |
-| `transform` | `ImageTransform` | – | Fine-grained image transform (offset, scale, rotation within the bounds) |
+| `crop` | `Insets` | `0` | Window onto the source, in **fractions** of its own size, applied before `fit` |
+| `zoom` | `number` | `1` | Magnification on top of the fitted scale. `2` is twice the fitted size |
+| `anchor` | `Anchor` | `'center'` | The point held fixed as `zoom` scales, and the alignment when the image doesn't cover |
+| `matrix` | `ImageMatrix` | – | Raw image→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Image filters (blur, color adjustments, etc.) |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius (clips the image) |
 | `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape |
@@ -44,10 +46,47 @@ export default createScene(function* (stage) {
 
 | Value | Behaviour |
 |---|---|
-| `'fill'` | Scales the image to cover the bounds, preserving aspect ratio and centering (cropped). The default, Figma-style. |
+| `'fill'` | Scales the image to cover the bounds, preserving aspect ratio (cropped). The default, Figma-style. |
 | `'fit'` | Scales the image to fit within the bounds, preserving aspect ratio (letterboxed) |
-| `'tile'` | Tiles the image at its natural size (× `scaling`) |
+| `'tile'` | Tiles the image at its natural size (× `zoom`) |
 | `'stretch'` | Stretches each axis independently to exactly fill the bounds, distorting aspect ratio |
+
+### Crop, zoom and anchor
+
+The four placement props form one pipeline: **`crop` → `fit` → `zoom` → `anchor`**.
+
+`crop` takes a window of the source first, and everything after it treats that
+window as if it were the whole image — so a crop composes with the fit modes
+rather than fighting them. It is expressed in fractions (0–1) of the source's own
+size, not pixels, so the same value reads identically at 1× and 4K and survives
+swapping `src` for a differently-sized asset. It accepts the same shorthands as
+`padding`: `0.1`, `{ horizontal: 0.2 }`, `{ left: 0.1, top: 0.05 }`.
+
+`zoom` multiplies whatever scale `fit` resolved, and `anchor` decides which point
+of the source lands on the same point of the box — which makes it both the focal
+point a zoom grows away from and the alignment when the image doesn't cover the
+bounds. It lives in the same `[-1, 1]` y-up space as `pivot` and `align`, so
+`'topLeft'`, `'centerRight'` and `{ x, y }` all work.
+
+```tsx
+// Punch into the left third of a portrait, keeping that point fixed.
+<Image src="./portrait.jpg" width={1200} height={675} zoom={1.6} anchor={{ x: -0.35, y: 0 }} />
+
+// Trim 30% off each side to make a vertical hero from a wide shot.
+<Image src="./landscape.jpg" width={540} height={960} crop={{ horizontal: 0.3 }} />
+```
+
+All four animate. A Ken Burns push is `zoom` plus `anchor`:
+
+```tsx
+yield* photo().to({ zoom: 1.6 }, 3, easeInOut);
+yield* photo().to({ anchor: 'centerRight', zoom: 1.9 }, 2.5, easeInOut);
+```
+
+Two things `'tile'` does not honour: `crop` (the shader repeats the whole
+texture, so there is no way to tile a sub-rect) and `anchor` (a repeating texture
+has no corner to pin). Under `'tile'` the fitted scale is native size, so `zoom`
+there is the tile-size multiplier.
 
 ## Animating
 

@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, PaddingResolved, property, resolvePadding, lerpEdgeInset, NormalizedColor } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -60,7 +60,7 @@ export class Code extends Node<CodeProps> {
     // in space-widths (so it scales with fontSize). Only applies when
     // showLineNumbers is on.
     @property({ default: 2 }) declare readonly lineNumberGap: number;
-    @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare readonly padding: PaddingResolved;
+    @property({ default: 0, mapper: resolveInsets, tween: lerpInsets }) declare readonly padding: InsetsResolved;
 
     private tokenLines: IdLine[] = [];
     private tokenized: boolean = false;

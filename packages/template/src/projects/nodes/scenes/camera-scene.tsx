@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
                     width={'fill'}
                     height={'fill'}
                     zoom={1}
-                    origin={{ x: 0, y: 0 }}
+                    lookAt={{ x: 0, y: 0 }}
                     heading={0}
                 >
                     {/* World content — an infinite grid that always fills the
@@ -44,9 +44,9 @@ export default createScene(function* (stage) {
             </Rect>
         );
 
-        yield* camRef().to({ zoom: 1, origin: { x: 30000, y: 1050 } }, 5.0, easeInOut('quad'));
+        yield* camRef().to({ zoom: 1, lookAt: { x: 30000, y: 1050 } }, 5.0, easeInOut('quad'));
         yield* camRef().to({ heading: 20 }, 1.0, easeInOut('quad'));
-        yield* camRef().to({ origin: { x: -400, y: -200 } }, 1.5, easeInOut('quad'));
-        yield* camRef().to({ zoom: 1, origin: { x: 0, y: 0 }, heading: 0 }, 1.8, easeInOut('quad'));
+        yield* camRef().to({ lookAt: { x: -400, y: -200 } }, 1.5, easeInOut('quad'));
+        yield* camRef().to({ zoom: 1, lookAt: { x: 0, y: 0 }, heading: 0 }, 1.8, easeInOut('quad'));
         yield* wait(0.5);
 });

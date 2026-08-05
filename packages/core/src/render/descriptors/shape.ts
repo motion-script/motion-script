@@ -1,5 +1,5 @@
 import { TransformState } from "./transform";
-import { AlignKey, Alignment, resolvePivot } from "@/attributes/layout/align";
+import { AnchorKey, Anchor, resolveAnchor } from "@/attributes/layout/anchor";
 import { Vector2 } from "@/attributes/layout/vector2";
 
 /**
@@ -14,12 +14,12 @@ export interface ShapeState extends Omit<TransformState, "effects" | "pivot"> {
     end: number;
     /**
      * Pivot for the shape's local rotation/scale. Widened from a `Vector2` to a
-     * {@link Alignment} so a shape can pivot about a **named anchor**
+     * {@link Anchor} so a shape can pivot about a **named anchor**
      * (`.rect({ pivot: 'topRight' })`) as well as an explicit `Vector2`.
      * `with*Descriptor` normalises it to a `Vector2` (via {@link resolveShapePivot}),
      * so the resolved state the renderer reads always carries a concrete pivot.
      */
-    pivot: Alignment;
+    pivot: Anchor;
 }
 
 /**
@@ -29,8 +29,8 @@ export interface ShapeState extends Omit<TransformState, "effects" | "pivot"> {
  * both `with*Descriptor` and the renderer can call it. Defaults to centre when
  * the pivot is absent.
  */
-export function resolveShapePivot(pivot: Alignment | undefined): Vector2 {
-    return resolvePivot(pivot ?? { x: 0, y: 0 });
+export function resolveShapePivot(pivot: Anchor | undefined): Vector2 {
+    return resolveAnchor(pivot ?? { x: 0, y: 0 });
 }
 
 // ─── Cardinal-anchor positioning ─────────────────────────────────────────────
@@ -59,7 +59,7 @@ export interface ShapeAnchorInput {
 }
 
 /** The nine anchor keys, in the node `align` vocabulary. */
-export const SHAPE_ANCHOR_KEYS: AlignKey[] = [
+export const SHAPE_ANCHOR_KEYS: AnchorKey[] = [
     "center", "topLeft", "topRight", "bottomLeft", "bottomRight",
     "topCenter", "bottomCenter", "centerLeft", "centerRight",
 ];
@@ -116,13 +116,13 @@ export function resolveShapeAnchor(
     descriptor: Partial<ShapeState> & ShapeAnchorInput,
     width: number,
     height: number,
-): { x: number; y: number; pivot: Alignment } {
+): { x: number; y: number; pivot: Anchor } {
     validateShapeAnchorProps(descriptor as Record<string, unknown>);
 
     const anchorKey = SHAPE_ANCHOR_KEYS.find(k => (descriptor as Record<string, unknown>)[k] !== undefined);
     if (anchorKey) {
         const target = (descriptor as Record<string, Vector2>)[anchorKey];
-        const a = resolvePivot(anchorKey); // normalised [-1,1], y-up
+        const a = resolveAnchor(anchorKey); // normalised [-1,1], y-up
         return {
             x: target.x - a.x * (width / 2),
             y: target.y - a.y * (height / 2),
@@ -160,7 +160,7 @@ export function resolvePivotPosition<T extends Partial<ShapeState> & ShapeAnchor
     const anchorKey = SHAPE_ANCHOR_KEYS.find(k => (descriptor as Record<string, unknown>)[k] !== undefined);
     if (anchorKey || descriptor.pivot === undefined) return descriptor;
 
-    const a = resolvePivot(descriptor.pivot); // normalised [-1,1], y-up
+    const a = resolveAnchor(descriptor.pivot); // normalised [-1,1], y-up
     if (a.x === 0 && a.y === 0) return descriptor;
 
     const target = { x: descriptor.x ?? 0, y: descriptor.y ?? 0 };

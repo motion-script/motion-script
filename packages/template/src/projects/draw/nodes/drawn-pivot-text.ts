@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
-    Alignment, resolvePivot, property,
+    Anchor, resolveAnchor, property,
 } from "motion-script";
 
 export interface DrawnPivotTextProps extends ShapeProps {
@@ -25,7 +25,7 @@ export interface DrawnPivotTextProps extends ShapeProps {
      * estimated box and passes an explicit `Vector2` — which is exactly why a
      * pivot is the only way to steer where text turns.
      */
-    spinPivot: Alignment;
+    spinPivot: Anchor;
     /** Rotation applied to the whole drawn text about {@link spinPivot} (degrees). Animate this. */
     angle: number;
 }
@@ -51,7 +51,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
     @property({ default: 'pivot' }) declare readonly text: string;
     @property({ default: 120 }) declare readonly fontSize: number;
     @property({ default: 'Pixelify Sans' }) declare readonly fontFamily: string;
-    @property({ default: 'center' }) declare readonly spinPivot: Alignment;
+    @property({ default: 'center' }) declare readonly spinPivot: Anchor;
     @property({ default: 0 }) declare readonly angle: number;
 
     constructor(props: NodeConfig<DrawnPivotText, DrawnPivotTextProps>) {
@@ -64,7 +64,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
 
     protected renderSelf(draw: RenderContext): void {
         // Resolve the pivot against the word's estimated box (text has no union
-        // bounds for the renderer to anchor against). resolvePivot gives the
+        // bounds for the renderer to anchor against). resolveAnchor gives the
         // normalised [-1,1] (y-up) anchor; map it onto the box in y-up author space.
         const pivot = this.pivotPoint();
 
@@ -118,7 +118,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
     private pivotPoint(): { x: number; y: number } {
         const halfW = this.fontSize * this.text.length * 0.25;
         const halfH = this.fontSize * 0.5;
-        const a = resolvePivot(this.spinPivot); // normalised [-1,1], y-up
+        const a = resolveAnchor(this.spinPivot); // normalised [-1,1], y-up
         return { x: a.x * halfW, y: a.y * halfH };
     }
 }

@@ -33,15 +33,15 @@ export interface GridPatternProps extends ShapeProps {
     /**
      * Pixel offset that pans the whole grid relative to the world. The grid is
      * otherwise anchored to world coordinates, so it stays put as the camera
-     * moves over it; animate `origin` to scroll the pattern itself.
+     * moves over it; animate `offset` to scroll the pattern itself.
      */
-    origin: Vector2;
+    offset: Vector2;
 }
 
 /**
  * An infinite line grid that fills the camera's visible region. Like
  * {@link LineGrid} it draws major/minor strokes, a fill behind them, and pans
- * with `origin` — but instead of being sized to a fixed rect it tiles a
+ * with `offset` — but instead of being sized to a fixed rect it tiles a
  * world-anchored grid (spacing `cellSize`) across exactly what the parent
  * {@link Camera} can currently see, regenerated each frame. With no camera it
  * falls back to filling its own layout rect, so it works as a plain background.
@@ -61,7 +61,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
     get subStroke(): StrokeResolved[] { return undefined!; }
     set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
-    declare readonly origin: Vector2;
+    declare readonly offset: Vector2;
 
     constructor(props: NodeConfig<GridPattern, GridPatternProps>) {
         super(props);
@@ -106,8 +106,8 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
         const minorStroke = centered(this.subStroke as StrokeResolved[]);
         const overscan = Math.max(maxWeight(major), maxWeight(minorStroke)) / 2;
 
-        const xAxis: GridAxis = { min: left, max: right, step: stepX, offset: this.origin.x };
-        const yAxis: GridAxis = { min: top, max: bottom, step: stepY, offset: this.origin.y };
+        const xAxis: GridAxis = { min: left, max: right, step: stepX, offset: this.offset.x };
+        const yAxis: GridAxis = { min: top, max: bottom, step: stepY, offset: this.offset.y };
 
         // Minor (subdivision) lines first so the major lines sit on top of them.
         if (subdivisions > 1 && minorStroke.length > 0) {
@@ -121,7 +121,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
 
     // Draw one line group (major or minor). The grid is anchored to world
     // coordinates (lines at `n*step` about 0), so it stays fixed as the camera
-    // pans — only `origin` scrolls the pattern. A solid stroke paints every line
+    // pans — only `offset` scrolls the pattern. A solid stroke paints every line
     // as one union path (one draw). A dashed stroke instead draws each line on its
     // own with a `dashOffset` set to the line's world coordinate, so the dash
     // pattern is locked to world space: as new lines scroll into view they pick up

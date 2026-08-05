@@ -36,9 +36,13 @@ export default createScene(function* (stage) {
 |---|---|---|---|
 | `src` | `string` | – | Path to the video file |
 | `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the video frame fills the node's bounds. `'fill'` covers + crops (centered), `'fit'` letterboxes, `'tile'` repeats, `'stretch'` distorts to fill. |
-| `scaling` | `number` | – | Scale multiplier applied before fitting |
-| `transform` | `ImageTransform` | – | Fine-grained frame transform (offset, scale, rotation within bounds) |
+| `crop` | `Insets` | `0` | Window onto the source frame, in **fractions** of its own size, applied before `fit` |
+| `zoom` | `number` | `1` | Magnification on top of the fitted scale |
+| `anchor` | `Anchor` | `'center'` | The point held fixed as `zoom` scales, and the alignment when the frame doesn't cover |
+| `matrix` | `ImageMatrix` | – | Raw frame→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds |
 | `filters` | `MediaFilter[] \| FilterChain` | `[]` | Visual filters applied to the rendered frame |
+
+`crop`, `zoom` and `anchor` behave exactly as they do on [Image](./image#crop-zoom-and-anchor) — same pipeline, same units, same caveats under `'tile'`.
 
 ### Playback
 

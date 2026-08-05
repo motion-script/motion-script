@@ -16,8 +16,13 @@ import { CameraScope, NodeConfig } from "../base/node";
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
-    /** World-space point that maps to the centre of the camera viewport. */
-    origin: Vector2;
+    /**
+     * World-space point that maps to the centre of the camera viewport — what
+     * the camera is pointed at. Same name and meaning as
+     * `Graphics3D.perspective({ lookAt })`, so a 2D and a 3D camera are aimed
+     * with the same word.
+     */
+    lookAt: Vector2;
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
     /** Corner radius in pixels — uniform, per-corner, or per-axis. */
@@ -40,8 +45,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     /** Magnification factor (default: 1). */
     declare zoom: number;
-    /** World-space focus point (default: {x:0, y:0}). */
-    declare origin: Vector2;
+    /** World-space point the viewport centres on (default: {x:0, y:0}). */
+    declare lookAt: Vector2;
     /** View rotation in degrees (default: 0). */
     declare heading: number;
 
@@ -53,13 +58,13 @@ export class Camera extends ShapeNode<CameraProps> {
     constructor(props: NodeConfig<Camera, CameraProps>) {
         super(props);
         this.applyProp("zoom", props.zoom ?? 1, { tween: lerpNumber });
-        this.applyProp("origin", props.origin ?? { x: 0, y: 0 }, { tween: lerpVector2 });
+        this.applyProp("lookAt", props.lookAt ?? { x: 0, y: 0 }, { tween: lerpVector2 });
         this.applyProp("heading", props.heading ?? 0, { tween: lerpNumber });
     }
 
     // ---- Camera motion helpers --------------------------------------------
     // Mirror the base Node `moveTo`/`rotateTo` family for the camera's own
-    // viewport props (`zoom`, `origin`, `heading`).
+    // viewport props (`zoom`, `lookAt`, `heading`).
 
     /**
      * Animate the magnification factor (`zoom`). Values > 1 zoom in; < 1 zoom out.
@@ -72,14 +77,14 @@ export class Camera extends ShapeNode<CameraProps> {
     }
 
     /**
-     * Animate the world-space focus point (`origin`) — the point that maps to
-     * the centre of the camera viewport.
+     * Pan the camera — animate `lookAt`, the world-space point that maps to the
+     * centre of the viewport.
      *
      * @example
-     * yield* camera.originTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
+     * yield* camera.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    *originTo(origin: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ origin } as Partial<CameraProps>, duration, ease);
+    *panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
+        return yield* this.to({ lookAt } as Partial<CameraProps>, duration, ease);
     }
 
     /**
@@ -136,7 +141,7 @@ export class Camera extends ShapeNode<CameraProps> {
     // the camera scope (and its viewport clip) is pushed on every frame even when
     // the transform itself is the identity.
     override _cameraScope(): CameraScope {
-        return { origin: this.origin, zoom: this.zoom, heading: this.heading };
+        return { lookAt: this.lookAt, zoom: this.zoom, heading: this.heading };
     }
 
     // Render the world through the camera viewport transform instead of the
@@ -150,7 +155,7 @@ export class Camera extends ShapeNode<CameraProps> {
 
         ctx.beginCamera(
             { x: cx, y: -cy, width: w, height: h },
-            this.origin,
+            this.lookAt,
             this.zoom,
             this.heading,
         );

@@ -7,7 +7,7 @@ import {
     measureFlex,
 } from '@/layout/flex';
 import { SizeConstraints } from '@/attributes/layout/constraints';
-import { PaddingResolved } from '@/attributes/layout/padding';
+import { InsetsResolved } from '@/attributes/layout/insets';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { Size2D, SizeInput } from '@/attributes/layout/size';
 
@@ -58,7 +58,7 @@ function intrinsicChild(
     };
 }
 
-const NO_PAD: PaddingResolved = { left: 0, right: 0, top: 0, bottom: 0 };
+const NO_PAD: InsetsResolved = { left: 0, right: 0, top: 0, bottom: 0 };
 
 function measureInput(over: Partial<FlexMeasureInput> = {}): FlexMeasureInput {
     return {

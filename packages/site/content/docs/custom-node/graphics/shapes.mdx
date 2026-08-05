@@ -23,7 +23,7 @@ Shapes recorded before a paint call are combined into one surface and painted to
 | `width` / `height` | `number` | `0` | Size of the shape's box |
 | `rotation` | `number` | `0` | Degrees, applied to this shape only |
 | `scale` | `number` | `1` | Applied to this shape only |
-| `pivot` | `Vector2 \| AlignKey` | centre | Pivot for this shape's rotation and scale |
+| `pivot` | `Vector2 \| AnchorKey` | centre | Pivot for this shape's rotation and scale |
 | `opacity` | `number` | `1` | Alpha for this shape |
 | `blend` | `BlendMode` | `'pass-through'` | How this shape mixes with what is under it |
 | `start` / `end` | `number` | `0` / `1` | Trim the outline, for draw-on animation |
@@ -184,7 +184,7 @@ Text as part of a drawing rather than as a node. Use it for axis labels, legends
 | `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Style |
 | `letterSpacing` | `number` | `0` | Extra tracking |
 | `lineHeight` | `number` | `0` | Line box height |
-| `textAlign` | `TextAlign` | `'center'` | Alignment within `width` |
+| `textAlign` | `TextAlign` | `'center'` | Anchor within `width` |
 | `wrap` | `boolean` | `false` | Wrap to `width` |
 | `path` | `PathData` | `null` | Wrap the glyphs along a path |
 

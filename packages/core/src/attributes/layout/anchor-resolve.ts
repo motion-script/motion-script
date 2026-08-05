@@ -1,4 +1,4 @@
-import { ALIGN_KEYS, resolvePivot, type AlignKey } from "./align";
+import { ANCHOR_KEYS, resolveAnchor, type AnchorKey } from "./anchor";
 import { BoxBounds } from "./bounds";
 import { Vector2 } from "./vector2";
 
@@ -20,7 +20,7 @@ import { Vector2 } from "./vector2";
  */
 /** @internal */
 export function validateAnchorProps(props: Record<string, unknown>): void {
-    const presentAnchors = ALIGN_KEYS.filter(k => props[k] !== undefined);
+    const presentAnchors = ANCHOR_KEYS.filter(k => props[k] !== undefined);
     if (presentAnchors.length > 1) {
         throw new Error(`Cannot set multiple anchor props at once: ${presentAnchors.join(', ')}`);
     }
@@ -30,8 +30,8 @@ export function validateAnchorProps(props: Record<string, unknown>): void {
 }
 
 /** @internal The first named anchor key present in `props`, or `undefined` if none. */
-export function findAnchorKey(props: Record<string, unknown>): AlignKey | undefined {
-    return ALIGN_KEYS.find(k => props[k] !== undefined);
+export function findAnchorKey(props: Record<string, unknown>): AnchorKey | undefined {
+    return ANCHOR_KEYS.find(k => props[k] !== undefined);
 }
 
 /**
@@ -41,11 +41,11 @@ export function findAnchorKey(props: Record<string, unknown>): AlignKey | undefi
  */
 /** @internal */
 export function resolveAnchorTargetOnce(
-    anchorKey: AlignKey,
+    anchorKey: AnchorKey,
     rect: BoxBounds,
     target: Vector2,
 ): { pivot: Vector2; x: number; y: number } {
-    const a = resolvePivot(anchorKey);
+    const a = resolveAnchor(anchorKey);
     return {
         pivot: a,
         x: target.x - a.x * (rect.width / 2),
@@ -61,11 +61,11 @@ export function resolveAnchorTargetOnce(
  */
 /** @internal */
 export function bindAnchorTarget(
-    anchorKey: AlignKey,
+    anchorKey: AnchorKey,
     getTarget: () => Vector2,
     getRect: () => BoxBounds,
 ): { pivot: Vector2; x: () => number; y: () => number } {
-    const a = resolvePivot(anchorKey);
+    const a = resolveAnchor(anchorKey);
     return {
         pivot: a,
         x: () => getTarget().x - a.x * (getRect().width / 2),

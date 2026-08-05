@@ -27,7 +27,7 @@ export {
     Rect,
     Ellipse,
     Line,
-    Path, Graphics, ShapeNode, RenderContext, resolvePivot, resolveAlign, resolveSize, resolvePadding, resolveCorners, resolveStroke, resolveShadow, resolveFill,
+    Path, Graphics, ShapeNode, RenderContext, resolveAnchor, resolveSize, resolveInsets, resolveCorners, resolveStroke, resolveShadow, resolveFill,
     Polygon,
     Polygram, lerpStrokeArray,
     LineGrid, lerpFillArray, lerpShadowArray,
@@ -429,9 +429,9 @@ export type {
 export type {
     Vector2,
     Size2D, FillResolved, StrokeResolved, ShadowResolved, CornerStyleResolved, CornerRadiusResolved,
-    Padding, PaddingResolved,
-    AlignKey,
-    Alignment,
+    Insets, InsetsResolved,
+    AnchorKey,
+    Anchor,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------
@@ -483,9 +483,8 @@ export {
     cornerRadiusProperty,
     cornerStyleProperty,
     pathProperty,
-    paddingProperty,
-    alignProperty,
-    pivotProperty,
+    insetsProperty,
+    anchorProperty,
     vector2Property,
     sizeProperty,
     textProperty,

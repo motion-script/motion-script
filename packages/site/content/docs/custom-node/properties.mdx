@@ -82,9 +82,8 @@ yield* card().to({ glow: Fills.linearGradient(['#6990DD', '#E8617C']) }, 0.6);
 | `@cornerRadiusProperty` | `RectCornerRadius` | `0` | Uniform, per corner or per axis. Lerps per corner |
 | `@cornerStyleProperty` | `RectCornerStyle` | `'rounded'` | `'rounded'` or `'angled'`, per corner |
 | `@pathProperty` | `PathData` | `''` | An SVG string or command list. Morphs between arbitrary shapes |
-| `@paddingProperty` | `Padding` | `0` | Scalar, symmetric or per edge. Lerps per edge |
-| `@alignProperty` | `Alignment` | `'center'` | A named position, resolved to a per-axis vector. `'left'` to `'right'` slides |
-| `@pivotProperty` | `Alignment` | `{ x: 0, y: 0 }` | Like `@alignProperty`, but with the pivot convention that `Node.pivot` uses |
+| `@insetsProperty` | `Insets` | `0` | Scalar, symmetric or per edge. Lerps per edge |
+| `@anchorProperty` | `Anchor` | `'center'` | A named position in `[-1, 1]` (y-up), resolved to a per-axis vector. `'centerLeft'` to `'centerRight'` slides. Backs `pivot`, `align` and an image fill's `anchor` |
 | `@vector2Property` | `Vector2` | `{ x: 0, y: 0 }` | A plain 2D point, lerped component-wise |
 | `@sizeProperty` | `SizeInput` | `'fill'` | A pixel number or `'fill'` / `'hug'`. Numbers interpolate, keywords snap |
 | `@textProperty` | `string` | `''` | A string, tweened character by character so `to()` types rather than snaps |

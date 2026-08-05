@@ -56,6 +56,8 @@ import s_image_fit_fill from './image-fit-fill?scene';
 import s_image_fit_fit from './image-fit-fit?scene';
 import s_image_fit_tile from './image-fit-tile?scene';
 import s_image_fit_stretch from './image-fit-stretch?scene';
+import s_image_crop from './image-crop?scene';
+import s_image_zoom_anchor from './image-zoom-anchor?scene';
 import s_video_playback from './video-playback?scene';
 import s_video_speed from './video-speed?scene';
 import s_video_loop from './video-loop?scene';
@@ -326,6 +328,8 @@ export const scenes: Scene[] = [
     s_image_fit_fit,
     s_image_fit_tile,
     s_image_fit_stretch,
+    s_image_crop,
+    s_image_zoom_anchor,
     s_video_playback,
     s_video_speed,
     s_video_loop,
@@ -608,6 +612,8 @@ export const catalog: SceneMeta[] = [
     { id: "image-fit-fit", name: "ImageFitFit", section: "Media", description: "Image with `fit` fit mode" },
     { id: "image-fit-tile", name: "ImageFitTile", section: "Media", description: "Image with `tile` fit mode" },
     { id: "image-fit-stretch", name: "ImageFitStretch", section: "Media", description: "Image with `stretch` fit mode" },
+    { id: "image-crop", name: "ImageCrop", section: "Media", description: "Image `crop` window opening from a tight centre crop to the full frame" },
+    { id: "image-zoom-anchor", name: "ImageZoomAnchor", section: "Media", description: "Image `zoom` push anchored at the top-left corner" },
     { id: "video-playback", name: "VideoPlayback", section: "Media", description: "Video node playing, with trim start/end" },
     { id: "video-speed", name: "VideoSpeed", section: "Media", description: "Video node at 2\u00d7 speed" },
     { id: "video-loop", name: "VideoLoop", section: "Media", description: "Video node looping over a short clip" },

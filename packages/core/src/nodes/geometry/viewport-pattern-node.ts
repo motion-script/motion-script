@@ -77,12 +77,12 @@ export abstract class ViewportPattern<P extends ShapeProps = ShapeProps> extends
             bh = hw * sin + hh * cos;
         }
 
-        // The visible region centres on the camera `origin`, returned in y-UP
+        // The visible region centres on the camera's `lookAt`, returned in y-UP
         // world space (matching the descriptor convention; the renderer applies
         // the single y-up→canvas flip when the pattern's shapes are drawn). A
-        // y-down consumer would have wanted -origin.y; we hand back the y-up value.
-        const origin = camera.origin;
-        return { x: origin.x, y: origin.y, width: bw * 2, height: bh * 2 };
+        // y-down consumer would have wanted -lookAt.y; we hand back the y-up value.
+        const lookAt = camera.lookAt;
+        return { x: lookAt.x, y: lookAt.y, width: bw * 2, height: bh * 2 };
     }
 
     /** Nearest ancestor {@link Camera}, or `null` when rendered outside one. */

@@ -133,52 +133,93 @@ export function applyMediaFilters(
     return shader;
 }
 
+/** The placement fields `computeImageMatrix` reads off an image or video fill. */
+export interface MediaPlacement {
+    fit?: string;
+    crop?: { left: number; right: number; top: number; bottom: number };
+    zoom?: number;
+    anchor?: { x: number; y: number };
+    matrix?: Float32Array | number[][];
+}
+
 /**
- * Compute the image→canvas transform (3×3 matrix as a 9-tuple, row-major)
- * for a given fill descriptor and the destination bounds. This is exactly the
- * same matrix used by the image shader, so contour paths transformed by it
- * land on the visible image's pixel positions.
+ * Compute the image→shape matrix (3×3 as a 9-tuple, row-major) for a fill
+ * descriptor and the destination bounds. This is exactly the matrix handed to
+ * the image shader, so contour paths transformed by it land on the visible
+ * image's pixel positions.
+ *
+ * Four independent stages, in order — which is what lets them compose:
+ *
+ *   1. **crop**   picks a window of the source; everything after treats that
+ *                 window as if it were the whole image.
+ *   2. **fit**    resolves the base scale for the window (cover/contain/tile/stretch).
+ *   3. **zoom**   multiplies that scale.
+ *   4. **anchor** decides which point of the source lands on the same point of
+ *                 the box, which is both the zoom focal point and the alignment
+ *                 when the image doesn't cover.
+ *
+ * At the defaults (`zoom: 1`, `anchor` centre, no crop) every branch reduces to
+ * the plain centred cover/contain placement.
  */
 export function computeImageMatrix(
     imgW: number,
     imgH: number,
-    fill: { mode?: string; transform?: Float32Array | number[][]; scaling?: number },
+    fill: MediaPlacement,
     bounds: ShapeBounds | null,
 ): number[] {
-    if (fill.transform) {
-        if (fill.transform instanceof Float32Array) return Array.from(fill.transform);
-        return (fill.transform as number[][]).flat();
+    // The raw matrix wins outright: the author is placing the pixels themselves.
+    if (fill.matrix) {
+        if (fill.matrix instanceof Float32Array) return Array.from(fill.matrix);
+        return (fill.matrix as number[][]).flat();
     }
-    if (bounds) {
-        const mode = fill.mode ?? "fill";
-        const shapeW = bounds.right - bounds.left;
-        const shapeH = bounds.bottom - bounds.top;
-        let sx: number, sy: number, tx: number, ty: number;
-        if (mode === "fit") {
-            // Contain: scale uniformly so the whole image fits, letterboxing.
-            const scale = Math.min(shapeW / imgW, shapeH / imgH);
-            sx = scale; sy = scale;
-            tx = bounds.left + (shapeW - imgW * scale) / 2;
-            ty = bounds.top + (shapeH - imgH * scale) / 2;
-        } else if (mode === "stretch") {
-            // Distort each axis independently to fill the bounds exactly.
-            sx = shapeW / imgW; sy = shapeH / imgH;
-            tx = bounds.left; ty = bounds.top;
-        } else if (mode === "tile") {
-            sx = (fill as any).scaling ?? 1; sy = (fill as any).scaling ?? 1;
-            tx = bounds.left; ty = bounds.top;
-        } else {
-            // "fill" (default): cover — scale uniformly to fill the bounds,
-            // cropping the overflow with the image centered (Figma-style).
-            const scale = Math.max(shapeW / imgW, shapeH / imgH);
-            sx = scale; sy = scale;
-            tx = bounds.left + (shapeW - imgW * scale) / 2;
-            ty = bounds.top + (shapeH - imgH * scale) / 2;
-        }
-        return [sx, 0, tx, 0, sy, ty, 0, 0, 1];
+
+    const zoom = fill.zoom ?? 1;
+    if (!bounds) return [zoom, 0, 0, 0, zoom, 0, 0, 0, 1];
+
+    const mode = fill.fit ?? "fill";
+    const boxW = bounds.right - bounds.left;
+    const boxH = bounds.bottom - bounds.top;
+
+    // 1. crop — the source window, in image px. Skipped for 'tile': TileMode.Repeat
+    //    repeats the whole texture, so a sub-rect cannot be tiled.
+    const crop = mode === "tile" ? undefined : fill.crop;
+    const srcX = crop ? crop.left * imgW : 0;
+    const srcY = crop ? crop.top * imgH : 0;
+    const srcW = crop ? imgW * (1 - crop.left - crop.right) : imgW;
+    const srcH = crop ? imgH * (1 - crop.top - crop.bottom) : imgH;
+    // A crop that swallows the whole source would divide by zero below.
+    if (srcW <= 0 || srcH <= 0) return [zoom, 0, bounds.left, 0, zoom, bounds.top, 0, 0, 1];
+
+    // 2. fit — the base scale, measured against the cropped window.
+    let sx: number, sy: number;
+    if (mode === "fit") {
+        // Contain: scale uniformly so the whole window fits, letterboxing.
+        sx = sy = Math.min(boxW / srcW, boxH / srcH);
+    } else if (mode === "stretch") {
+        // Distort each axis independently to fill the bounds exactly.
+        sx = boxW / srcW; sy = boxH / srcH;
+    } else if (mode === "tile") {
+        sx = sy = 1; // native size; `zoom` below is the tile-size multiplier
+    } else {
+        // "fill" (default): cover — scale uniformly to fill the bounds, cropping
+        // the overflow (Figma-style).
+        sx = sy = Math.max(boxW / srcW, boxH / srcH);
     }
-    const s = (fill as any).scaling ?? 1;
-    return [s, 0, 0, 0, s, 0, 0, 0, 1];
+
+    // 3. zoom — a multiplier on whatever the fit resolved.
+    sx *= zoom; sy *= zoom;
+
+    // A repeating texture has no corner to pin, so tile keeps its origin.
+    if (mode === "tile") return [sx, 0, bounds.left, 0, sy, bounds.top, 0, 0, 1];
+
+    // 4. anchor — the source's normalised point lands on the box's same point.
+    //    Convert [-1,1] y-up (the pivot/align space) to [0,1] y-down (texture space).
+    const anchor = fill.anchor ?? { x: 0, y: 0 };
+    const ax = (anchor.x + 1) / 2;
+    const ay = (1 - anchor.y) / 2;
+    const tx = bounds.left + ax * (boxW - srcW * sx) - srcX * sx;
+    const ty = bounds.top + ay * (boxH - srcH * sy) - srcY * sy;
+    return [sx, 0, tx, 0, sy, ty, 0, 0, 1];
 }
 
 /**
@@ -189,20 +230,23 @@ export function computeImageMatrix(
  */
 export function makeImageShader(
     img: CKImage,
-    fill: { mode?: string; transform?: Float32Array | number[][]; scaling?: number },
+    fill: MediaPlacement,
     ck: any,
     bounds: ShapeBounds | null,
     filterMode: "linear" | "nearest" = "linear",
 ): any {
-    const mode = fill.mode ?? "fill";
-    // 'tile' repeats; 'fit' leaves letterbox margins that must stay transparent
-    // (Decal) rather than smearing edge pixels; 'fill'/'stretch' cover the rect
-    // so Clamp never shows.
+    const mode = fill.fit ?? "fill";
+    // 'tile' repeats. Anything that may leave a gap must keep it transparent
+    // (Decal) rather than smearing edge pixels: 'fit' letterboxes by definition,
+    // and *any* mode pulled below its fitted scale by `zoom < 1` no longer covers
+    // the box. Where the image does cover, Clamp avoids the half-texel
+    // transparent hairline bilinear sampling would leave at the edges.
+    const covers = mode !== "fit" && (fill.zoom ?? 1) >= 1;
     const tileMode = mode === "tile"
         ? ck.TileMode.Repeat
-        : mode === "fit"
-            ? ck.TileMode.Decal
-            : ck.TileMode.Clamp;
+        : covers
+            ? ck.TileMode.Clamp
+            : ck.TileMode.Decal;
 
     const matrix = computeImageMatrix(img.width(), img.height(), fill, bounds);
 

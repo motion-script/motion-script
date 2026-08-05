@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { applyPadding, expandByPadding } from '@/layout/padding';
-import { PaddingResolved } from '@/attributes/layout/padding';
+import { InsetsResolved } from '@/attributes/layout/insets';
 
-const pad = (l: number, r: number, t: number, b: number): PaddingResolved => ({
+const pad = (l: number, r: number, t: number, b: number): InsetsResolved => ({
     left: l, right: r, top: t, bottom: b,
 });
 

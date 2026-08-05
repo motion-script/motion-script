@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
             height={'fill'}
             zoom={1}
             heading={0}
-            origin={{ x: 0, y: 0 }}
+            lookAt={{ x: 0, y: 0 }}
         >
             <GridPattern
                 cellSize={120}
@@ -35,6 +35,6 @@ export default createScene(function* (stage) {
 
     // All three viewport channels move at once: dolly in, pan to the accent
     // ellipse, and roll the view.
-    yield* camera().to({ zoom: 2.2, origin: { x: 210, y: 140 }, heading: 30 }, 1.5, easeInOut('quad'));
+    yield* camera().to({ zoom: 2.2, lookAt: { x: 210, y: 140 }, heading: 30 }, 1.5, easeInOut('quad'));
     yield* holdTail(1.5);
 });

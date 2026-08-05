@@ -382,7 +382,7 @@ export default createScene(function* (stage) {
   const cam = createRef<Camera>();
 
   stage.add(
-    <Camera ref={cam} width={760} height={380} zoom={1} origin={{ x: 0, y: 0 }}
+    <Camera ref={cam} width={760} height={380} zoom={1} lookAt={{ x: 0, y: 0 }}
       fill="rgba(105, 144, 221, 0.06)" cornerRadius={18}>
       <Rect width={130} height={130} fill="#6990DD" cornerRadius={12} x={-240} />
       <Rect width={130} height={130} fill="#E8617C" cornerRadius={12} />
@@ -391,9 +391,9 @@ export default createScene(function* (stage) {
   );
 
   // Pan across, then zoom into the last box
-  yield* cam().to({ origin: { x: 240, y: 0 } }, 1.3, easeInOut);
+  yield* cam().to({ lookAt: { x: 240, y: 0 } }, 1.3, easeInOut);
   yield* cam().to({ zoom: 1.8 }, 1.0, easeInOut);
-  yield* cam().to({ zoom: 1, origin: { x: 0, y: 0 } }, 1.4, easeInOut);
+  yield* cam().to({ zoom: 1, lookAt: { x: 0, y: 0 } }, 1.4, easeInOut);
 });`
 export function CameraCanvas() {
   return <NodeCanvas draw={drawCamera} code={cameraCode} />

@@ -5,7 +5,7 @@ import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { applyPadding, expandByPadding } from "@/layout/padding";
@@ -90,9 +90,9 @@ export class Grid extends ShapeNode<GridProps> {
 
     // ---- Padding -------------------------------------------------------------
 
-    private effectivePadding(): PaddingResolved {
+    private effectivePadding(): InsetsResolved {
         let extra = 0;
-        const p = this.padding as PaddingResolved;
+        const p = this.padding as InsetsResolved;
         const strokes = this.stroke as StrokeResolved[];
         if (strokes && Symbol.iterator in Object(strokes)) {
             for (const s of strokes) {

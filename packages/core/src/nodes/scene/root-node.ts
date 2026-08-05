@@ -10,9 +10,9 @@ import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { MeasureScope } from "@/render/measure-scope";
-import { Alignment } from "@/attributes/layout/align";
+import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
 import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
 import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
@@ -20,7 +20,7 @@ import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { CameraScope, Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
-import { alignProperty, fillProperty } from "@/attributes/properties/typed";
+import { anchorProperty, fillProperty } from "@/attributes/properties/typed";
 
 /** @internal */
 export interface RootProps extends NodeProps {
@@ -45,11 +45,11 @@ export interface RootProps extends NodeProps {
      * (`'center'`, `'topLeft'`, …) or an explicit per-axis pivot `Vector2`
      * (x: -1 left … +1 right, y: -1 bottom … +1 top).
      */
-    align: Alignment;
+    align: Anchor;
     /** Camera magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
     /** World-space point that maps to the centre of the viewport. */
-    origin: Vector2;
+    lookAt: Vector2;
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
 }
@@ -61,7 +61,7 @@ export interface RootProps extends NodeProps {
  * and camera. It lays its children out (flex `row`/`column` or `stack`, with
  * `gap`, `align`, `padding`) and paints a scene-wide background (`fill`) and
  * `overlay` — *and* views those laid-out children through a viewport transform
- * (`zoom`, `origin`, `heading`).
+ * (`zoom`, `lookAt`, `heading`).
  *
  * Unlike a {@link Rect} it is **not a shape**: it has no stroke, shadow, corner,
  * or `start`/`end` props. It carries only the scene-wide concerns — background
@@ -86,10 +86,10 @@ export class RootNode extends Node<RootProps> implements GroupHost {
 
     // ---- Layout container -------------------------------------------------
     @property({ default: 0 }) declare readonly gap: GapSize;
-    // Declared loose as `Alignment` (covers `this.align = 'center'`); the
+    // Declared loose as `Anchor` (covers `this.align = 'center'`); the
     // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
-    @alignProperty()
-    declare align: Alignment;
+    @anchorProperty()
+    declare align: Anchor;
     // `group` has a closure-based tween (the engine captures the in-flight
     // blend), so it's applied via applyProp rather than a static @property.
     declare group: LayoutMode;
@@ -98,7 +98,7 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     /** Camera magnification factor (default: 1). */
     @property({ default: 1 }) declare zoom: number;
     /** World-space focus point (default: {x:0, y:0}). */
-    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare origin: Vector2;
+    @property({ default: { x: 0, y: 0 }, tween: lerpVector2 }) declare lookAt: Vector2;
     /** Camera view rotation in degrees (default: 0). */
     @property({ default: 0 }) declare heading: number;
 
@@ -130,8 +130,8 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // ---- GroupHost --------------------------------------------------------
 
     // The root has no stroke, so effective padding is just the resolved padding.
-    effectivePadding(): PaddingResolved {
-        return this.padding as PaddingResolved;
+    effectivePadding(): InsetsResolved {
+        return this.padding as InsetsResolved;
     }
 
     // ---- Camera motion commands -------------------------------------------
@@ -148,14 +148,14 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     }
 
     /**
-     * Animate the world-space focus point (`origin`) — the point that maps to
+     * Animate the world-space focus point (`lookAt`) — the point that maps to
      * the centre of the viewport.
      *
      * @example
-     * yield* root.originTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
+     * yield* root.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    *originTo(origin: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ origin } as Partial<RootProps>, duration, ease);
+    *panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
+        return yield* this.to({ lookAt } as Partial<RootProps>, duration, ease);
     }
 
     /**
@@ -248,12 +248,12 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // the same place — and skips it on the at-rest fast path, where the renderer
     // pushes nothing at all.
     override _cameraScope(): CameraScope | null {
-        if (this.zoom === 1 && this.heading === 0 && this.origin.x === 0 && this.origin.y === 0) return null;
-        return { origin: this.origin, zoom: this.zoom, heading: this.heading };
+        if (this.zoom === 1 && this.heading === 0 && this.lookAt.x === 0 && this.lookAt.y === 0) return null;
+        return { lookAt: this.lookAt, zoom: this.zoom, heading: this.heading };
     }
 
     override renderChildren(ctx: RenderContext): void {
-        if (this.zoom === 1 && this.heading === 0 && this.origin.x === 0 && this.origin.y === 0) {
+        if (this.zoom === 1 && this.heading === 0 && this.lookAt.x === 0 && this.lookAt.y === 0) {
             super.renderChildren(ctx);
             return;
         }
@@ -266,7 +266,7 @@ export class RootNode extends Node<RootProps> implements GroupHost {
 
         ctx.beginCamera(
             { x: cx, y: -cy, width: w, height: h },
-            this.origin,
+            this.lookAt,
             this.zoom,
             this.heading,
         );

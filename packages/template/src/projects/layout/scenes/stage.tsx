@@ -20,5 +20,5 @@ export default createScene(function* (stage) {
 
     );
 
-    yield* stage.to({ origin: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
+    yield* stage.to({ lookAt: { x: 300, y: 0 }, heading: 40, zoom: 2 }, 2);
 });

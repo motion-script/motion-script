@@ -1,5 +1,5 @@
 import {
-    createScene, Text, Rect, Fills, AlignKey,
+    createScene, Text, Rect, Fills, AnchorKey,
     wait,
 } from "motion-script";
 import { TextDrawShape } from "../nodes/text-draw-shape";
@@ -8,7 +8,7 @@ import { TextDrawShape } from "../nodes/text-draw-shape";
 const GRADIENT = ['#6990DD', '#E8617C', '#F5C26B'];
 
 /**
- * Shows every named {@link AlignKey} passed as `textAlignment` on
+ * Shows every named {@link AnchorKey} passed as `textAlignment` on
  * {@link TextDrawShape} — the pivot handed to `Graphics.text({ pivot, ... })`.
  *
  * Text contributes no measurable bounds to a Graphics union, so `pivot` is the
@@ -25,7 +25,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
 
     // All nine cardinal anchors, laid out in a 3×3 grid mirroring their meaning.
-    const anchors: AlignKey[] = [
+    const anchors: AnchorKey[] = [
         'topLeft', 'topCenter', 'topRight',
         'centerLeft', 'center', 'centerRight',
         'bottomLeft', 'bottomCenter', 'bottomRight',

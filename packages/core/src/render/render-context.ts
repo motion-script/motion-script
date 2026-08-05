@@ -257,11 +257,11 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
      * angle. Paired with `endCamera()`.
      *
      * @param viewport  Bounding rect of the camera node in canvas space.
-     * @param centerOn  World-space point the camera looks at.
-     * @param zoom      Uniform scale applied around `centerOn`.
+     * @param lookAt  World-space point the camera looks at.
+     * @param zoom      Uniform scale applied around `lookAt`.
      * @param heading   Camera rotation in degrees.
      */
-    abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, centerOn: Vector2, zoom: number, heading: number): void;
+    abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, lookAt: Vector2, zoom: number, heading: number): void;
     abstract endCamera(): void;
 
     /**

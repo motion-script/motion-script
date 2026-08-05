@@ -5,15 +5,27 @@ import { resolveChainFilters } from "../filters/chain";
 import type { ImageFilter, VideoFilter } from "../filters/chain";
 import type { MediaFilter } from "../filters/union";
 import type { FillProp, FillResolved, FillSpace } from "./union";
-import type { ImageFit, ImageTransform } from "./implementations/image";
+import type { ImageCrop, ImageFit, ImageMatrix } from "./implementations/image";
+import type { Anchor } from "@/attributes/layout/anchor";
 import type { FractalNoiseFillProp } from "./implementations/fractal-noise";
 import type { Graphics3D } from "@/render3d/graphics3d";
 
-/** Author-facing options for a {@link FillChain.video} layer. */
-export interface VideoFillOptions extends FillOptions {
+/** Placement options shared by the image and video fill builders. */
+export interface MediaPlacementOptions {
+    /** How the (cropped) source is scaled into the node's bounds. Default `'fill'`. */
     fit?: ImageFit;
-    transform?: ImageTransform;
-    scaling?: number;
+    /** Window onto the source, in fractions of its own size, applied before `fit`. */
+    crop?: ImageCrop;
+    /** Magnification on top of the fitted scale. `1` is the fitted size. */
+    zoom?: number;
+    /** The point held fixed as `zoom` scales; also the alignment when it doesn't cover. */
+    anchor?: Anchor;
+    /** Raw source→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds. */
+    matrix?: ImageMatrix;
+}
+
+/** Author-facing options for a {@link FillChain.video} layer. */
+export interface VideoFillOptions extends FillOptions, MediaPlacementOptions {
     filters?: VideoFilter;
     /**
      * Explicit source time to paint, in seconds. Omit it and the clip plays by
@@ -72,13 +84,23 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'solid' as const, color }, options)]);
     }
 
-    /** Append an image fill from `src`. */
-    image(src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) {
-        const { fit, mode, transform, scaling, filters, ...common } = options ?? {};
+    /**
+     * Append an image fill from `src`.
+     *
+     * @example
+     * Fills.image('./city.jpg', { zoom: 1.4, anchor: 'topCenter', crop: { bottom: 0.2 } })
+     */
+    image(src: string, options?: FillOptions & MediaPlacementOptions & { filters?: ImageFilter }) {
+        const { fit, crop, zoom, anchor, matrix, filters, ...common } = options ?? {};
         // `ImageFilter` admits only pixel filters, so the resolved array is safely
         // a `MediaFilter[]` for the image prop (video-only filters can't reach here).
         const imageFilters = filters ? (resolveChainFilters(filters) as MediaFilter[]) : undefined;
-        return new FillChain([...this.list, withOptions({ type: 'image' as const, src, fit: fit ?? mode, transform, scaling, filters: imageFilters }, common)]);
+        return new FillChain([...this.list, withOptions({
+            type: 'image' as const,
+            src,
+            fit, crop, zoom, anchor, matrix,
+            filters: imageFilters,
+        }, common)]);
     }
 
     /**
@@ -88,11 +110,11 @@ export class FillChain {
      * stroke, shadow, a custom node's `Graphics`) with nothing to advance.
      */
     video(src: string, options?: VideoFillOptions) {
-        const { fit: mode, transform, scaling, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
+        const { fit, crop, zoom, anchor, matrix, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
-            mode, transform, scaling, filters: filters && resolveChainFilters(filters),
+            fit, crop, zoom, anchor, matrix, filters: filters && resolveChainFilters(filters),
             timestamp,
             playing: playing ?? true,
             trimStart, trimEnd, playStart, speed, loop, duration,

@@ -26,6 +26,6 @@ export default createScene(function* (stage) {
 
     // Pan the camera across the world; the world-anchored grid scrolls past and
     // stays full, regenerating only the lines currently on screen.
-    yield* camera().to({ origin: { x: 240, y: 120 } }, 1.4, easeInOut('quad'));
+    yield* camera().to({ lookAt: { x: 240, y: 120 } }, 1.4, easeInOut('quad'));
     yield* holdTail(1.4);
 });

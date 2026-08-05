@@ -78,7 +78,7 @@ Screenshots: first, mid, and last frame of each scene.
 ### Camera
 
 - [ ] `camera-zoom`: Camera zooming in on a scene
-- [ ] `camera-pan`: Camera panning (origin offset) across objects
+- [ ] `camera-pan`: Camera panning (lookAt offset) across objects
 - [ ] `camera-heading`: Camera rotating (heading) around viewport center
 - [ ] `camera-combined`: Zoom + pan + heading all animated together
 

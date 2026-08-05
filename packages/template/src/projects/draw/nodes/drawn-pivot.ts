@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
-    Alignment, resolvePivot, property,
+    Anchor, resolveAnchor, property,
 } from "motion-script";
 
 export interface DrawnPivotProps extends ShapeProps {
@@ -16,7 +16,7 @@ export interface DrawnPivotProps extends ShapeProps {
      * Named `spinPivot` (not `pivot`) so it doesn't shadow the node's own `pivot`
      * (the node-level transform pivot): this is the *graphics-union* pivot.
      */
-    spinPivot: Alignment;
+    spinPivot: Anchor;
     /** Rotation applied to the whole union about {@link spinPivot} (degrees). Animate this. */
     angle: number;
 }
@@ -43,7 +43,7 @@ export interface DrawnPivotProps extends ShapeProps {
 export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
 
     @property({ default: 300 }) declare readonly extent: number;
-    @property({ default: 'center' }) declare readonly spinPivot: Alignment;
+    @property({ default: 'center' }) declare readonly spinPivot: Anchor;
     @property({ default: 0 }) declare readonly angle: number;
 
     constructor(props: NodeConfig<DrawnPivot, DrawnPivotProps>) {
@@ -79,7 +79,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
         draw.draw(figure);
 
         // ── Pivot marker: drawn AFTER (so it doesn't rotate) at the pivot ─────
-        // resolvePivot gives the normalised [-1,1] (y-up) anchor; map it onto the
+        // resolveAnchor gives the normalised [-1,1] (y-up) anchor; map it onto the
         // figure's [-e, +e] box in y-up author space (the renderer flips y to
         // canvas). A ✕ pins where the figure turns around.
         const marker = this.pivotPoint(e);
@@ -103,7 +103,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
      *  anchor / Vector2 onto the figure's `[-e, +e]` box (matching the renderer's
      *  bbox resolution). */
     private pivotPoint(e: number): { x: number; y: number } {
-        const a = resolvePivot(this.spinPivot); // normalised [-1,1], y-up
+        const a = resolveAnchor(this.spinPivot); // normalised [-1,1], y-up
         return { x: a.x * e, y: a.y * e };
     }
 }

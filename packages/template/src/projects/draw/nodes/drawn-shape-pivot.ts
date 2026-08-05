@@ -1,6 +1,6 @@
 import {
     ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
-    AlignKey, Vector2, property,
+    AnchorKey, Vector2, property,
 } from "motion-script";
 
 export interface DrawnShapePivotProps extends ShapeProps {
@@ -11,7 +11,7 @@ export interface DrawnShapePivotProps extends ShapeProps {
      * new `Graphics().rect({ <anchor>: { x, y } })` positioning API. One of the
      * nine `align` names (`'center'`, `'topRight'`, `'bottomLeft'`, …).
      */
-    anchor: AlignKey;
+    anchor: AnchorKey;
     /**
      * The point (y-up, local pixels) the rect's {@link anchor} should land on.
      * A ✕ is drawn here independently, so a correct anchor lands the rect's named
@@ -37,7 +37,7 @@ export interface DrawnShapePivotProps extends ShapeProps {
 export class DrawnShapePivot extends ShapeNode<DrawnShapePivotProps> {
 
     @property({ default: 200 }) declare readonly extent: number;
-    @property({ default: 'center' }) declare readonly anchor: AlignKey;
+    @property({ default: 'center' }) declare readonly anchor: AnchorKey;
     @property({ default: { x: 0, y: 0 } }) declare readonly target: Vector2;
 
     constructor(props: NodeConfig<DrawnShapePivot, DrawnShapePivotProps>) {

@@ -1,9 +1,9 @@
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 import { MeasureScope } from "@/render/measure-scope";
 import type { Node } from "@/nodes/base/node";
 
-const NO_PADDING: PaddingResolved = { top: 0, right: 0, bottom: 0, left: 0 };
+const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /**
  * Stack-layout a container's children, centered within its padded box.
@@ -23,7 +23,7 @@ export function layoutGroupChildren(
     children: Node[],
     rect: BoxBounds,
     scope: MeasureScope,
-    pad: PaddingResolved = NO_PADDING,
+    pad: InsetsResolved = NO_PADDING,
 ): void {
     const innerW = Math.max(0, rect.width - pad.left - pad.right);
     const innerH = Math.max(0, rect.height - pad.top - pad.bottom);

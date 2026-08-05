@@ -39,7 +39,7 @@ import {
     type TextState,
     type TransformState,
     type Vector2,
-    type Alignment,
+    type Anchor,
     type MotionBlurEffect,
     type FontStyle,
     type SceneEffect,
@@ -50,7 +50,7 @@ import {
     resolveFillArray,
     resolveStrokeArray,
     resolveShadowArray,
-    resolvePivot,
+    resolveAnchor,
     resolveShapeAnchor,
     resolvePivotPosition,
     stripShapeAnchorKeys,
@@ -804,7 +804,7 @@ export abstract class SkiaRenderContext extends RenderContext {
      * Falls back to the local origin when there are no path-backed shapes (e.g.
      * text only).
      */
-    private resolveGroupCenter(graphics: Graphics, center: Alignment | undefined): Vector2 {
+    private resolveGroupCenter(graphics: Graphics, center: Anchor | undefined): Vector2 {
         // Explicit pixel pivot — no need to size the union.
         if (center !== undefined && typeof center !== "string") {
             return { x: center.x, y: center.y };
@@ -838,7 +838,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         // Named anchor: normalised [-1,1] (y-up) scaled onto the box, y flipped
         // to the renderer's y-down local space — so 'topRight' lands at the box's
         // top-right corner. Matches how node/per-shape pivots map onto their box.
-        const a = resolvePivot(center);
+        const a = resolveAnchor(center);
         const halfW = (bounds.right - bounds.left) / 2;
         const halfH = (bounds.bottom - bounds.top) / 2;
         return { x: cx + a.x * halfW, y: cy - a.y * halfH };
@@ -1268,7 +1268,7 @@ export abstract class SkiaRenderContext extends RenderContext {
 
     private cameraRestoreStack: number[] = [];
 
-    beginCamera(viewport: { x: number; y: number; width: number; height: number }, centerOn: Vector2, zoom: number, heading: number): void {
+    beginCamera(viewport: { x: number; y: number; width: number; height: number }, lookAt: Vector2, zoom: number, heading: number): void {
         if (!this.isRendering) {
             console.warn("beginCamera() must be called within the draw() method.");
             return;
@@ -1287,7 +1287,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         canvas.translate(viewport.x, viewport.y);
         canvas.rotate(-heading, 0, 0);
         canvas.scale(zoom, zoom);
-        canvas.translate(-centerOn.x, centerOn.y);
+        canvas.translate(-lookAt.x, lookAt.y);
 
         this.cameraRestoreStack.push(2);
     }

@@ -3,7 +3,7 @@ import { holdTail } from './_lib';
 
 /**
  * Camera heading: the view rotates about its centre via `heading` (degrees)
- * while `zoom` and `origin` hold still. The whole world — grid and landmark
+ * while `zoom` and `lookAt` hold still. The whole world — grid and landmark
  * shapes — visibly tilts; the mid frame shows it caught at roughly half the
  * rotation.
  */
@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
             height={'fill'}
             zoom={1}
             heading={0}
-            origin={{ x: 0, y: 0 }}
+            lookAt={{ x: 0, y: 0 }}
         >
             <GridPattern
                 cellSize={120}
@@ -33,7 +33,7 @@ export default createScene(function* (stage) {
         </Camera>,
     );
 
-    // Rotate the camera view only — zoom and origin stay put.
+    // Rotate the camera view only — zoom and lookAt stay put.
     yield* camera().to({ heading: 60 }, 1.4, easeInOut('quad'));
     yield* holdTail(1.4);
 });

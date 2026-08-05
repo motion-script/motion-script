@@ -1,4 +1,4 @@
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, PaddingResolved, property, resolvePadding, lerpEdgeInset, FillResolved, AnimationBuilder } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, AnimationBuilder } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
 import { AnimatedToken, tweenLatex } from "./tween";
@@ -10,7 +10,7 @@ export class Latex extends ShapeNode<LatexProps> {
 
     @property({ default: "" }) declare readonly latex: string;
     @property({ default: 16 }) declare readonly fontSize: number;
-    @property({ default: 0, mapper: resolvePadding, tween: lerpEdgeInset }) declare readonly padding: PaddingResolved;
+    @property({ default: 0, mapper: resolveInsets, tween: lerpInsets }) declare readonly padding: InsetsResolved;
 
     private _intrinsicWidth: number = 0;
     private _intrinsicHeight: number = 0;

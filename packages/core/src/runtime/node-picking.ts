@@ -73,7 +73,7 @@ function renderMatrix(node: Node): Matrix2D {
             const cam = n._cameraScope();
             if (cam) {
                 const r = n.measuredRect;
-                m = multiply(m, cameraMatrix(r.x, -r.y, cam.origin, cam.zoom, cam.heading));
+                m = multiply(m, cameraMatrix(r.x, -r.y, cam.lookAt, cam.zoom, cam.heading));
             }
         }
     }

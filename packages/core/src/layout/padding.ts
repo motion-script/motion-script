@@ -1,4 +1,4 @@
-import { PaddingResolved } from "@/attributes/layout/padding";
+import { InsetsResolved } from "@/attributes/layout/insets";
 
 /**
  * Compute the inner content area produced by subtracting an EdgeInset
@@ -12,7 +12,7 @@ export interface InnerArea {
     offsetY: number;
 }
 
-export function applyPadding(outerWidth: number, outerHeight: number, pad: PaddingResolved): InnerArea {
+export function applyPadding(outerWidth: number, outerHeight: number, pad: InsetsResolved): InnerArea {
     return {
         width: Math.max(0, outerWidth - pad.left - pad.right),
         height: Math.max(0, outerHeight - pad.top - pad.bottom),
@@ -22,7 +22,7 @@ export function applyPadding(outerWidth: number, outerHeight: number, pad: Paddi
 }
 
 /** Add padding back onto an inner size to get the outer size that contains it. */
-export function expandByPadding(innerWidth: number, innerHeight: number, pad: PaddingResolved): { width: number; height: number } {
+export function expandByPadding(innerWidth: number, innerHeight: number, pad: InsetsResolved): { width: number; height: number } {
     return {
         width: innerWidth + pad.left + pad.right,
         height: innerHeight + pad.top + pad.bottom,
