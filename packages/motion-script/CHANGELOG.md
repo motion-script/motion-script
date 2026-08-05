@@ -1,5 +1,18 @@
 # motion-script
 
+## 2.15.0
+
+### Minor Changes
+
+- 9667d43: Text carets, zoom/crop controls for image fills, certain effects made into image filters
+
+### Patch Changes
+
+- Updated dependencies [9667d43]
+  - @motion-script/code@2.15.0
+  - @motion-script/latex@2.15.0
+  - @motion-script/core@2.15.0
+
 ## 2.14.0
 
 ### Minor Changes
