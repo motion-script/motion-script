@@ -25,6 +25,10 @@
 /** @internal */ export { RenderContext, Render2DContext } from './render-context';
 /** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface } from './render-context';
 /** @internal */ export { MeasureScope } from './measure-scope';
+// Public rather than internal: a host drawing its own text caret reads these off
+// `getTextLayout`, so they are part of the editor-facing surface.
+export { caretCount } from './text-layout';
+export type { TextBlockLayout, TextBlockLine } from './text-layout';
 /** @internal */ export { TrackRenderContext } from './track-render-context';
 /** @internal */ export { TrackMeasureScope } from './track-measure-scope';
 

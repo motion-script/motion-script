@@ -3,6 +3,8 @@ import { FontStyle } from "@/attributes/text/span";
 import { TransformState } from "./descriptors/transform";
 
 import { MeasureScope } from "./measure-scope";
+import { TextState } from "./descriptors/text";
+import { TextBlockLayout } from "./text-layout";
 import { Graphics } from "./graphics";
 import { Clip } from "./clip";
 import { Vector2 } from "@/attributes/layout/vector2";
@@ -122,6 +124,17 @@ export abstract class Render2DContext {
  */
 export abstract class RenderContext extends Render2DContext implements MeasureScope {
     abstract measureText(text: string, fontSize: number, fontFamily: string, fontWeight?: number, letterSpacing?: number, fontStyle?: FontStyle): number;
+
+    /**
+     * See {@link MeasureScope.layoutTextBlock}. Concrete rather than abstract,
+     * and `null` by default, so a backend that has no need to report glyph
+     * positions is unaffected — the only thing it gives up is on-canvas text
+     * editing in a host built on it.
+     */
+    layoutTextBlock(state: Partial<TextState>): TextBlockLayout | null {
+        void state;
+        return null;
+    }
 
     /** Stack of node ids currently being drawn, innermost last. */
     protected currentNodeStack: string[] = [];

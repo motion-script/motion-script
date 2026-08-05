@@ -12,7 +12,7 @@ import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { TextSegment } from "@/render/descriptors/text";
+import { TextSegment, TextState } from "@/render/descriptors/text";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { PathData } from "@/render/descriptors/path";
@@ -310,15 +310,20 @@ export class Text extends ShapeNode<TextProps> {
         return segments;
     }
 
-    // The bare text op as a Graphics (no paint), plus whether selection segments
-    // are active. Text has no single fillable silhouette path, so the generic
-    // ShapeNode.shapeGraphics() stays null and Text drives its own overlay/stroke
-    // passes off this builder instead.
-    private textOpGraphics(): { g: Graphics; segments: boolean } {
+    /**
+     * The descriptor this node draws itself as, at the current frame.
+     *
+     * `@internal` — split out of {@link textOpGraphics} so `node-picking`'s
+     * caret geometry can be measured from *the same* state that gets painted.
+     * Deriving the two separately is how a caret ends up half a pixel — or, once
+     * `'autofit'` or wrapping is in play, half a line — away from its glyph.
+     */
+    /** @internal */
+    _textState(): Partial<TextState> {
         // Text-on-path and selection segments are mutually exclusive in v1: when a
         // path is set we lay out the single string along the path and skip segments.
         const segments = this.path == null ? this._buildSegments() : null;
-        const g = new Graphics().text({
+        return {
             text: this.text,
             fontSize: this.fontSize,
             fontFamily: this.fontFamily,
@@ -333,8 +338,16 @@ export class Text extends ShapeNode<TextProps> {
             height: this.layoutRect?.height ?? 0,
             segments: segments ?? undefined,
             path: this.path,
-        });
-        return { g, segments: segments != null };
+        };
+    }
+
+    // The bare text op as a Graphics (no paint), plus whether selection segments
+    // are active. Text has no single fillable silhouette path, so the generic
+    // ShapeNode.shapeGraphics() stays null and Text drives its own overlay/stroke
+    // passes off this builder instead.
+    private textOpGraphics(): { g: Graphics; segments: boolean } {
+        const state = this._textState();
+        return { g: new Graphics().text(state), segments: state.segments != null };
     }
 
     protected override renderSelf(ctx: RenderContext): void {

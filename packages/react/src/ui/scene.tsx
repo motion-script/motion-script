@@ -11,6 +11,7 @@ import {
     type Variables,
     type Scene,
     type NodeBox,
+    type NodeTextLayout,
     type NodeOverride,
     type NodeState,
     type Size2D,
@@ -144,6 +145,13 @@ export interface FrameHandle {
     getNodeBox: (path: string) => NodeBox | null;
     /** Every visible node's box, in draw order. */
     getNodeBoxes: () => NodeBox[];
+    /**
+     * Where a Text node's caret slots landed on screen — for drawing a text
+     * cursor and selection over the rendered glyphs, rather than over a DOM
+     * input laid on top of them, which cannot agree with the shaper. `null` for
+     * anything that isn't editable text; see {@link NodeTextLayout}.
+     */
+    getTextLayout: (path: string) => NodeTextLayout | null;
     /**
      * Topmost node under a viewport-space point. `tolerance` is grab-slop in
      * scene units — divide the desired screen slop by the host's preview zoom.
@@ -359,6 +367,7 @@ export function MotionPlayer({
             },
             getNodeBox: (path: string) => controllerRef.current?.getNodeBox(path) ?? null,
             getNodeBoxes: () => controllerRef.current?.getNodeBoxes() ?? [],
+            getTextLayout: (path: string) => controllerRef.current?.getTextLayout(path) ?? null,
             pickNode: (point: Vector2, tolerance?: number) =>
                 controllerRef.current?.pickNode(point, tolerance) ?? null,
             setNodeOverride: (path: string, props: NodeOverride) =>

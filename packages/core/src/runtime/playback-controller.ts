@@ -15,6 +15,7 @@ import { Node } from "@/nodes/base/node";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { NodeBox, collectBoxes, nodeBox, pickNode } from "./node-picking";
+import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
 
 /**
  * Transient prop values layered over a node's evaluated state — see
@@ -583,6 +584,23 @@ export class PlaybackController {
         const out: NodeBox[] = [];
         collectBoxes(scene.root, "", out, true);
         return out;
+    }
+
+    /**
+     * Where a Text node's caret slots landed on screen, or `null` when the path
+     * doesn't resolve, the node isn't text, or the shape has no caret model (see
+     * {@link MeasureScope.layoutTextBlock}). See {@link NodeTextLayout}.
+     *
+     * Measured on demand rather than carried with every frame: a host wants this
+     * only while a text edit is open, and only for the node being edited.
+     *
+     * @param path Structural path from {@link TreeState.path}.
+     */
+    getTextLayout(path: string): NodeTextLayout | null {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return null;
+        const node = findNodeByPath(scene.root, path);
+        return node ? nodeTextLayout(node, path, this.measureScope) : null;
     }
 
     /**

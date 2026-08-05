@@ -1,7 +1,7 @@
 import type { CanvasKit, Canvas, Paint, TypefaceFontProvider } from "@motion-script/canvaskit";
-import { TextState, withTextDescriptor, resolveShapePivot } from "@motion-script/core";
+import { TextState, withTextDescriptor, resolveShapePivot, type TextBlockLayout } from "@motion-script/core";
 import type { CurrentShape } from "./shape-handler";
-import { layoutParagraph, drawShapedRunAt, type ParagraphSegment } from "./paragraph-layout";
+import { layoutParagraph, layoutTextBlock, drawShapedRunAt, type ParagraphSegment } from "./paragraph-layout";
 import { layoutTextOnPath, drawTextOnPath } from "./text-path";
 import { ParagraphShapeCache, shapeKey, shapeKeyInputsFor } from "./paragraph-cache";
 
@@ -29,6 +29,93 @@ function rotatedBounds(bounds: Bounds, px: number, py: number, rotationDeg: numb
         if (y > bottom) bottom = y;
     }
     return { left, top, right, bottom };
+}
+
+/**
+ * Resolve the shaping inputs a text state actually lays out with: the font size
+ * `'autofit'` settles on, and whether `wrap` survives that.
+ *
+ * Shared by {@link buildText} and {@link textBlockLayout} so a caret is measured
+ * against the size and wrap mode the glyphs were drawn at. Autofit in particular
+ * cannot be re-derived by a caller — it depends on a probe layout — so a second
+ * implementation of this would put the cursor on a different line.
+ */
+function resolveTextShaping(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    fullState: TextState,
+): { segment: ParagraphSegment; maxWidth: number } {
+    const autofit = fullState.fontSize === 'autofit';
+    let fontSize = autofit ? 100 : (fullState.fontSize as number);
+    let wrap = fullState.wrap && fullState.width > 0;
+
+    const segment = (size: number): ParagraphSegment => ({
+        text: fullState.text,
+        fontFamily: fullState.fontFamily,
+        fontSize: size,
+        fontWeight: fullState.fontWeight,
+        fontStyle: fullState.fontStyle,
+        letterSpacing: fullState.letterSpacing,
+    });
+
+    // Autofit: shape once unwrapped to get the intrinsic single-line size, then
+    // scale the font so the text fits the box. With wrap on, stop shrinking at
+    // minFontSize and let the text wrap instead.
+    if (autofit && fullState.width > 0 && fullState.height > 0) {
+        const probe = layoutParagraph(canvasKit, fontMgr, [segment(fontSize)], {
+            textAlign: fullState.textAlign,
+            lineHeight: fullState.lineHeight,
+            maxWidth: Infinity,
+            originX: fullState.x,
+            originY: fullState.y,
+        });
+        const scaleW = probe.width > 0 ? fullState.width / probe.width : 1;
+        const scaleH = probe.height > 0 ? fullState.height / probe.height : 1;
+        const singleLineFit = fontSize * Math.min(scaleW, scaleH);
+        for (const f of probe.fonts) f.delete();
+
+        if (wrap && singleLineFit < fullState.minFontSize) {
+            fontSize = fullState.minFontSize;
+        } else {
+            fontSize = singleLineFit;
+            wrap = false;
+        }
+    }
+
+    return { segment: segment(fontSize), maxWidth: wrap ? fullState.width : Infinity };
+}
+
+/**
+ * Where a text state's caret slots land, block-local — the backing for core's
+ * {@link MeasureScope.layoutTextBlock}, and so for on-canvas text editing.
+ *
+ * Deliberately not cached: a host asks for this while a text edit is open, for
+ * one node, not once per node per frame. Putting it in the paragraph cache would
+ * make every rendered string pay for caret extraction it never reads.
+ *
+ * `null` for the shapes the caret model doesn't describe — text laid along a
+ * path (glyphs follow a curve, so there are no line boxes) and a block split into
+ * selection segments (each piece carries its own transform, so a single run of
+ * slots would not describe where the glyphs are).
+ */
+export function textBlockLayout(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    state: Partial<TextState>,
+): TextBlockLayout | null {
+    const fullState = withTextDescriptor(state);
+    if (fullState.path != null) return null;
+    if (fullState.segments && fullState.segments.length > 0) return null;
+
+    const { segment, maxWidth } = resolveTextShaping(canvasKit, fontMgr, fullState);
+    return layoutTextBlock(canvasKit, fontMgr, segment, {
+        textAlign: fullState.textAlign,
+        lineHeight: fullState.lineHeight,
+        maxWidth,
+        boxWidth: fullState.width,
+        originX: 0,
+        originY: 0,
+    });
 }
 
 /**
@@ -73,48 +160,10 @@ export function buildText(
     const x = fullState.x;
     const y = fullState.y;
 
-    const autofit = fullState.fontSize === 'autofit';
-    let fontSize = autofit ? 100 : (fullState.fontSize as number);
-    let wrap = fullState.wrap && fullState.width > 0;
-
-    const segment = (size: number): ParagraphSegment => ({
-        text: fullState.text,
-        fontFamily: fullState.fontFamily,
-        fontSize: size,
-        fontWeight: fullState.fontWeight,
-        fontStyle: fullState.fontStyle,
-        letterSpacing: fullState.letterSpacing,
-    });
-
-    // Autofit: shape once unwrapped to get the intrinsic single-line size, then
-    // scale the font so the text fits the box. With wrap on, stop shrinking at
-    // minFontSize and let the text wrap instead.
-    if (autofit && fullState.width > 0 && fullState.height > 0) {
-        const probe = layoutParagraph(canvasKit, fontMgr, [segment(fontSize)], {
-            textAlign: fullState.textAlign,
-            lineHeight: fullState.lineHeight,
-            maxWidth: Infinity,
-            originX: x,
-            originY: y,
-        });
-        const scaleW = probe.width > 0 ? fullState.width / probe.width : 1;
-        const scaleH = probe.height > 0 ? fullState.height / probe.height : 1;
-        const singleLineFit = fontSize * Math.min(scaleW, scaleH);
-        for (const f of probe.fonts) f.delete();
-
-        if (wrap && singleLineFit < fullState.minFontSize) {
-            fontSize = fullState.minFontSize;
-        } else {
-            fontSize = singleLineFit;
-            wrap = false;
-        }
-    }
-
     // Shape at origin (0,0) and cache on the text/font/wrap signature; the node's
     // (x, y) is applied at draw time and to the bounds, so a node that moves every
     // frame (e.g. each Code token) reuses one shaped run instead of re-shaping.
-    const maxWidth = wrap ? fullState.width : Infinity;
-    const seg = segment(fontSize);
+    const { segment: seg, maxWidth } = resolveTextShaping(canvasKit, fontMgr, fullState);
     const key = shapeKey(
         shapeKeyInputsFor(seg, fullState.textAlign, fullState.lineHeight, maxWidth, fullState.width),
         fontEpoch,

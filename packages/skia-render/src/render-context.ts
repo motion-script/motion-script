@@ -55,6 +55,7 @@ import {
     resolvePivotPosition,
     stripShapeAnchorKeys,
     ShapeState,
+    type TextBlockLayout,
 
 } from "@motion-script/core";
 
@@ -70,6 +71,7 @@ import { view3DRendererHost } from "./three/renderer-seam";
 import { disposeTextureCache } from "./three/handlers/texture";
 import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun } from "./shapes/paragraph-layout";
+import { textBlockLayout } from "./shapes/text";
 import { measureTextCached } from "./shapes/paragraph-cache";
 import { layoutTextSegments, runCenter } from "./shapes/text-segments";
 import { RectShape } from "./shapes/rect";
@@ -384,6 +386,11 @@ export abstract class SkiaRenderContext extends RenderContext {
             this.storageAdapter.getFontEpoch(),
             text, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle,
         );
+    }
+    override layoutTextBlock(state: Partial<TextState>): TextBlockLayout | null {
+        // Same shaping path as the draw, so a caret drawn from these slots sits
+        // on the glyph rather than beside it.
+        return textBlockLayout(this.canvasKit, this.storageAdapter.getFontMgr(), state);
     }
     private buildHandlers(): void {
         const getCanvas = () => this.currentCanvas;

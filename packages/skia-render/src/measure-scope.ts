@@ -1,6 +1,7 @@
-import { FontStyle, MeasureScope } from "@motion-script/core";
+import { FontStyle, MeasureScope, type TextBlockLayout, type TextState } from "@motion-script/core";
 import type { SkiaTextAssets } from "./assets";
 import { measureTextCached } from "./shapes/paragraph-cache";
+import { textBlockLayout } from "./shapes/text";
 
 /**
  * {@link MeasureScope} implementation used by layout (auto/hug sizing) to
@@ -28,6 +29,16 @@ export class SkiaMeasureScope extends MeasureScope {
             this.storageAdapter.getParagraphCache(),
             this.storageAdapter.getFontEpoch(),
             text, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle,
+        );
+    }
+
+    override layoutTextBlock(state: Partial<TextState>): TextBlockLayout | null {
+        // Same shaping path as the draw, so a caret drawn from these slots sits
+        // on the glyph rather than beside it.
+        return textBlockLayout(
+            this.storageAdapter.getCanvasKit(),
+            this.storageAdapter.getFontMgr(),
+            state,
         );
     }
 }

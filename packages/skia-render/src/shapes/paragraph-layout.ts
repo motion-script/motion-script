@@ -1,5 +1,5 @@
 import type { CanvasKit, Font, Paint, Canvas, TypefaceFontProvider, Typeface } from "@motion-script/canvaskit";
-import type { FontStyle, TextAlign } from "@motion-script/core";
+import type { FontStyle, TextAlign, TextBlockLayout, TextBlockLine } from "@motion-script/core";
 
 /**
  * One styled run of text fed to the paragraph layout. Mirrors the fields the
@@ -62,39 +62,48 @@ function textAlignFor(canvasKit: CanvasKit, textAlign: TextAlign) {
     }
 }
 
+/** Options both the glyph pass and the caret pass lay out with. */
+interface ParagraphLayoutOptions {
+    textAlign: TextAlign;
+    lineHeight: number;
+    maxWidth: number;
+    boxWidth?: number;
+    originX: number;
+    originY: number;
+}
+
+/** A built, laid-out paragraph plus everything derived from its two-pass layout. */
+interface LaidOutParagraph {
+    paragraph: ReturnType<ReturnType<CanvasKit["ParagraphBuilder"]["MakeFromFontCollection"]>["build"]>;
+    builder: ReturnType<CanvasKit["ParagraphBuilder"]["MakeFromFontCollection"]>;
+    fontCollection: ReturnType<CanvasKit["FontCollection"]["Make"]>;
+    /** Character offset each segment's text begins at. */
+    segmentStartChar: number[];
+    layoutWidth: number;
+    blockWidth: number;
+    blockHeight: number;
+    shiftX: number;
+    shiftY: number;
+}
+
 /**
- * Lay out styled segments through ParagraphBuilder and return shaped glyph runs
- * positioned in a coordinate space centered on (originX, originY). `maxWidth`
- * bounds line wrapping; pass Infinity (mapped to a large value) for no wrap.
+ * Build and lay out the paragraph, and derive the centring shift.
  *
- * The fontMgr must already have the families registered (loadFont); a private
- * FontCollection wrapping it is created per call.
+ * Shared by {@link layoutParagraph} (which reads glyphs out of it) and
+ * {@link layoutTextBlock} (which reads caret positions). Deliberately one
+ * function rather than two that construct the same styles: a caret is only
+ * useful if it sits exactly where the glyph does, and every input here —
+ * the weight variation, the height multiplier, the two-pass width, the
+ * alignment anchor — moves both together or neither.
+ *
+ * The caller owns the returned handles and must delete all three.
  */
-export function layoutParagraph(
+function layOutParagraph(
     canvasKit: CanvasKit,
     fontMgr: TypefaceFontProvider,
     segments: ParagraphSegment[],
-    opts: {
-        textAlign: TextAlign;
-        lineHeight: number;
-        maxWidth: number;
-        /**
-         * The node's box width, used to position the text within its box per
-         * `textAlign` when not wrapping. When wider than the text, the paragraph is
-         * laid out at this width so Skia's TextAlign anchors the glyphs
-         * (left/center/right) inside the box instead of centering on the origin.
-         */
-        boxWidth?: number;
-        originX: number;
-        originY: number;
-    },
-): ParagraphLayoutResult {
-    const fonts: Font[] = [];
-    const empty = segments.every(s => s.text.length === 0);
-    if (segments.length === 0 || empty) {
-        return { runs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 }, width: 0, height: 0, fonts };
-    }
-
+    opts: ParagraphLayoutOptions,
+): LaidOutParagraph {
     const fontCollection = canvasKit.FontCollection.Make();
     fontCollection.setDefaultFontManager(fontMgr);
 
@@ -163,6 +172,38 @@ export function layoutParagraph(
     // mis-shift aligned glyphs off-center.
     const shiftX = opts.originX - layoutWidth / 2;
     const shiftY = opts.originY - blockHeight / 2;
+
+    return { paragraph, builder, fontCollection, segmentStartChar, layoutWidth, blockWidth, blockHeight, shiftX, shiftY };
+}
+
+/**
+ * Lay out styled segments through ParagraphBuilder and return shaped glyph runs
+ * positioned in a coordinate space centered on (originX, originY). `maxWidth`
+ * bounds line wrapping; pass Infinity (mapped to a large value) for no wrap.
+ *
+ * The fontMgr must already have the families registered (loadFont); a private
+ * FontCollection wrapping it is created per call.
+ */
+export function layoutParagraph(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    segments: ParagraphSegment[],
+    /**
+     * `boxWidth` is the node's box width, used to position the text within its box
+     * per `textAlign` when not wrapping. When wider than the text, the paragraph is
+     * laid out at this width so Skia's TextAlign anchors the glyphs
+     * (left/center/right) inside the box instead of centering on the origin.
+     */
+    opts: ParagraphLayoutOptions,
+): ParagraphLayoutResult {
+    const fonts: Font[] = [];
+    const empty = segments.every(s => s.text.length === 0);
+    if (segments.length === 0 || empty) {
+        return { runs: [], bounds: { left: 0, top: 0, right: 0, bottom: 0 }, width: 0, height: 0, fonts };
+    }
+
+    const laid = layOutParagraph(canvasKit, fontMgr, segments, opts);
+    const { paragraph, builder, fontCollection, segmentStartChar, layoutWidth, blockWidth, blockHeight, shiftX, shiftY } = laid;
 
     // Build one Font per distinct (family,weight,size) from the run's own
     // typeface, which this CanvasKit build returns already positioned at the
@@ -239,6 +280,113 @@ export function layoutParagraph(
     fontCollection.delete();
 
     return { runs, bounds, width: blockWidth, height: blockHeight, fonts };
+}
+
+/**
+ * Lay text out exactly as {@link layoutParagraph} would and report where every
+ * *caret slot* landed, block-local and centred on the origin — the measurement
+ * core's `getTextLayout` lifts into viewport space so a host can draw its own
+ * cursor and selection over the rendered glyphs.
+ *
+ * Slots, not glyph boxes: a cursor lives between characters, so a line of n
+ * characters has n + 1 positions. Each is taken from Skia's own rect for the
+ * character (its leading edge, and the trailing edge of the last one on the
+ * line), which is what keeps the cursor on the glyph through kerning, letter
+ * spacing and alignment rather than beside it.
+ *
+ * Line boxes come from `getLineMetrics`, so the caret is as tall as the line the
+ * renderer actually laid out — including the `lineHeight` multiplier, which is a
+ * different quantity from the font size and cannot be recovered from it.
+ *
+ * Returns `null` for text this model doesn't describe: nothing to lay out.
+ */
+export function layoutTextBlock(
+    canvasKit: CanvasKit,
+    fontMgr: TypefaceFontProvider,
+    segment: ParagraphSegment,
+    opts: ParagraphLayoutOptions,
+): TextBlockLayout | null {
+    if (segment.text.length === 0) {
+        // An empty run still has one slot to put a cursor in, and it needs a line
+        // box with the right height — so measure a stand-in glyph and keep only
+        // its vertical extent. Without this, clicking into emptied text would
+        // give a zero-height caret.
+        const probe = layoutTextBlock(canvasKit, fontMgr, { ...segment, text: "M" }, opts);
+        if (!probe) return null;
+        const line = probe.lines[0];
+        return {
+            lines: [{ start: 0, end: 0, top: line.top, bottom: line.bottom, carets: [0] }],
+            width: 0,
+            height: probe.height,
+        };
+    }
+
+    const laid = layOutParagraph(canvasKit, fontMgr, [segment], opts);
+    const { paragraph, builder, fontCollection, blockWidth, blockHeight, shiftX, shiftY } = laid;
+
+    const lines: TextBlockLine[] = [];
+    for (const metrics of paragraph.getLineMetrics()) {
+        // `endIndex` of the three Skia reports is the one a caret wants: it keeps
+        // trailing spaces (you can put a cursor after them) but drops the newline
+        // (that slot belongs to the next line's start, not this line's end).
+        const start = metrics.startIndex;
+        const end = Math.max(start, metrics.endIndex);
+        const top = metrics.baseline - metrics.ascent + shiftY;
+        const bottom = metrics.baseline + metrics.descent + shiftY;
+
+        const carets: number[] = [];
+        for (let i = start; i < end; i++) {
+            carets.push(charEdge(paragraph, canvasKit, i, false) + shiftX);
+        }
+        // One more slot after the last character — the position a cursor sits in
+        // at end of line, which no character's leading edge describes.
+        carets.push(end > start
+            ? charEdge(paragraph, canvasKit, end - 1, true) + shiftX
+            : lineStartX(paragraph, canvasKit, start) + shiftX);
+
+        lines.push({ start, end, top, bottom, carets });
+    }
+
+    paragraph.delete();
+    builder.delete();
+    fontCollection.delete();
+
+    return lines.length === 0 ? null : { lines, width: blockWidth, height: blockHeight };
+}
+
+/** The leading (or trailing) x edge of the character at `index`. */
+function charEdge(
+    paragraph: LaidOutParagraph["paragraph"],
+    canvasKit: CanvasKit,
+    index: number,
+    trailing: boolean,
+): number {
+    // Tight width so the edge is the glyph's own advance, not the line box's;
+    // Max height so the rect exists even for a zero-width character.
+    const rects = paragraph.getRectsForRange(
+        index,
+        index + 1,
+        canvasKit.RectHeightStyle.Max,
+        canvasKit.RectWidthStyle.Tight,
+    );
+    const rect = rects[0]?.rect;
+    if (!rect) return 0;
+    return trailing ? rect[2] : rect[0];
+}
+
+/** x of the caret on an empty line — where its first character would have begun. */
+function lineStartX(
+    paragraph: LaidOutParagraph["paragraph"],
+    canvasKit: CanvasKit,
+    index: number,
+): number {
+    const rects = paragraph.getRectsForRange(
+        index,
+        index + 1,
+        canvasKit.RectHeightStyle.Max,
+        canvasKit.RectWidthStyle.Max,
+    );
+    return rects[0]?.rect[0] ?? 0;
 }
 
 // Find the segment whose character range [start, start+len) contains charPos.

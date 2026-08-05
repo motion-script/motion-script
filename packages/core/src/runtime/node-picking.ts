@@ -58,8 +58,13 @@ export interface NodeBox {
  *
  * Mirrors the render walk exactly, including the camera's `translate(rect.x,
  * -rect.y)` — if a box ever disagrees with the pixels, the divergence is here.
+ *
+ * `@internal`, and shared with `text-geometry.ts`: a caret drawn over a node has
+ * to land in the same space as the box drawn around it, so both must come from
+ * this one walk rather than two that agree by inspection.
  */
-function renderMatrix(node: Node): Matrix2D {
+/** @internal */
+export function renderMatrix(node: Node): Matrix2D {
     const chain: Node[] = [];
     for (let n: Node | null = node; n; n = n.parent) chain.push(n);
     chain.reverse();
