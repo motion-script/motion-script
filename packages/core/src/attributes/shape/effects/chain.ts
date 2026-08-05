@@ -11,7 +11,7 @@ import type { OutlinePosition } from "./implementations/outline";
 import type { EdgeKernel } from "./implementations/edges";
 import type { RadialBlurStyle } from "./implementations/radial-blur";
 import type { HalftoneShape, HalftoneSeparation } from "./implementations/halftone";
-import type { DitherMatrix } from "./implementations/dither";
+import type { DitherMatrix, DitherNoise } from "./implementations/dither";
 import type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
 import type { CurvesChannel } from "../filters/implementations/curves";
 import type { BitCrushPalette } from "./implementations/bit-crush";
@@ -251,7 +251,17 @@ export interface HalftoneOptions extends EffectOptions {
 export interface DitherOptions extends EffectOptions {
     /** Output tones per channel, ≥ 2 (default 2). */
     levels?: number;
-    /** Bayer matrix size (default 4). */
+    /**
+     * Threshold pattern (default `'bayer'`).
+     *
+     * `'bayer'` is the classic ordered matrix — a visible crosshatch, which is
+     * the retro look and also what can beat against the pixel grid at some
+     * `scale`s. `'blue'` is a void-and-cluster blue-noise field: same tone
+     * reproduction, no lattice, no moiré. Reach for `'blue'` when the dither
+     * should read as texture rather than as pattern.
+     */
+    noise?: DitherNoise;
+    /** Bayer matrix size (default 4). Ignored when `noise` is `'blue'`. */
     matrix?: DitherMatrix;
     /** Pattern cell size in pixels (default 1). */
     scale?: number;
@@ -837,6 +847,7 @@ export class EffectChain {
                 matrix: o.matrix ?? 4,
                 scale: o.scale ?? 1,
                 monochrome: o.monochrome ?? false,
+                noise: o.noise ?? "bayer",
             },
             o,
         ));

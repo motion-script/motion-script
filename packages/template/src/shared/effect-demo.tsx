@@ -4,6 +4,7 @@ import {
     SceneGenerator, createRef, Reference, Text, Rect, Ellipse, Polygram, Image,
     EffectChain, easeOut, parallel,
     Node,
+    Effects,
 } from "motion-script";
 
 /**

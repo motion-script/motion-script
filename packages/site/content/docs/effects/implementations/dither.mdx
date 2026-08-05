@@ -4,7 +4,12 @@ sidebar_position: 23
 
 # Dither
 
-Ordered (Bayer) dithering: quantizes to a few tones per channel, but offsets each pixel's rounding by a repeating threshold matrix first. The error becomes a fixed crosshatch instead of a visible band — how 8-bit hardware faked gradients, and why the result reads as retro.
+Ordered dithering: quantizes to a few tones per channel, but offsets each pixel's rounding by a threshold pattern first. The error becomes texture instead of a visible band — how 8-bit hardware faked gradients.
+
+`noise` picks where the threshold comes from, and it is the difference between the two looks:
+
+- **`'bayer'`** (default) — the classic recursive ordered matrix. Its lattice *is* the look: a visible crosshatch at every density, which reads as retro and is also what can beat against the pixel grid at some `scale`s.
+- **`'blue'`** — a 64x64 void-and-cluster blue-noise field. Every threshold level stays homogeneously distributed, so the same tones are reproduced with no lattice and no moire. Reach for this when the dither should read as grain rather than as pattern.
 
 ![Dither effect demo](/effects/dither.png)
 
@@ -22,6 +27,9 @@ import { Effects } from 'motion-script';
 // Chunky low-res look
 <Image src={'./photo.jpg'} effects={Effects.dither({ levels: 2, matrix: 8, scale: 4 })} />
 
+// Same tones, no visible grid
+<Image src={'./photo.jpg'} effects={Effects.dither({ levels: 2, scale: 3, noise: 'blue' })} />
+
 // Game Boy: one channel, four tones
 <Image src={'./photo.jpg'} effects={Effects.dither({ levels: 4, monochrome: true, scale: 3 })} />
 ```
@@ -32,16 +40,17 @@ import { Effects } from 'motion-script';
 |---|---|---|---|
 | `type` | `'dither'` | – | Effect identifier |
 | `levels` | `number` | `2` | Output tones per channel (minimum `2`). `2` is pure 1-bit-per-channel |
-| `matrix` | `2 \| 4 \| 8` | `4` | Bayer matrix size |
+| `noise` | `'bayer' \| 'blue'` | `'bayer'` | Threshold source. `'blue'` removes the visible lattice |
+| `matrix` | `2 \| 4 \| 8` | `4` | Bayer matrix size. Ignored when `noise` is `'blue'` |
 | `scale` | `number` | `1` | Pattern cell size in pixels. Above `1` gives chunky, low-res dither |
 | `monochrome` | `boolean` | `false` | Dither luminance to grey levels instead of per channel |
 | `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` dithers the content beneath the node |
 
-Bigger matrices carry more distinct threshold levels, so the pattern is finer and the apparent tonal range wider: `2` is a blunt checkerboard, `8` the smooth classic ordered dither.
+Bigger matrices carry more distinct threshold levels, so the pattern is finer and the apparent tonal range wider: `2` is a blunt checkerboard, `8` the smooth classic ordered dither. `noise: 'blue'` is finer still and has no repeat structure to see at all.
 
 ## Animating
 
-`levels` and `scale` interpolate; `matrix` and `monochrome` snap at the midpoint.
+`levels` and `scale` interpolate; `matrix`, `monochrome` and `noise` snap at the midpoint (two threshold fields have no meaningful blend).
 
 ```tsx
 import { createScene, createRef, Image, Effects, easeInOut } from 'motion-script';

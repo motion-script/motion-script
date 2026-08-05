@@ -69,6 +69,12 @@ export default createScene(function* (stage) {
 
 Rotating `angle` continuously produces a strong moiré against the pixel grid — usually a distraction, occasionally the effect you want.
 
+## Choosing a `size`
+
+Tone is resolved once per cell, so the cell pitch *is* the screen's resolution: detail finer than `size` is averaged away, exactly as ink on paper averages it away. If a screen is dropping something you wanted, the fix is a smaller `size`, not a different shape.
+
+A static periodic screen can still beat against the display's own pixel grid, and the worst case is a pitch that lands exactly on an integer number of device pixels — `size: 8` at a device pixel ratio of 2 puts every cell on the same phase. Nudging it off the grid (`8.4` rather than `8`) breaks the resonance at no visual cost. `separation: 'cmyk'` avoids the problem differently: its four plates sit at 15° / 75° / 0° / 45°, and those relative angles are what turn interference into a rosette.
+
 ## Stacking with other effects
 
 ```tsx

@@ -299,7 +299,15 @@ describe('FX builders — roadmap effects', () => {
 
     it('dither defaults to 1-bit output through a 4×4 Bayer matrix', () => {
         expect([...Effects.dither()]).toEqual([
-            { type: 'dither', levels: 2, matrix: 4, scale: 1, monochrome: false },
+            { type: 'dither', levels: 2, matrix: 4, scale: 1, monochrome: false, noise: 'bayer' },
+        ]);
+    });
+
+    it('dither takes blue noise instead of the ordered matrix', () => {
+        // `matrix` is still carried (it is simply unused) so switching `noise`
+        // back and forth doesn't lose the Bayer setting.
+        expect([...Effects.dither({ levels: 3, noise: 'blue' })]).toEqual([
+            { type: 'dither', levels: 3, matrix: 4, scale: 1, monochrome: false, noise: 'blue' },
         ]);
     });
 

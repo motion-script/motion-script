@@ -22,7 +22,7 @@ export type { EdgesEffect, EdgeKernel } from "./implementations/edges";
 export type { ThresholdEffect } from "./implementations/threshold";
 export type { RadialBlurEffect, RadialBlurStyle } from "./implementations/radial-blur";
 export type { HalftoneEffect, HalftoneShape, HalftoneSeparation } from "./implementations/halftone";
-export type { DitherEffect, DitherMatrix } from "./implementations/dither";
+export type { DitherEffect, DitherMatrix, DitherNoise } from "./implementations/dither";
 export type { DuotoneEffect } from "./implementations/duotone";
 export type { CurvesEffect } from "./implementations/curves";
 export type { ColorAdjustmentEffect } from "./implementations/color-adjustment";
