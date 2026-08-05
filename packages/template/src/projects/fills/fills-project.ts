@@ -6,6 +6,9 @@ import conicGradient from './scenes/conic-gradient?scene';
 import radialGradient from './scenes/radial-gradient?scene';
 import colorGradientMorph from './scenes/color-gradient-morph?scene';
 import imageFill from './scenes/image-fill?scene';
+import imageCrop from './scenes/image-crop?scene';
+import imageZoom from './scenes/image-zoom?scene';
+import imageCropZoom from './scenes/image-crop-zoom?scene';
 import videoFill from './scenes/video-fill?scene';
 import videoTimestamp from './scenes/video-timestamp?scene';
 import videoLoop from './scenes/video-loop?scene';
@@ -63,6 +66,9 @@ export default createProject({
         radialGradient,
         colorGradientMorph,
         imageFill,
+        imageCrop,
+        imageZoom,
+        imageCropZoom,
         videoFill,
         videoTimestamp,
         videoLoop,

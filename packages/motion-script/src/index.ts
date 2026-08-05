@@ -234,6 +234,12 @@ export type {
     FillChain,
     FillOptions,
     VideoFillOptions,
+    // Placement of an image/video source inside the shape it paints:
+    // `crop` -> `fit` -> `zoom` -> `anchor`, plus the raw-matrix escape hatch.
+    MediaPlacementOptions,
+    ImageFit,
+    ImageCrop,
+    ImageMatrix,
     // The colour type every fill, stroke, shadow and 3D material accepts —
     // a CSS string (incl. `oklch()`, theme tokens, `"white/10"`) or a
     // pre-normalized RGBA tuple.
