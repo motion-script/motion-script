@@ -199,34 +199,18 @@ export type Fill =
     | (FillProp | FillResolved | FillChain)[];
 
 /**
- * Entry points for building fill chains fluently.
+ * Entry point for building fill chains fluently.
+ *
+ * An empty {@link FillChain}, so `Fills.image(src)` *is* `new FillChain().image(src)`
+ * — every builder's signature and documentation has one definition, on the
+ * class, which is what an editor shows when you hover `Fills.image`. The chain
+ * is immutable (each builder returns a new one), so sharing one empty instance
+ * as the entry point is safe.
  *
  * @example
  * node.fill = Fills.image('./bg.jpg', { opacity: 0.2 }).color('red', { opacity: 0.3 });
  */
-export const Fills = {
-    color: (color: Color, options?: FillOptions) =>
-        new FillChain().color(color, options),
-    image: (src: string, options?: FillOptions & { fit?: ImageFit; mode?: ImageFit; transform?: ImageTransform; scaling?: number; filters?: ImageFilter }) =>
-        new FillChain().image(src, options),
-    video: (src: string, options?: VideoFillOptions) =>
-        new FillChain().video(src, options),
-
-    linearGradient: (colors: Color[], options?: Parameters<FillChain['linearGradient']>[1]) =>
-        new FillChain().linearGradient(colors, options),
-    radialGradient: (colors: Color[], options?: Parameters<FillChain['radialGradient']>[1]) =>
-        new FillChain().radialGradient(colors, options),
-    conicGradient: (colors: Color[], options?: Parameters<FillChain['conicGradient']>[1]) =>
-        new FillChain().conicGradient(colors, options),
-    noise: (options?: Parameters<FillChain['noise']>[0]) =>
-        new FillChain().noise(options),
-    fractalNoise: (options?: Parameters<FillChain['fractalNoise']>[0]) =>
-        new FillChain().fractalNoise(options),
-    stripe: (options?: Parameters<FillChain['stripe']>[0]) =>
-        new FillChain().stripe(options),
-    view3D: (graphics3D: Graphics3D, options?: Parameters<FillChain['view3D']>[1]) =>
-        new FillChain().view3D(graphics3D, options),
-};
+export const Fills = new FillChain();
 
 /**
  * Normalises any {@link Fill} value to a plain `FillProp[]`.

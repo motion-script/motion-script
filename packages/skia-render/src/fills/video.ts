@@ -1,7 +1,7 @@
 import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
-import { makeImageShader, applyMediaFilters } from "./image";
+import { makeImageShader, applyMediaFilters, samplingFor } from "./image";
 import { getCanvasKitBlendMode } from "../blend";
 
 /**
@@ -50,8 +50,8 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         }
 
         // No echo: plain single pass, handler draws the figure.
-        ctx.paint.setShader(makeImageShader(img, fill, ctx.canvasKit, ctx.getShapeBounds()));
-        applyMediaFilters(fill, ctx);
+        const base = makeImageShader(img, fill, ctx.canvasKit, ctx.getShapeBounds(), samplingFor(fill));
+        ctx.paint.setShader(applyMediaFilters(fill, ctx, base));
         return true;
     }
 
@@ -103,8 +103,8 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         // Current frame (tap 0): full weight, the fill's pixel filters applied,
         // composited with the echo blend so it joins the stack rather than hiding
         // the trail behind an opaque pass.
-        paint.setShader(makeImageShader(current, fill, canvasKit, bounds));
-        applyMediaFilters(fill, ctx);
+        const base = makeImageShader(current, fill, canvasKit, bounds, samplingFor(fill));
+        paint.setShader(applyMediaFilters(fill, ctx, base));
         paint.setAlphaf(baseAlpha);
         paint.setBlendMode(blendMode);
         ctx.drawShape(paint);

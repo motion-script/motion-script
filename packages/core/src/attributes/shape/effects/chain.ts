@@ -1220,57 +1220,21 @@ export type Effect =
     | (SceneEffect | EffectChain)[];
 
 /**
- * Entry points for building effect chains fluently. Each delegates to the
- * matching {@link EffectChain} method, so every signature is declared once.
+ * Entry point for building effect chains fluently.
+ *
+ * An empty {@link EffectChain}, so `FX.blur(8)` *is* `new EffectChain().blur(8)`
+ * — every builder's signature and documentation has exactly one definition, on
+ * the class, which is also what an editor shows when you hover `FX.blur`.
+ * (A parallel object of arrow functions would need its own copy of all 41 docs,
+ * and hovering it showed none of them.)
+ *
+ * The chain is immutable — every builder returns a *new* chain — so sharing one
+ * empty instance as the entry point is safe.
  *
  * @example
  * node.effects = FX.blur(8).grayscale(1);
  */
-export const Effects = {
-    blur: (options: number | BlurOptions) => new EffectChain().blur(options),
-    directionalBlur: (options: number | DirectionalBlurOptions) => new EffectChain().directionalBlur(options),
-    pixelate: (options: number | PixelateOptions) => new EffectChain().pixelate(options),
-    grayscale: (options: number | GrayscaleOptions) => new EffectChain().grayscale(options),
-    bulge: (options: number | BulgeOptions) => new EffectChain().bulge(options),
-    magnify: (options?: number | MagnifyOptions) => new EffectChain().magnify(options),
-    bloom: (options?: number | BloomOptions) => new EffectChain().bloom(options),
-    vintage: (options?: number | VintageOptions) => new EffectChain().vintage(options),
-    chromaticAberration: (options?: number | ChromaticAberrationOptions) =>
-        new EffectChain().chromaticAberration(options),
-    invert: (options?: number | InvertOptions) => new EffectChain().invert(options),
-    scatter: (options?: number | ScatterOptions) => new EffectChain().scatter(options),
-    posterize: (options?: number | PosterizeOptions) => new EffectChain().posterize(options),
-    motionBlur: (options?: number | MotionBlurOptions) => new EffectChain().motionBlur(options),
-    sksl: (options: SkSLOptions) => new EffectChain().sksl(options),
-    outline: (options?: number | OutlineOptions) => new EffectChain().outline(options),
-    vignette: (options?: number | VignetteOptions) => new EffectChain().vignette(options),
-    grain: (options?: number | GrainOptions) => new EffectChain().grain(options),
-    sharpen: (options?: number | SharpenOptions) => new EffectChain().sharpen(options),
-    edges: (options?: number | EdgesOptions) => new EffectChain().edges(options),
-    threshold: (options?: number | ThresholdOptions) => new EffectChain().threshold(options),
-    radialBlur: (options?: number | RadialBlurOptions) => new EffectChain().radialBlur(options),
-    halftone: (options?: number | HalftoneOptions) => new EffectChain().halftone(options),
-    dither: (options?: number | DitherOptions) => new EffectChain().dither(options),
-    duotone: (options?: number | DuotoneOptions) => new EffectChain().duotone(options),
-    curves: (options: CurvesOptions) => new EffectChain().curves(options),
-    colorAdjustment: (options: ColorAdjustmentOptions) => new EffectChain().colorAdjustment(options),
-    rgbShift: (options?: number | RgbShiftOptions) => new EffectChain().rgbShift(options),
-    scanlines: (options?: number | ScanlinesOptions) => new EffectChain().scanlines(options),
-    blockDisplace: (options?: number | BlockDisplaceOptions) => new EffectChain().blockDisplace(options),
-    bitCrush: (options?: number | BitCrushOptions) => new EffectChain().bitCrush(options),
-    ascii: (options?: number | AsciiOptions) => new EffectChain().ascii(options),
-    streak: (options?: number | StreakOptions) => new EffectChain().streak(options),
-    godRays: (options?: number | GodRaysOptions) => new EffectChain().godRays(options),
-    oilPaint: (options?: number | OilPaintOptions) => new EffectChain().oilPaint(options),
-    texture: (options: TextureOptions) => new EffectChain().texture(options),
-    displace: (options: DisplaceOptions) => new EffectChain().displace(options),
-    wave: (options?: number | WaveOptions) => new EffectChain().wave(options),
-    twirl: (options?: number | TwirlOptions) => new EffectChain().twirl(options),
-    progressiveBlur: (options?: number | ProgressiveBlurOptions) =>
-        new EffectChain().progressiveBlur(options),
-    kaleidoscope: (options?: number | KaleidoscopeOptions) => new EffectChain().kaleidoscope(options),
-    trails: (options?: number | TrailsOptions) => new EffectChain().trails(options),
-};
+export const Effects = new EffectChain();
 
 /** Shorthand alias for {@link Effects} — `FX.blur(8)` reads well at a call site. */
 export const FX = Effects;

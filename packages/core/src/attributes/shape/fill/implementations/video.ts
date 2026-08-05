@@ -4,6 +4,7 @@ import type { PosterizeTimeFilter } from '../../filters/implementations/posteriz
 import type { FillData } from '../registry';
 import type { ImageFit, ImageTransform } from './image';
 import { lerpNumber } from '@/tween/lerp';
+import { lerpOptionalFilters, prepareFilter } from '../../filters/registry';
 
 /** Filters a video fill carries — the pixel filters plus the video-only ones. */
 type VideoFillFilter = MediaFilter | VideoMediaFilter;
@@ -160,9 +161,13 @@ export const videoFill: FillData<VideoFillResolved> = {
             ? undefined
             : lerpNumber(a.timestamp ?? 0, b.timestamp ?? 0, t),
         speed: lerpNumber(a.speed ?? 1, b.speed ?? 1, t),
+        // See the note on `imageFill.lerp` — without this the *from* fill's
+        // filters ride the whole tween and snap at the end.
+        filters: lerpOptionalFilters(a.filters, b.filters, t),
     }),
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
         manager.requestVideo(fill.src, width, height, fill.trimStart ?? 0, fill.trimEnd);
+        for (const filter of fill.filters ?? []) prepareFilter(filter, manager, width, height);
     },
 };

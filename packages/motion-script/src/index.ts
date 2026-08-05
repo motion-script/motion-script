@@ -250,6 +250,7 @@ export {
     EffectChain,
     ImageFilters,
     VideoFilters,
+    ImageFilterChain,
     FilterChain,
 } from '@motion-script/core';
 
@@ -262,6 +263,10 @@ export type {
     EffectOptions,
     ImageFilter,
     VideoFilter,
+    /** The scene effects that also work as a media filter — see {@link ImageFilters}. */
+    EffectFilter,
+    MediaFilter,
+    VideoMediaFilter,
 } from '@motion-script/core';
 
 /**
@@ -304,6 +309,30 @@ export type {
     GodRaysOptions,
     OilPaintOptions,
     TextureOptions,
+    DisplaceOptions,
+    WaveOptions,
+    TwirlOptions,
+    ProgressiveBlurOptions,
+    KaleidoscopeOptions,
+    TrailsOptions,
+} from '@motion-script/core';
+
+/**
+ * Per-builder options for the filters that exist only as filters. Everything
+ * else on {@link ImageFilters} takes the matching effect options above, minus
+ * `mode` — a filter is on the fill's own pixels, so there is no backdrop to
+ * point it at.
+ */
+export type {
+    BlurFilterOptions,
+    GrayscaleFilterOptions,
+    AlphaFilterOptions,
+    ExposureFilterOptions,
+    ColorMatrixFilterOptions,
+    CurvesFilterOptions,
+    ColorAdjustmentFilterOptions,
+    PosterizeTimeFilterOptions,
+    VideoEchoFilterOptions,
 } from '@motion-script/core';
 
 /** Effect data types, for naming an effect value or building one by hand. */
@@ -355,6 +384,15 @@ export type {
     GodRaysEffect,
     OilPaintEffect,
     TextureEffect,
+    DisplaceEffect,
+    DisplaceChannel,
+    WaveEffect,
+    WaveShape,
+    TwirlEffect,
+    ProgressiveBlurEffect,
+    ProgressiveBlurShape,
+    KaleidoscopeEffect,
+    TrailsEffect,
 } from '@motion-script/core';
 
 // ---------------------------------------------------------

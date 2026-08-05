@@ -97,6 +97,11 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
  */
 export const effectTypes = (): string[] => [...EFFECTS.keys()];
 
+/** True when `type` has a registered `EffectData` handler. */
+export function hasEffect(type: string): boolean {
+    return EFFECTS.has(type);
+}
+
 /**
  * How a backend must realise `effect` — see {@link EffectSurface}. Unknown types
  * fall back to `"filter"`, the composable default.

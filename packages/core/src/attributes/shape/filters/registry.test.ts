@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter } from '@/attributes/shape/filters/registry';
+import {
+    lerpFilter, lerpFilterArray, lerpOptionalFilters, isPixelFilter, hasFilter, filterSurface,
+} from '@/attributes/shape/filters/registry';
 import { MediaFilter, VideoMediaFilter } from '@/attributes/shape/filters/union';
 import { blurFilter } from '@/attributes/shape/filters/implementations/blur';
 import { curvesFilter } from '@/attributes/shape/filters/implementations/curves';
@@ -19,6 +21,31 @@ describe('FILTERS map', () => {
         expect(isPixelFilter('colorAdjustment')).toBe(true);
         expect(isPixelFilter('posterizeTime')).toBe(false);
         expect(isPixelFilter('echo')).toBe(false);
+    });
+
+    it('recognises the scene effects that double as filters', () => {
+        for (const type of ['oilPaint', 'dither', 'halftone', 'scanlines', 'sharpen', 'invert']) {
+            expect(hasFilter(type)).toBe(true);
+            expect(isPixelFilter(type)).toBe(true);
+        }
+    });
+});
+
+describe('filterSurface', () => {
+    it('reports a colour transform as composable', () => {
+        expect(filterSurface({ type: 'blur', radius: 4 })).toBe('filter');
+        expect(filterSurface({ type: 'invert', strength: 1 })).toBe('filter');
+    });
+
+    it('reports a position resampler as needing a shader', () => {
+        expect(filterSurface({ type: 'oilPaint', radius: 3 })).toBe('shader');
+        expect(filterSurface({ type: 'dither', levels: 4, matrix: 4, scale: 2, monochrome: false }))
+            .toBe('shader');
+    });
+
+    it('ignores a stray `mode` — a fill has no backdrop', () => {
+        // `sksl` is the one effect whose surface depends on its own fields.
+        expect(filterSurface({ type: 'sksl', code: '', mode: 'backdrop' } as never)).toBe('filter');
     });
 });
 
@@ -58,6 +85,30 @@ describe('lerpFilter', () => {
         const to: AnyFilter = { type: 'alpha', amount: 1 };
         expect(lerpFilter(from, to, 0.4)).toBe(from);
         expect(lerpFilter(from, to, 0.6)).toBe(to);
+    });
+
+    it('hands an effect-backed filter to the effects registry', () => {
+        const result = lerpFilter(
+            { type: 'oilPaint', radius: 0 },
+            { type: 'oilPaint', radius: 6 },
+            0.5,
+        ) as Extract<MediaFilter, { type: 'oilPaint' }>;
+        expect(result.radius).toBe(3);
+    });
+});
+
+describe('lerpOptionalFilters', () => {
+    it('answers undefined when neither side has a filter', () => {
+        expect(lerpOptionalFilters(undefined, undefined, 0.5)).toBeUndefined();
+        expect(lerpOptionalFilters([], undefined, 0.5)).toBeUndefined();
+    });
+
+    it('interpolates when either side has one', () => {
+        expect(lerpOptionalFilters<AnyFilter>(
+            [{ type: 'grayscale', amount: 0 }],
+            [{ type: 'grayscale', amount: 1 }],
+            0.25,
+        )).toEqual([{ type: 'grayscale', amount: 0.25 }]);
     });
 });
 

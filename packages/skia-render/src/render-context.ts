@@ -422,6 +422,10 @@ export abstract class SkiaRenderContext extends RenderContext {
                 return Math.max(Math.hypot(m[0], m[3]), Math.hypot(m[1], m[4]), 1);
             },
             (source, width, height, ratio) => this.rasterizeSurfaceSource(source, width, height, ratio),
+            // A media filter that bakes a second texture (ascii's glyph atlas,
+            // texture/displace's source image) resolves it exactly as the scene
+            // effect of the same name does.
+            () => this.effectResources(),
         );
 
         this.strokeHandler = new StrokeHandler(

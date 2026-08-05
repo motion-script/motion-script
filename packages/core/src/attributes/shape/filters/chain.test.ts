@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { ImageFilters, resolveChainFilters } from '@/attributes/shape/filters/chain';
+import { ImageFilters, VideoFilters, ImageFilterChain, resolveChainFilters } from '@/attributes/shape/filters/chain';
+import { Effects } from '@/attributes/shape/effects/chain';
+import { effectTypes } from '@/attributes/shape/effects/registry';
+
+/**
+ * The effects deliberately kept off a media fill. Mirrors `NonFilterEffect` in
+ * `filters/union.ts` — that one is a type, so this is the runtime half of the
+ * same statement and the sweep below is what keeps them honest.
+ */
+const NOT_FILTERS = ['magnify', 'motionBlur', 'trails', 'outline'];
 
 describe('ImageFilters builders', () => {
     it('blur stores its radius under the shared `radius` name', () => {
@@ -50,6 +59,58 @@ describe('FilterChain', () => {
     });
 });
 
+describe('effects as media filters', () => {
+    it('gives every filterable effect a builder of the same name', () => {
+        const missing = effectTypes()
+            .filter((type) => !NOT_FILTERS.includes(type))
+            .filter((type) => typeof (ImageFilters as unknown as Record<string, unknown>)[type] !== 'function');
+        expect(missing).toEqual([]);
+    });
+
+    it('keeps the excluded effects off an image filter chain', () => {
+        for (const type of NOT_FILTERS) {
+            expect((ImageFilters as unknown as Record<string, unknown>)[type]).toBeUndefined();
+        }
+    });
+
+    it('builds the same effect the scene builder does', () => {
+        expect([...ImageFilters.oilPaint(4)]).toEqual([...Effects.oilPaint(4)]);
+        expect([...ImageFilters.dither({ levels: 3, matrix: 8 })])
+            .toEqual([...Effects.dither({ levels: 3, matrix: 8 })]);
+    });
+
+    it('drops `mode` — a fill has no backdrop to point a filter at', () => {
+        // The chain builder can't be handed one, and the effect builder only
+        // writes the key when it is given: the produced filter has no `mode`.
+        expect([...ImageFilters.posterize(4)][0]).not.toHaveProperty('mode');
+    });
+
+    it('interleaves with the filter-only builders in author order', () => {
+        expect([...ImageFilters.grayscale(1).oilPaint(3).blur(2)].map((f) => f.type))
+            .toEqual(['grayscale', 'oilPaint', 'blur']);
+    });
+});
+
+describe('ImageFilters / VideoFilters entry points', () => {
+    it('are empty chains, so a builder call starts a fresh one', () => {
+        expect(ImageFilters.list).toEqual([]);
+        ImageFilters.blur(1).grayscale(1);
+        expect(ImageFilters.list).toEqual([]);
+    });
+
+    it('keeps video-only filters off the image entry point', () => {
+        expect((ImageFilters as unknown as Record<string, unknown>).posterizeTime).toBeUndefined();
+        expect((ImageFilters as unknown as Record<string, unknown>).echo).toBeUndefined();
+    });
+
+    it('keeps the video-only builders reachable after an inherited one', () => {
+        // `grayscale` is declared on the base class; a plain `return new
+        // ImageFilterChain(...)` there would strand `posterizeTime`.
+        expect([...VideoFilters.grayscale(1).posterizeTime(6)].map((f) => f.type))
+            .toEqual(['grayscale', 'posterizeTime']);
+    });
+});
+
 describe('resolveChainFilters', () => {
     it('returns [] for undefined', () => {
         expect(resolveChainFilters(undefined)).toEqual([]);
@@ -57,6 +118,7 @@ describe('resolveChainFilters', () => {
 
     it('unwraps a FilterChain', () => {
         const chain = ImageFilters.blur(2);
+        expect(chain).toBeInstanceOf(ImageFilterChain);
         expect(resolveChainFilters(chain)).toBe(chain.list);
     });
 

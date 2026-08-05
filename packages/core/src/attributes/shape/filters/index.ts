@@ -9,8 +9,8 @@
 /** @internal */ export type { PosterizeTimeFilter } from './implementations/posterize-time';
 /** @internal */ export type { VideoEchoFilter } from './implementations/echo';
 
-/** @internal Chainable filter builder API, chain class, and the loose author-facing unions. */
-/** @internal */ export { ImageFilters, VideoFilters, FilterChain, resolveChainFilters } from './chain';
+/** @internal Chainable filter builder API, chain classes, and the loose author-facing unions. */
+/** @internal */ export { ImageFilters, VideoFilters, ImageFilterChain, FilterChain, resolveChainFilters } from './chain';
 /** @internal */ export type { ImageFilter, VideoFilter } from './chain';
 
 /** @internal Per-builder options. Each builder takes one of these, or its dominant scalar. */
@@ -26,9 +26,12 @@
     EchoFilterOptions as VideoEchoFilterOptions,
 } from './chain';
 
-/** @internal Unions of concrete filter types: pixel (`MediaFilter`) and video-only. */
-/** @internal */ export type { MediaFilter, VideoMediaFilter } from './union';
+/**
+ * @internal Unions of concrete filter types: pixel (`MediaFilter`), video-only,
+ * and the scene effects that double as filters.
+ */
+/** @internal */ export type { MediaFilter, VideoMediaFilter, EffectFilter } from './union';
 
 /** @internal Interpolation/equality registry: constants map plus the lerp helpers. */
-/** @internal */ export { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter } from './registry';
+/** @internal */ export { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter, prepareFilter, filterSurface } from './registry';
 /** @internal */ export type { FilterData, AnyFilter } from './registry';

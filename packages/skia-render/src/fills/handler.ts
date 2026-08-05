@@ -46,6 +46,7 @@ export class FillHandler {
     private getElapsed: () => number;
     private getDeviceScale: () => number;
     private rasterizeSurface: FillRendererContext["rasterizeSurface"];
+    private effectResources: FillRendererContext["effectResources"];
 
     /**
      * Per-frame paint slots: node id → resolved fill → index.
@@ -76,6 +77,7 @@ export class FillHandler {
         getElapsed: () => number = () => 0,
         getDeviceScale: () => number = () => 1,
         rasterizeSurface: FillRendererContext["rasterizeSurface"] = () => null,
+        effectResources: FillRendererContext["effectResources"] = () => null,
     ) {
         this.canvasKit = canvasKit;
         this.getPaint = getPaint;
@@ -88,6 +90,7 @@ export class FillHandler {
         this.getElapsed = getElapsed;
         this.getDeviceScale = getDeviceScale;
         this.rasterizeSurface = rasterizeSurface;
+        this.effectResources = effectResources;
         this.currentBounds = null;
     }
 
@@ -205,8 +208,11 @@ export class FillHandler {
             getDeviceScale: this.getDeviceScale,
             paintSlot: (fill) => this.paintSlot(fill),
             rasterizeSurface: this.rasterizeSurface,
+            effectResources: this.effectResources,
             preflighted: new Map(),
             transientImages: [],
+            transientPaintObjects: [],
+            clipFilterToShape: false,
             // Replaced per applyFills() call with a closure over the current shapes.
             drawShape: () => { },
             skipDefaultDraw: false,
@@ -239,17 +245,39 @@ export class FillHandler {
      * path so opacity < 1 composites once (drawing each shape separately would
      * double the alpha where they overlap and show a seam); falls back to a
      * per-shape draw when no union path is available.
+     *
+     * `clipToShape` confines the draw to the figure's own outline. Needed when
+     * the paint carries an image filter: Skia rasterizes the geometry, runs the
+     * filter over it and composites the *filtered* result, which is no longer
+     * bounded by the path — so a pixelated or bloomed fill spills past the shape
+     * it belongs to. A fill exists only inside its shape, so it is clipped back.
+     * (A shader-based filter needs nothing: it is evaluated per covered pixel.)
      */
-    private drawShapes(paint: Paint, shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>): void {
+    private drawShapes(
+        paint: Paint,
+        shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>,
+        clipToShape = false,
+    ): void {
         const unionPath = this.unionPath(shapes);
-        if (unionPath) {
-            this.getCanvas().drawPath(unionPath, paint);
-            unionPath.delete();
+        const draw = () => {
+            if (unionPath) this.getCanvas().drawPath(unionPath, paint);
+            else for (const shape of shapes) shape.draw(paint);
+        };
+
+        // With several shapes and no union path there is nothing single to clip
+        // to; such a fill keeps the unclipped behaviour rather than being drawn
+        // once per shape (which would double alpha in the overlaps).
+        const clip = clipToShape ? (unionPath ?? (shapes.length === 1 ? shapes[0].ckPath : null)) : null;
+        if (clip) {
+            const canvas = this.getCanvas();
+            canvas.save();
+            canvas.clipPath(clip, this.canvasKit.ClipOp.Intersect, true);
+            draw();
+            canvas.restore();
         } else {
-            for (const shape of shapes) {
-                shape.draw(paint);
-            }
+            draw();
         }
+        unionPath?.delete();
     }
 
     applyFills(fills: FillResolved[], shapes: Array<{ draw: (p: Paint) => void; ckPath?: any }>): boolean {
@@ -268,7 +296,7 @@ export class FillHandler {
         const rendererCtx = this.buildRendererCtx(paint);
         rendererCtx.preflighted = this.preflighted;
         // Lets a renderer redraw the figure for extra passes (e.g. Echo's trail).
-        rendererCtx.drawShape = (p: Paint) => this.drawShapes(p, shapes);
+        rendererCtx.drawShape = (p: Paint) => this.drawShapes(p, shapes, rendererCtx.clipFilterToShape);
         const worldAlpha = this.getWorldAlpha();
 
         for (const fill of fills) {
@@ -290,17 +318,21 @@ export class FillHandler {
 
             this.currentBounds = bounds;
             rendererCtx.skipDefaultDraw = false;
+            rendererCtx.clipFilterToShape = false;
             if (!FillRenderRegistry.applyPaint(fill, rendererCtx)) continue;
 
             // A renderer (e.g. Echo) may have drawn the figure itself; otherwise
             // perform the default single pass with the prepared paint.
-            if (!rendererCtx.skipDefaultDraw) this.drawShapes(paint, shapes);
+            if (!rendererCtx.skipDefaultDraw) this.drawShapes(paint, shapes, rendererCtx.clipFilterToShape);
 
             // Clear shader before deleting backing images so the paint stops
             // referencing them.
             paint.setShader(null);
+            paint.setImageFilter(null);
             for (const img of rendererCtx.transientImages) img.delete();
             rendererCtx.transientImages.length = 0;
+            for (const obj of rendererCtx.transientPaintObjects) obj.delete();
+            rendererCtx.transientPaintObjects.length = 0;
         }
 
         this.currentBounds = null;

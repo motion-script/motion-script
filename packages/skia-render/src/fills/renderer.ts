@@ -1,6 +1,7 @@
 import type { CanvasKit, Image as CKImage, Paint } from "@motion-script/canvaskit";
 import type { FillResolved, RasterizedSurface, SurfaceSource3D } from "@motion-script/core";
 import type { SkiaAssets } from "../assets";
+import type { EffectResources } from "../effects/handler";
 import type { ShapeBounds } from "./handler";
 
 export interface FillRendererContext {
@@ -70,6 +71,27 @@ export interface FillRendererContext {
      */
     transientImages: CKImage[];
     /**
+     * CanvasKit objects the renderer built for this fill and handed to the paint
+     * — the lens shaders a media filter chain wraps the fill's own shader in,
+     * and the `ImageFilter` its colour transforms compose into.
+     *
+     * Freed *after* the shapes are drawn and after the paint has been cleared:
+     * the paint holds its own reference, so releasing the JS handle earlier
+     * would drop the object mid-draw.
+     */
+    transientPaintObjects: Array<{ delete(): void }>;
+    /**
+     * The bake context for a media filter that needs a second texture of its own
+     * (`ascii`'s glyph atlas, `texture`/`displace`'s source image) — the same one
+     * `beginEffectScope` hands a scene effect, so a filter and the effect it
+     * mirrors resolve their resources identically.
+     *
+     * `null` when the owning context has no surface to bake against; such a
+     * filter then renders with no extra textures, which is the same "not ready
+     * yet" state its first frame already has to survive.
+     */
+    effectResources: () => EffectResources | null;
+    /**
      * Paints the current shape geometry (the same union/per-shape draw the
      * handler performs for the main pass) with the given paint. Lets a renderer
      * that needs extra passes — e.g. the video Echo filter drawing the current
@@ -83,6 +105,15 @@ export interface FillRendererContext {
      * `transientImages` afterward. Reset to false before each fill.
      */
     skipDefaultDraw: boolean;
+    /**
+     * Set by a renderer that put an **image filter** on the paint, telling the
+     * handler to clip the draw to the figure's outline.
+     *
+     * Skia composites the filter's *output*, which is no longer bounded by the
+     * geometry that produced it — so a pixelated or bloomed fill would spill
+     * outside the shape carrying it. Reset to false before each fill.
+     */
+    clipFilterToShape: boolean;
 }
 
 export abstract class FillRenderer<T extends FillResolved = FillResolved> {

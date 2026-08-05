@@ -149,21 +149,18 @@ export class AudioFilterChain {
 export type AudioFilter = AudioFilterItem[] | AudioFilterChain | AudioFilterItem;
 
 /**
- * Entry points for building audio-filter chains fluently.
+ * Entry point for building audio-filter chains fluently.
+ *
+ * An empty {@link AudioFilterChain}, so `AudioFilters.gain(1.5)` *is*
+ * `new AudioFilterChain().gain(1.5)` — every builder's signature and
+ * documentation has one definition, on the class, which is what an editor shows
+ * when you hover `AudioFilters.gain`. The chain is immutable, so sharing one
+ * empty instance as the entry point is safe.
  *
  * @example
  * this.playSound('song.mp3', { filters: AudioFilters.gain(1.5).lowpass(800) });
  */
-export const AudioFilters = {
-  gain: (options: Param | GainFilterOptions) => new AudioFilterChain().gain(options),
-  /** Alias for {@link AudioFilters.gain}; reads naturally for volume automation. */
-  volume: (options: Param | GainFilterOptions) => new AudioFilterChain().volume(options),
-  highpass: (options: Param | HighPassFilterOptions) => new AudioFilterChain().highpass(options),
-  lowpass: (options: Param | LowPassFilterOptions) => new AudioFilterChain().lowpass(options),
-  tremolo: (options: Param | TremoloFilterOptions) => new AudioFilterChain().tremolo(options),
-  speed: (options: Param | SpeedFilterOptions) => new AudioFilterChain().speed(options),
-  echo: (options: Param | EchoFilterOptions) => new AudioFilterChain().echo(options),
-};
+export const AudioFilters = new AudioFilterChain();
 
 /**
  * Normalises any `AudioFilter` value to a plain `AudioFilterItem[]`.
