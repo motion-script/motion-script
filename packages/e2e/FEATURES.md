@@ -93,6 +93,7 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `boolean-toggle`: Boolean node toggling child visibility at midpoint
 - [ ] `provider-theme`: Provider + ThemeProvider supplying custom theme colors
 - [ ] `default-text-style`: DefaultTextStyle node overriding font family for subtree
+- [ ] `default-text-style-graphics`: DefaultTextStyle reaching a custom node's raw `Graphics().text()` op (no `fontFamily` on the op), plus a `Code` block under the same provider keeping its own face
 
 ### Grid / Pattern
 

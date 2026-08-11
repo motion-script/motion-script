@@ -43,6 +43,45 @@ export const TEXT_STYLE_KEYS = [
     'letterSpacing', 'lineHeight', 'textAlign', 'fill', 'stroke', 'shadow',
 ] as const satisfies readonly (keyof TextStyle)[];
 
+/**
+ * The subset of {@link TEXT_STYLE_KEYS} describing how text is *shaped* rather
+ * than how it is *painted* — the keys a raw `Graphics` `text`/`richText` op can
+ * inherit from {@link RenderContext.defaultTextStyle}.
+ *
+ * `fill`/`stroke`/`shadow` are deliberately absent. In a `Graphics` those are
+ * separate, **group-scoped** ops: `.text(…).rect(…).fill('red')` paints both
+ * shapes with one fill, and a shape with no paint op after it draws nothing at
+ * all. There is no per-shape paint slot to default into, and synthesising a
+ * `fill` op for a text op would silently change which shapes the group's paint
+ * covers. A `Text`/`RichText` *node* still inherits all ten keys, through the
+ * context channel ({@link applyTextDefaults}), because it owns its own paint.
+ */
+export const TEXT_SHAPING_KEYS = [
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+    'letterSpacing', 'lineHeight', 'textAlign',
+] as const satisfies readonly (typeof TEXT_STYLE_KEYS)[number][];
+
+/** One of {@link TEXT_SHAPING_KEYS}. */
+export type TextShapingKey = (typeof TEXT_SHAPING_KEYS)[number];
+
+/** The resting value of a text-style scope that sets nothing. Frozen and shared
+ * so the "no defaults" case allocates nothing per frame. */
+export const EMPTY_TEXT_STYLE: TextStyle = Object.freeze({});
+
+/**
+ * The project-wide base text style — `theme.typography.default`, registered by
+ * {@link setTheme} — as a {@link TextStyle}.
+ *
+ * The bottom of {@link RenderContext}'s text-style stack, which is what keeps a
+ * drawn `text` op and a `Text` node agreeing on the project's base typography:
+ * it is the same preset {@link applyTextDefaults} applies as its lowest-priority
+ * source (step 4). Read per lookup rather than cached, so a `setTheme` between
+ * frames takes effect without any invalidation step.
+ */
+export function themeDefaultTextStyle(): TextStyle {
+    return (getTypographyPreset('default') as TextStyle | undefined) ?? EMPTY_TEXT_STYLE;
+}
+
 /** Inherited text-style defaults (set by `<DefaultTextStyle>`). */
 export const TextStyleToken = createContext<TextStyle>({}, "text-style");
 

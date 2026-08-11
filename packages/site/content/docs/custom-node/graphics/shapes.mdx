@@ -192,6 +192,29 @@ Text as part of a drawing rather than as a node. Use it for axis labels, legends
 
 Anything that needs layout, measurement, or animation with `.to()` should be a [`Text` node](/docs/nodes/text).
 
+### Inherited defaults
+
+Leave a typography field off and the drawing inherits it, the same way a `Text` node does — from the nearest enclosing `<DefaultTextStyle>`, falling back to the project theme's `typography.default` preset. So a label drawn inside a custom node picks up the document's face without the node having to take a `fontFamily` prop and thread it through:
+
+```tsx
+<DefaultTextStyle fontFamily="Inter" fontSize={24}>
+  <Chart />   {/* its .text({ text: '0.5' }) axis labels shape in Inter at 24 */}
+</DefaultTextStyle>
+```
+
+Only the shaping fields inherit: `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `letterSpacing`, `lineHeight` and `textAlign`. `fill`, `stroke` and `shadow` don't, because in a `Graphics` those are group-scoped paint ops rather than per-shape slots — `.text(…).rect(…).fill('red')` paints both shapes together, and a shape with no paint op after it draws nothing at all. Paint your drawn text explicitly.
+
+A node whose text is its own vocabulary rather than the document's opts out for everything it draws:
+
+```tsx
+protected onRender(ctx: RenderContext): void {
+  ctx.pushTextStyle(null);
+  try { super.onRender(ctx); } finally { ctx.popTextStyle(); }
+}
+```
+
+The [`Code`](/docs/nodes/code) node does exactly this: its token positions are measured against a monospaced face, so a document-wide display family would take the block apart column by column.
+
 ## Drawing on with `start` and `end`
 
 Every shape takes `start` and `end`, the same outline trim the shape nodes have:

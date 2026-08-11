@@ -11,6 +11,8 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
 import { BooleanOperation } from "@/attributes/mask/boolean";
 import type { SceneEffect } from "@/attributes/shape/effects/union";
+import { EMPTY_TEXT_STYLE, TEXT_STYLE_KEYS, themeDefaultTextStyle, type TextStyle } from "@/runtime/builtin-context";
+import { applyGraphicsTextDefaults } from "./text-defaults";
 
 
 
@@ -124,6 +126,89 @@ export abstract class Render2DContext {
  */
 export abstract class RenderContext extends Render2DContext implements MeasureScope {
     abstract measureText(text: string, fontSize: number, fontFamily: string, fontWeight?: number, letterSpacing?: number, fontStyle?: FontStyle): number;
+
+    // ---- Inherited text-style defaults ------------------------------------
+    // `<DefaultTextStyle>` reaches a `Text`/`RichText` node through the context
+    // map, applied once when the node binds. A raw `Graphics` has no node to
+    // bind, so it inherits the same defaults here instead — pushed around a
+    // subtree's draw scope, and folded into each `text`/`richText` op by
+    // `draw()`. Same vocabulary (`TextStyle`), same precedence, two channels.
+
+    /**
+     * Defaults in effect for the current draw scope, innermost last. Each entry
+     * is **already merged** onto the one below it (see {@link pushTextStyle}), so
+     * the top of the stack is the effective style and reading it costs nothing.
+     */
+    private readonly textStyleStack: TextStyle[] = [];
+
+    /**
+     * Set text-style defaults for everything drawn until the matching
+     * {@link popTextStyle} — the drawn-graphics half of `<DefaultTextStyle>`.
+     *
+     * `style` is **merged** onto the defaults already in effect, per key, so
+     * nesting accumulates the way the node channel does: an outer scope's
+     * `fontFamily` and an inner scope's `fontSize` both apply, and a key set by
+     * both takes the inner value. Values are resolved (a tweened `fontSize`
+     * arrives as this frame's number), not callbacks.
+     *
+     * Pass `null` to open a scope that inherits **nothing** — not the enclosing
+     * defaults and not the project's `theme.typography.default`. That is for a
+     * node whose text is its own vocabulary rather than the document's: `Code`
+     * does it so a scene-wide serif face doesn't reflow a monospaced code block.
+     *
+     * Always pair with `popTextStyle()` in a `finally`; the stack is shared with
+     * every sibling drawn afterwards.
+     */
+    pushTextStyle(style: TextStyle | null): void {
+        if (style === null) {
+            this.textStyleStack.push(EMPTY_TEXT_STYLE);
+            return;
+        }
+        const merged: Record<string, unknown> = { ...this.defaultTextStyle() };
+        for (const key of TEXT_STYLE_KEYS) {
+            const value = style[key];
+            if (value !== undefined) merged[key] = value;
+        }
+        this.textStyleStack.push(merged as TextStyle);
+    }
+
+    /** Close the innermost scope opened by {@link pushTextStyle}. */
+    popTextStyle(): void {
+        this.textStyleStack.pop();
+    }
+
+    /**
+     * The text-style defaults in effect right now: the innermost
+     * {@link pushTextStyle} scope, or the project's `theme.typography.default`
+     * when no scope is open — the same preset a `Text` node falls back to, so a
+     * drawn label and a node label agree on the project's base typography.
+     *
+     * Carries all ten {@link TEXT_STYLE_KEYS}, but only the shaping ones reach a
+     * `Graphics` op; see {@link TEXT_SHAPING_KEYS} for why `fill`/`stroke`/
+     * `shadow` stay a node-level concern.
+     */
+    defaultTextStyle(): TextStyle {
+        return this.textStyleStack[this.textStyleStack.length - 1] ?? themeDefaultTextStyle();
+    }
+
+    /**
+     * Replay a built `Graphics` against this context.
+     *
+     * Final by convention — it resolves the ambient text defaults onto the op
+     * list and hands the result to {@link drawGraphics}, which is where a backend
+     * does its actual drawing. Owning this step here rather than in each backend
+     * is what keeps the real renderer and the precomp pass's asset walk agreeing
+     * on which font an under-specified `text` op shapes with: a family that one
+     * resolves and the other doesn't is a font that never loads and glyphs that
+     * never paint.
+     */
+    override draw(graphics: Graphics): void {
+        this.drawGraphics(applyGraphicsTextDefaults(graphics, this.defaultTextStyle()));
+    }
+
+    /** Paint a `Graphics` whose text ops have already been resolved against the
+     *  ambient defaults. Backends implement this instead of {@link draw}. */
+    protected abstract drawGraphics(graphics: Graphics): void;
 
     /**
      * See {@link MeasureScope.layoutTextBlock}. Concrete rather than abstract,

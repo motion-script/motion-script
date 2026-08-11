@@ -1,6 +1,6 @@
 import {
     createScene, createRef, createContext, ContextMap, Rect, Text, Provider,
-    DefaultTextStyle, easeInOut,
+    DefaultTextStyle, easeInOut, Graphics, Node, RenderContext, property,
 } from "motion-script";
 import { layoutCard } from "./layout-card";
 
@@ -35,6 +35,19 @@ class Swatch extends Rect {
     }
 }
 
+/** A custom node that draws a raw `Graphics` label instead of holding a `Text`.
+ * It names no font at all — a drawn op inherits the enclosing `DefaultTextStyle`
+ * at draw time, the same defaults the `<Text>` nodes above get at bind time. */
+class DrawnLabel extends Node<{ label: string }> {
+    @property({ default: "" }) declare readonly label: string;
+
+    protected override renderSelf(ctx: RenderContext): void {
+        ctx.draw(new Graphics()
+            .text({ text: this.label, width: this.measuredWidth, height: this.measuredHeight })
+            .fill("#8FE3A8"));
+    }
+}
+
 export default createScene(function* (stage) {
     stage.set({ fill: "bg" });
 
@@ -56,6 +69,10 @@ export default createScene(function* (stage) {
                         <DefaultTextStyle fill={"#F5C26B"}>
                             <Text text={"overridden fill, same family"} />
                         </DefaultTextStyle>
+
+                        {/* Not a Text node at all — a raw Graphics text op, which
+                            inherits the same family/size from the draw scope. */}
+                        <DrawnLabel label={"drawn Graphics, same family"} width={"fill"} height={80} />
 
                         {/* Custom typed token: two swatches read LabelColor; the
                             second sits under a Provider that overrides it. */}

@@ -286,15 +286,36 @@ export class Code extends Node<CodeProps> {
     }
 
     onRender(ctx: RenderContext): void {
-        super.onRender(ctx);
-        // Keep retrying until the language+theme have actually loaded, so a frame
-        // that rendered as plain text upgrades to full highlighting the moment the
-        // asset loader resolves. canHighlight gates tokenize from being a no-op
-        // re-run every frame once we're done.
-        if (!this.tokenized && canHighlight(this.language, this.theme)) {
-            this.tokenize();
+        // Refuse the ambient `<DefaultTextStyle>` / theme typography defaults for
+        // everything drawn inside this node.
+        //
+        // Those defaults describe the *document's* prose — a display face, a
+        // heading weight, a paragraph line-height — and a code block is not prose.
+        // Its own props are the vocabulary: `fontFamily` defaults to a monospaced
+        // face because column alignment depends on it, `letterSpacing` and
+        // `lineHeight` are tuned against that face, and every token is laid out at
+        // an x measured from those exact values. A scene-wide serif family or a
+        // 700 weight arriving through the draw scope would shape glyphs the
+        // geometry was never measured for, and the block would come apart
+        // column-by-column rather than merely look different.
+        //
+        // Text nodes never had this problem: `applyTextDefaults` only writes onto
+        // `Text`/`RichText`, and `Code` declares its typography as its own
+        // properties. This keeps the drawn half consistent with that.
+        ctx.pushTextStyle(null);
+        try {
+            super.onRender(ctx);
+            // Keep retrying until the language+theme have actually loaded, so a frame
+            // that rendered as plain text upgrades to full highlighting the moment the
+            // asset loader resolves. canHighlight gates tokenize from being a no-op
+            // re-run every frame once we're done.
+            if (!this.tokenized && canHighlight(this.language, this.theme)) {
+                this.tokenize();
+            }
+            this.drawSelf(ctx);
+        } finally {
+            ctx.popTextStyle();
         }
-        this.drawSelf(ctx);
     }
 
     *append(code: string, duration: number, easing?: EasingFunction): FrameGenerator {

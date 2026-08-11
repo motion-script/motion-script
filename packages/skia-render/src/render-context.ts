@@ -635,8 +635,12 @@ export abstract class SkiaRenderContext extends RenderContext {
      * A paint-only Graphics (no shape ops — e.g. the fill/stroke applied to a
      * boolean result after `endBoolean()`) does NOT reset the shape handler, so
      * it styles whatever surface is currently active.
+     *
+     * Called by `RenderContext.draw()`, which has already folded the ambient
+     * text-style defaults into the op list — so a `text` op that reaches here
+     * with no `fontFamily` genuinely has none to inherit.
      */
-    draw(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics): void {
         if (!this.isRendering) {
             console.warn("draw() must be called within the draw() method.");
             return;

@@ -298,6 +298,41 @@ or a shadow with no `tick` override — and frame *N* is identical however the
 playhead reached it. `FillData` has no `update`/`dynamic` hook; a new fill kind
 that varies with time reads the clock at paint time the same way.
 
+**Drawn text inherits `<DefaultTextStyle>`, so leave typography off.** A
+`.text({ text })` op with no `fontFamily`/`fontSize`/… picks the enclosing
+defaults up at draw time, falling back to the theme's `typography.default`
+preset — a custom node does not need a `fontFamily` prop just to be themable,
+and one that hardcodes a family opts its labels *out* of the document.
+
+There are two channels, because a node and a drawing have nothing else in common:
+a `Text`/`RichText` **node** inherits through the context map, once, at bind
+(`applyTextDefaults`); a **`Graphics`** isn't in the tree and has no bind step, so
+it inherits from the *draw scope* instead — `DefaultTextStyle.onRender` brackets
+its children with `ctx.pushTextStyle(style)` / `popTextStyle()`, and
+`RenderContext.draw` folds the effective style into each under-specified `text`/
+`richText` op before handing the list to the backend's `drawGraphics`. Both read
+the same `TextStyle` vocabulary (`runtime/builtin-context.ts`), which is what
+keeps them from drifting.
+
+Things to know when working on this:
+
+- **`draw()` is the seam, not the backend.** A backend implements
+  `drawGraphics`; `RenderContext.draw` is the one place the merge happens. That
+  is deliberate: `TrackRenderContext` walks the same op lists during precomp to
+  discover assets, and a family the real renderer resolves but the tracker
+  doesn't is a font that never loads and glyphs that never paint.
+- **Only the shaping keys reach a drawn op** (`TEXT_SHAPING_KEYS`).
+  `fill`/`stroke`/`shadow` are group-scoped ops in a `Graphics`, not per-shape
+  slots — synthesising one would change which shapes the group's paint covers.
+- **Opt out with `ctx.pushTextStyle(null)`**, which refuses the enclosing scope
+  *and* the theme default. `Code` does this: its token x positions are measured
+  against its own monospaced face, so an inherited display family would shape
+  glyphs the geometry was never measured for.
+- The merge **copies** rather than mutates (`Graphics._withOps`), because a node
+  may submit one built `Graphics` more than once — `Text` draws the same op list
+  for its fill, overlay and stroke passes. It returns the same instance when
+  nothing needs filling in, so a fully-specified node allocates nothing.
+
 ### Project globals
 
 `createProject` takes three fields describing content that spans the whole

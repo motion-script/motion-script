@@ -106,8 +106,11 @@ export class TrackRenderContext extends RenderContext {
             try {
                 const source = resolveSurfaceSource(texture.source);
                 // A node subtree renders straight back into this context, which is
-                // what discovers its fonts and image fills.
-                if (source.kind === "graphics") this.drawOps(source.graphics);
+                // what discovers its fonts and image fills. A bare `Graphics` goes
+                // back through the public `draw()` (not `drawOps`) so its text ops
+                // pick up the ambient text defaults here exactly as they will when
+                // the backend rasterizes the same source for real.
+                if (source.kind === "graphics") this.draw(source.graphics);
                 else source.node.render(this);
             } finally {
                 this.surfaceDepth--;
@@ -136,7 +139,7 @@ export class TrackRenderContext extends RenderContext {
      * hits the exact same `ensureFrame()` throw if a future caller ever
      * invokes it unbracketed, so guard it the same way defensively.
      */
-    draw(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics): void {
         if (this.tracker.isActive) {
             this.drawOps(graphics);
             return;

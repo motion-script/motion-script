@@ -7,6 +7,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { type Stroke } from "@/attributes/shape/stroke/mapper";
 import { type Shadow } from "@/attributes/shape/shadow/resolver";
+import { type RenderContext } from "@/render/render-context";
 
 export interface DefaultTextStyleProps extends NodeProps {
     fontFamily: string;
@@ -22,19 +23,34 @@ export interface DefaultTextStyleProps extends NodeProps {
 }
 
 /**
- * Sets default text styling for the {@link Text} / {@link RichText} nodes below
- * it. A descendant inherits each style prop it didn't set itself, from the
- * nearest ancestor `DefaultTextStyle` that did — author-set props always win
+ * Sets default text styling for everything drawn below it — the {@link Text} /
+ * {@link RichText} nodes *and* the raw `Graphics` `text`/`richText` ops a custom
+ * node draws. A descendant inherits each style prop it didn't set itself, from
+ * the nearest ancestor `DefaultTextStyle` that did — author-set props always win
  * over inherited ones. Nesting accumulates per key (an inner `fontSize` and an
  * outer `fontFamily` both apply).
  *
- * Built on the same context machinery as {@link Provider}: it contributes the
- * built-in {@link TextStyleToken}, merging only the keys the author explicitly
- * passed onto any ancestor's defaults.
+ * Two channels carry that, because a node and a drawing have nothing else in
+ * common:
  *
- * It contributes the author's *raw* prop values (not resolved cell values), so
- * each consumer resolves them once through its own mapper — e.g. `fill='red'`
- * is resolved by `Text`'s fill mapper, not pre-resolved here.
+ * - **Nodes**, through context. Built on the same machinery as {@link Provider}:
+ *   it contributes the built-in {@link TextStyleToken}, merging only the keys the
+ *   author explicitly passed onto any ancestor's defaults. It contributes the
+ *   author's *raw* prop values (not resolved cell values), so each consumer
+ *   resolves them once through its own mapper — e.g. `fill='red'` is resolved by
+ *   `Text`'s fill mapper, not pre-resolved here.
+ * - **Graphics**, through the render context ({@link RenderContext.pushTextStyle}),
+ *   pushed around this node's children for the duration of their draw and folded
+ *   into each under-specified text op. A `Graphics` isn't in the tree and has no
+ *   bind step, so the draw scope is the only place it can inherit from.
+ *
+ *   Only the *shaping* keys reach a drawn op — `fill`/`stroke`/`shadow` are
+ *   group-scoped paint ops in a `Graphics`, not per-shape slots, so defaulting
+ *   them would change which shapes a group's paint covers. See
+ *   {@link TEXT_SHAPING_KEYS}.
+ *
+ * A node that owns its typography opts out of the second channel with
+ * `ctx.pushTextStyle(null)`; `@motion-script/code`'s `Code` does exactly that.
  *
  * Layout-transparent like {@link Provider} — carries style, not appearance.
  */
@@ -66,5 +82,40 @@ export class DefaultTextStyle extends Node<DefaultTextStyleProps> {
             }
         }
         return changed ? parent.with(TextStyleToken, td) : parent;
+    }
+
+    /**
+     * Open the render-context text-style scope around this node's children, so
+     * the `Graphics` they draw inherit the same defaults their `Text` nodes do.
+     *
+     * `super.onRender` is what renders those children, so the scope has to wrap
+     * it — and be closed in a `finally`, since the stack outlives this node and a
+     * leaked frame would restyle every sibling drawn after it.
+     */
+    override onRender(ctx: RenderContext): void {
+        ctx.pushTextStyle(this.currentStyle());
+        try {
+            super.onRender(ctx);
+        } finally {
+            ctx.popTextStyle();
+        }
+    }
+
+    /**
+     * The keys this node currently sets, at their resolved values.
+     *
+     * Read off the properties rather than out of `_props` (which
+     * {@link provideContext} uses): a prop can be a callback or mid-tween, and a
+     * drawn op needs this frame's *value*. An unset prop defaults to `undefined`,
+     * which is the same "didn't set it" signal the context channel reads.
+     */
+    private currentStyle(): TextStyle {
+        const self = this as unknown as Record<string, unknown>;
+        const style: Record<string, unknown> = {};
+        for (const key of TEXT_STYLE_KEYS) {
+            const value = self[key];
+            if (value !== undefined) style[key] = value;
+        }
+        return style as TextStyle;
     }
 }

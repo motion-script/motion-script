@@ -301,4 +301,30 @@ export class Graphics {
     isPaintOnly(): boolean {
         return !this._ops.some((op) => SHAPE_KINDS.has(op.kind));
     }
+
+    /**
+     * A structural copy of this graphics with its op list replaced and every
+     * group-level modifier (opacity, rotation, scale, transform centre) carried
+     * over.
+     *
+     * A copy rather than a mutation because a node is free to build one
+     * `Graphics` and submit it more than once — `Text` draws the same op list for
+     * its fill, overlay and stroke passes — and each submission may sit under
+     * different ambient state. Rewriting the shared instance would leak one
+     * scope's resolution into the next.
+     *
+     * `@internal` — the seam `applyGraphicsTextDefaults` (see
+     * `render/text-defaults.ts`) folds inherited text defaults through; not part
+     * of the authoring surface.
+     */
+    /** @internal */
+    _withOps(ops: GraphicsOp[]): Graphics {
+        const next = new Graphics();
+        next._ops = ops;
+        next._opacity = this._opacity;
+        next._rotation = this._rotation;
+        next._scale = this._scale;
+        next._transformCenter = this._transformCenter;
+        return next;
+    }
 }
