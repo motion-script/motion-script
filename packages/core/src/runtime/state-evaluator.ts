@@ -481,26 +481,41 @@ export class StateEvaluator {
      * `ellapse()` both ticks and samples motion for the frame (see `Node.ellapse`),
      * so running it on every advanced frame — not just rendered ones — keeps
      * velocity-derived effects (motion blur) correct after a scrub/rewind.
+     *
+     * ### Two clocks, deliberately
+     * The scene runs on **scene time** and the global layers on **project time**.
+     * That split is what makes a scene independent of where it sits: rendered on
+     * its own, or third in a timeline, it is handed exactly the same clock and so
+     * produces exactly the same frames. It is also what `NodeClock.time`
+     * ("absolute time since the scene started") has always documented, what
+     * `Precomp.precompSceneSteps` measures with, and what the scene-relative
+     * `audioRequests` precomp records are expressed in — so anything but scene
+     * time here puts playback out of step with its own measurement.
+     *
+     * The layers keep project time on purpose: they are not part of any scene
+     * (see `ProjectGlobals`), and a bed's fade or a background video has to run
+     * continuously *across* a cut rather than restart at every one.
      */
     private stepReplay(slot: SceneSlot, dt: number): void {
         slot.localFrame++;
-        const globalTime = (slot.startFrame + slot.localFrame) * dt;
+        const sceneTime = slot.localFrame * dt;
+        const projectTime = (slot.startFrame + slot.localFrame) * dt;
         // Scoped to the slot being advanced — the same three calls, on the same
         // scene, in the same order as `Precomp.precompScene`'s loop (and as
         // `resetSlot` above). Fanning them out across every scene would be pure
         // waste (nothing mutates a frozen scene's tree during this replay) and
         // actively wrong: `advanceClock` seeds `creation` on first touch and scene
-        // roots outlive `reset()`, so ellapsing an un-entered scene at *global*
-        // time births its root mid-timeline, and a later seek into it then reports
-        // a negative `elapsed` for the rest of the session.
+        // roots outlive `reset()`, so ellapsing an un-entered scene at a time its
+        // own clock has not reached births its root mid-scene, and a later seek
+        // into it then reports a negative `elapsed` for the rest of the session.
         slot.scene.bindAssets(this.assets);
         // Structural re-push only (runInit=false): refresh context on any subtree
         // added this frame without re-firing init mid-tween.
         slot.scene.bindContext(ContextMap.EMPTY, false);
-        slot.scene.ellapse(globalTime);
-        // Layers advance on the same global clock, so they neither restart nor
-        // jump at a scene cut.
-        this.globals?.ellapse(globalTime);
+        slot.scene.ellapse(sceneTime);
+        // Layers advance on the project clock, so they neither restart nor jump
+        // at a scene cut.
+        this.globals?.ellapse(projectTime);
         // Lay out before stepping the generator so any post-layout state it
         // reads (an animated removeChildAt pinning to `measuredWidth`, the
         // hug/fill addChildAt measuring against `_lastScope`) is fresh for

@@ -127,14 +127,23 @@ export async function mixAudio(
     return mixCtx.startRendering();
 }
 
-/** Adapter presenting {@link mixAudio} as the exporter's injected mixer seam. */
+/**
+ * Adapter presenting {@link mixAudio} as the exporter's injected mixer seam.
+ *
+ * The sample rate is a constructor argument rather than a third `mix` parameter
+ * because {@link AudioMixer} — the seam `renderTimeline` calls through — takes
+ * exactly two, so anything passed as a third would be silently dropped. Fixing
+ * it here rather than widening the interface keeps the rate a property of *this*
+ * mixer, which is whose business it is.
+ */
 export class WebAudioMixer implements AudioMixer<AudioBuffer> {
+    constructor(private readonly sampleRate: number = DEFAULT_SAMPLE_RATE) { }
+
     mix(
         requests: readonly ScheduledAudioRequest[],
         totalDuration: number,
-        sampleRate: number = DEFAULT_SAMPLE_RATE,
     ): Promise<AudioBuffer | null> {
-        return mixAudio(requests, totalDuration, { sampleRate });
+        return mixAudio(requests, totalDuration, { sampleRate: this.sampleRate });
     }
 }
 

@@ -594,6 +594,12 @@
     "description": "Noise fill, varying density and size"
   },
   {
+    "id": "fill-shader-custom",
+    "name": "FillShaderCustom",
+    "section": "Fills",
+    "description": "Custom SkSL shader fill, ring radius driven by a tweened uniform"
+  },
+  {
     "id": "fill-stripe",
     "name": "FillStripe",
     "section": "Fills",

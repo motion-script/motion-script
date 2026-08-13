@@ -8,7 +8,24 @@ export { getCanvasKit } from "./getter";
 // kept on this barrel so the specifier consumers already use keeps resolving.
 export { EffectRegistry } from "@motion-script/skia-render";
 export type { EffectHandler, EffectGeometry, EffectResources, EffectTarget, RenderEffect } from "@motion-script/skia-render";
-export { exportScenesAsVideo, type ExportParams, type ExportProgressCallback } from "./exporter";
+export {
+    exportScenesAsVideo,
+    type ExportParams,
+    type ExportProgressCallback,
+    type VideoEncoderOptions,
+    type AudioEncoderOptions,
+} from "./exporter";
+// mediabunny's resolution-aware quality levels, re-exported so a host can pick
+// one for `ExportParams.video.bitrate` without taking a direct dependency on the
+// encoder library this package happens to use.
+export {
+    QUALITY_VERY_LOW,
+    QUALITY_LOW,
+    QUALITY_MEDIUM,
+    QUALITY_HIGH,
+    QUALITY_VERY_HIGH,
+    type Quality,
+} from "mediabunny";
 export { exportScreenshot, type ScreenshotParams, type ScreenshotResult, type ScreenshotFormat, type FrameSpec } from "./screenshot";
 // Single frames as a first-class capability: one long-lived renderer that repaints
 // into a canvas the host owns, for thumbnails and still previews. `exportScreenshot`

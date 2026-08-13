@@ -191,6 +191,36 @@ describe('StateEvaluator – multi-scene timeline', () => {
         // here on, for the rest of the session.
         expect(a.ellapseCalls[0]).toBe(0);
     });
+
+    it('drives a scene on scene time, not project time', () => {
+        const { b, evaluator } = pair();
+        // Scene B starts at global frame 10, so its local frames 1..4 are global
+        // 11..14. Its clock must read 0.25s..1.0s — its *own* elapsed time — not
+        // 2.75s..3.5s, which is where it happens to sit in the project.
+        evaluator.stateAt(14);
+        expect(b.ellapseCalls).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    });
+
+    it('gives a scene the same clock wherever it sits in the timeline', () => {
+        // The property that makes "export this scene on its own" and "export the
+        // whole timeline" agree: a scene's frames may not depend on what precedes
+        // it. Drive the same scene as the only scene, and as the second of two,
+        // and the times it is ellapsed with must match exactly.
+        const alone = new FakeScene({ id: 'x', yieldCount: 5 });
+        const aloneEval = new StateEvaluator(
+            asScenes([alone]), VIEWPORT, FPS, catalog, [5], scope,
+        );
+        aloneEval.stateAt(4);
+
+        const lead = new FakeScene({ id: 'lead', yieldCount: 10 });
+        const grouped = new FakeScene({ id: 'x', yieldCount: 5 });
+        const groupedEval = new StateEvaluator(
+            asScenes([lead, grouped]), VIEWPORT, FPS, catalog, [10, 5], scope,
+        );
+        groupedEval.stateAt(14); // the same local frame 4, ten frames along
+
+        expect(grouped.ellapseCalls).toEqual(alone.ellapseCalls);
+    });
 });
 
 describe('StateEvaluator – interruptible seek (stateAtAsync)', () => {

@@ -19,6 +19,7 @@ export type { LinearGradientFillProp, LinearGradientFillResolved } from './imple
 export type { NoiseFillProp, NoiseFillResolved } from './implementations/noise';
 export type { FractalNoiseFillProp, FractalNoiseFillResolved, FractalNoiseBasis } from './implementations/fractal-noise';
 export type { RadialGradientFillProp, RadialGradientFillResolved } from './implementations/radial-gradient';
+export type { ShaderFillProp, ShaderFillResolved, ShaderFillCoords, ShaderTexture } from './implementations/shader';
 export type { StripeFillProp, StripeFillResolved } from './implementations/stripe';
 export type { VideoFillProp, VideoFillResolved } from './implementations/video';
 export { resolveVideoTimestamp } from './implementations/video';

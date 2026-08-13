@@ -122,8 +122,8 @@ function source(basis: string, octaves: number, stops: number): string {
     }`;
 
     return `${NOISE_LIB}
-uniform vec2  u_origin;      // shape bounds origin, device px
-uniform vec2  u_size;        // shape bounds size, device px
+uniform vec2  u_origin;      // shape bounds origin, shape-local logical px
+uniform vec2  u_size;        // shape bounds size, shape-local logical px
 uniform vec2  u_frequency;   // cycles of the first octave across the shape
 uniform vec2  u_offset;      // pan through the field, in cycles
 uniform float u_lacunarity;
@@ -132,7 +132,6 @@ uniform float u_seed;
 uniform float u_cos;         // field rotation, precomputed
 uniform float u_sin;
 uniform float u_contrast;
-uniform float u_alpha;       // fill opacity × worldAlpha
 uniform vec4  u_colors[${stops}];
 uniform float u_stops[${stops}];
 
@@ -163,8 +162,11 @@ ${accumulate}
     }
 
     // Premultiply: the paint's shader output is composited as premultiplied.
-    float a = color.a * u_alpha;
-    return vec4(color.rgb * a, a);
+    // Deliberately *not* multiplied by the fill's opacity or the world alpha —
+    // FillHandler has already put both on the paint via setAlphaf, and Skia
+    // modulates a shader's output by the paint alpha, so folding them in here
+    // would square them.
+    return vec4(color.rgb * color.a, color.a);
 }
 `;
 }
@@ -213,7 +215,6 @@ export class FractalNoiseFillRenderer extends FillRenderer<FractalNoiseFillResol
         if (!runtimeEffect) return false;
 
         const radians = (fill.angle * Math.PI) / 180;
-        const alpha = (fill.opacity ?? 1) * ctx.worldAlpha;
 
         // Pad a short colour list by repeating the last entry rather than
         // leaving zeroed uniforms, which would ramp into transparent black.
@@ -235,7 +236,6 @@ export class FractalNoiseFillRenderer extends FillRenderer<FractalNoiseFillResol
             fill.seed,
             Math.cos(radians), Math.sin(radians),
             fill.contrast,
-            alpha,
             ...colors,
             ...positions,
         ]);

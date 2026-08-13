@@ -8,6 +8,7 @@ import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageCrop, ImageFit, ImageMatrix } from "./implementations/image";
 import type { Anchor } from "@/attributes/layout/anchor";
 import type { FractalNoiseFillProp } from "./implementations/fractal-noise";
+import type { ShaderFillProp } from "./implementations/shader";
 import type { Graphics3D } from "@/render3d/graphics3d";
 
 /** Placement options shared by the image and video fill builders. */
@@ -164,6 +165,33 @@ export class FillChain {
                 basis, octaves, frequency, lacunarity, gain, seed, offset, angle,
                 colors, stops, contrast,
             },
+            common,
+        )]);
+    }
+
+    /**
+     * Append a custom SkSL shader fill — the escape hatch past {@link noise} and
+     * {@link fractalNoise}, where the author writes the fragment function.
+     *
+     * `source` must declare `vec4 main(vec2 fragCoord)` and return
+     * **premultiplied** rgba, without folding `opacity` in (the layer's opacity is
+     * already on the paint, so applying it twice squares it). Uniforms are keyed
+     * by their declared name and bound by reflecting the compiled program, so
+     * order is irrelevant; the renderer supplies `u_size`, `u_origin`,
+     * `u_resolution`, `u_aspect`, `u_time` and `u_scale` to whichever of them the
+     * source declares.
+     *
+     * Keep `source` constant — it is the compile-cache key, so it snaps at a
+     * tween's midpoint and rebuilding it per frame compiles a program per frame.
+     * Everything that changes belongs in a uniform, which is an in-place write.
+     *
+     * @example
+     * Fills.shader(GLOW, { uniforms: { u_amount: 0.6 }, coords: 'centered' })
+     */
+    shader(source: string, options?: FillOptions & Omit<ShaderFillProp, 'type' | 'source' | 'opacity' | 'blend'>) {
+        const { uniforms, coords, textures, ...common } = options ?? {};
+        return new FillChain([...this.list, withOptions(
+            { type: 'shader' as const, source, uniforms, coords, textures },
             common,
         )]);
     }

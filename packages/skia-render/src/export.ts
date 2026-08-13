@@ -1,8 +1,8 @@
 import {
     AssetCatalog, AssetManager, AudioDevice, type AudioRequest, type AssetManifest,
-    type GlobalLayerConfig, type AudioTrack, MeasureScope, Precomp, type PrecompResult,
-    ProjectGlobals, type Scene, type Size2D, StateEvaluator, type StorageAdapter,
-    yieldToScheduler,
+    type GlobalLayerConfig, type AudioTrack, MeasureScope, Precomp, type PrecompCache,
+    type PrecompResult, ProjectGlobals, type Scene, type Size2D, StateEvaluator,
+    type StorageAdapter, yieldToScheduler,
 } from "@motion-script/core";
 import type { SkiaAssets } from "./assets";
 import type { SkiaRenderContext } from "./render-context";
@@ -107,6 +107,9 @@ export interface ImageEncoder {
  * the per-frame pass.
  */
 export class NoopAudioDevice extends AudioDevice {
+    /** Nothing here records a request, so `AssetManager` can skip the whole sync. */
+    override get schedulesAudio(): boolean { return false; }
+
     has(_src: string): boolean { return true; }
     async append(_src: string, _data: ArrayBuffer): Promise<void> { }
     retain(_keep: ReadonlySet<string>): void { }
@@ -134,6 +137,20 @@ interface CommonParams extends RenderHarness {
     manifest?: AssetManifest;
     overlays?: GlobalLayerConfig[];
     backgrounds?: GlobalLayerConfig[];
+    /**
+     * A host store of previously-measured scene passes, letting an unchanged
+     * scene skip its build pass entirely.
+     *
+     * Worth supplying whenever the caller has already measured these scenes for
+     * something else — an editor that renders a live preview has, and precomp
+     * costs roughly a render frame per frame, so an export that reuses it does
+     * about half the work. The host owns validity; see {@link PrecompCache}.
+     *
+     * Entries are keyed by `Scene.__sceneHotId`, so a scene without one is
+     * measured every time rather than risking one scene's timings being served
+     * for another.
+     */
+    precompCache?: PrecompCache;
 }
 
 /**
@@ -189,13 +206,22 @@ interface PrepareOptions {
 
 /** Build the precomp + evaluator pair both entry points drive. */
 function prepare(params: CommonParams, options: PrepareOptions = {}) {
-    const { scenes, viewport, fps, assetCatalog, renderContext, overlays, backgrounds } = params;
+    const { scenes, viewport, fps, assetCatalog, renderContext, overlays, backgrounds, precompCache } = params;
     // One instance, shared by the measuring pass and the render pass — the layers
     // whose assets precomp registers must be the ones the frames actually draw.
     const globals = new ProjectGlobals({ audioTracks: options.audioTracks, overlays, backgrounds }, viewport);
     const measureScope = renderContext as unknown as MeasureScope;
 
-    const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, { globals });
+    const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, {
+        globals,
+        cache: precompCache,
+        // Neither entry point here draws a timeline, so the per-frame lifespan walk
+        // (a full tree traversal allocating a path string per node) measures
+        // something nothing downstream reads. Turning it off also stops these
+        // partial passes being written back to `precompCache`, which an editor
+        // sharing that store would otherwise read as "this scene has no nodes".
+        lifespans: false,
+    });
     const precomp = options.upTo ? precompUpTo(precomper, options.upTo) : precomper.run();
     const tracks = precomp.scenes.map(s => s.frameCount);
     const stateEvaluator = new StateEvaluator(
@@ -275,23 +301,38 @@ export async function renderTimeline<TAudio>(
 
     const frameDuration = 1 / fps;
     let globalTime = 0;
-    for (let f = 0; f < totalFrames; f++) {
-        signal?.throwIfAborted();
+    // An export is the most perfectly monotonic forward walk of a timeline there
+    // is — exactly the access pattern an adapter's look-ahead decode window is
+    // built for. Left at the default (`false`, i.e. "paused") every video frame
+    // instead takes the random-access branch: a seek + decode the render has to
+    // wait on, followed by a *second* full render of the frame once it lands (see
+    // `renderWarmFrame`). Telling the adapter we are playing turns that into one
+    // sequential decode pass per clip.
+    //
+    // Restored in the `finally` so a cancelled export doesn't leave an adapter the
+    // caller still owns believing a playhead is running.
+    storageAdapter.setPlaying(true);
+    try {
+        for (let f = 0; f < totalFrames; f++) {
+            signal?.throwIfAborted();
 
-        await assetManager.loadAt(f);
-        stateEvaluator.stateAt(f);
-        stateEvaluator.layout(measureScope);
-        await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
+            await assetManager.loadAt(f);
+            stateEvaluator.stateAt(f);
+            stateEvaluator.layout(measureScope);
+            await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
 
-        await sink.addFrame(globalTime, frameDuration);
-        globalTime += frameDuration;
-        // Video occupies most of the range; the audio mix and finalize are the tail.
-        onProgress?.(((f + 1) / totalFrames) * (wantsAudio ? 0.85 : 1));
+            await sink.addFrame(globalTime, frameDuration);
+            globalTime += frameDuration;
+            // Video occupies most of the range; the audio mix and finalize are the tail.
+            onProgress?.(((f + 1) / totalFrames) * (wantsAudio ? 0.85 : 1));
 
-        // Hand the host back its event loop periodically so a long export stays
-        // interruptible. Core's yield is feature-detected and prefers a real
-        // macrotask over a clamped setTimeout, in the browser and in Node alike.
-        if ((f + 1) % 4 === 0) await yieldToScheduler();
+            // Hand the host back its event loop periodically so a long export stays
+            // interruptible. Core's yield is feature-detected and prefers a real
+            // macrotask over a clamped setTimeout, in the browser and in Node alike.
+            if ((f + 1) % 4 === 0) await yieldToScheduler();
+        }
+    } finally {
+        storageAdapter.setPlaying(false);
     }
 
     if (wantsAudio) {

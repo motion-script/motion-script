@@ -99,6 +99,27 @@ export class Scene {
      */
     __sceneHotId?: string;
 
+    /**
+     * Identity of this scene's *content*, for a {@link PrecompCache}.
+     *
+     * Distinct from {@link __sceneHotId}, which identifies the timeline **slot**
+     * a scene belongs to and therefore stays the same across an edit — that is
+     * exactly what hot replacement needs, and exactly what a measurement cache
+     * must not key on, since it would serve the pre-edit frame count forever.
+     *
+     * A host that sets this should derive it from everything the pass depends on
+     * — the scene's own content, the viewport, and the fps — so that equal keys
+     * really do imply equal passes. Because it travels on the scene instance, a
+     * pass that completes after the host has moved on is still recorded against
+     * the build it actually measured, rather than whatever is current when it
+     * lands.
+     *
+     * Falls back to {@link __sceneHotId} when unset (see `storeKeyOf`), which is
+     * the right key for the Vite plugin's store — it validates entries by
+     * re-hashing each one's recorded source dependencies instead.
+     */
+    __precompKey?: string;
+
     /** Human-readable name for the timeline/errors. Defaults to "Scene"; the
      *  `?scene` transform overrides it with the file's basename. */
     name: string = "Scene";

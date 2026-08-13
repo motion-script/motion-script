@@ -135,6 +135,7 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `fill-image`: Image fill on a rect
 - [ ] `fill-video`: Video fill on a rect
 - [ ] `fill-noise`: Noise fill, varying density and size
+- [ ] `fill-shader-custom`: Custom SkSL shader fill, ring radius driven by a tweened uniform
 - [ ] `fill-stripe`: Stripe fill, varying angle and gap
 - [ ] `fill-space-local`: Fill pinned to shape's own bounds (default)
 - [ ] `fill-space-parent`: Fill mapped to parent bounds; shape moves across it

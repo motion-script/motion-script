@@ -141,7 +141,7 @@ Pass an array to layer fills bottom to top:
 
 ## Procedural fills
 
-Two fills generate their own pixels rather than taking a colour or an image.
+Three fills generate their own pixels rather than taking a colour or an image. The first two expose a fixed set of knobs; the third hands you the shader.
 
 ### Noise — speckle
 
@@ -190,13 +190,119 @@ Tween `seed` in whole steps to make the static crawl.
 
 It composes with the effect layer rather than duplicating it — [duotone](../effects/implementations/duotone) over it is marble, [threshold](../effects/implementations/threshold) over it is an organic matte, [posterize](../effects/implementations/posterize) over it is topographic banding, and [displace](../effects/implementations/displace) is water.
 
+### Custom shader — your own SkSL
+
+`Fills.shader` is the escape hatch past the built-in procedural fills: you write the fragment function.
+
+```tsx
+const GLOW = `
+uniform float u_amount;
+
+vec4 main(vec2 uv) {
+    float d = 1.0 - length(uv - 0.5) * 2.0;
+    float a = smoothstep(0.0, 1.0, d) * u_amount;
+    return vec4(vec3(0.41, 0.56, 0.87) * a, a);   // premultiplied
+}`;
+
+<Rect width={400} height={400} fill={Fills.shader(GLOW, { uniforms: { u_amount: 1 } })} />
+```
+
+It is a fill, so it paints inside the shape's own path and stacks like any other layer — the same shader clips to an ellipse, a path or a run of text, and takes `opacity`, `blend` and `space` for free:
+
+```tsx
+<Rect fill={['#0b0d12', Fills.shader(GLOW, { blend: 'screen', opacity: 0.8 })]} />
+<Ellipse fill={Fills.shader(GLOW)} />
+<Text text="DEPTH" fontSize={320} fill={Fills.shader(GLOW)} />
+<Rect stroke={{ fill: Fills.shader(GLOW), weight: 12 }} />
+```
+
+#### The shader contract
+
+The source must declare `vec4 main(vec2 fragCoord)`, and it is [SkSL](https://github.com/google/skia/blob/main/src/sksl/README.md) — GLSL-like, with `float2`/`float4` and their `vec2`/`vec4` aliases, and the usual `mix`/`smoothstep`/`clamp`/`length`/`fract`/`sin` built-ins.
+
+Two rules:
+
+- **Return premultiplied alpha** — `return vec4(rgb * a, a)`.
+- **Don't apply the layer's `opacity` yourself.** It is already on the paint as an alpha your output is modulated by, so folding it in again renders at the *square* of what you asked for. Same for a node's own opacity.
+
+:::note
+Keep the source constant. It is the shader compile cache's key, so building it per frame — interpolating a changing value into a template literal — compiles a new GPU program every frame. Hoist it to module scope and put everything that moves in a uniform, which is an in-place write and costs nothing.
+:::
+
+#### Uniforms
+
+Uniforms are supplied **by name**, in any order — the renderer reflects the compiled program to find where each one goes. A name the shader doesn't declare, or one it declares that you didn't supply, is reported in the console instead of silently rendering wrong.
+
+```tsx
+Fills.shader(SRC, {
+    uniforms: {
+        u_amount: 0.6,             // float
+        u_centre: [0.5, 0.5],      // vec2
+        u_tint: [0.9, 0.3, 0.4, 1],// vec4
+        u_seed: 7,                 // int
+    },
+})
+```
+
+Declare any of these and the renderer fills it in. An entry in `uniforms` with the same name wins.
+
+| Uniform | Type | Value |
+|---|---|---|
+| `u_size` | `vec2` | The fill's resolved bounds size, in local px |
+| `u_resolution` | `vec2` | The same thing, under the name web shaders usually use |
+| `u_origin` | `vec2` | The bounds' top-left corner, in local px |
+| `u_aspect` | `float` | `width / height` |
+| `u_time` | `float` | Seconds the node carrying the fill has existed |
+| `u_scale` | `float` | Device px per local px |
+
+Two caveats. `u_time` is **node age, not scene time** — it starts when the node appears, which is what makes it identical whether you played to a frame or seeked to it. And `u_scale` folds in the pixel ratio *and* the camera zoom, so a 4× export sees a different value from the player: use it for a hairline that should stay one pixel wide, not for anything that decides the look.
+
+#### Coordinates
+
+`coords` chooses what `fragCoord` means. It is applied as a matrix on the shader, so one compiled program serves every size and every mode.
+
+| `coords` | `fragCoord` is |
+|---|---|
+| `'normalized'` (default) | `0`–`1` across the bounds on both axes. Stretches with the shape |
+| `'centered'` | `(0,0)` at the centre, `y` spanning `-0.5`–`0.5`, **square pixels**. `x` spans `±u_aspect/2`. What anything radial wants |
+| `'local'` | Raw shape-local px. For a pattern whose pitch is an authored size, the way `Fills.stripe`'s `gap` is |
+
+A circle is round under `'centered'` with no correction, and an ellipse under `'normalized'` on any non-square shape.
+
+#### Sampling images
+
+Bind an image to a `uniform shader` declaration by name. The fill doesn't paint until the image has decoded, the same as an image fill.
+
+```tsx
+const RIPPLE = `
+uniform shader u_photo;
+uniform vec2  u_size;
+uniform float u_amount;
+
+vec4 main(vec2 uv) {
+    float wave = sin(uv.y * 24.0) * 0.02 * u_amount;
+    return u_photo.eval((uv + vec2(wave, 0.0)) * u_size);
+}`;
+
+<Rect width={640} height={400} fill={Fills.shader(RIPPLE, {
+    textures: [{ name: 'u_photo', src: 'kingfisher.jpg' }],
+    uniforms: { u_amount: 1 },
+})} />
+```
+
+The sampler is evaluated in your own coordinate space, so you do the mapping — multiplying by `u_size` above turns the normalised coordinate back into the image's pixel space. Up to four textures; they tile (`repeat`) past their edges.
+
+**Animating:** uniform values interpolate, component-wise for vectors, and so does `opacity`. `source`, `coords` and `textures` **snap** at the midpoint of a tween rather than cross-fading — the source is the compile-cache key, and there is no halfway value between two programs. To dissolve between two shaders, stack them as two layers and tween their opacities in opposite directions.
+
+Shader fills also paint a node's stroke and its shadow, so a shader-filled shape casts a shader-coloured shadow rather than a flat silhouette.
+
 ---
 
 ## Fill types reference
 
 | Type | Required props | Optional props |
 |---|---|---|
-| `'color'` | `color` | `opacity`, `blend` |
+| `'solid'` | `color` | `opacity`, `blend` |
 | `'linear-gradient'` | `colors`, `stops` | `start`, `end`, `blend` |
 | `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
 | `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
@@ -205,6 +311,10 @@ It composes with the effect layer rather than duplicating it — [duotone](../ef
 | `'noise'` | – | `size`, `density`, `color`, `seed`, `opacity`, `blend` |
 | `'fractalNoise'` | – | `basis`, `octaves`, `frequency`, `lacunarity`, `gain`, `seed`, `offset`, `angle`, `colors`, `stops`, `contrast`, `opacity`, `blend` |
 | `'stripe'` | – | `gap`, `strokeWidth`, `angle`, `color`, `opacity`, `blend` |
+| `'shader'` | `source` | `uniforms`, `coords`, `textures`, `opacity`, `blend` |
+| `'view3D'` | `graphics3D` | `maxPixelRatio`, `antialias`, `opacity`, `blend` |
+
+Every fill also takes `space` (`'local'` | `'parent'` | `'global'`), which chooses the rect it resolves against, and a plain CSS colour string is shorthand for `'solid'`.
 
 ---
 

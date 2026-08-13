@@ -49,8 +49,11 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
             return true;
         }
 
-        // No echo: plain single pass, handler draws the figure.
+        // No echo: plain single pass, handler draws the figure. The wrapping
+        // shader is ours even though the frame beneath it isn't, so it goes to
+        // `transientPaintObjects` — freed after the draw, once the paint has let go.
         const base = makeImageShader(img, fill, ctx.canvasKit, ctx.getShapeBounds(), samplingFor(fill));
+        ctx.transientPaintObjects.push(base);
         ctx.paint.setShader(applyMediaFilters(fill, ctx, base));
         return true;
     }
@@ -93,7 +96,9 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
             if (!tap) continue; // not warm yet — warmPendingVideo() decodes it for the re-render
 
             ctx.transientImages.push(tap); // handler frees after the draw
-            paint.setShader(makeImageShader(tap, fill, canvasKit, bounds));
+            const tapShader = makeImageShader(tap, fill, canvasKit, bounds);
+            ctx.transientPaintObjects.push(tapShader);
+            paint.setShader(tapShader);
             paint.setImageFilter(null);
             paint.setAlphaf(baseAlpha * Math.pow(decay, n));
             paint.setBlendMode(blendMode);
@@ -104,6 +109,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         // composited with the echo blend so it joins the stack rather than hiding
         // the trail behind an opaque pass.
         const base = makeImageShader(current, fill, canvasKit, bounds, samplingFor(fill));
+        ctx.transientPaintObjects.push(base);
         paint.setShader(applyMediaFilters(fill, ctx, base));
         paint.setAlphaf(baseAlpha);
         paint.setBlendMode(blendMode);

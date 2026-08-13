@@ -1,14 +1,16 @@
-import { lerpNumber } from "@/tween/lerp";
 import type { BlendMode } from "../../fill/blend";
 import type { ModedEffect, EffectData } from "../effect-data";
+import {
+    lerpUniformValue,
+    uniformValuesEqual,
+    type SkSLUniform,
+    type SkSLUniformValue,
+} from "../../sksl-uniforms";
 
-/** A single uniform value: a float or a flat array for vec2/vec3/vec4. */
-export type SkSLUniformValue = number | number[];
-
-export interface SkSLUniform {
-    name: string;
-    value: SkSLUniformValue;
-}
+// The uniform vocabulary is shared with the `shader` fill, which marshals the
+// same values by name instead of by position. Re-exported here so the specifier
+// consumers already use keeps resolving.
+export type { SkSLUniform, SkSLUniformValue };
 
 /**
  * Custom SkSL effect, classified by the shared {@link EffectMode}:
@@ -37,29 +39,12 @@ export interface SkSLEffect extends ModedEffect {
     blendMode?: BlendMode;
 }
 
-function lerpUniformValue(a: SkSLUniformValue, b: SkSLUniformValue, t: number): SkSLUniformValue {
-    if (typeof a === "number" && typeof b === "number") return lerpNumber(a, b, t);
-    if (Array.isArray(a) && Array.isArray(b)) {
-        const len = Math.max(a.length, b.length);
-        return Array.from({ length: len }, (_, i) => lerpNumber(a[i] ?? 0, b[i] ?? 0, t));
-    }
-    return t < 0.5 ? a : b;
-}
-
+// Positional, unlike the `shader` fill's record: an effect's uniforms are bound
+// by declaration order, so a pair that agrees on values but not on order is a
+// different binding and must compare unequal.
 function uniformsEqual(a: SkSLUniform[], b: SkSLUniform[]): boolean {
     if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i].name !== b[i].name) return false;
-        const av = a[i].value, bv = b[i].value;
-        if (typeof av === "number" && typeof bv === "number") {
-            if (av !== bv) return false;
-        } else if (Array.isArray(av) && Array.isArray(bv)) {
-            if (av.length !== bv.length || av.some((v, j) => v !== bv[j])) return false;
-        } else {
-            return false;
-        }
-    }
-    return true;
+    return a.every((u, i) => u.name === b[i].name && uniformValuesEqual(u.value, b[i].value));
 }
 
 export const skslEffect: EffectData<SkSLEffect> = {

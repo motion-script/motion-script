@@ -290,6 +290,21 @@ export interface PrecompOptions {
      * pass measures assets for are the ones that actually draw.
      */
     globals?: ProjectGlobals;
+    /**
+     * Whether to record per-node lifespans. Defaults to true.
+     *
+     * {@link recordLifespans} walks the whole node tree and allocates a path
+     * string per node on **every frame**, and the only consumer is an editor
+     * timeline drawing each node's bar. A render that just wants frame counts
+     * and asset windows — an export, a screenshot — pays that for nothing, so it
+     * can turn the walk off.
+     *
+     * A pass measured with this off is deliberately **never offered to the host
+     * {@link PrecompCache}**: its `lifespans` map is empty, and an editor that
+     * later read that entry would show a timeline with no bars and no way to
+     * tell it apart from a genuinely empty measurement.
+     */
+    lifespans?: boolean;
 }
 
 /** Knobs for {@link Precomp.runAsync}. */
@@ -360,6 +375,8 @@ export class Precomp {
     private readonly store?: PrecompCache;
     /** The project's global audio + layers; see {@link PrecompOptions.globals}. */
     private readonly _globals?: ProjectGlobals;
+    /** Whether to run the per-frame lifespan walk; see {@link PrecompOptions.lifespans}. */
+    private readonly trackLifespans: boolean;
     /** Memoized per-scene passes, indexed by scene. Invalidated by {@link replaceScene}. */
     private readonly cache: (ScenePrecomp | undefined)[] = [];
     /** Build error from each scene's cached pass, parallel to {@link cache}. */
@@ -381,6 +398,7 @@ export class Precomp {
         this.profile = options.profile;
         this.store = options.cache;
         this._globals = options.globals;
+        this.trackLifespans = options.lifespans ?? true;
         this._globals?.setViewport(viewport);
     }
 
@@ -444,9 +462,14 @@ export class Precomp {
      * A scene that threw is never stored: `ScenePrecomp` carries no record of the
      * error, so a cached partial pass would replay as a *successful* short scene
      * on the next run and the error would vanish from the errors panel.
+     *
+     * Nor is a pass measured without lifespans (see {@link PrecompOptions.lifespans}):
+     * it is a *partial* measurement, and a store is shared across callers — an
+     * export writing one would silently strip the bars off the editor's timeline
+     * the next time it read that scene back.
      */
     private remember(scene: Scene, outcome: ScenePassOutcome): void {
-        if (!this.store || outcome.error) return;
+        if (!this.store || outcome.error || !this.trackLifespans) return;
         const key = storeKeyOf(scene);
         if (key) this.store.put(key, outcome.precomp);
     }
@@ -732,9 +755,10 @@ export class Precomp {
 
                     // Record which nodes are alive this frame so the timeline can draw
                     // each node's bar over only its true lifespan. The scene's world
-                    // lives on `scene.root` (path "" = root).
+                    // lives on `scene.root` (path "" = root). Skipped entirely for a
+                    // caller with no timeline to draw — see PrecompOptions.lifespans.
                     profile?.enter("lifespans");
-                    recordLifespans(scene.root, "", localFrame, lifespans);
+                    if (this.trackLifespans) recordLifespans(scene.root, "", localFrame, lifespans);
 
                     localFrame++;
                     profile?.enter("bindAssets");
@@ -811,15 +835,25 @@ export class Precomp {
  * The key a scene is stored under in a {@link PrecompCache}, or `undefined` when
  * it has no stable identity and therefore must not be cached.
  *
- * `__sceneHotId` is the scene file's project-relative path, stamped by the
- * vite-plugin's `?scene` transform — the same identity hot reloading matches on.
- * A scene constructed inline (no `?scene` import) has none, and there is nothing
- * else stable to key it by: class names collide and array position changes when a
- * scene is added. Those scenes simply measure every time, which is correct rather
- * than merely safe — a wrong key would serve one scene's timings for another.
+ * `__precompKey` wins when a host has set one: it identifies the scene's
+ * *content*, so equal keys imply equal passes and the store needs no separate
+ * validity check. Hosts whose scenes change without changing their slot — an
+ * editor, where every keystroke edits the scene sitting in slot *n* — must set
+ * it, because `__sceneHotId` below is deliberately stable across exactly those
+ * edits and would serve the pre-edit measurement forever.
+ *
+ * `__sceneHotId` is the fallback: the scene file's project-relative path,
+ * stamped by the vite-plugin's `?scene` transform — the same identity hot
+ * reloading matches on, and a sound key for that host because it validates its
+ * entries by re-hashing each one's recorded source dependencies.
+ *
+ * A scene with neither has nothing stable to key on: class names collide and
+ * array position changes when a scene is added. Those scenes simply measure
+ * every time, which is correct rather than merely safe — a wrong key would serve
+ * one scene's timings for another.
  */
 function storeKeyOf(scene: Scene): string | undefined {
-    return scene.__sceneHotId || undefined;
+    return scene.__precompKey || scene.__sceneHotId || undefined;
 }
 
 /** A placeholder for a scene that hasn't been measured yet. See {@link ScenePrecomp.measured}. */

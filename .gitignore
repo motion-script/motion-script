@@ -48,3 +48,7 @@ dist-ssr
 .turbo-state.json
 .turbo/
 
+
+# Local tarballs packed for a downstream checkout to install from (see
+# motion-studio/pnpm-workspace.yaml). Build output, regenerated on demand.
+.tarballs/

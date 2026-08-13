@@ -6,6 +6,7 @@ import { RadialGradientFillRenderer } from "./radial-gradient";
 import { ConicGradientFillRenderer } from "./conic-gradient";
 import { NoiseFillRenderer } from "./noise";
 import { FractalNoiseFillRenderer } from "./fractal-noise";
+import { ShaderFillRenderer } from "./shader";
 import { StripeFillRenderer } from "./stripe";
 import { SolidFillRenderer } from "./solid";
 // Statically imports the three bridge, exactly as `render-context.ts` already
@@ -31,6 +32,7 @@ export class FillRenderRegistry {
         { name: "video", renderer: new VideoFillRenderer() },
         { name: "noise", renderer: new NoiseFillRenderer() },
         { name: "fractalNoise", renderer: new FractalNoiseFillRenderer() },
+        { name: "shader", renderer: new ShaderFillRenderer() },
         { name: "stripe", renderer: new StripeFillRenderer() },
         { name: "view3D", renderer: new View3DFillRenderer() },
     ];

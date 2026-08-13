@@ -1,44 +1,58 @@
-// ---------------------------------------------------------
-// 1. Scene & Project
-// ---------------------------------------------------------
+// =============================================================
+// Project & Scene
+// =============================================================
 export {
-    createScene, fadeIn, fadeOut, resolveFillArray, prepareFill, resolveStrokeArray, resolveShadowArray, ramp, MeasureScope, Clip,
-    createProject, AudioFilters, PathBuilder, lerpVector2, AssetTracker
+    createProject,
+    createScene,
 } from '@motion-script/core';
 export type {
-    Scene,
-    SceneGenerator, BoxBounds,
-    Stage,
-    BlendMode, FillSpace,
-    AudioFilter,
-
-
     ProjectConfig,
     Theme,
     ColorTokens,
     Typography,
     TypographyPreset,
+    Scene,
+    SceneGenerator,
+    Stage,
+    BoxBounds,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 2. Nodes — Geometry
-// ---------------------------------------------------------
+// =============================================================
+// Node & Provider — the base scene-graph primitives
+// =============================================================
 export {
+    Node,
+    Provider,
+    ThemeProvider,
+} from '@motion-script/core';
+export type {
+    NodeProps,
+    NodeConfig,
+    ProviderProps,
+    ThemeProviderProps,
+} from '@motion-script/core';
+
+// =============================================================
+// Nodes — Geometry
+// =============================================================
+export {
+    ShapeNode,
     Rect,
     Ellipse,
     Line,
-    Path, Graphics, ShapeNode, RenderContext, resolveAnchor, resolveSize, resolveInsets, resolveCorners, resolveStroke, resolveShadow, resolveFill,
+    Path,
     Polygon,
-    Polygram, lerpStrokeArray,
-    LineGrid, lerpFillArray, lerpShadowArray,
+    Polygram,
+    LineGrid,
     GridPattern,
-    Grid, RotatedBox,
+    Grid,
     BooleanGroup,
     MaskGroup,
 } from '@motion-script/core';
 export type {
+    ShapeProps,
     RectProps,
-    EllipseProps, ShapeProps, NodeConfig,
+    EllipseProps,
     LineProps,
     PathProps,
     PolygonProps,
@@ -47,13 +61,32 @@ export type {
     GridPatternProps,
     GridProps,
     BooleanGroupProps,
+    BooleanOperation,
     MaskGroupProps,
-    FlexSize,
+    MaskMode,
+    MaskOptions,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 3. Nodes — Text
-// ---------------------------------------------------------
+// =============================================================
+// Nodes — Layout
+// =============================================================
+export {
+    Row,
+    Column,
+    Camera,
+    RotatedBox,
+} from '@motion-script/core';
+export type {
+    FlexProps,
+    FlexSize,
+    RowProps,
+    ColumnProps,
+    CameraProps,
+} from '@motion-script/core';
+
+// =============================================================
+// Nodes — Text
+// =============================================================
 export {
     Text,
     RichText,
@@ -67,30 +100,18 @@ export type {
     NumberProps,
     NumberFormat,
     DefaultTextStyleProps,
-    TextRange,
     TextSelectionProps,
+    TextRange,
     SelectionOverrides,
     TextStyle,
+    TextAlign,
+    TextSpan,
+    FontStyle,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 4. Nodes — Layout
-// ---------------------------------------------------------
-export {
-    Row,
-    Column,
-    Camera,
-} from '@motion-script/core';
-export type {
-    FlexProps,
-    RowProps,
-    ColumnProps,
-    CameraProps,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 5. Nodes — Media
-// ---------------------------------------------------------
+// =============================================================
+// Nodes — Media
+// =============================================================
 export {
     Image,
     Video,
@@ -100,9 +121,23 @@ export type {
     VideoProps,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 5b. 3D — the View3D node and the Graphics3D API
-// ---------------------------------------------------------
+// =============================================================
+// Nodes — Audio
+// =============================================================
+export {
+    Sound,
+    AudioFilters,
+    ramp,
+} from '@motion-script/core';
+export type {
+    SoundProps,
+    AudioRequest,
+    AudioFilter,
+} from '@motion-script/core';
+
+// =============================================================
+// 3D — the View3D node and the Graphics3D API
+// =============================================================
 // There is one 3D node; everything inside it is described with `Graphics3D`.
 // `Geo`/`Mat`/`Tex` build the geometry/material/texture descriptors, and the lerps
 // are what make a Vector3/Euler/Quaternion signal interpolate rather than snap.
@@ -156,78 +191,28 @@ export type {
     ModelAnimation3D,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 6. Nodes — Scene Utilities
-// ---------------------------------------------------------
+// =============================================================
+// Rendering — Graphics builder, RenderContext & asset discovery
+// =============================================================
 export {
-    Node,
-    Provider,
-    ThemeProvider,
-} from '@motion-script/core';
-export type {
-    NodeProps,
-    ProviderProps,
-    ThemeProviderProps,
+    Graphics,
+    RenderContext,
+    PathBuilder,
+    Clip,
+    MeasureScope,
+    AssetTracker,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 7. Animation — Timing & Control
-// ---------------------------------------------------------
-export {
-    tween,
-    wait,
-    sequence,
-    parallel,
-} from '@motion-script/core';
-export type {
-    FrameGenerator,
-    AnimationTarget,
-    Steppable,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 8. Animation — Easing
-// ---------------------------------------------------------
-export {
-    linear,
-    easeIn,
-    easeOut,
-    easeInOut
-} from '@motion-script/core';
-export type {
-    EasingFunction,
-    EaseParams,
-    StandardEase
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 9. Animation — Lerp & Tween Options
-// ---------------------------------------------------------
-export {
-    lerpNumber,
-} from '@motion-script/core';
-export type {
-    LerpFunction,
-    TweenOptions,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 10. Signals
-// ---------------------------------------------------------
-export {
-    Signal,
-    createSignal,
-    isTracking,
-    SignalInput,
-} from '@motion-script/core';
-
-
-// ---------------------------------------------------------
-// 11. Fills & Styling
-// ---------------------------------------------------------
+// =============================================================
+// Fill & Color
+// =============================================================
 export {
     Fills,
     parseColor,
+    resolveFill,
+    resolveFillArray,
+    prepareFill,
+    lerpFillArray,
 } from '@motion-script/core';
 export type {
     Fill,
@@ -240,16 +225,75 @@ export type {
     ImageFit,
     ImageCrop,
     ImageMatrix,
+    FillResolved,
+    // A custom SkSL shader as a fill. `coords` picks what `fragCoord` means;
+    // uniforms are keyed by their declared name, and a `ShaderTexture` binds an
+    // image to a `uniform shader` declaration.
+    ShaderFillProp,
+    ShaderFillResolved,
+    ShaderFillCoords,
+    ShaderTexture,
+    SkSLUniformRecord,
+    FractalNoiseBasis,
     // The colour type every fill, stroke, shadow and 3D material accepts —
     // a CSS string (incl. `oklch()`, theme tokens, `"white/10"`) or a
     // pre-normalized RGBA tuple.
     Color,
     NormalizedColor,
+    BlendMode,
+    FillSpace,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 11b. Effects & Media Filters
-// ---------------------------------------------------------
+// =============================================================
+// Shape Attributes — Stroke, Shadow, Corners
+// =============================================================
+export {
+    resolveStroke,
+    resolveStrokeArray,
+    lerpStrokeArray,
+    resolveShadow,
+    resolveShadowArray,
+    lerpShadowArray,
+    resolveCorners,
+} from '@motion-script/core';
+export type {
+    Stroke,
+    StrokeProp,
+    StrokeAlign,
+    StrokeCap,
+    StrokeJoin,
+    StrokeResolved,
+    Shadow,
+    ShadowProp,
+    ShadowResolved,
+    Corners,
+    CornerStyle,
+    CornerStyleResolved,
+    CornerRadiusResolved,
+    SceneEffect,
+} from '@motion-script/core';
+
+// =============================================================
+// Layout Attributes — Vector2, Size, Insets, Anchor
+// =============================================================
+export {
+    lerpVector2,
+    resolveSize,
+    resolveInsets,
+    resolveAnchor,
+} from '@motion-script/core';
+export type {
+    Vector2,
+    Size2D,
+    Insets,
+    InsetsResolved,
+    AnchorKey,
+    Anchor,
+} from '@motion-script/core';
+
+// =============================================================
+// Effects & Media Filters
+// =============================================================
 export {
     Effects,
     FX,
@@ -401,81 +445,54 @@ export type {
     TrailsEffect,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 12. Shape Attributes — Stroke, Shadow, Corners, Effects
-// ---------------------------------------------------------
-export type {
-    Stroke,
-    StrokeProp,
-    StrokeAlign,
-    StrokeCap,
-    StrokeJoin,
-    Shadow,
-    ShadowProp,
-    Corners,
-    CornerStyle,
-    SceneEffect,
-    BooleanOperation,
-    MaskMode,
-    MaskOptions,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 13. Text Attributes
-// ---------------------------------------------------------
-export type {
-    TextAlign,
-    TextSpan,
-    FontStyle,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 14. Layout Attributes
-// ---------------------------------------------------------
-export type {
-    Vector2,
-    Size2D, FillResolved, StrokeResolved, ShadowResolved, CornerStyleResolved, CornerRadiusResolved,
-    Insets, InsetsResolved,
-    AnchorKey,
-    Anchor,
-} from '@motion-script/core';
-
-// ---------------------------------------------------------
-// 15. Audio
-// ---------------------------------------------------------
+// =============================================================
+// Animation — Tweening & Sequencing
+// =============================================================
 export {
-    Sound,
+    tween,
+    wait,
+    sequence,
+    parallel,
+    fadeIn,
+    fadeOut,
+    lerpNumber,
 } from '@motion-script/core';
 export type {
-    SoundProps,
-    AudioRequest,
+    FrameGenerator,
+    AnimationTarget,
+    Steppable,
+    LerpFunction,
+    TweenOptions,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 16. Utilities
-// ---------------------------------------------------------
+// =============================================================
+// Animation — Easing
+// =============================================================
 export {
-    createRef,
-    clamp,
-    generateList,
-    createContext,
-    ContextMap,
-    Random,
-    SeedGenerator,
-    parseCSV,
-    parseData,
+    linear,
+    easeIn,
+    easeOut,
+    easeInOut
 } from '@motion-script/core';
 export type {
-    Reference,
-    RefTarget,
-    Context,
-    DataRecord,
-    ParseCSVOptions,
+    EasingFunction,
+    EaseParams,
+    StandardEase
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 17. Node Property Decorator
-// ---------------------------------------------------------
+// =============================================================
+// Signals
+// =============================================================
+export {
+    Signal,
+    createSignal,
+    isTracking,
+    SignalInput,
+} from '@motion-script/core';
+
+// =============================================================
+// Node Property Decorators
+// =============================================================
 export {
     property,
     // Attribute-typed variants: `@property` with the mapper/tween pair for a
@@ -500,9 +517,51 @@ export type {
     AttributePropOptions,
 } from '@motion-script/core';
 
-// ---------------------------------------------------------
-// 18. Code Component (@motion-script/code)
-// ---------------------------------------------------------
+// =============================================================
+// Utilities
+// =============================================================
+export {
+    createRef,
+    clamp,
+    generateList,
+    createContext,
+    ContextMap,
+    Random,
+    SeedGenerator,
+    parseCSV,
+    parseData,
+} from '@motion-script/core';
+export type {
+    Reference,
+    RefTarget,
+    Context,
+    DataRecord,
+    ParseCSVOptions,
+} from '@motion-script/core';
+
+// =============================================================
+// Editor selection — node boxes, hit testing, transient overrides
+// =============================================================
+// The geometry an editor needs to lay a selection gizmo over the canvas: where a
+// node's pixels landed, and which node is under a point. Both are pure functions
+// over a scene's node tree, so a host can use them directly; a player embedding
+// reaches the same thing through `MotionPlayer`'s ref (`getNodeBox`, `pickNode`,
+// `setNodeOverride`). Points and boxes are in viewport space — origin at the
+// viewport centre, y-up.
+export {
+    nodeBox,
+    pickNode,
+    collectBoxes,
+} from '@motion-script/core';
+export type {
+    NodeBox,
+    NodeOverride,
+    TreeState,
+} from '@motion-script/core';
+
+// =============================================================
+// Code Component (@motion-script/code)
+// =============================================================
 export {
     Code,
     word,
@@ -522,9 +581,9 @@ export type {
     CodeThemeName,
 } from '@motion-script/code';
 
-// ---------------------------------------------------------
-// 19. LaTeX Component (@motion-script/latex)
-// ---------------------------------------------------------
+// =============================================================
+// LaTeX Component (@motion-script/latex)
+// =============================================================
 export {
     Latex,
     buildLatexPath,
@@ -534,23 +593,3 @@ export type {
     LatexToken,
     LatexPathResult,
 } from '@motion-script/latex';
-
-// ---------------------------------------------------------
-// 20. Editor selection — node boxes, hit testing, transient overrides
-// ---------------------------------------------------------
-// The geometry an editor needs to lay a selection gizmo over the canvas: where a
-// node's pixels landed, and which node is under a point. Both are pure functions
-// over a scene's node tree, so a host can use them directly; a player embedding
-// reaches the same thing through `MotionPlayer`'s ref (`getNodeBox`, `pickNode`,
-// `setNodeOverride`). Points and boxes are in viewport space — origin at the
-// viewport centre, y-up.
-export {
-    nodeBox,
-    pickNode,
-    collectBoxes,
-} from '@motion-script/core';
-export type {
-    NodeBox,
-    NodeOverride,
-    TreeState,
-} from '@motion-script/core';

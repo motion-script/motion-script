@@ -10,6 +10,19 @@ import type { AudioRequest } from "@/attributes/audio/request";
  * {@link schedule}, and drives playback through {@link syncTo} on each tick.
  */
 export abstract class AudioDevice {
+    /**
+     * Whether pushing the audio working set to this device does anything at all.
+     *
+     * False for a sink that discards everything — an export, whose audio is mixed
+     * offline in a single pass at the end. `AssetManager.syncAudio` runs on every
+     * frame and rebuilds a `Set`, a per-request id string and a sorted signature
+     * each time; against such a device every one of those calls lands on a no-op,
+     * so the work is skipped rather than done and thrown away.
+     */
+    get schedulesAudio(): boolean {
+        return true;
+    }
+
     /** True if decoded data for `src` is already cached on the device. */
     abstract has(src: string): boolean;
 

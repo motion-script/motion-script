@@ -104,6 +104,7 @@ import s_fill_conic_gradient from './fill-conic-gradient?scene';
 import s_fill_image from './fill-image?scene';
 import s_fill_video from './fill-video?scene';
 import s_fill_noise from './fill-noise?scene';
+import s_fill_shader_custom from './fill-shader-custom?scene';
 import s_fill_stripe from './fill-stripe?scene';
 import s_view3d_basic from './view3d-basic?scene';
 import s_view3d_fill_shape from './view3d-fill-shape?scene';
@@ -376,6 +377,7 @@ export const scenes: Scene[] = [
     s_fill_image,
     s_fill_video,
     s_fill_noise,
+    s_fill_shader_custom,
     s_fill_stripe,
     s_view3d_basic,
     s_view3d_fill_shape,
@@ -660,6 +662,7 @@ export const catalog: SceneMeta[] = [
     { id: "fill-image", name: "FillImage", section: "Fills", description: "Image fill on a rect" },
     { id: "fill-video", name: "FillVideo", section: "Fills", description: "Video fill on a rect" },
     { id: "fill-noise", name: "FillNoise", section: "Fills", description: "Noise fill, varying density and size" },
+    { id: "fill-shader-custom", name: "FillShaderCustom", section: "Fills", description: "Custom SkSL shader fill, ring radius driven by a tweened uniform" },
     { id: "fill-stripe", name: "FillStripe", section: "Fills", description: "Stripe fill, varying angle and gap" },
     { id: "fill-space-local", name: "FillSpaceLocal", section: "Fills", description: "Fill pinned to shape's own bounds (default)" },
     { id: "fill-space-parent", name: "FillSpaceParent", section: "Fills", description: "Fill mapped to parent bounds; shape moves across it" },

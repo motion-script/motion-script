@@ -16,6 +16,10 @@ export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
         // .delete()'d after the draw). The adapter releases the texture when
         // the underlying pixels are evicted.
         const base = makeImageShader(img, fill, ctx.canvasKit, ctx.getShapeBounds(), samplingFor(fill));
+        // The wrapping shader *is* ours, unlike the image beneath it — freed after
+        // the shapes are drawn and after the paint is cleared, since the paint
+        // holds its own reference until then.
+        ctx.transientPaintObjects.push(base);
         ctx.paint.setShader(applyMediaFilters(fill, ctx, base));
         return true;
     }

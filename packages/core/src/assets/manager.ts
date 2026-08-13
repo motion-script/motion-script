@@ -67,7 +67,7 @@ export class AssetManager {
         }
 
         await Promise.all(jobs);
-        this.syncAudio(frame);
+        if (this.audioDevice.schedulesAudio) this.syncAudio(frame);
     }
 
     /**

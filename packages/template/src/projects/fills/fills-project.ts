@@ -34,6 +34,9 @@ import polygon from './scenes/polygon-scene?scene';
 import cornerStyles from './scenes/corner-styles-scene?scene';
 import fillArrayLerp from './scenes/fill-lerp?scene';
 import fractalNoise from './scenes/fractal-noise?scene';
+import shaderAurora from './scenes/shader-aurora?scene';
+import shaderMetaballs from './scenes/shader-metaballs?scene';
+import shaderTruchet from './scenes/shader-truchet?scene';
 import mediaFilters from './scenes/media-filters?scene';
 
 /**
@@ -55,6 +58,9 @@ export default createProject({
     scenes: [
         fillArrayLerp,
         fractalNoise,
+        shaderAurora,
+        shaderMetaballs,
+        shaderTruchet,
         mediaFilters,
         alignmentStroke,
         capJoinStroke,
