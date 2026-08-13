@@ -382,6 +382,26 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     readonly readsSpaceRects: boolean = true;
 
     /**
+     * Whether this context only cares about *visible* output.
+     *
+     * True for anything that paints: a subtree at zero opacity contributes no
+     * pixels, so walking it produces draw calls the rasterizer will discard.
+     *
+     * **False for `TrackRenderContext`**, and that is the whole reason this is a
+     * capability rather than an unconditional check. The tracking walk exists to
+     * discover which images, videos, fonts and effects a frame *references* —
+     * regardless of whether they can be seen. An invisible node's font still has
+     * to load, because it may fade in two frames later and glyphs that were never
+     * registered never paint. Skipping it there is not an optimisation, it is a
+     * missing asset.
+     *
+     * Same shape and same reasoning as {@link readsSpaceRects}: the context
+     * declares what it needs, and nodes check before doing work that would be
+     * thrown away. See `Node.render`.
+     */
+    readonly drawsVisibleOnly: boolean = true;
+
+    /**
      * Open a node draw scope. Must be paired with `end()`. Pushes the node's
      * id and {@link NodeRenderState} (gradient-space rects + per-frame motion)
      * for the duration of the scope.

@@ -337,6 +337,16 @@ export function geometrySignature(descriptor: Geometry3D): string {
 
     for (const key of Object.keys(bag).sort()) {
         if (key === "type") continue;
+        // `revision` and `staticData` describe a geometry's *contents*, never its
+        // structure — how many vertices there are, which attributes exist, what
+        // class of geometry it is. Letting them in inverts what they are for:
+        // bumping `revision` is documented as forcing a **re-upload**
+        // (`updateBufferGeometry`'s in-place `array.set`), but as a signature key
+        // it would instead fail `sameSignatures` and dispose and rebuild the whole
+        // `BufferGeometry` — the expensive path it exists to avoid. Structural
+        // change is still caught: by `segments`, by array lengths, and by
+        // `updateBufferGeometry` returning false when a length moved.
+        if (key === "revision" || key === "staticData") continue;
         const value = bag[key];
 
         if (value === undefined) continue;

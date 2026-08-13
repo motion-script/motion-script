@@ -1,4 +1,3 @@
-import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { nearPolyline, pointInPolygon } from "@/render/clip-contains";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
@@ -34,11 +33,6 @@ export class Line extends ShapeNode<LineProps> {
             start: this.start,
             end: this.end,
         });
-    }
-
-    protected renderSelf(draw: RenderContext): void {
-        // Stroke is deferred to renderStroke (drawn after children + overlay).
-        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     /**
@@ -124,3 +118,9 @@ function maxStrokeWeight(strokes: readonly StrokeResolved[]): number {
     for (const s of strokes) if (s.weight > max) max = s.weight;
     return max;
 }
+
+// Its silhouette and paint are a pure function of its own props, so the
+// composed drawing can be reused between frames. Registered by exact class:
+// a subclass overriding `shapeGraphics` may read anything at all, and must
+// opt in for itself. See `ShapeNode.MEMOIZABLE`.
+ShapeNode.memoizeDrawing(Line);

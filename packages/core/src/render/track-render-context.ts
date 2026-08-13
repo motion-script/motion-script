@@ -53,6 +53,17 @@ export class TrackRenderContext extends RenderContext {
      */
     override readonly readsSpaceRects = false;
 
+    /**
+     * Discovery is about what a frame *references*, not what it shows.
+     *
+     * A node at zero opacity still names a font, an image, a video. If this walk
+     * skipped it the asset would never be requested, and the frame it fades in on
+     * would render blank — a bug that appears two seconds after the thing that
+     * caused it and reproduces only on a cold load. So the invisible-subtree skip
+     * is refused here, and only here.
+     */
+    override readonly drawsVisibleOnly: boolean = false;
+
     constructor(private readonly tracker: AssetTracker) {
         super();
     }

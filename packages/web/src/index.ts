@@ -27,6 +27,15 @@ export {
     type Quality,
 } from "mediabunny";
 export { exportScreenshot, type ScreenshotParams, type ScreenshotResult, type ScreenshotFormat, type FrameSpec } from "./screenshot";
+// Joins separately-encoded MP4s end to end without re-encoding. What makes it
+// worth rendering an export in parallel at all: the parts still have to become
+// one file, and re-encoding to join them gives back everything the parallelism
+// won. See `concat.ts` for the two things a caller has to guarantee.
+export { concatVideoSegments, ConcatMismatchError, type ConcatOptions } from "./concat";
+// Mixes a timeline's audio without rendering a frame — the other half of a split
+// export, whose video arrives in separately-encoded pieces that AAC cannot be
+// concatenated across. See `mix-timeline-audio.ts`.
+export { mixTimelineAudio, type MixTimelineAudioParams } from "./mix-timeline-audio";
 // Single frames as a first-class capability: one long-lived renderer that repaints
 // into a canvas the host owns, for thumbnails and still previews. `exportScreenshot`
 // above is the one-shot wrapper over it.

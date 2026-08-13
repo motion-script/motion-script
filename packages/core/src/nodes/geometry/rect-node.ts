@@ -1,4 +1,3 @@
-import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
@@ -144,11 +143,6 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
         });
     }
 
-    protected renderSelf(draw: RenderContext): void {
-        // Stroke is deferred to renderStroke (drawn after children + overlay).
-        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
-    }
-
     protected override clipSelf(): Clip {
         return new Clip().rect({
             width: this.layoutRect.width,
@@ -202,3 +196,9 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
         this._groupLayout.layout(rect, scope);
     }
 }
+
+// Its silhouette and paint are a pure function of its own props, so the
+// composed drawing can be reused between frames. Registered by exact class:
+// a subclass overriding `shapeGraphics` may read anything at all, and must
+// opt in for itself. See `ShapeNode.MEMOIZABLE`.
+ShapeNode.memoizeDrawing(Rect);

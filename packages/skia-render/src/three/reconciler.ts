@@ -49,6 +49,16 @@ interface CachedObject {
     geometrySig?: string;
     materialSig?: string;
     lightSig?: string;
+    /**
+     * The `revision` of the parametric surface currently uploaded, when the
+     * descriptor supplied one.
+     *
+     * Kept per cached object rather than on the descriptor because the descriptor
+     * is rebuilt from scratch every frame — a `Graphics3D` is a recording, so
+     * there is no stable object to hang "what did I evaluate last time" on. This
+     * entry *is* the thing that persists across frames.
+     */
+    parametricRevision?: number;
     /** Instance count, for an InstancedMesh (fixed at construction). */
     count?: number;
     /** Frame counter, for the orphan sweep. */
@@ -197,6 +207,12 @@ export class View3DGraph {
         if (!built) return undefined;
 
         const created: CachedObject = { object: built, kind: op.kind, seen: this.frame, ...signatures };
+        // `build` has just evaluated the surface to create the geometry, so record
+        // which revision that was. Without this the first `refreshDynamicGeometry`
+        // of a versioned surface sees `undefined !== revision` and evaluates the
+        // whole grid a second time for the same result.
+        const geometry = (op as { geometry?: Geometry3D }).geometry;
+        if (geometry?.type === "parametric") created.parametricRevision = geometry.revision;
         this.cache.set(key, created);
         return created;
     }
@@ -339,6 +355,22 @@ export class View3DGraph {
         entry: CachedObject,
     ): void {
         if (!isDynamicGeometry(descriptor)) return;
+
+        // A parametric surface that says when it changed is only re-evaluated
+        // when it does. Without this, every frame runs `vertex` over the whole
+        // grid — ~6.6k calls at the default `segments: 80` — recomputes normals
+        // and re-uploads, for a surface that may not have moved since the last
+        // frame. Frames are drawn for all sorts of reasons that have nothing to
+        // do with the mesh: a gizmo drag elsewhere in the scene repaints at
+        // pointer rate, and the camera orbiting changes no vertex at all.
+        //
+        // Opt-in by design (see `ParametricGeometry3D.revision`): with no
+        // revision the unconditional path is kept, because `vertex` is a closure
+        // and nothing here can see what it captured.
+        if (descriptor.type === "parametric" && descriptor.revision !== undefined) {
+            if (entry.parametricRevision === descriptor.revision) return;
+            entry.parametricRevision = descriptor.revision;
+        }
 
         const buffers = resolveDynamicBuffers(descriptor);
         if (updateBufferGeometry(mesh.geometry, buffers)) return;

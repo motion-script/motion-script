@@ -362,6 +362,34 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     private readonly _layoutRect = new Signal<BoxBounds>({ x: 0, y: 0, width: 0, height: 0 });
     protected constraints!: SizeConstraints;
 
+    // ---- Change tracking ---------------------------------------------------
+    //
+    // What this is *not* for: skipping the render walk. The renderer is
+    // immediate-mode — `SkiaRenderContext.executePass` clears the surface and
+    // redraws the world every frame — so a node that doesn't emit its draw calls
+    // doesn't appear. Declining to visit a clean subtree would make everything
+    // that is merely sitting still vanish.
+    //
+    // What it *is* for: not rebuilding answers that have not changed. A clean
+    // node still walks and still draws; it just hands over the `Graphics` it
+    // built last time instead of allocating an identical one. See
+    // {@link ShapeNode.shapeGraphics}.
+
+    /**
+     * Bumped whenever anything this node's drawing depends on goes stale.
+     *
+     * A monotonic counter rather than a flag, because a counter needs no
+     * clearing: a cache records the generation it was built at and compares. A
+     * flag would have to be reset at a pass boundary, and there are three render
+     * passes per node per frame (`renderSelf`, `renderOverlay`, `renderStroke`)
+     * plus a separate tracking pass during precomp — four chances to clear it in
+     * the wrong place and serve a descriptor that is quietly out of date.
+     */
+    private _dirtyGen = 1;
+
+    /** This node's current generation; a cache built at this value is current. */
+    get dirtyGeneration(): number { return this._dirtyGen; }
+
     /**
      * The {@link MeasureScope} threaded through the last {@link measure} pass,
      * retained so off-tree work (e.g. the animated child-insert in
@@ -371,6 +399,36 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * measured. `@internal`.
      */
     _lastScope?: MeasureScope;
+
+    /**
+     * One of this node's cells went stale. Implements `SignalOwner`.
+     *
+     * O(1), and deliberately does not propagate: nothing above this node caches
+     * anything derived from it. A parent's own `Graphics` is built from the
+     * parent's own props, and children are drawn by walking to them — which
+     * happens every frame regardless, because the renderer is immediate-mode.
+     */
+    markDirty(): void {
+        this._dirtyGen++;
+    }
+
+    /**
+     * Whether this node's drawing is a pure function of its own cells and its
+     * children — and therefore whether the render walk may skip it when none of
+     * those changed.
+     *
+     * **Opt-in, and it has to be.** A node can perfectly well be a function of
+     * things that are not signals: `this._clock.elapsed` (a plain field advanced
+     * by `advanceClock`), the velocity `sampleMotion` writes into `_renderState`
+     * each frame (motion blur reads it), a `random` draw, or anything at all
+     * inside a user's `renderSelf`. None of that marks a cell, so none of it can
+     * be detected — a default of `true` would make every third-party node
+     * silently stop updating, which is the worst failure this change could have.
+     *
+     * Set it on a class only after checking it reads nothing outside its own
+     * props and children.
+     */
+    protected readonly isTimeInvariant: boolean = false;
 
     /** The allocated bounding box from the last layout pass. Reactive — reads inside callbacks are tracked. */
     protected get layoutRect(): BoxBounds { return this._layoutRect.get(); }
@@ -391,6 +449,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // in place, so the single object retained as `_props` below already
         // carries the expanded values.
         if (props) expandSize(props as Record<string, unknown>);
+
+        // `layoutRect` is a cell like any prop, and a node whose box moved has to
+        // redraw — so it reports to the same place. Wired here rather than at the
+        // field initializer because `markDirty` is an instance method.
+        this._layoutRect.owner = this;
 
         // Retain the raw props (see _props doc) so a provider's provideContext can
         // read which keys the author passed. Captured before any default
@@ -1073,6 +1136,22 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     bindContext(parent: ContextMap, runResolve: boolean): void {
         const next = this.provideContext(parent);
+        // Unchanged map, already bound, and not the once-per-instance resolve
+        // pass ⇒ this whole subtree already holds `next` and the walk is pure
+        // repetition. The same short-circuit `bindAssets` has, for the same
+        // reason, on the sibling walk.
+        //
+        // Sound because the *only* thing the per-frame pass exists to catch —
+        // a subtree added since the last one — is already handled at insertion:
+        // `addChild`, `addChildren` and `addChildAt` each call
+        // `bindChildContext`, which binds the newcomer immediately (and
+        // `node-lifecycle`'s animated inserts go through those same three).
+        //
+        // Gated on `!runResolve` deliberately. `runResolve` is the first bind of
+        // an instance, where `resolveContext` has to fire exactly once; leaving
+        // that path untouched keeps this change to the repeated pass and away
+        // from the once-only semantics.
+        if (!runResolve && this._contextBound && this._context === next) return;
         this._context = next;
         this._contextBound = true;
         if (runResolve) this.resolveContext(next);
@@ -1783,6 +1862,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     render(ctx: RenderContext): void {
+        // A subtree at zero opacity paints nothing, so on a context that only
+        // draws what can be seen there is no reason to walk it. Not a niche case:
+        // a chart carries a full second axis at `opacity: 0` purely to reserve a
+        // gutter, and every cross-fade spends its first and last frames here.
+        //
+        // `drawsVisibleOnly` is false on the tracking walk, which must still
+        // descend — an invisible node's font and images have to be discovered or
+        // they will not have loaded by the time it fades in. See the flag's doc.
+        if (ctx.drawsVisibleOnly && this.opacity <= 0) return;
         this.beforeRender(ctx);
         this.onRender(ctx);
         this.afterRender(ctx);
@@ -1792,8 +1880,34 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     private readonly _measuredSize: Partial<Size2D> = {};
 
-    /** Record this node's allocated bounds without touching children. Used by subclasses that run their own child-layout pass (e.g. `Rect`'s flex/stack) and so skip {@link layoutChildren}. */
+    /**
+     * Record this node's allocated bounds without touching children. Used by
+     * subclasses that run their own child-layout pass (e.g. `Rect`'s flex/stack)
+     * and so skip {@link layoutChildren}.
+     *
+     * Compared field by field first, because `Signal.set`'s own `Object.is` guard
+     * can never fire here: every caller builds a fresh object literal
+     * (`layout/group-layout.ts`, `group-engine.ts`, `layoutFlex`, `flex-node.ts`,
+     * `grid-node.ts`, `line-grid-node.ts`, `root-node.ts`), so identity always
+     * differs — including on every frame of a node that is simply sitting still.
+     * Without this guard every node reports a changed layout on every frame, and
+     * no amount of dirty-tracking above can ever conclude otherwise.
+     */
     protected setLayoutRect(rect: BoxBounds): void {
+        // `peek()`, not `get()`: this is a write path, and `get()` inside whatever
+        // computation happens to be running would register `_layoutRect` as one of
+        // its dependencies — an edge with no business existing.
+        const current = this._layoutRect.peek();
+        if (
+            current.x === rect.x
+            && current.y === rect.y
+            && current.width === rect.width
+            && current.height === rect.height
+        ) return;
+        // Stores the *new* object rather than mutating the old one in place:
+        // `layoutRect` is handed out by `get()` to `measuredRect`, to
+        // `computeSpaceRects` and to bound anchor computations, and mutating it
+        // under them would be an aliasing change none of them could see coming.
         this._layoutRect.set(rect);
     }
 

@@ -1,4 +1,4 @@
-import { Signal, SignalSnapshot } from "@/signals/signal";
+import { Signal, SignalSnapshot, type SignalOwner } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
@@ -24,6 +24,8 @@ export interface ReactiveHost extends SignalHost {
     _toGen(to: Record<string, unknown>, duration: number, easing?: EasingFunction): FrameGenerator;
     /** LIFO stack of save() snapshot layers; owned as an instance field on Node. */
     _stateStack: Map<string, SignalSnapshot<any>>[];
+    /** Told when any of this host's cells goes stale; see {@link SignalOwner}. */
+    markDirty(): void;
 }
 
 /**
@@ -35,6 +37,10 @@ export interface ReactiveHost extends SignalHost {
 /** @internal */
 export function registerProp<Int>(host: ReactiveHost, field: string, options?: PropOptions<any, Int>): void {
     const cell = new Signal<Int>(undefined as unknown as Int);
+    // The one place every animatable prop is created, and therefore the one place
+    // to say who owns it. Without this a node cannot tell whether anything about
+    // it changed this frame — see `Node.markDirty`.
+    cell.owner = host as unknown as SignalOwner;
     if (!host.__signals) host.__signals = new Map();
     host.__signals.set(field, cell);
     if (!host.__upgraders) host.__upgraders = new Map();

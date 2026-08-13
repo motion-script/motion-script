@@ -14,6 +14,18 @@ export interface SignalSnapshot<T> {
 }
 
 /**
+ * Something that wants to hear when one of its cells goes stale.
+ *
+ * A `Node` implements this so the render walk can skip a subtree nothing has
+ * touched. Deliberately one method and no identity: the signal layer must not
+ * learn what a node is.
+ */
+/** @internal */
+export interface SignalOwner {
+    markDirty(): void;
+}
+
+/**
  * Reactive cell that stores a value and tracks dependencies.
  *
  * A cell can be a plain value (set/get) or bound to a computation fn.
@@ -35,6 +47,18 @@ export class Signal<T> {
     private _deps: Set<Signal<any>> = new Set();
     // External subscribers (not part of the cell graph).
     private _listeners: Set<Subscriber<T>> = new Set();
+
+    /**
+     * Told whenever this cell's value goes stale. See {@link SignalOwner}.
+     *
+     * A back-pointer rather than a version number the owner polls, for two
+     * reasons. Polling is O(cells) per node per frame where this is O(1) per
+     * *actual change*, and — the part that matters — reading a bound cell to
+     * check its version would force it to **settle**, which is the expensive
+     * thing the skip exists to avoid. Push, don't pull.
+     */
+    /** @internal */
+    owner: SignalOwner | null = null;
 
     constructor(initial: T | (() => T)) {
         if (typeof initial === "function") {
@@ -71,6 +95,9 @@ export class Signal<T> {
         if (Object.is(this._value, value)) return;
         const prev = this._value;
         this._value = value;
+        // After the bail, so a write of the value the cell already holds tells
+        // nobody anything — which is the whole point of having a guard.
+        this.owner?.markDirty();
         this._propagateDirty();
         this._notify(prev);
     }
@@ -79,6 +106,9 @@ export class Signal<T> {
         this._detach();
         this._fn = fn;
         this._dirty = true;
+        // A rebind can change what the cell resolves to without anything being
+        // `set`, so the owner has to hear about it here too.
+        this.owner?.markDirty();
         this._propagateDirty();
         if (this._listeners.size > 0) {
             const prev = this._value;
@@ -183,6 +213,13 @@ export class Signal<T> {
             const s = stack.pop()!;
             if (s._dirty) continue;
             s._dirty = true;
+            // The load-bearing one, and it costs nothing new: this walk already
+            // visits exactly the cells that just went stale, and exactly once
+            // (the guard above). It also gets the *lazy* case right — a cell
+            // bound to another node's prop is marked here, at propagate time,
+            // rather than whenever someone next reads it, so its owner cannot be
+            // skipped before that read happens.
+            s.owner?.markDirty();
             for (const next of s._subs) stack.push(next);
             // Eagerly recompute listened-to derived cells so subscribers fire
             // with a fresh value. Lazy cells just stay dirty until pulled.

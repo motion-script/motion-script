@@ -65,6 +65,42 @@ type Props = {
     fps: number;
     /** Output canvas size in pixels. */
     viewport: Size2D;
+    /**
+     * Device pixels to rasterize per {@link viewport} unit. Defaults to `1`.
+     *
+     * **This is not a zoom and it is not a crop.** `viewport` stays the scene's
+     * logical coordinate space; this only changes how many real pixels that space
+     * is drawn into, and CSS scales the canvas back up to fill its box. Shrinking
+     * `viewport` instead would show a smaller *window* onto the scene — a crop —
+     * because scene coordinates map straight into it with the origin at centre.
+     *
+     * The lever exists because a preview is usually displayed far smaller than the
+     * project's output size: a 1920×1080 project in a 700px-wide panel rasterizes
+     * roughly seven times the pixels anyone can see. `0.5` there is a quarter of
+     * the fill, the shader work and the effect offscreens, for an image the
+     * display cannot resolve the difference in. `@motion-script/web`'s
+     * `StillRenderer` calls the same thing `scale`, and `exportScenesAsVideo`
+     * takes it as `scale` too — all three drive `RenderContext.pixelRatio`.
+     *
+     * Two things to know before animating it:
+     *
+     * - **Every change re-creates the Skia surface.** CanvasKit builds a surface
+     *   from the canvas's `width`/`height` at mount, so a new scale means resizing
+     *   the canvas and mounting again. That drops the storage adapter's
+     *   texture-backed images (decoded video frames, 3D composites; still images
+     *   survive) and asks the browser for a fresh GL context. Quantize to a few
+     *   steps and settle before changing it — do not drive it straight from a
+     *   resize observer or a zoom gesture.
+     * - **Prefer scales that keep both dimensions whole.** `pixelRatio` is one
+     *   uniform number, so a scale that rounds differently on each axis shifts the
+     *   frame's centre by up to half a device pixel. Quarters of a 1920×1080
+     *   viewport are all exact.
+     *
+     * A snapshot taken through {@link FrameHandle.screenshot} comes back at the
+     * surface's size, so it is scaled too — render at `1` first if you need the
+     * project's full resolution out of it.
+     */
+    renderScale?: number;
     /** Scenes composed into a single timeline by an internal {@link Precomp}. */
     scenes: Scene[];
     /** Manifest describing the media assets referenced by `scenes`. */
@@ -181,6 +217,7 @@ export function MotionPlayer({
     isPlaying,
     fps,
     viewport,
+    renderScale = 1,
     scenes,
     assets,
     theme,
@@ -220,6 +257,26 @@ export function MotionPlayer({
     const precompCacheRef = useRef(precompCache);
     /** Same reasoning as {@link precompCacheRef}: injected, not a scene-graph input. */
     const precompProfileRef = useRef(precompProfile);
+    /**
+     * Read through a ref by the mount effect for the same reason as the two above:
+     * `renderScale` describes how the frame is rasterized, not what is in it, so it
+     * must not appear in that effect's deps or a scale change would tear down the
+     * whole playback controller — precomp, asset catalog, audio and all — to change
+     * one number. The surface alone is re-created, by the effect further down.
+     */
+    const renderScaleRef = useRef(renderScale);
+    /** The live render context, so the resize effect can reach it after mount. */
+    const renderContextRef = useRef<WebRenderContext | null>(null);
+    /**
+     * The scale the current surface was actually built at.
+     *
+     * Compared against the prop rather than trusting the effect to fire once:
+     * the resize effect and the mount effect can both run in the same commit (a
+     * scene edit that also changes the preview's size), and the mount already
+     * builds at the new scale — without this the resize effect would immediately
+     * throw that surface away and build an identical one.
+     */
+    const appliedScaleRef = useRef(renderScale);
 
     // Keep callback/value refs current without touching them during render.
     useEffect(() => {
@@ -230,6 +287,7 @@ export function MotionPlayer({
         onPrecompProgressRef.current = onPrecompProgress;
         precompCacheRef.current = precompCache;
         precompProfileRef.current = precompProfile;
+        renderScaleRef.current = renderScale;
     });
 
     useEffect(() => {
@@ -243,7 +301,13 @@ export function MotionPlayer({
         const audio = new WebAudioPlayer();
         const clock = new WebMasterClock({ context: audio.getContext(), fps });
         const renderContext = new WebRenderContext(canvasKit, storage);
+        // Before `mount`, which builds the Skia surface from the canvas's current
+        // `width`/`height` — React has already written those at this scale, so the
+        // two agree from the first frame and nothing paints at the wrong ratio.
+        renderContext.pixelRatio = renderScaleRef.current;
+        appliedScaleRef.current = renderScaleRef.current;
         renderContext.mount(canvas);
+        renderContextRef.current = renderContext;
 
         // Built here, after setTheme/setVariables above: a layer declared as a
         // factory is invoked inside this constructor, so its theme tokens resolve
@@ -297,10 +361,45 @@ export function MotionPlayer({
         return () => {
             controllerRef.current = null;
             setController(null);
+            renderContextRef.current = null;
             pc.dispose();
             renderContext.dispose();
         };
     }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds]);
+
+    /**
+     * Rebuild the surface when {@link Props.renderScale} changes.
+     *
+     * Separate from the mount effect on purpose: a scale change must cost one
+     * surface, not a whole playback controller. Everything the controller owns —
+     * the measured precomp, the asset catalog, the audio graph, the clock, the
+     * playhead — is unaffected by how many device pixels a frame is drawn into.
+     *
+     * The order matters and is why this is an effect rather than a callback: React
+     * has already written the canvas's new `width`/`height` by the time effects
+     * run, and CanvasKit reads exactly those when it builds the surface
+     * (`MakeOnScreenGLSurface(ctx, canvas.width, canvas.height)`). Mounting before
+     * the resize would produce a surface of the previous size.
+     *
+     * `repaint()` afterwards because the new surface starts blank, and the
+     * controller's clock is not necessarily running to fill it — a paused editor
+     * would otherwise show black until something else moved.
+     */
+    useEffect(() => {
+        if (!controller) return;
+        const renderContext = renderContextRef.current;
+        const canvas = canvasRef.current;
+        if (!renderContext || !canvas) return;
+        if (appliedScaleRef.current === renderScale) return;
+        appliedScaleRef.current = renderScale;
+        renderContext.pixelRatio = renderScale;
+        // `mount` detaches the old surface first, which also drops the storage
+        // adapter's texture-backed images — they belong to the surface that made
+        // them. Video frames and 3D composites are re-uploaded on demand; decoded
+        // still images are raster-backed and survive.
+        renderContext.mount(canvas);
+        controller.repaint();
+    }, [controller, renderScale]);
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
@@ -382,8 +481,13 @@ export function MotionPlayer({
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
             <canvas
                 ref={canvasRef}
-                width={viewport.width}
-                height={viewport.height}
+                // The backing store, in device pixels. CSS below stretches it back
+                // over the whole box either way, so this is purely how much gets
+                // rasterized — see {@link Props.renderScale}. Floored at 1 so a
+                // degenerate scale can't ask CanvasKit for a zero-sized surface,
+                // which fails the surface creation outright.
+                width={Math.max(1, Math.round(viewport.width * renderScale))}
+                height={Math.max(1, Math.round(viewport.height * renderScale))}
                 style={{
                     display: isInitialized && controller ? "block" : "none",
                     width: "100%",

@@ -12,7 +12,6 @@ import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
 import { Node, NodeConfig } from "../base/node";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
-import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
@@ -90,13 +89,6 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
             start: this.start,
             end: this.end,
         });
-    }
-
-    // The box behind the laid-out children. Invisible by default (empty fill),
-    // but honours fill/stroke/shadow/corners when set — just like Rect. Stroke
-    // is deferred to renderStroke (drawn after children + overlay).
-    protected renderSelf(draw: RenderContext): void {
-        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {

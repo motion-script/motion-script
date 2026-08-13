@@ -1,5 +1,4 @@
 
-import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
@@ -72,11 +71,6 @@ export class Grid extends ShapeNode<GridProps> {
             start: this.start,
             end: this.end,
         });
-    }
-
-    protected renderSelf(draw: RenderContext): void {
-        // Stroke is deferred to renderStroke (drawn after children + overlay).
-        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
     }
 
     protected override clipSelf(): Clip {
@@ -168,3 +162,9 @@ export class Grid extends ShapeNode<GridProps> {
         return measureGrid(adapters, this.columns, this.columnGap, this.rowGap, innerWidth, innerHeight);
     }
 }
+
+// Its silhouette and paint are a pure function of its own props, so the
+// composed drawing can be reused between frames. Registered by exact class:
+// a subclass overriding `shapeGraphics` may read anything at all, and must
+// opt in for itself. See `ShapeNode.MEMOIZABLE`.
+ShapeNode.memoizeDrawing(Grid);

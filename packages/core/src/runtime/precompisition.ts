@@ -431,21 +431,20 @@ export class Precomp {
      * choosing *when* to call this.
      */
     ensureScene(index: number): ScenePrecomp {
-        return this.measureScene(index, true);
+        return this.measureScene(index, "any");
     }
 
     /**
-     * @param allowStore Whether a hit in the host {@link PrecompCache} may stand in
-     *                   for a real pass. False on the hot-reload path, where the
-     *                   scene's source has just changed under a store entry the
-     *                   host validated when the page loaded.
+     * @param lookup Which kind of host {@link PrecompCache} key may stand in for a
+     *               real pass. `"any"` on the normal path. `"content-only"` on the
+     *               replace path — see {@link StoreLookup}.
      */
-    private measureScene(index: number, allowStore: boolean): ScenePrecomp {
+    private measureScene(index: number, lookup: StoreLookup): ScenePrecomp {
         const hit = this.cache[index];
         if (hit) return hit;
 
         const scene = this.scenes[index];
-        const key = allowStore ? storeKeyOf(scene) : undefined;
+        const key = lookup === "any" ? storeKeyOf(scene) : contentKeyOf(scene);
         const stored = key ? this.store?.get(key) : undefined;
         if (stored) return this.commit(index, { precomp: stored });
 
@@ -595,10 +594,9 @@ export class Precomp {
             }
         }
 
-        // Bypass the host store: its entry for this scene was validated when the
-        // page loaded, and the whole reason we're here is that the source has
-        // since changed. The fresh pass is offered back so the host can persist it.
-        this.measureScene(index, false);
+        // Only a *content*-keyed entry may serve this — see {@link StoreLookup}.
+        // The fresh pass is offered back either way, so the host can persist it.
+        this.measureScene(index, "content-only");
         return this.assemble();
     }
 
@@ -854,6 +852,29 @@ export class Precomp {
  */
 function storeKeyOf(scene: Scene): string | undefined {
     return scene.__precompKey || scene.__sceneHotId || undefined;
+}
+
+/**
+ * Which host-store keys are trustworthy for a given lookup.
+ *
+ * `"any"` is the normal path. `"content-only"` is {@link Precomp.replaceScene}'s:
+ * a scene has just been edited, so a key that names the scene's *slot* rather
+ * than its content now points at the pre-edit measurement and must be refused.
+ *
+ * The distinction falls straight out of {@link storeKeyOf}'s two key kinds.
+ * `__sceneHotId` is a slot: the vite-plugin stamps the scene file's path, which
+ * is deliberately stable across exactly the edits that bring us here, and that
+ * host validates its entries separately by re-hashing recorded source deps — so
+ * on this path it is refused. `__precompKey` is the content itself, so a changed
+ * scene *is* a changed key and a hit can only be the right pass; refusing it
+ * throws away the one mechanism built for this case, which for an editor is every
+ * keystroke in the inspector.
+ */
+type StoreLookup = "any" | "content-only";
+
+/** The key that names a scene's content, or nothing if the host didn't set one. */
+function contentKeyOf(scene: Scene): string | undefined {
+    return scene.__precompKey || undefined;
 }
 
 /** A placeholder for a scene that hasn't been measured yet. See {@link ScenePrecomp.measured}. */

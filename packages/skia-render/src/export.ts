@@ -235,8 +235,15 @@ function prepare(params: CommonParams, options: PrepareOptions = {}) {
  *
  * Scene requests are scene-relative and take their scene's start; project beds are
  * already in absolute timeline time and take zero. See {@link ScheduledAudioRequest.globalOffset}.
+ *
+ * Exported because a **split** export has to mix its audio somewhere other than
+ * alongside its frames: the video is rendered in pieces by separate workers, and
+ * concatenating separately-encoded AAC would put the encoder's priming delay at
+ * every join. The coordinator mixes once over the whole timeline instead — and
+ * must schedule it exactly as this does. A second implementation that drifted by
+ * a scene offset would produce a file that plays perfectly and is out of sync.
  */
-function collectAudio(precomp: ReturnType<Precomp["run"]>, fps: number): ScheduledAudioRequest[] {
+export function collectAudio(precomp: ReturnType<Precomp["run"]>, fps: number): ScheduledAudioRequest[] {
     const out: ScheduledAudioRequest[] = [];
     for (const scene of precomp.scenes) {
         const globalOffset = scene.startFrame / fps;

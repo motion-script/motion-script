@@ -241,6 +241,28 @@ export interface ParametricGeometry3D extends Passthrough3D {
     color?: (u: number, v: number, position: Vector3) => Color;
     /** Derive vertex normals. Almost always wanted for a lit surface. */
     computeNormals?: boolean;
+    /**
+     * A value that changes exactly when {@link vertex} would return something
+     * different — supply it and the surface is re-evaluated only when it moves.
+     *
+     * Omitted (the default) the surface is re-evaluated **every frame**, which is
+     * what makes the `read signals and the frame time inside vertex` contract
+     * above work without any bookkeeping. It is also expensive: `segments: 80` is
+     * ~6.6k calls to `vertex`, plus normals and a full buffer re-upload, and a
+     * frame draws for any reason at all — an unrelated node being dragged, the
+     * camera orbiting, a tween elsewhere in the scene. A surface whose shape did
+     * not change pays all of that for an identical result.
+     *
+     * `vertex` is a closure, so the renderer cannot inspect what it captured;
+     * only the author knows. Derive this from exactly those captures — the
+     * domain, the amplitude, the identity of the function being plotted — and
+     * leave it out for a surface that genuinely varies with time.
+     *
+     * Same name and same role as {@link BufferGeometry3D.revision}: the explicit
+     * "this is what changed" signal. `segments` needs no help here, being plain
+     * data the renderer already compares.
+     */
+    revision?: number;
 }
 
 // ─── Derived ─────────────────────────────────────────────────────────────────

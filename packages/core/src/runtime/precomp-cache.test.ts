@@ -26,6 +26,17 @@ function keyed(hotId: string, opts: ConstructorParameters<typeof FakeScene>[0] =
 }
 
 /**
+ * A scene keyed by its **content** rather than its slot, as an editor host keys
+ * them — every keystroke edits the scene sitting in the same slot, so a slot key
+ * would name the pre-edit measurement forever.
+ */
+function contentKeyed(key: string, opts: ConstructorParameters<typeof FakeScene>[0] = {}) {
+    const scene = new FakeScene({ id: key, ...opts });
+    (scene as unknown as { __precompKey: string }).__precompKey = key;
+    return scene;
+}
+
+/**
  * Measure one scene, asserting it built cleanly.
  *
  * `precompScene` records a throwing generator as a `BuildError` and carries on,
@@ -195,6 +206,42 @@ describe("Precomp – host cache", () => {
 
         expect(gets).toEqual([]);
         expect(puts).toEqual([]);
+    });
+
+    it("serves a content-keyed hot replace from the store instead of re-measuring", async () => {
+        // The case an editor lives in: undo/redo, retyping a value back, dragging
+        // a slider through a value it already visited. `__precompKey` names the
+        // scene's *content*, so an equal key cannot be stale — and re-measuring
+        // means driving the whole generator again, synchronously, per keystroke.
+        const { cache, entries } = memoryCache();
+        const v1 = contentKeyed("content:v1", { yieldCount: 4 });
+        const before = await precompOf([v1], cache).runAsync();
+        expect(entries.get("content:v1")?.frameCount).toBe(4);
+
+        const runner = precompOf([v1], cache);
+        const backToV1 = contentKeyed("content:v1", { yieldCount: 4 });
+        const after = runner.replaceScene(before, 0, asScene(backToV1));
+
+        expect(backToV1.buildCount).toBe(0);
+        expect(after.totalFrames).toBe(4);
+    });
+
+    it("still measures a content-keyed replace whose content actually changed", async () => {
+        // The other half: a changed scene *is* a changed key, so there is nothing
+        // to serve and the pass has to be driven — and stored under the new key.
+        const { cache, entries } = memoryCache();
+        const v1 = contentKeyed("content:v1", { yieldCount: 4 });
+        const before = await precompOf([v1], cache).runAsync();
+
+        const runner = precompOf([v1], cache);
+        const v2 = contentKeyed("content:v2", { yieldCount: 9 });
+        const after = runner.replaceScene(before, 0, asScene(v2));
+
+        expect(v2.buildCount).toBe(1);
+        expect(after.totalFrames).toBe(9);
+        expect(entries.get("content:v2")?.frameCount).toBe(9);
+        // The previous content stays cached, which is what makes undo free.
+        expect(entries.get("content:v1")?.frameCount).toBe(4);
     });
 
     it("hot reload bypasses the store for the edited scene and re-stores the result", async () => {

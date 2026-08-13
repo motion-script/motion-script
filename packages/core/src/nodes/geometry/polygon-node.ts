@@ -1,7 +1,6 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { NodeConfig } from "../base/node";
-import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { CornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -42,11 +41,6 @@ export class Polygon extends ShapeNode<PolygonProps> {
         });
     }
 
-    protected renderSelf(draw: RenderContext): void {
-        // Stroke is deferred to renderStroke (drawn after children + overlay).
-        draw.draw(this.shapeGraphics().shadow(this.shadow).fill(this.fill));
-    }
-
     protected override clipSelf(): Clip {
         return new Clip().polygon({
             width: this.layoutRect.width,
@@ -57,3 +51,9 @@ export class Polygon extends ShapeNode<PolygonProps> {
         });
     }
 }
+
+// Its silhouette and paint are a pure function of its own props, so the
+// composed drawing can be reused between frames. Registered by exact class:
+// a subclass overriding `shapeGraphics` may read anything at all, and must
+// opt in for itself. See `ShapeNode.MEMOIZABLE`.
+ShapeNode.memoizeDrawing(Polygon);
