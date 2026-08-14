@@ -54,11 +54,13 @@ export interface PlaybackCounts {
     /**
      * Distinct `Graphics` **instances** seen across the whole run.
      *
-     * The one number that can see a drawing memo. `graphicsDrawn` cannot: a memo
-     * avoids *building* a descriptor, not submitting one, so the draw count is
-     * identical either way. Reuse shows up only as identity — a node that rebuilt
-     * every frame contributes one instance per frame, a memoized one contributes
-     * one for the whole run.
+     * The one number that can see descriptor *reuse*. `graphicsDrawn` cannot: a
+     * cache avoids **building** a descriptor, not submitting one, so the draw
+     * count is identical either way. Reuse shows up only as identity — a node
+     * that rebuilds every frame contributes one instance per frame, a cached one
+     * contributes one for the whole run. Nothing caches today, so this currently
+     * tracks `graphicsDrawn`; it is the instrument any future attempt is measured
+     * with.
      */
     graphicsBuilt: number;
 }

@@ -118,9 +118,3 @@ function maxStrokeWeight(strokes: readonly StrokeResolved[]): number {
     for (const s of strokes) if (s.weight > max) max = s.weight;
     return max;
 }
-
-// Its silhouette and paint are a pure function of its own props, so the
-// composed drawing can be reused between frames. Registered by exact class:
-// a subclass overriding `shapeGraphics` may read anything at all, and must
-// opt in for itself. See `ShapeNode.MEMOIZABLE`.
-ShapeNode.memoizeDrawing(Line);

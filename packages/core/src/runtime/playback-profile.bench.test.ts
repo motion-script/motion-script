@@ -127,9 +127,9 @@ describe.runIf(process.env.MS_BENCH)("playback cost breakdown", () => {
  * The counts, as assertions rather than a printout.
  *
  * These run in CI, unlike the report above, because they are exact and
- * machine-independent — and because they are the regression guard for the two
- * skips Stage 6 landed. A change that quietly stops skipping invisible subtrees
- * shows up here as a number, not as a stopwatch reading nobody trusts.
+ * machine-independent — and because they are the regression guard for the
+ * invisible-subtree skip. A change that quietly stops skipping invisible
+ * subtrees shows up here as a number, not as a stopwatch reading nobody trusts.
  */
 describe("playback counts", () => {
     it("visits every node of a fully visible tree, every frame", () => {
@@ -154,23 +154,18 @@ describe("playback counts", () => {
         expect(perFrame).toBe(151);
     });
 
-    it("reuses a static node's drawing instead of rebuilding it every frame", () => {
-        // The drawing memo, stated as a count rather than a stopwatch. 10 rects
-        // held still for 5 frames: without the memo that is one fresh `Graphics`
-        // per rect per frame; with it, one per rect for the whole run.
-        const profile = profilePlayback(staticScene(10), 5);
+    it("builds a fresh drawing for every visible node, every frame", () => {
+        // The immediate-mode contract, stated as a count. Nothing between
+        // `shapeGraphics` and the renderer caches: a node contributes one fresh
+        // `Graphics` per frame whether it moved or not. Asserted in both
+        // directions below so that reintroducing a cache — deliberately or by
+        // accident — shows up here as a number rather than as a stale frame.
+        const still = profilePlayback(staticScene(10), 5);
+        expect(still.counts.graphicsDrawn).toBe(10 * still.counts.frames);
+        expect(still.counts.graphicsBuilt).toBe(10 * still.counts.frames);
 
-        expect(profile.counts.graphicsDrawn).toBe(10 * profile.counts.frames);
-        expect(profile.counts.graphicsBuilt).toBe(10);
-    });
-
-    it("rebuilds a node's drawing when something about it changes", () => {
-        // The other direction, and the one that matters: a memo that never
-        // invalidates is a scene that stops updating. Every node is tweened here,
-        // so every node's descriptor must be rebuilt every frame.
-        const profile = profilePlayback(animatingScene(10), 5);
-
-        expect(profile.counts.graphicsBuilt).toBe(10 * profile.counts.frames);
+        const moving = profilePlayback(animatingScene(10), 5);
+        expect(moving.counts.graphicsBuilt).toBe(10 * moving.counts.frames);
     });
 
     it("draws nothing for an invisible subtree", () => {

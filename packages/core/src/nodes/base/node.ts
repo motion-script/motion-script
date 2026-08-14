@@ -394,16 +394,19 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     // ---- Change tracking ---------------------------------------------------
     //
-    // What this is *not* for: skipping the render walk. The renderer is
-    // immediate-mode — `SkiaRenderContext.executePass` clears the surface and
-    // redraws the world every frame — so a node that doesn't emit its draw calls
-    // doesn't appear. Declining to visit a clean subtree would make everything
-    // that is merely sitting still vanish.
+    // **Nothing consumes this today.** The drawing memo that read it was removed;
+    // every node now rebuilds its `Graphics` every frame. What remains is the
+    // signal plumbing — `markDirty` is required by `SignalOwner` regardless — plus
+    // the generation counter it feeds, kept as the substrate a future caching
+    // attempt would need. Wire something to `dirtyGeneration` or delete it; do not
+    // leave it in this middle state indefinitely.
     //
-    // What it *is* for: not rebuilding answers that have not changed. A clean
-    // node still walks and still draws; it just hands over the `Graphics` it
-    // built last time instead of allocating an identical one. See
-    // {@link ShapeNode.shapeGraphics}.
+    // What it is *not* for, whatever reads it next: skipping the render walk. The
+    // renderer is immediate-mode — `SkiaRenderContext.executePass` clears the
+    // surface and redraws the world every frame — so a node that doesn't emit its
+    // draw calls doesn't appear. Declining to visit a clean subtree would make
+    // everything that is merely sitting still vanish. The only safe use is
+    // avoiding the *rebuild*, never the walk or the draw.
 
     /**
      * Bumped whenever anything this node's drawing depends on goes stale.
@@ -417,7 +420,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     private _dirtyGen = 1;
 
-    /** This node's current generation; a cache built at this value is current. */
+    /** This node's current generation; a cache built at this value is current. Currently unread. */
     get dirtyGeneration(): number { return this._dirtyGen; }
 
     /**
