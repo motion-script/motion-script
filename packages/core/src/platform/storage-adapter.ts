@@ -53,6 +53,7 @@ export abstract class StorageAdapter {
     }
 
     private async runLoad(key: string, value: AssetRecord): Promise<void> {
+        let loaded = true;
         switch (value.type) {
             case 'image':
                 await this.loadImage(key, value.width, value.height);
@@ -62,7 +63,7 @@ export abstract class StorageAdapter {
                 break;
             case 'font': {
                 const { fontFamily, fontWeight } = this.parseFontKey(key);
-                await this.loadFont(key, fontFamily, fontWeight);
+                loaded = await this.loadFont(key, fontFamily, fontWeight);
                 break;
             }
             case 'audio':
@@ -78,7 +79,14 @@ export abstract class StorageAdapter {
             }
         }
 
-        this.cachedAssets.add(key);
+        // Only a load that actually happened is cached. This matters for exactly
+        // one case: a font family the manifest cannot describe. Caching it anyway
+        // marked the family handled for the life of this adapter, so a manifest
+        // that *later* described it — which is what installing a typeface does,
+        // folded into the live manifest without rebuilding the controller — could
+        // never load it, and the text stayed in the fallback face until something
+        // else tore the adapter down.
+        if (loaded) this.cachedAssets.add(key);
     }
 
     // ─── Font key parsing ─────────────────────────────────────────────────────
@@ -112,7 +120,15 @@ export abstract class StorageAdapter {
         trimEnd?: number,
     ): Promise<void>;
     abstract fetchAudioData(src: string): Promise<ArrayBuffer>;
-    abstract loadFont(src: string, fontFamily: string, fontWeight: number): Promise<void>;
+    /**
+     * Register every face of `fontFamily` the catalog describes.
+     *
+     * Returns whether the family was actually loaded. `false` means the manifest
+     * has no entry for it — not an error (an undescribed family shapes against
+     * the platform fallback, which is what a system font name does), but it must
+     * not be remembered as handled: see the note in {@link runLoad}.
+     */
+    abstract loadFont(src: string, fontFamily: string, fontWeight: number): Promise<boolean>;
 
     // ─── Frame warming ────────────────────────────────────────────────────────
 

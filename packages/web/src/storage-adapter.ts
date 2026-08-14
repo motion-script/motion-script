@@ -152,6 +152,13 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
     private registeredFontFamilies = new Set<string>();
 
     /**
+     * Families the catalog could not describe, so the warning is emitted once
+     * rather than on every `loadAt`. Cleared by {@link setCatalog}: a new
+     * manifest is exactly the event that can turn one of these into a real face.
+     */
+    private unknownFontFamilies = new Set<string>();
+
+    /**
      * Cache of shaped straight-text runs, so text whose string/font is unchanged
      * across frames isn't re-shaped through CanvasKit every frame (the Code node's
      * per-token-per-frame draw, plus any static {@link Text}). Owns the cached
@@ -199,6 +206,17 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
 
     getCanvasKit(): CanvasKit {
         return this.canvasKit;
+    }
+
+    /**
+     * Adopt a new manifest, and forget which families it previously could not
+     * describe — installing a typeface folds it into the live manifest without
+     * rebuilding this adapter, and that family deserves a fresh attempt (and a
+     * fresh warning if it is still missing).
+     */
+    override setCatalog(catalog: AssetCatalog): void {
+        super.setCatalog(catalog);
+        this.unknownFontFamilies.clear();
     }
 
     // ─── Image ───────────────────────────────────────────────────────────────
@@ -1142,17 +1160,26 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
     // ─── Font ────────────────────────────────────────────────────────────────
 
     /** Registers every weight/slant file for `fontFamily` with the shared {@link TypefaceFontProvider} under the bare family name (once per family — see {@link registeredFontFamilies}); enables dynamic/tweenable weight matching at draw time. */
-    async loadFont(key: string, fontFamily: string, _fontWeight: number): Promise<void> {
+    async loadFont(key: string, fontFamily: string, _fontWeight: number): Promise<boolean> {
         // Register every weight/slant of the family under its bare family name so
         // CanvasKit's matcher (see resolveTypeface) can pick the closest file for
         // any requested weight — that's what gives us dynamic, tween-able weights
         // instead of needing an exact `family@weight` file. Done once per family.
-        if (this.registeredFontFamilies.has(fontFamily)) return;
+        if (this.registeredFontFamilies.has(fontFamily)) return true;
 
         const metas = this.catalog.getFontFamilyMetas(fontFamily);
         if (metas.length === 0) {
-            console.warn(`[WebStorageAdapter] No font manifest entry for "${key}". Add it to the manifest font record.`);
-            return;
+            // Not an error: an undescribed family shapes against the platform
+            // fallback, which is exactly what naming a system font should do.
+            // Warned once per family per catalog — the caller retries on every
+            // `loadAt` now (returning `false` keeps the key out of `cachedAssets`,
+            // so a manifest that later describes this family can still load it),
+            // and a warning per frame would drown the console.
+            if (!this.unknownFontFamilies.has(fontFamily)) {
+                this.unknownFontFamilies.add(fontFamily);
+                console.warn(`[WebStorageAdapter] No font manifest entry for "${key}"; shaping against the fallback face. Add it to the manifest font record.`);
+            }
+            return false;
         }
 
         // Dedupe by src in case the same file is registered under multiple keys.
@@ -1164,9 +1191,11 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         }));
 
         this.registeredFontFamilies.add(fontFamily);
+        this.unknownFontFamilies.delete(fontFamily);
         // A new face just became available: invalidate any paragraph shaped
         // against the old (fallback) face for this or any family.
         this.fontEpoch++;
+        return true;
     }
 
     getFontMgr(): TypefaceFontProvider {

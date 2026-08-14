@@ -1,5 +1,5 @@
 import type { ImageFillResolved, MediaFilter } from "@motion-script/core";
-import { isPixelFilter } from "@motion-script/core";
+import { AssetNotLoadedError, isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage, Shader } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { type ShapeBounds } from "./handler";
@@ -9,9 +9,14 @@ import type { EffectGeometry } from "../effects/handler";
 /** Shades with the adapter-decoded image and applies the fill's filter chain. */
 export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
     applyPaint(fill: ImageFillResolved, ctx: FillRendererContext): boolean {
+        // A fill with no src isn't a missing asset, it's an unset one — the
+        // author hasn't chosen a picture yet. Nothing to paint, nothing wrong.
         if (!fill.src) return false;
         const img = ctx.assets.getCKImage(fill.src);
-        if (!img) return false;
+        // Undeclared, or declared for a window that doesn't cover this frame.
+        // Skipping the layer here is how a photo used to go missing without
+        // anything saying so; see `AssetNotLoadedError`.
+        if (!img) throw new AssetNotLoadedError("image", fill.src);
         // Adapter-owned CKImage — do NOT push to transientImages (which gets
         // .delete()'d after the draw). The adapter releases the texture when
         // the underlying pixels are evicted.

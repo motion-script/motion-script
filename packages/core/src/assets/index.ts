@@ -3,4 +3,5 @@
 /** @internal */ export { AssetTracker } from "./tracker";
 /** @internal */ export type { AssetSize, VideoAssetOptions } from "./tracker";
 /** @internal */ export type { LoaderFn, Disposer } from "./record";
+/** @internal */ export { AssetNotLoadedError } from "./errors";
 /** @internal */ export { AssetManager } from "./manager";

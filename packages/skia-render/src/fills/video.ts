@@ -1,4 +1,4 @@
-import { resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
+import { AssetNotLoadedError, resolveVideoTimestamp, type VideoFillResolved, type VideoEchoFilter } from "@motion-script/core";
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { makeImageShader, applyMediaFilters, samplingFor } from "./image";
@@ -24,17 +24,23 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
 
     applyPaint(fill: VideoFillResolved, ctx: FillRendererContext): boolean {
         if (!fill.src) return false;
+        // Zero until the clip's decode session has opened, which is the one thing
+        // that distinguishes the two ways this can come up empty: a clip nobody
+        // declared (an error — the frame would silently lose its footage) from a
+        // *timestamp* the decode window hasn't reached yet (not an error; the
+        // asset loaded, and `warmPendingVideo` settles the frame).
+        const duration = ctx.assets.getVideoDuration(fill.src);
+        if (duration === 0) throw new AssetNotLoadedError("video", fill.src);
+
         // The source time to show. Derived here, from how long the painting node
         // has existed, unless the fill carries an explicit `timestamp` — so a
         // clip plays wherever it is painted without anything advancing it.
-        const timestamp = resolveVideoTimestamp(
-            fill,
-            ctx.elapsed,
-            ctx.assets.getVideoDuration(fill.src),
-        );
+        const timestamp = resolveVideoTimestamp(fill, ctx.elapsed, duration);
         // claim, not getVideoFrame: several fills can be showing different times
         // of one clip in this frame, and they must not share its one texture.
         const img = ctx.assets.claimVideoFrame(fill.src, timestamp);
+        // Nothing decoded at or before this timestamp yet — the re-render loop
+        // will come back for it. See the note on `duration` above.
         if (!img) return false;
 
         const echo = fill.filters?.find(
