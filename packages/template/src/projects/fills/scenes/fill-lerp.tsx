@@ -15,9 +15,9 @@ export default createScene(function* (stage) {
         const strokeRef = createRef<Rect>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={'Fill Lerp'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
+                <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={80}>
                     <Rect
                         ref={fillRef}
                         width={500} height={500} cornerRadius={32}

@@ -19,11 +19,11 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Number',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 80,
             children: (
                 <>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <NumberNode
                             ref={currencyRef}
                             value={0}
@@ -36,7 +36,7 @@ export default createScene(function* (stage) {
                             textAlign={'center'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <NumberNode
                             ref={percentRef}
                             value={0}
@@ -48,7 +48,7 @@ export default createScene(function* (stage) {
                             textAlign={'center'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <NumberNode
                             ref={numberRef}
                             value={0}

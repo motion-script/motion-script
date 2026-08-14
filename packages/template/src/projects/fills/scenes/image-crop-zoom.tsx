@@ -30,7 +30,7 @@ export default createScene(function* (stage) {
     const window = { right: 0.6 };
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={'Crop + Zoom'}
@@ -39,11 +39,11 @@ export default createScene(function* (stage) {
                 width={'fill'}
                 textAlign={'start'}
             />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40}>
                 <Rect
                     ref={cropOnly}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill' })}
                 >
                     <Text text={'crop'} fontSize={56} fill={'white'} />
@@ -51,7 +51,7 @@ export default createScene(function* (stage) {
                 <Rect
                     ref={cropZoom}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', crop: window, anchor: head })}
                 >
                     <Text text={'crop + zoom'} fontSize={56} fill={'white'} />

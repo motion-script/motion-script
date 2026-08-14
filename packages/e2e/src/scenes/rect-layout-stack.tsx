@@ -1,14 +1,14 @@
 import { createScene, createRef, Rect, easeOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link Rect} `group={'stack'}`: three children centered and overlapping, popping in from largest to smallest. */
+/** {@link Rect} `flow={'freeform'}`: three children centered and overlapping, popping in from largest to smallest. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const back = createRef<Rect>();
     const mid = createRef<Rect>();
     const front = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={back} width={360} height={360} fill={'primary'} cornerRadius={20} scale={0} />
             <Rect ref={mid} width={240} height={240} fill={'card'} cornerRadius={20} scale={0} />
             <Rect ref={front} width={120} height={120} fill={'accent'} cornerRadius={20} scale={0} />

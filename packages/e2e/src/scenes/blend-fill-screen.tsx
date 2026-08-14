@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: '#0d0f15' });
     const circle = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={360} height={360} fill={'#1f5f8b'} center={{ x: -60, y: 0 }} />
             <Rect
                 ref={circle}

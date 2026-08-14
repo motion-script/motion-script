@@ -20,9 +20,9 @@ const crush = { palette: 'gameboy' as const, amount: 1 };
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'row'} gap={40} padding={60} align={{ x: 0, y: 0 }}>
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={16}>
-                <Rect width={'fill'} height={'fill'} cornerRadius={16} clip={true} group={'stack'}>
+        <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40} padding={60} align={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={16}>
+                <Rect width={'fill'} height={'fill'} cornerRadius={16} clip={true} flow={'freeform'}>
                     <Image
                         src={'./cat.jpg'}
                         fit={'fill'}
@@ -33,8 +33,8 @@ export default createScene(function* (stage) {
                 </Rect>
                 <Text text={'crush → threshold'} fontFamily={'Inter'} fontSize={22} fill={'#9aa4bf'} />
             </Rect>
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={16}>
-                <Rect width={'fill'} height={'fill'} cornerRadius={16} clip={true} group={'stack'}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={16}>
+                <Rect width={'fill'} height={'fill'} cornerRadius={16} clip={true} flow={'freeform'}>
                     <Image
                         src={'./cat.jpg'}
                         fit={'fill'}

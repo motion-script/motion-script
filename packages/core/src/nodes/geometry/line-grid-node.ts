@@ -97,7 +97,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         // doesn't change the grid's own size (it never hugs its children).
         const inner = applyPadding(size.width ?? 0, size.height ?? 0, this.padding as InsetsResolved);
         const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
-        for (const child of this.children) child.measure(childConstraints, scope);
+        for (const child of this.flowChildren()) child.measure(childConstraints, scope);
         return size;
     }
 
@@ -112,12 +112,16 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         const cy = (pad.top - pad.bottom) / 2;
 
         const childConstraints: SizeConstraints = { maxWidth: inner.width, maxHeight: inner.height };
-        for (const child of this.children) {
+        for (const child of this.flowChildren()) {
             const size = child.measure(childConstraints, scope);
             const w = size.width ?? 0;
             const h = size.height ?? 0;
             child.layout({ x: cx, y: cy, width: w, height: h }, scope);
         }
+
+        // Stage-pinned children float over the scene, not over this grid's
+        // centre. See NodeProps.childPositioning.
+        this.layoutAbsoluteChildren(scope);
     }
 
     protected renderSelf(draw: RenderContext): void {

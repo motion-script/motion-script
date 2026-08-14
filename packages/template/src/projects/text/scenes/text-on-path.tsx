@@ -25,12 +25,12 @@ const arc = (r: number, sweep: number) =>
  * `rotation`, `fill`) keeps animating continuously across the swap.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: BG, group: 'stack', padding: 80 });
+    stage.set({ fill: BG, flow: 'freeform', padding: 80 });
 
     const ring = createRef<Text>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'}>
             <Text
                 ref={ring}
                 path={circle(220)}

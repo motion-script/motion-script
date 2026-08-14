@@ -16,7 +16,7 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'RichText',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     <RichText
                         ref={ref}

@@ -55,7 +55,7 @@ function scrubScene(victim: Reference<Probe>) {
                 ref: row,
                 width: "hug",
                 height: "fill",
-                group: "row",
+                flow: "horizontal",
                 gap: 24,
                 align: "centerLeft",
                 children: [

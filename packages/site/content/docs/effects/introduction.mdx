@@ -55,7 +55,7 @@ Pass the object form when you need the other parameters. Each effect's page list
 An effect applies to the node **and everything inside it**, because it runs on the node's finished drawing.
 
 ```tsx
-<Rect group="column" gap={16} padding={32} fill="#1e293b" effects={Effects.blur(8)}>
+<Rect flow="vertical" gap={16} padding={32} fill="#1e293b" effects={Effects.blur(8)}>
   <Rect width={80} height={80} fill="royalblue" />
   <Text text="Motion Script" fontSize={40} fill="white" />
 </Rect>

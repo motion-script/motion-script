@@ -19,7 +19,7 @@ sidebar_position: 7
 A node with `width: 'fill'` stretches to consume all available space along that axis in its parent container. Multiple `fill` siblings share the space equally (or by their `flex` ratio):
 
 ```tsx
-<Rect group="row" gap={16} padding={24} fill="#0f1117" width={600} height={100}>
+<Rect flow="horizontal" gap={16} padding={24} fill="#0f1117" width={600} height={100}>
   <Rect width="fill" height="fill" fill="royalblue" />  {/* takes half */}
   <Rect width="fill" height="fill" fill="tomato" />     {/* takes half */}
 </Rect>
@@ -36,7 +36,7 @@ Every layout container resolves an unset `width`/`height` for you — see [Defau
 A node with `width: 'hug'` measures its children and sizes itself to fit them exactly (plus any padding):
 
 ```tsx
-<Rect group="row" gap={12} width="hug" height="hug" padding={20} fill="#1e293b">
+<Rect flow="horizontal" gap={12} width="hug" height="hug" padding={20} fill="#1e293b">
   <Rect width={60} height={60} fill="tomato" cornerRadius={8} />
   <Rect width={60} height={60} fill="royalblue" cornerRadius={8} />
 </Rect>
@@ -63,14 +63,14 @@ To avoid that, the default above gets one refinement: if a direct child is `'fil
 
 | Container | Main axis | Cross axis |
 |---|---|---|
-| `Rect group="row"` / `Row` | width | height |
-| `Rect group="column"` / `Column` | height | width |
-| `Rect group="stack"` | width *and* height, checked independently | — |
+| `Rect flow="horizontal"` / `Row` | width | height |
+| `Rect flow="vertical"` / `Column` | height | width |
+| `Rect flow="freeform"` | width *and* height, checked independently | — |
 
 A fill child on the **cross** axis doesn't trigger this — it already anchors correctly to the size of the tallest/widest fixed sibling, which is what lets this column's tiles span its full hugged width without the column itself needing to fill:
 
 ```tsx
-<Rect group="column" gap={16} padding={20} fill="#1e293b">
+<Rect flow="vertical" gap={16} padding={20} fill="#1e293b">
   <Rect width="fill" height={60} fill="tomato" cornerRadius={8} />
   <Rect width="fill" height={60} fill="royalblue" cornerRadius={8} />
 </Rect>
@@ -79,7 +79,7 @@ A fill child on the **cross** axis doesn't trigger this — it already anchors c
 But a fill child on the **main** axis is the case that needs the container's own default to change. Here, the middle tile has no `width` — with children of its own it would hug, but it has none, so it defaults to `'fill'`. Because that's the row's main axis, the row's own default flips from `'hug'` to `'fill'` too, and the row spans all 1920px of available width instead of collapsing:
 
 ```tsx
-<Rect group="row" padding={48} gap={48}>
+<Rect flow="horizontal" padding={48} gap={48}>
   <Rect width={400} height={400} fill="#6990DD" />
   <Rect height={400} fill="#E8617C" />   {/* no width → defaults to 'fill' */}
   <Rect width={400} height={400} fill="#F5C26B" />
@@ -91,7 +91,7 @@ In a `1920`-wide scene, the two fixed tiles and the padding/gaps leave `928px` f
 This only changes the **inferred default**. An explicit `width`/`height` on the container always wins, even if it re-creates the hug + fill-with-nothing-to-fill-into combination:
 
 ```tsx
-<Rect group="row" width="hug" padding={48} gap={48}>
+<Rect flow="horizontal" width="hug" padding={48} gap={48}>
   <Rect width={400} height={400} fill="#6990DD" />
   <Rect height={400} fill="#E8617C" />   {/* still defaults to 'fill' */}
   <Rect width={400} height={400} fill="#F5C26B" />
@@ -107,7 +107,7 @@ Forcing `width: 'hug'` here means the row genuinely has nothing to hug the middl
 When multiple siblings use `width: 'fill'` (or `height: 'fill'`), the `flex` prop controls how much of the free space each one gets. The default is `1`, giving equal shares.
 
 ```tsx
-<Rect group="row" gap={8} fill="#0f1117" width={600} height={80}>
+<Rect flow="horizontal" gap={8} fill="#0f1117" width={600} height={80}>
   <Rect flex={2} height="fill" fill="royalblue" />  {/* takes 2/3 */}
   <Rect flex={1} height="fill" fill="tomato" />     {/* takes 1/3 */}
 </Rect>

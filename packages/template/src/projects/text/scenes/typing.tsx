@@ -21,7 +21,7 @@ export default createScene(function* (stage) {
 
     stage.add(textCard({
         label: 'Typing & Erasing',
-        stage: 'column',
+        stage: 'vertical',
         gap: 40,
         children: (
             <>

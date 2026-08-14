@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
         const videoRef = createRef<Video>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'stack'}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'}>
                 <Video
                     ref={videoRef}
                     src={'video.mp4'}
@@ -24,7 +24,7 @@ export default createScene(function* (stage) {
                     width={'fill'}
                     height={'fill'}
                     cornerRadius={0}
-                    group={'column'}
+                    flow={'vertical'}
                     padding={80}
                     align={{ x: -1, y: 1 }}
                 >

@@ -17,7 +17,7 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'Grid',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     <Grid
                         ref={gridRef}

@@ -71,7 +71,7 @@ describe('Column', () => {
         // Children stack along the column's main axis in order. In box-local
         // (y-down) space that means the first child gets the lower y and the
         // second sits one full child-height below it — same convention as
-        // Rect with group="column".
+        // Rect with flow="vertical".
         expect(b.rect.y - a.rect.y).toBe(100);
     });
 

@@ -18,14 +18,14 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'Latex',
-                stage: 'row',
+                stage: 'horizontal',
                 gap: 64,
                 children: (
                     <>
-                        <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                        <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                             <Latex ref={formula} latex={'a^2 + b^2 = c^2'} fontSize={72} fill={'#6990DD'} />
                         </Rect>
-                        <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                        <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                             <Latex
                                 ref={integral}
                                 latex={'\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}'}

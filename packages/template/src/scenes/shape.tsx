@@ -50,13 +50,13 @@ export default createScene(function* (stage) {
     const lineShadow = createRef<Line>();
 
     const row = (children: any) => (
-      <Rect group="row" gap={12} align={{ x: 0, y: 0 }}>
+      <Rect flow="horizontal" gap={12} align={{ x: 0, y: 0 }}>
         {children}
       </Rect>
     );
 
     const cell = (label: string, children: any) => (
-      <Rect group="column" gap={12} fill={CARD} cornerRadius={16} padding={24} align={{ x: 0, y: 0 }}>
+      <Rect flow="vertical" gap={12} fill={CARD} cornerRadius={16} padding={24} align={{ x: 0, y: 0 }}>
         {row(children)}
         <Text text={label} fontSize={20} fill="white" fontFamily="Inter" />
       </Rect>

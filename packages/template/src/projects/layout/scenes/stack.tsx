@@ -4,7 +4,7 @@ import { createScene, createRef, Rect, easeInOut, parallel } from "motion-script
 import { layoutCard, tile } from "./layout-card";
 
 /**
- * Demonstrates `group="stack"`: children overlap, each centered in the content
+ * Demonstrates `flow="freeform"`: children overlap, each centered in the content
  * box and offset by its own `x`/`y` (rather than flowing along an axis). The
  * three tiles start piled exactly on top of one another, then fan out via
  * their offsets and slide back — showing that in a stack, position is owned by
@@ -19,8 +19,8 @@ export default createScene(function* (stage) {
 
         stage.add(
             layoutCard({
-                label: 'group: stack',
-                stage: 'stack',
+                label: 'flow: freeform',
+                stage: 'freeform',
                 children: [
                     tile({ ref: back, color: '#6990DD', width: 320, height: 320 }),
                     tile({ ref: mid, color: '#E8617C', width: 320, height: 320 }),

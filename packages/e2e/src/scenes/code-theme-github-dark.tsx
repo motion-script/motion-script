@@ -7,7 +7,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const code = createRef<Code>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#0d1117'} height={'hug'} width={'hug'} clip={true}>
                 <Code
                     ref={code}

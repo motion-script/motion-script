@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
 
     stage.add(textCard({
         label: 'Font Styling',
-        stage: 'row',
+        stage: 'horizontal',
         gap: 32,
         children: (
             <>

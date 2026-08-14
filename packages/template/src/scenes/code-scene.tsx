@@ -7,7 +7,7 @@ export default createScene(function* (stage) {
         const code = createRef<Code>();
 
         stage.add(
-            <Rect cornerRadius={32} fill={'#0f121a'} height={'hug'} group={'column'} clip={true} >
+            <Rect cornerRadius={32} fill={'#0f121a'} height={'hug'} flow={'vertical'} clip={true} >
                 <Rect fill={'#191C24'} gap={24} padding={{ horizontal: 36, vertical: 32 }} width={'fill'} align={{ x: -1, y: 1 }}>
                     <Ellipse width={32} height={32} fill={'#FF5252'} />
                     <Ellipse width={32} height={32} fill={'#FFD70A'} />

@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
         const camRef = createRef<Camera>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'stack'}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'}>
                 <Camera
                     ref={camRef}
                     width={'fill'}
@@ -38,7 +38,7 @@ export default createScene(function* (stage) {
                     <Text text={'Camera'} fontSize={80} fontWeight={800} fill={'white'} opacity={0.15} />
                 </Camera>
                 {/* HUD label */}
-                <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={16} align={{ x: -1, y: -1 }}>
+                <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={16} align={{ x: -1, y: -1 }}>
                     <Text fontFamily={'Pixelify Sans'} text={'Camera'} fontSize={80} fill={'gray'} />
                 </Rect>
             </Rect>

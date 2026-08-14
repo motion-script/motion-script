@@ -9,9 +9,9 @@ export default createScene(function* (stage) {
 
         stage.add(
             <>
-                <Rect gap={20} group={'row'} padding={10} width={1000} height={600}>
+                <Rect gap={20} flow={'horizontal'} padding={10} width={1000} height={600}>
                     <Rect ref={colA} width={'fill'} flex={1} fill={'card'} cornerRadius={8} />
-                    <Rect group={'column'} gap={20} height={'fill'} width={'fill'} flex={2} >
+                    <Rect flow={'vertical'} gap={20} height={'fill'} width={'fill'} flex={2} >
                         <Rect ref={rowA} height={'fill'} width={'fill'} flex={2} cornerRadius={4} stroke={{ fill: 'white', weight: 12 }} fill={'#FF6470'} >
 
                             <Ellipse width={32} height={32} fill={'white'} />

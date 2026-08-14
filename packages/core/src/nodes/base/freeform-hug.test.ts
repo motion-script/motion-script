@@ -26,13 +26,13 @@ class ProbeNode extends Node {
     }
 }
 
-describe('Node – base stack-style hug measure', () => {
+describe('Node – base freeform hug measure', () => {
     const scope = new FakeMeasureScope();
 
-    it('a plain Node with children hugs to its largest child (basic stack), not 0', () => {
+    it('a plain Node with children hugs to its largest child (basic freeform), not 0', () => {
         // Regression: the base measure resolved "hug" against a content size of
         // 0, so any non-Rect container (plain Node, Ellipse, Camera, …)
-        // collapsed to 0×0 and rendered nothing. It now hugs like a Rect stack.
+        // collapsed to 0×0 and rendered nothing. It now hugs like a freeform Rect.
         const node = new Node({ children: [new Tile(400, 300)] });
         // Base "populated → hug" default.
         expect((node as any).width).toBe('hug');
@@ -80,7 +80,7 @@ describe('Node – base stack-style hug measure', () => {
         expect(size.height).toBe(720); // fixed
     });
 
-    it('layout centers each child in the padded content area (stack convention)', () => {
+    it('layout centers each child in the padded content area (freeform convention)', () => {
         const child = new Tile(400, 300);
         const node = new ProbeNode({ padding: 40, children: [child] });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
@@ -97,7 +97,7 @@ describe('Node – base stack-style hug measure', () => {
         });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
         node.layout({ x: 0, y: 0, width: size.width ?? 0, height: size.height ?? 0 }, scope);
-        // offsetX = (left - right) / 2 = (100 - 20) / 2 = 40, matching Rect's stack.
+        // offsetX = (left - right) / 2 = (100 - 20) / 2 = 40, matching Rect's freeform layout.
         expect(child.rect.x).toBe(40);
         expect(child.rect.y).toBe(0);
     });

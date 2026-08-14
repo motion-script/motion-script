@@ -29,7 +29,7 @@ function removingRow(label: string) {
         const row = createRef<Rect>();
         stage.add(
             new Rect({
-                ref: row, width: "hug", height: "fill", group: "row", gap: 24, align: "centerLeft",
+                ref: row, width: "hug", height: "fill", flow: "horizontal", gap: 24, align: "centerLeft",
                 children: [
                     new Rect({ width: 120, height: 120, children: [new Text({ text: label })] }),
                     new Rect({ width: 120, height: 120 }),

@@ -36,12 +36,12 @@ export default createScene(function* (stage) {
     });
 
     const cells = anchors.map((anchor) => (
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={12}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={12}>
             <Text
                 fontFamily={'Pixelify Sans'} text={anchor}
                 fontSize={36} fill={'gray'} width={'fill'} textAlign={'center'}
             />
-            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={24} group={'stack'} fill={'card'}>
+            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={24} flow={'freeform'} fill={'card'}>
                 <TextDrawShape
                     textAlignment={anchor} fill={textFill}
                     stroke={{ weight: 3, fill: Fills.color('#0D0F15', { opacity: 0.6 }) }}
@@ -51,15 +51,15 @@ export default createScene(function* (stage) {
     ));
 
     const rows = [0, 1, 2].map((r) => (
-        <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
+        <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={32}>
             {cells.slice(r * 3, r * 3 + 3)}
         </Rect>
     ));
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={24}>
             <Text fontFamily={'Pixelify Sans'} text={'Graphics text — pivot anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={32}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={32}>
                 {rows}
             </Rect>
         </Rect>

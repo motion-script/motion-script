@@ -72,7 +72,7 @@ export const shapeScene = (spec: ShapeSceneSpec, buildShape: BuildShape): SceneG
         const strokeRef = createRef<Rect>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={32}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={32}>
                 <Text
                     fontFamily={'Pixelify Sans'}
                     text={label}
@@ -81,18 +81,18 @@ export const shapeScene = (spec: ShapeSceneSpec, buildShape: BuildShape): SceneG
                     width={'fill'}
                     textAlign={'start'}
                 />
-                <Rect width={'fill'} height={'fill'} group={'row'} gap={80} align={{ x: 0, y: 0 }}>
+                <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={80} align={{ x: 0, y: 0 }}>
                     <Rect
                         ref={fillRef}
                         width={500} height={500}
-                        group={'stack'}
+                        flow={'freeform'}
                         fill={'card'}
                         cornerRadius={24}
                     />
                     <Rect
                         ref={strokeRef}
                         width={500} height={500}
-                        group={'stack'}
+                        flow={'freeform'}
                         fill={'card'}
                         cornerRadius={24}
                     />

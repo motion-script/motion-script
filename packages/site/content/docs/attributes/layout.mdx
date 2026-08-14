@@ -4,26 +4,26 @@ sidebar_position: 8
 
 # Layout
 
-`Rect` is both a shape and a flex layout container. Set `group` to arrange its children automatically.
+`Rect` is both a shape and a flex layout container. Set `flow` to arrange its children automatically.
 
 ## Layout modes
 
-| `group` | Behavior |
+| `flow` | Behavior |
 |---|---|
-| `'row'` | Children placed side by side (left to right) |
-| `'column'` | Children stacked top to bottom |
-| `'stack'` | Children overlapping, centered by default |
+| `'horizontal'` | Children placed side by side (left to right) |
+| `'vertical'` | Children stacked top to bottom |
+| `'freeform'` | Children overlapping, centered by default |
 
 ---
 
-## Row
+## Horizontal
 
 ```tsx
 import { createScene, Rect } from 'motion-script';
 
 export default createScene(function* (stage) {
   stage.add(
-    <Rect group="row" gap={24} padding={32} fill="#1e293b" cornerRadius={16}>
+    <Rect flow="horizontal" gap={24} padding={32} fill="#1e293b" cornerRadius={16}>
       <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
       <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
       <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
@@ -34,11 +34,11 @@ export default createScene(function* (stage) {
 
 ---
 
-## Column
+## Vertical
 
 ```tsx
 stage.add(
-  <Rect group="column" gap={16} padding={24} fill="#1e293b" cornerRadius={12}>
+  <Rect flow="vertical" gap={16} padding={24} fill="#1e293b" cornerRadius={12}>
     <Rect width="fill" height={60} fill="royalblue" cornerRadius={8} />
     <Rect width="fill" height={60} fill="tomato"    cornerRadius={8} />
     <Rect width="fill" height={60} fill="seagreen"  cornerRadius={8} />
@@ -48,13 +48,13 @@ stage.add(
 
 ---
 
-## Stack
+## Freeform
 
 Children are layered in z-order, centered within the container:
 
 ```tsx
 stage.add(
-  <Rect group="stack" width={300} height={300}>
+  <Rect flow="freeform" width={300} height={300}>
     <Rect width={300} height={300} fill="royalblue" cornerRadius={16} />
     <Text text="Stacked" fontSize={32} fontWeight={700} fill="white" />
   </Rect>
@@ -68,14 +68,14 @@ stage.add(
 `gap` sets the space between children along the layout axis:
 
 ```tsx
-<Rect group="row" gap={32}>...</Rect>
-<Rect group="column" gap={8}>...</Rect>
+<Rect flow="horizontal" gap={32}>...</Rect>
+<Rect flow="vertical" gap={8}>...</Rect>
 ```
 
 Pass `gap="auto"` to distribute children evenly (space-between):
 
 ```tsx
-<Rect group="row" gap="auto" width={600} height={80} padding={24}>
+<Rect flow="horizontal" gap="auto" width={600} height={80} padding={24}>
   <Rect width={60} height={60} fill="tomato" />
   <Rect width={60} height={60} fill="royalblue" />
   <Rect width={60} height={60} fill="seagreen" />
@@ -93,14 +93,14 @@ Pass `gap="auto"` to distribute children evenly (space-between):
 (bottom) … `1` (top); `0` centers. It defaults to `'center'`.
 
 ```tsx
-// Row: cross axis is vertical — align children to the top
-<Rect group="row" gap={20} align="topCenter">
+// Horizontal: cross axis is vertical — align children to the top
+<Rect flow="horizontal" gap={20} align="topCenter">
   <Rect width={60} height={120} fill="tomato" />
   <Rect width={60} height={60}  fill="royalblue" />
 </Rect>
 
-// Column: cross axis is horizontal — x: 1 aligns children to the right
-<Rect group="column" gap={12} align={{ x: 1, y: 0 }}>
+// Vertical: cross axis is horizontal — x: 1 aligns children to the right
+<Rect flow="vertical" gap={12} align={{ x: 1, y: 0 }}>
   <Rect width={200} height={50} fill="tomato" />
   <Rect width={100} height={50} fill="royalblue" />
 </Rect>
@@ -114,13 +114,66 @@ Inset the layout's content area from the container's edges:
 
 ```tsx
 // Uniform
-<Rect group="column" gap={12} padding={24}>...</Rect>
+<Rect flow="vertical" gap={12} padding={24}>...</Rect>
 
 // Per-side
-<Rect group="column" gap={12} padding={{ top: 32, bottom: 32, left: 16, right: 16 }}>...</Rect>
+<Rect flow="vertical" gap={12} padding={{ top: 32, bottom: 32, left: 16, right: 16 }}>...</Rect>
 
 // Symmetric shorthand
-<Rect group="row" gap={16} padding={{ horizontal: 24, vertical: 16 }}>...</Rect>
+<Rect flow="horizontal" gap={16} padding={{ horizontal: 24, vertical: 16 }}>...</Rect>
+```
+
+---
+
+## Positioning: relative vs. absolute
+
+By default a node is placed by its parent — measured against the parent's content
+box, given a cell by the parent's `flow`, and offsetting from that cell with its
+own `x`/`y`. Two props let a subtree opt out of that and be placed against the
+**stage** instead.
+
+| Prop | Values | Default | Set on |
+|---|---|---|---|
+| `childPositioning` | `'relative'` \| `'absolute'` | `'relative'` | the **container** — the frame it hands every child |
+| `relativeToParent` | `'inherit'` \| `'relative'` \| `'absolute'` | `'inherit'` | one **child** — its override of the above |
+
+An absolute node steps out of its parent's layout entirely: it consumes no `gap`,
+takes no `flex` share, and never contributes to a `hug` size. Its `x`/`y` become
+plain scene coordinates, and `'fill'` fills the whole stage:
+
+```tsx
+<Rect flow="vertical" gap={16} padding={32} width="hug">
+  <Rect width={200} height={80} fill="royalblue" />
+  <Rect width={200} height={80} fill="seagreen" />
+
+  {/* Pinned to the scene, not to the column: (0,0) is the stage centre. */}
+  <Text text="WATERMARK" relativeToParent="absolute" y={-420} opacity={0.3} />
+</Rect>
+```
+
+Flip the container instead when *everything* inside it should be placed by hand —
+a free canvas rather than an auto-layout frame:
+
+```tsx
+<Rect childPositioning="absolute" width="fill" height="fill">
+  <Rect x={-300} y={120} width={120} height={120} fill="tomato" />
+  <Rect x={280}  y={-60} width={120} height={120} fill="royalblue" />
+</Rect>
+```
+
+The node still *belongs* to its parent — it renders inside that scope, so the
+parent's `opacity`, `blend`, `clip`, `effects`, rotation and scale all still apply.
+What changes is only where its box is anchored.
+
+Both props animate with `.to()`, snapping at the end of the tween like any other
+discrete mode. One thing to watch when switching back: `x`/`y` are scene
+coordinates while a node is absolute and an offset from its layout cell once it
+isn't, so a node carrying a large offset lands far from its new slot. Ease them
+to zero as it rejoins:
+
+```tsx
+badge().set({ relativeToParent: 'relative' });
+yield* badge().to({ x: 0, y: 0 }, 0.9, easeInOut('quad'));
 ```
 
 ---
@@ -131,8 +184,8 @@ Layouts can be nested arbitrarily deep:
 
 ```tsx
 stage.add(
-  <Rect group="column" gap={16} padding={32} fill="#0f1117" width="fill" height="fill">
-    <Rect group="row" gap={16} width="fill">
+  <Rect flow="vertical" gap={16} padding={32} fill="#0f1117" width="fill" height="fill">
+    <Rect flow="horizontal" gap={16} width="fill">
       <Rect width="fill" height={200} fill="#1e293b" cornerRadius={12} />
       <Rect width="fill" height={200} fill="#1e293b" cornerRadius={12} />
     </Rect>
@@ -154,7 +207,7 @@ export default createScene(function* (stage) {
   const container = createRef<Rect>();
 
   stage.add(
-    <Rect ref={container} group="row" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
+    <Rect ref={container} flow="horizontal" gap={8} padding={24} fill="#1e293b" cornerRadius={16}>
       <Rect width={80} height={80} fill="tomato"    cornerRadius={8} />
       <Rect width={80} height={80} fill="royalblue" cornerRadius={8} />
       <Rect width={80} height={80} fill="seagreen"  cornerRadius={8} />
@@ -164,8 +217,8 @@ export default createScene(function* (stage) {
   // Expand gap
   yield* container().to({ gap: 48 }, 0.6, easeOut);
 
-  // Switch to column layout
-  yield* container().to({ group: 'column' }, 0.5, easeOut);
+  // Switch to a vertical layout
+  yield* container().to({ flow: 'vertical' }, 0.5, easeOut);
 });
 ```
 

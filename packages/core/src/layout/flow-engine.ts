@@ -11,28 +11,49 @@ import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, FlexDirection, GapSize } from "@/layout/flex";
 import { Node } from "@/nodes/base/node";
 
-export type LayoutMode = "row" | "column" | "stack";
+/**
+ * How a container arranges the children that take part in its layout:
+ *
+ * - `'freeform'` — children overlap, each centred in the padded content box and
+ *   offset from there by its own `x`/`y`.
+ * - `'horizontal'` — a flex run left-to-right.
+ * - `'vertical'` — a flex run top-to-bottom.
+ */
+export type FlowMode = "horizontal" | "vertical" | "freeform";
+
+/** The flex main axis a directional {@link FlowMode} runs along. */
+/** @internal */
+export function flowDirection(mode: FlowMode): FlexDirection {
+    return mode === "horizontal" ? "row" : "column";
+}
 
 /**
- * The slice of a container node the {@link GroupLayout} engine reads to lay its
+ * The slice of a container node the {@link FlowLayout} engine reads to lay its
  * children out. Both {@link Rect} and {@link RootNode} implement it, so the
- * flex/stack measure+layout pass — including the cross-mode `group` blend — lives
- * in one place rather than being duplicated per container.
+ * flex/freeform measure+layout pass — including the cross-mode `flow` blend —
+ * lives in one place rather than being duplicated per container.
  */
-export interface GroupHost {
+export interface FlowHost {
     readonly children: Node[];
     readonly width: SizeInput;
     readonly height: SizeInput;
-    readonly group: LayoutMode;
+    readonly flow: FlowMode;
     readonly gap: GapSize;
     /**
-     * The `align` prop, declared loose (`Anchor`) to match how containers
-     * type it; at runtime the accessor stores the resolved per-axis `Vector2`
-     * pivot, which the engine reads via {@link resolvedAlign}.
+     * Alignment of children within the content box, declared loose (`Anchor`) to
+     * match how containers type it; at runtime the accessor stores the resolved
+     * per-axis `Vector2` pivot, which the engine reads via {@link resolvedAlign}.
      */
     readonly align: Anchor;
     /** Effective content padding (base padding plus any stroke intrusion). */
     effectivePadding(): InsetsResolved;
+    /**
+     * The subset of `children` this container actually positions — everything
+     * except the stage-pinned ones. See `Node.flowChildren`.
+     */
+    flowChildren(): Node[];
+    /** Measure + place the stage-pinned children this container holds. */
+    layoutAbsoluteChildren(scope: MeasureScope): void;
 }
 
 interface FlexNodeMeasure {
@@ -43,32 +64,32 @@ interface FlexNodeMeasure {
     hugHeight: number;
 }
 
-interface StackNodeMeasure {
-    kind: "stack";
+interface FreeformNodeMeasure {
+    kind: "freeform";
     sizes: Partial<Size2D>[];
     children: Node[];
     hugWidth: number;
     hugHeight: number;
 }
 
-type NodeMeasureResult = FlexNodeMeasure | StackNodeMeasure;
+type NodeMeasureResult = FlexNodeMeasure | FreeformNodeMeasure;
 
 /**
- * Flex / stack child layout for a container node, factored out of {@link Rect}.
+ * Flex / freeform child layout for a container node, factored out of {@link Rect}.
  *
- * Owns the measure cache and the `group` cross-mode blend (animating between
- * `row`/`column`/`stack` interpolates each child's measured *and* positioned
- * box), reading everything it needs through a {@link GroupHost}. A host creates
- * one engine per node and forwards its `measure`/`layout` to it; the engine
- * exposes `beginGroupBlend` as the closure-based `group` tween so the host can
+ * Owns the measure cache and the `flow` cross-mode blend (animating between
+ * `horizontal`/`vertical`/`freeform` interpolates each child's measured *and*
+ * positioned box), reading everything it needs through a {@link FlowHost}. A host
+ * creates one engine per node and forwards its `measure`/`layout` to it; the
+ * engine exposes `flowTween` as the closure-based `flow` tween so the host can
  * register it as that prop's tween.
  */
-export class GroupLayout {
+export class FlowLayout {
     private _cachedMeasure: NodeMeasureResult | null = null;
     private _cachedMeasureFrom: NodeMeasureResult | null = null;
-    private _groupBlend: { from: LayoutMode; to: LayoutMode; t: number } | null = null;
+    private _flowBlend: { from: FlowMode; to: FlowMode; t: number } | null = null;
 
-    constructor(private readonly host: GroupHost) {}
+    constructor(private readonly host: FlowHost) {}
 
     // The host stores the resolved per-axis pivot in its `align` cell even though
     // it declares the prop loose; read it back as the Vector2 the layout needs.
@@ -77,26 +98,26 @@ export class GroupLayout {
     }
 
     /**
-     * The `group` prop's tween. Returns the `from` mode while a cross-mode
+     * The `flow` prop's tween. Returns the `from` mode while a cross-mode
      * transition is mid-flight (so the measure/layout pass can interpolate the
-     * two layouts) and snaps to `to` at `t >= 1`. Captures `_groupBlend`, which
-     * is why `group` can't use a static `@property` tween — the host registers
+     * two layouts) and snaps to `to` at `t >= 1`. Captures `_flowBlend`, which
+     * is why `flow` can't use a static `@property` tween — the host registers
      * this via `applyProp`.
      */
-    readonly groupTween = (from: LayoutMode, to: LayoutMode, t: number): LayoutMode => {
+    readonly flowTween = (from: FlowMode, to: FlowMode, t: number): FlowMode => {
         if (from === to) return to;
         if (t >= 1) {
-            this._groupBlend = null;
+            this._flowBlend = null;
             return to;
         }
         if (
-            !this._groupBlend ||
-            this._groupBlend.from !== from ||
-            this._groupBlend.to !== to
+            !this._flowBlend ||
+            this._flowBlend.from !== from ||
+            this._flowBlend.to !== to
         ) {
-            this._groupBlend = { from, to, t };
+            this._flowBlend = { from, to, t };
         } else {
-            this._groupBlend.t = t;
+            this._flowBlend.t = t;
         }
         return from;
     };
@@ -127,16 +148,16 @@ export class GroupLayout {
         let hugInnerW: number;
         let hugInnerH: number;
 
-        if (this._groupBlend) {
-            const fromM = this.computeMeasure(this._groupBlend.from, inner.width, inner.height, scope);
-            const toM = this.computeMeasure(this._groupBlend.to, inner.width, inner.height, scope);
+        if (this._flowBlend) {
+            const fromM = this.computeMeasure(this._flowBlend.from, inner.width, inner.height, scope);
+            const toM = this.computeMeasure(this._flowBlend.to, inner.width, inner.height, scope);
             this._cachedMeasureFrom = fromM;
             this._cachedMeasure = toM;
-            const t = this._groupBlend.t;
+            const t = this._flowBlend.t;
             hugInnerW = lerpNumber(fromM.hugWidth, toM.hugWidth, t);
             hugInnerH = lerpNumber(fromM.hugHeight, toM.hugHeight, t);
         } else {
-            const m = this.computeMeasure(host.group, inner.width, inner.height, scope);
+            const m = this.computeMeasure(host.flow, inner.width, inner.height, scope);
             this._cachedMeasure = m;
             this._cachedMeasureFrom = null;
             hugInnerW = m.hugWidth;
@@ -155,8 +176,8 @@ export class GroupLayout {
         const padding = host.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
 
-        if (this._groupBlend && this._cachedMeasure && this._cachedMeasureFrom) {
-            const blend = this._groupBlend;
+        if (this._flowBlend && this._cachedMeasure && this._cachedMeasureFrom) {
+            const blend = this._flowBlend;
             const fromLayouts = this.computeChildLayouts(
                 blend.from,
                 rect,
@@ -187,43 +208,49 @@ export class GroupLayout {
             }
             this._cachedMeasure = null;
             this._cachedMeasureFrom = null;
+            host.layoutAbsoluteChildren(scope);
             return;
         }
 
-        const measure = this._cachedMeasure ?? this.computeMeasure(host.group, inner.width, inner.height, scope);
+        const measure = this._cachedMeasure ?? this.computeMeasure(host.flow, inner.width, inner.height, scope);
         this._cachedMeasure = null;
 
-        const layouts = this.computeChildLayouts(host.group, rect, measure, inner.width, inner.height, padding);
+        const layouts = this.computeChildLayouts(host.flow, rect, measure, inner.width, inner.height, padding);
         for (let i = 0; i < measure.children.length; i++) {
             measure.children[i].layout(layouts[i], scope);
         }
+
+        // Stage-pinned children sit outside every one of the passes above — they
+        // took no part in the hug measure and get no cell from the flow — so they
+        // are placed last, against the stage rather than this rect.
+        host.layoutAbsoluteChildren(scope);
     }
 
     private computeMeasure(
-        mode: LayoutMode,
+        mode: FlowMode,
         innerWidth: number,
         innerHeight: number,
         scope: MeasureScope,
     ): NodeMeasureResult {
-        if (mode === "stack") {
-            return this.computeStackMeasure(innerWidth, innerHeight, scope);
+        if (mode === "freeform") {
+            return this.computeFreeformMeasure(innerWidth, innerHeight, scope);
         }
-        return this.computeFlexMeasure(mode, innerWidth, innerHeight, scope);
+        return this.computeFlexMeasure(flowDirection(mode), innerWidth, innerHeight, scope);
     }
 
     private computeChildLayouts(
-        mode: LayoutMode,
+        mode: FlowMode,
         rect: BoxBounds,
         measure: NodeMeasureResult,
         innerWidth: number,
         innerHeight: number,
         padding: InsetsResolved,
     ): BoxBounds[] {
-        if (measure.kind === "stack") {
-            return this.computeStackLayouts(rect, measure, padding);
+        if (measure.kind === "freeform") {
+            return this.computeFreeformLayouts(rect, measure, padding);
         }
         return layoutFlex({
-            direction: mode as FlexDirection,
+            direction: flowDirection(mode),
             entries: measure.entries,
             rect,
             innerWidth,
@@ -240,9 +267,7 @@ export class GroupLayout {
         innerHeight: number,
         scope: MeasureScope,
     ): FlexNodeMeasure {
-        const transformChildren = this.host.children.filter(
-            (c): c is Node => c instanceof Node,
-        );
+        const transformChildren = this.host.flowChildren();
         const adapters: FlexChild[] = transformChildren.map((child) => ({
             widthMode: child.width,
             heightMode: child.height,
@@ -269,14 +294,12 @@ export class GroupLayout {
         };
     }
 
-    private computeStackMeasure(
+    private computeFreeformMeasure(
         innerWidth: number,
         innerHeight: number,
         scope: MeasureScope,
-    ): StackNodeMeasure {
-        const transformChildren = this.host.children.filter(
-            (c): c is Node => c instanceof Node,
-        );
+    ): FreeformNodeMeasure {
+        const transformChildren = this.host.flowChildren();
         const constraints: SizeConstraints = { maxWidth: innerWidth, maxHeight: innerHeight };
         let hugWidth = 0;
         let hugHeight = 0;
@@ -290,7 +313,7 @@ export class GroupLayout {
             if (h > hugHeight) hugHeight = h;
         }
         return {
-            kind: "stack",
+            kind: "freeform",
             sizes,
             children: transformChildren,
             hugWidth,
@@ -298,7 +321,7 @@ export class GroupLayout {
         };
     }
 
-    private computeStackLayouts(rect: BoxBounds, measure: StackNodeMeasure, pad: InsetsResolved): BoxBounds[] {
+    private computeFreeformLayouts(rect: BoxBounds, measure: FreeformNodeMeasure, pad: InsetsResolved): BoxBounds[] {
         const innerW = Math.max(0, rect.width - pad.left - pad.right);
         const innerH = Math.max(0, rect.height - pad.top - pad.bottom);
         const offsetX = (pad.left - pad.right) / 2;

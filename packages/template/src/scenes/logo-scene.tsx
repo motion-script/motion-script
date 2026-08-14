@@ -7,7 +7,7 @@ export default createScene(function* (stage) {
             Fills.image('paper.png', { opacity: 0.2, blend: 'overlay', fit: 'fill' }),
             Fills.image('halftone.jpg', { opacity: 0.2, blend: 'overlay', fit: 'fill' }),
         ],
-        group: 'column',
+        flow: 'vertical',
 
     });
 
@@ -33,7 +33,7 @@ export default createScene(function* (stage) {
             {/* Title — starts hidden, dropped down and slightly small. */}
             <Rect
                 ref={title}
-                group={'column'}
+                flow={'vertical'}
                 gap={20}
                 padding={32}
                 opacity={0}

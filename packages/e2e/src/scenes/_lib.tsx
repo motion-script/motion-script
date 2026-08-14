@@ -35,14 +35,14 @@ export const placeholder = (id: string): SceneGenerator =>
     function* (stage) {
         stage.set({ fill: '#11141b' });
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
                 <Rect
                     width={820}
                     height={120}
                     fill={'#1b2030'}
                     stroke={{ weight: 2, fill: '#2c3344' }}
                     cornerRadius={16}
-                    group={'stack'}
+                    flow={'freeform'}
                     align={{ x: 0, y: 0 }}
                 >
                     <Text

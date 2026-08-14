@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     stage.add(
         <DefaultTextStyle fontFamily={'Inter'} fontWeight={700} fill={'#f4f6ff'}>
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={20} align={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={20} align={{ x: 0, y: 0 }}>
                 <Text text={'Inherits Inter'} fontSize={42} />
                 <Text text={'Also inherits Inter'} fontSize={42} />
                 <Text text={'Overrides to Fira Mono'} fontFamily={'Fira Mono'} fontSize={42} />

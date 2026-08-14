@@ -17,13 +17,13 @@ export default createScene(function* (stage) {
         'Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.';
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 width={680}
                 height={400}
                 cornerRadius={20}
                 fill={'card'}
-                group={'column'}
+                flow={'vertical'}
                 gap={20}
                 padding={40}
             >

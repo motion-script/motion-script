@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={card}
                 width={400}
@@ -15,7 +15,7 @@ export default createScene(function* (stage) {
                 fill={'card'}
                 stroke={{ weight: 4, fill: 'primary' }}
                 overlay={Fills.video('video.mp4', { fit: 'fill', opacity: 0 })}
-                group={'row'}
+                flow={'horizontal'}
                 gap={16}
                 padding={20}
                 align={{ x: 0, y: 0 }}

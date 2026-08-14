@@ -90,9 +90,9 @@ export const drawDemo = (opts: DrawDemoOpts): SceneGenerator => function* (stage
         );
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} >
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} flow={'freeform'} >
                     {cardChildren}
                 </Rect>
             </Rect>

@@ -4,7 +4,7 @@ import { BuildStage } from "@/render/build-stage";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { LayoutMode } from "@/layout/group-engine";
+import { FlowMode } from "@/layout/flow-engine";
 import { GapSize } from "@/layout/flex";
 import { Anchor } from "@/attributes/layout/anchor";
 import { Insets } from "@/attributes/layout/insets";
@@ -136,7 +136,7 @@ export class Scene {
         // stacks its children. A scene generator overrides these with set(...).
         // It's a RootNode, so the scene can also drive the camera (zoom/origin/
         // heading) from the same root via set(...) or root.zoomTo(...).
-        this.root = new RootNode({ width: 'fill', height: 'fill', group: 'stack' });
+        this.root = new RootNode({ width: 'fill', height: 'fill', flow: 'freeform' });
     }
 
     // ─── Viewport ─────────────────────────────────────────────────────────────
@@ -216,9 +216,9 @@ export class Scene {
 
     // ── Layout container (forward to the root) ──
 
-    /** The root's layout mode for children: `row` / `column` / `stack`. */
-    get group(): LayoutMode { return this.root.group; }
-    set group(value: LayoutMode) { this.root.group = value; }
+    /** The root's layout mode for children: `horizontal` / `vertical` / `freeform`. */
+    get flow(): FlowMode { return this.root.flow; }
+    set flow(value: FlowMode) { this.root.flow = value; }
 
     /** Spacing between the root's children along the layout's main axis. Set via `stage.set({ gap })`. */
     get gap(): GapSize { return this.root.gap; }

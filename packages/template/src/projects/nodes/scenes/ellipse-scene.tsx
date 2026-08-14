@@ -17,11 +17,11 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Ellipse',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 80,
             children: (
                 <>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Ellipse
                             ref={circleRef}
                             width={280}
@@ -29,7 +29,7 @@ export default createScene(function* (stage) {
                             fill={'#6990DD'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Ellipse
                             ref={ringRef}
                             width={280}

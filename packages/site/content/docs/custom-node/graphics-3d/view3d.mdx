@@ -52,7 +52,7 @@ So a `fill` paints beneath the 3D, and children paint over it as a heads-up disp
 
 ```tsx
 <View3D width={1200} height={700} fill="#8b1e3f" cornerRadius={48} graphics3D={scene}>
-  <Rect group="column" gap={8} padding={32} align="topLeft">
+  <Rect flow="vertical" gap={8} padding={32} align="topLeft">
     <Text text="Turntable" fontSize={48} fill="white" />
     <Text text="45 rpm" fontSize={28} fill="white/60" />
   </Rect>

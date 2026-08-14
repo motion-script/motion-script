@@ -27,11 +27,11 @@ export default createScene(function* (stage) {
     const cards: Reference<Rect>[] = BASES.map(() => createRef<Rect>());
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={28}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={28}>
             <Text text={'Fractal noise'} fontSize={44} fill={HEADING} width={'fill'} textAlign={'center'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={28}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={28}>
                 {BASES.map(({ basis, label, colors }, i) => (
-                    <Rect width={'fill'} height={'fill'} group={'column'} gap={12}>
+                    <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={12}>
                         <Rect
                             ref={cards[i]}
                             width={'fill'}

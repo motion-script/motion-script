@@ -34,7 +34,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: Fills.stripe({ gap: 48, strokeWidth: 24, angle: 45, color: "#151a24" }) });
 
     stage.add(
-        <Rect group={"column"} gap={48} align={"center"} width={"fill"} height={"fill"}>
+        <Rect flow={"vertical"} gap={48} align={"center"} width={"fill"} height={"fill"}>
             <Row gap={48} align={"center"}>
                 {/* No rectangular bleed: the ellipse's own path is the clip. */}
                 <Ellipse width={420} height={420} fill={() => scene("#e0533d")} />

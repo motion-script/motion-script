@@ -27,7 +27,7 @@ export default createScene(function* (stage) {
     const bottom = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={'Image Zoom'}
@@ -36,11 +36,11 @@ export default createScene(function* (stage) {
                 width={'fill'}
                 textAlign={'start'}
             />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40}>
                 <Rect
                     ref={top}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', anchor: 'topCenter' })}
                 >
                     <Text text={"'topCenter'"} fontSize={56} fill={'white'} />
@@ -48,7 +48,7 @@ export default createScene(function* (stage) {
                 <Rect
                     ref={centre}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill' })}
                 >
                     <Text text={"'center'"} fontSize={56} fill={'white'} />
@@ -56,7 +56,7 @@ export default createScene(function* (stage) {
                 <Rect
                     ref={bottom}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', anchor: 'bottomCenter' })}
                 >
                     <Text text={"'bottomCenter'"} fontSize={56} fill={'white'} />

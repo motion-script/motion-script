@@ -34,7 +34,7 @@ import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAncho
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
 import type { NodeClock } from "./node-clock";
-import { Matrix2D, multiply } from "@/attributes/layout/matrix2d";
+import { applyToPoint, invert, Matrix2D, multiply } from "@/attributes/layout/matrix2d";
 import { localMatrix, rotateOffset, worldAnchors } from "./node-transform";
 import {
     applyBackdropEffects as applyBackdropEffectsImpl,
@@ -52,7 +52,12 @@ import { lerpSizeInput } from "@/layout/tweens";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
 import { MeasureScope } from "@/render/measure-scope";
 import { nodePath } from "@/project/tree";
-import { layoutGroupChildren } from "@/layout/group-layout";
+import { layoutFlowChildren } from "@/layout/flow-layout";
+import {
+    ChildPositioning,
+    RelativeToParent,
+    resolvePositioning,
+} from "@/attributes/layout/positioning";
 
 /**
  * Stand-in for a node's reference rects when the context never reads them.
@@ -67,6 +72,7 @@ const NO_SPACE_RECTS: SpaceRects = {};
 export type { NodeClock } from "./node-clock";
 export type { WorldTransform } from "@/attributes/layout/world-transform";
 export type { PropInput, PropInputs } from "@/attributes/properties/inputs";
+export type { ChildPositioning, RelativeToParent } from "@/attributes/layout/positioning";
 
 export interface NodeMetadata<T extends Node> {
     /**
@@ -165,6 +171,20 @@ export interface NodeProps {
     padding: Insets;
     /** When true, content drawn outside this node's outline is clipped away (see {@link Node.clipSelf}). */
     clip: boolean;
+    /**
+     * Frame of reference this node lays its **children** out in. `'relative'`
+     * (default) positions them inside this node's own content box; `'absolute'`
+     * pins them to the stage instead, so their `x`/`y` are scene-root
+     * coordinates and this node's `flow`/`gap`/`padding` no longer place them.
+     * Overridden per child by {@link relativeToParent}.
+     */
+    childPositioning: ChildPositioning;
+    /**
+     * This node's own override of its parent's {@link childPositioning}.
+     * `'inherit'` (default) takes whatever the parent declared; `'relative'` and
+     * `'absolute'` opt this one node in or out regardless.
+     */
+    relativeToParent: RelativeToParent;
     /**
      * Child nodes. A single {@link Node}, or an arbitrarily-nested array of them
      * — the constructor flattens nesting (`.flat(Infinity)`), so `.map()` results
@@ -342,6 +362,16 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
     @property({ default: false }) declare clip: boolean;
+
+    // ---- Positioning frame ------------------------------------------------
+    // Plain string cells: both are discrete modes, so `to()` snaps them at the
+    // end of a tween rather than interpolating — there is nothing between
+    // "laid out by my parent" and "pinned to the stage".
+
+    /** Frame of reference this node's children are placed in. See {@link NodeProps.childPositioning}. */
+    @property({ default: 'relative' }) declare childPositioning: ChildPositioning;
+    /** This node's override of its parent's `childPositioning`. See {@link NodeProps.relativeToParent}. */
+    @property({ default: 'inherit' }) declare relativeToParent: RelativeToParent;
 
     @property({ default: 1 }) declare flex: number;
     /**
@@ -530,6 +560,27 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
+     * {@link flattenChildrenProp}, narrowed to the children this node will
+     * actually lay out — a stage-pinned child (see
+     * {@link NodeProps.childPositioning}) is neither measured against this box
+     * nor placed in its flow, so it can't inform the size defaults either.
+     *
+     * Reads the raw `childPositioning` off `props` rather than `this`, because
+     * {@link applyDefaultSize} runs from the constructor before the prop cells
+     * are applied. Each child's own `relativeToParent` *is* already resolved —
+     * JSX children are fully constructed before they arrive here.
+     */
+    protected static flowChildrenProp(
+        props: ({ children?: unknown; childPositioning?: unknown }) | undefined,
+    ): Node[] {
+        const raw = props?.childPositioning;
+        const parentDefault: ChildPositioning = raw === "absolute" ? "absolute" : "relative";
+        return Node.flattenChildrenProp(props).filter(
+            (c) => resolvePositioning(c.relativeToParent, parentDefault) === "relative",
+        );
+    }
+
+    /**
      * True if any of `children` requests `"fill"` on `axis` — the signal a
      * container's {@link applyDefaultSize} override uses to decide whether its
      * own hug default on that axis would strand the child with no space to
@@ -551,10 +602,13 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * text but fills when wrapping/autofit; `Path`/`RichText` always hug;
      * `FlexNode` always hugs) override this — typically a one-line replacement
      * — instead of duplicating the children-check in their constructor.
+     *
+     * "Given children" means children in this node's *flow*: a container holding
+     * nothing but stage-pinned children has no content of its own to shrink-wrap,
+     * so it defaults like an empty one.
      */
     protected applyDefaultSize(props?: NodeConfig<any, P>): void {
-        const childProp = props ? (props as any).children : undefined;
-        const hasChildren = Array.isArray(childProp) ? childProp.length > 0 : !!childProp;
+        const hasChildren = Node.flowChildrenProp(props).length > 0;
         const defaultSize = hasChildren ? "hug" : "fill";
         if (!props || props.width === undefined) this.applyProp("width", defaultSize, { tween: lerpSizeInput });
         if (!props || props.height === undefined) this.applyProp("height", defaultSize, { tween: lerpSizeInput });
@@ -1471,7 +1525,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * constructor(props?) {
      *   super(props);
-     *   this.add(<Rect ref={this.rowRef} group="row">{…}</Rect>);
+     *   this.add(<Rect ref={this.rowRef} flow="horizontal">{…}</Rect>);
      * }
      */
     add(child: NodeChildren): void {
@@ -1882,12 +1936,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
 
     /**
      * Record this node's allocated bounds without touching children. Used by
-     * subclasses that run their own child-layout pass (e.g. `Rect`'s flex/stack)
+     * subclasses that run their own child-layout pass (e.g. `Rect`'s flex/freeform)
      * and so skip {@link layoutChildren}.
      *
      * Compared field by field first, because `Signal.set`'s own `Object.is` guard
      * can never fire here: every caller builds a fresh object literal
-     * (`layout/group-layout.ts`, `group-engine.ts`, `layoutFlex`, `flex-node.ts`,
+     * (`layout/flow-layout.ts`, `flow-engine.ts`, `layoutFlex`, `flex-node.ts`,
      * `grid-node.ts`, `line-grid-node.ts`, `root-node.ts`), so identity always
      * differs — including on every frame of a node that is simply sitting still.
      * Without this guard every node reports a changed layout on every frame, and
@@ -1911,32 +1965,154 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         this._layoutRect.set(rect);
     }
 
+    // ---- Positioning frame ------------------------------------------------
+    // A node is normally positioned by its parent. `childPositioning` /
+    // `relativeToParent` let a subtree opt out of that and be placed against the
+    // stage instead — see `attributes/layout/positioning.ts` for the vocabulary.
+    // Everything below is the layout half of that: which children a container
+    // still owns, and where the ones it doesn't actually go.
+
     /**
-     * Default layout: record `rect`, then stack-layout children (see
+     * How this node is placed inside its parent, with `'inherit'` resolved:
+     * `'relative'` (the parent lays it out) or `'absolute'` (it is pinned to the
+     * stage). A root node has no parent to be absolute against, so it is always
+     * `'relative'`.
+     */
+    get positioning(): ChildPositioning {
+        if (!this._parent) return "relative";
+        return resolvePositioning(this.relativeToParent, this._parent.childPositioning);
+    }
+
+    /**
+     * The children this node lays out itself — everything except the stage-pinned
+     * ones. Every measure and layout pass in a container iterates *this*, not
+     * `children`: an absolute child consumes no gap, takes no flex share, and
+     * never contributes to a `hug` size.
+     *
+     * Returns the live array untouched in the common case (nothing absolute), so
+     * an ordinary tree allocates nothing per pass.
+     *
+     * Public so the shared {@link FlowLayout} engine can read it through the
+     * `FlowHost` interface, the same way {@link Rect.effectivePadding} is.
+     */
+    flowChildren(): Node[] {
+        const children = this._children;
+        if (this.childPositioning === "relative") {
+            // Only an explicit per-child override can leave the flow here, and
+            // that is rare enough to be worth checking for before allocating.
+            let i = 0;
+            for (; i < children.length; i++) {
+                if (children[i].relativeToParent === "absolute") break;
+            }
+            if (i === children.length) return children;
+        }
+        return children.filter((c) => c.positioning === "relative");
+    }
+
+    /**
+     * Measure and place this node's stage-pinned children (see
+     * {@link NodeProps.childPositioning}).
+     *
+     * Each one is measured against the **stage's** content box — so `'fill'`
+     * means the whole scene, not this node — and given a layout cell whose origin
+     * is the stage origin expressed in this node's own child space. Its `x`/`y`
+     * then read as plain scene coordinates: `x: 100` is 100px right of stage
+     * centre no matter how deeply it is nested.
+     *
+     * The child stays *inside* this node's render scope, so ancestor `opacity`,
+     * `blend`, `clip`, `effects`, rotation and scale still compose onto it — what
+     * changes is where its box is anchored, not who draws it.
+     *
+     * Every container calls this from its own `layout`, after its flow pass —
+     * including the shared {@link FlowLayout} engine through the `FlowHost`
+     * interface, which is why this is public rather than protected.
+     */
+    layoutAbsoluteChildren(scope: MeasureScope): void {
+        const children = this._children;
+        // Hot path: the overwhelmingly common tree has nothing pinned at all.
+        let any = false;
+        for (let i = 0; i < children.length; i++) {
+            if (children[i].positioning === "absolute") { any = true; break; }
+        }
+        if (!any) return;
+
+        const stage = this.stage();
+        const stageRect = stage.layoutRect;
+        const stagePad = stage.padding as InsetsResolved;
+        const constraints: SizeConstraints = {
+            maxWidth: Math.max(0, stageRect.width - stagePad.left - stagePad.right),
+            maxHeight: Math.max(0, stageRect.height - stagePad.top - stagePad.bottom),
+        };
+
+        const origin = this.stageOriginLocal(stage);
+        for (const child of children) {
+            if (child.positioning !== "absolute") continue;
+            const size = child.measure(constraints, scope);
+            child.layout(
+                {
+                    x: origin.x,
+                    y: origin.y,
+                    width: size.width ?? 0,
+                    height: size.height ?? 0,
+                },
+                scope,
+            );
+        }
+    }
+
+    /** The top of this node's live parent chain — the scene root it hangs under. */
+    private stage(): Node {
+        let node: Node = this;
+        while (node._parent) node = node._parent;
+        return node;
+    }
+
+    /**
+     * The stage's origin, expressed in this node's child space (canvas y-down,
+     * the space a `layoutRect` lives in). Handing that to a child as its layout
+     * cell is what makes the child's own `x`/`y` scene coordinates.
+     *
+     * Computed by mapping the stage origin out to world space and back in through
+     * the inverse of this node's world matrix — so it cancels every ancestor's
+     * translation, and stays correct when an ancestor is rotated or scaled. Falls
+     * back to this node's own origin if the chain collapses the plane (a `scale`
+     * of 0 has no inverse), which is the only case with no meaningful answer.
+     */
+    private stageOriginLocal(stage: Node): Vector2 {
+        if (stage === this) return { x: 0, y: 0 };
+        const inverse = invert(this.worldMatrix());
+        if (!inverse) return { x: 0, y: 0 };
+        return applyToPoint(inverse, applyToPoint(stage.worldMatrix(), { x: 0, y: 0 }));
+    }
+
+    /**
+     * Default layout: record `rect`, then freeform-layout children (see
      * {@link layoutChildren}). This is what makes a plain `Node` — and any
      * `ShapeNode` leaf (`Ellipse`, `Polygon`, …) that doesn't override
      * `layout` — able to nest children out of the box, the same way `Image`
      * (via `Rect`) does, just with simple centered stacking instead of
-     * flex/stack. Subclasses with their own child-layout (`Rect`,
+     * flex/freeform. Subclasses with their own child-layout (`Rect`,
      * `MaskGroup`, `Camera`, `BooleanGroup`) override this and call
-     * {@link setLayoutRect} instead, so children aren't laid out twice.
+     * {@link setLayoutRect} instead, so children aren't laid out twice — and call
+     * {@link layoutAbsoluteChildren} themselves.
      */
     layout(rect: BoxBounds, scope: MeasureScope): void {
         this.setLayoutRect(rect);
         this.layoutChildren(rect, scope);
+        this.layoutAbsoluteChildren(scope);
     }
 
     /**
-     * Stack-layout this node's children, centered within `rect`'s content area:
-     * each child is measured against the padded inner box and given a
+     * Freeform-layout this node's flow children, centered within `rect`'s content
+     * area: each child is measured against the padded inner box and given a
      * `BoxBounds` centered on it (sized to its own measured size, capped to the
      * content area), offsetting from center via its own `x`/`y`. Called by the
      * default {@link layout}; nodes that run their own child-layout (`Rect`'s
-     * flex/stack, `Camera`'s viewport, …) override `layout` instead and don't
+     * flex/freeform, `Camera`'s viewport, …) override `layout` instead and don't
      * call this.
      */
     protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
-        layoutGroupChildren(this._children, rect, scope, this.padding as InsetsResolved);
+        layoutFlowChildren(this.flowChildren(), rect, scope, this.padding as InsetsResolved);
     }
 
     /**
@@ -1948,9 +2124,13 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      *
      * This is what lets a plain {@link Node} — and any {@link ShapeNode} leaf
      * (`Ellipse`, `Polygon`, `Camera`, …) that doesn't override `measure` — hug
-     * its children out of the box, matching how `Rect`'s `"stack"` mode measures
-     * rather than collapsing to 0 (which resolving `"hug"` against a content size
-     * of `0` used to do, so a hugging non-`Rect` container rendered nothing).
+     * its children out of the box, matching how `Rect`'s `"freeform"` mode
+     * measures rather than collapsing to 0 (which resolving `"hug"` against a
+     * content size of `0` used to do, so a hugging non-`Rect` container rendered
+     * nothing).
+     *
+     * Only flow children are measured: a stage-pinned child is sized against the
+     * stage, so hugging it would shrink-wrap a box this node never contains.
      */
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
         this.constraints = constraints;
@@ -1967,7 +2147,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             return this._measuredSize;
         }
 
-        // Hug at least one axis: measure children (stack-style) to a content
+        // Hug at least one axis: measure children (freeform-style) to a content
         // size. A non-hug axis gives children its resolved size to measure
         // against; a hug axis exposes the full available space. Padding insets
         // the area children see and is added back onto the hugged size.
@@ -1980,7 +2160,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         const childConstraints: SizeConstraints = { maxWidth: innerW, maxHeight: innerH };
         let hugInnerW = 0;
         let hugInnerH = 0;
-        for (const child of this._children) {
+        for (const child of this.flowChildren()) {
             const size = child.measure(childConstraints, scope);
             if ((size.width ?? 0) > hugInnerW) hugInnerW = size.width ?? 0;
             if ((size.height ?? 0) > hugInnerH) hugInnerH = size.height ?? 0;

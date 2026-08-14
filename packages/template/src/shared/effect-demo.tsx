@@ -131,7 +131,7 @@ export interface SampleRowOptions {
 function cell(kind: SampleKind, effects: EffectChain, options: SampleRowOptions, ref?: Reference<any>) {
     const { style = FULL_SAMPLE, lens = false } = options;
     return (
-        <Rect width={'fill'} height={'fill'} group={'stack'} clip={true} cornerRadius={16} fill={CARD}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} clip={true} cornerRadius={16} fill={CARD}>
             {lens
                 ? sample(kind, new EffectChain(), UNDER_LENS)
                 : sample(kind, effects, style, ref)}
@@ -147,8 +147,8 @@ function cell(kind: SampleKind, effects: EffectChain, options: SampleRowOptions,
 export function sampleRow(caption: string, options: SampleRowOptions = {}) {
     const effects = options.effects ?? new EffectChain();
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={10}>
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={28}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={10}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={28}>
                 {SAMPLES.map((kind, i) => cell(kind, effects, options, options.refs?.[i]))}
             </Rect>
             <Text text={caption} fontSize={30} fill={HEADING} width={'fill'} textAlign={'center'} />
@@ -159,7 +159,7 @@ export function sampleRow(caption: string, options: SampleRowOptions = {}) {
 /** The labelled frame the {@link sampleRow}s sit in. */
 export function sampleGrid(label: string, rows: any[]) {
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={48} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={48} gap={24}>
             <Text text={label} fontSize={44} fill={HEADING} width={'fill'} textAlign={'center'} />
             {rows}
         </Rect>

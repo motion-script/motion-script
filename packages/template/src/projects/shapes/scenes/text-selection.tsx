@@ -11,7 +11,7 @@ const BLUE = '#6990DD';
  * reshaping), plus two overlapping selections animated in parallel.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: BG, group: 'column', gap: 60, padding: 80 });
+        stage.set({ fill: BG, flow: 'vertical', gap: 60, padding: 80 });
 
         const find = createRef<Text>();
         const word = createRef<Text>();

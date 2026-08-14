@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const label = createRef<Text>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Text
                 ref={label}
                 text={'EDGE'}

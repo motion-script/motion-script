@@ -3,7 +3,7 @@ import { createScene, createRef, Grid, Rect, Ellipse, Polygon, Polygram, Path, L
 
 
 export default createScene(function* (stage) {
-    stage.set({ fill: "#e8c584", padding: 80, group: 'row', gap: 20 });
+    stage.set({ fill: "#e8c584", padding: 80, flow: 'horizontal', gap: 20 });
 
     const fillRef = createRef<Polygon>();
     const w = 400;

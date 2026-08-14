@@ -3,7 +3,7 @@ import { createScene, createRef, Rect, easeInOut, parallel, Row, wait } from "mo
 import { layoutCard, tile } from "./layout-card";
 
 /**
- * Demonstrates `group="column"`: children stack top-to-bottom along the main
+ * Demonstrates `flow="vertical"`: children stack top-to-bottom along the main
  * axis, separated by `gap`. The tiles grow their height in sequence so you can
  * watch the column reflow — siblings push down to make room as each one
  * expands, the defining behaviour of a vertical flex container.
@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
 
     const container = createRef<Rect>();
     stage.add(
-        <Rect ref={container} group="row" height={400} padding={48} gap={48} stroke={{ weight: 4, fill: '#FFFFFF' }}>
+        <Rect ref={container} flow="horizontal" height={400} padding={48} gap={48} stroke={{ weight: 4, fill: '#FFFFFF' }}>
             <Rect width={400} fill="#6990DD" />
             <Rect fill="#E8617C" />
             <Rect fill="#E8617C" flex={2} />

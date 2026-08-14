@@ -26,7 +26,7 @@ export default createScene(function* (stage) {
     const at = createSignal<number | null>(2);
 
     const card = (label: string, note: string, fill: Fill | (() => Fill)) => (
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={12}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={12}>
             <Text text={label} fontSize={30} fill={HEADING} width={'fill'} textAlign={'center'} />
             <Text text={note} fontSize={22} fill={'gray'} width={'fill'} textAlign={'center'} />
             <Rect width={'fill'} height={'fill'} cornerRadius={24} fill={fill} />
@@ -34,9 +34,9 @@ export default createScene(function* (stage) {
     );
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={28}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={28}>
             <Text fontFamily={'Pixelify Sans'} text={'Video: timestamp'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={32}>
                 {card('derived', 'plays on its own',
                     Fills.video(CLIP, { fit: 'fill' }))}
                 {card('playing: false', 'holds the first frame',

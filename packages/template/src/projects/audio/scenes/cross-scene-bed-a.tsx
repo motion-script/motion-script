@@ -9,14 +9,14 @@ import { createScene, createRef, Text, Rect, AudioFilters, fadeIn, easeInOut, wa
  * ends — start once, let it run. A `fadeIn` gives it a smooth entrance.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
+        stage.set({ fill: 'bg', padding: 80, flow: 'vertical', gap: 40 });
 
         const bar = createRef<Rect>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={40}>
                 <Text fontFamily={'Pixelify Sans'} text={'Cross-scene bed — scene A'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
+                <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} flow={'horizontal'} align={{ x: -1, y: 0 }}>
                     <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
                 </Rect>
             </Rect>

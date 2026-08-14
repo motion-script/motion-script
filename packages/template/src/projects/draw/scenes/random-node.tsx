@@ -33,9 +33,9 @@ export default createScene(function* (stage) {
     // Seeded grid: each cell gets a distinct seed (its flat index), so the whole
     // grid is varied but fully deterministic.
     const seededGrid = (
-        <Rect group={"column"} gap={16} align={"center"}>
+        <Rect flow={"vertical"} gap={16} align={"center"}>
             {Array.from({ length: ROWS }, (_, r) => (
-                <Rect group={"row"} gap={16}>
+                <Rect flow={"horizontal"} gap={16}>
                     {Array.from({ length: COLS }, (_, c) => (
                         <RandomSwatch seed={r * COLS + c} width={CELL} height={CELL} />
                     ))}
@@ -46,7 +46,7 @@ export default createScene(function* (stage) {
 
     // Unseeded column: no seed prop → all share the default seed 0 → identical.
     const unseededColumn = (
-        <Rect ref={driftRef} group={"column"} gap={16} align={"center"}>
+        <Rect ref={driftRef} flow={"vertical"} gap={16} align={"center"}>
             {Array.from({ length: ROWS }, () => (
                 <RandomSwatch width={CELL} height={CELL} />
             ))}
@@ -54,9 +54,9 @@ export default createScene(function* (stage) {
     );
 
     stage.add(
-        <Rect width={"fill"} height={"fill"} group={"column"} padding={80} gap={32}>
+        <Rect width={"fill"} height={"fill"} flow={"vertical"} padding={80} gap={32}>
             <Text fontFamily={"Pixelify Sans"} text={"Node.random — per-node seeded draws"} fontSize={72} fill={"gray"} />
-            <Rect width={"fill"} height={"fill"} group={"row"} gap={64} align={"center"}>
+            <Rect width={"fill"} height={"fill"} flow={"horizontal"} gap={64} align={"center"}>
                 {unseededColumn}
                 {seededGrid}
             </Rect>

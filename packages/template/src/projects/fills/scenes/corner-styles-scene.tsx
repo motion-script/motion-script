@@ -10,7 +10,7 @@ export default createScene(function* (stage) {
         stage.set({ fill: 'bg' });
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={48} padding={64} align={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={48} padding={64} align={{ x: 0, y: 0 }}>
                 <Rect width={240} height={240} fill={'tomato'} cornerRadius={48} />
                 <Rect width={240} height={240} fill={'tomato'} cornerRadius={48} cornerStyle={'angled'} />
                 <Polygon sides={6} width={240} height={240} fill={'#6990DD'} cornerRadius={32} />

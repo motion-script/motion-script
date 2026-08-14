@@ -14,7 +14,7 @@ const BLUE = '#6990DD';
  * animated independently to show the selector picked the intended glyphs.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: BG, group: 'column', gap: 44, padding: 80 });
+    stage.set({ fill: BG, flow: 'vertical', gap: 44, padding: 80 });
 
     const find = createRef<Text>();
     const word = createRef<Text>();

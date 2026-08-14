@@ -18,7 +18,7 @@ import { createScene, Rect, Text, Effects } from 'motion-script';
 export default createScene(function* (stage) {
   stage.add(
     <Rect
-      group="column"
+      flow="vertical"
       gap={16}
       padding={32}
       fill="#1e293b"
@@ -47,7 +47,7 @@ export default createScene(function* (stage) {
   stage.add(
     <Rect
       ref={card}
-      group="column"
+      flow="vertical"
       gap={16}
       padding={32}
       fill="#1e293b"

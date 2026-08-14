@@ -4,8 +4,8 @@ import { createScene, createRef, Rect, Text, easeInOut, wait } from "@motion-scr
 import { tile } from "./layout-card";
 
 /**
- * Demonstrates animating the `group` prop itself: a single container morphs
- * `row → stack → column` while its children stay put. Because `Rect.group`
+ * Demonstrates animating the `flow` prop itself: a single container morphs
+ * `horizontal → freeform → vertical` while its children stay put. Because `Rect.flow`
  * carries a closure tween that blends the from/to layouts (see `applyGroupProp`
  * in `rect-node.ts`), the tiles interpolate smoothly between the two
  * arrangements — sliding from a horizontal line, into an overlapping pile, then
@@ -22,12 +22,12 @@ export default createScene(function* (stage) {
     const colors = ['#6990DD', '#E8617C', '#F5C26B'];
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Rect
                 ref={container}
                 width={'fill'} height={'fill'}
                 fill={'card'} cornerRadius={32} clip={true}
-                group={'row'} gap={48} padding={64}
+                flow={'horizontal'} gap={48} padding={64}
             >
                 {colors.map((color, i) =>
                     tile({ color, width: 240, height: 240, label: `${i + 1}` })
@@ -40,11 +40,11 @@ export default createScene(function* (stage) {
 
     yield* wait(hold);
     // row → stack: the horizontal line collapses into a centered pile.
-    yield* container().to({ group: 'stack' }, 2, easeInOut('quad'));
+    yield* container().to({ flow: 'freeform' }, 2, easeInOut('quad'));
     yield* wait(hold);
     // stack → column: the pile fans out downward into a vertical stack.
-    yield* container().to({ group: 'column' }, 2, easeInOut('quad'));
+    yield* container().to({ flow: 'vertical' }, 2, easeInOut('quad'));
     yield* wait(hold);
     // column → row: close the loop back to where we started.
-    yield* container().to({ group: 'row' }, 2, easeInOut('quad'));
+    yield* container().to({ flow: 'horizontal' }, 2, easeInOut('quad'));
 });

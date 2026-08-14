@@ -17,9 +17,9 @@ export default createScene(function* (stage) {
     const textRef = createRef<Text>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text fontFamily={'Pixelify Sans'} text={'Autofit + Wrap'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} fill={'card'} cornerRadius={32} group={'stack'} padding={80}>
+            <Rect width={'fill'} height={'fill'} fill={'card'} cornerRadius={32} flow={'freeform'} padding={80}>
                 <Rect ref={boxRef} width={900} height={500} cornerRadius={20} stroke={{ fill: 'orange', weight: 6 }} padding={40}>
                     <Text
                         ref={textRef}

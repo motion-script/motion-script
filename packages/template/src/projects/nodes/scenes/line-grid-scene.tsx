@@ -17,7 +17,7 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'LineGrid',
-                stage: 'row',
+                stage: 'horizontal',
                 gap: 64,
                 padding: 64,
                 children: (

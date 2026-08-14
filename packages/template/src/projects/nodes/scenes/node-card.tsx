@@ -10,13 +10,13 @@ import { Node, Rect, Text } from "motion-script";
 export function nodeCard(opts: {
     label: string;
     children: any;
-    stage?: 'stack' | 'row' | 'column';
+    stage?: 'freeform' | 'horizontal' | 'vertical';
     gap?: number;
     padding?: number;
 }): Node {
-    const { label, children, stage = 'stack', gap = 0, padding = 80 } = opts;
+    const { label, children, stage = 'freeform', gap = 0, padding = 80 } = opts;
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={padding} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={padding} gap={24}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={label}
@@ -31,7 +31,7 @@ export function nodeCard(opts: {
                 fill={'card'}
                 cornerRadius={32}
                 clip={true}
-                group={stage}
+                flow={stage}
                 gap={gap}
                 padding={padding}
             >

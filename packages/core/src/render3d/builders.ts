@@ -125,7 +125,7 @@ export const Tex = {
      *   const scope = new Graphics().line({ points: trace(phase()) }).stroke(…);
      *   g3.plane({ map: Tex.surface(scope, 1024, 640) });
      *
-     *   const stats = <Rect group="column" padding={48}><Text text="CPU" /></Rect>;
+     *   const stats = <Rect flow="vertical" padding={48}><Text text="CPU" /></Rect>;
      *   g3.plane({ map: Tex.surface(stats, 1024, 640) });
      *
      * `width`/`height` are the buffer's resolution. **Hoist the source** rather

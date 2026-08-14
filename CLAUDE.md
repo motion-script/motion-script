@@ -238,9 +238,9 @@ class BadgeGroup extends Node<BadgeGroupProps> {
         super(props);
         const labels = props?.labels ?? [];
         this.add(
-            <Rect ref={this.rowRef} group="row" gap={32}>
+            <Rect ref={this.rowRef} flow="horizontal" gap={32}>
                 {labels.map(label => (
-                    <Rect width={180} height={180} cornerRadius={24} group="stack">
+                    <Rect width={180} height={180} cornerRadius={24} flow="freeform">
                         <Text text={label} fontSize={56} />
                     </Rect>
                 ))}
@@ -519,7 +519,7 @@ subtree for anything wanting real layout, shaped `Text` or a loaded `Image` — 
 
 ```tsx
 const scope = new Graphics().line({ points: trace(phase()) }).stroke({ weight: 6 });
-const stats = <Rect group="column" padding={48}><Text text="CPU" fontSize={64} /></Rect>;
+const stats = <Rect flow="vertical" padding={48}><Text text="CPU" fontSize={64} /></Rect>;
 
 <View3D graphics3D={() => new Graphics3D()
     .plane({ map: Tex.surface(scope, 1024, 640) })

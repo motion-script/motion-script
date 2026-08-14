@@ -16,11 +16,11 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'Polygon',
-                stage: 'row',
+                stage: 'horizontal',
                 gap: 80,
                 children: (
                     <>
-                        <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                        <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                             <Polygon
                                 ref={leftRef}
                                 sides={3}
@@ -29,7 +29,7 @@ export default createScene(function* (stage) {
                                 fill={'#6990DD'}
                             />
                         </Rect>
-                        <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                        <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                             <Polygon
                                 ref={rightRef}
                                 sides={5}

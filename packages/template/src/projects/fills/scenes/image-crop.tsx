@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
     const live = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={'Image Crop'}
@@ -32,17 +32,17 @@ export default createScene(function* (stage) {
                 width={'fill'}
                 textAlign={'start'}
             />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40}>
                 <Rect
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill' })}
                 >
                     <Text text={'no crop'} fontSize={56} fill={'white'} />
                 </Rect>
                 <Rect
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', crop: { horizontal: 0.3 } })}
                 >
                     <Text text={'crop sides 30%'} fontSize={56} fill={'white'} />
@@ -50,7 +50,7 @@ export default createScene(function* (stage) {
                 <Rect
                     ref={live}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', crop: { left: 0.42, top: 0.1, bottom: 0.28 } })}
                 >
                     <Text text={'per-side, opening'} fontSize={56} fill={'white'} />

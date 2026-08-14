@@ -3,7 +3,7 @@ import { createScene, createRef, Rect, easeInOut, parallel } from "motion-script
 import { layoutCard, tile } from "./layout-card";
 
 /**
- * Demonstrates `group="column"`: children stack top-to-bottom along the main
+ * Demonstrates `flow="vertical"`: children stack top-to-bottom along the main
  * axis, separated by `gap`. The tiles grow their height in sequence so you can
  * watch the column reflow — siblings push down to make room as each one
  * expands, the defining behaviour of a vertical flex container.
@@ -16,8 +16,8 @@ export default createScene(function* (stage) {
 
     stage.add(
         layoutCard({
-            label: 'group: column',
-            stage: 'column',
+            label: 'flow: vertical',
+            stage: 'vertical',
             gap: 48,
             children: refs.map((ref, i) =>
                 tile({ ref, color: colors[i], width: 'fill', height: 140, label: `${i + 1}` })

@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
         stage.add(
             nodeCard({
                 label: 'Row',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     <Row ref={rowRef} gap={24} align={{ x: 0, y: 0 }}>
                         {tileRefs.map((ref, i) => (
@@ -29,7 +29,7 @@ export default createScene(function* (stage) {
                                 height={180}
                                 fill={colors[i]}
                                 cornerRadius={20}
-                                group={'stack'}
+                                flow={'freeform'}
                             >
                                 <Text
                                     fontFamily={'Pixelify Sans'}

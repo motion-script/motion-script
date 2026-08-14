@@ -14,7 +14,7 @@ import { InsetsResolved } from "@/attributes/layout/insets";
 import { MeasureScope } from "@/render/measure-scope";
 import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
-import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
+import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
 import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
@@ -36,8 +36,8 @@ export interface RootProps extends NodeProps {
      * laid across the whole scene, e.g. a VHS-grain image or video.
      */
     overlay: Fill;
-    /** Layout mode for children: flex `row` / `column`, or overlapping `stack`. */
-    group: LayoutMode;
+    /** Layout mode for children: flex `horizontal` / `vertical`, or overlapping `freeform`. */
+    flow: FlowMode;
     /** Spacing between children along the layout's main axis. */
     gap: GapSize;
     /**
@@ -58,22 +58,25 @@ export interface RootProps extends NodeProps {
  * The single root container every {@link Scene} builds into.
  *
  * A `RootNode` is a plain {@link Node} that doubles as the scene's layout frame
- * and camera. It lays its children out (flex `row`/`column` or `stack`, with
- * `gap`, `align`, `padding`) and paints a scene-wide background (`fill`) and
- * `overlay` — *and* views those laid-out children through a viewport transform
- * (`zoom`, `lookAt`, `heading`).
+ * and camera. It lays its children out (flex `horizontal`/`vertical` or
+ * `freeform`, with `gap`, `align`, `padding`) and paints a scene-wide background
+ * (`fill`) and `overlay` — *and* views those laid-out children through a viewport
+ * transform (`zoom`, `lookAt`, `heading`).
  *
  * Unlike a {@link Rect} it is **not a shape**: it has no stroke, shadow, corner,
  * or `start`/`end` props. It carries only the scene-wide concerns — background
- * paint, child layout, and camera — so `stage.fill`, `stage.group`, etc. read
+ * paint, child layout, and camera — so `stage.fill`, `stage.flow`, etc. read
  * the root directly without exposing per-shape geometry the scene root never has.
  *
- * The flex/stack child layout (including the cross-mode `group` blend) is the
- * same {@link GroupLayout} engine {@link Rect} uses; this node implements
- * {@link GroupHost} so the engine can read it.
+ * It is also the frame absolutely-positioned nodes anywhere in the tree are
+ * pinned to — see {@link NodeProps.childPositioning}.
+ *
+ * The flex/freeform child layout (including the cross-mode `flow` blend) is the
+ * same {@link FlowLayout} engine {@link Rect} uses; this node implements
+ * {@link FlowHost} so the engine can read it.
  */
 /** @internal */
-export class RootNode extends Node<RootProps> implements GroupHost {
+export class RootNode extends Node<RootProps> implements FlowHost {
 
     // ---- Background paint -------------------------------------------------
     // Author-facing paint props. Like Rect, the declared type is the loose
@@ -90,9 +93,9 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
     @anchorProperty()
     declare align: Anchor;
-    // `group` has a closure-based tween (the engine captures the in-flight
+    // `flow` has a closure-based tween (the engine captures the in-flight
     // blend), so it's applied via applyProp rather than a static @property.
-    declare group: LayoutMode;
+    declare flow: FlowMode;
 
     // ---- Camera -----------------------------------------------------------
     /** Camera magnification factor (default: 1). */
@@ -102,20 +105,20 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     /** Camera view rotation in degrees (default: 0). */
     @property({ default: 0 }) declare heading: number;
 
-    // Flex/stack child layout (including the `group` blend) lives in the shared
+    // Flex/freeform child layout (including the `flow` blend) lives in the shared
     // engine so Rect and RootNode don't each carry a copy.
-    private readonly _groupLayout = new GroupLayout(this);
+    private readonly _flowLayout = new FlowLayout(this);
 
     constructor(props: NodeConfig<RootNode, RootProps>) {
         super(props);
-        this.applyGroupProp(props.group ?? "stack");
+        this.applyFlowProp(props.flow ?? "freeform");
     }
 
-    // group's tween captures the engine's in-flight blend, so it can't be a
+    // flow's tween captures the engine's in-flight blend, so it can't be a
     // static @property decorator. Shared by the constructor and reinitProps so a
-    // disposed-then-reused root keeps the same binding. Defaults to "stack".
-    private applyGroupProp(initial: LayoutMode | (() => LayoutMode)): void {
-        this.applyProp<LayoutMode>("group", initial, { tween: this._groupLayout.groupTween });
+    // disposed-then-reused root keeps the same binding. Defaults to "freeform".
+    private applyFlowProp(initial: FlowMode | (() => FlowMode)): void {
+        this.applyProp<FlowMode>("flow", initial, { tween: this._flowLayout.flowTween });
     }
 
     // Re-apply the constructor-specific prop defaults after the base class
@@ -124,10 +127,10 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     protected override reinitProps(force = false): void {
         if (this.__signals && !force) return;
         super.reinitProps(force);
-        this.applyGroupProp("stack");
+        this.applyFlowProp("freeform");
     }
 
-    // ---- GroupHost --------------------------------------------------------
+    // ---- FlowHost ---------------------------------------------------------
 
     // The root has no stroke, so effective padding is just the resolved padding.
     effectivePadding(): InsetsResolved {
@@ -193,16 +196,16 @@ export class RootNode extends Node<RootProps> implements GroupHost {
     }
 
     // ---- Measure / layout -------------------------------------------------
-    // Delegated to the shared GroupLayout engine, which reads this node through
-    // the GroupHost interface.
+    // Delegated to the shared FlowLayout engine, which reads this node through
+    // the FlowHost interface.
 
     override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
-        return this._groupLayout.measure(constraints, scope);
+        return this._flowLayout.measure(constraints, scope);
     }
 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         this.setLayoutRect(rect);
-        this._groupLayout.layout(rect, scope);
+        this._flowLayout.layout(rect, scope);
     }
 
     // ---- Drawing ----------------------------------------------------------
@@ -239,7 +242,7 @@ export class RootNode extends Node<RootProps> implements GroupHost {
 
     // ---- Rendering --------------------------------------------------------
 
-    // Children are laid out by the group engine; here we view that laid-out
+    // Children are laid out by the flow engine; here we view that laid-out
     // world through the camera viewport transform, the same way the Camera node
     // does. When the camera is at rest (zoom 1, no heading, origin at 0) this is
     // the identity, so a plain layout root pays nothing extra.

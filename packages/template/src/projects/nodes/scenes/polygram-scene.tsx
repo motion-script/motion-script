@@ -17,11 +17,11 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Polygram',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 80,
             children: (
                 <>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Polygram
                             ref={leftRef}
                             sides={5}
@@ -31,7 +31,7 @@ export default createScene(function* (stage) {
                             fill={'#F5C26B'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Polygram
                             ref={rightRef}
                             sides={6}

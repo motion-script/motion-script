@@ -67,11 +67,11 @@ export default createScene(function* (stage) {
     const cards: Reference<Rect>[] = CARDS.map(() => createRef<Rect>());
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={28}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={28}>
             <Text text={'Custom shader — aurora'} fontSize={44} fill={HEADING} width={'fill'} textAlign={'center'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={28}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={28}>
                 {CARDS.map(({ bands, label, lo, hi }, i) => (
-                    <Rect width={'fill'} height={'fill'} group={'column'} gap={12}>
+                    <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={12}>
                         <Rect
                             ref={cards[i]}
                             width={'fill'} height={'fill'} cornerRadius={16} clip={true}

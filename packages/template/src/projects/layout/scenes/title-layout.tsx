@@ -74,7 +74,7 @@ export function chapterPage(opts: ChapterPageOptions): SceneGenerator {
 
 
 
-        stage.add(<Rect ref={column} width={400} group={'column'} padding={20}  >
+        stage.add(<Rect ref={column} width={400} flow={'vertical'} padding={20}  >
 
             <Ellipse
                 ref={dot}

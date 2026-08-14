@@ -10,7 +10,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={card}
                 width={360}
@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
                 fill={'card'}
                 stroke={{ weight: 4, fill: 'primary' }}
                 overlay={Fills.noise({ color: '#000000', density: 0.6, opacity: 0 })}
-                group={'row'}
+                flow={'horizontal'}
                 gap={20}
                 padding={24}
                 align={{ x: 0, y: 0 }}

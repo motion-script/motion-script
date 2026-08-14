@@ -71,19 +71,19 @@ export default createScene(function* (stage) {
     const scale = createSignal(1);
 
     const cells = ANCHORS.map((anchor) => (
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }} fill={'card'} cornerRadius={12}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }} fill={'card'} cornerRadius={12}>
             <PivotText anchor={anchor} shapeRotation={rotation} shapeScale={scale} />
         </Rect>
     ));
 
     const rows = [0, 1, 2].map((r) => (
-        <Rect width={'fill'} height={'fill'} group={'row'} gap={20}>
+        <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={20}>
             {cells.slice(r * 3, r * 3 + 3)}
         </Rect>
     ));
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={24} gap={20}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={24} gap={20}>
             {rows}
         </Rect>,
     );

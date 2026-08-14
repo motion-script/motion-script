@@ -72,7 +72,7 @@ export default createScene(function* (stage) {
 
     // A row of bars, end-aligned (bottomCenter) so they stand on a baseline.
     const barRow = (refs: Reference<Rect>[]) => (
-        <Rect width={"fill"} height={"fill"} group={"row"} gap={10} align={"bottomCenter"}>
+        <Rect width={"fill"} height={"fill"} flow={"horizontal"} gap={10} align={"bottomCenter"}>
             {refs.map((ref, i) => bar(ref, i))}
         </Rect>
     );
@@ -80,10 +80,10 @@ export default createScene(function* (stage) {
     stage.add(
         layoutCard({
             label: "Random vs noise (seeded bar waves)",
-            stage: "column",
+            stage: "vertical",
             gap: 48,
             children: (
-                <Rect width={"fill"} height={"fill"} group={"column"} gap={48}>
+                <Rect width={"fill"} height={"fill"} flow={"vertical"} gap={48}>
                     {barRow(randomBars)}
                     {barRow(noiseBars)}
                 </Rect>

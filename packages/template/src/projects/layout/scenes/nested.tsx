@@ -23,22 +23,22 @@ export default createScene(function* (stage) {
         stage.add(
             layoutCard({
                 label: 'Nested layouts',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     // Outer column: header row on top, body row below.
-                    <Rect width={'fill'} height={'fill'} group={'column'} gap={32}>
+                    <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={32}>
                         {/* Header row: title hugging-left, badge pinned right. */}
-                        <Rect width={'fill'} group={'row'} gap={24} fill={'#161a21'} cornerRadius={24} padding={32}>
+                        <Rect width={'fill'} flow={'horizontal'} gap={24} fill={'#161a21'} cornerRadius={24} padding={32}>
                             <Text fontFamily={'Pixelify Sans'} text={'Dashboard'} fontSize={56} fill={'white'} width={'fill'} textAlign={'start'} />
-                            <Rect group={'stack'} fill={'primary'} cornerRadius={16} padding={24}>
+                            <Rect flow={'freeform'} fill={'primary'} cornerRadius={16} padding={24}>
                                 <Text fontFamily={'Pixelify Sans'} text={'PRO'} fontSize={40} fill={'bg'} />
                             </Rect>
                         </Rect>
                         {/* Body row: two flexed panels sharing the remaining height. */}
-                        <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
+                        <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={32}>
                             {tile({ ref: left, color: '#6990DD', width: 'fill', height: 'fill', flex: 1, label: 'A' })}
                             {/* Right panel is a nested column of stacked chips. */}
-                            <Rect ref={right} height={'fill'} width={'fill'} flex={1} group={'column'} gap={24} fill={'#E8617C'} cornerRadius={24} padding={32}>
+                            <Rect ref={right} height={'fill'} width={'fill'} flex={1} flow={'vertical'} gap={24} fill={'#E8617C'} cornerRadius={24} padding={32}>
                                 {tile({ color: '#161a21', width: 'fill', height: 'fill' })}
                                 {tile({ color: '#161a21', width: 'fill', height: 'fill' })}
                             </Rect>

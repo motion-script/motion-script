@@ -18,11 +18,11 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Path',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 64,
             children: (
                 <>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Path
                             ref={triRef}
                             data={'M 0 -100 L 87 50 L -87 50 Z'}
@@ -30,7 +30,7 @@ export default createScene(function* (stage) {
                             end={0}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Path
                             ref={waveRef}
                             data={'M -120 0 C -80 -80 -40 80 0 0 C 40 -80 80 80 120 0'}
@@ -38,7 +38,7 @@ export default createScene(function* (stage) {
                             end={0}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Path
                             ref={catRef}
                             fill={'blue'}

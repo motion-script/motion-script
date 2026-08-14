@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
         const pan = createRef<LineGrid>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={96} padding={96} align={{ x: 0, y: 0 }}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={96} padding={96} align={{ x: 0, y: 0 }}>
                 {/* subStroke omitted → defaults to `stroke` at 50% opacity. `origin`
                     pans the grid behind the fixed rect (tiles to stay full). */}
                 <LineGrid

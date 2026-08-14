@@ -19,11 +19,11 @@ export default createScene(function* (stage) {
         stage.add(
             layoutCard({
                 label: 'Rect with children (hug)',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     // No width/height: defaults to `hug`, so this wraps the row.
                     <Rect
-                        group={'row'} gap={32} padding={48}
+                        flow={'horizontal'} gap={32} padding={48}
                         fill={'#161a21'} stroke={{ weight: 4, fill: 'primary' }} cornerRadius={32}
                     >
                         {tile({ color: '#6990DD', width: 200, height: 200 })}

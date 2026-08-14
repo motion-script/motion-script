@@ -6,14 +6,14 @@ export default createScene(function* (stage) {
     stage.set({ fill: '#0d0f15' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={card}
                 width={360}
                 height={240}
                 cornerRadius={20}
                 fill={'#0d0f15'}
-                group={'stack'}
+                flow={'freeform'}
                 align={{ x: 0, y: 0 }}
                 effects={Effects.bloom({ threshold: 0.4, radius: 20, intensity: 0 })}
             >

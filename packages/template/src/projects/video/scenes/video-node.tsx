@@ -24,7 +24,7 @@ export default createScene(function* (stage) {
                 volume={0.8}
                 width={'fill'}
                 height={'fill'}
-                group={'column'}
+                flow={'vertical'}
                 padding={80}
                 align={{ x: -1, y: 1 }}
             >

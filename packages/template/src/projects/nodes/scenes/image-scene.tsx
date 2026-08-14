@@ -17,10 +17,10 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Image',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 48,
             children: fits.map((fit, i) => (
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={16} align={{ x: 0, y: 1 }}>
+                <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={16} align={{ x: 0, y: 1 }}>
                     <Image
                         ref={refs[i]}
                         src={'kingfisher.jpg'}

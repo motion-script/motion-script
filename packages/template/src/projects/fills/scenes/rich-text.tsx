@@ -10,9 +10,9 @@ export default createScene(function* (stage) {
         stage.set({ fill: 'bg' });
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={"Rich Text"} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={32} fill={'card'} padding={80}>
+                <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={32} fill={'card'} padding={80}>
                     <RichText
                         width={'fill'}
                         fontSize={40}

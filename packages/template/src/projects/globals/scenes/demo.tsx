@@ -5,12 +5,12 @@ import { createScene, createRef, Text, Rect, easeInOut, wait } from "motion-scri
  * and the background come from the project config, not from here.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: 'bg/70', padding: 120, group: 'column', gap: 40 });
+    stage.set({ fill: 'bg/70', padding: 120, flow: 'vertical', gap: 40 });
 
     const row = createRef<Rect>();
 
     stage.add(
-        <Rect ref={row} width={'fill'} height={'fill'} group={'row'} gap={40} align={'center'}>
+        <Rect ref={row} width={'fill'} height={'fill'} flow={'horizontal'} gap={40} align={'center'}>
             <Rect width={260} height={260} fill={'primary'} cornerRadius={32} />
             <Rect width={260} height={260} fill={'card'} cornerRadius={32} />
             <Rect width={260} height={260} fill={'primary/50'} cornerRadius={32} />

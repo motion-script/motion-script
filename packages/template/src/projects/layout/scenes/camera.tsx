@@ -4,7 +4,7 @@ import { createScene, createRef, Rect, parallel, Camera, LineGrid, Fills } from 
 import { layoutCard, tile } from "./layout-card";
 
 /**
- * Demonstrates `group="column"`: children stack top-to-bottom along the main
+ * Demonstrates `flow="vertical"`: children stack top-to-bottom along the main
  * axis, separated by `gap`. The tiles grow their height in sequence so you can
  * watch the column reflow — siblings push down to make room as each one
  * expands, the defining behaviour of a vertical flex container.

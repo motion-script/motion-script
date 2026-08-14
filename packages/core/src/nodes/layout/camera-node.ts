@@ -38,7 +38,7 @@ export interface CameraProps extends ShapeProps {
  * The camera's own layout rect is both the card and the viewport bounds; the
  * world is clipped to that rect so nothing spills outside the card.
  *
- * Unlike `Rect` it runs no flex/stack layout — children are laid out stack-style
+ * Unlike `Rect` it runs no flex/freeform layout — children are laid out freeform-style
  * (centered) and then viewed through the camera transform.
  */
 export class Camera extends ShapeNode<CameraProps> {
@@ -121,7 +121,7 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // ---- Layout -----------------------------------------------------------
 
-    // No flex/stack layout — the world (children) is stack-laid-out (centered)
+    // No flex/freeform layout — the world (children) is freeform-laid-out (centered)
     // by the base Node.layout default, then viewed through the camera.
 
     // No custom measure — the base `Node.measure` hugs children stack-style on a

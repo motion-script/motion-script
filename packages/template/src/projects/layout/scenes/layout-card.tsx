@@ -17,23 +17,23 @@ import { Node, Rect, Text, Reference } from "motion-script";
  * result (`{layoutCard(...)}`), exactly like the `cell()` helper in the
  * boolean-operators scene.
  *
- * `stage` is the `group` mode for the content rect — the layout being shown
+ * `stage` is the `flow` mode for the content rect — the layout being shown
  * off. `children` become that rect's children.
  */
 export function layoutCard(opts: {
     label: string;
-    stage?: "row" | "column" | "stack";
+    stage?: "horizontal" | "vertical" | "freeform";
     gap?: number;
     children: any;
 }): Node {
-    const { label, stage = "stack", gap = 0, children } = opts;
+    const { label, stage = "freeform", gap = 0, children } = opts;
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}  >
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}  >
             <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect
                 width={'fill'} height={'fill'} shadow={{ blur: 20, fill: 'white', }}
                 cornerRadius={32}
-                group={stage} gap={gap} padding={64}
+                flow={stage} gap={gap} padding={64}
             >
                 {children}
             </Rect>
@@ -41,7 +41,7 @@ export function layoutCard(opts: {
     );
 }
 
-/** A simple swatch tile used as flex/stack content across the layout demos. */
+/** A simple swatch tile used as flex/freeform content across the layout demos. */
 export function tile(opts: {
     ref?: Reference<Rect>;
     color?: string;
@@ -60,7 +60,7 @@ export function tile(opts: {
             ref={ref}
             width={width} height={height} flex={flex}
             fill={color} cornerRadius={cornerRadius}
-            group={'stack'}
+            flow={'freeform'}
         >
             {label !== undefined
                 ? <Text fontFamily={'Pixelify Sans'} text={label} fontSize={64} fill={'bg'} />

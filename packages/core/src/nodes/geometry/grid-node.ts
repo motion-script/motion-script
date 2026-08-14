@@ -13,7 +13,7 @@ import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { Node, NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 
@@ -133,7 +133,7 @@ export class Grid extends ShapeNode<GridProps> {
         const measure = this._cachedMeasure ?? this.computeMeasure(inner.width, innerHeight, scope);
         this._cachedMeasure = null;
 
-        const childNodes = this.children.filter((c): c is Node => c instanceof Node);
+        const childNodes = this.flowChildren();
         const bounds = layoutGrid(
             measure.placements,
             measure.colTrack,
@@ -147,10 +147,14 @@ export class Grid extends ShapeNode<GridProps> {
         for (let i = 0; i < childNodes.length; i++) {
             childNodes[i].layout(bounds[i], scope);
         }
+
+        // Stage-pinned children get no track of their own — they're placed
+        // against the scene root. See NodeProps.childPositioning.
+        this.layoutAbsoluteChildren(scope);
     }
 
     private computeMeasure(innerWidth: number, innerHeight: number | undefined, scope: MeasureScope): GridMeasureResult {
-        const childNodes = this.children.filter((c): c is Node => c instanceof Node);
+        const childNodes = this.flowChildren();
         const adapters: GridChild[] = childNodes.map((child) => ({
             column: child.column,
             row: child.row,

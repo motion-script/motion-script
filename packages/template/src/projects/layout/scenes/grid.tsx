@@ -5,7 +5,7 @@ import { layoutCard, tile } from "./layout-card";
 
 /**
  * Demonstrates building a grid from nested flex containers. There's no
- * dedicated `grid` group mode — a grid is just a `column` of `row`s, where
+ * dedicated `grid` flow mode — a grid is just a `vertical` run of `horizontal` ones, where
  * every cell is a `flex` tile so the columns stay aligned and the rows share
  * height evenly. This is the canonical way to lay out a uniform matrix of
  * elements with the flex primitives.
@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
         const cells: { ref: ReturnType<typeof createRef<Rect>>; diag: number }[] = [];
 
         const rows = Array.from({ length: size }, (_, r) => (
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={32}>
                 {Array.from({ length: size }, (_, c) => {
                     const ref = createRef<Rect>();
                     cells.push({ ref, diag: r + c });
@@ -40,7 +40,7 @@ export default createScene(function* (stage) {
         stage.add(
             layoutCard({
                 label: 'Grid (column of rows)',
-                stage: 'column',
+                stage: 'vertical',
                 gap: 32,
                 children: rows,
             })

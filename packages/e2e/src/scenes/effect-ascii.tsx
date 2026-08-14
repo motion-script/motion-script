@@ -19,8 +19,8 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const photo = createRef<Image>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={20} align={{ x: 0, y: 0 }}>
-            <Rect width={480} height={300} cornerRadius={20} clip={true} group={'stack'}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={20} align={{ x: 0, y: 0 }}>
+            <Rect width={480} height={300} cornerRadius={20} clip={true} flow={'freeform'}>
                 <Image
                     ref={photo}
                     src={'./cat.jpg'}

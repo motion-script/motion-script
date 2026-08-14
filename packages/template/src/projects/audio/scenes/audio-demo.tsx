@@ -37,14 +37,14 @@ function estimateLength(clip: number, filters?: AudioFilter): number {
 /** A parameterized scene generator: per-filter `?scene` files call this with
  *  their {@link AudioDemoSpec}, e.g. `createScene(audioDemo({ label, filters }))`. */
 export const audioDemo = (spec: AudioDemoSpec): SceneGenerator => function* (stage) {
-    stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
+    stage.set({ fill: 'bg', padding: 80, flow: 'vertical', gap: 40 });
 
     const { label, src = 'song.mp3', filters, clip = 4 } = spec;
 
     const bar = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={40}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={label}
@@ -54,7 +54,7 @@ export const audioDemo = (spec: AudioDemoSpec): SceneGenerator => function* (sta
                 textAlign={'start'}
             />
             {/* Track the bar sweeps across. */}
-            <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} group={'row'} align={{ x: -1, y: 0 }}>
+            <Rect width={'fill'} height={120} fill={'card'} cornerRadius={16} padding={16} flow={'horizontal'} align={{ x: -1, y: 0 }}>
                 <Rect ref={bar} width={40} height={'fill'} fill={'primary'} cornerRadius={8} />
             </Rect>
         </Rect>

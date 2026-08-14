@@ -15,9 +15,9 @@ export default createScene(function* (stage) {
     const code = createRef<Code>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text fontFamily={'Pixelify Sans'} text={'Code — typing & insert'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={32} fill={'card'} padding={80}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={32} fill={'card'} padding={80}>
                 <Code
                     ref={code}
                     theme={'github-dark'}

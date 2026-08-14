@@ -5,7 +5,8 @@ import camera from './scenes/camera?scene';
 import row from './scenes/row?scene';
 import column from './scenes/column?scene';
 import stack from './scenes/stack?scene';
-import groupMorph from './scenes/group-morph?scene';
+import flowMorph from './scenes/flow-morph?scene';
+import positioning from './scenes/positioning?scene';
 import rectWithChildren from './scenes/rect-with-children?scene';
 import rectWithoutChildren from './scenes/rect-without-children?scene';
 import nested from './scenes/nested?scene';
@@ -21,7 +22,8 @@ import addRemoveChild from './scenes/add-remove-child?scene';
 
 /**
  * A project that walks through the layout system, one scene per concept: the
- * three `group` modes (`row`, `column`, `stack`), animating between them, the
+ * three `flow` modes (`horizontal`, `vertical`, `freeform`), animating between them,
+ * pinning a child to the stage with `relativeToParent`, the
  * hug-vs-shape behaviour of a `Rect` with and without children, nested flex
  * composition, and building a grid out of nested rows.
  *
@@ -48,7 +50,8 @@ export default createProject({
         context,
         column,
         stack,
-        groupMorph,
+        flowMorph,
+        positioning,
         rectWithChildren,
         rectWithoutChildren,
         nested,

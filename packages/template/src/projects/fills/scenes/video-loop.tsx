@@ -23,7 +23,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const ref = createRef<ShapeNode>();
     const card = (label: string, note: string, options: VideoFillOptions) => (
-        <Rect ref={ref} width={'fill'} height={'fill'} group={'column'} gap={12}>
+        <Rect ref={ref} width={'fill'} height={'fill'} flow={'vertical'} gap={12}>
             <Text text={label} fontSize={30} fill={HEADING} width={'fill'} textAlign={'center'} />
             <Text text={note} fontSize={22} fill={'gray'} width={'fill'} textAlign={'center'} />
             <Rect width={'fill'} height={'fill'} cornerRadius={24}
@@ -32,9 +32,9 @@ export default createScene(function* (stage) {
     );
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={64} gap={28}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={28}>
             <Text fontFamily={'Pixelify Sans'} text={'Video: loop & trim'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={32}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={32}>
                 {card('none', 'stops on the last frame', { loop: 'none' })}
                 {card('forward', 'restarts at trimStart', { loop: 'forward' })}
                 {card('reverse', 'ping-pongs the window', { loop: 'reverse' })}

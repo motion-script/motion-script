@@ -14,7 +14,7 @@ const BLUE = '#6990DD';
  * (select every whitespace-delimited word at once) staggered individually.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: BG, group: 'column', gap: 60, padding: 80 });
+    stage.set({ fill: BG, flow: 'vertical', gap: 60, padding: 80 });
 
     const overlap = createRef<Text>();
     const stagger = createRef<Text>();

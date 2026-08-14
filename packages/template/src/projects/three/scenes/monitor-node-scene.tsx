@@ -98,18 +98,18 @@ export default createScene(function* (stage) {
     // re-lay-out and defeat the texture cache. Its signals keep it live.
     const stats = (
         <Rect width={SCREEN_W} height={SCREEN_H} fill={"#0b0d12"}
-            group={"column"} padding={INSET} gap={22} align={"topLeft"}>
+            flow={"vertical"} padding={INSET} gap={22} align={"topLeft"}>
             <Text fontFamily={"Pixelify Sans"} text={"SYSTEM"} fontSize={52} fill={"#7f8ea8"} />
 
             <Text fontFamily={"Pixelify Sans"} text={"CPU"} fontSize={42} fill={"#e6ecf7"} />
             <Rect width={barTrack} height={44} fill={"#171b24"} cornerRadius={10}
-                group={"stack"} align={"centerLeft"}>
+                flow={"freeform"} align={"centerLeft"}>
                 <Rect width={barWidth(cpu)} height={44} fill={"#3ddc84"} cornerRadius={10} />
             </Rect>
 
             <Text fontFamily={"Pixelify Sans"} text={"MEMORY"} fontSize={42} fill={"#e6ecf7"} />
             <Rect width={barTrack} height={44} fill={"#171b24"} cornerRadius={10}
-                group={"stack"} align={"centerLeft"}>
+                flow={"freeform"} align={"centerLeft"}>
                 <Rect width={barWidth(memory)} height={44} fill={"#6990dd"} cornerRadius={10} />
             </Rect>
 

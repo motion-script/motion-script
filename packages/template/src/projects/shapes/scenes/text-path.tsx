@@ -36,7 +36,7 @@ const straight = (w: number) =>
  * normal one-line text). Each demo is anchored in its own stacked cell.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: BG, group: 'row', gap: 0, padding: 80 });
+        stage.set({ fill: BG, flow: 'horizontal', gap: 0, padding: 80 });
 
         const ring = createRef<Text>();
         const flex = createRef<Text>();
@@ -45,7 +45,7 @@ export default createScene(function* (stage) {
         // Each cell stacks its label and the curved text on top of each other so
         // the path's node-local coordinates render centered in the cell.
         const cell = (label: string, node: any) => (
-            <Rect width={'fill'} height={'fill'} group={'stack'}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'}>
                 <Text
                     text={label}
                     fontSize={28}

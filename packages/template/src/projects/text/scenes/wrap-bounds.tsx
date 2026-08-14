@@ -17,7 +17,7 @@ export default createScene(function* (stage) {
     const textRef = createRef<Text>();
 
     stage.add(
-        <Rect width={500} height={'hug'} group={'column'} padding={40} gap={10} stroke={{ weight: 2, fill: 'red' }}>
+        <Rect width={500} height={'hug'} flow={'vertical'} padding={40} gap={10} stroke={{ weight: 2, fill: 'red' }}>
             <Rect ref={boxRef} width={'fill'} height={205} fill={'card'} />
 
 

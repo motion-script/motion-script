@@ -19,9 +19,9 @@ export default createScene(function* (stage) {
         const cycle = 300 * 0.5 * 4; // one full colour cycle (extent·band·colors)
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={"Inline Mask — draw commands"} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} flow={'freeform'} fill={'card'}>
                     <DrawnMask ref={maskRef} extent={300} offset={0} />
                 </Rect>
             </Rect>

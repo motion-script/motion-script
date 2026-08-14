@@ -6,10 +6,10 @@ import { createScene, Text, Rect, wait } from "motion-script";
  * branded — the layer is declared once, not repeated per scene.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: 'bg/85', padding: 120, group: 'column', gap: 40 });
+    stage.set({ fill: 'bg/85', padding: 120, flow: 'vertical', gap: 40 });
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={24} align={'center'}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={24} align={'center'}>
             <Text fontFamily={'Pixelify Sans'} text={'no watermark here'} fontSize={90} fill={'white'} />
             <Text fontFamily={'Pixelify Sans'} text={'exclude: "outro"'} fontSize={44} fill={'primary'} />
         </Rect>,

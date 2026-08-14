@@ -183,7 +183,7 @@ class BadgeGroup extends Node<BadgeGroupProps> {
   constructor(props?: NodeConfig<BadgeGroup, BadgeGroupProps>) {
     super(props);
     this.add(
-      <Rect ref={this.rowRef} group="row" gap={32}>
+      <Rect ref={this.rowRef} flow="horizontal" gap={32}>
         {(props?.labels ?? []).map(label => (
           <Rect width={180} height={180} cornerRadius={24}>
             <Text text={label} fontSize={56} />

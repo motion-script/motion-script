@@ -8,14 +8,14 @@ import { createScene, createRef, Text, Rect, easeInOut, wait } from "motion-scri
  * the scene boundary. It keeps going until the file ends or the project ends.
  */
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg', padding: 80, group: 'column', gap: 40 });
+        stage.set({ fill: 'bg', padding: 80, flow: 'vertical', gap: 40 });
 
         const dot = createRef<Rect>();
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={40}>
                 <Text fontFamily={'Pixelify Sans'} text={'Cross-scene bed — scene B (bed still playing)'} fontSize={64} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={300} fill={'card'} cornerRadius={16} group={'row'} align={{ x: 0, y: 0 }}>
+                <Rect width={'fill'} height={300} fill={'card'} cornerRadius={16} flow={'horizontal'} align={{ x: 0, y: 0 }}>
                     <Rect ref={dot} width={120} height={120} fill={'primary'} cornerRadius={60} />
                 </Rect>
             </Rect>

@@ -23,7 +23,7 @@ class Tile extends Node {
 describe('Rect – default width/height when a direct child is fill on the main axis', () => {
     const scope = new FakeMeasureScope();
 
-    it('group="row": a bare fill-width child flips the default from hug to fill', () => {
+    it('flow="horizontal": a bare fill-width child flips the default from hug to fill', () => {
         // Reproduces the default-size.tsx scene: without this, the row stayed
         // "hug" while its own fill child measured unconstrained — and since
         // the row's `width` prop never reflected the true resolved mode,
@@ -33,7 +33,7 @@ describe('Rect – default width/height when a direct child is fill on the main 
         const left = new Tile(400, 400);
         const middle = new Tile('fill', 400);
         const right = new Tile(400, 400);
-        const row = new Rect({ group: 'row', padding: 48, gap: 48, children: [left, middle, right] });
+        const row = new Rect({ flow: 'horizontal', padding: 48, gap: 48, children: [left, middle, right] });
         expect((row as any).width).toBe('fill');
 
         const size = row.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
@@ -45,30 +45,30 @@ describe('Rect – default width/height when a direct child is fill on the main 
         expect(middle.rect.width).toBe(928);
     });
 
-    it('group="row": a fill child on the cross axis (height) does not flip height to fill', () => {
-        const row = new Rect({ group: 'row', children: [new Tile(400, 'fill')] });
+    it('flow="horizontal": a fill child on the cross axis (height) does not flip height to fill', () => {
+        const row = new Rect({ flow: 'horizontal', children: [new Tile(400, 'fill')] });
         expect((row as any).width).toBe('hug');
         expect((row as any).height).toBe('hug');
     });
 
-    it('group="column": a bare fill-height child flips the default from hug to fill', () => {
-        const col = new Rect({ group: 'column', children: [new Tile(400, 'fill')] });
+    it('flow="vertical": a bare fill-height child flips the default from hug to fill', () => {
+        const col = new Rect({ flow: 'vertical', children: [new Tile(400, 'fill')] });
         expect((col as any).height).toBe('fill');
         expect((col as any).width).toBe('hug');
     });
 
-    it('group="stack": a fill child on either axis flips that axis to fill (no main/cross split)', () => {
-        const stackW = new Rect({ group: 'stack', children: [new Tile('fill', 400)] });
+    it('flow="freeform": a fill child on either axis flips that axis to fill (no main/cross split)', () => {
+        const stackW = new Rect({ flow: 'freeform', children: [new Tile('fill', 400)] });
         expect((stackW as any).width).toBe('fill');
         expect((stackW as any).height).toBe('hug');
 
-        const stackH = new Rect({ group: 'stack', children: [new Tile(400, 'fill')] });
+        const stackH = new Rect({ flow: 'freeform', children: [new Tile(400, 'fill')] });
         expect((stackH as any).height).toBe('fill');
         expect((stackH as any).width).toBe('hug');
     });
 
     it('an explicit width on the Rect always wins over the fill-child default', () => {
-        const row = new Rect({ group: 'row', width: 'hug', children: [new Tile('fill', 400)] });
+        const row = new Rect({ flow: 'horizontal', width: 'hug', children: [new Tile('fill', 400)] });
         expect((row as any).width).toBe('hug');
     });
 
@@ -81,7 +81,7 @@ describe('Rect – default width/height when a direct child is fill on the main 
         const left = new Tile(400, 400);
         const middle = new Tile('fill', 400);
         const right = new Tile(400, 400);
-        const row = new Rect({ group: 'row', width: 'hug', height: 400, padding: 48, gap: 48, children: [left, middle, right] });
+        const row = new Rect({ flow: 'horizontal', width: 'hug', height: 400, padding: 48, gap: 48, children: [left, middle, right] });
         expect((row as any).width).toBe('hug');
 
         const scope2 = new FakeMeasureScope();
@@ -103,11 +103,11 @@ describe('Rect – default width/height when a direct child is fill on the main 
         const left = new Tile(400, 400);
         const middle = new Tile('fill', 400);
         const right = new Tile(400, 400);
-        const innerRow = new Rect({ group: 'row', padding: 0, gap: 0, children: [left, middle, right] });
+        const innerRow = new Rect({ flow: 'horizontal', padding: 0, gap: 0, children: [left, middle, right] });
         expect((innerRow as any).width).toBe('fill');
 
         const fixedSibling = new Tile(300, 300);
-        const outerRow = new Rect({ group: 'row', gap: 0, children: [fixedSibling, innerRow] });
+        const outerRow = new Rect({ flow: 'horizontal', gap: 0, children: [fixedSibling, innerRow] });
         expect((outerRow as any).width).toBe('fill');
 
         const size = outerRow.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);

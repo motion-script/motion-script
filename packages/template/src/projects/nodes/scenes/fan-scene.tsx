@@ -80,7 +80,7 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Composite',
-            stage: 'stack',
+            stage: 'freeform',
             children: (
                 <FanNode ref={fanRef} width={'fill'} height={'fill'} spread={160} radius={260}>
                     {colors.map((color, i) => (

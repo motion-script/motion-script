@@ -62,7 +62,7 @@ export default createScene(function* (stage) {
         }
 
         stage.add(
-            <Rect group={'column'} gap={0}>
+            <Rect flow={'vertical'} gap={0}>
                 <Text
                     ref={mainNumber}
                     text={'000'}

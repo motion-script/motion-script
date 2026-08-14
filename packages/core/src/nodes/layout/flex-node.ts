@@ -55,9 +55,10 @@ interface FlexMeasureCache {
  * as a (by default invisible) rounded rect behind them with the inherited
  * `fill`, `stroke`, `shadow`, `cornerRadius`, `clip`, and `effects` props.
  *
- * It is the single-direction half of {@link Rect} (no `stack`/`group` mode) and
+ * It is the single-direction half of {@link Rect} (no switchable `flow` mode) and
  * always hugs its content by default. Reach for `Rect` when you want to switch
- * between row/column/stack; reach for `Row`/`Column` for a fixed direction.
+ * between horizontal/vertical/freeform; reach for `Row`/`Column` for a fixed
+ * direction.
  */
 export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNode<P> {
 
@@ -111,7 +112,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     // returns) — Row/Column each call this via a one-line override that passes
     // their own known-constant main axis instead of reading `this.direction`.
     protected applyFlexDefaultSize(props: NodeConfig<any, P> | undefined, mainAxis: "width" | "height"): void {
-        const children = Node.flattenChildrenProp(props);
+        const children = Node.flowChildrenProp(props);
         const mainDefault = Node.hasFillChild(children, mainAxis) ? "fill" : "hug";
 
         if (!props || props.width === undefined) {
@@ -189,10 +190,14 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         for (let i = 0; i < measure.children.length; i++) {
             measure.children[i].layout(layouts[i], scope);
         }
+
+        // Stage-pinned children take no part in the flex run above — they're
+        // placed against the scene root instead. See NodeProps.childPositioning.
+        this.layoutAbsoluteChildren(scope);
     }
 
     private computeMeasure(innerWidth: number, innerHeight: number, scope: MeasureScope): FlexMeasureCache {
-        const children = this.children.filter((c): c is Node => c instanceof Node);
+        const children = this.flowChildren();
         const adapters: FlexChild[] = children.map((child) => ({
             widthMode: child.width,
             heightMode: child.height,

@@ -54,7 +54,7 @@ export class RotatedBox extends Node<RotatedBoxProps> {
         let maxChildW = 0;
         let maxChildH = 0;
 
-        for (const child of this.children) {
+        for (const child of this.flowChildren()) {
             const size = child.measure(childConstraints, scope);
             if ((size.width ?? 0) > maxChildW) maxChildW = size.width ?? 0;
             if ((size.height ?? 0) > maxChildH) maxChildH = size.height ?? 0;

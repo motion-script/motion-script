@@ -19,9 +19,9 @@ export default createScene(function* (stage) {
         const size = 520;
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={"Mask Group"} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
+                <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} flow={'freeform'} fill={'card'}>
                     <MaskGroup mode={'alpha'}>
                         {/* First child = mask. The moving circle reveals the photo. */}
                         <Ellipse ref={maskRef} width={size} height={size} fill={'#ffffff'} />

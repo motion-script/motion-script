@@ -31,9 +31,9 @@ export function strokeCard(stage: Stage, label: string, initial: SampleProps = {
     const sampleRef = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={80}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={80}>
                 <Rect
                     ref={sampleRef}
                     width={520} height={520} cornerRadius={32}

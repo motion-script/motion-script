@@ -15,7 +15,7 @@ describe("Scene root", () => {
         expect(scene.root).toBeInstanceOf(RootNode);
         expect(scene.root.width).toBe("fill");
         expect(scene.root.height).toBe("fill");
-        expect(scene.root.group).toBe("stack");
+        expect(scene.root.flow).toBe("freeform");
     });
 });
 

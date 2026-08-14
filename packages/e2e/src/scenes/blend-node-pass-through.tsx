@@ -12,14 +12,14 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const group = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={360} height={360} fill={'#28d6c8'} center={{ x: -100, y: 0 }} />
             <Rect
                 ref={group}
                 width={400}
                 height={260}
                 opacity={0.6}
-                group={'stack'}
+                flow={'freeform'}
                 align={{ x: 0, y: 0 }}
                 blend={'pass-through'}
             >

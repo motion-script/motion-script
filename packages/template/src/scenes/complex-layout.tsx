@@ -12,7 +12,7 @@ export default createScene(function* (stage) {
     const variableFontText = createRef<Text>();
     const letterSpacingText = createRef<Text>();
     const cell = (label: string, content: any) => (
-        <Rect height={'fill'} fill={cardColor} group={'column'} padding={20} gap={10} colSpan={1} cornerRadius={20} width={'fill'}>
+        <Rect height={'fill'} fill={cardColor} flow={'vertical'} padding={20} gap={10} colSpan={1} cornerRadius={20} width={'fill'}>
             <Text text={label} fontSize={20} fill={'white'} opacity={0.4} textAlign={'left'} width={'fill'} />
             <Rect cornerRadius={20} width={'fill'} height={'fill'} fill={cardColor} padding={20}>
                 {content}

@@ -18,11 +18,11 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Text',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 80,
             children: (
                 <>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         {/* `variant` pulls fontSize/fontWeight from theme.typography.header
                             (96 / 700); fill stays an explicit prop, which always wins. */}
                         <Text
@@ -33,7 +33,7 @@ export default createScene(function* (stage) {
                             textAlign={'center'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'column'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'vertical'} cornerRadius={24} fill={'bg'}>
                         <Text
                             ref={sizeRef}
                             text={'Aa'}
@@ -45,7 +45,7 @@ export default createScene(function* (stage) {
                             textAlign={'center'}
                         />
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'stack'} cornerRadius={24} fill={'bg'}>
+                    <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'bg'}>
                         <Text
                             ref={weightRef}
                             text={'Weight'}

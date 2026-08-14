@@ -3,11 +3,11 @@
 import { createScene, createRef, Text, Rect, RichText } from "@motion-script/core";
 
 const TextScene = createScene(function* (stage) {
-    stage.set({ fill: 'bg', group: 'column', gap: 20, padding: 40 });
+    stage.set({ fill: 'bg', flow: 'vertical', gap: 20, padding: 40 });
     const cardColor = 'card';
 
     const autoFitText = createRef<Text>();
-    stage.add(<Rect gap={40} width={'fill'} height={'fill'} group={'column'}>
+    stage.add(<Rect gap={40} width={'fill'} height={'fill'} flow={'vertical'}>
         <Rect width={'fill'} height={'fill'} gap={40}>
             <Rect cornerRadius={20} width={'fill'} height={'fill'} fill={cardColor} padding={20}>
                 <RichText spans={[{ text: 'hello' }, { text: ' world', fill: 'red', fontSize: 60 }]} fontSize={40} fill={'white'} />
@@ -19,7 +19,7 @@ const TextScene = createScene(function* (stage) {
             </Rect>
         </Rect>
         <Rect width={'fill'} height={'fill'} gap={40}>
-            <Rect cornerRadius={20} width={'fill'} height={'fill'} group={'column'} gap={20} fill={cardColor} padding={20}>
+            <Rect cornerRadius={20} width={'fill'} height={'fill'} flow={'vertical'} gap={20} fill={cardColor} padding={20}>
                 <Text text={'Hello'} fontSize={100} stroke={{ weight: 2, fill: 'white' }} />
                 <Text text={'World'} fontSize={200} stroke={{ weight: 2, fill: 'white', dash: 5 }} />
             </Rect>

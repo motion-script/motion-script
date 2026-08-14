@@ -32,7 +32,7 @@ const panel = new Graphics()
 
 ```tsx
 const scope = new Graphics().line({ points: trace }).stroke({ weight: 6, fill: '#6990DD' });
-const stats = <Rect group="column" padding={48} gap={16}>
+const stats = <Rect flow="vertical" padding={48} gap={16}>
   <Text text="CPU" fontSize={64} fill="white" />
   <Text text="42%" fontSize={96} fill="#6990DD" />
 </Rect>;

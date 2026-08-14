@@ -18,7 +18,7 @@ export default createScene(function* (stage) {
         stage.add(
             layoutCard({
                 label: 'Rect without children (shape)',
-                stage: 'stack',
+                stage: 'freeform',
                 children: (
                     <Rect
                         ref={box}

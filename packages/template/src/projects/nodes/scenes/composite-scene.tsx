@@ -49,14 +49,14 @@ class BadgeGroup extends Node<BadgeGroupProps> {
         const labels = typeof raw === 'function' ? raw() : raw ?? [];
 
         this.add(
-            <Rect ref={this.rowRef} group={'row'} gap={32}>
+            <Rect ref={this.rowRef} flow={'horizontal'} gap={32}>
                 {labels.map((label, i) => (
                     <Rect
                         width={180}
                         height={180}
                         fill={BadgeGroup.COLORS[i % BadgeGroup.COLORS.length]}
                         cornerRadius={24}
-                        group={'stack'}
+                        flow={'freeform'}
                     >
                         <Text
                             fontFamily={'Pixelify Sans'}
@@ -85,7 +85,7 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Composite',
-            stage: 'stack',
+            stage: 'freeform',
             children: (
                 <BadgeGroup ref={badgeRef} labels={['A', 'B', 'C', 'D']} />
             ),

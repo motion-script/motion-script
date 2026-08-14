@@ -9,7 +9,7 @@ import { layoutCard, tile } from "./layout-card";
  * children. Here a `Row` lays out three `Column`s side by side, and each column
  * stacks its own tiles; nesting the two is how you build a layout grid without a
  * single visible wrapper. The middle column's tiles swell and the invisible
- * containers reflow around them, exactly as a `Rect` with `group` would, just
+ * containers reflow around them, exactly as a `Rect` with `flow` would, just
  * without the box.
  */
 export default createScene(function* (stage) {
@@ -22,7 +22,7 @@ export default createScene(function* (stage) {
         layoutCard({
             label: 'Row + Column nodes',
             // The card's own stage just centers the (hugging) Row.
-            stage: 'stack',
+            stage: 'freeform',
             children: (
                 <Row gap={48} >
                     {colors.map((color, c) => (

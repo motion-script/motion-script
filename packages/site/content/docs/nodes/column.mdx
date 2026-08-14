@@ -66,6 +66,6 @@ export default createScene(function* (stage) {
 
 ## Notes
 
-- `Column` is equivalent to `<Rect group="column" ...>` but draws no box. Use `Rect` with `group="column"` when you also want a visible container.
+- `Column` is equivalent to `<Rect flow="vertical" ...>` but draws no box. Use `Rect` with `flow="vertical"` when you also want a visible container.
 - `align.y` has no effect in a column (children are already laid out along the y axis).
 - See [Layout](../attributes/layout) for full docs on `fill`, `hug`, `flex`, and padding shorthands.

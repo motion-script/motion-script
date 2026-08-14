@@ -56,13 +56,13 @@ export default createScene(function* (stage) {
     stage.add(
         layoutCard({
             label: "DefaultTextStyle",
-            stage: "column",
+            stage: "vertical",
             gap: 20,
             children: (
                 // One DefaultTextStyle sets the family + fill for everything below;
                 // individual Text nodes only specify what differs.
                 <DefaultTextStyle fontFamily={"Pixelify Sans"} height={"fill"} fill={"primary"} fontSize={64}>
-                    <Rect width={"fill"} height={"fill"} group={"column"} gap={32} align={"topCenter"}>
+                    <Rect width={"fill"} height={"fill"} flow={"vertical"} gap={32} align={"topCenter"}>
                         <Text ref={heading} text={"inherits family + fill"} fontSize={96} />
                         <Text text={"so does this line"} />
                         {/* Nearest-wins: a nested DefaultTextStyle recolors just its subtree. */}
@@ -76,7 +76,7 @@ export default createScene(function* (stage) {
 
                         {/* Custom typed token: two swatches read LabelColor; the
                             second sits under a Provider that overrides it. */}
-                        <Rect width={"fill"} height={200} group={"row"} gap={32} align={"center"}>
+                        <Rect width={"fill"} height={200} flow={"horizontal"} gap={32} align={"center"}>
                             <Provider context={LabelColor} value={"#6990DD"}>
                                 <Swatch width={200} height={200} cornerRadius={24} />
                             </Provider>

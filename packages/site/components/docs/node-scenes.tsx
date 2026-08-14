@@ -168,7 +168,7 @@ export default createScene(function* (stage) {
   const box = createRef<Rect>();
 
   stage.add(
-    <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}
+    <Rect ref={box} flow="horizontal" gap={30} padding={44} cornerRadius={24}
       stroke={{ fill: 'rgba(105, 144, 221, 0.4)', weight: 3 }}>
       <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
       <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
@@ -177,7 +177,7 @@ export default createScene(function* (stage) {
   );
 
   yield* box().to({ gap: 100 }, 0.6, easeOut);
-  yield* box().to({ group: 'column' }, 0.8, easeOut);
+  yield* box().to({ flow: 'vertical' }, 0.8, easeOut);
 });`
 export function RectCanvas() {
   return <NodeCanvas draw={drawRect} code={rectCode} />

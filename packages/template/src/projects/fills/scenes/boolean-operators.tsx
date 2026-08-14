@@ -46,11 +46,11 @@ export default createScene(function* (stage) {
         const cell = (spec: OpSpec, i: number) => {
             const { left, right } = cellRefs[i];
             return (
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={16}>
+                <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={16}>
                     <Rect
                         width={'fill'} height={'fill'}
                         fill={'card'} cornerRadius={32}
-                        clip={true} group={'stack'}
+                        clip={true} flow={'freeform'}
                     >
                         <BooleanGroup op={spec.op} fill={Fills.color('#6990DD')}>
                             <Ellipse ref={left} x={-spread} width={radius} height={radius} />
@@ -66,14 +66,14 @@ export default createScene(function* (stage) {
         };
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={'Boolean Operations'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-                <Rect width={'fill'} height={'fill'} group={'column'} gap={48}>
-                    <Rect width={'fill'} height={'fill'} group={'row'} gap={48}>
+                <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={48}>
+                    <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={48}>
                         {cell(OPS[0], 0)}
                         {cell(OPS[1], 1)}
                     </Rect>
-                    <Rect width={'fill'} height={'fill'} group={'row'} gap={48}>
+                    <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={48}>
                         {cell(OPS[2], 2)}
                         {cell(OPS[3], 3)}
                     </Rect>

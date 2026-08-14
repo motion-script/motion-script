@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={card} width={220} height={140} cornerRadius={16} fill={'card'} />
             <Rect width={20} height={20} cornerRadius={10} fill={'primary'} center={() => card().centerRight} />
         </Rect>,

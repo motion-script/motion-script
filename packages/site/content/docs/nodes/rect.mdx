@@ -18,7 +18,7 @@ import { createScene, Rect } from 'motion-script';
 export default createScene(function* (stage) {
   // A row container laying out three squares, separated by a gap.
   stage.add(
-    <Rect group="row" gap={48} padding={44} cornerRadius={24}>
+    <Rect flow="horizontal" gap={48} padding={44} cornerRadius={24}>
       <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
       <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
       <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
@@ -31,7 +31,7 @@ export default createScene(function* (stage) {
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `group` | `'row' \| 'column' \| 'stack'` | `'stack'` | Layout mode for children |
+| `flow` | `'horizontal' \| 'vertical' \| 'freeform'` | `'freeform'` | Layout mode for children |
 | `gap` | `number \| 'auto'` | `0` | Space between children along the main axis. `'auto'` distributes evenly |
 | `align` | `AlignName \| { x: number, y: number }` | `'center'` | Child alignment. A named position (`'center'`, `'topLeft'`, `'bottomRight'`, …) or a per-axis vector: x: `-1` left · `0` center · `1` right, y: `-1` bottom · `0` center · `1` top |
 | `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius in pixels. Accepts uniform, per-corner, or per-axis shorthand |
@@ -44,7 +44,7 @@ export default createScene(function* (stage) {
 | No children | `'fill'` | `'fill'` |
 | Has children | `'hug'` | `'hug'` |
 
-If a direct child is `'fill'` on the axis `Rect` would otherwise hug (its `group`'s main axis — width for `row`, height for `column`, both independently for `stack`), that axis defaults to `'fill'` instead, so the child has real space to fill into. See [Size](../attributes/size#default-sizing) for the full rule.
+If a direct child is `'fill'` on the axis `Rect` would otherwise hug (its `flow`'s main axis — width for `horizontal`, height for `vertical`, both independently for `freeform`), that axis defaults to `'fill'` instead, so the child has real space to fill into. See [Size](../attributes/size#default-sizing) for the full rule.
 
 ### Corner shorthands
 
@@ -65,7 +65,7 @@ If a direct child is `'fill'` on the axis `Rect` would otherwise hug (its `group
 
 ## Animating
 
-All props animate with `.to()`. Transition `group` to cross-fade between layout modes, or animate `gap` to expand/collapse spacing:
+All props animate with `.to()`. Transition `flow` to cross-fade between layout modes, or animate `gap` to expand/collapse spacing:
 
 ```tsx
 import { createScene, Rect, createRef, easeOut } from 'motion-script';
@@ -74,7 +74,7 @@ export default createScene(function* (stage) {
   const box = createRef<Rect>();
 
   stage.add(
-    <Rect ref={box} group="row" gap={30} padding={44} cornerRadius={24}>
+    <Rect ref={box} flow="horizontal" gap={30} padding={44} cornerRadius={24}>
       <Rect width={130} height={130} fill="#6990DD" cornerRadius={14} />
       <Rect width={130} height={130} fill="#E8617C" cornerRadius={14} />
       <Rect width={130} height={130} fill="#F5C26B" cornerRadius={14} />
@@ -85,7 +85,7 @@ export default createScene(function* (stage) {
   yield* box().to({ gap: 100 }, 0.6, easeOut);
 
   // Switch to column
-  yield* box().to({ group: 'column' }, 0.8, easeOut);
+  yield* box().to({ flow: 'vertical' }, 0.8, easeOut);
 });
 ```
 

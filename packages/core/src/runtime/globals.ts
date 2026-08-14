@@ -145,7 +145,7 @@ export class LayerStack {
             const frame = new RootNode({
                 width: viewport.width,
                 height: viewport.height,
-                group: "stack",
+                flow: "freeform",
             });
             frame.addChild(node);
             return { index, frame, owned, include: layer.include, exclude: layer.exclude, initialized: false };

@@ -2,13 +2,13 @@ import { createScene, createRef, wait, Rect } from "motion-script";
 import { Latex } from "motion-script";
 
 export default createScene(function* (stage) {
-        stage.set({ fill: 'bg', group: 'column', gap: 60 });
+        stage.set({ fill: 'bg', flow: 'vertical', gap: 60 });
 
         const intro = createRef<Latex>();
         const integral = createRef<Latex>();
 
         stage.add(
-            <Rect group={'column'} gap={20} padding={32} fill={'card'} cornerRadius={16}>
+            <Rect flow={'vertical'} gap={20} padding={32} fill={'card'} cornerRadius={16}>
                 <Latex ref={intro} latex="F = ma" fontSize={72} fill={'white'} opacity={0} x={-100} />
                 <Rect width={'fill'} height={3} fill={'#4f80ff'} />
                 <Latex latex="E = mc^2" fontSize={72} fill={'#4f80ff'} />

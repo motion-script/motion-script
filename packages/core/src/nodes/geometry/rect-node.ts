@@ -8,7 +8,7 @@ import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { MeasureScope } from "@/render/measure-scope";
 import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
-import { GroupLayout, GroupHost, LayoutMode } from "@/layout/group-engine";
+import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
@@ -18,15 +18,15 @@ import { anchorProperty, cornerRadiusProperty, cornerStyleProperty } from "@/att
 import { lerpSizeInput } from "@/layout/tweens";
 
 
-export type { LayoutMode };
+export type { FlowMode };
 
 export type { FlexDirection, GapSize } from "@/layout/flex";
 
 export type FlexSize = number | "fill" | "hug";
 
 export interface RectProps extends ShapeProps {
-    /** Layout mode for children: flex `row` / `column`, or overlapping `stack`. */
-    group: LayoutMode;
+    /** Layout mode for children: flex `horizontal` / `vertical`, or overlapping `freeform`. */
+    flow: FlowMode;
     /** Spacing between children along the layout's main axis. */
     gap: GapSize;
     /**
@@ -42,12 +42,12 @@ export interface RectProps extends ShapeProps {
 }
 
 /**
- * The Rectangle is the only node that performs flex / stack layout on its
- * children. It measures and positions children according to `group`
- * (row | column | stack), `gap`, `align`, and `padding`, then draws
+ * The Rectangle is the only node that performs flex / freeform layout on its
+ * children. It measures and positions children according to `flow`
+ * (horizontal | vertical | freeform), `gap`, `align`, and `padding`, then draws
  * itself as a rounded rect behind them.
  */
-export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implements GroupHost {
+export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implements FlowHost {
 
 
     @property({ default: 0 }) declare readonly gap: GapSize;
@@ -66,11 +66,11 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     @cornerStyleProperty()
     declare cornerStyle: RectCornerStyle;
 
-    declare group: LayoutMode;
+    declare flow: FlowMode;
 
-    // Flex/stack child layout (including the cross-mode `group` blend) lives in a
-    // shared engine so Rect and RootNode don't each carry a copy.
-    private readonly _groupLayout = new GroupLayout(this);
+    // Flex/freeform child layout (including the cross-mode `flow` blend) lives in
+    // a shared engine so Rect and RootNode don't each carry a copy.
+    private readonly _flowLayout = new FlowLayout(this);
 
     /**
      * Discard the measure cached by the last {@link measure} pass so the next
@@ -79,40 +79,41 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
      * but lays its children out against the full viewport.
      */
     protected invalidateMeasure(): void {
-        this._groupLayout.invalidateMeasure();
+        this._flowLayout.invalidateMeasure();
     }
 
     constructor(props: NodeConfig<Rect<P>, P>) {
         super(props);
-        this.applyGroupProp(props.group ?? "stack");
+        this.applyFlowProp(props.flow ?? "freeform");
     }
 
     /**
      * Figma-style smart default (see base {@link Node.applyDefaultSize}), plus
-     * one refinement for flex/stack containers: hugging an axis that a direct
+     * one refinement for flex/freeform containers: hugging an axis that a direct
      * child asks to `"fill"` stacks the child against nothing — the child would
-     * either collapse to 0 (stack, or the container's cross axis) or measure
-     * unconstrained (row/column main axis; see `measureFlex`'s Figma-mirroring
-     * comment). Since JSX children are already-constructed `Node`s by the time
-     * they reach this constructor, their own resolved `width`/`height` can be
-     * inspected here — so a bare `fill` child flips *this* default from `hug`
-     * to `fill` on that exact axis, matching what the author almost certainly
-     * wants. An explicit `width`/`height` on this Rect always wins; this only
-     * adjusts the *default* used when neither is given.
+     * either collapse to 0 (freeform, or the container's cross axis) or measure
+     * unconstrained (horizontal/vertical main axis; see `measureFlex`'s
+     * Figma-mirroring comment). Since JSX children are already-constructed
+     * `Node`s by the time they reach this constructor, their own resolved
+     * `width`/`height` can be inspected here — so a bare `fill` child flips
+     * *this* default from `hug` to `fill` on that exact axis, matching what the
+     * author almost certainly wants. An explicit `width`/`height` on this Rect
+     * always wins; this only adjusts the *default* used when neither is given.
      *
-     * `group` isn't applied to its signal until after `super()` returns (see
-     * constructor above), so the raw `props.group` is read here instead —
-     * `"row"`/`"column"` only promote their single main axis; `"stack"` (the
-     * default, and the mode with no distinct main axis) checks both axes
-     * independently.
+     * `flow` isn't applied to its signal until after `super()` returns (see
+     * constructor above), so the raw `props.flow` is read here instead —
+     * `"horizontal"`/`"vertical"` only promote their single main axis;
+     * `"freeform"` (the default, and the mode with no distinct main axis) checks
+     * both axes independently. Only flow children count: a stage-pinned child
+     * fills the stage, not this box.
      */
     protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
-        const children = Node.flattenChildrenProp(props);
+        const children = Node.flowChildrenProp(props);
         const hasChildren = children.length > 0;
-        const group: LayoutMode = (props as any)?.group ?? "stack";
+        const flow: FlowMode = (props as any)?.flow ?? "freeform";
 
-        const widthIsMain = group === "row" || group === "stack";
-        const heightIsMain = group === "column" || group === "stack";
+        const widthIsMain = flow === "horizontal" || flow === "freeform";
+        const heightIsMain = flow === "vertical" || flow === "freeform";
 
         const defaultWidth = hasChildren && widthIsMain && Node.hasFillChild(children, "width") ? "fill" : hasChildren ? "hug" : "fill";
         const defaultHeight = hasChildren && heightIsMain && Node.hasFillChild(children, "height") ? "fill" : hasChildren ? "hug" : "fill";
@@ -121,12 +122,12 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
         if (!props || props.height === undefined) this.applyProp("height", defaultHeight, { tween: lerpSizeInput });
     }
 
-    // group has a closure-based tween (the engine captures the in-flight blend),
+    // flow has a closure-based tween (the engine captures the in-flight blend),
     // so it can't be expressed as a static @property decorator. Shared by the
     // constructor and reinitProps() so a disposed-then-reused Rect keeps the same
-    // group binding. Defaults to "stack" — overlapping children, not a row.
-    private applyGroupProp(initial: LayoutMode | (() => LayoutMode)): void {
-        this.applyProp<LayoutMode>("group", initial, { tween: this._groupLayout.groupTween });
+    // flow binding. Defaults to "freeform" — overlapping children, not a row.
+    private applyFlowProp(initial: FlowMode | (() => FlowMode)): void {
+        this.applyProp<FlowMode>("flow", initial, { tween: this._flowLayout.flowTween });
     }
 
 
@@ -160,7 +161,7 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     // its alignment: inside strokes (align -1) intrude their full weight, centered
     // strokes (align 0) half, outside strokes (align +1) none. The intrusion is
     // weight·(1 - align)/2.
-    // Public so the shared GroupLayout engine can read it via the GroupHost interface.
+    // Public so the shared FlowLayout engine can read it via the FlowHost interface.
     effectivePadding(): InsetsResolved {
         let extra = 0;
         const p = this.padding as InsetsResolved;
@@ -182,18 +183,18 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     }
 
     // ---- Measure / layout -------------------------------------------------
-    // Flex/stack measure + child layout (and the cross-mode `group` blend) are
-    // delegated to the shared GroupLayout engine, which reads this node through
-    // the GroupHost interface (children/width/height/group/gap/align +
-    // effectivePadding).
+    // Flex/freeform measure + child layout (and the cross-mode `flow` blend) are
+    // delegated to the shared FlowLayout engine, which reads this node through
+    // the FlowHost interface (children/width/height/flow/gap/align +
+    // effectivePadding + flowChildren/layoutAbsoluteChildren).
 
     override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
-        return this._groupLayout.measure(constraints, scope);
+        return this._flowLayout.measure(constraints, scope);
     }
 
     override layout(rect: BoxBounds, scope: MeasureScope): void {
         this.setLayoutRect(rect);
-        this._groupLayout.layout(rect, scope);
+        this._flowLayout.layout(rect, scope);
     }
 }
 

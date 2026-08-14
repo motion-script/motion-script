@@ -7,7 +7,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const formula = createRef<Latex>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Latex
                 ref={formula}
                 latex={'\\Sigma'}

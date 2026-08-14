@@ -17,7 +17,7 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Rect',
-            stage: 'row',
+            stage: 'horizontal',
             gap: 40,
             children: (
                 <>
@@ -28,7 +28,7 @@ export default createScene(function* (stage) {
                         height={'fill'}
                         fill={'bg'}
                         cornerRadius={stage.variables<number>('rounded-lg')}
-                        group={'row'}
+                        flow={'horizontal'}
                         gap={24}
                         padding={32}
                     >
@@ -52,12 +52,12 @@ export default createScene(function* (stage) {
     );
 
     yield* parallel(
-        containerRef().to({ group: 'column' }, 1.2, easeInOut('quad')),
+        containerRef().to({ flow: 'vertical' }, 1.2, easeInOut('quad')),
         cornerRef().to({ cornerRadius: 64 }, 1.0, easeInOut('quad')),
     );
 
     yield* parallel(
-        containerRef().to({ group: 'row' }, 1.2, easeInOut('quad')),
+        containerRef().to({ flow: 'horizontal' }, 1.2, easeInOut('quad')),
         cornerRef().to({ cornerStyle: 'angled' }, 0.8, easeInOut('quad')),
     );
 

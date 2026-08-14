@@ -6,14 +6,14 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={card}
                 width={320}
                 height={320}
                 cornerRadius={20}
                 fill={'card'}
-                group={'row'}
+                flow={'horizontal'}
                 gap={0}
                 effects={Effects.pixelate(64)}
             >

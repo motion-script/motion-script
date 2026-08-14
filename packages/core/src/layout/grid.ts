@@ -180,7 +180,7 @@ export function layoutGrid(
     const innerW = rect.width - padding.left - padding.right;
     const innerH = rect.height - padding.top - padding.bottom;
     const originX = -rect.width / 2 + padding.left;
-    // y-down layout space (matches flex/stack/transform): the inner top edge is
+    // y-down layout space (matches flex/freeform/transform): the inner top edge is
     // -height/2 + padding.top and rows grow downward (+y), so row 0 sits at top.
     const originY = -rect.height / 2 + padding.top;
 

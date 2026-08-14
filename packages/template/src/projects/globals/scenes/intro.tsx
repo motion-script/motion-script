@@ -6,12 +6,12 @@ import { createScene, createRef, Text, Rect, easeInOut, wait } from "motion-scri
  * would hide the background entirely.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: 'bg/70', padding: 120, group: 'column', gap: 40 });
+    stage.set({ fill: 'bg/70', padding: 120, flow: 'vertical', gap: 40 });
 
     const card = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={32} align={'centerLeft'}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={32} align={'centerLeft'}>
             <Text fontFamily={'Pixelify Sans'} text={'Global backgrounds'} fontSize={110} fill={'white'} />
             <Rect ref={card} width={0} height={12} fill={'primary'} cornerRadius={6} />
             <Text fontFamily={'Pixelify Sans'} text={'one image, every scene'} fontSize={52} fill={'white/60'} />

@@ -12,14 +12,14 @@ export default createScene(function* (stage) {
     const box = createRef<Rect>();
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={box}
                 width={620}
                 height={360}
                 cornerRadius={20}
                 fill={'card'}
-                group={'stack'}
+                flow={'freeform'}
                 align={{ x: 0, y: 0 }}
                 padding={40}
             >

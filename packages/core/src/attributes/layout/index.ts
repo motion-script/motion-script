@@ -6,3 +6,6 @@ export { Size2D } from './size';
 export { Vector2, lerpVector2 } from './vector2';
 export { WorldTransform } from './world-transform';
 export { Anchor, AnchorKey, ANCHOR_KEYS, resolveAnchor } from './anchor';
+export {
+    ChildPositioning, RelativeToParent, CHILD_POSITIONING, RELATIVE_TO_PARENT,
+} from './positioning';

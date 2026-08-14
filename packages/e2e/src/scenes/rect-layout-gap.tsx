@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const row = createRef<Rect>();
     stage.add(
-        <Rect ref={row} width={'fill'} height={200} group={'row'} align={{ x: 0, y: 0 }} gap={0} center={() => stage.root.center}>
+        <Rect ref={row} width={'fill'} height={200} flow={'horizontal'} align={{ x: 0, y: 0 }} gap={0} center={() => stage.root.center}>
             <Rect width={120} height={120} fill={'primary'} cornerRadius={16} />
             <Rect width={120} height={120} fill={'accent'} cornerRadius={16} />
             <Rect width={120} height={120} fill={'primary'} cornerRadius={16} />

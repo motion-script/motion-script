@@ -15,7 +15,7 @@ import { createScene, Fills, Rect } from "motion-script";
  * slides smoothly outward rather than snapping.
  */
 export default createScene(function* (stage) {
-    stage.set({ fill: 'bg', group: 'row', gap: 40, padding: 120 });
+    stage.set({ fill: 'bg', flow: 'horizontal', gap: 40, padding: 120 });
     // A thick stroke painted inside the edge to start.
     stage.add(<>
         <Rect fill={Fills.color('#161a21')} height={320} width={320}

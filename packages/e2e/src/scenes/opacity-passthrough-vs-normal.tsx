@@ -14,12 +14,12 @@ export default createScene(function* (stage) {
     const passThrough = createRef<Rect>();
     const normal = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'row'} gap={60} align={{ x: 0, y: 0 }}>
-            <Rect ref={passThrough} width={260} height={260} group={'stack'} align={{ x: 0, y: 0 }} blend={'pass-through'} opacity={1}>
+        <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={60} align={{ x: 0, y: 0 }}>
+            <Rect ref={passThrough} width={260} height={260} flow={'freeform'} align={{ x: 0, y: 0 }} blend={'pass-through'} opacity={1}>
                 <Rect width={160} height={160} cornerRadius={80} fill={'#28d6c8'} center={{ x: -30, y: 0 }} />
                 <Rect width={160} height={160} cornerRadius={80} fill={'#e83fd6'} center={{ x: 30, y: 0 }} />
             </Rect>
-            <Rect ref={normal} width={260} height={260} group={'stack'} align={{ x: 0, y: 0 }} blend={'normal'} opacity={1}>
+            <Rect ref={normal} width={260} height={260} flow={'freeform'} align={{ x: 0, y: 0 }} blend={'normal'} opacity={1}>
                 <Rect width={160} height={160} cornerRadius={80} fill={'#28d6c8'} center={{ x: -30, y: 0 }} />
                 <Rect width={160} height={160} cornerRadius={80} fill={'#e83fd6'} center={{ x: 30, y: 0 }} />
             </Rect>

@@ -7,14 +7,14 @@ export default createScene(function* (stage) {
     const card = createRef<Rect>();
     const ramp = { shadows: '#12184a', highlights: '#ffd166' };
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
                 ref={card}
                 width={420}
                 height={280}
                 cornerRadius={20}
                 fill={'card'}
-                group={'row'}
+                flow={'horizontal'}
                 gap={16}
                 padding={20}
                 effects={Effects.duotone({ amount: 0, ...ramp })}

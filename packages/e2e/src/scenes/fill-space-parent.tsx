@@ -11,8 +11,8 @@ export default createScene(function* (stage) {
     const parent = createRef<Rect>();
     const rect = createRef<Rect>();
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'stack'} align={{ x: 0, y: 0 }}>
-            <Rect ref={parent} width={640} height={200} group={'stack'} align={{ x: -1, y: 0 }}>
+        <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
+            <Rect ref={parent} width={640} height={200} flow={'freeform'} align={{ x: -1, y: 0 }}>
                 <Rect
                     ref={rect}
                     width={200}

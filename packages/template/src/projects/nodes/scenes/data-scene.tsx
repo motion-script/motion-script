@@ -57,7 +57,7 @@ class StatBoard extends Node<NodeProps> {
                         height={110}
                         fill={'card'}
                         cornerRadius={20}
-                        group={'row'}
+                        flow={'horizontal'}
                         gap={28}
                         padding={{ horizontal: 36 }}
                         align={{ x: -1, y: 0 }}
@@ -105,7 +105,7 @@ export default createScene(function* (stage) {
     stage.add(
         nodeCard({
             label: 'Data',
-            stage: 'stack',
+            stage: 'freeform',
             children: (
                 // Provider pushes the stats down; DefaultTextStyle pushes the shared
                 // font down. StatBoard, nested below both, reads the data in

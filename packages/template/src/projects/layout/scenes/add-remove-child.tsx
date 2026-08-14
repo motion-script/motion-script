@@ -28,9 +28,9 @@ export default createScene(function* (stage) {
     stage.add(
         layoutCard({
             label: 'animated addChildAt / removeChildAt',
-            stage: 'stack',
+            stage: 'freeform',
             children: (
-                <Rect ref={row} width={'hug'} height={'fill'} group={'row'} gap={24} align={'centerLeft'}>
+                <Rect ref={row} width={'hug'} height={'fill'} flow={'horizontal'} gap={24} align={'centerLeft'}>
                     {base.map((ref, i) => tile({ ref, color: baseColors[i], width: 200, height: 200, label: `${i + 1}` }))}
                 </Rect>
             ),

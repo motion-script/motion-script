@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
     const src = './kingfisher.jpg';
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text
                 fontFamily={'Pixelify Sans'}
                 text={'Image Filters'}
@@ -28,17 +28,17 @@ export default createScene(function* (stage) {
                 width={'fill'}
                 textAlign={'start'}
             />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={40}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40}>
                 <Rect
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', filters: ImageFilters.oilPaint(4) })}
                 >
                     <Text text={'oilPaint'} fontSize={56} fill={'white'} />
                 </Rect>
                 <Rect
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, {
                         fit: 'fill',
                         filters: ImageFilters.grayscale(1).dither({ levels: 3, matrix: 4, scale: 3 }),
@@ -49,7 +49,7 @@ export default createScene(function* (stage) {
                 <Rect
                     ref={live}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
-                    group={'column'} padding={40} gap={0}
+                    flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, { fit: 'fill', filters: ImageFilters.halftone({ size: 8, angle: 30 }) })}
                 >
                     <Text text={'halftone'} fontSize={56} fill={'white'} />

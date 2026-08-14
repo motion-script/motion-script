@@ -31,7 +31,7 @@ export const videoFill = (spec: VideoFillSpec): SceneGenerator => function* (sta
         const fillChain = fill ?? Fills.video(SAMPLE_VIDEO, { fit, loop: 'forward' });
 
         stage.add(
-            <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+            <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
                 <Text fontFamily={'Pixelify Sans'} text={label} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
                 <Rect width={'fill'} height={'fill'} cornerRadius={32} fill={fillChain} />
             </Rect>

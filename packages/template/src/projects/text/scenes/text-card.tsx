@@ -11,13 +11,13 @@ import { Node, Rect, Text } from "motion-script";
 export function textCard(opts: {
     label: string;
     children: any;
-    stage?: 'stack' | 'row' | 'column';
+    stage?: 'freeform' | 'horizontal' | 'vertical';
     gap?: number;
     padding?: number;
 }): Node {
-    const { label, children, stage = 'stack', gap = 0, padding = 80 } = opts;
+    const { label, children, stage = 'freeform', gap = 0, padding = 80 } = opts;
     return (
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={24}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={24}>
             <Text fontFamily={'Pixelify Sans'} text={label} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect
                 width={'fill'}
@@ -25,7 +25,7 @@ export function textCard(opts: {
                 fill={'card'}
                 cornerRadius={32}
                 clip={true}
-                group={stage}
+                flow={stage}
                 gap={gap}
                 padding={padding}
             >
@@ -44,9 +44,9 @@ export function textCell(opts: {
 }): Node {
     const { caption, children, width = 'fill', height = 'fill' } = opts;
     return (
-        <Rect width={width} height={height} group={'column'} gap={20}>
+        <Rect width={width} height={height} flow={'vertical'} gap={20}>
             <Text text={caption} fontSize={28} fontWeight={700} fill={'gray'} width={'fill'} textAlign={'center'} />
-            <Rect width={'fill'} height={'fill'} group={'stack'}>
+            <Rect width={'fill'} height={'fill'} flow={'freeform'}>
                 {children}
             </Rect>
         </Rect>

@@ -6,20 +6,23 @@ import type { Node } from "@/nodes/base/node";
 const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /**
- * Stack-layout a container's children, centered within its padded box.
+ * Freeform-layout a container's children, centered within its padded box.
  *
  * Container nodes that aren't a {@link Rect} (e.g. MaskGroup, BooleanGroup) and
- * every plain {@link Node} / {@link ShapeNode} leaf don't run flex/stack layout
+ * every plain {@link Node} / {@link ShapeNode} leaf don't run flex/freeform layout
  * themselves, so without this their children never receive a layout pass and
  * render at zero size. This gives each child a `BoxBounds` centered in the
  * container's content area (origin = container center, matching the `Rect`
- * "stack" convention), sized to the child's own measured size and capped to the
- * content area. Padding insets the content area and shifts the centre by the
- * left/right (top/bottom) asymmetry, exactly like `Rect`'s stack layout, so a
+ * `'freeform'` convention), sized to the child's own measured size and capped to
+ * the content area. Padding insets the content area and shifts the centre by the
+ * left/right (top/bottom) asymmetry, exactly like `Rect`'s freeform layout, so a
  * padded hug container reserves the same space it measured. Children then offset
  * from centre via their own `x`/`y`.
+ *
+ * `children` is the container's **flow** children — a stage-pinned child is
+ * placed by `Node.layoutAbsoluteChildren` instead and must not be passed here.
  */
-export function layoutGroupChildren(
+export function layoutFlowChildren(
     children: Node[],
     rect: BoxBounds,
     scope: MeasureScope,

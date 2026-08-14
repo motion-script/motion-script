@@ -47,12 +47,12 @@ export default createScene(function* (stage) {
 
     // One labelled cell per pivot: heading on top, the figure centred in a card.
     const cells = pivots.map((p, i) => (
-        <Rect width={'fill'} height={'fill'} group={'column'} gap={16}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={16}>
             <Text
                 fontFamily={'Pixelify Sans'} text={`pivot — ${p.label}`}
                 fontSize={44} fill={'gray'} width={'fill'} textAlign={'center'}
             />
-            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} group={'stack'} fill={'card'}>
+            <Rect width={'fill'} height={'fill'} clip={true} cornerRadius={32} flow={'freeform'} fill={'card'}>
                 <DrawnPivot
                     ref={refs[i]} extent={e} spinPivot={p.pivot} angle={0} fill={figureFill}
                     stroke={{ weight: 4, fill: Fills.color('#0D0F15', { opacity: 0.6 }) }}
@@ -62,9 +62,9 @@ export default createScene(function* (stage) {
     ));
 
     stage.add(
-        <Rect width={'fill'} height={'fill'} group={'column'} padding={80} gap={32}>
+        <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={32}>
             <Text fontFamily={'Pixelify Sans'} text={'Graphics pivot'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
-            <Rect width={'fill'} height={'fill'} group={'row'} gap={48}>
+            <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={48}>
                 {cells}
             </Rect>
         </Rect>
