@@ -8,8 +8,6 @@ import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetTracker } from "@/assets/tracker";
-import { TrackMeasureScope } from "@/render/track-measure-scope";
-import { TrackRenderContext } from "@/render/track-render-context";
 import { Scene } from "@/nodes/scene/scene-node";
 import { ProjectGlobals, resolveGlobalAudio } from "./globals";
 import { now, yieldToScheduler } from "@/util/scheduler";
@@ -113,8 +111,6 @@ export type PrecompPhase =
     | "prepareLayout"
     | "layout"
     | "prepareRender"
-    | "prepareAudio"
-    | "render"
     | "lifespans"
     | "bindAssets"
     | "bindContext"
@@ -122,7 +118,7 @@ export type PrecompPhase =
     | "generator";
 
 const PRECOMP_PHASES: readonly PrecompPhase[] = [
-    "prepareLayout", "layout", "prepareRender", "prepareAudio", "render",
+    "prepareLayout", "layout", "prepareRender",
     "lifespans", "bindAssets", "bindContext", "ellapse", "generator",
 ];
 
@@ -668,20 +664,13 @@ export class Precomp {
         // own frame 0, so the pass is independent of where the scene sits on the
         // global timeline. assembleTimeline shifts these into absolute frames.
         const registry = new AssetTracker(this.assets);
-        // Font requests are inferred from layout()'s own measureText() calls;
-        // image/video/paint requests from render()'s own draw() calls — both
-        // write into the same `registry` as a side effect of work the scene was
-        // already doing, rather than a hand-written declaration pass.
-        const trackMeasureScope = new TrackMeasureScope(this.measureScope, registry);
-        const trackRenderContext = new TrackRenderContext(registry);
         const stage = new BuildStage<Scene>(this.viewport, this.fps);
 
         // Global layers are not part of the scene tree (see `LayerStack`), so they
-        // are driven alongside it: selected once here, then laid out, rendered and
-        // audio-prepared with every frame below. That is what registers a
-        // watermark's font or a background video's frames as assets — and it uses
-        // the same tracking context the scene does, so a layer's asset window can't
-        // drift from what actually draws.
+        // are driven alongside it: selected once here, then laid out and declared
+        // with every frame below. That is what registers a watermark's font or a
+        // background video's frames as assets — into the same registry the scene
+        // uses, so a layer's asset window can't drift from what actually draws.
         const globals = this._globals;
         globals?.select(sceneIndex, scene.name ?? `Scene ${sceneIndex}`);
 
@@ -711,43 +700,30 @@ export class Precomp {
                 while (true) {
                     registry.start(localFrame);
 
-                    // Opaque pre-layout async setup (e.g. Code's syntax grammar) —
-                    // fire-and-forget, doesn't block this synchronous pass. Layout
-                    // then resolves every node's layoutRect, measuring text through
-                    // trackMeasureScope so every font it touches is registered as a
-                    // side effect (see TrackMeasureScope) — no hand-written font
-                    // declaration needed, and no less accurate than before: the real
-                    // font manager was never populated this early anyway (see
-                    // TrackMeasureScope's doc comment).
+                    // Fonts, and anything else measurement depends on, declared
+                    // before layout can ask for it — which is the whole reason this
+                    // phase exists separately. It used to be fire-and-forget async
+                    // setup, with fonts inferred *from* `measureText` a line later;
+                    // that ordering made it impossible to have a font loaded by the
+                    // time the layout that discovered it ran.
                     profile?.enter("prepareLayout");
-                    scene.prepareLayoutAssets();
-                    globals?.prepareLayoutAssets();
+                    scene.prepareLayoutAssets(registry);
+                    globals?.prepareLayoutAssets(registry);
                     profile?.enter("layout");
-                    scene.layout(layoutBounds, trackMeasureScope);
-                    globals?.layout(layoutBounds, trackMeasureScope);
-                    // Reserved pre-render async setup; View3D warms three here.
+                    scene.layout(layoutBounds, this.measureScope);
+                    globals?.layout(layoutBounds, this.measureScope);
+                    // Everything drawable, plus the audio a playing clip schedules,
+                    // declared with `layoutRect` live so a decode can be sized to
+                    // what will actually be painted.
+                    //
+                    // There is no render pass here any more. Discovery used to mean
+                    // replaying `scene.render()` against a context that walked every
+                    // op list instead of rasterizing — a full tree walk per frame
+                    // whose only product was this map. A node knows what it paints
+                    // without being asked to paint it.
                     profile?.enter("prepareRender");
-                    scene.prepareRenderAssets();
-                    globals?.prepareRenderAssets();
-                    // Audio scheduling (Video, managed sounds) — the one asset concern
-                    // that's neither drawable nor a simple async load, so it stays an
-                    // explicit, tracker-based registration.
-                    profile?.enter("prepareAudio");
-                    scene.prepareAudioAssets(registry);
-                    globals?.prepareAudioAssets(registry);
-                    // Replay the scene's real render() against a context that
-                    // registers every image/video/paint fill it would have painted
-                    // instead of rasterizing — the same Graphics objects renderSelf
-                    // already builds, so this can't drift from what's actually drawn.
-                    // Layers bracket the scene in the same order they paint, so a
-                    // background's assets are registered even though nothing above
-                    // it in the stack has drawn yet.
-                    profile?.enter("render");
-                    trackRenderContext.execute(() => {
-                        globals?.backgrounds.render(trackRenderContext);
-                        scene.render(trackRenderContext);
-                        globals?.overlays.render(trackRenderContext);
-                    });
+                    scene.prepareRenderAssets(registry);
+                    globals?.prepareRenderAssets(registry);
 
                     registry.end();
 

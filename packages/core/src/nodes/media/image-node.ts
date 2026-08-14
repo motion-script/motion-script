@@ -4,8 +4,9 @@ import { ImageFilter, resolveChainFilters } from "@/attributes/shape/filters/cha
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaFilter } from "@/attributes/shape/filters/union";
 import { ImageCrop, ImageFit, ImageFillProp, ImageFillResolved, ImageMatrix } from "@/attributes/shape/fill/implementations/image";
-import { resolveFill } from "@/attributes/shape/fill/registry";
+import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
+import { AssetTracker } from "@/assets/tracker";
 import { Anchor } from "@/attributes/layout/anchor";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
@@ -95,5 +96,19 @@ export class Image extends Rect<ImageProps> {
         fills.push(...(this.fill as unknown as FillProp[]));
 
         draw.draw(this.shapeGraphics().shadow(this.shadow).fill(fills));
+    }
+
+    /**
+     * The picture is a fill this node synthesises rather than one held on
+     * `this.fill`, so `ShapeNode`'s declaration cannot see it. Declared through
+     * the same `imageFill()` the render uses, which is what stops the two
+     * disagreeing about `src`, `crop` or `filters`.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const image = this.imageFill();
+        if (!image) return;
+        const rect = this.layoutRect;
+        prepareFill(image, tracker, rect?.width ?? 0, rect?.height ?? 0);
     }
 }

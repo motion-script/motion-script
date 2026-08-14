@@ -371,31 +371,47 @@ export class Scene {
     }
 
     /**
-     * Fire the scene's **pre-layout** async setup (e.g. `Code`'s syntax
-     * grammar). Called before {@link layout}; fire-and-forget, see
-     * {@link Node.prepareLayoutAssets}.
+     * Collect what the tree needs to be **laid out** — fonts, and any async load
+     * measurement depends on. Call before {@link layout}; see
+     * {@link Node.prepareLayout}.
      */
-    prepareLayoutAssets(): void {
-        this.root.prepareLayoutAssets();
+    prepareLayoutAssets(tracker: AssetTracker): void {
+        this.root.prepareLayoutAssets(tracker);
     }
 
     /**
-     * Fire the scene's **pre-render** async setup. Called after {@link layout};
-     * fire-and-forget, see {@link Node.prepareRenderAssets}.
+     * Collect what the tree needs to be **drawn** — images, video, 3D, effect
+     * textures, and the audio its clips schedule. Call after {@link layout}, so
+     * every declaration can be sized against a real `layoutRect`.
+     *
+     * Managed sounds ({@link startSound}/{@link playSound}) are the scene's own
+     * rather than any node's, so they are declared here rather than reached by
+     * the tree walk.
      */
-    prepareRenderAssets(): void {
-        this.root.prepareRenderAssets();
-    }
-
-    /**
-     * Collect the scene's audio-scheduling requests — nodes with a playing
-     * clip (e.g. {@link Video}) and managed sounds ({@link startSound}/
-     * {@link playSound}). Has no layout dependency, so it can run either side
-     * of {@link layout}; kept after by convention.
-     */
-    prepareAudioAssets(tracker: AssetTracker): void {
-        this.root.prepareAudioAssets(tracker);
+    prepareRenderAssets(tracker: AssetTracker): void {
+        this.root.prepareRenderAssets(tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
+    }
+
+    /**
+     * Declare everything the scene needs **in its current state**, both phases in
+     * one call.
+     *
+     * The shortcut for a host that is not running a per-frame pass: put the tree
+     * into the state for some time, call this, repeat at the next interesting
+     * time, and the union is the scene's asset set. Because nothing here has to
+     * draw or measure, that is O(the times you sample) rather than O(frames) —
+     * and an asset-bearing value is always the endpoint of a tween, so sampling
+     * the boundaries is enough.
+     *
+     * Note this runs layout's declarations *and* render's without a layout pass
+     * between them, so a size-dependent declaration falls back to whatever
+     * `layoutRect` currently holds. Precomp keeps the two calls separate, either
+     * side of `layout`, precisely to avoid that.
+     */
+    prepareAssets(tracker: AssetTracker): void {
+        this.prepareLayoutAssets(tracker);
+        this.prepareRenderAssets(tracker);
     }
 
     dispose(): void {

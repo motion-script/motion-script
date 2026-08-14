@@ -170,9 +170,9 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         }
     }
 
-    // The grid draws nothing itself; its cells (children) render the image,
-    // and TrackRenderContext infers the image request from that draw call —
-    // no hand-written declaration needed here anymore.
+    // The grid draws nothing itself; its cells (children) render the image, and
+    // each cell is an `Image`, which declares its own src — so there is nothing
+    // for this node to add.
     protected renderSelf(_ctx: RenderContext): void { }
 }
 

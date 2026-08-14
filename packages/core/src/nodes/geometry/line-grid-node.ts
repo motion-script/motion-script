@@ -7,6 +7,8 @@ import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { PathBounds, PathCommand } from "@/render/descriptors/path";
 import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { prepareFill } from "@/attributes/shape/fill/registry";
+import { AssetTracker } from "@/assets/tracker";
 import { centered, dimStroke, gridLinePaths, maxWeight } from "./grid-lines";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
@@ -70,6 +72,20 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
     declare readonly offset: Vector2;
+
+    /**
+     * `ShapeNode` covers `fill`/`stroke`/`shadow`/`overlay`; this adds the
+     * minor-line stroke, which is a second stroke prop of this class's own.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+        for (const stroke of this.subStroke) {
+            for (const fill of stroke.fill) prepareFill(fill, tracker, width, height);
+        }
+    }
 
     constructor(props: NodeConfig<LineGrid, LineGridProps>) {
         super(props);

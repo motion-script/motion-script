@@ -68,11 +68,11 @@ describe("ScenePrecomp serialization", () => {
             yieldCount: 4,
             onPrepare: (t, f) => {
                 if (f === 0) {
-                    t.requestImage("img.png", 64, 48);
-                    t.requestFont("Inter", "700");
+                    t.addImage("img.png", { width: 64, height: 48 });
+                    t.addFont("Inter", "700");
                     t.addAudioRequest(makeAudioRequest({ id: "s1", src: "a.mp3", ownerPath: "0.1" }));
                 }
-                if (f === 2) t.requestAudio("bed.mp3");
+                if (f === 2) t.addAudio("bed.mp3");
             },
         })];
         const original = await measureOne(scenes[0]);
@@ -95,7 +95,7 @@ describe("ScenePrecomp serialization", () => {
     it("preserves an untrimmed audio clip's Infinity trimEnd", async () => {
         const scenes = [keyed("a.tsx", {
             yieldCount: 2,
-            onPrepare: (t, f) => { if (f === 0) t.requestAudio("bed.mp3"); },
+            onPrepare: (t, f) => { if (f === 0) t.addAudio("bed.mp3"); },
         })];
         const original = await measureOne(scenes[0]);
         const record = original.assetRecords.get("bed.mp3");

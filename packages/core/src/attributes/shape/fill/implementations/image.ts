@@ -178,7 +178,7 @@ export const imageFill: FillData<ImageFillResolved> = {
     }),
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
-        manager.requestImage(fill.src, width, height);
+        manager.addImage(fill.src, { width, height });
         // A filter can reference an asset of its own — `texture` and `displace`
         // sample an image, `ascii` bakes a glyph atlas — and the backend's
         // lookup is synchronous, so an unrequested one just reads as "no

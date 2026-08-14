@@ -120,7 +120,11 @@ export class AssetManager {
         const load = track.record.load;
         const job = load()
             .then(disposer => {
-                this.loaderDisposers.set(key, disposer);
+                // A loader that resolves nothing is keeping its result resident on
+                // purpose (see `LoaderFn`). Recording a no-op disposer rather than
+                // skipping the entry is what keeps `loaderDisposers.has(key)` the
+                // single "already loaded" test for both kinds.
+                this.loaderDisposers.set(key, disposer ?? NO_DISPOSE);
             })
             .finally(() => {
                 this.loaderInFlight.delete(key);
@@ -193,6 +197,9 @@ export class AssetManager {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Stand-in for a loader that resolved nothing — see the note in {@link AssetManager.syncLoader}. */
+const NO_DISPOSE: Disposer = () => { };
 
 /**
  * Produce a deterministic string key that uniquely identifies an audio request's

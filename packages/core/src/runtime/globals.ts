@@ -210,19 +210,14 @@ export class LayerStack {
         for (const entry of this._active) entry.frame.sample();
     }
 
-    /** Fire every active layer's pre-layout async setup. */
-    prepareLayoutAssets(): void {
-        for (const entry of this._active) entry.frame.prepareLayoutAssets();
-    }
-
-    /** Fire every active layer's pre-render async setup. */
-    prepareRenderAssets(): void {
-        for (const entry of this._active) entry.frame.prepareRenderAssets();
+    /** Collect every active layer's pre-layout declarations. */
+    prepareLayoutAssets(tracker: AssetTracker): void {
+        for (const entry of this._active) entry.frame.prepareLayoutAssets(tracker);
     }
 
     /**
-     * Collect audio requests from every active layer (e.g. a `Video` overlay's
-     * own track).
+     * Collect every active layer's pre-render declarations, including the audio a
+     * `Video` overlay's own track schedules.
      *
      * The owner path is prefixed with the layer's kind and index rather than
      * starting at `""`: paths are how the timeline attributes a waveform to a
@@ -231,9 +226,9 @@ export class LayerStack {
      * A prefixed path matches nothing, so the clip plays without being drawn on
      * someone else's bar.
      */
-    prepareAudioAssets(tracker: AssetTracker): void {
+    prepareRenderAssets(tracker: AssetTracker): void {
         for (const entry of this._active) {
-            entry.frame.prepareAudioAssets(tracker, `@${this.kind}:${entry.index}`);
+            entry.frame.prepareRenderAssets(tracker, `@${this.kind}:${entry.index}`);
         }
     }
 
@@ -330,19 +325,14 @@ export class ProjectGlobals {
         this.overlays.sample();
     }
 
-    prepareLayoutAssets(): void {
-        this.backgrounds.prepareLayoutAssets();
-        this.overlays.prepareLayoutAssets();
+    prepareLayoutAssets(tracker: AssetTracker): void {
+        this.backgrounds.prepareLayoutAssets(tracker);
+        this.overlays.prepareLayoutAssets(tracker);
     }
 
-    prepareRenderAssets(): void {
-        this.backgrounds.prepareRenderAssets();
-        this.overlays.prepareRenderAssets();
-    }
-
-    prepareAudioAssets(tracker: AssetTracker): void {
-        this.backgrounds.prepareAudioAssets(tracker);
-        this.overlays.prepareAudioAssets(tracker);
+    prepareRenderAssets(tracker: AssetTracker): void {
+        this.backgrounds.prepareRenderAssets(tracker);
+        this.overlays.prepareRenderAssets(tracker);
     }
 
     layout(bounds: BoxBounds, scope: MeasureScope): void {

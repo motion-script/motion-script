@@ -43,7 +43,7 @@ export function track3DResources(
         const src = texture3DSource(value);
         if (src === null || seen.has(src)) return;
         seen.add(src);
-        tracker.requestImage(src, width, height);
+        tracker.addImage(src, { width, height });
     });
 
     const geometry = (value: Geometry3D | undefined): void => {
@@ -116,5 +116,5 @@ function loader(
 
     const load = view3DResourceLoader();
     if (!load) return;
-    tracker.requestLoader(key, () => load(kind, src));
+    tracker.addAsync(key, () => load(kind, src));
 }

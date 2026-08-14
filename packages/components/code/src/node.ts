@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -98,11 +98,11 @@ export class Code extends Node<CodeProps> {
         this.applyProp("width", props.width ?? "hug");
         this.applyProp("height", props.height ?? "hug");
 
-        // Best-effort: kick off loading this node's actual language/theme so a
-        // highlighter rendered outside the asset pipeline still upgrades to full
-        // highlighting. The authoritative load runs on the timeline via prepareLayout().
-        // We deliberately don't await — tokenize() falls back to plain text until
-        // the language is ready, and onRender re-tokenizes once it loads.
+        // Best-effort, for a highlighter constructed outside the asset pipeline
+        // entirely (a bare `new Code(...)` in a test or a headless measure). On
+        // the timeline the authoritative load is the one `prepareLayout` declares,
+        // which `AssetManager.loadAt` awaits *before* this node is laid out — so
+        // there the tokens are right the first time rather than upgrading later.
         // (Theme is a synchronous color style; only the language parser loads.)
         ensureHighlighter(undefined, [this.language]).catch(() => { });
         this.tokenize();
@@ -125,21 +125,29 @@ export class Code extends Node<CodeProps> {
 
 
 
-    // The font itself is inferred automatically now (see the unconditional
-    // scope.measureText() call in computeGeometry, picked up by
-    // TrackMeasureScope) — this hook is left for the one thing that isn't
-    // drawable or measurable: loading the language's syntax grammar.
-    // Tokenization (and therefore layout) depends on it, so it has to resolve
-    // before layout runs, not just before render. Memoized on `language` so a
-    // static block doesn't re-trigger the loader every precomp frame;
-    // re-tokenizing once it loads is handled by onRender's guard, so there's
-    // nothing to free on disposal (parsers are cheap to keep resident).
-    private _highlighterLanguage: string | null = null;
-
-    prepareLayout(): Promise<void> | void {
-        if (this._highlighterLanguage === this.language) return;
-        this._highlighterLanguage = this.language;
-        return ensureHighlighter(undefined, [this.language]).then(() => {
+    /**
+     * The monospaced face this block measures and draws with, and the syntax
+     * grammar it tokenizes with.
+     *
+     * Both belong to *layout*: token x positions are measured against the face,
+     * and how many tokens there are depends on the grammar. That timing was
+     * always the intent — but the grammar used to be loaded by a hook that
+     * returned a promise nothing awaited, so precomp laid this node out against
+     * untokenized plain text and `onRender` re-tokenized once the parser landed.
+     *
+     * Declared here instead, the grammar goes on the timeline as an ordinary
+     * asset: `AssetManager.loadAt` waits for it before the frame is laid out, so
+     * the first measurement is the right one. Deduped by `addAsync`'s key, so a
+     * static block doesn't re-dispatch it every frame. Nothing is freed on
+     * eviction — parsers are cheap to keep resident.
+     */
+    override prepareLayout(tracker: AssetTracker): void {
+        tracker.addFont(this.fontFamily);
+        const language = this.language;
+        tracker.addAsync(`shiki:lang:${language}`, async () => {
+            await ensureHighlighter(undefined, [language]);
+            // The tokens this node holds were produced without the grammar; drop
+            // them so the next `onRender` re-runs with highlighting available.
             this.tokenized = false;
         });
     }
@@ -181,14 +189,6 @@ export class Code extends Node<CodeProps> {
     ): CodeGeometry {
         const pad = this.padding;
         const lineH = this.fontSize * this.lineHeight;
-
-        // Register the font even when there's no content to measure (e.g. an
-        // empty code block, or a static frame that returns the cached geometry
-        // below without ever calling tokenAdvance) — TrackMeasureScope infers
-        // font requests from measureText() calls, so this call's only purpose
-        // outside precomp is that same free registration; the string is empty
-        // and measureTextCached short-circuits it to a cheap 0.
-        scope.measureText("", this.fontSize, this.fontFamily);
 
         // A frame is static (geometry-cacheable) when no transition is mid-flight.
         // A persistent highlight dim (highlightDimOpacity) only touches opacity,

@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest";
 
 import { AssetManager } from "@/assets/manager";
-import { AssetTracker } from "@/assets/tracker";
 import { Node } from "@/nodes/base/node";
 import { Image } from "@/nodes/media/image-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { createScene, Scene } from "@/nodes/scene/scene-node";
 import { RenderContext } from "@/render/render-context";
-import { TrackRenderContext } from "@/render/track-render-context";
+import { NullRenderContext } from "@/render/null-render-context";
 import { Precomp } from "@/runtime/precompisition";
 import { ProjectGlobals } from "@/runtime/globals";
 import { StateEvaluator } from "@/runtime/state-evaluator";
@@ -137,7 +136,7 @@ describe("global layers – playback", () => {
         log.length = 0;
         evaluator.stateAt(frame);
         evaluator.layout(scope);
-        const ctx = new TrackRenderContext(new AssetTracker(catalog()));
+        const ctx = new NullRenderContext();
         ctx.execute(() => evaluator.render(ctx));
         return [...log];
     }
@@ -242,7 +241,7 @@ describe("global layers – node reuse", () => {
         evaluator.stateAt(0);
         evaluator.layout(scope);
         log.length = 0;
-        const ctx = new TrackRenderContext(new AssetTracker(catalog()));
+        const ctx = new NullRenderContext();
         ctx.execute(() => evaluator.render(ctx));
         expect(log).toEqual(["a", "fg"]);
     });

@@ -14,6 +14,8 @@ import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { TextSegment, TextState } from "@/render/descriptors/text";
 import { FillResolved } from "@/attributes/shape/fill/union";
+import { prepareFill } from "@/attributes/shape/fill/registry";
+import { AssetTracker } from "@/assets/tracker";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { PathData } from "@/render/descriptors/path";
 import { PathBuilder } from "@/render/descriptors/path-builder";
@@ -308,6 +310,43 @@ export class Text extends ShapeNode<TextProps> {
             segments.push(seg);
         }
         return segments;
+    }
+
+    /**
+     * The one declaration that makes fonts loadable *before* layout.
+     *
+     * A family used to be discovered by measuring text against it, which meant
+     * the font manager was necessarily still empty when the measurement that
+     * discovered it ran — so every precomp measurement was made against the
+     * fallback face and silently corrected at the first real render. Naming the
+     * family here costs nothing and needs no measurement, so a host can collect
+     * every font a scene wants, load them, and only then lay out.
+     */
+    override prepareLayout(tracker: AssetTracker): void {
+        tracker.addFont(this.fontFamily, this.fontWeight);
+    }
+
+    /**
+     * `ShapeNode` covers `this.fill`/`this.stroke`; this adds what a *selection*
+     * overrides them with. A range styled with its own image fill paints a fill
+     * that appears nowhere on the node's own props.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        if (this.path != null) return;
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+        // Null when no selection is active — the node's own paint is all there is,
+        // and `super` has already declared it.
+        const segments = this._buildSegments();
+        if (segments === null) return;
+        for (const segment of segments) {
+            for (const fill of segment.fill ?? []) prepareFill(fill, tracker, width, height);
+            for (const stroke of segment.stroke ?? []) {
+                for (const fill of stroke.fill) prepareFill(fill, tracker, width, height);
+            }
+        }
     }
 
     /**

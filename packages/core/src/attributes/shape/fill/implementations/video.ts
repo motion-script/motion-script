@@ -184,7 +184,12 @@ export const videoFill: FillData<VideoFillResolved> = {
     }),
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
-        manager.requestVideo(fill.src, width, height, fill.trimStart ?? 0, fill.trimEnd);
+        manager.addVideo(fill.src, {
+            width,
+            height,
+            trimStart: fill.trimStart ?? 0,
+            trimEnd: fill.trimEnd,
+        });
         for (const filter of fill.filters ?? []) prepareFilter(filter, manager, width, height);
     },
 };

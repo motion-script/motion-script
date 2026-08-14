@@ -1,11 +1,11 @@
 /**
  * `Texture3D` descriptor → `THREE.Texture`.
  *
- * Image textures come from core's ordinary asset pipeline: the asset-tracking
- * render pass registers each `src` via `tracker.requestImage`, so by the time a
- * frame draws, `AssetManager.loadAt` has already awaited the decode and the
- * pixels are sitting in the storage adapter. This resolver only has to wrap them —
- * which is why the 3D draw can stay synchronous.
+ * Image textures come from core's ordinary asset pipeline: `View3D.prepareRender`
+ * declares each `src` via `tracker.addImage`, so by the time a frame draws,
+ * `AssetManager.loadAt` has already awaited the decode and the pixels are sitting
+ * in the storage adapter. This resolver only has to wrap them — which is why the
+ * 3D draw can stay synchronous.
  *
  * ── On disposal ───────────────────────────────────────────────────────────────
  * Textures are cached globally and are **not** freed when the mesh referencing

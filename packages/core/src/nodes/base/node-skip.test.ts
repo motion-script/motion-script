@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { Rect } from "@/nodes/geometry/rect-node";
 import { Graphics } from "@/render/graphics";
-import { TrackRenderContext } from "@/render/track-render-context";
+import { NullRenderContext } from "@/render/null-render-context";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
+import { Fills } from "@/attributes/shape/fill/chain";
 import { ContextMap } from "@/util/context";
 
 /**
@@ -23,12 +24,12 @@ import { ContextMap } from "@/util/context";
 /**
  * The tracking context with the *painting* capability flipped on.
  *
- * Stands in for a real renderer without stubbing one: `TrackRenderContext` is
+ * Stands in for a real renderer without stubbing one: `NullRenderContext` is
  * already a complete, concrete `RenderContext`, and the only thing that decides
  * whether the invisible-subtree skip applies is `drawsVisibleOnly`. Flipping it
  * exercises exactly the branch a Skia context would take.
  */
-class PaintingContext extends TrackRenderContext {
+class PaintingContext extends NullRenderContext {
     override readonly drawsVisibleOnly = true;
 }
 
@@ -63,7 +64,7 @@ describe("invisible subtrees", () => {
         hidden.add(child);
         laidOut(hidden);
 
-        const ctx = new PaintingContext(new AssetTracker(new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} })));
+        const ctx = new PaintingContext();
         const ops = countingOps(() => hidden.render(ctx));
 
         // Neither the node nor anything under it: a zero-opacity subtree
@@ -71,26 +72,40 @@ describe("invisible subtrees", () => {
         expect(ops).toBe(0);
     });
 
-    it("are still walked by the tracking context", () => {
-        // The case that makes this a capability rather than a plain check. An
-        // invisible node's assets must still be discovered, or the frame it fades
-        // in on renders blank.
-        const hidden = new Rect({ width: 10, height: 10, opacity: 0 });
+    it("still declare their assets", () => {
+        // The case the skip must not swallow: an invisible node's assets have to
+        // be loaded anyway, or the frame it fades in on renders blank.
+        //
+        // This used to be a property of the *render* pass — a discovery context
+        // that refused the invisible-subtree skip so its walk still reached the
+        // node. It is now structural instead: declarations come from
+        // `prepareRenderAssets`, which walks the tree rather than the draw path,
+        // so visibility never enters into it and there is no capability to get
+        // wrong.
+        const hidden = new Rect({
+            width: 10,
+            height: 10,
+            opacity: 0,
+            fill: Fills.image("photo.png"),
+        });
         laidOut(hidden);
 
-        const ctx = new TrackRenderContext(new AssetTracker(new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} })));
-        // Submitting an op list at all is the observable: it is what the tracker
-        // reads to discover assets.
-        const ops = countingOps(() => hidden.render(ctx));
+        const tracker = new AssetTracker(new AssetCatalog({
+            image: { "photo.png": { src: "photo.png", width: 8, height: 8, sizeBytes: 0 } },
+            video: {}, audio: {}, font: {},
+        }));
+        tracker.start(0);
+        hidden.prepareRenderAssets(tracker);
+        tracker.end();
 
-        expect(ops).toBeGreaterThan(0);
+        expect(tracker.assets.get("photo.png")?.type).toBe("image");
     });
 
     it("draw normally once opacity lifts off zero", () => {
         const node = new Rect({ width: 10, height: 10, opacity: 0.01 });
         laidOut(node);
 
-        const ctx = new PaintingContext(new AssetTracker(new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} })));
+        const ctx = new PaintingContext();
         const ops = countingOps(() => node.render(ctx));
 
         expect(ops).toBeGreaterThan(0);

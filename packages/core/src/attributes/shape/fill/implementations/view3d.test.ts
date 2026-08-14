@@ -91,12 +91,12 @@ describe('view3D fill', () => {
 
     it('requests the scene\'s textures during precomp, sized to the destination', () => {
         const g3 = scene((s) => s.box({ map: '/wood.png' }).sphere({ map: '/metal.png' }));
-        const requestImage = vi.fn();
-        const tracker = { requestImage, requestLoader: vi.fn() } as unknown as AssetTracker;
+        const addImage = vi.fn();
+        const tracker = { addImage, addAsync: vi.fn() } as unknown as AssetTracker;
 
         prepareFill(fill(g3), tracker, 800, 600);
 
-        expect(requestImage).toHaveBeenCalledWith('/wood.png', 800, 600);
-        expect(requestImage).toHaveBeenCalledWith('/metal.png', 800, 600);
+        expect(addImage).toHaveBeenCalledWith('/wood.png', { width: 800, height: 600 });
+        expect(addImage).toHaveBeenCalledWith('/metal.png', { width: 800, height: 600 });
     });
 });

@@ -192,7 +192,7 @@ export class Sound {
      * requests — safe to call every frame (deduplicated internally).
      */
     prepare(tracker: AssetTracker): void {
-        tracker.requestAudio(this.src);
+        tracker.addAudio(this.src);
         for (const req of this._requests) {
             if (req.endAt === Infinity && !req.loop) {
                 if (this.trimEnd !== Infinity) {

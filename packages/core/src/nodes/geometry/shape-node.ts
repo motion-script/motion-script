@@ -1,4 +1,5 @@
-import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray, prepareFill } from "@/attributes/shape/fill/registry";
+import { AssetTracker } from "@/assets/tracker";
 
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import { lerpShadowArray } from "@/attributes/shape/shadow/lerp";
@@ -140,6 +141,39 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
         if (stroke.length === 0) return;
         const base = this.shapeGraphics();
         if (base) ctx.draw(base.stroke(stroke));
+    }
+
+    /**
+     * Declare the assets of the four paint slots this class owns.
+     *
+     * This is why almost no shape has to write a `prepareRender` of its own: the
+     * three render hooks above paint `fill`, `overlay`, `stroke` and `shadow`, all
+     * four are already **resolved** arrays on `this` (the `@property` mapper does
+     * that on write), and `prepareFill` takes a tracker rather than a render
+     * context — so what they reference can be read off the node directly instead
+     * of being discovered by drawing it.
+     *
+     * Sized from `layoutRect`, which is live by the time this runs, so an image
+     * decodes at the size it will actually be painted at.
+     *
+     * A subclass that paints something *outside* these four slots — `Image` and
+     * `Video` prepend a fill of their own, `Path` and the grids build a raw
+     * `Graphics` — overrides this and calls `super` first.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+
+        for (const fill of this.fill as FillResolved[]) prepareFill(fill, tracker, width, height);
+        for (const fill of this.overlay as FillResolved[]) prepareFill(fill, tracker, width, height);
+        for (const stroke of this.stroke as StrokeResolved[]) {
+            for (const fill of stroke.fill) prepareFill(fill, tracker, width, height);
+        }
+        for (const shadow of this.shadow as ShadowResolved[]) {
+            for (const fill of shadow.fill) prepareFill(fill, tracker, width, height);
+        }
     }
 
     /**

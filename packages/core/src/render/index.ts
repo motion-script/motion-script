@@ -29,6 +29,5 @@
 // `getTextLayout`, so they are part of the editor-facing surface.
 export { caretCount } from './text-layout';
 export type { TextBlockLayout, TextBlockLine } from './text-layout';
-/** @internal */ export { TrackRenderContext } from './track-render-context';
-/** @internal */ export { TrackMeasureScope } from './track-measure-scope';
+/** @internal */ export { NullRenderContext } from './null-render-context';
 

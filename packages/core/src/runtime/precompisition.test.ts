@@ -231,7 +231,7 @@ describe('Precomp – asset map (image)', () => {
         const scene = new FakeScene({
             yieldCount: 10,
             onPrepare: (tracker, frame) => {
-                if (frame >= 5) tracker.requestImage('img.png', 512, 512);
+                if (frame >= 5) tracker.addImage('img.png', { width: 512, height: 512 });
             },
         });
         const result = run([scene], 10);
@@ -249,7 +249,7 @@ describe('Precomp – asset map (image)', () => {
     it('clamps cacheAt to 0 when the lead reaches before frame 0', () => {
         const scene = new FakeScene({
             yieldCount: 4,
-            onPrepare: (tracker) => tracker.requestImage('hero.png', 512, 512),
+            onPrepare: (tracker) => tracker.addImage('hero.png', { width: 512, height: 512 }),
         });
         const track = run([scene]).assets.get('hero.png')!;
         expect(track.cacheAt).toBe(0);
@@ -260,7 +260,7 @@ describe('Precomp – asset map (image)', () => {
         const scene = new FakeScene({
             yieldCount: 3,
             onPrepare: (tracker, frame) => {
-                tracker.requestImage('img.png', frame === 1 ? 800 : 100, frame === 1 ? 600 : 100);
+                tracker.addImage('img.png', { width: frame === 1 ? 800 : 100, height: frame === 1 ? 600 : 100 });
             },
         });
         const record = run([scene]).assets.get('img.png')!.record;
@@ -278,7 +278,7 @@ describe('Precomp – missing assets surface as build errors', () => {
         const scene = new FakeScene({
             name: 'broken',
             yieldCount: 3,
-            onPrepare: (tracker) => tracker.requestImage('gone.png', 512, 512),
+            onPrepare: (tracker) => tracker.addImage('gone.png', { width: 512, height: 512 }),
         });
 
         const result = run([scene], 10, catalog);
@@ -295,7 +295,7 @@ describe('Precomp – missing assets surface as build errors', () => {
         const scene = new FakeScene({
             name: 'broken-audio',
             yieldCount: 3,
-            onPrepare: (tracker) => tracker.requestAudio('gone.mp3'),
+            onPrepare: (tracker) => tracker.addAudio('gone.mp3'),
         });
 
         const result = run([scene], 10, catalog);
@@ -307,7 +307,7 @@ describe('Precomp – missing assets surface as build errors', () => {
     it('does not error for a present image src', () => {
         const scene = new FakeScene({
             yieldCount: 3,
-            onPrepare: (tracker) => tracker.requestImage('ok.png', 512, 512),
+            onPrepare: (tracker) => tracker.addImage('ok.png', { width: 512, height: 512 }),
         });
         expect(run([scene]).buildErrors).toHaveLength(0);
     });
@@ -317,7 +317,7 @@ describe('Precomp – asset map (font & video)', () => {
     it('always caches fonts at frame 0 and never discards them', () => {
         const scene = new FakeScene({
             yieldCount: 5,
-            onPrepare: (tracker, frame) => { if (frame >= 2) tracker.requestFont('Inter', '700'); },
+            onPrepare: (tracker, frame) => { if (frame >= 2) tracker.addFont('Inter', '700'); },
         });
         const track = run([scene]).assets.get('Inter')!;
         expect(track.record.type).toBe('font');
@@ -329,7 +329,7 @@ describe('Precomp – asset map (font & video)', () => {
         const catalog = new FakeAssetCatalog({ 'clip.mp4': 5 });
         const scene = new FakeScene({
             yieldCount: 6,
-            onPrepare: (tracker) => tracker.requestVideo('clip.mp4', 512, 512),
+            onPrepare: (tracker) => tracker.addVideo('clip.mp4', { width: 512, height: 512 }),
         });
         const track = run([scene], 30, catalog).assets.get('clip.mp4')!;
         expect(track.record.type).toBe('video');
@@ -342,7 +342,7 @@ describe('Precomp – asset map (font & video)', () => {
         const load = async () => () => { };
         const scene = new FakeScene({
             yieldCount: 5,
-            onPrepare: (tracker) => tracker.requestLoader('lang:java', load),
+            onPrepare: (tracker) => tracker.addAsync('lang:java', load),
         });
         const result = run([scene], 30);
         const track = result.assets.get('lang:java')!;
@@ -382,7 +382,7 @@ describe('Precomp – replaceScene (hot reload)', () => {
         const a = new FakeScene({ yieldCount: 3 });
         const b = new FakeScene({
             yieldCount: 4,
-            onPrepare: (t, f) => { if (f === 0) t.requestImage('b.png', 100, 100); },
+            onPrepare: (t, f) => { if (f === 0) t.addImage('b.png', { width: 100, height: 100 }); },
         });
         const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
         const first = precomp.run();

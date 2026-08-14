@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { Graphics } from '@/render/graphics';
 import { RenderContext } from '@/render/render-context';
-import { TrackRenderContext } from '@/render/track-render-context';
 import { AssetTracker } from '@/assets/tracker';
+import { TextStyleToken } from '@/runtime/builtin-context';
 import { AssetCatalog } from '@/assets/catalog';
 import type { AssetManifest } from '@/assets/manifest';
 import { Node } from '@/nodes/base/node';
@@ -265,19 +265,40 @@ describe('asset discovery sees the inherited family', () => {
         }
     }
 
-    it('registers the font a drawn op inherited, so it actually loads', () => {
+    /**
+     * The same node, declaring the family it will draw with.
+     *
+     * A raw `Graphics.text()` op is the one place a family cannot be read off a
+     * prop: it has none, and inherits from the enclosing draw scope. A node that
+     * draws one therefore has to say so — which it can, because the scope it will
+     * inherit from is the context map it is already bound to.
+     *
+     * This used to be free: a discovery render context walked the op list and
+     * picked the family off the merged op. That bought inference at the cost of
+     * making a font undiscoverable until something drew it — which is why nothing
+     * could load a font *before* the layout that measured against it. Declaring
+     * it is more to write and is knowable a whole phase earlier.
+     */
+    class DeclaringLabel extends RawLabel {
+        override prepareLayout(tracker: AssetTracker): void {
+            const style = this.useContext(TextStyleToken);
+            if (style.fontFamily) tracker.addFont(style.fontFamily, style.fontWeight);
+        }
+    }
+
+    it('declares the font a drawn op will inherit, so it actually loads', () => {
         const manifest: AssetManifest = { image: {}, video: {}, audio: {}, font: {} };
         const root = new DefaultTextStyle({
             fontFamily: 'Inter',
             fontWeight: 700,
-            children: [new RawLabel({ width: 100, height: 40 })],
+            children: [new DeclaringLabel({ width: 100, height: 40 })],
         });
+        root.bindContext(ContextMap.EMPTY, true);
         root.layout({ x: 0, y: 0, width: 200, height: 100 }, scope);
 
         const tracker = new AssetTracker(new AssetCatalog(manifest));
-        const ctx = new TrackRenderContext(tracker);
         tracker.start(0);
-        ctx.execute(() => root.render(ctx));
+        root.prepareLayoutAssets(tracker);
         tracker.end();
 
         expect(tracker.assets.get('Inter')).toMatchObject({

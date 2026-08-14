@@ -129,10 +129,11 @@ export class FakeScene {
     prepareLayoutAssets(): void {
         this.prepareLayoutCount++;
     }
-    prepareRenderAssets(): void {
+    // `onPrepare` fires here rather than from a third audio walk: declarations
+    // are collected in two phases now, and this is the one that runs with a
+    // layout behind it — where a fake declaring an image or a clip belongs.
+    prepareRenderAssets(tracker: AssetTracker): void {
         this.prepareRenderCount++;
-    }
-    prepareAudioAssets(tracker: AssetTracker): void {
         this.onPrepare?.(tracker, this.prepareCount);
         this.prepareCount++;
     }

@@ -3,8 +3,9 @@ import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { MeasureScope } from "@/render/measure-scope";
-import { resolveFillArray } from "@/attributes/shape/fill/registry";
+import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
+import { AssetTracker } from "@/assets/tracker";
 import { resolveStrokeArray, StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { Size2D } from "@/attributes/layout/size";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
@@ -120,6 +121,32 @@ export class RichText extends ShapeNode<RichTextProps> {
         };
         for (const span of this.spans) walk(span, base);
         return out;
+    }
+
+    /**
+     * Every family the flattened runs resolve to — not just this node's default.
+     *
+     * A span can name its own `fontFamily`, so declaring `this.fontFamily` alone
+     * would leave a styled run shaping against the fallback face. {@link runs}
+     * is the same flattening {@link measure} and the render both use, which is
+     * what keeps the declaration and the draw from naming different families.
+     */
+    override prepareLayout(tracker: AssetTracker): void {
+        for (const run of this.runs()) tracker.addFont(run.fontFamily, run.fontWeight);
+    }
+
+    /** Per-run paint, for the same reason: a span may carry a fill this node doesn't. */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+        for (const run of this.runs()) {
+            for (const fill of run.fill) prepareFill(fill, tracker, width, height);
+            for (const stroke of run.stroke) {
+                for (const fill of stroke.fill) prepareFill(fill, tracker, width, height);
+            }
+        }
     }
 
     measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {

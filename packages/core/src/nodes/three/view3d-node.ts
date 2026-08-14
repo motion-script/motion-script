@@ -3,7 +3,8 @@ import { Graphics3D } from "@/render3d/graphics3d";
 import { warmView3D } from "@/render3d/resources";
 import { forEachTexture3D } from "@/render3d/walk";
 import { isSurfaceTexture3D, resolveSurfaceSource } from "@/render3d/texture";
-import type { Disposer } from "@/assets/record";
+import { track3DResources } from "@/render3d/tracking";
+import { AssetTracker } from "@/assets/tracker";
 import { Fills, resolveChainFill } from "@/attributes/shape/fill/chain";
 import { property } from "@/attributes/properties/decorator";
 import { Rect, RectProps } from "../geometry/rect-node";
@@ -117,16 +118,28 @@ export class View3D<P extends View3DProps = View3DProps> extends Rect<P> {
     }
 
     /**
-     * Start loading the 3D runtime.
+     * Declare the 3D runtime, plus every texture, model and env map the built
+     * `Graphics3D` references.
      *
-     * `prepareRenderAssets()` runs during precomp — before any frame is drawn —
-     * and is fire-and-forget, so the runtime is normally resident by the time the
-     * first 3D frame paints and the render pass stays synchronous. The renderer
-     * keeps a per-frame fallback for the case where it isn't. No-op when no
-     * rendering backend has registered a 3D runtime.
+     * The runtime goes on the timeline as an async load rather than being warmed
+     * fire-and-forget: it is a genuine precondition of drawing a 3D frame, and
+     * `addAsync` is what lets the render path wait for it instead of falling back
+     * per frame. It resolves nothing, because three stays resident once loaded.
+     *
+     * The resources come from the same `buildGraphics3D()` the render uses, so
+     * what is declared cannot drift from what is sampled — the reason
+     * `track3DResources` takes a tracker rather than a render context.
      */
-    override prepareRender(): Promise<void | Disposer> | void {
-        return warmView3D();
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        // `warmView3D` is a no-op returning `void` when no backend has registered
+        // a 3D runtime, so it can't be handed to `addAsync` bare.
+        tracker.addAsync("three:runtime", async () => { await warmView3D(); });
+
+        const built = this.buildGraphics3D();
+        if (!(built instanceof Graphics3D) || built.isEmpty()) return;
+        const rect = this.layoutRect;
+        track3DResources(built, tracker, rect?.width ?? 0, rect?.height ?? 0);
     }
 
     /**

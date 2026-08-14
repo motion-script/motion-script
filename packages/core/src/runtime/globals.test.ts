@@ -2,11 +2,10 @@ import { describe, it, expect } from "vitest";
 
 import { LayerStack, ProjectGlobals, audioTimelineDuration, layerAppliesTo, resolveGlobalAudio } from "@/runtime/globals";
 import { AudioFilters } from "@/attributes/audio/filters/chain";
-import { AssetTracker } from "@/assets/tracker";
 import { Node } from "@/nodes/base/node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { RenderContext } from "@/render/render-context";
-import { TrackRenderContext } from "@/render/track-render-context";
+import { NullRenderContext } from "@/render/null-render-context";
 import { ContextMap } from "@/util/context";
 import { asCatalog, FakeAssetCatalog, FakeMeasureScope } from "./runtime.fixtures";
 
@@ -14,7 +13,7 @@ const VIEWPORT = { width: 800, height: 400 };
 const BOUNDS = { x: 0, y: 0, width: VIEWPORT.width, height: VIEWPORT.height };
 
 /**
- * A leaf that records the order it was drawn in. `TrackRenderContext` is a real
+ * A leaf that records the order it was drawn in. `NullRenderContext` is a real
  * `RenderContext` that never rasterizes, so it can drive a full render walk in a
  * plain Node environment — the probe just appends its label as it goes.
  */
@@ -27,7 +26,7 @@ class Probe extends Node {
     }
 }
 
-const trackingContext = () => new TrackRenderContext(new AssetTracker(asCatalog(new FakeAssetCatalog())));
+const trackingContext = () => new NullRenderContext();
 
 // ─── Global audio beds ────────────────────────────────────────────────────────
 

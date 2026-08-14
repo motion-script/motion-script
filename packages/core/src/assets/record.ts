@@ -4,12 +4,16 @@ export type AssetType = 'image' | 'font' | 'video' | 'audio' | 'loader';
 export type Disposer = () => void;
 
 /**
- * An opaque async load owned by the requesting package. Runs the load and
- * resolves with a {@link Disposer} that frees it. The core never inspects what
- * was loaded — this is how a component package (e.g. the code component's Shiki
- * highlighter) loads its own resources without core depending on it.
+ * An opaque async load owned by the declaring package. Runs the load and
+ * optionally resolves a {@link Disposer} that frees it. The core never inspects
+ * what was loaded — this is how a component package (e.g. the code component's
+ * Shiki highlighter) loads its own resources without core depending on it.
+ *
+ * Resolving nothing means "keep it resident": a syntax grammar or a 3D runtime is
+ * cheap to hold and expensive to re-fetch, so most loaders have nothing to free.
+ * Resolving a `Disposer` opts into eviction when the frame window closes.
  */
-export type LoaderFn = () => Promise<Disposer>;
+export type LoaderFn = () => Promise<void | Disposer>;
 
 // ─── Cached entry types ───────────────────────────────────────────────────────
 

@@ -75,6 +75,6 @@ export const displaceEffect: EffectData<DisplaceEffect> = {
     // Without this the map is never requested, the backend's synchronous lookup
     // finds nothing, and the effect silently has nothing to displace by.
     prepare: (effect, tracker, width, height) => {
-        if (effect.src) tracker.requestImage(effect.src, width, height);
+        if (effect.src) tracker.addImage(effect.src, { width, height });
     },
 };

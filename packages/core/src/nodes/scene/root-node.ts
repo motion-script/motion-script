@@ -15,8 +15,9 @@ import { MeasureScope } from "@/render/measure-scope";
 import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
 import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
-import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
+import { resolveFillArray, lerpFillArray, prepareFill } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
+import { AssetTracker } from "@/assets/tracker";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { CameraScope, Node, NodeConfig, NodeProps } from "../base/node";
 import { property } from "@/attributes/properties/decorator";
@@ -229,6 +230,22 @@ export class RootNode extends Node<RootProps> implements FlowHost {
         const overlay = this.overlay as FillResolved[];
         if (overlay.length === 0) return;
         ctx.draw(this.shapeGraphics().fill(overlay));
+    }
+
+    /**
+     * The scene background and its overlay.
+     *
+     * This extends `Node` rather than `ShapeNode` — it is the world container,
+     * not a shape — so it carries its own `fill`/`overlay` and declares them
+     * itself. A scene whose background is an image or a video lives here.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+        for (const fill of this.fill as FillResolved[]) prepareFill(fill, tracker, width, height);
+        for (const fill of this.overlay as FillResolved[]) prepareFill(fill, tracker, width, height);
     }
 
     // The viewport outline — used for `clip` and as the area backdrop effects

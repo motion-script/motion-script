@@ -152,7 +152,7 @@ export const shaderFill: FillData<ShaderFillResolved> = {
     // caveat every fill has there.
     prepare: (fill, tracker, width, height) => {
         for (const texture of fill.textures ?? []) {
-            tracker.requestImage(texture.src, width, height);
+            tracker.addImage(texture.src, { width, height });
         }
     },
 };

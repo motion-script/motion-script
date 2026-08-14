@@ -13,7 +13,7 @@ import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { AssetTracker } from "@/assets/tracker";
-import { resolveFill } from "@/attributes/shape/fill/registry";
+import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
 import { Sound } from "@/attributes/audio/sound";
 import { AudioFilterItem } from "@/attributes/audio/filters/union";
@@ -204,13 +204,24 @@ export class Video extends Rect<VideoProps> {
         this._sound?.tick(time);
     }
 
-    // Audio scheduling only — the picture is inferred automatically from the
-    // `video` fill `renderSelf` paints (see `TrackRenderContext`). Audio has no
-    // draw-call representation, so it stays an explicit, tracker-based
-    // registration into the frame-ranged timeline (see `Node.prepareAudio`).
-    override prepareAudio(tracker: AssetTracker): void {
-        super.prepareAudio(tracker);
+    /**
+     * Declare both halves of a clip: the picture and the sound.
+     *
+     * They used to be split across `prepareRender` (nothing — the picture was
+     * inferred from the fill the render pass painted) and `prepareAudio`. Nothing
+     * is inferred now, and audio needs no layout, so one hook declares the whole
+     * clip and the two can no longer disagree about `src` or the trim window.
+     */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
         if (!this.src) return;
+
+        // The picture, through the same `syncVideo()` fill `renderSelf` paints.
+        this.syncVideo();
+        if (this._video) {
+            const rect = this.layoutRect;
+            prepareFill(this._video, tracker, rect?.width ?? 0, rect?.height ?? 0);
+        }
 
         // Muted or paused videos draw the picture but contribute no sound.
         if (this.muted || !this.playing) return;
@@ -220,7 +231,7 @@ export class Video extends Rect<VideoProps> {
 
         // Resolve the full-length default for trimEnd against the *video*'s
         // duration (getMediaDuration falls back to the video manifest), then
-        // start the clip once and let prepareAudio() push its request each frame.
+        // start the clip once and let this push its request each frame.
         if (sound.trimEnd === Infinity && !sound.loop) {
             sound.trimEnd = tracker.catalog.getMediaDuration(this.src);
         }

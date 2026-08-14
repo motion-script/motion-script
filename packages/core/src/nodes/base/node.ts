@@ -10,7 +10,7 @@ import { Context, ContextMap } from "@/util/context";
 import { Random } from "@/util/random";
 import { AssetCatalog } from "@/assets/catalog";
 import { AssetTracker } from "@/assets/tracker";
-import { Disposer } from "@/assets/record";
+import { prepareEffect } from "@/attributes/shape/effects/registry";
 import { getPropertyMeta, property, PropOptions } from "@/attributes/properties/decorator";
 import { effectsProperty, insetsProperty, anchorProperty } from "@/attributes/properties/typed";
 import {
@@ -1246,105 +1246,90 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
-     * Opaque async setup needed **before layout** — e.g. {@link Code}'s syntax
-     * grammar, which tokenization/measurement depends on. Runs in the precomp
-     * pass ahead of {@link layout}, so the node cannot read its `layoutRect`
-     * here (it hasn't been laid out yet). Image/video/paint and font requests
-     * are no longer declared here — they're inferred automatically from the
-     * same `render()`/`layout()` calls a node already makes (see
-     * `TrackRenderContext`/`TrackMeasureScope`). No-op by default.
+     * Declare every asset **layout** depends on — fonts, and any opaque async
+     * load that measurement needs (e.g. {@link Code}'s syntax grammar).
      *
-     * The framework does **not** await the returned promise inline (precomp
-     * stays fully synchronous) — it's fired once per frame and, when nothing
-     * changed, should return synchronously (`void`). Memoize like
-     * {@link Video}'s `syncVideo()` does: key off whatever prop drives the
-     * async work and skip re-running when the key is unchanged. When the
-     * promise resolves to a {@link Disposer}, it replaces (and disposes) any
-     * previous one for this node+phase, and runs when this node is
-     * {@link dispose}d.
+     * Runs ahead of {@link layout}, so the node cannot read its `layoutRect`
+     * here: anything that needs a size belongs in {@link prepareRender}. That
+     * ordering is the only reason there are two hooks.
+     *
+     * **Synchronous, and a declaration rather than the work itself.** Async
+     * loading goes through `tracker.addAsync(key, load)`, which puts it on the
+     * frame-ranged timeline so the {@link AssetManager} runs it when its window
+     * opens and the render path can *wait* for it. A hook that did the awaiting
+     * itself could only ever be fire-and-forget, which is what left `Code`
+     * laying out against untokenized text.
+     *
+     * Nothing is inferred from a render pass. A node that draws an asset it did
+     * not declare does not degrade — it throws when the renderer reaches for it.
+     *
+     * ```ts
+     * override prepareLayout(tracker: AssetTracker): void {
+     *     tracker.addFont("Roboto");
+     *     tracker.addAsync("grammar:java", () => loadGrammar("java"));
+     * }
+     * ```
      */
-    prepareLayout(): Promise<void | Disposer> | void {
+    prepareLayout(_tracker: AssetTracker): void {
 
     }
 
     /**
-     * Opaque async setup needed **before render**, with the node's
-     * `layoutRect` available (runs after {@link layout}). No-op by default —
-     * no built-in node currently needs this timing, but it's kept symmetric
-     * with {@link prepareLayout} for custom nodes whose async setup depends on
-     * knowing their rendered size. See {@link prepareLayout} for the contract.
+     * Declare every asset **render** needs — images, video, 3D resources, effect
+     * textures, and the audio a playing clip schedules.
+     *
+     * Runs after {@link layout}, so `layoutRect` is live and a declaration can be
+     * sized to what will actually be painted (which is how the decode resolution
+     * is chosen). See {@link prepareLayout} for the rest of the contract.
+     *
+     * The base implementation declares this node's `effects`; {@link ShapeNode}
+     * extends it with `fill`/`overlay`/`stroke`/`shadow`, so most nodes never
+     * override this at all — only one that paints something its attributes don't
+     * describe (a raw `Graphics` built from a literal src) has anything to add.
+     *
+     * ```ts
+     * override prepareRender(tracker: AssetTracker): void {
+     *     super.prepareRender(tracker);
+     *     tracker.addImage("./images/1.png", { width: 100, height: 100 });
+     * }
+     * ```
      */
-    prepareRender(): Promise<void | Disposer> | void {
-
-    }
-
-    /** Disposer returned by the most recent {@link prepareLayout}/{@link prepareRender}. */
-    private _layoutDisposer?: Disposer;
-    private _renderDisposer?: Disposer;
-
-    /**
-     * Walk the subtree firing each node's **pre-layout** async setup (see
-     * {@link prepareLayout}). Fire-and-forget: does not block precomp's
-     * synchronous per-frame pass.
-     */
-    prepareLayoutAssets(): void {
-        const result = this.prepareLayout();
-        if (result) {
-            result.then((disposer) => {
-                if (!disposer) return;
-                this._layoutDisposer?.();
-                this._layoutDisposer = disposer;
-            }).catch((err) => console.error("[prepareLayout] failed:", err));
+    prepareRender(tracker: AssetTracker): void {
+        const effects = this.effects as SceneEffect[];
+        if (effects.length === 0) return;
+        const rect = this.layoutRect;
+        for (const effect of effects) {
+            prepareEffect(effect, tracker, rect?.width ?? 0, rect?.height ?? 0);
         }
+    }
+
+    /**
+     * Walk the subtree collecting each node's **pre-layout** declarations (see
+     * {@link prepareLayout}).
+     */
+    prepareLayoutAssets(tracker: AssetTracker): void {
+        this.prepareLayout(tracker);
         const children = this._children;
         for (let i = 0; i < children.length; i++) {
-            children[i].prepareLayoutAssets();
+            children[i].prepareLayoutAssets(tracker);
         }
     }
 
     /**
-     * Walk the subtree firing each node's **pre-render** async setup (see
-     * {@link prepareRender}). Fire-and-forget: does not block precomp's
-     * synchronous per-frame pass.
+     * Walk the subtree collecting each node's **pre-render** declarations (see
+     * {@link prepareRender}).
+     *
+     * Stamps the owning node's structural path while each node declares, so an
+     * audio request lands on its own timeline bar — purely for display, playback
+     * ignores `ownerPath`. That stamping used to live on a third `prepareAudio`
+     * walk; audio needs no layout, so a `Video` declaring its picture and its
+     * sound in one place is both simpler and one fewer tree walk per frame.
      */
-    prepareRenderAssets(): void {
-        const result = this.prepareRender();
-        if (result) {
-            result.then((disposer) => {
-                if (!disposer) return;
-                this._renderDisposer?.();
-                this._renderDisposer = disposer;
-            }).catch((err) => console.error("[prepareRender] failed:", err));
-        }
+    prepareRenderAssets(tracker: AssetTracker, path: string = ""): void {
+        tracker.withOwnerPath(path, () => this.prepareRender(tracker));
         const children = this._children;
         for (let i = 0; i < children.length; i++) {
-            children[i].prepareRenderAssets();
-        }
-    }
-
-    /**
-     * Register this node's audio scheduling needs on the timeline — the one
-     * asset concern that's neither drawable (like images/video/paint, inferred
-     * via `TrackRenderContext`) nor a simple async load (see
-     * {@link prepareLayout}): a playing clip has to be declared into the
-     * frame-ranged timeline `AssetManager`/`AudioDevice` use to keep audio in
-     * sync while scrubbing. No-op by default; {@link Video} overrides it.
-     */
-    prepareAudio(_tracker: AssetTracker): void {
-
-    }
-
-    /**
-     * Walk the subtree registering each node's audio requests (see
-     * {@link prepareAudio}). Stamps the owning node's structural path onto any
-     * audio requests emitted, so the timeline can draw each clip on its own
-     * bar — purely for display, playback ignores `ownerPath`.
-     */
-    prepareAudioAssets(tracker: AssetTracker, path: string = ""): void {
-        tracker.withOwnerPath(path, () => this.prepareAudio(tracker));
-        const children = this._children;
-        for (let i = 0; i < children.length; i++) {
-            children[i].prepareAudioAssets(tracker, nodePath(path, i));
+            children[i].prepareRenderAssets(tracker, nodePath(path, i));
         }
     }
 
@@ -2207,10 +2192,9 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Teardown ---------------------------------------------------------
 
     dispose(): void {
-        this._layoutDisposer?.();
-        this._layoutDisposer = undefined;
-        this._renderDisposer?.();
-        this._renderDisposer = undefined;
+        // No per-node loader disposers to run: an async load is declared through
+        // `tracker.addAsync`, so its `Disposer` belongs to the `LoaderRecord` on
+        // the timeline and `AssetManager` runs it when the frame window closes.
         if (this.__signals) {
             for (const cell of this.__signals.values()) {
                 cell.dispose();

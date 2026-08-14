@@ -3,6 +3,8 @@ import { View3D } from '@/nodes/three/view3d-node';
 import { Graphics } from '@/render/graphics';
 import { Graphics3D } from '@/render3d/graphics3d';
 import { resolveFillArray } from '@/attributes/shape/fill/registry';
+import { AssetTracker } from '@/assets/tracker';
+import { AssetCatalog } from '@/assets/catalog';
 import type { View3DFillResolved } from '@/attributes/shape/fill/implementations/view3d';
 import type { FillResolved } from '@/attributes/shape/fill/union';
 import type { RenderContext } from '@/render/render-context';
@@ -172,9 +174,15 @@ describe('View3D', () => {
         expect(explicit.height).toBe(480);
     });
 
-    it('prepareRender is a no-op when no rendering backend has registered a 3D runtime', () => {
+    it('declares the runtime without throwing when no backend has registered one', () => {
         // Core must stay usable headless — the warmup seam is filled in by the
-        // backend, and its absence can't throw.
-        expect(() => new View3D({}).prepareRender()).not.toThrow();
+        // backend, and its absence can't throw. The declaration still lands on the
+        // timeline; running it is the manager's problem, and `warmView3D` no-ops.
+        const tracker = new AssetTracker(new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} }));
+        tracker.start(0);
+        expect(() => new View3D({}).prepareRender(tracker)).not.toThrow();
+        tracker.end();
+
+        expect(tracker.assets.get('three:runtime')?.type).toBe('loader');
     });
 });

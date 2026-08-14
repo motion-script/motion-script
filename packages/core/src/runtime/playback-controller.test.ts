@@ -190,7 +190,7 @@ describe('PlaybackController – replaceScene (hot reload)', () => {
             name: 'Scene',
             yieldCount: 10,
             children: [new FakeNode('child', 'Rect')],
-            onPrepare: (tracker) => tracker.requestImage('new.png', 64, 64),
+            onPrepare: (tracker) => tracker.addImage('new.png', { width: 64, height: 64 }),
         });
 
         const rendersBefore = rc.renderCount;
@@ -225,7 +225,7 @@ describe('PlaybackController – replaceScene (hot reload)', () => {
         const edited = new FakeScene({
             id: 'root', name: 'Scene', yieldCount: 10,
             children: [new FakeNode('child', 'Rect')],
-            onPrepare: (tracker) => tracker.requestImage('new.png', 64, 64),
+            onPrepare: (tracker) => tracker.addImage('new.png', { width: 64, height: 64 }),
         });
         controller.replaceScene(asScene(edited)); // parks on the gated loadAt
 

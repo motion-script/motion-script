@@ -269,9 +269,9 @@ describe('Texture3D discrimination', () => {
     it('track3DResources skips a surface map and still finds image maps', () => {
         const requested: string[] = [];
         const tracker = {
-            requestImage: (src: string) => { requested.push(src); },
-            requestFont: () => { },
-            requestLoader: () => { },
+            addImage: (src: string) => { requested.push(src); },
+            addFont: () => { },
+            addAsync: () => { },
         } as unknown as AssetTracker;
 
         const g3 = new Graphics3D()

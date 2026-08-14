@@ -155,8 +155,8 @@ describe('shader fill', () => {
     });
 
     it('requests each texture during precomp, sized to the destination', () => {
-        const requestImage = vi.fn();
-        const tracker = { requestImage } as unknown as AssetTracker;
+        const addImage = vi.fn();
+        const tracker = { addImage } as unknown as AssetTracker;
 
         prepareFill(
             fill(SRC_A, { textures: [{ name: 'u_a', src: '/cat.jpg' }, { name: 'u_b', src: '/bird.jpg' }] }),
@@ -165,14 +165,14 @@ describe('shader fill', () => {
             600,
         );
 
-        expect(requestImage).toHaveBeenCalledWith('/cat.jpg', 800, 600);
-        expect(requestImage).toHaveBeenCalledWith('/bird.jpg', 800, 600);
+        expect(addImage).toHaveBeenCalledWith('/cat.jpg', { width: 800, height: 600 });
+        expect(addImage).toHaveBeenCalledWith('/bird.jpg', { width: 800, height: 600 });
     });
 
     it('requests nothing when the fill has no textures', () => {
-        const requestImage = vi.fn();
-        prepareFill(fill(SRC_A), { requestImage } as unknown as AssetTracker, 800, 600);
+        const addImage = vi.fn();
+        prepareFill(fill(SRC_A), { addImage } as unknown as AssetTracker, 800, 600);
 
-        expect(requestImage).not.toHaveBeenCalled();
+        expect(addImage).not.toHaveBeenCalled();
     });
 });

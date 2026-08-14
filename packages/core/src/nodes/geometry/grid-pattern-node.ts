@@ -6,6 +6,8 @@ import { Graphics } from "@/render/graphics";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { PathCommand } from "@/render/descriptors/path";
 import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { prepareFill } from "@/attributes/shape/fill/registry";
+import { AssetTracker } from "@/assets/tracker";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { lerpNumber } from "@/tween/lerp";
 import { ViewportPattern } from "./viewport-pattern-node";
@@ -62,6 +64,17 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
     set subStroke(_value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
     declare readonly offset: Vector2;
+
+    /** The minor-line stroke, on top of the four slots `ShapeNode` declares. */
+    override prepareRender(tracker: AssetTracker): void {
+        super.prepareRender(tracker);
+        const rect = this.layoutRect;
+        const width = rect?.width ?? 0;
+        const height = rect?.height ?? 0;
+        for (const stroke of this.subStroke) {
+            for (const fill of stroke.fill) prepareFill(fill, tracker, width, height);
+        }
+    }
 
     constructor(props: NodeConfig<GridPattern, GridPatternProps>) {
         super(props);
