@@ -72,9 +72,8 @@ export interface CommandTarget<P> {
  * The two drive paths are generated rather than written out, so they cannot
  * disagree with `at` or with each other — which was the failure mode worth
  * designing out. `TweenStepper.seek(elapsed)` already existed as an absolute-time
- * evaluator, but it wrote side-effectfully and (in `AnimationBuilder`) ignored
- * its argument; deriving it here makes the pure function the source of truth and
- * the imperative driver the derived thing.
+ * evaluator, but it wrote side-effectfully; deriving it here makes the pure
+ * function the source of truth and the imperative driver the derived thing.
  *
  * @param target   Receives the evaluated props — the node the command belongs to.
  * @param at       Normalized time → props. Called with the *eased* `t`.
@@ -202,8 +201,8 @@ function fromValue<P>(
         _stepper(): TweenStepper {
             let elapsed = 0;
             return {
-                // Honours its argument, unlike `AnimationBuilder`'s — a stepper
-                // that can only prime at 0 is not something a host can seek with.
+                // Honours its argument — a stepper that can only prime at 0 is
+                // not something a host can seek with.
                 seek: (e: number) => {
                     elapsed = e;
                     target.set(value(progress(e)));

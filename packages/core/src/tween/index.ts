@@ -3,7 +3,7 @@ export * from './ease/constants';
 
 export * from './tween';
 export * from './generator';
-export * from './animation-builder';
+export * from './chain';
 export * from './command';
 export * from './command-decorator';
 

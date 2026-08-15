@@ -1,5 +1,5 @@
 
-import { EasingFunction, FrameGenerator, lerpNumber, tween } from "@motion-script/core";
+import { lerpNumber } from "@motion-script/core";
 import { LatexToken } from "./geometry";
 
 export interface AnimatedToken {
@@ -65,20 +65,20 @@ function matchTokens(
 }
 
 /**
- * Generator that animates a formula change by:
- * - Fading out deleted tokens in the first half of the duration.
- * - Moving matched tokens across the full duration.
- * - Fading in added tokens in the second half of the duration.
+ * Precompute a formula-change morph and return a pure `t → AnimatedToken[]`
+ * frame function:
+ * - Deleted tokens fade out over the first half of `t`.
+ * - Matched tokens slide (by centroid) across the full range of `t`.
+ * - Added tokens fade in over the second half of `t`.
  *
- * `onFrame` is called each frame with the current list of AnimatedTokens to render.
+ * `t` is normalized `[0, 1]` and already eased — the caller (a `Command`'s
+ * `at`) applies easing once, up front, the same eased value driving every
+ * concurrent aspect of the morph (props, intrinsic size, tokens) in lockstep.
  */
-export function* tweenLatex(
+export function prepareLatexTween(
     from: LatexToken[],
     to: LatexToken[],
-    duration: number,
-    onFrame: (tokens: AnimatedToken[]) => void,
-    easing?: EasingFunction,
-): FrameGenerator {
+): (t: number) => AnimatedToken[] {
     const { matched, deleted, added } = matchTokens(from, to);
 
     // Pre-compute centroids for position lerp
@@ -90,9 +90,7 @@ export function* tweenLatex(
         toCenter: centroid(t.path),
     }));
 
-    yield* tween(duration, (rawT) => {
-        const t = easing ? easing(rawT) : rawT;
-
+    return (t: number): AnimatedToken[] => {
         const tokens: AnimatedToken[] = [];
 
         // Matched tokens: slide across full duration
@@ -132,6 +130,6 @@ export function* tweenLatex(
             });
         }
 
-        onFrame(tokens);
-    });
+        return tokens;
+    };
 }

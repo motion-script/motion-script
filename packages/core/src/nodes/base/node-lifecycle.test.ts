@@ -4,7 +4,6 @@ import { Node } from '@/nodes/base/node';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
-import { FrameGenerator } from '@/tween/generator';
 
 const scope = new FakeMeasurer();
 
@@ -42,11 +41,12 @@ class HugItem extends Node {
  */
 function driveWithLayout<T>(
     root: Node & { rect: BoxBounds },
-    gen: FrameGenerator,
+    command: Iterable<void>,
     dt: number,
     sample: () => T,
     rootBox: BoxBounds,
 ): T[] {
+    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
     const snaps: T[] = [];
     const layout = () => {
         // Measure against a generous space, then lay the root into a cell sized to
@@ -87,7 +87,7 @@ describe('addChildAt (animated) — grows the child in so siblings reflow', () =
         // 0.4s at dt = 0.1s → 4 tween frames. The hug width is measured detached
         // (off-tree) before the child is attached, so there is no in-flow measure
         // frame that could shift the siblings.
-        const gen = row.addChildAt(incoming, 1, 0.4) as FrameGenerator;
+        const gen = row.addChildAt(incoming, 1, 0.4);
 
         const rootBox = { x: 0, y: 0, width: 1000, height: 1000 };
         const snaps = driveWithLayout(
@@ -130,7 +130,7 @@ describe('addChildAt (animated) — grows the child in so siblings reflow', () =
         row.addChildren([new Tile(100, 40)]);
 
         const incoming = new HugItem(60);
-        const gen = row.addChildAt(incoming, 0, 0.2) as FrameGenerator;
+        const gen = row.addChildAt(incoming, 0, 0.2);
         driveWithLayout(row, gen, 0.1, () => null, { x: 0, y: 0, width: 1000, height: 1000 });
 
         // Once the animation completes the axis is a hug token again (not pinned
@@ -147,7 +147,7 @@ describe('removeChildAt (animated) — shrinks the child so siblings close the g
         const row = new ProbeRow({ gap: 20 });
         row.addChildren([a, b]);
 
-        const gen = row.removeChildAt(1, 0.2) as FrameGenerator;
+        const gen = row.removeChildAt(1, 0.2);
         const rowWidths = driveWithLayout(
             row,
             gen,

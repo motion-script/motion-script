@@ -5,7 +5,7 @@ import { FrameGenerator } from "@/tween/generator";
  * passing a normalized progress value `t` in [0, 1].
  *
  * The callback receives a pre-eased `t` — apply your easing before calling
- * (typically done by {@link AnimationBuilder} / node helpers). The generator
+ * (typically done by `driveCommand`/node helpers). The generator
  * guarantees a final call with `t = 1` so the end state is always applied
  * cleanly, even if the last frame overshoots.
  *

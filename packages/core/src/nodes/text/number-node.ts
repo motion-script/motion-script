@@ -1,6 +1,5 @@
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
-import { AnimationBuilder } from "@/tween/animation-builder";
+import { type ChainableCommand } from "@/tween/chain";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { Text, TextProps } from "./text-node";
@@ -102,15 +101,15 @@ export class NumberNode extends Text {
     }
 
     /** Animate {@link value} to `to`, counting through the formatted display. */
-    *countTo(to: number, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* this.to({ value: to } as Partial<TextProps>, duration, easing);
+    countTo(to: number, duration: number, easing?: EasingFunction): ChainableCommand<NumberProps> {
+        return this.to({ value: to } as Partial<NumberProps>, duration, easing);
     }
 
     // Widen the inherited typings so authors get `value` (and the format props)
     // in `to()`/`set()` autocomplete. The runtime is key-driven and already
     // writes any registered signal, so only the static types need broadening.
-    override to(to: Partial<NumberProps>, duration: number, easing?: EasingFunction): AnimationBuilder<NumberProps> {
-        return super.to(to as Partial<TextProps>, duration, easing) as unknown as AnimationBuilder<NumberProps>;
+    override to(to: Partial<NumberProps>, duration: number, easing?: EasingFunction): ChainableCommand<NumberProps> {
+        return super.to(to as Partial<TextProps>, duration, easing) as unknown as ChainableCommand<NumberProps>;
     }
 
     override set(props: { [K in keyof NumberProps]?: NumberProps[K] | (() => NumberProps[K]) }): void {

@@ -4,8 +4,8 @@ import { FrameGenerator } from "@/tween/generator";
  * Runs a list of animations one after another.
  *
  * Each animation must complete before the next one starts. Accepts both
- * {@link FrameGenerator} instances and any `Iterable<void>` (e.g. an
- * {@link AnimationBuilder}).
+ * {@link FrameGenerator} instances and any `Iterable<void>` (e.g. a
+ * {@link Command}).
  *
  * @param animations - Animations to run in order.
  *

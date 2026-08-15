@@ -1,7 +1,8 @@
 import { Signal, SignalSnapshot, type SignalOwner } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
+import { driveCommand, type Command } from "@/tween/command";
+import { TweenStepper } from "@/tween/stepper";
 import { getPropertyMeta, PropOptions } from "@/attributes/properties/decorator";
 
 /**
@@ -14,14 +15,14 @@ import { getPropertyMeta, PropOptions } from "@/attributes/properties/decorator"
 
 /**
  * The slice of a {@link Node} these helpers touch: the {@link SignalHost} maps
- * plus the internal write/tween seams. `_writeProp` and `_toGen` remain methods
- * on `Node`; the helpers call back through them so subclass behaviour and the
- * inline hot path are preserved.
+ * plus the internal write/tween seams. `_writeProp` and `_prepareStep` remain
+ * methods on `Node`; the helpers call back through them so subclass behaviour
+ * and the inline hot path are preserved.
  */
 /** @internal */
 export interface ReactiveHost extends SignalHost {
     _writeProp(field: string, value: unknown): void;
-    _toGen(to: Record<string, unknown>, duration: number, easing?: EasingFunction): FrameGenerator;
+    _prepareStep(to: Record<string, unknown>, duration: number, easing?: EasingFunction): TweenStepper;
     /** LIFO stack of save() snapshot layers; owned as an instance field on Node. */
     _stateStack: Map<string, SignalSnapshot<any>>[];
     /** Told when any of this host's cells goes stale; see {@link SignalOwner}. */
@@ -167,24 +168,42 @@ export function applySnapshotLayer(host: ReactiveHost, layer: Map<string, Signal
  * Animated restore: tween the numeric / custom-tweenable props toward their
  * saved resolved values, then reapply the full snapshot so reactive bindings are
  * restored (not frozen at the tween's landing value) and non-tweened props snap.
- * Extracted from `Node._restoreAnimated`.
+ *
+ * A {@link Command} rather than a generator: `_prepareStep`'s stepper already
+ * drives the tween as a pure function of elapsed time, so `driveCommand` wraps
+ * it directly and fires the snapshot reapply exactly at `t === 1` — the same
+ * "commit at the end, restore what came before below it" shape
+ * `packages/components/code`'s `runTransition` uses.
+ *
+ * `_prepareStep` is called **lazily, on the command's first evaluation**, not
+ * when this function runs — it snapshots each prop's `from` off the *live*
+ * node, and a generator's body (what this replaces) never ran a line until the
+ * caller's first `.next()` either. Building it eagerly would snapshot whatever
+ * the node happened to hold at `restore()`-call time instead of at first-drive
+ * time, which can differ if the caller does more to the node in between.
  */
 /** @internal */
-export function* restoreAnimated(
+export function restoreAnimated(
     host: ReactiveHost,
     layer: Map<string, SignalSnapshot<any>> | undefined,
     duration: number,
     easing?: EasingFunction,
-): FrameGenerator {
-    if (!layer) { yield* host._toGen({}, duration, easing); return; }
+): Command<Record<string, never>> {
+    let stepper: TweenStepper | null = null;
 
-    // `to()` reads each snapshot's resolved `value` (correct even for a bound
-    // cell), so the node animates back to where it *was*.
-    const target: Record<string, unknown> = {};
-    for (const [key, snap] of layer) {
-        target[key] = snap.value;
-    }
-    yield* host._toGen(target, duration, easing);
-
-    applySnapshotLayer(host, layer);
+    return driveCommand(duration, (t) => {
+        if (!stepper) {
+            // `to()` reads each snapshot's resolved `value` (correct even for a
+            // bound cell), so the node animates back to where it *was*.
+            const target: Record<string, unknown> = {};
+            if (layer) {
+                for (const [key, snap] of layer) {
+                    target[key] = snap.value;
+                }
+            }
+            stepper = host._prepareStep(target, duration);
+        }
+        stepper.seek(t * duration);
+        if (layer && t >= 1) applySnapshotLayer(host, layer);
+    }, easing);
 }

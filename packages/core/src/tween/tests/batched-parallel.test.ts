@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { parallel } from '../parallel';
 import { Rect } from '../../nodes/geometry/rect-node';
 
-// Drive a generator to completion, sending a fixed dt each frame and snapshotting
-// a value after every frame (the first next() primes / applies t=0).
-function frames<T>(gen: Generator<void, void, number>, dt: number, sample: () => T): T[] {
+// Drive a generator (or any Iterator<void,void,number>) to completion, sending
+// a fixed dt each frame and snapshotting a value after every frame (the first
+// next() primes / applies t=0).
+function frames<T>(gen: Iterator<void, void, number>, dt: number, sample: () => T): T[] {
     const out: T[] = [];
     let r = gen.next();      // prime → applies t=0
     out.push(sample());
@@ -63,14 +64,14 @@ describe('parallel – batched stepper path (node.to)', () => {
         expect(node.x).toBeCloseTo(20, 6);
     });
 
-    it('matches the generator (_toGen) path frame-for-frame', () => {
+    it('matches the direct iterator path frame-for-frame', () => {
         const dt = 1 / 60;
         const a = new Rect({ x: 0 });
         const b = new Rect({ x: 0 });
-        // Batched path via parallel(node.to(...))
+        // Batched path via parallel(node.to(...)) — the Steppable fast path.
         const batched = frames(parallel(a.to({ x: 100 }, 0.37)), dt, () => a.x);
-        // Generator path: drive _toGen directly.
-        const direct = frames(b._toGen({ x: 100 }, 0.37), dt, () => b.x);
+        // Iterator path: drive the Command's own [Symbol.iterator]() directly.
+        const direct = frames(b.to({ x: 100 }, 0.37)[Symbol.iterator](), dt, () => b.x);
         expect(batched).toEqual(direct);
     });
 });

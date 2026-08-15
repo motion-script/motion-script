@@ -1,4 +1,5 @@
-import { AnimationBuilder } from "@/tween/animation-builder";
+import { type ChainableCommand } from "@/tween/chain";
+import { type Command } from "@/tween/command";
 import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
 import { Fill } from "@/attributes/shape/fill/chain";
@@ -170,36 +171,36 @@ export class Scene {
     }
 
     /** Animate any root props in one call — `yield* stage.to({ zoom: 2, fill: 'red' }, 1)`. */
-    to(props: Partial<RootProps>, duration: number, easing?: EasingFunction): AnimationBuilder<RootProps> {
+    to(props: Partial<RootProps>, duration: number, easing?: EasingFunction): ChainableCommand<RootProps> {
         return this.root.to(props, duration, easing);
     }
 
     // ── Camera commands (forward to the root) ──
 
     /** Animate the camera magnification (`zoom`). > 1 zooms in; < 1 zooms out. */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.root.zoomTo(zoom, duration, ease);
     }
 
     /** Animate the camera focus point (`lookAt`) — the world point at viewport centre. */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.root.panTo(lookAt, duration, ease);
     }
 
     /** Animate the camera view rotation (`heading`) in degrees. */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    headingTo(heading: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.root.headingTo(heading, duration, ease);
     }
 
     // ── Paint commands (forward to the root) ──
 
     /** Animate the root `fill` (the scene-wide background). */
-    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
         return this.root.fillTo(to, duration, options);
     }
 
     /** Animate the root `overlay` (painted over fill + children, viewport-wide). */
-    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
+    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
         return this.root.overlayTo(to, duration, options);
     }
 

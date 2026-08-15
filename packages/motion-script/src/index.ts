@@ -488,7 +488,7 @@ export {
     commandSequence,
     commandParallel,
 } from '@motion-script/core';
-export type { Command } from '@motion-script/core';
+export type { Command, ChainableCommand } from '@motion-script/core';
 
 // =============================================================
 // Animation — Easing

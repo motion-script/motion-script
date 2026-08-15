@@ -5,7 +5,7 @@ import { isSteppable, TweenStepper } from "@/tween/stepper";
  * Runs multiple animations simultaneously, finishing when all of them complete.
  *
  * **Performance fast-path:** animations that implement {@link Steppable}
- * (e.g. an {@link AnimationBuilder} returned by `node.to(...)`) are driven as
+ * (e.g. a {@link Command} returned by `node.to(...)`) are driven as
  * flat {@link TweenStepper}s — no generator resumes per item. This makes
  * `parallel` efficient even with hundreds of concurrent node tweens.
  *

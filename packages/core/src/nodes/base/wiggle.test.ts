@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Node } from '@/nodes/base/node';
 import { Rect } from '@/nodes/geometry/rect-node';
-import { FrameGenerator } from '@/tween/generator';
 
 /** A bare leaf node usable directly (Node's constructor accepts NodeProps). */
 class Tile extends Node {
@@ -10,9 +9,10 @@ class Tile extends Node {
     }
 }
 
-/** Drive a FrameGenerator to completion with a fixed frame delta, collecting
- *  the value of `prop` after each resume. */
-function driveCollect(n: Node, gen: FrameGenerator, dt: number, prop: string): number[] {
+/** Drive a Command (or any Iterable<void>) to completion with a fixed frame
+ *  delta, collecting the value of `prop` after each resume. */
+function driveCollect(n: Node, command: Iterable<void>, dt: number, prop: string): number[] {
+    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
     const seen: number[] = [];
     let res = gen.next();               // prime to first yield
     seen.push((n as any)[prop]);
@@ -23,8 +23,9 @@ function driveCollect(n: Node, gen: FrameGenerator, dt: number, prop: string): n
     return seen;
 }
 
-/** Drive a FrameGenerator to completion, ignoring intermediate values. */
-function drive(gen: FrameGenerator, dt: number): void {
+/** Drive a Command (or any Iterable<void>) to completion, ignoring intermediate values. */
+function drive(command: Iterable<void>, dt: number): void {
+    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
     let res = gen.next();
     while (!res.done) res = gen.next(dt);
 }
@@ -56,7 +57,7 @@ describe('Node.wiggle', () => {
 
     it('wiggles several props at once and settles them all back', () => {
         const n = new Tile({ x: 10, y: 20, rotation: 30 });
-        const gen = n.wiggle({ x: 5, y: 5, rotation: 5 }, 1, { frequency: 5 });
+        const gen = n.wiggle({ x: 5, y: 5, rotation: 5 }, 1, { frequency: 5 })[Symbol.iterator]();
         let res = gen.next();
         const xs: number[] = [n.x];
         const ys: number[] = [n.y];
@@ -77,7 +78,7 @@ describe('Node.wiggle', () => {
         // Regression: a `key.length` phase gave x and y the identical offset, so
         // { x, y } wiggled diagonally instead of in all directions.
         const n = new Tile({ x: 0, y: 0 });
-        const gen = n.wiggle({ x: 10, y: 10 }, 2, { frequency: 5 });
+        const gen = n.wiggle({ x: 10, y: 10 }, 2, { frequency: 5 })[Symbol.iterator]();
         let res = gen.next();
         const xs: number[] = [n.x];
         const ys: number[] = [n.y];
@@ -114,7 +115,7 @@ describe('Node.wiggle', () => {
         // With no settle, the final wiggling frame is generally off-base; only
         // the explicit final assignment lands it back exactly.
         const n = new Tile({ x: 0, seed: 'cut' });
-        const gen = n.wiggle({ x: 50 }, 1, { frequency: 6, settle: 0 });
+        const gen = n.wiggle({ x: 50 }, 1, { frequency: 6, settle: 0 })[Symbol.iterator]();
         let res = gen.next();
         let lastDuring = n.x;
         while (!res.done) {
@@ -142,7 +143,7 @@ describe('Node.wiggle', () => {
         expect((k as any).gain).toBe(10);        // author 5 mapped → stored 10
 
         const seen: number[] = [];
-        const gen = k.wiggle({ gain: 3 } as any, 1, { frequency: 6 });
+        const gen = k.wiggle({ gain: 3 } as any, 1, { frequency: 6 })[Symbol.iterator]();
         let res = gen.next();
         seen.push((k as any).gain);
         while (!res.done) { res = gen.next(0.1); seen.push((k as any).gain); }

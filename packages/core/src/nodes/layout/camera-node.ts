@@ -3,7 +3,7 @@ import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
-import { AnimationBuilder } from "@/tween/animation-builder";
+import { type ChainableCommand } from "@/tween/chain";
 
 
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
@@ -72,7 +72,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.zoomTo(2, 0.5, ease.outCubic);
      */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): AnimationBuilder<CameraProps> {
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
         return this.to({ zoom } as Partial<CameraProps>, duration, ease);
     }
 
@@ -83,7 +83,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): AnimationBuilder<CameraProps> {
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
         return this.to({ lookAt } as Partial<CameraProps>, duration, ease);
     }
 
@@ -93,7 +93,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.headingTo(45, 0.4);
      */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): AnimationBuilder<CameraProps> {
+    headingTo(heading: number, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
         return this.to({ heading } as Partial<CameraProps>, duration, ease);
     }
 

@@ -3,10 +3,9 @@ import { Graphics } from "@/render/graphics";
 import { Clip } from "@/render/clip";
 import { TweenOptions } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
-import { AnimationBuilder } from "@/tween/animation-builder";
-import { wait } from "@/tween/wait";
-import { tween } from "@/tween/tween";
+import { type ChainableCommand } from "@/tween/chain";
+import { commandSequence, type Command } from "@/tween/command";
+import { command } from "@/tween/command-decorator";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -148,7 +147,7 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.zoomTo(2, 0.5, ease.outCubic);
      */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.to({ zoom } as Partial<RootProps>, duration, ease);
     }
 
@@ -159,7 +158,7 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.to({ lookAt } as Partial<RootProps>, duration, ease);
     }
 
@@ -169,32 +168,40 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.headingTo(45, 0.4);
      */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+    headingTo(heading: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
         return this.to({ heading } as Partial<RootProps>, duration, ease);
     }
 
     // ---- Paint commands ---------------------------------------------------
+    // Mirrors ShapeNode's fillTo/overlayTo — a paint has no in-between a numeric
+    // tween could find, so each is a `t → props` function via `this.animate`.
 
-    *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    @command()
+    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
         const from = this.fill as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ fill: lerp(from, target, ease ? ease(t) : t) });
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<RootProps>(t => ({ fill: lerp(from, target, t) }) as Partial<RootProps>, duration, options?.ease),
+        );
     }
 
-    *overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    @command()
+    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
         const from = this.overlay as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ overlay: lerp(from, target, ease ? ease(t) : t) });
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<RootProps>(t => ({ overlay: lerp(from, target, t) }) as Partial<RootProps>, duration, options?.ease),
+        );
+    }
+
+    /** Prefix `command` with `delay` seconds of holding still (see `ShapeNode.delayed`). */
+    private delayed(delay: number | undefined, command: Command<RootProps>): Command<RootProps> {
+        if (!delay) return command;
+        return commandSequence<RootProps>(this, this.animate<RootProps>(() => ({}), delay), command);
     }
 
     // ---- Measure / layout -------------------------------------------------

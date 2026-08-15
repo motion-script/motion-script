@@ -2,7 +2,7 @@ import { Signal } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
-import { AnimationBuilder } from "@/tween/animation-builder";
+import { toChain, type ChainableCommand } from "@/tween/chain";
 import { makeCommand, type Command, type CommandTarget } from "@/tween/command";
 import { prepareNumericCellTween } from "@/tween/prepare";
 import { TweenStepper } from "@/tween/stepper";
@@ -266,9 +266,11 @@ export interface NodeProps {
  * Use {@link set} to update one or more props imperatively, or pass a callback
  * `() => expr` to bind the prop to a derived value.
  *
- * **Tweening** — `*to(props, duration, ease?)` is a generator that animates
- * one or more props to target values over the given duration (in seconds).
- * Numeric props are interpolated; props that register a custom `tween` fn (via
+ * **Tweening** — `to(props, duration, ease?)` returns a {@link ChainableCommand}
+ * that animates one or more props to target values over the given duration (in
+ * seconds). It is both a {@link Command} (evaluable at a time via `at(t)`) and
+ * iterable, so `yield* node.to(...)` still works. Numeric props are
+ * interpolated; props that register a custom `tween` fn (via
  * `@property({ tween })`) can animate any value type. The convenience helpers
  * `moveTo`, `moveX`, `moveY`, `fadeTo`, `rotateTo`, and `scaleTo` wrap `to`
  * for the most common single-property animations.
@@ -699,7 +701,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         applyProp(this, field, initial, options);
     }
 
-    /** @internal Hot-path prop write (mapper- and binding-aware). Public-but-underscored like `_toGen`/`_prepareStep` so reactive companions in this directory can call it; not part of the authoring surface. */
+    /** @internal Hot-path prop write (mapper- and binding-aware). Public-but-underscored like `_prepareStep` so reactive companions in this directory can call it; not part of the authoring surface. */
     _writeProp(field: string, value: unknown): void {
         if (value === undefined) return;
         const cell = this.__signals?.get(field);
@@ -740,8 +742,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         }
     }
 
-    to(to: Partial<P>, duration: number, easing?: EasingFunction): AnimationBuilder<P> {
-        return new AnimationBuilder<P>(this, { to, duration, easing });
+    to(to: Partial<P>, duration: number, easing?: EasingFunction): ChainableCommand<P> {
+        return toChain<P>(this, to, duration, easing);
     }
 
     /**
@@ -785,8 +787,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     /**
      * Resolve a single `to()` step into a flat {@link TweenStepper} — all the
      * per-key setup (anchor handling, mapper, numeric-vs-custom routing) happens
-     * once here, then `advance(dt)` is allocation-free. Used by both the
-     * generator path (`_toGen`) and the batched `parallel` path.
+     * once here, then `advance(dt)` is allocation-free. Used by both a chain's
+     * iterator path and the batched `parallel` path.
      */
     _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         // `size` has no signal of its own — expand it into width/height targets
@@ -879,22 +881,12 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         };
     }
 
-    *_toGen(to: Partial<P>, duration: number, easing?: EasingFunction): FrameGenerator {
-        const step = this._prepareStep(to, duration, easing);
-        step.seek(0);
-        let done = false;
-        while (!done) {
-            const dt = yield;
-            done = step.advance(dt);
-        }
-    }
-
     // ---- Motion helpers ---------------------------------------------------
     //
-    // Each returns the `AnimationBuilder` it delegates to rather than wrapping it
-    // in a generator. `yield*` still works — a builder is iterable — but the
-    // wrapper used to discard the thing worth having: a builder is `Steppable`,
-    // so it can be *seeked*, and a generator around it can only be advanced.
+    // Each returns the `Command` it delegates to rather than wrapping it in a
+    // generator. `yield*` still works — a `Command` is iterable — but a
+    // generator wrapper would discard the thing worth having: a `Command` can
+    // be *evaluated* at a time, and a generator around it can only be advanced.
 
     /**
      * Animate both `x` and `y` to the given position.
@@ -902,7 +894,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveTo(200, 100, 0.5, ease.outCubic);
      */
-    moveTo(x: number, y: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    moveTo(x: number, y: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ x, y } as Partial<P>, duration, ease);
     }
 
@@ -912,7 +904,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveX(300, 0.4);
      */
-    moveX(x: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    moveX(x: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ x } as Partial<P>, duration, ease);
     }
 
@@ -922,7 +914,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveY(-50, 0.4);
      */
-    moveY(y: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    moveY(y: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ y } as Partial<P>, duration, ease);
     }
 
@@ -934,7 +926,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.fadeTo(0, 0.3);   // fade out
      * yield* node.fadeTo(1, 0.3);   // fade in
      */
-    fadeTo(opacity: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    fadeTo(opacity: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ opacity } as Partial<P>, duration, ease);
     }
 
@@ -944,7 +936,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.rotateTo(180, 0.6, ease.inOutQuad);
      */
-    rotateTo(rotation: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    rotateTo(rotation: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ rotation } as Partial<P>, duration, ease);
     }
 
@@ -955,7 +947,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.scaleTo(1.5, 0.4);   // grow
      * yield* node.scaleTo(0,   0.3);   // shrink to nothing
      */
-    scaleTo(scale: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+    scaleTo(scale: number, duration: number, ease?: EasingFunction): ChainableCommand<P> {
         return this.to({ scale } as Partial<P>, duration, ease);
     }
 
@@ -1018,11 +1010,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      *   node.wiggle({ y: 6, rotation: 2 }, 2, { frequency: 3 }),
      * );
      */
-    *wiggle(
+    wiggle(
         amplitudes: { [K in keyof P]?: number },
         duration: number,
         options?: WiggleOptions,
-    ): FrameGenerator {
+    ): Command<Record<string, never>> {
         const frequency = options?.frequency ?? 4;
         // The ease-out window: `settle` overrides, else a short fraction of the
         // run, capped so a very short wiggle still spends most of its time
@@ -1032,10 +1024,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             ? Math.min(0.25, 0.15 / duration)
             : 0);
 
-        // Resolve each key to its numeric cell + captured base once, up front.
-        // `base` is captured now so the jitter rides on top of wherever the prop
-        // is at the start — what lets wiggle compose with a concurrent to() on a
-        // different prop.
+        // Resolve each key to its numeric cell + captured base, lazily on first
+        // evaluation rather than now — mirroring the generator this replaces,
+        // whose body (including this resolution loop) never ran a line until
+        // the caller's first `.next()`. `base` is captured at that point so the
+        // jitter rides on top of wherever the prop is *then*, which is what
+        // lets wiggle compose with a concurrent to() on a different prop and
+        // keeps it from reading a stale base if the caller mutates the node
+        // between calling `wiggle()` and actually driving it.
         //
         // The offset is applied in the prop's *stored* space via `cell.set` — a
         // mapped numeric prop (a clamp / scale mapper) stores a number, so the
@@ -1045,49 +1041,103 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // isn't a plain number — `width: 'fill'`, or a per-corner `cornerRadius`
         // object — has no scalar to offset, so it's skipped with a dev warning.
         interface WiggleTarget { cell: Signal<number>; base: number; amplitude: number; phase: number; }
-        const resolved: WiggleTarget[] = [];
-        for (const key in amplitudes) {
-            const amplitude = amplitudes[key];
-            if (amplitude === undefined) continue;
+        const node = this;
+        let resolved: WiggleTarget[] | null = null;
+        const resolveTargets = (): WiggleTarget[] => {
+            if (resolved) return resolved;
+            const out: WiggleTarget[] = [];
+            for (const key in amplitudes) {
+                const amplitude = amplitudes[key];
+                if (amplitude === undefined) continue;
 
-            const cell = this.__signals?.get(key) as Signal<number> | undefined;
-            const base = cell?.get();
-            if (!cell || typeof base !== 'number') {
-                if (cell) {
-                    console.warn(`Node.wiggle: prop "${key}" isn't a plain number (got ${typeof base}); skipping. wiggle only offsets numeric props.`);
+                const cell = node.__signals?.get(key) as Signal<number> | undefined;
+                const base = cell?.get();
+                if (!cell || typeof base !== 'number') {
+                    if (cell) {
+                        console.warn(`Node.wiggle: prop "${key}" isn't a plain number (got ${typeof base}); skipping. wiggle only offsets numeric props.`);
+                    }
+                    continue;
                 }
-                continue;
+
+                out.push({
+                    cell,
+                    base,
+                    amplitude,
+                    // Give each prop its own region of the noise field so props
+                    // wiggled together (x + y) draw independent curves instead
+                    // of moving in lockstep. A per-key hash — not `key.length`,
+                    // which collides for same-length names like x/y — spreads
+                    // the sample points far apart, past any overlap for a
+                    // realistic run.
+                    phase: wigglePhase(key),
+                });
             }
+            resolved = out;
+            return out;
+        };
+        const random = this.random;
 
-            resolved.push({
-                cell,
-                base,
-                amplitude,
-                // Give each prop its own region of the noise field so props
-                // wiggled together (x + y) draw independent curves instead of
-                // moving in lockstep. A per-key hash — not `key.length`, which
-                // collides for same-length names like x/y — spreads the sample
-                // points far apart, past any overlap for a realistic run.
-                phase: wigglePhase(key),
-            });
-        }
-        if (resolved.length === 0) return;
-
-        let elapsed = 0;
-        while (elapsed < duration) {
+        /** Write every target's offset for `elapsed` seconds in. */
+        const apply = (elapsed: number): void => {
+            const targets = resolveTargets();
             const t = duration > 0 && Number.isFinite(duration) ? elapsed / duration : 0;
             // Ease every offset to zero over the final `settle` window.
             const fade = settle > 0 && t > 1 - settle ? (1 - t) / settle : 1;
-            for (const target of resolved) {
+            for (const target of targets) {
                 // noise() returns [0, 1]; remap to [-1, 1] for a symmetric swing
                 // around the base.
-                const swing = this.random.noise(target.phase + elapsed, frequency) * 2 - 1;
+                const swing = random.noise(target.phase + elapsed, frequency) * 2 - 1;
                 target.cell.set(target.base + swing * target.amplitude * fade);
             }
-            elapsed += yield;
-        }
-        // Land exactly on the bases — no residual offset from the last frame.
-        for (const target of resolved) target.cell.set(target.base);
+        };
+        /** Land exactly on the bases — no residual offset from the last frame. */
+        const settleToBase = (): void => {
+            for (const target of resolveTargets()) target.cell.set(target.base);
+        };
+
+        // `duration` can be `Infinity` (an unbounded wiggle, bounded only by its
+        // siblings in a `parallel`) — normalized time collapses to zero for any
+        // finite elapsed against an infinite duration, so this is driven by raw
+        // elapsed seconds rather than `driveCommand`'s normalized `t`. `at(t)` is
+        // therefore only exactly evaluable for a finite duration; for an infinite
+        // one it can only distinguish "settled" (`t>=1`) from "running" (`t<1`,
+        // sampled at `elapsed=0`) — an unbounded wiggle was never a value a driven
+        // host could ask about at an arbitrary time anyway.
+        return {
+            duration,
+            at(t: number): Record<string, never> {
+                if (t >= 1) { settleToBase(); return {}; }
+                apply(Number.isFinite(duration) ? Math.max(0, t) * duration : 0);
+                return {};
+            },
+            _stepper(): TweenStepper {
+                let elapsed = 0;
+                return {
+                    seek: (e: number) => {
+                        elapsed = e;
+                        if (Number.isFinite(duration) && e >= duration) settleToBase();
+                        else apply(e);
+                    },
+                    advance: (dt: number): boolean => {
+                        elapsed += dt;
+                        const done = Number.isFinite(duration) && elapsed >= duration;
+                        if (done) settleToBase(); else apply(elapsed);
+                        return done;
+                    },
+                };
+            },
+            [Symbol.iterator](): Iterator<void, void, number> {
+                const step = this._stepper();
+                return (function* (): FrameGenerator {
+                    step.seek(0);
+                    let done = false;
+                    while (!done) {
+                        const dt = yield;
+                        done = step.advance(dt);
+                    }
+                })();
+            },
+        };
     }
 
     // ---- State stack (save / restore) -------------------------------------
@@ -1169,8 +1219,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @param easing   Optional easing for the animated restore.
      */
     restore(): void;
-    restore(duration: number, easing?: EasingFunction): FrameGenerator;
-    restore(duration?: number, easing?: EasingFunction): void | FrameGenerator {
+    restore(duration: number, easing?: EasingFunction): Command<Record<string, never>>;
+    restore(duration?: number, easing?: EasingFunction): void | Command<Record<string, never>> {
         const layer = popState(this);
         if (duration === undefined || duration <= 0) {
             if (layer) applySnapshotLayer(this, layer);
@@ -1662,8 +1712,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     addChildAt(child: Node, index: number): void;
-    addChildAt(child: Node, index: number, duration: number, easing?: EasingFunction): FrameGenerator;
-    addChildAt(child: Node, index: number, duration?: number, easing?: EasingFunction): void | FrameGenerator {
+    addChildAt(child: Node, index: number, duration: number, easing?: EasingFunction): Command<Record<string, never>>;
+    addChildAt(child: Node, index: number, duration?: number, easing?: EasingFunction): void | Command<Record<string, never>> {
         if (duration === undefined) {
             this._children.splice(index, 0, child);
             child._parent = this;
@@ -1672,19 +1722,19 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             this.bindChildContext(child);
             return;
         }
-        return this._addChildAtAnimated(child, index, duration, easing);
+        return addChildAtAnimated(this, child, index, duration, easing);
     }
 
     removeChildAt(index: number): Node | null;
-    removeChildAt(index: number, duration: number, easing?: EasingFunction): FrameGenerator;
-    removeChildAt(index: number, duration?: number, easing?: EasingFunction): (Node | null) | FrameGenerator {
+    removeChildAt(index: number, duration: number, easing?: EasingFunction): Command<Record<string, never>>;
+    removeChildAt(index: number, duration?: number, easing?: EasingFunction): (Node | null) | Command<Record<string, never>> {
         if (duration === undefined) {
             if (index < 0 || index >= this._children.length) return null;
             const [removed] = this._children.splice(index, 1);
             if (removed) removed._parent = null;
             return removed ?? null;
         }
-        return this._removeChildAtAnimated(index, duration, easing);
+        return removeChildAtAnimated(this, index, duration, easing);
     }
 
     // ---- Rendering --------------------------------------------------------
@@ -2272,27 +2322,15 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // ---- Reparenting ------------------------------------------------------
 
     reparent(newParent: Node): void;
-    reparent(newParent: Node, duration: number, easing?: EasingFunction): FrameGenerator;
-    reparent(newParent: Node, duration?: number, easing?: EasingFunction): void | FrameGenerator {
+    reparent(newParent: Node, duration: number, easing?: EasingFunction): Command<Record<string, never>>;
+    reparent(newParent: Node, duration?: number, easing?: EasingFunction): void | Command<Record<string, never>> {
         if (duration === undefined) {
             const old = this.parent;
             if (old) old.removeChild(this);
             newParent.addChild(this);
             return;
         }
-        return this._reparentAnimated(newParent, duration, easing);
-    }
-
-    private *_reparentAnimated(newParent: Node, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* reparentAnimated(this, newParent, duration, easing);
-    }
-
-    private *_addChildAtAnimated(child: Node, index: number, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* addChildAtAnimated(this, child, index, duration, easing);
-    }
-
-    private *_removeChildAtAnimated(index: number, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* removeChildAtAnimated(this, index, duration, easing);
+        return reparentAnimated(this, newParent, duration, easing);
     }
 
     // ---- Teardown ---------------------------------------------------------

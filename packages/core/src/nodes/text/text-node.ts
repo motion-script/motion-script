@@ -9,7 +9,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
+import { type ChainableCommand } from "@/tween/chain";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { TextSegment, TextState } from "@/render/descriptors/text";
@@ -156,12 +156,12 @@ export class Text extends ShapeNode<TextProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    *append(text: string, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* this.to({ text: this.text + text }, duration, easing);
+    append(text: string, duration: number, easing?: EasingFunction): ChainableCommand<TextProps> {
+        return this.to({ text: this.text + text }, duration, easing);
     }
 
-    *prepend(text: string, duration: number, easing?: EasingFunction): FrameGenerator {
-        yield* this.to({ text: text + this.text }, duration, easing);
+    prepend(text: string, duration: number, easing?: EasingFunction): ChainableCommand<TextProps> {
+        return this.to({ text: text + this.text }, duration, easing);
     }
 
     // ---- Text selection ---------------------------------------------------

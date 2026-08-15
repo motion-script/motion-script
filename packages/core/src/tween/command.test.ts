@@ -101,7 +101,8 @@ describe("Command", () => {
         const node = new Widget({ width: 10, height: 10 });
 
         expect(isCommand(node.slide(1))).toBe(true);
-        expect(isCommand(node.to({ x: 1 }, 1))).toBe(false);
+        // `to()` is itself a Command now — no more AnimationBuilder in between.
+        expect(isCommand(node.to({ x: 1 }, 1))).toBe(true);
     });
 });
 

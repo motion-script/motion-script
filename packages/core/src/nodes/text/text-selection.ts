@@ -1,7 +1,6 @@
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
 import { TweenStepper } from "@/tween/stepper";
-import { AnimationBuilder, AnimationTarget } from "@/tween/animation-builder";
+import { toChain, type AnimationTarget, type ChainableCommand } from "@/tween/chain";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
@@ -55,7 +54,7 @@ export interface SelectionOverrides {
  * `line`, `word`, `words`, `slice`, `filter`).
  *
  * Implements {@link AnimationTarget} so `selection.to({ ... }, duration)`
- * plugs straight into the existing `AnimationBuilder` / `parallel` / `sequence`
+ * plugs straight into the existing `Command` / `parallel` / `sequence`
  * machinery — each tween writes resolved values into {@link overrides}, which
  * the node reads when splitting its text into rendered pieces.
  *
@@ -110,8 +109,8 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
         to: Partial<TextSelectionProps>,
         duration: number,
         easing?: EasingFunction,
-    ): AnimationBuilder<TextSelectionProps> {
-        return new AnimationBuilder<TextSelectionProps>(this, { to, duration, easing });
+    ): ChainableCommand<TextSelectionProps> {
+        return toChain<TextSelectionProps>(this, to, duration, easing);
     }
 
     /**
@@ -168,20 +167,6 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
                 return true;
             },
         };
-    }
-
-    *_toGen(
-        to: Partial<TextSelectionProps>,
-        duration: number,
-        easing?: EasingFunction,
-    ): FrameGenerator {
-        const step = this._prepareStep(to, duration, easing);
-        step.seek(0);
-        let done = false;
-        while (!done) {
-            const dt = yield;
-            done = step.advance(dt);
-        }
     }
 }
 

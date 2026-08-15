@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Node } from '@/nodes/base/node';
 import { Signal } from '@/signals/signal';
-import { FrameGenerator } from '@/tween/generator';
 
 /** A bare leaf node usable directly (Node's constructor accepts NodeProps). */
 class Tile extends Node {
@@ -10,8 +9,9 @@ class Tile extends Node {
     }
 }
 
-/** Drive a FrameGenerator to completion with a fixed frame delta. */
-function drive(gen: FrameGenerator, dt: number): void {
+/** Drive a Command (or any Iterable<void>) to completion with a fixed frame delta. */
+function drive(command: Iterable<void>, dt: number): void {
+    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
     let res = gen.next();           // prime to first yield
     while (!res.done) res = gen.next(dt);
 }
@@ -110,7 +110,7 @@ describe('Node.save / restore', () => {
         n.save();
         n.set({ x: 100 });
 
-        const gen = n.restore(1);
+        const gen = n.restore(1)[Symbol.iterator]();
         gen.next();               // prime, t=0 → still at the current value (100)
         expect(n.x).toBeCloseTo(100);
         gen.next(0.5);            // t=0.5 → halfway from 100 to 0

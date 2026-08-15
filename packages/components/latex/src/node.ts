@@ -1,7 +1,65 @@
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, getSignal, lerpNumber, NodeConfig, parallel, ShapeNode, Size2D, SizeConstraints, toPathString, tween, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, AnimationBuilder } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, commandSequence, type Command, type ChainableCommand, type TweenStepper } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
-import { AnimatedToken, tweenLatex } from "./tween";
+import { AnimatedToken, prepareLatexTween } from "./tween";
+
+/** One `.to(...)` step in a chained Latex morph — see {@link LatexChain}. */
+interface MorphStep {
+    to: Partial<LatexProps>;
+    duration: number;
+    easing?: EasingFunction;
+}
+
+/**
+ * Makes a chain of Latex morphs (`latexRef().to({...}, 1).to({...}, 1)`)
+ * satisfy {@link ChainableCommand} the same way `Node.to()`'s chain does.
+ *
+ * Each step is built (via {@link Latex._buildMorph}) exactly once, lazily, the
+ * first time the chain is evaluated — memoized on `built` rather than rebuilt
+ * per step, because a step's own "from" snapshot is *itself* lazily captured
+ * on its first evaluation (see `_buildMorph`): `commandSequence` settles every
+ * prior step before evaluating the next on every call, so building all steps
+ * once up front and letting that walk happen is what makes step 2's "from"
+ * correctly land on step 1's end rather than the pre-animation state.
+ */
+class LatexChain implements ChainableCommand<LatexProps> {
+    private steps: MorphStep[] = [];
+    private built: Command<LatexProps> | null = null;
+
+    constructor(private latex: Latex, first: MorphStep) {
+        this.steps.push(first);
+    }
+
+    to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): ChainableCommand<LatexProps> {
+        this.steps.push({ to, duration, easing });
+        this.built = null;
+        return this;
+    }
+
+    private command(): Command<LatexProps> {
+        if (!this.built) {
+            const commands = this.steps.map(s => this.latex._buildMorph(s.to, s.duration, s.easing));
+            this.built = commands.length === 1 ? commands[0] : commandSequence<LatexProps>(this.latex, ...commands);
+        }
+        return this.built;
+    }
+
+    get duration(): number {
+        return this.steps.reduce((sum, s) => sum + s.duration, 0);
+    }
+
+    at(t: number): Partial<LatexProps> {
+        return this.command().at(t);
+    }
+
+    _stepper(): TweenStepper {
+        return this.command()._stepper();
+    }
+
+    [Symbol.iterator](): Iterator<void, void, number> {
+        return this.command()[Symbol.iterator]();
+    }
+}
 
 
 export class Latex extends ShapeNode<LatexProps> {
@@ -83,75 +141,109 @@ export class Latex extends ShapeNode<LatexProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    override to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): AnimationBuilder<LatexProps> {
-        return new AnimationBuilder<LatexProps>(this, { to, duration, easing });
+    /**
+     * A LaTeX morph, chained the same way `Node.to()` is
+     * (`latexRef().to({...}, 1).to({...}, 1)`) — see {@link LatexChain}.
+     */
+    override to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): ChainableCommand<LatexProps> {
+        return new LatexChain(this, { to, duration, easing });
     }
 
-    override *_toGen(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): FrameGenerator {
-        const fromTokens: LatexToken[] = this._tokens.map(t => ({ token: t.token, path: t.path }));
-        const fromFontSize = this.fontSize;
-        const toFontSize = to.fontSize !== undefined ? to.fontSize : this.fontSize;
-        const toLatex = to.latex !== undefined ? to.latex : this.latex;
+    /**
+     * Build a single LaTeX morph as a {@link Command}: every ordinary
+     * `ShapeProps` field (via the inherited `_prepareStep`), plus the
+     * intrinsic size, shared center frame and per-glyph token list — state a
+     * plain `set()` can't reach — driven together by one eased `t`, matching
+     * the concurrent `parallel` the generator version ran.
+     *
+     * The "from" snapshot (`fromTokens`, `fromLatex`, …) is captured
+     * **lazily, on the command's first evaluation**, not when this is called —
+     * the same laziness a `.to().to()` chain's own steps need: `LatexChain`
+     * builds every step once, up front, and relies on `commandSequence`
+     * settling each prior step before the next is first evaluated, so a
+     * second step's "from" lazily snapshotted here correctly reads the first
+     * step's end state rather than whatever the node held before any of the
+     * chain ran.
+     *
+     * `_animating` suppresses the `latex`/`fontSize` signal subscribers
+     * (`_updateTokens`) for the open interval, and both ends commit: `t === 1`
+     * lands on the target formula, `t === 0` restores the source one — the same
+     * "membership for the open interval, commit at either end" shape
+     * `packages/components/code`'s `runTransition` uses, so seeking into either
+     * side of the morph (not just running it forward) shows the right thing.
+     *
+     * `@internal` — the entry point for authors is {@link to}; this is the
+     * seam {@link LatexChain} builds each step through.
+     */
+    _buildMorph(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): Command<LatexProps> {
+        let setupDone = false;
+        let fromAnimTokens: AnimatedToken[] = [];
+        let fromLatex = "";
+        let fromFontSize = 0;
+        let fromWidth = 0;
+        let fromHeight = 0;
+        let fromBounds: [number, number, number, number] = [0, 0, 0, 0];
+        let toFontSize = 0;
+        let toLatex = "";
+        let toResult: ReturnType<typeof buildLatexPath>;
+        let propStep: TweenStepper;
+        let latexFrame: (t: number) => AnimatedToken[];
 
-        // Snapshot the from-frame so intrinsic size and the shared center frame
-        // can interpolate toward the new formula instead of snapping at the end.
-        const fromWidth = this._intrinsicWidth;
-        const fromHeight = this._intrinsicHeight;
-        const fromBounds = this._bounds;
+        const setup = (): void => {
+            setupDone = true;
+            const fromTokens: LatexToken[] = this._tokens.map(t => ({ token: t.token, path: t.path }));
+            fromAnimTokens = this._tokens.map(t => ({ ...t }));
+            fromLatex = this.latex;
+            fromFontSize = this.fontSize;
+            fromWidth = this._intrinsicWidth;
+            fromHeight = this._intrinsicHeight;
+            fromBounds = this._bounds;
 
-        const toResult = buildLatexPath(toLatex, toFontSize);
-        const toTokens = toResult.tokens;
-        const toBounds = toResult.bounds;
+            toFontSize = to.fontSize !== undefined ? to.fontSize : this.fontSize;
+            toLatex = to.latex !== undefined ? to.latex : this.latex;
+            toResult = buildLatexPath(toLatex, toFontSize);
 
-        // Drive token interpolation directly; suppress the latex/fontSize
-        // subscribers so they don't retokenize each frame.
-        this._animating = true;
-        try {
-            yield* parallel(
-                super._toGen(to, duration, easing),
-                tween(duration, (rawT) => {
-                    const t = easing ? easing(rawT) : rawT;
-                    this.set({ fontSize: lerpNumber(fromFontSize, toFontSize, t) });
-                    // Track the measured size so a hugging box grows/shrinks
-                    // smoothly across the morph rather than jumping when the
-                    // final state is committed below.
-                    this._intrinsicWidth = lerpNumber(fromWidth, toResult.width, t);
-                    this._intrinsicHeight = lerpNumber(fromHeight, toResult.height, t);
-                    // Interpolate the shared center frame in lockstep so glyphs
-                    // stay centered within the resizing box.
-                    this._bounds = [
-                        lerpNumber(fromBounds[0], toBounds[0], t),
-                        lerpNumber(fromBounds[1], toBounds[1], t),
-                        lerpNumber(fromBounds[2], toBounds[2], t),
-                        lerpNumber(fromBounds[3], toBounds[3], t),
-                    ];
-                }),
-                tweenLatex(
-                    fromTokens,
-                    toTokens,
-                    duration,
-                    (animTokens) => {
-                        this._tokens = animTokens;
-                    },
-                    easing,
-                ),
-            );
-        } finally {
-            this._animating = false;
-        }
+            propStep = this._prepareStep(to, duration);
+            latexFrame = prepareLatexTween(fromTokens, toResult.tokens);
+        };
 
-        // Commit final state so subsequent to() calls start from a clean baseline.
-        this.set({ latex: toLatex, fontSize: toFontSize });
-        this._tokens = toResult.tokens.map(t => ({
-            token: t.token,
-            path: t.path,
-            opacity: 1,
-            x: 0,
-            y: 0,
-        }));
-        this._intrinsicWidth = toResult.width;
-        this._intrinsicHeight = toResult.height;
-        this._bounds = toResult.bounds;
+        return driveCommand(duration, (t) => {
+            if (!setupDone) setup();
+            const toBounds = toResult.bounds;
+
+            this._animating = true;
+            propStep.seek(t * duration);
+            this.set({ fontSize: lerpNumber(fromFontSize, toFontSize, t) });
+            // Track the measured size so a hugging box grows/shrinks smoothly
+            // across the morph rather than jumping when the end commits.
+            this._intrinsicWidth = lerpNumber(fromWidth, toResult.width, t);
+            this._intrinsicHeight = lerpNumber(fromHeight, toResult.height, t);
+            // Interpolate the shared center frame in lockstep so glyphs stay
+            // centered within the resizing box.
+            this._bounds = [
+                lerpNumber(fromBounds[0], toBounds[0], t),
+                lerpNumber(fromBounds[1], toBounds[1], t),
+                lerpNumber(fromBounds[2], toBounds[2], t),
+                lerpNumber(fromBounds[3], toBounds[3], t),
+            ];
+            this._tokens = latexFrame(t);
+
+            if (t >= 1) {
+                this.set({ latex: toLatex, fontSize: toFontSize });
+                this._tokens = toResult.tokens.map(tok => ({ token: tok.token, path: tok.path, opacity: 1, x: 0, y: 0 }));
+                this._intrinsicWidth = toResult.width;
+                this._intrinsicHeight = toResult.height;
+                this._bounds = toResult.bounds;
+                this._animating = false;
+            } else if (t <= 0) {
+                this.set({ latex: fromLatex, fontSize: fromFontSize });
+                this._tokens = fromAnimTokens;
+                this._intrinsicWidth = fromWidth;
+                this._intrinsicHeight = fromHeight;
+                this._bounds = fromBounds;
+                this._animating = false;
+            }
+        }, easing) as Command<LatexProps>;
     }
 
     protected renderSelf(ctx: RenderContext): void {
