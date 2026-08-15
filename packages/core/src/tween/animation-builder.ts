@@ -91,37 +91,60 @@ export class AnimationBuilder<P> implements Steppable {
             return current;
         };
 
+        /**
+         * Every step, prepared once, in order.
+         *
+         * Preparing is what snapshots a step's `from` — it reads the live node —
+         * so the chain is walked through once here, landing each step on its end
+         * before preparing the next. That is the same `from` a sequential run
+         * would capture, and capturing it **once** is what makes a subsequent
+         * seek a function of `elapsed` alone.
+         *
+         * Re-preparing per seek instead reads `from` off wherever the node
+         * happens to be, which makes seeking backwards depend on where the
+         * playhead came from: seek to 1.75s then to 0.25s and the second answer
+         * is measured from the first. Built lazily, so a builder that is only
+         * ever `advance`d never pays for it.
+         */
+        let prepared: TweenStepper[] | null = null;
+        const prepareAll = (): TweenStepper[] => {
+            if (prepared) return prepared;
+            const out: TweenStepper[] = [];
+            for (const s of steps) {
+                const step = node._prepareStep(s.to, s.duration, s.easing);
+                step.seek(s.duration);
+                out.push(step);
+            }
+            prepared = out;
+            return out;
+        };
+
         return {
             /**
-             * Walk the chain to the step `elapsed` lands in, priming each one it
-             * passes through so that step's `from` is the previous step's end —
-             * the same snapshotting the sequential run does, just done in one go.
+             * Put the chain into the state `elapsed` seconds in.
              *
              * This used to ignore its argument entirely and only prime at 0,
              * which made a chained `to().to()` advanceable but not seekable: a
              * caller asking for the state two seconds in got the state at zero.
              * A chain has always been a function of elapsed time; nothing about
              * it required running to find out.
+             *
+             * Steps before the one `elapsed` lands in are re-applied at their end
+             * rather than skipped, so a prop an early step wrote and a later one
+             * does not still holds the value it should.
              */
             seek: (elapsed: number) => {
-                index = 0;
-                current = null;
+                const list = prepareAll();
                 let remaining = Math.max(0, elapsed);
-                while (index < steps.length) {
-                    const step = prime();
-                    if (!step) return;
-                    if (remaining < steps[index].duration) {
-                        step.seek(remaining);
+                for (let i = 0; i < list.length; i++) {
+                    const duration = steps[i].duration;
+                    if (remaining < duration) {
+                        list[i].seek(remaining);
                         return;
                     }
-                    // Past this step: land it on its end value, which is also
-                    // what the next step's `from` reads.
-                    step.seek(steps[index].duration);
-                    remaining -= steps[index].duration;
-                    index++;
-                    current = null;
+                    list[i].seek(duration);
+                    remaining -= duration;
                 }
-                // Past the whole chain — the last step's end is already applied.
             },
             advance: (dt: number): boolean => {
                 if (!current && prime() === null) return true;

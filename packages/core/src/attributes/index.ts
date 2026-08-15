@@ -29,7 +29,8 @@ export * from './mask/mask';
 export * from './text/align';
 export * from './text/lerp';
 export * from './text/span';
-export { property, PropOptions } from './properties/decorator';
+export { property, getPropertyMeta, PropOptions } from './properties/decorator';
+export type { PropertyMeta } from './properties/decorator';
 export {
     fillProperty, strokeProperty, shadowProperty, effectsProperty, colorProperty,
     cornerRadiusProperty, cornerStyleProperty, pathProperty,
