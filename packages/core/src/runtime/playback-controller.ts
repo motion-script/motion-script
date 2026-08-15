@@ -5,7 +5,7 @@ import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-ev
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
-import { Precomp, PrecompResult, NodeLifespan, DEFAULT_PRECOMP_BUDGET_MS } from "./precompisition";
+import { BuildError, Precomp, PrecompResult, NodeLifespan, DEFAULT_PRECOMP_BUDGET_MS } from "./precompisition";
 import { yieldToScheduler } from "@/util/scheduler";
 import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
@@ -18,9 +18,9 @@ import { NodeBox, collectBoxes, nodeBox, pickNode } from "./node-picking";
 import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
 
 /**
- * Transient prop values layered over a node's evaluated state — see
+ * Transient prop values layered over a node's evaluated state â€” see
  * {@link PlaybackController.setNodeOverride}. Keys are prop names the node
- * accepts (`x`, `y`, `rotation`, `width`, …).
+ * accepts (`x`, `y`, `rotation`, `width`, â€¦).
  */
 export type NodeOverride = Record<string, unknown>;
 
@@ -86,7 +86,7 @@ export class PlaybackController {
     /**
      * Monotonic token bumped by every seek / tick / seekWhilePlaying. A render
      * pass captures it at entry and, after each await, bails before painting if a
-     * newer pass has begun — so a superseded seek (parked on loadAt /
+     * newer pass has begun â€” so a superseded seek (parked on loadAt /
      * warmPendingVideo during a fast scrub) can never stamp its stale frame over
      * the scene a later seek already rendered.
      */
@@ -134,13 +134,63 @@ export class PlaybackController {
         return this.precomp.totalDuration;
     }
 
-    /** Errors collected during the precomp pass (one entry per failing scene). */
-    get buildErrors() {
-        return this.precomp.buildErrors;
+    /**
+     * Errors collected during the precomp pass, plus any thrown while *drawing*
+     * â€” see {@link renderErrors}. One list, because a consumer showing them has
+     * the same thing to say about both: this frame is not what the scene says.
+     */
+    get buildErrors(): BuildError[] {
+        if (this.renderErrors.length === 0) return this.precomp.buildErrors;
+        return [...this.precomp.buildErrors, ...this.renderErrors];
     }
 
     /**
-     * The project's audio beds as timeline clips, in **absolute** seconds —
+     * Errors thrown by a render pass, deduplicated by message.
+     *
+     * Precomp's errors are collected because it is *measuring* and has to survive
+     * a scene that cannot build. A render throwing is different: it happens per
+     * frame, at pointer rate while scrubbing, and it is the same error every time.
+     * Left to propagate it became an unhandled rejection and a scene that simply
+     * stopped drawing â€” the failure the guards exist to prevent, delivered as
+     * silence. Held here instead, so it reaches whatever shows build errors.
+     */
+    private readonly renderErrors: BuildError[] = [];
+
+    /** Called when {@link renderErrors} gains an entry. Set by the host. */
+    onRenderError?: (errors: BuildError[]) => void;
+
+    /**
+     * Record a draw-time failure and tell the host, once per distinct message.
+     *
+     * Swallowing the throw is deliberate and is the whole point: the alternative
+     * is that one bad frame takes down the clock loop, and a paused, blank editor
+     * says even less than a stale frame with a banner over it.
+     */
+    private captureRenderError(error: unknown): void {
+        const e = error instanceof Error ? error : new Error(String(error));
+        if (this.renderErrors.some((prior) => prior.message === e.message)) return;
+        const scene = this.stateEvaluator.currentScene;
+        this.renderErrors.push({
+            sceneName: scene?.name ?? "Scene",
+            sceneIndex: this.stateEvaluator.currentSceneIndex ?? 0,
+            message: e.message,
+            stack: e.stack,
+        });
+        this.onRenderError?.(this.buildErrors);
+    }
+
+    /**
+     * Forget the draw-time errors â€” called when the thing they were about is
+     * replaced, so a fixed scene stops being accused of a fault it no longer has.
+     */
+    clearRenderErrors(): void {
+        if (this.renderErrors.length === 0) return;
+        this.renderErrors.length = 0;
+        this.onRenderError?.(this.buildErrors);
+    }
+
+    /**
+     * The project's audio beds as timeline clips, in **absolute** seconds â€”
      * already bounded by the measured duration, so re-read them whenever it
      * grows. Exposed for the timeline's global track rows; playback schedules
      * the underlying requests itself.
@@ -168,7 +218,7 @@ export class PlaybackController {
         const catalog = params.assets;
 
         this.precomper = params.precomposition;
-        // Measure only the scene that owns frame 0 — that is everything the first
+        // Measure only the scene that owns frame 0 â€” that is everything the first
         // painted frame needs. The rest of the project streams in behind it (see
         // startBackgroundPrecomp), so time-to-first-frame is O(one scene) rather
         // than O(whole project). Scenes not yet measured appear as zero-length
@@ -231,7 +281,7 @@ export class PlaybackController {
      * timeline as each one lands.
      *
      * Deferred behind a yield so the caller finishes mounting and the first frame
-     * actually paints before this starts competing for the main thread — the
+     * actually paints before this starts competing for the main thread â€” the
      * whole point of the split is that the user sees something immediately.
      */
     private startBackgroundPrecomp(): void {
@@ -316,7 +366,7 @@ export class PlaybackController {
      * A {@link SeekCancel} that trips once `gen` is no longer the latest pass.
      * Passed into `renderAt` so the evaluator's frame-by-frame replay loop aborts
      * the moment a newer seek/tick bumps `seekGeneration` (or the controller is
-     * disposed) — the synchronous counterpart to the post-await `isCurrent` guards.
+     * disposed) â€” the synchronous counterpart to the post-await `isCurrent` guards.
      */
     private cancelAfter(gen: number): SeekCancel {
         return () => !this.isCurrent(gen);
@@ -329,7 +379,7 @@ export class PlaybackController {
      *
      * `isCancelled` is forwarded into the evaluator's replay loop so a backward
      * seek (which replays from frame 0) can be abandoned the instant a newer seek
-     * supersedes it. If it trips, we skip layout/render too — the partial state is
+     * supersedes it. If it trips, we skip layout/render too â€” the partial state is
      * stale and a newer pass is already rendering.
      */
     private renderAt(frame: number, isCancelled?: SeekCancel): void {
@@ -343,21 +393,28 @@ export class PlaybackController {
         // After the generators, before layout: an override must beat whatever the
         // scene evaluated to, and be visible to the layout pass that follows.
         this.applyOverrides();
-        this.stateEvaluator.layout(this.measureScope);
-        this.renderContext.execute(() => {
-            this.stateEvaluator.render(this.renderContext);
-        });
+        try {
+            this.stateEvaluator.layout(this.measureScope);
+            this.renderContext.execute(() => {
+                this.stateEvaluator.render(this.renderContext);
+            });
+        } catch (error) {
+            // Reported rather than rethrown — see `captureRenderError`. Layout is
+            // inside the guard too: a missing font throws while *measuring*, which
+            // is the same failure arriving one phase earlier.
+            this.captureRenderError(error);
+        }
     }
 
     /**
      * Interruptible twin of {@link renderAt}, used by {@link seek} only.
      *
      * The state replay is time-sliced (`stateAtAsync`) so it yields to the event
-     * loop periodically — which is what lets a newer seek actually preempt it.
+     * loop periodically â€” which is what lets a newer seek actually preempt it.
      * `renderAt`'s synchronous replay can't be cancelled in practice: while it
      * runs, nothing can bump `seekGeneration`, so `isCancelled` never trips.
      *
-     * @returns `false` if the replay was superseded — the caller must stop, as
+     * @returns `false` if the replay was superseded â€” the caller must stop, as
      *          nothing was painted and a newer pass owns the surface.
      */
     private async renderAtAsync(frame: number, isCancelled?: SeekCancel): Promise<boolean> {
@@ -365,10 +422,14 @@ export class PlaybackController {
         const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled, this.replayBudgetMs);
         if (!reached || this.disposed || isCancelled?.()) return false;
         this.applyOverrides();
-        this.stateEvaluator.layout(this.measureScope);
-        this.renderContext.execute(() => {
-            this.stateEvaluator.render(this.renderContext);
-        });
+        try {
+            this.stateEvaluator.layout(this.measureScope);
+            this.renderContext.execute(() => {
+                this.stateEvaluator.render(this.renderContext);
+            });
+        } catch (error) {
+            this.captureRenderError(error);
+        }
         return true;
     }
 
@@ -376,7 +437,7 @@ export class PlaybackController {
      * Jump to `frame`, pausing playback first. Waits for required assets to
      * load before rendering, then prefetches upcoming frames.
      *
-     * This is the scrub path, so its state replay runs interruptibly — a fast
+     * This is the scrub path, so its state replay runs interruptibly â€” a fast
      * backward drag supersedes each in-flight seek instead of queueing a full
      * replay per mouse move.
      */
@@ -384,23 +445,23 @@ export class PlaybackController {
         if (this.disposed) return;
         // Claim this seek's generation. A later seek/tick/seekWhilePlaying bumps
         // the counter, so the checks after each await below see it's no longer
-        // current and bail before painting — fixing stale frames (e.g. a video
+        // current and bail before painting â€” fixing stale frames (e.g. a video
         // frame) bleeding into a scene a newer seek already rendered.
         const gen = ++this.seekGeneration;
         const clamped = Math.max(0, Math.min(frame, this.totalFrames));
-        // Scrubbing is an explicit reposition — drop any pending auto-resume so a
+        // Scrubbing is an explicit reposition â€” drop any pending auto-resume so a
         // scene landing mid-scrub doesn't start playing under the user's cursor.
         this.pausedPendingPrecomp = false;
         this.masterClock.pause();
         this.masterClock.seek(clamped / this.fps);
         await this.assetManager.loadAt(clamped);
-        // loadAt is async — this seek may have been superseded (or the controller
+        // loadAt is async â€” this seek may have been superseded (or the controller
         // disposed) while awaiting.
         if (!this.isCurrent(gen)) return;
         if (!(await this.renderAtAsync(clamped, this.cancelAfter(gen)))) return;
         // A cold seek can land on a video timestamp the window hadn't decoded yet;
         // warm the exact frame(s) the render requested and re-render so the still
-        // is frame-accurate. Bounded — decoding is monotonic, so this settles fast.
+        // is frame-accurate. Bounded â€” decoding is monotonic, so this settles fast.
         // Stays on the synchronous renderAt: the replay above already reached
         // `clamped`, so stateAt hits its early return and this is layout+render only.
         for (let pass = 0; pass < 3; pass++) {
@@ -418,7 +479,7 @@ export class PlaybackController {
      * Re-runs **only** the edited scene's precomp (reusing every other scene's
      * cached pass), swaps it into the state evaluator's matching slot, and
      * refreshes the asset manager and clock duration. Untouched scenes keep
-     * their cached generators, so editing scene N never re-runs scenes ≠ N.
+     * their cached generators, so editing scene N never re-runs scenes â‰  N.
      *
      * The render context is never torn down, so the next render paints the new
      * frame over the old with no blank flash. Returns the resolved scene index,
@@ -426,7 +487,7 @@ export class PlaybackController {
      *
      * **The swap does not paint.** The edited scene's precomp re-runs a fresh
      * asset pass, so an asset the edit *added* is in the asset map but not yet
-     * loaded — and this used to repaint synchronously anyway, "for a no-flash
+     * loaded â€” and this used to repaint synchronously anyway, "for a no-flash
      * swap of what's already warm", then load and repaint. That reasoning only
      * holds when the swap introduces nothing new. When it does, the first paint
      * is a frame missing its media, held for the whole fetch, and the repaint
@@ -434,7 +495,7 @@ export class PlaybackController {
      *
      * So the load comes first and there is one paint. The canvas keeps showing
      * the previous *complete* frame until then, which is strictly better than a
-     * current frame with a hole in it — and, now that reaching for an unloaded
+     * current frame with a hole in it â€” and, now that reaching for an unloaded
      * asset throws rather than skipping the layer, is the difference between
      * working and not.
      *
@@ -442,7 +503,7 @@ export class PlaybackController {
      *
      * @param newScene The edited scene instance (carries `__sceneHotId`).
      * @returns The matched slot index, and a promise that resolves once the
-     *          frame has been painted — for a caller that needs to read the tree
+     *          frame has been painted â€” for a caller that needs to read the tree
      *          or screenshot afterwards.
      */
     replaceScene(newScene: Scene): number {
@@ -452,7 +513,7 @@ export class PlaybackController {
         // repaint below. An async seek parked on a yield re-checks its generation
         // the instant it resumes, so bumping first guarantees it unwinds rather
         // than stepping a generator we are about to swap out. (Safe today even if
-        // bumped later, since this method is wholly synchronous — but that is a
+        // bumped later, since this method is wholly synchronous â€” but that is a
         // property of the current code, not a contract. Keep the bump first.)
         const gen = ++this.seekGeneration;
 
@@ -469,7 +530,7 @@ export class PlaybackController {
         this.assetManager.setPrecomp(this.precomp);
         this.masterClock.setDuration(this.totalDuration);
 
-        // Load first, then paint once — see the note above. The generation
+        // Load first, then paint once â€” see the note above. The generation
         // claimed at the top of this method already invalidated any in-flight
         // render, so none can stamp a stale frame over the reloaded scene.
         const frame = this.currentFrame;
@@ -480,8 +541,8 @@ export class PlaybackController {
     /**
      * Resolves when the paint {@link replaceScene} scheduled has landed.
      *
-     * A caller that swaps a scene in order to *read* the result — screenshot it,
-     * walk its tree — has to know when the frame exists. It used to be able to
+     * A caller that swaps a scene in order to *read* the result â€” screenshot it,
+     * walk its tree â€” has to know when the frame exists. It used to be able to
      * assume "immediately", because the swap painted synchronously; it cannot
      * now, and awaiting the wrong thing is how a thumbnailer captures a blank
      * surface.
@@ -494,7 +555,7 @@ export class PlaybackController {
     }
 
     /**
-     * Await the asset manager's load for `frame`, then paint — the whole of what
+     * Await the asset manager's load for `frame`, then paint â€” the whole of what
      * {@link replaceScene} does to the canvas, so an asset the edit added is
      * loaded before anything tries to draw it. Guarded by `gen`: if a newer
      * seek/tick has begun (or the controller is disposed) we abandon both the
@@ -536,7 +597,7 @@ export class PlaybackController {
      * float so `stateAt` always hits its early-return and never resets scene state.
      *
      * Awaits the frame's assets first. It never used to, and got away with it
-     * because a caller had always seeked here — but a caller that swapped a scene
+     * because a caller had always seeked here â€” but a caller that swapped a scene
      * in and captured it immediately was relying on `replaceScene` having painted
      * synchronously, which it no longer does. Loading here makes the capture
      * correct whatever the caller did before it, rather than correct-by-habit.
@@ -568,11 +629,11 @@ export class PlaybackController {
         const sceneStart = scenePrecomp?.startFrame ?? 0;
         // The precomp requests are the complete audio picture (the per-frame node
         // hook only sees sounds active on the current frame), so they drive the
-        // waveforms — grouped by the emitting node's path so each clip lands on
+        // waveforms â€” grouped by the emitting node's path so each clip lands on
         // its own bar (a Video's clip on the Video row, a scene's playSound on
         // the scene row). Requests with no owner fall back to the scene root.
         const waveformsByPath = waveformsByOwner(audioRequests);
-        // A scene is no longer a node — its world lives on `scene.root`. Walk the
+        // A scene is no longer a node â€” its world lives on `scene.root`. Walk the
         // root so structural paths (path "" = root) match how precomp records
         // lifespans, keeping the per-node bars aligned.
         const tree = nodeToTreeState(scene.root, "", lifespans, sceneStart, waveformsByPath);
@@ -605,7 +666,7 @@ export class PlaybackController {
     }
 
     /**
-     * Every visible node's box in draw order — for hover highlights, marquee
+     * Every visible node's box in draw order â€” for hover highlights, marquee
      * selection, and snap guides. One tree walk instead of N {@link getNodeBox}
      * calls.
      */
@@ -636,7 +697,7 @@ export class PlaybackController {
 
     /**
      * The topmost node under a viewport-space point (origin at the viewport
-     * centre, y-up), or `null`. `tolerance` is grab-slop in **scene units** —
+     * centre, y-up), or `null`. `tolerance` is grab-slop in **scene units** â€”
      * pass the host's pixel slop divided by its preview zoom so the grab area
      * stays constant on screen. See {@link pickNode}.
      */
@@ -654,7 +715,7 @@ export class PlaybackController {
      *
      * This exists for direct manipulation: an editor dragging a node needs the
      * rendered node to follow the pointer at pointer rate, and rebuilding the
-     * `Scene` for that is not viable — a host's `scenes` array is an input to the
+     * `Scene` for that is not viable â€” a host's `scenes` array is an input to the
      * player's mount effect, so a rebuild disposes and re-creates the render
      * surface. Overrides move the live node instead: no precomp, no teardown.
      *
@@ -664,7 +725,7 @@ export class PlaybackController {
      *
      * @param path  Structural path from {@link TreeState.path} (stable across
      *              rebuilds, unlike a node id).
-     * @param props Any props the node accepts — `{ x, y }`, `{ rotation }`,
+     * @param props Any props the node accepts â€” `{ x, y }`, `{ rotation }`,
      *              `{ width, height }`. Merged over any existing override.
      */
     setNodeOverride(path: string, props: NodeOverride): void {
@@ -680,7 +741,7 @@ export class PlaybackController {
      * An override is written straight onto a live signal, so simply forgetting it
      * would leave the last dragged value on screen. The value can only come back
      * from the generator that authored it, which means replaying the current
-     * scene — so this rebuilds that scene's node tree (node `id`s change; keep
+     * scene â€” so this rebuilds that scene's node tree (node `id`s change; keep
      * keying on paths). Cheap enough for a pointer-*up*, which is the only place
      * it belongs; never call it per `pointermove`.
      */
@@ -688,7 +749,7 @@ export class PlaybackController {
         const cleared = path === undefined
             ? (this.overrides.size > 0 && (this.overrides.clear(), true))
             : this.overrides.delete(path);
-        // Nothing was held, so nothing is stale — skip the replay entirely.
+        // Nothing was held, so nothing is stale â€” skip the replay entirely.
         if (!cleared) return;
         const frame = this.stateEvaluator.currentFrame;
         this.stateEvaluator.invalidate();

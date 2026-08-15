@@ -33,7 +33,7 @@ export interface RichTextProps extends ShapeProps {
     textAlign: TextAlign;
     /**
      * Name of a typography preset from `theme.typography` (e.g. `"body"`).
-     * Supplies any node-level default (fontSize, fontWeight, …) not set
+     * Supplies any node-level default (fontSize, fontWeight, â€¦) not set
      * explicitly here, which `runs()` then folds into each span. An explicit prop
      * wins over the preset; the preset wins over an inherited `<DefaultTextStyle>`.
      */
@@ -49,7 +49,19 @@ export class RichText extends ShapeNode<RichTextProps> {
         mapper: (v: TextSpan | TextSpan[] | undefined): TextSpan[] =>
             v == null ? [] : Array.isArray(v) ? v : [v],
     }) declare readonly spans: TextSpan[];
-    @property({ default: "Inter" }) declare readonly fontFamily: string;
+    /**
+     * The family this text is set in. **No default** — it comes from the cascade
+     * in `applyTextDefaults`: what the author passed, else a `variant` preset,
+     * else the nearest enclosing `<DefaultTextStyle>`, else the theme's `default`
+     * typography preset.
+     *
+     * A literal default here would sit *under* all four and quietly win whenever
+     * every one of them was silent, which is precisely the case worth hearing
+     * about: text set in a face nobody chose is text whose font was never
+     * declared and so never loaded. Left unset, the renderer says so instead —
+     * see `requireFontFamily`.
+     */
+    @property() declare readonly fontFamily: string;
     @property({ default: 16 }) declare readonly fontSize: number;
     @property({ default: 400 }) declare readonly fontWeight: number;
     @property({ default: 'normal' }) declare readonly fontStyle: FontStyle;
@@ -65,13 +77,13 @@ export class RichText extends ShapeNode<RichTextProps> {
     // Inherit text-style defaults from the nearest ancestor <DefaultTextStyle> for
     // any default the author didn't set; these node-level defaults are then folded
     // into each span. Context-value application (spans are fixed structure), so it
-    // lives in resolveContext — runs once after the tree + context exist. See Text.
+    // lives in resolveContext â€” runs once after the tree + context exist. See Text.
     protected override resolveContext(_ctx: ContextMap): void {
         applyTextDefaults(this, this._props as Record<string, unknown> | undefined);
     }
 
-    // RichText always sizes to its own laid-out spans — it has no children
-    // to hug — so it ignores the base has-children default and always hugs.
+    // RichText always sizes to its own laid-out spans â€” it has no children
+    // to hug â€” so it ignores the base has-children default and always hugs.
     protected override applyDefaultSize(props?: NodeConfig<RichText, RichTextProps>): void {
         this.applyProp("height", props?.height ?? "hug");
         this.applyProp("width", props?.width ?? "hug");
@@ -124,7 +136,7 @@ export class RichText extends ShapeNode<RichTextProps> {
     }
 
     /**
-     * Every family the flattened runs resolve to — not just this node's default.
+     * Every family the flattened runs resolve to â€” not just this node's default.
      *
      * A span can name its own `fontFamily`, so declaring `this.fontFamily` alone
      * would leave a styled run shaping against the fallback face. {@link runs}

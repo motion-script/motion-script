@@ -37,7 +37,7 @@ export interface TextProps extends ShapeProps {
     minFontSize: number;
     /**
      * Name of a typography preset from `theme.typography` (e.g. `"header"`).
-     * Supplies any text-style prop (fontSize, fontWeight, …) not set explicitly
+     * Supplies any text-style prop (fontSize, fontWeight, â€¦) not set explicitly
      * here. An explicit prop always wins over the preset; the preset wins over an
      * inherited `<DefaultTextStyle>`.
      */
@@ -63,7 +63,19 @@ export class Text extends ShapeNode<TextProps> {
 
 
     @property({ default: "", tween: lerpText }) declare readonly text: string;
-    @property({ default: "Inter" }) declare readonly fontFamily: string;
+    /**
+     * The family this text is set in. **No default** — it comes from the cascade
+     * in `applyTextDefaults`: what the author passed, else a `variant` preset,
+     * else the nearest enclosing `<DefaultTextStyle>`, else the theme's `default`
+     * typography preset.
+     *
+     * A literal default here would sit *under* all four and quietly win whenever
+     * every one of them was silent, which is precisely the case worth hearing
+     * about: text set in a face nobody chose is text whose font was never
+     * declared and so never loaded. Left unset, the renderer says so instead —
+     * see `requireFontFamily`.
+     */
+    @property() declare readonly fontFamily: string;
     @property({ default: 16 }) declare readonly fontSize: number | 'autofit';
     @property({ default: 400 }) declare readonly fontWeight: number;
     @property({ default: 'normal' }) declare readonly fontStyle: FontStyle;
@@ -82,14 +94,14 @@ export class Text extends ShapeNode<TextProps> {
 
     // Inherit text-style defaults from the nearest ancestor <DefaultTextStyle>
     // for any style prop the author didn't set. This is context-value application
-    // (structure is fixed — Text has no children), so it belongs in resolveContext,
+    // (structure is fixed â€” Text has no children), so it belongs in resolveContext,
     // which runs once after the tree + context exist. Writing through _writeProp
     // applies each field's own mapper (e.g. `fill`'s color resolver) once.
     protected override resolveContext(_ctx: ContextMap): void {
         applyTextDefaults(this, this._props as Record<string, unknown> | undefined);
     }
 
-    // Text doesn't hug/fill based on children (it has none) — it hugs its own
+    // Text doesn't hug/fill based on children (it has none) â€” it hugs its own
     // glyph box by default, filling only when the box needs to be resolved
     // externally: `autofit` measures glyphs against the allotted box, and
     // `wrap` needs a width to wrap against.
@@ -133,7 +145,7 @@ export class Text extends ShapeNode<TextProps> {
             : paragraphs.length;
         const intrinsicH = lineCount * lineH;
 
-        // "fill" still reports the intrinsic wrapped height when measuring —
+        // "fill" still reports the intrinsic wrapped height when measuring â€”
         // it's layout (not measure) that stretches a fill child to its final
         // box. This lets a hug ancestor see the text's real content height
         // instead of an arbitrary borrowed constraint.
@@ -317,7 +329,7 @@ export class Text extends ShapeNode<TextProps> {
      *
      * A family used to be discovered by measuring text against it, which meant
      * the font manager was necessarily still empty when the measurement that
-     * discovered it ran — so every precomp measurement was made against the
+     * discovered it ran â€” so every precomp measurement was made against the
      * fallback face and silently corrected at the first real render. Naming the
      * family here costs nothing and needs no measurement, so a host can collect
      * every font a scene wants, load them, and only then lay out.
@@ -337,7 +349,7 @@ export class Text extends ShapeNode<TextProps> {
         const rect = this.layoutRect;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
-        // Null when no selection is active — the node's own paint is all there is,
+        // Null when no selection is active â€” the node's own paint is all there is,
         // and `super` has already declared it.
         const segments = this._buildSegments();
         if (segments === null) return;
@@ -352,10 +364,10 @@ export class Text extends ShapeNode<TextProps> {
     /**
      * The descriptor this node draws itself as, at the current frame.
      *
-     * `@internal` — split out of {@link textOpGraphics} so `node-picking`'s
+     * `@internal` â€” split out of {@link textOpGraphics} so `node-picking`'s
      * caret geometry can be measured from *the same* state that gets painted.
-     * Deriving the two separately is how a caret ends up half a pixel — or, once
-     * `'autofit'` or wrapping is in play, half a line — away from its glyph.
+     * Deriving the two separately is how a caret ends up half a pixel â€” or, once
+     * `'autofit'` or wrapping is in play, half a line â€” away from its glyph.
      */
     /** @internal */
     _textState(): Partial<TextState> {

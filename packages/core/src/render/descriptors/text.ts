@@ -59,6 +59,33 @@ export interface TextState extends ShapeState {
 }
 
 
+/**
+ * The family this text is set in — **required**, with no substitute.
+ *
+ * It used to fall back to `"Arial"`. That is the wrong shape of answer for a
+ * renderer whose whole job is that the picture is the one that was asked for: a
+ * drawn op reaching this with no family means nobody stated one — not the op, not
+ * an enclosing `DefaultTextStyle`, not the theme's `default` preset — and
+ * substituting a face silently produces text in a typeface the author never
+ * chose, at metrics they never measured, in a frame that looks finished. The
+ * failure it hides is a font that was never declared and so never loaded, which
+ * is exactly the class of bug the declared-asset work exists to surface.
+ *
+ * Named as an error naming its three fixes, because "no font family" is not
+ * actionable and "set one on the op, on an enclosing DefaultTextStyle, or as the
+ * theme's default preset" is.
+ */
+function requireFontFamily(descriptor: Partial<TextState>): string {
+    const family = descriptor.fontFamily;
+    if (typeof family === "string" && family !== "") return family;
+    const text = descriptor.text ? ` drawing "${descriptor.text.slice(0, 32)}"` : "";
+    throw new Error(
+        `Text${text} has no fontFamily. Set one on the text itself, on an `
+        + `enclosing <DefaultTextStyle>, or as the theme's \`default\` typography `
+        + `preset — there is no fallback face.`,
+    );
+}
+
 export function withTextDescriptor(descriptor: Partial<TextState> & ShapeAnchorInput): TextState {
     const width = descriptor.width ?? 0;
     const height = descriptor.height ?? 0;
@@ -75,7 +102,7 @@ export function withTextDescriptor(descriptor: Partial<TextState> & ShapeAnchorI
         pivot: resolveShapePivot(pivot),
         text: descriptor.text ?? "",
         fontSize: descriptor.fontSize ?? 16,
-        fontFamily: descriptor.fontFamily ?? "Arial",
+        fontFamily: requireFontFamily(descriptor),
         fontWeight: descriptor.fontWeight ?? 400,
         fontStyle: descriptor.fontStyle ?? 'normal',
         letterSpacing: descriptor.letterSpacing ?? 0,

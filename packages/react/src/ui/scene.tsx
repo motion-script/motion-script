@@ -71,16 +71,16 @@ type Props = {
      * **This is not a zoom and it is not a crop.** `viewport` stays the scene's
      * logical coordinate space; this only changes how many real pixels that space
      * is drawn into, and CSS scales the canvas back up to fill its box. Shrinking
-     * `viewport` instead would show a smaller *window* onto the scene — a crop —
+     * `viewport` instead would show a smaller *window* onto the scene â€” a crop â€”
      * because scene coordinates map straight into it with the origin at centre.
      *
      * The lever exists because a preview is usually displayed far smaller than the
-     * project's output size: a 1920×1080 project in a 700px-wide panel rasterizes
+     * project's output size: a 1920Ã—1080 project in a 700px-wide panel rasterizes
      * roughly seven times the pixels anyone can see. `0.5` there is a quarter of
      * the fill, the shader work and the effect offscreens, for an image the
      * display cannot resolve the difference in. `@motion-script/web`'s
      * `StillRenderer` calls the same thing `scale`, and `exportScenesAsVideo`
-     * takes it as `scale` too — all three drive `RenderContext.pixelRatio`.
+     * takes it as `scale` too â€” all three drive `RenderContext.pixelRatio`.
      *
      * Two things to know before animating it:
      *
@@ -89,15 +89,15 @@ type Props = {
      *   the canvas and mounting again. That drops the storage adapter's
      *   texture-backed images (decoded video frames, 3D composites; still images
      *   survive) and asks the browser for a fresh GL context. Quantize to a few
-     *   steps and settle before changing it — do not drive it straight from a
+     *   steps and settle before changing it â€” do not drive it straight from a
      *   resize observer or a zoom gesture.
      * - **Prefer scales that keep both dimensions whole.** `pixelRatio` is one
      *   uniform number, so a scale that rounds differently on each axis shifts the
-     *   frame's centre by up to half a device pixel. Quarters of a 1920×1080
+     *   frame's centre by up to half a device pixel. Quarters of a 1920Ã—1080
      *   viewport are all exact.
      *
      * A snapshot taken through {@link FrameHandle.screenshot} comes back at the
-     * surface's size, so it is scaled too — render at `1` first if you need the
+     * surface's size, so it is scaled too â€” render at `1` first if you need the
      * project's full resolution out of it.
      */
     renderScale?: number;
@@ -112,7 +112,7 @@ type Props = {
     variables?: Variables;
     /**
      * Project-level audio beds played across scene cuts (`ProjectConfig.audioTracks`).
-     * Identity-compared like `scenes` — pass a stable array (the project config's
+     * Identity-compared like `scenes` â€” pass a stable array (the project config's
      * own), not a fresh literal per render, or the controller is rebuilt each time.
      */
     audioTracks?: AudioTrack[];
@@ -133,7 +133,7 @@ type Props = {
     /**
      * Called each time the background precomp measures another scene. Until it
      * reports `complete`, `getDuration()`/`getSceneDurations()` describe only the
-     * scenes measured so far and will grow — re-pull them on every call.
+     * scenes measured so far and will grow â€” re-pull them on every call.
      */
     onPrecompProgress?: (progress: PrecompProgress) => void;
 };
@@ -181,7 +181,7 @@ export interface FrameHandle {
     // ---- Direct manipulation ----------------------------------------------
     // Enough to build a selection gizmo over the canvas: where a node is, what
     // is under the pointer, and a write path that doesn't rebuild the scene.
-    // Points are in viewport space — origin at the viewport centre, y-up, in the
+    // Points are in viewport space â€” origin at the viewport centre, y-up, in the
     // `viewport` pixels this player was given.
 
     /** On-screen box of one node at the current frame, keyed by {@link TreeState.path}. */
@@ -189,7 +189,7 @@ export interface FrameHandle {
     /** Every visible node's box, in draw order. */
     getNodeBoxes: () => NodeBox[];
     /**
-     * Where a Text node's caret slots landed on screen — for drawing a text
+     * Where a Text node's caret slots landed on screen â€” for drawing a text
      * cursor and selection over the rendered glyphs, rather than over a DOM
      * input laid on top of them, which cannot agree with the shaper. `null` for
      * anything that isn't editable text; see {@link NodeTextLayout}.
@@ -197,7 +197,7 @@ export interface FrameHandle {
     getTextLayout: (path: string) => NodeTextLayout | null;
     /**
      * Topmost node under a viewport-space point. `tolerance` is grab-slop in
-     * scene units — divide the desired screen slop by the host's preview zoom.
+     * scene units â€” divide the desired screen slop by the host's preview zoom.
      */
     pickNode: (point: Vector2, tolerance?: number) => NodeBox | null;
     /**
@@ -208,7 +208,7 @@ export interface FrameHandle {
     setNodeOverride: (path: string, props: NodeOverride) => void;
     /** Drop one node's overrides, or all of them when `path` is omitted. */
     clearNodeOverrides: (path?: string) => void;
-    /** Re-layout and repaint the current frame — no generator replay. */
+    /** Re-layout and repaint the current frame â€” no generator replay. */
     repaint: () => void;
 }
 
@@ -257,7 +257,7 @@ export function MotionPlayer({
     /**
      * The precomp cache is an injected dependency, not an input to the scene
      * graph, so it is read through a ref rather than listed in the mount effect's
-     * deps — a host swapping in a different store must not tear down and rebuild
+     * deps â€” a host swapping in a different store must not tear down and rebuild
      * the whole controller. This effect is declared before the mount effect, so on
      * mount it has already run by the time the controller is constructed.
      */
@@ -268,7 +268,7 @@ export function MotionPlayer({
      * Read through a ref by the mount effect for the same reason as the two above:
      * `renderScale` describes how the frame is rasterized, not what is in it, so it
      * must not appear in that effect's deps or a scale change would tear down the
-     * whole playback controller — precomp, asset catalog, audio and all — to change
+     * whole playback controller â€” precomp, asset catalog, audio and all â€” to change
      * one number. The surface alone is re-created, by the effect further down.
      */
     const renderScaleRef = useRef(renderScale);
@@ -280,7 +280,7 @@ export function MotionPlayer({
      * Compared against the prop rather than trusting the effect to fire once:
      * the resize effect and the mount effect can both run in the same commit (a
      * scene edit that also changes the preview's size), and the mount already
-     * builds at the new scale — without this the resize effect would immediately
+     * builds at the new scale â€” without this the resize effect would immediately
      * throw that surface away and build an identical one.
      */
     const appliedScaleRef = useRef(renderScale);
@@ -309,7 +309,7 @@ export function MotionPlayer({
         const clock = new WebMasterClock({ context: audio.getContext(), fps });
         const renderContext = new WebRenderContext(canvasKit, storage);
         // Before `mount`, which builds the Skia surface from the canvas's current
-        // `width`/`height` — React has already written those at this scale, so the
+        // `width`/`height` â€” React has already written those at this scale, so the
         // two agree from the first frame and nothing paints at the wrong ratio.
         renderContext.pixelRatio = renderScaleRef.current;
         appliedScaleRef.current = renderScaleRef.current;
@@ -338,7 +338,7 @@ export function MotionPlayer({
             scenes,
             // Only the scene owning frame 0 is measured before this returns; the
             // rest arrive here as they land. A scene finishing both lengthens the
-            // timeline and can surface a build error it threw, so refresh both —
+            // timeline and can surface a build error it threw, so refresh both â€”
             // the same pair hotReplaceScene refreshes after an in-place swap.
             onPrecompProgress: (result) => {
                 onBuildErrorsRef.current?.(result.buildErrors);
@@ -350,6 +350,14 @@ export function MotionPlayer({
             onBuildErrorsRef.current?.(pc.buildErrors);
         }
 
+        // A frame that fails to draw reaches the same banner a scene that failed
+        // to build does. Before this it propagated out of `seek` as an unhandled
+        // rejection and the scene simply stopped updating — the exact silence the
+        // load-or-throw guards were added to replace.
+        pc.onRenderError = (errors) => {
+            onBuildErrorsRef.current?.(errors);
+        };
+
         pc.onTime((t: number) => {
             onFrameChangeRef.current?.(Math.trunc(t * fps));
             setC(t);
@@ -359,7 +367,7 @@ export function MotionPlayer({
 
         // Publish the starting position immediately. The controller only measured
         // the scene owning frame 0, so a multi-scene project is already incomplete
-        // here — without this the UI would show nothing until the *second* scene
+        // here â€” without this the UI would show nothing until the *second* scene
         // lands, which on a long project is exactly the wait we're trying to
         // make visible.
         onPrecompProgressRef.current?.(precompProgressOf(pc.precomp));
@@ -378,9 +386,9 @@ export function MotionPlayer({
      * Rebuild the surface when {@link Props.renderScale} changes.
      *
      * Separate from the mount effect on purpose: a scale change must cost one
-     * surface, not a whole playback controller. Everything the controller owns —
+     * surface, not a whole playback controller. Everything the controller owns â€”
      * the measured precomp, the asset catalog, the audio graph, the clock, the
-     * playhead — is unaffected by how many device pixels a frame is drawn into.
+     * playhead â€” is unaffected by how many device pixels a frame is drawn into.
      *
      * The order matters and is why this is an effect rather than a callback: React
      * has already written the canvas's new `width`/`height` by the time effects
@@ -389,7 +397,7 @@ export function MotionPlayer({
      * the resize would produce a surface of the previous size.
      *
      * `repaint()` afterwards because the new surface starts blank, and the
-     * controller's clock is not necessarily running to fill it — a paused editor
+     * controller's clock is not necessarily running to fill it â€” a paused editor
      * would otherwise show black until something else moved.
      */
     useEffect(() => {
@@ -401,7 +409,7 @@ export function MotionPlayer({
         appliedScaleRef.current = renderScale;
         renderContext.pixelRatio = renderScale;
         // `mount` detaches the old surface first, which also drops the storage
-        // adapter's texture-backed images — they belong to the surface that made
+        // adapter's texture-backed images â€” they belong to the surface that made
         // them. Video frames and 3D composites are re-uploaded on demand; decoded
         // still images are raster-backed and survive.
         renderContext.mount(canvas);
@@ -411,13 +419,13 @@ export function MotionPlayer({
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
     //
-    // This effect is the single seek driver for the paused path — don't add a
+    // This effect is the single seek driver for the paused path â€” don't add a
     // competing imperative renderFrame() call for the same frame, or the two
     // seeks bump each other's generation and cancel one another in a ping-pong.
     useEffect(() => {
         if (!controller || isPlaying) return;
         // Only the newest seek may report "settled". A superseded seek still
-        // resolves — its generation guard bailed inside the controller — but it
+        // resolves â€” its generation guard bailed inside the controller â€” but it
         // never painted, so clearing the loading flag from it would tell the UI a
         // frame is ready when the newest one is still in flight. Consumers use
         // that edge to pace scrubbing, so a false settle would let them commit
@@ -462,13 +470,14 @@ export function MotionPlayer({
             hotReplaceScene: (scene: Scene) => {
                 const pc = controllerRef.current;
                 if (!pc) return -1;
+                pc.clearRenderErrors();
                 const index = pc.replaceScene(scene);
                 if (index < 0) return -1;
                 // Surface any new build error from the edited scene.
                 onBuildErrorsRef.current?.(pc.buildErrors);
                 // The swap loads before it paints now, so the loading edge is a
                 // real one rather than the synchronous true/false pulse this
-                // used to fire — which reported "done" before anything had
+                // used to fire â€” which reported "done" before anything had
                 // happened, and which a host watching that edge to re-read the
                 // tree would act on too early.
                 onLoadingChangeRef.current?.(true);
@@ -500,7 +509,7 @@ export function MotionPlayer({
                 ref={canvasRef}
                 // The backing store, in device pixels. CSS below stretches it back
                 // over the whole box either way, so this is purely how much gets
-                // rasterized — see {@link Props.renderScale}. Floored at 1 so a
+                // rasterized â€” see {@link Props.renderScale}. Floored at 1 so a
                 // degenerate scale can't ask CanvasKit for a zero-sized surface,
                 // which fails the surface creation outright.
                 width={Math.max(1, Math.round(viewport.width * renderScale))}
