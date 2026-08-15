@@ -473,6 +473,22 @@ export type {
     TweenOptions,
 } from '@motion-script/core';
 
+// An animation as a **value** rather than as control flow: a declared duration
+// plus `at(t)`, so a host can ask what it looks like at a time instead of
+// running it to one. Still `yield*`-able, so authoring reads the same — but a
+// scene built only from these can be scrubbed in constant time, which one built
+// from generators cannot. `@command` marks the methods on a node that return one,
+// and is what a host scans for to know a node's animations without running them.
+export {
+    command,
+    getCommandMeta,
+    isCommand,
+    makeCommand,
+    commandSequence,
+    commandParallel,
+} from '@motion-script/core';
+export type { Command } from '@motion-script/core';
+
 // =============================================================
 // Animation — Easing
 // =============================================================
