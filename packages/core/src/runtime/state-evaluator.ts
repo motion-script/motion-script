@@ -320,6 +320,15 @@ export class StateEvaluator {
         const { slot, localTarget, clampedFrame } = plan;
         const dt = this.dt;
 
+        // A driven scene knows its own state at a time, so there is nothing to
+        // replay: no walk from the last position, no reset when the target is
+        // behind it, and the cost is the same whichever direction the playhead
+        // moved. See `createDrivenScene`.
+        if (this.evaluateSlot(slot, localTarget)) {
+            this._currentFrame = clampedFrame;
+            return;
+        }
+
         while (slot.localFrame < localTarget) {
             // A newer seek superseded this one — abandon the replay. We leave
             // _currentFrame untouched (the slot is at a partial localFrame); the
@@ -329,6 +338,36 @@ export class StateEvaluator {
         }
 
         this._currentFrame = clampedFrame;
+    }
+
+    /**
+     * Put a driven slot into the state for `localFrame`, or report that it has no
+     * driver and must be replayed.
+     *
+     * The per-frame preamble is the same as {@link stepReplay}'s — the catalog,
+     * the context re-push, and the two clocks — because everything below the
+     * driver is unchanged. Only the last line differs: the generator is stepped
+     * one frame, the driver is asked for a time.
+     */
+    private evaluateSlot(slot: SceneSlot, localFrame: number): boolean {
+        // See `drivenFrameCount`: a scene is only driven if it can say how long
+        // for, so anything that isn't a real number stays on the replay path.
+        const duration = slot.scene.drivenDuration;
+        if (typeof duration !== "number" || !Number.isFinite(duration)) return false;
+
+        const sceneTime = localFrame * this.dt;
+        slot.scene.bindAssets(this.assets);
+        slot.scene.bindContext(ContextMap.EMPTY, false);
+        slot.scene.ellapse(sceneTime);
+        this.globals?.ellapse((slot.startFrame + localFrame) * this.dt);
+        slot.scene.evaluateAt(sceneTime);
+        // Layout runs after, not before: a generator body reads `layoutRect` as it
+        // steps, so the replay must lay out first — a driver writes props and
+        // reads nothing, so the layout that matters is the one the render pass
+        // does next, against the values just written.
+        this.layoutScene(slot.scene);
+        slot.localFrame = localFrame;
+        return true;
     }
 
     /**
@@ -386,6 +425,15 @@ export class StateEvaluator {
             if (!plan) return !this.disposed;
             const { slot, localTarget, clampedFrame } = plan;
             const dt = this.dt;
+
+            // Nothing to time-slice for a driven scene: this whole apparatus —
+            // the budget, the yields, the re-validation after each one — exists
+            // because a replay's length is unbounded, and an evaluation's is one
+            // call. Cancellation has nothing to cancel.
+            if (this.evaluateSlot(slot, localTarget)) {
+                this._currentFrame = clampedFrame;
+                return true;
+            }
 
             let deadline = now() + budgetMs;
             while (slot.localFrame < localTarget) {

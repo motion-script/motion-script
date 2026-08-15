@@ -315,6 +315,34 @@ export class Scene {
         return this.generator(mergeStage(stage, this));
     }
 
+    /** The host driver, when this scene is evaluated rather than replayed. */
+    private _driver?: SceneDriver;
+
+    /** @internal Set by {@link createDrivenScene}; nothing else should call it. */
+    setDriver(driver: SceneDriver): void {
+        this._driver = driver;
+    }
+
+    /**
+     * Put the scene into the state for `seconds`, or return `false` when this
+     * scene has no driver and must be replayed instead.
+     *
+     * The runtime asks this before falling back to stepping the generator, so a
+     * driven scene never enters the replay path at all — no reset on a backward
+     * seek, no time-slicing, no cancellation, because there is nothing
+     * long-running to interrupt.
+     */
+    evaluateAt(seconds: number): boolean {
+        if (!this._driver) return false;
+        this._driver.evaluateAt(seconds);
+        return true;
+    }
+
+    /** The driver's declared duration, or `null` for a generator scene. */
+    get drivenDuration(): number | null {
+        return this._driver ? this._driver.duration : null;
+    }
+
     // ─── Runtime lifecycle (forwarders to the root) ───────────────────────────
 
     /** Clear all dynamically-added children and managed sounds, and reset the clock. */
@@ -531,4 +559,68 @@ export function createStill(content: StillContent): Scene {
         const nodes = content(stage);
         if (nodes) stage.add(nodes);
     });
+}
+
+/**
+ * A host's own way of putting a scene into the state for a time.
+ *
+ * The seam for a timeline that is **data** rather than a generator. A generator
+ * scene can only be advanced, so reaching frame N means running frames 0..N-1
+ * and reaching frame N-1 afterwards means starting over from zero. A host whose
+ * timeline is a list of commands with times already knows what frame N looks
+ * like; it should not have to replay to prove it.
+ *
+ * Core deliberately learns nothing about *what* that data is. There are no rows
+ * here, no notion of a command list, nothing to serialize — the engine stays
+ * unopinionated about the document, and the host keeps its own model. All this
+ * says is: something can build a tree, and something can put that tree into the
+ * state for a time.
+ *
+ * @see createDrivenScene
+ */
+export interface SceneDriver {
+    /**
+     * Build the node tree, through the same {@link Stage} a generator gets.
+     *
+     * Runs on every build pass, and — like a generator body — must build fresh
+     * nodes each time: {@link Scene.reset} disposes and clears the root's
+     * children between passes, so a node captured outside this call is torn down
+     * before its second use.
+     */
+    build(stage: Stage): void;
+    /**
+     * Put every node into the state it holds at `seconds` from the scene's start.
+     *
+     * Must be a function of `seconds` alone: called in any order, repeatedly, and
+     * with time going backwards. That is the whole point — a host that needs the
+     * previous call to have happened has re-invented the generator.
+     */
+    evaluateAt(seconds: number): void;
+    /** How long the scene runs. Read once per build, after {@link build}. */
+    readonly duration: number;
+}
+
+/**
+ * Create a scene a host drives itself, rather than one a generator advances.
+ *
+ * The body never yields — the same trick {@link createStill} uses — so there is
+ * nothing to replay, and `Scene.evaluateAt` is what the runtime calls instead.
+ * Everything below the driver is unchanged: the same nodes, signals, layout,
+ * render pass, asset declarations and clock. Only *how the props get their
+ * values for a frame* differs.
+ *
+ * ```ts
+ * const scene = createDrivenScene({
+ *     build: (stage) => stage.add(myHost.buildTree()),
+ *     evaluateAt: (seconds) => myHost.writePropsAt(seconds),
+ *     get duration() { return myHost.duration },
+ * });
+ * ```
+ */
+export function createDrivenScene(driver: SceneDriver): Scene {
+    const scene = createScene(function* (stage) {
+        driver.build(stage);
+    });
+    scene.setDriver(driver);
+    return scene;
 }

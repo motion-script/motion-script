@@ -697,6 +697,13 @@ export class Precomp {
                 // Prime: advance to first yield so frame-0 nodes are registered.
                 generator.next(dt);
 
+                // A driven scene declares how long it runs rather than being run
+                // to find out (see `createDrivenScene`). Its body never yields, so
+                // the loop below would otherwise measure it as a single frame —
+                // and its assets have to be collected across its real span, not
+                // just at frame 0.
+                const drivenFrames = drivenFrameCount(scene, this.fps);
+
                 while (true) {
                     registry.start(localFrame);
 
@@ -753,8 +760,18 @@ export class Precomp {
                     globals?.ellapse(localFrame * dt);
 
                     profile?.enter("generator");
-                    const result = generator.next(dt);
-                    if (result.done) break;
+                    if (drivenFrames !== null) {
+                        // Put the tree into the next frame's state so the
+                        // declarations above see it. Evaluating rather than
+                        // stepping is the only difference; everything around it —
+                        // the two declaration phases, layout, the lifespan record —
+                        // is the same pass a generator scene gets.
+                        if (localFrame >= drivenFrames) break;
+                        scene.evaluateAt(localFrame * dt);
+                    } else {
+                        const result = generator.next(dt);
+                        if (result.done) break;
+                    }
 
                     // The one suspension point, and only here: the frame above is
                     // complete and the tree is internally consistent, so a
@@ -1025,6 +1042,24 @@ function mergeRecord(out: Map<string, AssetRecord>, key: string, record: AssetRe
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Frames a driven scene runs for, or `null` when the scene is generator-driven
+ * and has to be run to find out.
+ *
+ * Rounded up, so a duration that does not land on a frame boundary still gets
+ * its last, partial frame drawn rather than being truncated away. Floored at one:
+ * a zero-duration driven scene is still a scene, and measuring it as no frames
+ * would drop it from the timeline entirely.
+ */
+function drivenFrameCount(scene: Scene, fps: number): number | null {
+    const duration = scene.drivenDuration;
+    // Tested for being a real number rather than for `!== null`: a scene is only
+    // driven if it can say how long for, and anything else — a generator scene's
+    // `null`, a stand-in that never implemented this — belongs on the replay path.
+    if (typeof duration !== "number" || !Number.isFinite(duration)) return null;
+    return Math.max(1, Math.ceil(duration * fps));
+}
 
 /**
  * Walk the scene's live node tree and extend each node's lifespan to include
