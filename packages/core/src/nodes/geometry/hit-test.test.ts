@@ -10,7 +10,7 @@ import { Image } from '@/nodes/media/image-node';
 import { RootNode } from '@/nodes/scene/root-node';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { Vector2 } from '@/attributes/layout/vector2';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { nodeBox, pickNode } from '@/runtime/node-picking';
 
 /**
@@ -23,7 +23,7 @@ import { nodeBox, pickNode } from '@/runtime/node-picking';
  * they pin the behaviour a host actually observes.
  */
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 function place(node: Node, rect: BoxBounds): void {
     node.layout(rect, scope);

@@ -3,7 +3,7 @@ import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import type { PathData } from "@/render/descriptors/path";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { ShapeNode, ShapeProps } from "./shape-node";
@@ -40,7 +40,7 @@ export class Path extends ShapeNode<PathProps> {
         this.applyProp("height", props?.height ?? "hug");
     }
 
-    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         const wm = this.width;
         const hm = this.height;
 

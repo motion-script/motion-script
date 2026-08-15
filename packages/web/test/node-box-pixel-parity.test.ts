@@ -14,7 +14,7 @@ import {
 import { getCanvasKit } from "../src/getter";
 import { WebRenderContext } from "../src/render-context";
 import { WebStorageAdapter } from "../src/storage-adapter";
-import { WebMeasureScope } from "../src/measure-scope";
+import { WebMeasurer } from "../src/measurer";
 import { WebMasterClock } from "../src/master-clock";
 import { WebAudioDevice } from "../src/audio/player";
 
@@ -64,7 +64,7 @@ function mount(scenes: Scene[]): Harness {
 
     const catalog = new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} });
     const storage = new WebStorageAdapter(canvasKit, catalog, VIEWPORT, FPS);
-    const measure = new WebMeasureScope(storage);
+    const measure = new WebMeasurer(storage);
     const audio = new WebAudioDevice();
     const renderContext = new WebRenderContext(canvasKit, storage);
     renderContext.mount(canvas);

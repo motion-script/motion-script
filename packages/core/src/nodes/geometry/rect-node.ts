@@ -5,7 +5,7 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
 import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
@@ -188,11 +188,11 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     // the FlowHost interface (children/width/height/flow/gap/align +
     // effectivePadding + flowChildren/layoutAbsoluteChildren).
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         return this._flowLayout.measure(constraints, scope);
     }
 
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
         this._flowLayout.layout(rect, scope);
     }

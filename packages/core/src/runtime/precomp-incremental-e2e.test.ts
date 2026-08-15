@@ -4,7 +4,7 @@ import { Rect } from "@/nodes/geometry/rect-node";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
 import { createScene, Scene } from "@/nodes/scene/scene-node";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 
 /**
  * The incremental precomp driven against **real** scenes rather than the
@@ -20,7 +20,7 @@ import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixture
 
 const VIEWPORT = { width: 800, height: 400 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
 /** Layout-heavy: a hug row whose middle child is removed mid-scene. */

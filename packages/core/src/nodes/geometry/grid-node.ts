@@ -6,7 +6,7 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
 import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/grid";
@@ -99,7 +99,7 @@ export class Grid extends ShapeNode<GridProps> {
 
     // ---- Measure -------------------------------------------------------------
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
 
@@ -123,7 +123,7 @@ export class Grid extends ShapeNode<GridProps> {
         };
     }
 
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
 
         const padding = this.effectivePadding();
@@ -153,7 +153,7 @@ export class Grid extends ShapeNode<GridProps> {
         this.layoutAbsoluteChildren(scope);
     }
 
-    private computeMeasure(innerWidth: number, innerHeight: number | undefined, scope: MeasureScope): GridMeasureResult {
+    private computeMeasure(innerWidth: number, innerHeight: number | undefined, scope: Measurer): GridMeasureResult {
         const childNodes = this.flowChildren();
         const adapters: GridChild[] = childNodes.map((child) => ({
             column: child.column,

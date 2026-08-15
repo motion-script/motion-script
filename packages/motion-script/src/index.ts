@@ -192,16 +192,24 @@ export type {
 } from '@motion-script/core';
 
 // =============================================================
-// Rendering — Graphics builder, RenderContext & asset discovery
+// Rendering — Graphics builder, RenderContext & asset declaration
 // =============================================================
 export {
     Graphics,
     RenderContext,
     PathBuilder,
     Clip,
-    MeasureScope,
+    Measurer,
     AssetTracker,
 } from '@motion-script/core';
+
+/**
+ * @deprecated Renamed to {@link Measurer}. It never was a "scope" in the sense
+ * the rest of the codebase uses the word — it measures text, and that is the
+ * whole of it. The alias keeps a custom node that types a `measure(constraints,
+ * scope: MeasureScope)` override compiling; it will be removed in the next major.
+ */
+export { Measurer as MeasureScope } from '@motion-script/core';
 
 // =============================================================
 // Fill & Color

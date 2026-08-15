@@ -1,7 +1,7 @@
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { InsetsResolved } from "@/attributes/layout/insets";
@@ -141,7 +141,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         return { left: p.left + extra, right: p.right + extra, top: p.top + extra, bottom: p.bottom + extra };
     }
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         // Retain constraints + scope for off-tree work (see Node.measure / the
         // animated child-insert in node-lifecycle.ts) — this override doesn't call
         // super, so mirror the base capture here.
@@ -168,7 +168,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         };
     }
 
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
 
         const padding = this.effectivePadding();
@@ -196,7 +196,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         this.layoutAbsoluteChildren(scope);
     }
 
-    private computeMeasure(innerWidth: number, innerHeight: number, scope: MeasureScope): FlexMeasureCache {
+    private computeMeasure(innerWidth: number, innerHeight: number, scope: Measurer): FlexMeasureCache {
         const children = this.flowChildren();
         const adapters: FlexChild[] = children.map((child) => ({
             widthMode: child.width,

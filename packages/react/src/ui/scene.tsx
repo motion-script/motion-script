@@ -26,7 +26,7 @@ import {
 import {
     WebAudioPlayer,
     WebMasterClock,
-    WebMeasureScope,
+    WebMeasurer,
     WebRenderContext,
     WebStorageAdapter,
 } from "@motion-script/web";
@@ -297,7 +297,7 @@ export function MotionPlayer({
         setVariables(variables);
         const catalog = new AssetCatalog(assets);
         const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
-        const measure = new WebMeasureScope(storage);
+        const measure = new WebMeasurer(storage);
         const audio = new WebAudioPlayer();
         const clock = new WebMasterClock({ context: audio.getContext(), fps });
         const renderContext = new WebRenderContext(canvasKit, storage);

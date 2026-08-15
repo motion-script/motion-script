@@ -15,7 +15,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { applyPadding } from "@/layout/padding";
 
 export interface LineGridProps extends ShapeProps {
@@ -107,7 +107,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     // is measured against the padded content box and centred in the grid — the
     // grid is the backdrop, children float over its centre.
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         const size = super.measure(constraints, scope);
         // Measure children so they have a resolved size for layout(); the result
         // doesn't change the grid's own size (it never hugs its children).
@@ -117,7 +117,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         return size;
     }
 
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
 
         const pad = this.padding as InsetsResolved;

@@ -51,7 +51,7 @@ import { Effect } from "@/attributes/shape/effects/chain";
 import { Insets, InsetsResolved } from "@/attributes/layout/insets";
 import { lerpSizeInput } from "@/layout/tweens";
 import { isAutoSize, resolveSize } from "@/layout/size-resolver";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { nodePath } from "@/project/tree";
 import { layoutFlowChildren } from "@/layout/flow-layout";
 import {
@@ -425,14 +425,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     get dirtyGeneration(): number { return this._dirtyGen; }
 
     /**
-     * The {@link MeasureScope} threaded through the last {@link measure} pass,
+     * The {@link Measurer} threaded through the last {@link measure} pass,
      * retained so off-tree work (e.g. the animated child-insert in
      * `node-lifecycle.ts`) can measure a not-yet-attached child in isolation —
      * measuring its natural size without adding it to this node's layout flow, so
      * siblings don't shift for a frame. Undefined until this node is first
      * measured. `@internal`.
      */
-    _lastScope?: MeasureScope;
+    _lastScope?: Measurer;
 
     /**
      * One of this node's cells went stale. Implements `SignalOwner`.
@@ -2070,7 +2070,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * including the shared {@link FlowLayout} engine through the `FlowHost`
      * interface, which is why this is public rather than protected.
      */
-    layoutAbsoluteChildren(scope: MeasureScope): void {
+    layoutAbsoluteChildren(scope: Measurer): void {
         const children = this._children;
         // Hot path: the overwhelmingly common tree has nothing pinned at all.
         let any = false;
@@ -2139,7 +2139,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * {@link setLayoutRect} instead, so children aren't laid out twice — and call
      * {@link layoutAbsoluteChildren} themselves.
      */
-    layout(rect: BoxBounds, scope: MeasureScope): void {
+    layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
         this.layoutChildren(rect, scope);
         this.layoutAbsoluteChildren(scope);
@@ -2154,7 +2154,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * flex/freeform, `Camera`'s viewport, …) override `layout` instead and don't
      * call this.
      */
-    protected layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
+    protected layoutChildren(rect: BoxBounds, scope: Measurer): void {
         layoutFlowChildren(this.flowChildren(), rect, scope, this.padding as InsetsResolved);
     }
 
@@ -2175,7 +2175,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * Only flow children are measured: a stage-pinned child is sized against the
      * stage, so hugging it would shrink-wrap a box this node never contains.
      */
-    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         this.constraints = constraints;
         this._lastScope = scope;
 

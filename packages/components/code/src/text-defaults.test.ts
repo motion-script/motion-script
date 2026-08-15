@@ -38,7 +38,7 @@ class RecorderContext extends RenderContext {
     endCamera(): void { }
 }
 
-/** A minimal `MeasureScope` — `Code` only asks for advance widths. */
+/** A minimal `Measurer` — `Code` only asks for advance widths. */
 const scope = { measureText: (text: string, fontSize: number) => text.length * fontSize * 0.6 };
 
 function render(root: Node): RecorderContext {

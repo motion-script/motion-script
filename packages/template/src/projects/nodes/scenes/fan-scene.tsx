@@ -8,7 +8,7 @@ import {
     Ellipse,
     Text,
     BoxBounds,
-    MeasureScope,
+    Measurer,
     easeInOut,
     parallel,
     wait,
@@ -40,7 +40,7 @@ class FanNode extends Node<FanNodeProps> {
     // No `measure` override: the base Node already resolves this container's
     // width/height (here `'fill'`) against the box the card allots it. We only
     // override `layout` to fan the children inside that box.
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         this.setLayoutRect(rect);
 
         const kids = this.children;

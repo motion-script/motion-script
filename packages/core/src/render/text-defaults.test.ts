@@ -10,12 +10,12 @@ import { DefaultTextStyle } from '@/nodes/text/default-text-style-node';
 import { Text } from '@/nodes/text/text-node';
 import { setTheme } from '@/attributes/shape/fill/color/parser';
 import { ContextMap } from '@/util/context';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import type { TextState } from '@/render/descriptors/text';
 import type { RichTextState } from '@/render/descriptors/richtext';
 import type { ResolvedTextSpan } from '@/attributes/text/span';
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 /** A `RenderContext` that records the op lists reaching the backend seam, so a
  *  test can assert what a draw actually resolved to without a surface. */

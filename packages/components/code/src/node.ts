@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, MeasureScope, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, Measurer, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -155,7 +155,7 @@ export class Code extends Node<CodeProps> {
     // A token's advance width, honoring letterSpacing. The renderer applies the
     // same letterSpacing when drawing (see drawSelf), so measure and draw stay
     // in lockstep. fontWeight is left default; letterSpacing is the 5th arg.
-    private tokenAdvance(scope: MeasureScope | RenderContext, content: string): number {
+    private tokenAdvance(scope: Measurer | RenderContext, content: string): number {
         return this.advanceCache.advance(scope, content, this.fontSize, this.fontFamily, this.letterSpacing);
     }
 
@@ -164,11 +164,11 @@ export class Code extends Node<CodeProps> {
     // Sized in space-widths via the lineNumberGap prop so it scales with font.
     // Measured with letterSpacing 0 — line numbers and the gap don't carry the
     // code's letter-spacing.
-    private gutterGap(scope: MeasureScope | RenderContext): number {
+    private gutterGap(scope: Measurer | RenderContext): number {
         return this.advanceCache.advance(scope, ' ', this.fontSize, this.fontFamily, 0) * this.lineNumberGap;
     }
 
-    private gutterWidth(scope: MeasureScope | RenderContext): number {
+    private gutterWidth(scope: Measurer | RenderContext): number {
         if (!this.showLineNumbers) return 0;
         const maxLine = Math.max(1, this.tokenLines.length);
         const sample = String(maxLine);
@@ -183,7 +183,7 @@ export class Code extends Node<CodeProps> {
     // advanceCache; this additionally skips the whole loop on static frames where
     // the geometry is identical to the previous frame.
     private computeGeometry(
-        scope: MeasureScope | RenderContext,
+        scope: Measurer | RenderContext,
         stateById: Map<number, TokenState>,
         lineHeightScales: Map<number, number>,
     ): CodeGeometry {
@@ -259,7 +259,7 @@ export class Code extends Node<CodeProps> {
         return geometry;
     }
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
         const wm = this.width;
         const hm = this.height;

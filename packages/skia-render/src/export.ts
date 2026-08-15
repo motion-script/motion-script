@@ -1,6 +1,6 @@
 import {
     AssetCatalog, AssetManager, AudioDevice, type AudioRequest, type AssetManifest,
-    type GlobalLayerConfig, type AudioTrack, MeasureScope, Precomp, type PrecompCache,
+    type GlobalLayerConfig, type AudioTrack, Measurer, Precomp, type PrecompCache,
     type PrecompResult, ProjectGlobals, type Scene, type Size2D, StateEvaluator,
     type StorageAdapter, yieldToScheduler,
 } from "@motion-script/core";
@@ -210,7 +210,7 @@ function prepare(params: CommonParams, options: PrepareOptions = {}) {
     // One instance, shared by the measuring pass and the render pass — the layers
     // whose assets precomp registers must be the ones the frames actually draw.
     const globals = new ProjectGlobals({ audioTracks: options.audioTracks, overlays, backgrounds }, viewport);
-    const measureScope = renderContext as unknown as MeasureScope;
+    const measureScope = renderContext as unknown as Measurer;
 
     const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, {
         globals,

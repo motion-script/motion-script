@@ -6,7 +6,7 @@ import { Column } from "@/nodes/layout/column-node";
 import { Node, NodeProps, NodeConfig } from "@/nodes/base/node";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 import { createScene } from "@/nodes/scene/scene-node";
 
 /**
@@ -21,7 +21,7 @@ import { createScene } from "@/nodes/scene/scene-node";
 
 const VIEWPORT = { width: 400, height: 200 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
 function evaluator(scene: ReturnType<typeof createScene>) {

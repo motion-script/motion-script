@@ -4,7 +4,7 @@ import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { FrameGenerator } from "@/tween/generator";
 import { BuildStage } from "@/render/build-stage";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { Scene } from "@/nodes/scene/scene-node";
 import { ProjectGlobals } from "./globals";
 import { now, yieldToScheduler } from "@/util/scheduler";
@@ -80,7 +80,7 @@ export class StateEvaluator {
      * advanced frame — mirrors how {@link Precomp} keeps its own `measureScope`.
      * See the class doc for why the loop must lay out.
      */
-    private measureScope: MeasureScope;
+    private measureScope: Measurer;
     /**
      * The project's background/overlay layers, drawn around every scene. Not part
      * of any scene tree — see {@link ProjectGlobals} — so the evaluator drives
@@ -127,7 +127,7 @@ export class StateEvaluator {
         fps: number,
         assets: AssetCatalog,
         tracks: number[],
-        measureScope: MeasureScope,
+        measureScope: Measurer,
         globals?: ProjectGlobals,
     ) {
         this.fps = fps;
@@ -253,7 +253,7 @@ export class StateEvaluator {
     }
 
     /** Lay the active global layers out against the full viewport. */
-    private layoutGlobals(scope: MeasureScope = this.measureScope): void {
+    private layoutGlobals(scope: Measurer = this.measureScope): void {
         if (!this.globals) return;
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.globals.layout(bounds, scope);
@@ -271,7 +271,7 @@ export class StateEvaluator {
     }
 
     /** Lay out the current scene's node tree — and the active global layers — against the full viewport. */
-    layout(scope: MeasureScope = this.measureScope) {
+    layout(scope: Measurer = this.measureScope) {
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.currentScene.layout(bounds, scope);
         this.layoutGlobals(scope);

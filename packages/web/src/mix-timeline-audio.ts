@@ -13,7 +13,7 @@ import { collectAudio } from "@motion-script/skia-render/export";
 
 import { mixAudio } from "./audio/mixer";
 import { getCanvasKit } from "./getter";
-import { WebMeasureScope } from "./measure-scope";
+import { WebMeasurer } from "./measurer";
 import { WebStorageAdapter } from "./storage-adapter";
 
 export interface MixTimelineAudioParams {
@@ -56,7 +56,7 @@ const EMPTY_MANIFEST: AssetManifest = { image: {}, video: {}, audio: {}, font: {
  * than almost anywhere — handed the editor's store, this is nearly free; without
  * one it re-measures every scene.
  *
- * Nothing is drawn, so this takes a {@link WebMeasureScope} rather than a render
+ * Nothing is drawn, so this takes a {@link WebMeasurer} rather than a render
  * context: it needs to *measure* text (layout decides how long a scene is, and
  * therefore when the scene after it starts), not rasterize it. No canvas, no
  * surface, no GPU.
@@ -79,12 +79,12 @@ export async function mixTimelineAudio(
 
     if (scenes.length === 0) return null;
 
-    // CanvasKit only for its font manager — `WebMeasureScope` shapes text through
+    // CanvasKit only for its font manager — `WebMeasurer` shapes text through
     // it, and a scene's length depends on how that text laid out.
     const canvasKit = await getCanvasKit(wasmUrl);
     const catalog = new AssetCatalog(manifest);
     const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
-    const measureScope = new WebMeasureScope(storage);
+    const measureScope = new WebMeasurer(storage);
     const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
 
     try {

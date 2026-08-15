@@ -3,9 +3,9 @@ import { Rect } from '@/nodes/geometry/rect-node';
 import { Text } from '@/nodes/text/text-node';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { Vector2 } from '@/attributes/layout/vector2';
-import { MeasureScope } from '@/render/measure-scope';
+import { Measurer } from '@/render/measurer';
 import { TextBlockLayout } from '@/render/text-layout';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { caretOffsetAt, caretRangeQuads, nodeTextLayout } from '@/runtime/text-geometry';
 
 /**
@@ -23,7 +23,7 @@ import { caretOffsetAt, caretRangeQuads, nodeTextLayout } from '@/runtime/text-g
  * centred on the origin: carets at x = -20, -10, 0, 10, 20 and the line box
  * spanning y = -10..10 (block-local, y-down).
  */
-class BlockScope extends FakeMeasureScope {
+class BlockScope extends FakeMeasurer {
     constructor(private readonly block: TextBlockLayout | null = FOUR_CHARS) {
         super();
     }
@@ -50,7 +50,7 @@ const TWO_LINES: TextBlockLayout = {
 
 const scope = new BlockScope();
 
-function place(node: { layout: (r: BoxBounds, s: MeasureScope) => void }, rect: BoxBounds): void {
+function place(node: { layout: (r: BoxBounds, s: Measurer) => void }, rect: BoxBounds): void {
     node.layout(rect, scope);
 }
 

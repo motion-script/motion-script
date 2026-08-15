@@ -11,7 +11,7 @@ import {
     FakeAudioDevice,
     FakeStorageAdapter,
     FakeRenderContext,
-    FakeMeasureScope,
+    FakeMeasurer,
     FakeAssetCatalog,
     asScene,
     asScenes,
@@ -31,7 +31,7 @@ function makeController(yieldCount = 10, fps = 10, replayBudgetMs?: number) {
     const rc = new FakeRenderContext();
     const viewport = { width: 100, height: 50 };
     const scenes = asScenes([scene]);
-    const measureScope = new FakeMeasureScope();
+    const measureScope = new FakeMeasurer();
     const catalog = asCatalog(new FakeAssetCatalog());
 
     const controller = new PlaybackController({
@@ -376,7 +376,7 @@ describe('PlaybackController – direct manipulation', () => {
 
         const viewport = { width: 800, height: 600 };
         const scenes = [scene];
-        const measureScope = new FakeMeasureScope();
+        const measureScope = new FakeMeasurer();
         const catalog = asCatalog(new FakeAssetCatalog());
         const rc = nullRenderContext();
         const clock = new FakeClock();

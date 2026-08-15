@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Node } from '@/nodes/base/node';
 import { Ellipse } from '@/nodes/geometry/ellipse-node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
@@ -27,7 +27,7 @@ class ProbeNode extends Node {
 }
 
 describe('Node – base freeform hug measure', () => {
-    const scope = new FakeMeasureScope();
+    const scope = new FakeMeasurer();
 
     it('a plain Node with children hugs to its largest child (basic freeform), not 0', () => {
         // Regression: the base measure resolved "hug" against a content size of

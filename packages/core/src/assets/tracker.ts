@@ -151,11 +151,8 @@ export class AssetTracker {
 
     /**
      * Whether a frame is currently open (between {@link start} and {@link end}).
-     * Lets a caller that isn't sure whether it's running inside precomp's
-     * per-frame pass — e.g. `TrackMeasureScope`/`TrackRenderContext`, which can
-     * be invoked from a detached "hug" measurement outside that bracket (see
-     * `measureDetached` in `node-lifecycle.ts`) — self-bracket instead of
-     * throwing.
+     * Lets a caller that isn't sure whether it is running inside a per-frame pass
+     * self-bracket instead of throwing.
      */
     get isActive(): boolean {
         return this.currentFrame !== undefined;

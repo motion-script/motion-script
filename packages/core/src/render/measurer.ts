@@ -14,7 +14,7 @@ import { TextBlockLayout } from "@/render/text-layout";
  * `RenderContext` implements this interface so nodes can measure text through
  * the same object they use to draw — no separate measurement pass needed.
  */
-export abstract class MeasureScope {
+export abstract class Measurer {
     /**
      * Returns the advance width (in pixels) of `text` rendered at the given
      * `fontSize` with the specified font properties.

@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { Row } from '@/nodes/layout/row-node';
 import { Column } from '@/nodes/layout/column-node';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 /**
  * A fixed-size leaf that also exposes the box its parent laid it into — the

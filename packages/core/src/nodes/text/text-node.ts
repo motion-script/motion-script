@@ -6,7 +6,7 @@ import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "../base/node";
 import { ContextMap } from "@/util/context";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
@@ -99,7 +99,7 @@ export class Text extends ShapeNode<TextProps> {
         this.applyProp("width", props?.width ?? (autofit || props?.wrap ? "fill" : "hug"));
     }
 
-    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         // Text-on-path: the visual extent is the path's bounding box, not a text
         // line box. Size the node to the path (node-local coords, like Path).
         if (this.path != null) {
@@ -428,7 +428,7 @@ function countWrappedLines(
     fontSize: number,
     fontFamily: string,
     fontWeight: number,
-    scope: MeasureScope,
+    scope: Measurer,
     letterSpacing: number = 0,
     fontStyle: FontStyle = 'normal',
 ): number {

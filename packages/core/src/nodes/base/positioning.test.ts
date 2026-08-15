@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Rect } from '@/nodes/geometry/rect-node';
 import { RootNode } from '@/nodes/scene/root-node';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
@@ -23,7 +23,7 @@ class Tile extends Node {
 const VIEWPORT = { maxWidth: 1920, maxHeight: 1080 };
 
 /** Build a laid-out scene root of the standard viewport size. */
-function layoutStage(root: RootNode, scope: FakeMeasureScope): void {
+function layoutStage(root: RootNode, scope: FakeMeasurer): void {
     const size = root.measure(VIEWPORT, scope);
     root.layout({ x: 0, y: 0, width: size.width ?? 0, height: size.height ?? 0 }, scope);
 }
@@ -55,7 +55,7 @@ describe('positioning — resolution', () => {
 
 describe('positioning — absolute children leave the flow', () => {
     it('takes no gap and no flex share in a horizontal Rect', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const a = new Tile({ width: 100, height: 100 });
         const b = new Tile({ width: 100, height: 100 });
         const pinned = new Tile({ width: 50, height: 50, relativeToParent: 'absolute' });
@@ -72,7 +72,7 @@ describe('positioning — absolute children leave the flow', () => {
     });
 
     it('does not contribute to a freeform hug size', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const small = new Tile({ width: 100, height: 100 });
         const huge = new Tile({ width: 900, height: 900, relativeToParent: 'absolute' });
         const box = new Rect({ width: 'hug', height: 'hug', children: [small, huge] });
@@ -94,7 +94,7 @@ describe('positioning — absolute children leave the flow', () => {
 
 describe('positioning — absolute children are placed against the stage', () => {
     it('cancels the offset of a nested parent, so x/y read as scene coordinates', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 100, height: 100, relativeToParent: 'absolute' });
         // A hug column pushed to the left half of the stage: its own centre is
         // nowhere near the stage centre, which is exactly what has to be undone.
@@ -112,7 +112,7 @@ describe('positioning — absolute children are placed against the stage', () =>
     });
 
     it("the child's own x/y then offset from the stage origin", () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 100, height: 100, x: 250, y: -120, relativeToParent: 'absolute' });
         const inner = new Rect({ width: 400, height: 400, x: -300, children: [pinned] });
         const root = new RootNode({ width: 'fill', height: 'fill', children: [inner] });
@@ -124,7 +124,7 @@ describe('positioning — absolute children are placed against the stage', () =>
     });
 
     it('measures against the stage, so width="fill" fills the scene rather than the parent', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 'fill', height: 'fill', relativeToParent: 'absolute' });
         const inner = new Rect({ width: 200, height: 200, children: [pinned] });
         const root = new RootNode({ width: 'fill', height: 'fill', children: [inner] });
@@ -136,7 +136,7 @@ describe('positioning — absolute children are placed against the stage', () =>
     });
 
     it('stays correct through a rotated ancestor', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 100, height: 100, relativeToParent: 'absolute' });
         const inner = new Rect({ width: 400, height: 400, x: 300, y: 100, rotation: 30, children: [pinned] });
         const root = new RootNode({ width: 'fill', height: 'fill', children: [inner] });
@@ -148,7 +148,7 @@ describe('positioning — absolute children are placed against the stage', () =>
     });
 
     it('a childPositioning="absolute" container pins every child it holds', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const a = new Tile({ width: 100, height: 100, x: -400 });
         const b = new Tile({ width: 100, height: 100, x: 400 });
         const canvas = new Rect({ childPositioning: 'absolute', width: 600, height: 600, x: 120, children: [a, b] });
@@ -161,7 +161,7 @@ describe('positioning — absolute children are placed against the stage', () =>
     });
 
     it('works through a plain Node container (the default layout path)', () => {
-        const scope = new FakeMeasureScope();
+        const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 100, height: 100, x: 200, relativeToParent: 'absolute' });
         const holder = new Tile({ width: 300, height: 300, x: -500 });
         holder.addChild(pinned);

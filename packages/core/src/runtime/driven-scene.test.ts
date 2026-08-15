@@ -5,7 +5,7 @@ import { Rect } from "@/nodes/geometry/rect-node";
 import { Precomp } from "./precompisition";
 import { StateEvaluator } from "./state-evaluator";
 import { AssetCatalog } from "@/assets/catalog";
-import { FakeMeasureScope } from "./runtime.fixtures";
+import { FakeMeasurer } from "./runtime.fixtures";
 import { lerpNumber } from "@/tween/lerp";
 
 const FPS = 30;
@@ -35,7 +35,7 @@ function slideDriver(duration: number) {
 }
 
 function evaluatorFor(scene: ReturnType<typeof createDrivenScene>, frames: number): StateEvaluator {
-    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), [frames], new FakeMeasureScope());
+    return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), [frames], new FakeMeasurer());
 }
 
 describe("createDrivenScene", () => {
@@ -44,7 +44,7 @@ describe("createDrivenScene", () => {
         // measure it as a single frame — the same shape `createStill` relies on.
         const { driver } = slideDriver(2);
         const precomp = new Precomp(
-            [createDrivenScene(driver)], VIEWPORT, FPS, catalog(), new FakeMeasureScope(),
+            [createDrivenScene(driver)], VIEWPORT, FPS, catalog(), new FakeMeasurer(),
         ).run();
 
         expect(precomp.totalFrames).toBe(60);

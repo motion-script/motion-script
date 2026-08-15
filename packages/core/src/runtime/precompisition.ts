@@ -1,6 +1,6 @@
 import { AudioRequest } from "@/attributes/audio/request";
 import { BuildStage } from "@/render/build-stage";
-import { MeasureScope } from "../render/measure-scope";
+import { Measurer } from "../render/measurer";
 import { AssetRecord } from "@/assets/record";
 import { Node } from "@/nodes/base/node";
 import { nodePath } from "@/project/tree";
@@ -365,7 +365,7 @@ export class Precomp {
     private readonly viewport: Size2D;
     private readonly fps: number;
     private readonly assets: AssetCatalog;
-    private readonly measureScope: MeasureScope;
+    private readonly measureScope: Measurer;
     private readonly profile?: PrecompProfile;
     /** Host-provided store of previously-measured passes; see {@link PrecompCache}. */
     private readonly store?: PrecompCache;
@@ -383,7 +383,7 @@ export class Precomp {
         viewport: Size2D,
         fps: number,
         assets: AssetCatalog,
-        measureScope: MeasureScope,
+        measureScope: Measurer,
         options: PrecompOptions = {},
     ) {
         this.scenes = scenes;

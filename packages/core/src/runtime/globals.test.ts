@@ -7,7 +7,7 @@ import { Rect } from "@/nodes/geometry/rect-node";
 import { RenderContext } from "@/render/render-context";
 import { NullRenderContext } from "@/render/null-render-context";
 import { ContextMap } from "@/util/context";
-import { asCatalog, FakeAssetCatalog, FakeMeasureScope } from "./runtime.fixtures";
+import { asCatalog, FakeAssetCatalog, FakeMeasurer } from "./runtime.fixtures";
 
 const VIEWPORT = { width: 800, height: 400 };
 const BOUNDS = { x: 0, y: 0, width: VIEWPORT.width, height: VIEWPORT.height };
@@ -222,7 +222,7 @@ describe("LayerStack – scene filtering", () => {
         ], VIEWPORT);
         stack.bindAssets(asCatalog(new FakeAssetCatalog()));
         stack.bindContext(ContextMap.EMPTY);
-        stack.layout(BOUNDS, new FakeMeasureScope());
+        stack.layout(BOUNDS, new FakeMeasurer());
         return { stack, log };
     };
 
@@ -255,7 +255,7 @@ describe("LayerStack – scene filtering", () => {
             { node: new Probe(log, "d"), include: "crossfaded" },
         ], VIEWPORT);
         stack.bindContext(ContextMap.EMPTY);
-        stack.layout(BOUNDS, new FakeMeasureScope());
+        stack.layout(BOUNDS, new FakeMeasurer());
         expect(drawnFor(stack, 0, "CrossFade", log)).toEqual(["a", "b", "c"]);
     });
 
@@ -277,7 +277,7 @@ describe("LayerStack – scene filtering", () => {
             { node: new Probe(log, "narrow"), include: ["a", "b"], exclude: "b" },
         ], VIEWPORT);
         stack.bindContext(ContextMap.EMPTY);
-        stack.layout(BOUNDS, new FakeMeasureScope());
+        stack.layout(BOUNDS, new FakeMeasurer());
         expect(drawnFor(stack, 0, "a", log)).toEqual(["narrow"]);
         expect(drawnFor(stack, 1, "b", log)).toEqual([]);
     });
@@ -339,7 +339,7 @@ describe("layerAppliesTo", () => {
         const config = { node: new Probe(log, "x"), include: ["intro", 2] };
         const stack = new LayerStack("overlay", [config], VIEWPORT);
         stack.bindContext(ContextMap.EMPTY);
-        stack.layout(BOUNDS, new FakeMeasureScope());
+        stack.layout(BOUNDS, new FakeMeasurer());
 
         for (const [index, name] of [[0, "Intro"], [1, "Demo"], [2, "Outro"]] as const) {
             log.length = 0;
@@ -361,7 +361,7 @@ describe("ProjectGlobals", () => {
             overlays: [new Probe(log, "fg")],
         }, VIEWPORT);
         globals.bindContext(ContextMap.EMPTY);
-        globals.layout(BOUNDS, new FakeMeasureScope());
+        globals.layout(BOUNDS, new FakeMeasurer());
 
         const ctx = trackingContext();
         globals.select(0, "intro");

@@ -15,7 +15,7 @@ import {
     asStorage,
     FakeAssetCatalog,
     FakeAudioDevice,
-    FakeMeasureScope,
+    FakeMeasurer,
     FakeStorageAdapter,
 } from "./runtime.fixtures";
 
@@ -32,7 +32,7 @@ import {
 
 const VIEWPORT = { width: 800, height: 400 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = (durations: Record<string, number> = {}) => asCatalog(new FakeAssetCatalog(durations));
 
 /** A leaf that appends its label to a shared log as it draws. */

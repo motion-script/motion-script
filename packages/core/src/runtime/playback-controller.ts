@@ -1,5 +1,5 @@
 import { AssetManager } from "../assets/manager";
-import { MeasureScope } from "../render/measure-scope";
+import { Measurer } from "../render/measurer";
 import { RenderContext } from "../render/render-context";
 import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
@@ -27,7 +27,7 @@ export type NodeOverride = Record<string, unknown>;
 /** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
     renderContext: RenderContext;
-    measureScope: MeasureScope;
+    measureScope: Measurer;
     storageAdapter: StorageAdapter;
     masterClock: MasterClock;
     audioDevice: AudioDevice;
@@ -75,7 +75,7 @@ export type ControllerParams = {
  */
 export class PlaybackController {
     private renderContext: RenderContext;
-    private measureScope: MeasureScope;
+    private measureScope: Measurer;
     private storageAdapter: StorageAdapter;
     private masterClock: MasterClock;
     private stateEvaluator: StateEvaluator;
@@ -589,7 +589,7 @@ export class PlaybackController {
     /**
      * Where a Text node's caret slots landed on screen, or `null` when the path
      * doesn't resolve, the node isn't text, or the shape has no caret model (see
-     * {@link MeasureScope.layoutTextBlock}). See {@link NodeTextLayout}.
+     * {@link Measurer.layoutTextBlock}). See {@link NodeTextLayout}.
      *
      * Measured on demand rather than carried with every frame: a host wants this
      * only while a text edit is open, and only for the node being edited.

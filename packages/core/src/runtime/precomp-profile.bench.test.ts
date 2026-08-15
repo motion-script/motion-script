@@ -5,7 +5,7 @@ import { createRef } from "@/util/reference";
 import { createScene } from "@/nodes/scene/scene-node";
 import { parallel } from "@/tween/parallel";
 import { easeInOut } from "@/tween/ease/constants";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 
 /**
  * Where the precomp pass actually spends its time, printed as a per-phase
@@ -93,7 +93,7 @@ function bestOf(scene: ReturnType<typeof createScene>) {
         // A fresh runner each time: `Precomp` memoizes per scene, so reusing one
         // would serve run 1's cached pass and measure nothing at all.
         new Precomp(
-            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasureScope(),
+            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasurer(),
             { profile },
         ).run();
         const t = profile.timings[0];

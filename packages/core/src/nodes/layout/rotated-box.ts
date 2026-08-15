@@ -1,7 +1,7 @@
 import { property } from "@/attributes/properties/decorator";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { Node, NodeConfig, NodeProps } from "../base/node";
 
@@ -28,7 +28,7 @@ export class RotatedBox extends Node<RotatedBoxProps> {
         this._writeProp('rotation', () => this.angle);
     }
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         this.constraints = constraints;
         this._lastScope = scope;
 
@@ -71,7 +71,7 @@ export class RotatedBox extends Node<RotatedBoxProps> {
         };
     }
 
-    protected override layoutChildren(rect: BoxBounds, scope: MeasureScope): void {
+    protected override layoutChildren(rect: BoxBounds, scope: Measurer): void {
         const rad = this.angle * (Math.PI / 180);
         const cos = Math.abs(Math.cos(rad));
         const sin = Math.abs(Math.sin(rad));

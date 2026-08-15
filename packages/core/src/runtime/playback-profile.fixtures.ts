@@ -11,7 +11,7 @@ import type { Vector2 } from "@/attributes/layout/vector2";
 import { Precomp } from "@/runtime/precompisition";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { now } from "@/util/scheduler";
-import { FakeAssetCatalog, FakeMeasureScope, asCatalog } from "./runtime.fixtures";
+import { FakeAssetCatalog, FakeMeasurer, asCatalog } from "./runtime.fixtures";
 
 /**
  * An instrument for the **playback** path — what the editor and an export
@@ -166,7 +166,7 @@ export function profilePlayback(scene: Scene, frames: number): PlaybackProfile {
     const catalog = asCatalog(new FakeAssetCatalog()) as unknown as AssetCatalog;
     const scenes = [scene];
 
-    const precomp = new Precomp(scenes, viewport, fps, catalog, new FakeMeasureScope()).run();
+    const precomp = new Precomp(scenes, viewport, fps, catalog, new FakeMeasurer()).run();
     const tracks = precomp.scenes.map(s => s.frameCount);
 
     const ctx = new CountingRenderContext();

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 /** A leaf whose layout cell can be set directly, mirroring what a parent would assign. */
 class Tile extends Node {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Camera } from '@/nodes/layout/camera-node';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
@@ -20,7 +20,7 @@ class Tile extends Node {
 }
 
 describe('Camera – stack-style hug measure', () => {
-    const scope = new FakeMeasureScope();
+    const scope = new FakeMeasurer();
 
     it('a populated Camera hugs to its largest child (basic stack), not to 0', () => {
         // Regression: a hugging Camera used to collapse to 0×0 and render

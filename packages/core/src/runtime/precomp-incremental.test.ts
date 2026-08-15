@@ -8,7 +8,7 @@ import {
     FakeAudioDevice,
     FakeStorageAdapter,
     FakeRenderContext,
-    FakeMeasureScope,
+    FakeMeasurer,
     FakeAssetCatalog,
     asScene,
     asScenes,
@@ -20,7 +20,7 @@ import {
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 

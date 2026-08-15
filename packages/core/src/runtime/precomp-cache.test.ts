@@ -8,12 +8,12 @@ import { Precomp, PrecompCache, ScenePrecomp } from "@/runtime/precompisition";
 import { AudioFilters } from "@/attributes/audio/filters/chain";
 import { ramp } from "@/attributes/audio/filters/curve";
 import {
-    FakeScene, FakeMeasureScope, FakeAssetCatalog, asScene, asScenes, asCatalog, makeAudioRequest,
+    FakeScene, FakeMeasurer, FakeAssetCatalog, asScene, asScenes, asCatalog, makeAudioRequest,
 } from "./runtime.fixtures";
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 const precompOf = (scenes: FakeScene[], cache?: PrecompCache) =>
     new Precomp(asScenes(scenes), VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), scope, { cache });

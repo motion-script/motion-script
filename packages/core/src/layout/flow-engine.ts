@@ -2,7 +2,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpNumber } from "@/tween/lerp";
@@ -53,7 +53,7 @@ export interface FlowHost {
      */
     flowChildren(): Node[];
     /** Measure + place the stage-pinned children this container holds. */
-    layoutAbsoluteChildren(scope: MeasureScope): void;
+    layoutAbsoluteChildren(scope: Measurer): void;
 }
 
 interface FlexNodeMeasure {
@@ -128,12 +128,12 @@ export class FlowLayout {
         this._cachedMeasureFrom = null;
     }
 
-    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         const host = this.host;
         // Retain the scope on the host for off-tree measurement (the animated
         // child-insert in node-lifecycle.ts): Rect/Root delegate here instead of
         // Node.measure, so capture it on the host node the same way.
-        (host as unknown as { _lastScope?: MeasureScope })._lastScope = scope;
+        (host as unknown as { _lastScope?: Measurer })._lastScope = scope;
 
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
@@ -171,7 +171,7 @@ export class FlowLayout {
         };
     }
 
-    layout(rect: BoxBounds, scope: MeasureScope): void {
+    layout(rect: BoxBounds, scope: Measurer): void {
         const host = this.host;
         const padding = host.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
@@ -230,7 +230,7 @@ export class FlowLayout {
         mode: FlowMode,
         innerWidth: number,
         innerHeight: number,
-        scope: MeasureScope,
+        scope: Measurer,
     ): NodeMeasureResult {
         if (mode === "freeform") {
             return this.computeFreeformMeasure(innerWidth, innerHeight, scope);
@@ -265,7 +265,7 @@ export class FlowLayout {
         direction: FlexDirection,
         innerWidth: number,
         innerHeight: number,
-        scope: MeasureScope,
+        scope: Measurer,
     ): FlexNodeMeasure {
         const transformChildren = this.host.flowChildren();
         const adapters: FlexChild[] = transformChildren.map((child) => ({
@@ -297,7 +297,7 @@ export class FlowLayout {
     private computeFreeformMeasure(
         innerWidth: number,
         innerHeight: number,
-        scope: MeasureScope,
+        scope: Measurer,
     ): FreeformNodeMeasure {
         const transformChildren = this.host.flowChildren();
         const constraints: SizeConstraints = { maxWidth: innerWidth, maxHeight: innerHeight };

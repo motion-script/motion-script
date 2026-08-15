@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { Row } from '@/nodes/layout/row-node';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 import { FrameGenerator } from '@/tween/generator';
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 /** A leaf that exposes the box its parent laid it into (protected `layoutRect` seam). */
 class Tile extends Node {

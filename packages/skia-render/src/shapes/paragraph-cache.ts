@@ -141,7 +141,7 @@ export function shapeKeyInputsFor(
 // Fixed layout opts both measureText implementations use — width only depends on
 // shaping, not textAlign/origin, so these constants give a stable cache key. Kept in
 // sync with the (formerly inline) layoutParagraph opts in render-context and
-// measure-scope so a measured string and a measured-then-drawn string can share
+// measurer so a measured string and a measured-then-drawn string can share
 // shape passes where their full inputs match.
 const MEASURE_ALIGN: TextAlign = 'center';
 const MEASURE_LINE_HEIGHT = 1;

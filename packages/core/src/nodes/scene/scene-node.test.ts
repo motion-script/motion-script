@@ -4,7 +4,7 @@ import { RootNode } from "./root-node";
 import { Rect } from "../geometry/rect-node";
 import { BuildStage } from "@/render/build-stage";
 import { Precomp } from "@/runtime/precompisition";
-import { asCatalog, FakeAssetCatalog, FakeMeasureScope } from "@/runtime/runtime.fixtures";
+import { asCatalog, FakeAssetCatalog, FakeMeasurer } from "@/runtime/runtime.fixtures";
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 30;
@@ -41,7 +41,7 @@ describe("createStill", () => {
         // rather than a zero-length scene the timeline skips.
         const scene = createStill(() => new Rect({ width: 10, height: 10 }));
         const result = new Precomp(
-            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasureScope(),
+            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasurer(),
         ).run();
         expect(result.totalFrames).toBe(1);
         expect(result.scenes[0].frameCount).toBe(1);
@@ -56,8 +56,8 @@ describe("createStill", () => {
         const catalog = asCatalog(new FakeAssetCatalog());
 
         expect(() => {
-            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasureScope()).run();
-            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasureScope()).run();
+            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasurer()).run();
+            new Precomp([scene], VIEWPORT, FPS, catalog, new FakeMeasurer()).run();
         }).not.toThrow();
         expect(scene.root.children).toHaveLength(0);
     });

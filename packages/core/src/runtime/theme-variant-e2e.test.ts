@@ -5,14 +5,14 @@ import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
 import { setTheme } from "@/attributes/shape/fill/color/parser";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 import { createScene } from "@/nodes/scene/scene-node";
 
 /** @jsxImportSource @motion-script/core/jsx */
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
 function evaluator(scene: ReturnType<typeof createScene>) {

@@ -54,7 +54,7 @@ export { WebAudioDevice as WebAudioPlayer } from "./audio/player";
 export { AudioTimeline, createAudioTimeline } from "./audio/timeline";
 export type { AudioTimelineOptions, MixdownOptions } from "./audio/timeline";
 export { mixAudio, encodeWav, type MixAudioOptions } from "./audio/mixer";
-export { WebMeasureScope } from "./measure-scope";
+export { WebMeasurer } from "./measurer";
 export { WebMasterClock } from "./master-clock";
 
 // ─── 3D ──────────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { StateEvaluator } from '@/runtime/state-evaluator';
 import {
     FakeScene,
-    FakeMeasureScope,
+    FakeMeasurer,
     FakeRenderContext,
     FakeAssetCatalog,
     asScenes,
@@ -13,7 +13,7 @@ import {
 const VIEWPORT = { width: 100, height: 50 };
 const FPS = 4; // dt = 0.25 → clean global-time arithmetic
 const catalog = asCatalog(new FakeAssetCatalog());
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 function single(yieldCount = 10) {
     const scene = new FakeScene({ id: 'a', yieldCount });

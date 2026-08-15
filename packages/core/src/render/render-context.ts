@@ -2,7 +2,7 @@
 import { FontStyle } from "@/attributes/text/span";
 import { TransformState } from "./descriptors/transform";
 
-import { MeasureScope } from "./measure-scope";
+import { Measurer } from "./measurer";
 import { TextState } from "./descriptors/text";
 import { TextBlockLayout } from "./text-layout";
 import { Graphics } from "./graphics";
@@ -116,7 +116,7 @@ export abstract class Render2DContext {
 /**
  * The full rendering context passed to every scene-graph node when it draws
  * itself. Combines shape drawing (`Render2DContext`), text measurement
- * (`MeasureScope`), and higher-level scoping operations (transforms, masks,
+ * (`Measurer`), and higher-level scoping operations (transforms, masks,
  * clips, camera, boolean ops, backdrop effects).
  *
  * `begin(id)` / `end()` bracket each node's draw call so the context can
@@ -124,7 +124,7 @@ export abstract class Render2DContext {
  * The concrete implementations (`CanvasKitRenderContext`, `SvgRenderContext`,
  * …) translate these abstract calls into renderer-specific drawing commands.
  */
-export abstract class RenderContext extends Render2DContext implements MeasureScope {
+export abstract class RenderContext extends Render2DContext implements Measurer {
     abstract measureText(text: string, fontSize: number, fontFamily: string, fontWeight?: number, letterSpacing?: number, fontStyle?: FontStyle): number;
 
     // ---- Inherited text-style defaults ------------------------------------
@@ -211,7 +211,7 @@ export abstract class RenderContext extends Render2DContext implements MeasureSc
     protected abstract drawGraphics(graphics: Graphics): void;
 
     /**
-     * See {@link MeasureScope.layoutTextBlock}. Concrete rather than abstract,
+     * See {@link Measurer.layoutTextBlock}. Concrete rather than abstract,
      * and `null` by default, so a backend that has no need to report glyph
      * positions is unaffected — the only thing it gives up is on-canvas text
      * editing in a host built on it.

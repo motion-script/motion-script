@@ -24,7 +24,7 @@
 
 /** @internal */ export { RenderContext, Render2DContext } from './render-context';
 /** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface } from './render-context';
-/** @internal */ export { MeasureScope } from './measure-scope';
+/** @internal */ export { Measurer } from "./measurer";
 // Public rather than internal: a host drawing its own text caret reads these off
 // `getTextLayout`, so they are part of the editor-facing surface.
 export { caretCount } from './text-layout';

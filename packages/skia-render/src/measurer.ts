@@ -1,10 +1,10 @@
-import { FontStyle, MeasureScope, type TextBlockLayout, type TextState } from "@motion-script/core";
+import { FontStyle, Measurer, type TextBlockLayout, type TextState } from "@motion-script/core";
 import type { SkiaTextAssets } from "./assets";
 import { measureTextCached } from "./shapes/paragraph-cache";
 import { textBlockLayout } from "./shapes/text";
 
 /**
- * {@link MeasureScope} implementation used by layout (auto/hug sizing) to
+ * {@link Measurer} implementation used by layout (auto/hug sizing) to
  * measure text width before drawing — routes through the same paragraph
  * layout path as rendering so the measured width matches the drawn width
  * exactly, including letter-spacing and font-matching behavior.
@@ -12,7 +12,7 @@ import { textBlockLayout } from "./shapes/text";
  * Takes only the text slice of the adapter: measuring needs the font manager, the
  * paragraph cache and the font epoch, and nothing else.
  */
-export class SkiaMeasureScope extends MeasureScope {
+export class SkiaMeasurer extends Measurer {
     private storageAdapter: SkiaTextAssets & { getCanvasKit(): import("@motion-script/canvaskit").CanvasKit };
 
     constructor(storageAdapter: SkiaTextAssets & { getCanvasKit(): import("@motion-script/canvaskit").CanvasKit }) {

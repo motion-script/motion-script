@@ -2,7 +2,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { AssetTracker } from "@/assets/tracker";
@@ -149,7 +149,7 @@ export class RichText extends ShapeNode<RichTextProps> {
         }
     }
 
-    measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         const runs = this.runs();
         let lineW = 0;
         let maxLineH = 0;
@@ -169,8 +169,8 @@ export class RichText extends ShapeNode<RichTextProps> {
             for (let i = 0; i < segments.length; i++) {
                 if (i > 0) finishLine();
                 // Called unconditionally (even for an empty segment, where
-                // measureTextCached short-circuits to 0) so TrackMeasureScope
-                // always sees this run's font, not just on frames with content.
+                // measureTextCached short-circuits to 0) so an empty run still
+                // contributes its line height.
                 lineW += scope.measureText(segments[i], run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle);
                 if (lh > maxLineH) maxLineH = lh;
             }

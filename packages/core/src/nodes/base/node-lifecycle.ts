@@ -2,7 +2,7 @@ import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { parallel } from "@/tween/parallel";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import type { Node, NodeProps } from "./node";
 
 /**
@@ -15,7 +15,7 @@ import type { Node, NodeProps } from "./node";
  * intended in-directory consumer of.
  */
 function measureDetached(parent: Node, child: Node): { width: number; height: number } | null {
-    const p = parent as unknown as { constraints?: SizeConstraints; _lastScope?: MeasureScope };
+    const p = parent as unknown as { constraints?: SizeConstraints; _lastScope?: Measurer };
     const scope = p._lastScope;
     // The scope (text measurement) is the essential input and is only present once
     // the parent has been laid out; without it we can't size a hug child off-tree.

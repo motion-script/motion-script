@@ -12,7 +12,7 @@ import type {
     GlobalLayerConfig,
     SceneSelector,
 } from "@/project/config";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { RenderContext } from "@/render/render-context";
 import { ContextMap } from "@/util/context";
 
@@ -233,7 +233,7 @@ export class LayerStack {
     }
 
     /** Lay every active layer out against the full viewport. */
-    layout(bounds: BoxBounds, scope: MeasureScope): void {
+    layout(bounds: BoxBounds, scope: Measurer): void {
         for (const entry of this._active) entry.frame.layout(bounds, scope);
     }
 
@@ -335,7 +335,7 @@ export class ProjectGlobals {
         this.overlays.prepareRenderAssets(tracker);
     }
 
-    layout(bounds: BoxBounds, scope: MeasureScope): void {
+    layout(bounds: BoxBounds, scope: Measurer): void {
         this.backgrounds.layout(bounds, scope);
         this.overlays.layout(bounds, scope);
     }

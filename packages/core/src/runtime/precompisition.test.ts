@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Precomp } from '@/runtime/precompisition';
 import {
     FakeScene,
-    FakeMeasureScope,
+    FakeMeasurer,
     FakeAssetCatalog,
     asScene,
     asScenes,
@@ -11,7 +11,7 @@ import {
 } from './runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 function run(scenes: FakeScene[], fps = 10, catalog = new FakeAssetCatalog()) {
     return new Precomp(asScenes(scenes), VIEWPORT, fps, asCatalog(catalog), scope).run();

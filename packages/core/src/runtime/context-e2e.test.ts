@@ -7,14 +7,14 @@ import { Text } from "@/nodes/text/text-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { createRef } from "@/util/reference";
 import { ThemeToken } from "@/runtime/builtin-context";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 import { createScene } from "@/nodes/scene/scene-node";
 
 /** @jsxImportSource @motion-script/core/jsx */
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
 function evaluator(scene: ReturnType<typeof createScene>) {

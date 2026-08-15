@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Rect } from '@/nodes/geometry/rect-node';
 import { Node } from '@/nodes/base/node';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
@@ -21,7 +21,7 @@ class Tile extends Node {
 }
 
 describe('Rect – default width/height when a direct child is fill on the main axis', () => {
-    const scope = new FakeMeasureScope();
+    const scope = new FakeMeasurer();
 
     it('flow="horizontal": a bare fill-width child flips the default from hug to fill', () => {
         // Reproduces the default-size.tsx scene: without this, the row stayed
@@ -84,7 +84,7 @@ describe('Rect – default width/height when a direct child is fill on the main 
         const row = new Rect({ flow: 'horizontal', width: 'hug', height: 400, padding: 48, gap: 48, children: [left, middle, right] });
         expect((row as any).width).toBe('hug');
 
-        const scope2 = new FakeMeasureScope();
+        const scope2 = new FakeMeasurer();
         const size = row.measure({ maxWidth: 1920, maxHeight: 1080 }, scope2);
         // 400 (left) + 0 (collapsed middle) + 400 (right) = 800, + 2 gaps × 48 = 96,
         // + 2 × 48 padding = 96 → 992.

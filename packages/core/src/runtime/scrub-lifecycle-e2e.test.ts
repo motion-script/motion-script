@@ -6,7 +6,7 @@ import { Node } from "@/nodes/base/node";
 import { createRef, Reference } from "@/util/reference";
 import { createScene } from "@/nodes/scene/scene-node";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
+import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
 
 /**
  * Regression: an animated `removeChildAt` (and any lifecycle helper that seeds a
@@ -29,7 +29,7 @@ import { FakeMeasureScope, FakeAssetCatalog, asCatalog } from "./runtime.fixture
 
 const VIEWPORT = { width: 800, height: 400 };
 const FPS = 10; // dt = 0.1s
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
 const TILE = 200;

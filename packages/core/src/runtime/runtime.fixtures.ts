@@ -10,7 +10,7 @@
  */
 import { AudioDevice } from "@/platform/audio-device";
 import { MasterClock } from "@/platform/master-clock";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { StorageAdapter } from "@/platform/storage-adapter";
@@ -160,7 +160,7 @@ export function asScenes(scenes: FakeScene[]): Scene[] {
 
 // ─── Platform / render fakes ────────────────────────────────────────────────
 
-export class FakeMeasureScope extends MeasureScope {
+export class FakeMeasurer extends Measurer {
     measureText(text: string): number {
         return text.length * 10;
     }

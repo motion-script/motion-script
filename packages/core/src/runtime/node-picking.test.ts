@@ -5,10 +5,10 @@ import { RootNode } from '@/nodes/scene/root-node';
 import { Camera } from '@/nodes/layout/camera-node';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { Vector2 } from '@/attributes/layout/vector2';
-import { FakeMeasureScope } from '@/runtime/runtime.fixtures';
+import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { nodeBox, pickNode, collectBoxes, NodeBox } from '@/runtime/node-picking';
 
-const scope = new FakeMeasureScope();
+const scope = new FakeMeasurer();
 
 /** A plain leaf; its layout cell is assigned directly by {@link place}. */
 class Tile extends Node {

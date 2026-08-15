@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, BoxBounds, SizeConstraints, Size2D, MeasureScope, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, BoxBounds, SizeConstraints, Size2D, Measurer, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -154,14 +154,14 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         return { homeX, homeY, cellW, cellH };
     }
 
-    override measure(constraints: SizeConstraints, scope: MeasureScope): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
         this.ensureCells();
         return super.measure(constraints, scope);
     }
 
     // The grid is the only node that lays out its cells: each is placed in its
     // slot (using the live gaps + grid size, so animating either reflows them).
-    override layout(rect: BoxBounds, scope: MeasureScope): void {
+    override layout(rect: BoxBounds, scope: Measurer): void {
         super.layout(rect, scope);
         this.ensureCells();
         for (const cell of this.allCells) {

@@ -1,6 +1,6 @@
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import type { Node } from "@/nodes/base/node";
 
 const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -25,7 +25,7 @@ const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
 export function layoutFlowChildren(
     children: Node[],
     rect: BoxBounds,
-    scope: MeasureScope,
+    scope: Measurer,
     pad: InsetsResolved = NO_PADDING,
 ): void {
     const innerW = Math.max(0, rect.width - pad.left - pad.right);

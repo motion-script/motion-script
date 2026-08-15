@@ -16,7 +16,7 @@ import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { MeasureScope } from "@/render/measure-scope";
+import { Measurer } from "@/render/measurer";
 import { RenderContext } from "@/render/render-context";
 import { RootNode, RootProps } from "./root-node";
 import { NodeClock } from "../base/node-clock";
@@ -69,14 +69,11 @@ export type SceneGenerator = (stage: Stage) => FrameGenerator;
  *   });
  *
  * The runtime drives a scene through `reset → bindAssets → ellapse → build →
- * prepareLayoutAssets → layout → prepareRenderAssets → prepareAudioAssets →
- * render → dispose`, each forwarding to the root. Image/video/paint and font
- * assets are no longer hand-declared — they're inferred automatically from the
- * same `render()`/`layout()` calls (`TrackRenderContext`/`TrackMeasureScope`,
- * see {@link Precomp.precompScene}). `prepareLayoutAssets`/`prepareRenderAssets`
- * remain only for opaque async setup (e.g. `Code`'s syntax grammar);
- * `prepareAudioAssets` is the one asset concern that's neither drawable nor a
- * simple async load — a playing clip's frame-ranged timeline registration.
+ * prepareLayoutAssets → layout → prepareRenderAssets → render → dispose`, each
+ * forwarding to the root. The two declaration phases are ordered around `layout`
+ * because that is what separates them: fonts and anything else measurement
+ * depends on have to be named before it, and anything sized against a
+ * `layoutRect` after it. See {@link Node.prepareLayout}.
  *
  * The scene's authoring methods (`add`/`set`/`to`/camera/paint/sounds) all act
  * on its {@link RootNode} `root`. They're merged with a {@link BuildStage} into
@@ -389,7 +386,7 @@ export class Scene {
     }
 
     /** Lay the scene's world out against the given (full-viewport) bounds. */
-    layout(rect: BoxBounds, scope: MeasureScope): void {
+    layout(rect: BoxBounds, scope: Measurer): void {
         this.root.layout(rect, scope);
     }
 
