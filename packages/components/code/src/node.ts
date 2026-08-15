@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, FrameGenerator, NodeConfig, parseColor, Size2D, SizeConstraints, Node, tween, Measurer, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker } from "@motion-script/core";
+import { RenderContext, Graphics, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, Node, Measurer, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker, command, driveCommand, type Command } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -318,7 +318,8 @@ export class Code extends Node<CodeProps> {
         }
     }
 
-    *append(code: string, duration: number, easing?: EasingFunction): FrameGenerator {
+    @command()
+    append(code: string, duration: number, easing?: EasingFunction): Command<Record<string, never>> {
         const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
         this.tokenLines = [...this.tokenLines, ...newLines];
         this.bumpStructure();
@@ -337,10 +338,11 @@ export class Code extends Node<CodeProps> {
             }
         }
 
-        yield* this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
     }
 
-    *prepend(code: string, duration: number, easing?: EasingFunction): FrameGenerator {
+    @command()
+    prepend(code: string, duration: number, easing?: EasingFunction): Command<Record<string, never>> {
         const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
         this.tokenLines = [...newLines, ...this.tokenLines];
         this.bumpStructure();
@@ -359,7 +361,7 @@ export class Code extends Node<CodeProps> {
             }
         }
 
-        yield* this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
     }
 
     /**
@@ -367,17 +369,15 @@ export class Code extends Node<CodeProps> {
      * tokens outside dim to `opacity`. Persistent — call resetHighlight() to
      * undo, or call highlight() again with a different range to cross-fade.
      */
-    *highlight(
+    @command()
+    highlight(
         codeRange: CodeRange,
         duration: number = 0.4,
         easing?: EasingFunction,
         opacity: number = 0.4,
-    ): FrameGenerator {
+    ): Command<Record<string, never>> {
         const matchIds = this.tokenIdsInRange(codeRange);
-        if (matchIds.size === 0) {
-            yield* tween(duration, () => { });
-            return;
-        }
+        if (matchIds.size === 0) return driveCommand(duration, () => { });
 
         const fromDim = this.highlightDimOpacity ?? 1;
         const toDim = opacity;
@@ -398,23 +398,22 @@ export class Code extends Node<CodeProps> {
             }
         }
 
-        try {
-            yield* this.runTransition({ tokens: animTokens }, duration, easing);
-        } finally {
-            this.highlightDimOpacity = toDim;
-            this.highlightedIds = matchIds;
-        }
+        // Which tokens are dimmed is state the *next* highlight reads to know
+        // what it is cross-fading from, so it is committed at the end and put
+        // back below it — a `finally` could only ever have run forwards.
+        return this.runTransition({ tokens: animTokens }, duration, easing, (done) => {
+            this.highlightDimOpacity = done ? toDim : (hadPrevious ? fromDim : null);
+            this.highlightedIds = done ? matchIds : previousIds;
+        });
     }
 
     /**
      * Fade all dimmed tokens back to opacity 1 and clear the persistent
      * highlight state.
      */
-    *resetHighlight(duration: number = 0.4, easing?: EasingFunction): FrameGenerator {
-        if (this.highlightDimOpacity === null) {
-            yield* tween(duration, () => { });
-            return;
-        }
+    @command()
+    resetHighlight(duration: number = 0.4, easing?: EasingFunction): Command<Record<string, never>> {
+        if (this.highlightDimOpacity === null) return driveCommand(duration, () => { });
 
         const fromDim = this.highlightDimOpacity;
         const previousIds = this.highlightedIds;
@@ -431,29 +430,25 @@ export class Code extends Node<CodeProps> {
             }
         }
 
-        try {
-            yield* this.runTransition({ tokens: animTokens }, duration, easing);
-        } finally {
-            this.highlightDimOpacity = null;
-            this.highlightedIds = new Set();
-        }
+        return this.runTransition({ tokens: animTokens }, duration, easing, (done) => {
+            this.highlightDimOpacity = done ? null : fromDim;
+            this.highlightedIds = done ? new Set() : previousIds;
+        });
     }
 
     /**
      * Replace the tokens in `codeRange` with `next`, cross-fading widths and
      * opacities.
      */
-    *replace(
+    @command()
+    replace(
         codeRange: CodeRange,
         next: string,
         duration: number,
         easing?: EasingFunction,
-    ): FrameGenerator {
+    ): Command<Record<string, never>> {
         const span = this.rangeToTokenSpan(codeRange);
-        if (!span) {
-            yield* tween(duration, () => { });
-            return;
-        }
+        if (!span) return driveCommand(duration, () => { });
 
         const replacementLineGroups = tokenizeCodeToIdLines(next, this.language, this.theme);
         const replacementTokens: IdToken[] = [];
@@ -509,14 +504,21 @@ export class Code extends Node<CodeProps> {
             }));
         }
 
-        try {
-            yield* this.runTransition({ tokens: animTokens, introducedIds }, duration, easing);
-        } finally {
-            for (const line of this.tokenLines) {
-                line.tokens = line.tokens.filter(tok => !oldIds.has(tok.id));
+        // The outgoing tokens are dropped once the transition lands, and kept
+        // while it runs — they are what is being animated out. Restored below
+        // `t === 1` rather than dropped in a `finally`, so seeking back into the
+        // transition shows them again instead of an already-settled listing.
+        const withOutgoing = this.tokenLines.map(line => ({ ...line, tokens: [...line.tokens] }));
+        return this.runTransition({ tokens: animTokens, introducedIds }, duration, easing, (done) => {
+            if (done) {
+                for (const line of this.tokenLines) {
+                    line.tokens = line.tokens.filter(tok => !oldIds.has(tok.id));
+                }
+            } else {
+                this.tokenLines = withOutgoing.map(line => ({ ...line, tokens: [...line.tokens] }));
             }
             this.bumpStructure();
-        }
+        });
     }
 
     /**
@@ -525,12 +527,13 @@ export class Code extends Node<CodeProps> {
      * line). If `code` contains newlines, new lines are created in the middle
      * of the existing line.
      */
-    *insert(
+    @command()
+    insert(
         position: [number, number],
         code: string,
         duration: number,
         easing?: EasingFunction,
-    ): FrameGenerator {
+    ): Command<Record<string, never>> {
         if (this.tokenLines.length === 0) {
             this.tokenLines = [makeIdLine([])];
         }
@@ -640,7 +643,7 @@ export class Code extends Node<CodeProps> {
         ];
         this.bumpStructure();
 
-        yield* this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
     }
 
     /**
@@ -648,16 +651,14 @@ export class Code extends Node<CodeProps> {
      * lines collapse their height; partial line ranges only remove tokens
      * (the surrounding text reflows).
      */
-    *remove(
+    @command()
+    remove(
         codeRange: CodeRange,
         duration: number,
         easing?: EasingFunction,
-    ): FrameGenerator {
+    ): Command<Record<string, never>> {
         const span = this.rangeToTokenSpan(codeRange);
-        if (!span) {
-            yield* tween(duration, () => { });
-            return;
-        }
+        if (!span) return driveCommand(duration, () => { });
 
         const removedTokens: IdToken[] = [];
         const fullyRemovedLineIds: number[] = [];
@@ -708,22 +709,35 @@ export class Code extends Node<CodeProps> {
 
         const removedTokenIds = new Set(removedTokens.map(t => t.id));
 
-        try {
-            yield* this.runTransition({ tokens: animTokens, lineHeightScales }, duration, easing);
-        } finally {
-            // Drop the tokens that animated out, then drop any lines that are
-            // either marked-fully-removed or have ended up empty.
-            const remaining: IdLine[] = [];
-            for (const line of this.tokenLines) {
-                if (fullyRemovedLineIdSet.has(line.id)) continue;
-                line.tokens = line.tokens.filter(tok => !removedTokenIds.has(tok.id));
-                remaining.push(line);
+        // While the transition runs the removed tokens are still there — they are
+        // what is animating out. Snapshotted so seeking back into the transition
+        // puts them back, which a `finally` could not do.
+        const withRemoved = this.tokenLines.map(line => ({ ...line, tokens: [...line.tokens] }));
+        const highlightedBefore = new Set(this.highlightedIds);
+
+        return this.runTransition({ tokens: animTokens, lineHeightScales }, duration, easing, (done) => {
+            if (done) {
+                // Drop the tokens that animated out, then drop any lines that are
+                // either marked-fully-removed or have ended up empty.
+                const remaining: IdLine[] = [];
+                for (const line of withRemoved) {
+                    if (fullyRemovedLineIdSet.has(line.id)) continue;
+                    remaining.push({
+                        ...line,
+                        tokens: line.tokens.filter(tok => !removedTokenIds.has(tok.id)),
+                    });
+                }
+                this.tokenLines = remaining;
+                // Clean up highlight state pointing at removed tokens.
+                this.highlightedIds = new Set(
+                    [...highlightedBefore].filter(id => !removedTokenIds.has(id))
+                );
+            } else {
+                this.tokenLines = withRemoved.map(line => ({ ...line, tokens: [...line.tokens] }));
+                this.highlightedIds = new Set(highlightedBefore);
             }
-            this.tokenLines = remaining;
             this.bumpStructure();
-            // Clean up highlight state pointing at removed tokens.
-            for (const id of removedTokenIds) this.highlightedIds.delete(id);
-        }
+        });
     }
 
     /**
@@ -760,25 +774,45 @@ export class Code extends Node<CodeProps> {
         return this.findRangeAt(text, 0);
     }
 
-    private *runTransition(
+    /**
+     * The one engine every code command runs through: put a transition on the
+     * stack, drive its progress, take it off and commit at the end.
+     *
+     * A {@link Command} rather than a generator, which is what makes a listing
+     * scrubbable. All three of the things a generator got for free have to become
+     * functions of `t` here:
+     *
+     * - **membership.** The transition is on the stack for `0 < t < 1` and off it
+     *   outside, rather than pushed once and popped in a `finally`. Asked for a
+     *   time before it starts, the listing shows what preceded it; after it ends,
+     *   the settled result.
+     * - **the commit.** `settle(done)` replaces the `finally`, and takes *which
+     *   way*: at `t === 1` it applies the end state, below it restores what came
+     *   before. A `finally` can only ever run forwards.
+     * - **`progress`.** Assigned from `t`, never accumulated.
+     */
+    private runTransition(
         partial: { tokens: AnimToken[]; lineHeightScales?: Map<number, { values: number[]; keys: number[] }>; introducedIds?: Set<number> },
         duration: number,
         easing?: EasingFunction,
-    ): FrameGenerator {
+        settle?: (done: boolean) => void,
+    ): Command<Record<string, never>> {
         const transition: Transition = {
             tokens: partial.tokens,
             lineHeightScales: partial.lineHeightScales ?? new Map(),
             progress: 0,
             introducedIds: partial.introducedIds ?? new Set(),
         };
-        this.transitions.push(transition);
-        try {
-            yield* tween(duration, (rawT) => {
-                transition.progress = easing ? easing(rawT) : rawT;
-            });
-        } finally {
-            this.transitions = this.transitions.filter(t => t !== transition);
-        }
+
+        return driveCommand(duration, (t) => {
+            const running = t > 0 && t < 1;
+            const index = this.transitions.indexOf(transition);
+            if (running && index < 0) this.transitions.push(transition);
+            else if (!running && index >= 0) this.transitions.splice(index, 1);
+
+            transition.progress = easing ? easing(t) : t;
+            settle?.(t >= 1);
+        });
     }
 
     private joinedSource(): string {

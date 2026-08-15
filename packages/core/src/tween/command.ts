@@ -92,6 +92,37 @@ export function makeCommand<P>(
 }
 
 /**
+ * A {@link Command} whose product is a **side effect** rather than props.
+ *
+ * The escape hatch for state a `set` cannot reach: a node's private field, an
+ * element of an array, the progress of an in-flight transition. Most of what
+ * `tween(duration, fn)` was used for — and `tween` is a generator, so it was
+ * also most of what kept those commands un-evaluable.
+ *
+ * `apply` **must be a pure function of `t`**. It is called for any `t`, in any
+ * order, and more than once for the same value; unlike a generator's body it is
+ * not run once per frame in sequence. Accumulating into what it writes (`x +=
+ * …`) instead of assigning from `t` is the one way to misuse this, and it looks
+ * correct playing forwards and drifts the instant anything scrubs.
+ *
+ * Built on {@link makeCommand} rather than beside it, so the stepper and the
+ * iterator stay generated from one evaluator instead of being a third pair that
+ * can disagree with it.
+ */
+export function driveCommand(
+    duration: number,
+    apply: (t: number) => void,
+    easing?: EasingFunction,
+): Command<Record<string, never>> {
+    // A target that receives nothing: the writing already happened in `at`.
+    const sink: CommandTarget<Record<string, never>> = { set: () => { } };
+    return makeCommand(sink, (t) => {
+        apply(t);
+        return {};
+    }, duration, easing);
+}
+
+/**
  * Run `commands` one after another as a single {@link Command}, on one node.
  *
  * This is what a node's internal choreography needs: a chart's entrance staggers

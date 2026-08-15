@@ -481,6 +481,7 @@ export type {
 // and is what a host scans for to know a node's animations without running them.
 export {
     command,
+    driveCommand,
     getCommandMeta,
     isCommand,
     makeCommand,

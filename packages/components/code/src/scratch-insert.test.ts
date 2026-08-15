@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { Code } from './node';
 
-function drive(gen: Generator<void, void, number>, steps: number, dt: number) {
+/**
+ * Run a command as a generator, which is still how a sequential scene drives
+ * one — `Command` is iterable precisely so `yield*` keeps working.
+ */
+function drive(command: Iterable<void>, steps: number, dt: number) {
+    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
     gen.next();
     for (let i = 0; i < steps; i++) gen.next(dt);
 }

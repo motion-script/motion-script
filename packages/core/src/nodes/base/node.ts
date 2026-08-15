@@ -154,6 +154,12 @@ export interface NodeProps {
     width: SizeInput;
     height: SizeInput;
     /**
+     * Per-child weight for the gap this node contributes to its parent's flex
+     * run, `[0, 1]`. See the property's own note — set it to collapse a child
+     * without the surrounding gap popping.
+     */
+    gapScale: number;
+    /**
      * Sets `width` and `height` to the same value in one go. Pure sugar: at
      * construction time, an author-facing `size` is expanded into `width`/
      * `height` before either is applied. Explicit `width` or `height` takes
@@ -384,7 +390,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * `addChildAt`/`removeChildAt` overloads so the surrounding gap opens/closes
      * in lockstep with the child's box instead of popping — see
      * {@link addChildAtAnimated}. Read only by flex containers off their
-     * children; authors have no reason to set it directly. `@internal`.
+     * children.
+     *
+     * Rarely set by hand, but it has to be *settable*: a host collapsing a child
+     * in place rather than removing it — which is what makes a show/hide a value
+     * a time can produce instead of an effect that has to have run — needs the
+     * gap to close with it. Declared on {@link NodeProps} for that reason; it
+     * used to be reachable only through a cast, which is why the lifecycle
+     * helpers carry one.
      */
     @property({ default: 1 }) declare gapScale: number;
     @property({ default: undefined }) declare column: number | undefined;
