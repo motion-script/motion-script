@@ -350,10 +350,7 @@ export class StateEvaluator {
      * one frame, the driver is asked for a time.
      */
     private evaluateSlot(slot: SceneSlot, localFrame: number): boolean {
-        // See `drivenFrameCount`: a scene is only driven if it can say how long
-        // for, so anything that isn't a real number stays on the replay path.
-        const duration = slot.scene.drivenDuration;
-        if (typeof duration !== "number" || !Number.isFinite(duration)) return false;
+        if (!isDriven(slot.scene)) return false;
 
         const sceneTime = localFrame * this.dt;
         slot.scene.bindAssets(this.assets);
@@ -511,8 +508,19 @@ export class StateEvaluator {
 
         const localTarget = clampedFrame - targetSlot.startFrame;
 
-        // If we need to go backwards within this slot, reset only this slot.
-        if (targetSlot.generator === null || targetSlot.localFrame > localTarget) {
+        // A slot that has never been entered has to be built, driven or not:
+        // `resetSlot` is what constructs the tree, and for a driven scene it is
+        // also what compiles the timelines.
+        //
+        // Going *backwards* is the difference. A generator can only be advanced,
+        // so reaching an earlier frame means throwing the tree away and replaying
+        // from zero — which is what made a backward scrub cost more the further
+        // into a scene it happened. A driver is asked for a time, so there is
+        // nothing to rewind: resetting here would dispose and rebuild a tree only
+        // to ask it the same question, and would put the cost back exactly where
+        // driving the scene was meant to take it from.
+        const driven = isDriven(targetSlot.scene);
+        if (targetSlot.generator === null || (!driven && targetSlot.localFrame > localTarget)) {
             this.resetSlot(targetSlot);
         }
 
@@ -659,4 +667,16 @@ export class StateEvaluator {
         // controller (StrictMode double-mount, HMR) can adopt them intact.
         this.globals?.dispose();
     }
+}
+
+/**
+ * Whether `scene` can be asked for a time rather than run to one.
+ *
+ * Tested by whether it can say how long it is: a scene is only drivable if it
+ * declared a duration, and anything else — a generator scene's `null`, a
+ * stand-in that never implemented this — belongs on the replay path.
+ */
+function isDriven(scene: Scene): boolean {
+    const duration = scene.drivenDuration;
+    return typeof duration === "number" && Number.isFinite(duration);
 }

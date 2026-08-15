@@ -97,4 +97,42 @@ describe("createDrivenScene", () => {
         expect(scene.drivenDuration).toBeNull();
         expect(scene.evaluateAt(0.5)).toBe(false);
     });
+
+    it("does not rebuild the tree to seek backwards", () => {
+        // The whole point, and the thing the driver is *for*. A generator can
+        // only be advanced, so reaching an earlier frame means disposing the tree
+        // and replaying from zero — which is why a backward scrub cost more the
+        // further into a scene it happened. A driver is asked for a time, so
+        // there is nothing to rewind.
+        //
+        // Counted by builds rather than timed, because the cost this is about is
+        // the reconstruction: `beginReplay` used to reset any slot whose target
+        // was behind it, driven or not, which threw away the tree and recompiled
+        // every command only to ask the same question of the result.
+        let builds = 0;
+        const { driver, x } = slideDriver(2);
+        const counting: SceneDriver = {
+            ...driver,
+            build: (stage) => {
+                builds++;
+                driver.build(stage);
+            },
+        };
+        const scene = createDrivenScene(counting);
+        const evaluator = evaluatorFor(scene, 60);
+
+        evaluator.stateAt(59);
+        expect(builds).toBe(1);
+        const atEnd = x();
+
+        // Walk backwards a frame at a time — the shape that used to be worst.
+        for (let frame = 58; frame >= 0; frame--) evaluator.stateAt(frame);
+        expect(builds).toBe(1);
+        expect(x()).toBeCloseTo(0, 4);
+
+        // ...and forwards again, still on the one tree.
+        evaluator.stateAt(59);
+        expect(builds).toBe(1);
+        expect(x()).toBeCloseTo(atEnd, 4);
+    });
 });
