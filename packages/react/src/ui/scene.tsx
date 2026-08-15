@@ -168,8 +168,15 @@ export interface FrameHandle {
      * tearing down the render surface, and repaints the current frame. Returns
      * the matched scene index, or -1 if no slot matched (caller can fall back to
      * a full reload). No-op before the controller mounts.
+     *
+     * **The swap does not paint before its assets have loaded**, so the returned
+     * index means "the slot was matched", not "the frame is on screen". A caller
+     * that goes on to screenshot or read the tree must await
+     * {@link whenReplaced} first.
      */
     hotReplaceScene: (scene: Scene) => number;
+    /** Resolves once the paint the last {@link hotReplaceScene} scheduled has landed. */
+    whenReplaced: () => Promise<void>;
 
     // ---- Direct manipulation ----------------------------------------------
     // Enough to build a selection gizmo over the canvas: where a node is, what
@@ -457,12 +464,22 @@ export function MotionPlayer({
                 if (!pc) return -1;
                 const index = pc.replaceScene(scene);
                 if (index < 0) return -1;
-                // Surface any new build error from the edited scene, and refresh
-                // durations/tree via the loading cycle so the timeline updates.
+                // Surface any new build error from the edited scene.
                 onBuildErrorsRef.current?.(pc.buildErrors);
+                // The swap loads before it paints now, so the loading edge is a
+                // real one rather than the synchronous true/false pulse this
+                // used to fire — which reported "done" before anything had
+                // happened, and which a host watching that edge to re-read the
+                // tree would act on too early.
                 onLoadingChangeRef.current?.(true);
-                onLoadingChangeRef.current?.(false);
+                void pc.whenReplaced().then(() => {
+                    if (controllerRef.current !== pc) return;
+                    onLoadingChangeRef.current?.(false);
+                });
                 return index;
+            },
+            whenReplaced: async () => {
+                await controllerRef.current?.whenReplaced();
             },
             getNodeBox: (path: string) => controllerRef.current?.getNodeBox(path) ?? null,
             getNodeBoxes: () => controllerRef.current?.getNodeBoxes() ?? [],

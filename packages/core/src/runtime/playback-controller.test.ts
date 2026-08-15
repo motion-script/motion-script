@@ -143,27 +143,34 @@ describe('PlaybackController – seek', () => {
     });
 });
 
-describe('PlaybackController – synchronous render paths', () => {
-    // seek() is the only caller that may yield. Everything below must still paint
-    // within its own task: screenshot reads the surface immediately afterwards,
-    // and replaceScene's no-flash swap depends on painting in the task that
-    // installed the new scene.
-    it('screenshot renders and captures without awaiting', () => {
+describe('PlaybackController – render paths load before they paint', () => {
+    // Every paint waits for the frame's assets. Reaching for an unloaded one
+    // throws rather than skipping the layer, so a path that painted first and
+    // loaded after is not merely showing a worse frame — it is broken.
+    it('screenshot loads before it captures', async () => {
         const { controller, rc } = makeController(10, 10);
         const rendersBefore = rc.renderCount;
-        const url = controller.screenshot();
+        const url = await controller.screenshot();
         expect(rc.renderCount).toBe(rendersBefore + 1);
         expect(url).toBe('data:image/png;base64,FAKE');
     });
 
-    it('replaceScene repaints within the same task', () => {
+    it('replaceScene does not paint before its assets are loaded', async () => {
+        // It used to repaint synchronously "for a no-flash swap of what's already
+        // warm". That holds only when the swap introduces nothing new; when it
+        // does, the frame is missing its media for the whole fetch — and the
+        // canvas keeping the previous *complete* frame is strictly better.
         const { controller, rc } = makeController(10, 10);
         const rendersBefore = rc.renderCount;
         const edited = new FakeScene({
             id: 'root', name: 'Scene', yieldCount: 10,
             children: [new FakeNode('child', 'Rect')],
         });
+
         expect(controller.replaceScene(asScene(edited))).toBe(0);
+        expect(rc.renderCount).toBe(rendersBefore);
+
+        await controller.whenReplaced();
         expect(rc.renderCount).toBe(rendersBefore + 1);
     });
 
@@ -178,10 +185,11 @@ describe('PlaybackController – synchronous render paths', () => {
 });
 
 describe('PlaybackController – replaceScene (hot reload)', () => {
-    it('loads an asset the edited scene added and repaints with it', async () => {
-        // Initial scene tracks no assets. Hot-reload a scene that now requests a
-        // new image on every frame; the controller must load it (not just swap
-        // the precomp) so the repaint can render it.
+    it('loads an asset the edited scene added before it paints', async () => {
+        // Initial scene tracks no assets. Hot-reload a scene that now declares a
+        // new image; the controller must load it (not just swap the precomp)
+        // *before* the paint, or the paint reaches for a decode that isn't there
+        // and throws.
         const { controller, storage, rc } = makeController(10, 10);
         expect(storage.loadAssetCalls.some(c => c.key === 'new.png')).toBe(false);
 
@@ -194,15 +202,14 @@ describe('PlaybackController – replaceScene (hot reload)', () => {
         });
 
         const rendersBefore = rc.renderCount;
-        const index = controller.replaceScene(asScene(edited));
-        expect(index).toBe(0);
+        expect(controller.replaceScene(asScene(edited))).toBe(0);
 
-        // Synchronous repaint already happened (no-flash swap of warm state)…
-        expect(rc.renderCount).toBeGreaterThan(rendersBefore);
+        // Nothing painted yet — that is the fix.
+        expect(rc.renderCount).toBe(rendersBefore);
 
-        // …then the async load+repaint runs; flush microtasks/timers for it.
-        await flush();
+        await controller.whenReplaced();
         expect(storage.loadAssetCalls.some(c => c.key === 'new.png')).toBe(true);
+        expect(rc.renderCount).toBe(rendersBefore + 1);
     });
 
     it('a seek that supersedes the hot-reload load wins (no stale repaint)', async () => {
@@ -300,9 +307,9 @@ describe('PlaybackController – tick loop', () => {
 });
 
 describe('PlaybackController – screenshot & introspection', () => {
-    it('returns the render context screenshot', () => {
+    it('returns the render context screenshot', async () => {
         const { controller, rc } = makeController();
-        expect(controller.screenshot()).toBe(rc.screenshotValue);
+        expect(await controller.screenshot()).toBe(rc.screenshotValue);
     });
 
     it('builds a nested tree state from the current scene with node lifespans', () => {

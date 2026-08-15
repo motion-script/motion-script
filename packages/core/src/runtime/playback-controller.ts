@@ -424,14 +424,26 @@ export class PlaybackController {
      * frame over the old with no blank flash. Returns the resolved scene index,
      * or -1 if no slot matched (caller can fall back to a full reload).
      *
-     * The edited scene's precomp re-runs a fresh asset pass, so any asset the
-     * edit *added* (a new image/video/font) is now in the global asset map — but
-     * it isn't loaded yet. We repaint synchronously for a no-flash swap of what's
-     * already warm, then kick off an async `loadAt` for the current frame and
-     * re-render once the new assets are ready, so the added asset actually shows
-     * up. The async pass is generation-guarded so a concurrent seek/tick wins.
+     * **The swap does not paint.** The edited scene's precomp re-runs a fresh
+     * asset pass, so an asset the edit *added* is in the asset map but not yet
+     * loaded — and this used to repaint synchronously anyway, "for a no-flash
+     * swap of what's already warm", then load and repaint. That reasoning only
+     * holds when the swap introduces nothing new. When it does, the first paint
+     * is a frame missing its media, held for the whole fetch, and the repaint
+     * behind it is what the user reads as the picture "arriving late".
+     *
+     * So the load comes first and there is one paint. The canvas keeps showing
+     * the previous *complete* frame until then, which is strictly better than a
+     * current frame with a hole in it — and, now that reaching for an unloaded
+     * asset throws rather than skipping the layer, is the difference between
+     * working and not.
+     *
+     * The paint is generation-guarded, so a concurrent seek/tick wins.
      *
      * @param newScene The edited scene instance (carries `__sceneHotId`).
+     * @returns The matched slot index, and a promise that resolves once the
+     *          frame has been painted — for a caller that needs to read the tree
+     *          or screenshot afterwards.
      */
     replaceScene(newScene: Scene): number {
         if (this.disposed) return -1;
@@ -457,28 +469,37 @@ export class PlaybackController {
         this.assetManager.setPrecomp(this.precomp);
         this.masterClock.setDuration(this.totalDuration);
 
-        // Repaint the current frame against the edited scene. The generation
+        // Load first, then paint once — see the note above. The generation
         // claimed at the top of this method already invalidated any in-flight
         // render, so none can stamp a stale frame over the reloaded scene.
-        // Deliberately synchronous — the no-flash swap depends on painting the
-        // new scene in the same task that installed it.
         const frame = this.currentFrame;
-        this.renderAt(frame, this.cancelAfter(gen));
-
-        // Load any newly-tracked assets for this frame and repaint with them.
-        // Fire-and-forget: the synchronous repaint above already showed the warm
-        // state; this fills in assets the edit added. If a seek/tick supersedes
-        // us mid-load, the generation guards bail before painting.
-        void this.loadAndRepaint(frame, gen);
+        this.lastReplacePaint = this.loadAndRepaint(frame, gen);
         return index;
     }
 
     /**
-     * Await the asset manager's load for `frame`, then repaint — used by
-     * {@link replaceScene} so an asset added by a hot reload is loaded before it
-     * needs to render. Guarded by `gen`: if a newer seek/tick has begun (or the
-     * controller is disposed) we abandon both the post-load render and any video
-     * warm-up so we never stamp a stale frame over the live one.
+     * Resolves when the paint {@link replaceScene} scheduled has landed.
+     *
+     * A caller that swaps a scene in order to *read* the result — screenshot it,
+     * walk its tree — has to know when the frame exists. It used to be able to
+     * assume "immediately", because the swap painted synchronously; it cannot
+     * now, and awaiting the wrong thing is how a thumbnailer captures a blank
+     * surface.
+     */
+    private lastReplacePaint: Promise<void> = Promise.resolve();
+
+    /** See {@link lastReplacePaint}. */
+    whenReplaced(): Promise<void> {
+        return this.lastReplacePaint;
+    }
+
+    /**
+     * Await the asset manager's load for `frame`, then paint — the whole of what
+     * {@link replaceScene} does to the canvas, so an asset the edit added is
+     * loaded before anything tries to draw it. Guarded by `gen`: if a newer
+     * seek/tick has begun (or the controller is disposed) we abandon both the
+     * paint and any video warm-up so we never stamp a stale frame over the live
+     * one.
      */
     private async loadAndRepaint(frame: number, gen: number): Promise<void> {
         try {
@@ -513,9 +534,19 @@ export class PlaybackController {
      * been cleared since the last tick (we don't set `preserveDrawingBuffer`).
      * Uses `stateEvaluator.currentFrame` (integer) rather than the clock's
      * float so `stateAt` always hits its early-return and never resets scene state.
+     *
+     * Awaits the frame's assets first. It never used to, and got away with it
+     * because a caller had always seeked here — but a caller that swapped a scene
+     * in and captured it immediately was relying on `replaceScene` having painted
+     * synchronously, which it no longer does. Loading here makes the capture
+     * correct whatever the caller did before it, rather than correct-by-habit.
      */
-    screenshot(): string | undefined {
-        this.renderAt(this.stateEvaluator.currentFrame);
+    async screenshot(): Promise<string | undefined> {
+        const frame = this.stateEvaluator.currentFrame;
+        const gen = ++this.seekGeneration;
+        await this.assetManager.loadAt(frame);
+        if (!this.isCurrent(gen)) return undefined;
+        this.renderAt(frame, this.cancelAfter(gen));
         return this.renderContext.screenshot();
     }
 
