@@ -176,6 +176,8 @@ export class FlowLayout {
         const padding = host.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
 
+        warnOnCollapsedCell(host, rect);
+
         if (this._flowBlend && this._cachedMeasure && this._cachedMeasureFrom) {
             const blend = this._flowBlend;
             const fromLayouts = this.computeChildLayouts(
@@ -340,4 +342,45 @@ export class FlowLayout {
         }
         return result;
     }
+}
+
+/**
+ * Names a container that is laying out real children inside a **zero-size cell**.
+ *
+ * That state is always a bug and it is a quiet one. A flex run is positioned from
+ * the container's own centre — start-justify is `-mainDim / 2 + padding` — so a
+ * container measured 0 puts its first child's *leading edge* on its centre
+ * instead of its left edge, and every child after it follows. A container with no
+ * fill draws nothing itself, so what reaches the screen is the content shifted
+ * down and right by half the container, over empty space. It reads as "the scene
+ * loaded at 0,0" rather than as a layout fault, which is why it is worth a
+ * warning naming the node rather than a silent wrong picture.
+ *
+ * Only fires when the children have real size — a genuinely empty container is
+ * legitimately 0, and a collapsed one mid animated insert/remove is on purpose.
+ * Once per node, because `layout` runs per node per frame and a warning that
+ * repeats sixty times a second is one nobody can read.
+ */
+const warnedCollapsed = new WeakSet<object>();
+
+function warnOnCollapsedCell(host: FlowHost, rect: BoxBounds): void {
+    if (rect.width > 0 && rect.height > 0) return;
+    if (warnedCollapsed.has(host)) return;
+
+    const children = host.flowChildren();
+    if (children.length === 0) return;
+    const sized = children.some(
+        (child) => child.measuredWidth > 0 || child.measuredHeight > 0,
+    );
+    if (!sized) return;
+
+    warnedCollapsed.add(host);
+    const named = host as unknown as { name?: string };
+    console.warn(
+        `[motion-script] "${named.name ?? "?"}" (${host.flow}) is laying out `
+        + `${children.length} sized child${children.length === 1 ? "" : "ren"} in a `
+        + `${rect.width}×${rect.height} cell — they will be positioned from its `
+        + `centre rather than its edge.`,
+        { children: children.map((c) => (c as unknown as { name?: string }).name ?? "?") },
+    );
 }

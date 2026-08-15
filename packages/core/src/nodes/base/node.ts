@@ -1,4 +1,4 @@
-import { Signal, SignalSnapshot } from "@/signals/signal";
+import { Signal } from "@/signals/signal";
 import { SignalHost, TweenFn } from "@/signals/host";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
@@ -17,12 +17,14 @@ import { effectsProperty, insetsProperty, anchorProperty } from "@/attributes/pr
 import {
     applyProp,
     applySnapshotLayer,
+    captureLayer,
     collectProperties,
     popState,
     reapplyDefaults,
     restoreAnimated,
     saveState,
 } from "./node-reactive";
+import type { PropLayer } from "./node-reactive";
 import { advanceClock, createMotionHistory, MotionHistory, sampleMotion } from "./node-motion";
 import { addChildAtAnimated, removeChildAtAnimated, reparentAnimated } from "./node-lifecycle";
 
@@ -1082,7 +1084,7 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // or tweens the numeric props back to it over `duration`.
 
     /** @internal LIFO stack of save() snapshot layers. Underscore-internal so the reactive companion can read it; not authoring surface. */
-    _stateStack: Map<string, SignalSnapshot<any>>[] = [];
+    _stateStack: PropLayer[] = [];
 
     /**
      * Push a snapshot of this node's current state onto its save stack.
@@ -1100,6 +1102,42 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      */
     save(): void {
         saveState(this);
+    }
+
+    /**
+     * Capture every reactive prop's current value **or binding** as a layer the
+     * caller owns, without touching the {@link save} stack.
+     *
+     * {@link save}/{@link restore} are a stack, for authoring: save here, animate
+     * away, restore later. Being pop-based they are consumed by the first
+     * restore, and they interleave with anything else on the node using them. A
+     * host that has to reset the *same* baseline over and over — a driven scene
+     * putting a node back to its start before evaluating a frame — needs a layer
+     * of its own instead.
+     *
+     * Captured at the **cell**, so what a layer holds is the mapped, internal
+     * value. That is the point of it, not an implementation detail: reading a
+     * mapped prop through its getter and writing it back through {@link set} runs
+     * the mapper a second time, and a mapper is under no obligation to tolerate
+     * its own output. Some cannot — a resolved value may not carry what it was
+     * resolved *from* (a compiled expression no longer has its source text), so a
+     * getter round-trip through `set` is lossy where a cell round-trip is exact.
+     */
+    captureProps(): PropLayer {
+        return captureLayer(this);
+    }
+
+    /**
+     * Reapply a layer from {@link captureProps}: plain values are set, reactive
+     * bindings are re-bound.
+     *
+     * Writes straight to the cells, so it runs no mappers — see the note there.
+     * Re-binding a cell to the function it already holds is a no-op in the
+     * signal, so restoring a bound prop every frame costs nothing and, crucially,
+     * does not detach the rule the way writing its resolved number would.
+     */
+    applyProps(layer: PropLayer): void {
+        applySnapshotLayer(this, layer);
     }
 
     /**

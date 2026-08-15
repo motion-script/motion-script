@@ -2,6 +2,9 @@
 
 // Base
 export * from "./base/node";
+// The layer type `Node.captureProps` hands back. Its contents are internal — a
+// cell's mapped value — but the name is public so a host can hold one.
+export type { PropLayer } from "./base/node-reactive";
 export * from "./scene/scene-node";
 export * from "./scene/root-node";
 export * from "./layout/camera-node";

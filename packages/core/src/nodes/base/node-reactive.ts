@@ -118,16 +118,33 @@ export function collectProperties(host: ReactiveHost): Record<string, any> {
 
 // ---- State stack (save / restore) -----------------------------------------
 
-/** Push a snapshot of every reactive cell (value or binding) onto the stack. */
+/**
+ * Every reactive prop of a node, captured as the value **or binding** its cell
+ * holds — see {@link Node.captureProps}, which is the public way to make one.
+ *
+ * Keyed by prop name. Opaque on purpose: what a cell holds is the *mapped*,
+ * internal form, and reading it out to write back through `set` is exactly the
+ * round-trip a layer exists to avoid.
+ */
+export type PropLayer = Map<string, SignalSnapshot<any>>;
+
+/** Snapshot every reactive cell (value or binding) into a fresh layer. */
 /** @internal */
-export function saveState(host: ReactiveHost): void {
+export function captureLayer(host: ReactiveHost): PropLayer {
+    const layer: PropLayer = new Map();
     const signals = host.__signals;
-    if (!signals) return;
-    const layer = new Map<string, SignalSnapshot<any>>();
+    if (!signals) return layer;
     for (const [key, cell] of signals) {
         layer.set(key, cell.snapshot());
     }
-    host._stateStack.push(layer);
+    return layer;
+}
+
+/** Push a snapshot of every reactive cell (value or binding) onto the stack. */
+/** @internal */
+export function saveState(host: ReactiveHost): void {
+    if (!host.__signals) return;
+    host._stateStack.push(captureLayer(host));
 }
 
 /** Pop the top snapshot layer, or `undefined` if the stack is empty. */
