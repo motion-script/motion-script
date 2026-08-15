@@ -87,6 +87,11 @@ export interface FlexLayoutInput<C extends FlexChild = FlexChild> {
     gap: GapSize;
     alignment: FlexAlignment;
     padding: InsetsResolved;
+    /**
+     * The container's name, for {@link warnOnCollapsedRun}'s diagnostic only.
+     * Nothing about the layout reads it.
+     */
+    debugName?: string;
 }
 
 /**
@@ -256,6 +261,8 @@ export function layoutFlex<C extends FlexChild>(input: FlexLayoutInput<C>): BoxB
     const { direction, entries, rect, innerWidth, innerHeight, gap, alignment, padding } = input;
     const mainIsRow = direction === "row";
 
+    warnOnCollapsedRun(input, mainIsRow);
+
     const childrenMain = entries.reduce(
         (sum, entry) => sum + (mainIsRow ? entry.width : entry.height),
         0,
@@ -398,4 +405,52 @@ function sanitizeFlex(value: number | undefined): number {
 function sanitizeGapScale(value: number | undefined): number {
     if (value == null) return 1;
     return Number.isFinite(value) ? clamp(value, 0, 1) : 1;
+}
+
+/** Containers already reported, so a per-frame layout can't spam the console. */
+const warnedCollapsed = new Set<string>();
+
+/**
+ * Names a container laying out **sized children in a zero-length run**.
+ *
+ * Always a bug, and a quiet one. A run is positioned from the container's own
+ * centre — start-justify is `-mainDim / 2 + padding` — so a container whose main
+ * axis measured 0 puts its first child's *leading* edge on its centre instead of
+ * its leading edge, and every child after it follows. A container with no fill
+ * draws nothing itself, so what reaches the screen is the content displaced by
+ * half the container over empty space. It reads as "the scene loaded at 0,0"
+ * rather than as a layout fault.
+ *
+ * Deliberately here rather than in `FlowLayout`, and deliberately keyed on
+ * `entries` rather than on the children's `measuredWidth`. Both of those were the
+ * first attempt and both were blind exactly where it matters: `Column`/`Row` are
+ * `FlexNode`s that call this directly and never touch `FlowLayout`, and
+ * `measuredWidth` reads a `layoutRect` that has not been assigned yet on the
+ * first pass — which is the pass where this goes wrong. `entries` carry the sizes
+ * the measure pass just computed, so they are true on the first frame.
+ */
+function warnOnCollapsedRun<C extends FlexChild>(
+    input: FlexLayoutInput<C>,
+    mainIsRow: boolean,
+): void {
+    const mainDim = mainIsRow ? input.rect.width : input.rect.height;
+    if (mainDim > 0) return;
+    if (input.entries.length === 0) return;
+
+    // Children that measured to something. A container holding only collapsed
+    // children is legitimately zero — that is an animated insert/remove mid-flight.
+    const sized = input.entries.filter((e) => e.width > 0 || e.height > 0);
+    if (sized.length === 0) return;
+
+    const name = input.debugName ?? "?";
+    if (warnedCollapsed.has(name)) return;
+    warnedCollapsed.add(name);
+
+    console.warn(
+        `[motion-script] "${name}" is laying out ${sized.length} sized child`
+        + `${sized.length === 1 ? "" : "ren"} in a run of length 0 `
+        + `(rect ${input.rect.width}×${input.rect.height}, ${mainIsRow ? "row" : "column"}). `
+        + `They will be positioned from its centre rather than its leading edge.`,
+        { sizes: sized.map((e) => `${e.width}×${e.height}`) },
+    );
 }

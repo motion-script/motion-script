@@ -186,6 +186,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
             gap: this.gap,
             alignment: this.align as Vector2,
             padding,
+            debugName: this.name,
         });
         for (let i = 0; i < measure.children.length; i++) {
             measure.children[i].layout(layouts[i], scope);
