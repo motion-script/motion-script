@@ -103,6 +103,13 @@ export class Signal<T> {
     }
 
     bind(fn: () => T): void {
+        // Rebinding a cell to the function it already holds says nothing new: the
+        // rule is the same, and if what it reads has moved the cell is dirty
+        // already through the ordinary propagation. Bailing matters because a
+        // host restoring a node's props every frame — see a driven scene's
+        // baseline — would otherwise invalidate and recompute every bound cell on
+        // every frame, for a value that cannot have changed because of the write.
+        if (this._fn === fn) return;
         this._detach();
         this._fn = fn;
         this._dirty = true;
