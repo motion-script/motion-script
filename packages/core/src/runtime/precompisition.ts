@@ -705,6 +705,19 @@ export class Precomp {
                 const drivenFrames = drivenFrameCount(scene, this.fps);
 
                 while (true) {
+                    // Put the tree into *this* frame's state before anything reads
+                    // it. It belongs here rather than at the bottom of the loop:
+                    // building a driven scene compiles every node's chain, and
+                    // compiling walks each step to its end, restoring only the
+                    // node's own props afterwards. Whatever a command wrote to some
+                    // *other* node — a chart arming its markers, a diagram its
+                    // tiles — is still sitting there. So the tree straight out of
+                    // `build` holds the last command's state, not the first's, and
+                    // declaring frame 0 against it collects the wrong frame's
+                    // assets. Playback then draws frame 0 and reaches for one
+                    // nothing ever declared.
+                    if (drivenFrames !== null) scene.evaluateAt(localFrame * dt);
+
                     registry.start(localFrame);
 
                     // Fonts, and anything else measurement depends on, declared
@@ -761,13 +774,12 @@ export class Precomp {
 
                     profile?.enter("generator");
                     if (drivenFrames !== null) {
-                        // Put the tree into the next frame's state so the
-                        // declarations above see it. Evaluating rather than
-                        // stepping is the only difference; everything around it —
-                        // the two declaration phases, layout, the lifespan record —
-                        // is the same pass a generator scene gets.
+                        // Evaluating rather than stepping is the only difference;
+                        // everything around it — the two declaration phases,
+                        // layout, the lifespan record — is the same pass a
+                        // generator scene gets. The evaluation itself happens at
+                        // the top of the loop, against the frame being declared.
                         if (localFrame >= drivenFrames) break;
-                        scene.evaluateAt(localFrame * dt);
                     } else {
                         const result = generator.next(dt);
                         if (result.done) break;
