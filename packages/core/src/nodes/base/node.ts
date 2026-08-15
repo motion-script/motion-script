@@ -3,6 +3,7 @@ import { SignalHost, TweenFn } from "@/signals/host";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
 import { AnimationBuilder } from "@/tween/animation-builder";
+import { makeCommand, type Command, type CommandTarget } from "@/tween/command";
 import { prepareNumericCellTween } from "@/tween/prepare";
 import { TweenStepper } from "@/tween/stepper";
 import { RefTarget } from "@/util/reference";
@@ -729,6 +730,44 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     /**
+     * Build a {@link Command} — an animation this node can be *evaluated* at, not
+     * only run through.
+     *
+     * The seam a named command is written against. `to()` covers "move these
+     * props there"; this covers everything a node wants to choreograph itself,
+     * where the values at time `t` are a function the node knows and nobody
+     * outside could reconstruct from a prop list.
+     *
+     * ```ts
+     * @command()
+     * draw(duration = 1, easing?: EasingFunction): Command<ChartProps> {
+     *     const from = this.progress;
+     *     return this.animate((t) => ({ progress: lerpNumber(from, 1, t) }), duration, easing);
+     * }
+     * ```
+     *
+     * Snapshot whatever the animation starts from *outside* the callback, as
+     * above — reading `this.progress` inside it would re-read the value the
+     * command is itself writing, and the tween would chase its own tail.
+     *
+     * Prefer this over a `*method(): FrameGenerator`. A generator can only be
+     * advanced, so a host that wants frame N has to run frames 0..N-1 to get it;
+     * the same choreography as a `Command` can be asked directly.
+     */
+    protected animate<Props = P>(
+        at: (t: number) => Partial<Props>,
+        duration: number = 1,
+        easing?: EasingFunction,
+    ): Command<Props> {
+        return makeCommand<Props>(
+            this as unknown as CommandTarget<Props>,
+            at,
+            duration,
+            easing,
+        );
+    }
+
+    /**
      * Resolve a single `to()` step into a flat {@link TweenStepper} — all the
      * per-key setup (anchor handling, mapper, numeric-vs-custom routing) happens
      * once here, then `advance(dt)` is allocation-free. Used by both the
@@ -796,11 +835,23 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
             const easedT = easing ? easing(t) : t;
             lerp(easedT);
             if (hasCustom) for (const fn of customLerps) fn(easedT);
+            // A discrete prop has nothing between its endpoints, so it snaps at
+            // the end rather than interpolating. Applied here rather than only in
+            // `advance` because a `seek` past the end has, by definition, reached
+            // that end — leaving it out meant `seek(duration)` and running to
+            // `duration` produced different nodes, and only the second was right.
+            if (hasSnaps && t >= 1) for (const [key, val] of stringSnaps) (this as any)[key] = val;
         };
 
         let elapsed = 0;
         return {
-            seek: (e: number) => apply(duration > 0 ? Math.min(e / duration, 1) : 1),
+            // Tracks `elapsed`, so a seek and a subsequent advance agree about
+            // where the tween is. Without it, seeking forward then advancing
+            // rewound to `dt`.
+            seek: (e: number) => {
+                elapsed = e;
+                apply(duration > 0 ? Math.min(e / duration, 1) : 1);
+            },
             advance: (dt: number): boolean => {
                 elapsed += dt;
                 if (elapsed < duration) {
@@ -808,7 +859,6 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
                     return false;
                 }
                 apply(1);
-                if (hasSnaps) for (const [key, val] of stringSnaps) (this as any)[key] = val;
                 return true;
             },
         };
@@ -825,6 +875,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     }
 
     // ---- Motion helpers ---------------------------------------------------
+    //
+    // Each returns the `AnimationBuilder` it delegates to rather than wrapping it
+    // in a generator. `yield*` still works — a builder is iterable — but the
+    // wrapper used to discard the thing worth having: a builder is `Steppable`,
+    // so it can be *seeked*, and a generator around it can only be advanced.
 
     /**
      * Animate both `x` and `y` to the given position.
@@ -832,8 +887,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveTo(200, 100, 0.5, ease.outCubic);
      */
-    *moveTo(x: number, y: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ x, y } as Partial<P>, duration, ease);
+    moveTo(x: number, y: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ x, y } as Partial<P>, duration, ease);
     }
 
     /**
@@ -842,8 +897,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveX(300, 0.4);
      */
-    *moveX(x: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ x } as Partial<P>, duration, ease);
+    moveX(x: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ x } as Partial<P>, duration, ease);
     }
 
     /**
@@ -852,8 +907,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.moveY(-50, 0.4);
      */
-    *moveY(y: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ y } as Partial<P>, duration, ease);
+    moveY(y: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ y } as Partial<P>, duration, ease);
     }
 
     /**
@@ -864,8 +919,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.fadeTo(0, 0.3);   // fade out
      * yield* node.fadeTo(1, 0.3);   // fade in
      */
-    *fadeTo(opacity: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ opacity } as Partial<P>, duration, ease);
+    fadeTo(opacity: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ opacity } as Partial<P>, duration, ease);
     }
 
     /**
@@ -874,8 +929,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * @example
      * yield* node.rotateTo(180, 0.6, ease.inOutQuad);
      */
-    *rotateTo(rotation: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ rotation } as Partial<P>, duration, ease);
+    rotateTo(rotation: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ rotation } as Partial<P>, duration, ease);
     }
 
     /**
@@ -885,8 +940,8 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
      * yield* node.scaleTo(1.5, 0.4);   // grow
      * yield* node.scaleTo(0,   0.3);   // shrink to nothing
      */
-    *scaleTo(scale: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ scale } as Partial<P>, duration, ease);
+    scaleTo(scale: number, duration: number, ease?: EasingFunction): AnimationBuilder<P> {
+        return this.to({ scale } as Partial<P>, duration, ease);
     }
 
     /**

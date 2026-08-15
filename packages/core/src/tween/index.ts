@@ -4,6 +4,8 @@ export * from './ease/constants';
 export * from './tween';
 export * from './generator';
 export * from './animation-builder';
+export * from './command';
+export * from './command-decorator';
 
 export * from './parallel';
 export * from './sequence';

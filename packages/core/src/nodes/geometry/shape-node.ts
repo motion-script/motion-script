@@ -16,9 +16,8 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { property } from "@/attributes/properties/decorator";
 import { Node, NodeProps } from "../base/node";
 import { TweenOptions } from "@/tween/lerp";
-import { wait } from "@/tween/wait";
-import { FrameGenerator } from "@/tween/generator";
-import { tween } from "@/tween/tween";
+import { commandSequence, type Command } from "@/tween/command";
+import { command } from "@/tween/command-decorator";
 
 
 export interface ShapeProps extends NodeProps {
@@ -190,47 +189,67 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
         return containsClip(clip, local, tolerance);
     }
 
-    *fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    // ---- Paint commands ---------------------------------------------------
+    //
+    // These four are the shape a `Command` exists for: a paint has no in-between
+    // a numeric tween could find, so each is a `t → props` function the node
+    // supplies. They used to be generators over `tween(...)`, which ran fine and
+    // could not be asked what they looked like at a time. Same body, returned as
+    // a value.
+
+    @command()
+    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<P> {
         const from = this.fill as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ fill: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<P>(t => ({ fill: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+        );
     }
 
-    *overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    @command()
+    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<P> {
         const from = this.overlay as FillResolved[];
         const target = resolveFillArray(to);
         const lerp = options?.lerp ?? lerpFillArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ overlay: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<P>(t => ({ overlay: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+        );
     }
 
-    *strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    @command()
+    strokeTo(to: Stroke, duration: number, options?: TweenOptions<StrokeResolved[]>): Command<P> {
         const from = this.stroke as StrokeResolved[];
         const target = resolveStrokeArray(to, from);
         const lerp = options?.lerp ?? lerpStrokeArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ stroke: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<P>(t => ({ stroke: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+        );
     }
 
-    *shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): FrameGenerator {
-        if (options?.delay) yield* wait(options.delay);
+    @command()
+    shadowTo(to: Shadow, duration: number, options?: TweenOptions<ShadowResolved[]>): Command<P> {
         const from = this.shadow as ShadowResolved[];
         const target = resolveShadowArray(to, from);
         const lerp = options?.lerp ?? lerpShadowArray;
-        const ease = options?.ease;
-        yield* tween(duration, t => {
-            this.set({ shadow: lerp(from, target, ease ? ease(t) : t) } as Partial<P>);
-        });
+        return this.delayed(
+            options?.delay,
+            this.animate<P>(t => ({ shadow: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+        );
+    }
+
+    /**
+     * Prefix `command` with `delay` seconds of holding still.
+     *
+     * The hold is a command of its own that writes nothing, so the pair composes
+     * into one seekable value — where the generator version reached the delay by
+     * `yield* wait(...)`, which is only expressible by running it.
+     */
+    private delayed(delay: number | undefined, command: Command<P>): Command<P> {
+        if (!delay) return command;
+        return commandSequence<P>(this, this.animate<P>(() => ({}), delay), command);
     }
 }

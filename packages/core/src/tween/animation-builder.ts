@@ -65,6 +65,11 @@ export class AnimationBuilder<P> implements Steppable {
         return this;
     }
 
+    /** Total seconds across every step in the chain. */
+    get duration(): number {
+        return this.steps.reduce((sum, s) => sum + s.duration, 0);
+    }
+
     /**
      * Flat driver over this builder's steps — no generators. Steps run in
      * sequence; each is prepared when the previous one finishes (so its `from`
@@ -87,7 +92,37 @@ export class AnimationBuilder<P> implements Steppable {
         };
 
         return {
-            seek: () => { if (!current) prime(); },
+            /**
+             * Walk the chain to the step `elapsed` lands in, priming each one it
+             * passes through so that step's `from` is the previous step's end —
+             * the same snapshotting the sequential run does, just done in one go.
+             *
+             * This used to ignore its argument entirely and only prime at 0,
+             * which made a chained `to().to()` advanceable but not seekable: a
+             * caller asking for the state two seconds in got the state at zero.
+             * A chain has always been a function of elapsed time; nothing about
+             * it required running to find out.
+             */
+            seek: (elapsed: number) => {
+                index = 0;
+                current = null;
+                let remaining = Math.max(0, elapsed);
+                while (index < steps.length) {
+                    const step = prime();
+                    if (!step) return;
+                    if (remaining < steps[index].duration) {
+                        step.seek(remaining);
+                        return;
+                    }
+                    // Past this step: land it on its end value, which is also
+                    // what the next step's `from` reads.
+                    step.seek(steps[index].duration);
+                    remaining -= steps[index].duration;
+                    index++;
+                    current = null;
+                }
+                // Past the whole chain — the last step's end is already applied.
+            },
             advance: (dt: number): boolean => {
                 if (!current && prime() === null) return true;
                 if (!current!.advance(dt)) return false;

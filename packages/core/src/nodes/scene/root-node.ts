@@ -4,6 +4,7 @@ import { Clip } from "@/render/clip";
 import { TweenOptions } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
 import { FrameGenerator } from "@/tween/generator";
+import { AnimationBuilder } from "@/tween/animation-builder";
 import { wait } from "@/tween/wait";
 import { tween } from "@/tween/tween";
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
@@ -147,8 +148,8 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.zoomTo(2, 0.5, ease.outCubic);
      */
-    *zoomTo(zoom: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ zoom } as Partial<RootProps>, duration, ease);
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+        return this.to({ zoom } as Partial<RootProps>, duration, ease);
     }
 
     /**
@@ -158,8 +159,8 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    *panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ lookAt } as Partial<RootProps>, duration, ease);
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+        return this.to({ lookAt } as Partial<RootProps>, duration, ease);
     }
 
     /**
@@ -168,8 +169,8 @@ export class RootNode extends Node<RootProps> implements FlowHost {
      * @example
      * yield* root.headingTo(45, 0.4);
      */
-    *headingTo(heading: number, duration: number, ease?: EasingFunction): FrameGenerator {
-        return yield* this.to({ heading } as Partial<RootProps>, duration, ease);
+    headingTo(heading: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
+        return this.to({ heading } as Partial<RootProps>, duration, ease);
     }
 
     // ---- Paint commands ---------------------------------------------------

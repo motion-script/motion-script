@@ -180,17 +180,17 @@ export class Scene {
     // ── Camera commands (forward to the root) ──
 
     /** Animate the camera magnification (`zoom`). > 1 zooms in; < 1 zooms out. */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): FrameGenerator {
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
         return this.root.zoomTo(zoom, duration, ease);
     }
 
     /** Animate the camera focus point (`lookAt`) — the world point at viewport centre. */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): FrameGenerator {
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
         return this.root.panTo(lookAt, duration, ease);
     }
 
     /** Animate the camera view rotation (`heading`) in degrees. */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): FrameGenerator {
+    headingTo(heading: number, duration: number, ease?: EasingFunction): AnimationBuilder<RootProps> {
         return this.root.headingTo(heading, duration, ease);
     }
 
