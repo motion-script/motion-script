@@ -8,6 +8,8 @@ import { NoiseFillRenderer } from "./noise";
 import { FractalNoiseFillRenderer } from "./fractal-noise";
 import { ShaderFillRenderer } from "./shader";
 import { StripeFillRenderer } from "./stripe";
+import { DotGridFillRenderer } from "./dot-grid";
+import { GridFillRenderer } from "./grid";
 import { SolidFillRenderer } from "./solid";
 // Statically imports the three bridge, exactly as `render-context.ts` already
 // does. `three` itself still arrives only via the dynamic `import("three")`, so
@@ -34,6 +36,8 @@ export class FillRenderRegistry {
         { name: "fractalNoise", renderer: new FractalNoiseFillRenderer() },
         { name: "shader", renderer: new ShaderFillRenderer() },
         { name: "stripe", renderer: new StripeFillRenderer() },
+        { name: "dotGrid", renderer: new DotGridFillRenderer() },
+        { name: "grid", renderer: new GridFillRenderer() },
         { name: "view3D", renderer: new View3DFillRenderer() },
     ];
 

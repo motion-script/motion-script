@@ -1,10 +1,12 @@
 import type {
     CanvasKit,
     Canvas,
+    Image as CKImage,
     Surface,
     Paint,
     Path as CKPath,
     Shader,
+    TileMode,
 } from "@motion-script/canvaskit";
 import {
     type BooleanOperation,
@@ -83,7 +85,7 @@ import { LineShape } from "./shapes/line";
 import type { CurrentShape } from "./shapes/shape-handler";
 import { EffectRegistry } from "./effects/registry";
 import { resolveMotionBlur } from "./effects/motion-blur";
-import type { EffectHandler, EffectGeometry, EffectResources } from "./effects/handler";
+import type { EffectHandler, EffectGeometry, EffectResources, RenderInputShaders } from "./effects/handler";
 import { disposeSkSLCache } from "./sksl-cache";
 import { StrokeHandler } from "./stroke/stroke-handler";
 import { ShapeHandler } from "./shapes/shape-handler";
@@ -248,6 +250,16 @@ type ForegroundCapture = {
     matrix: number[];
 };
 
+/**
+ * One shader the renderer built for a handler (see
+ * {@link EffectHandler.renderInputs}), with the disposer for it and the two
+ * objects behind it.
+ */
+type BuiltInput = { shader: Shader; dispose(): void };
+
+/** Shared no-op disposer, for the overwhelmingly common "asked for nothing" case. */
+const NOOP = (): void => { };
+
 /** Map a {@link EffectHandler} tile-mode literal to its CanvasKit enum. */
 function tileMode(ck: CanvasKit, mode: "clamp" | "decal") {
     return mode === "decal" ? ck.TileMode.Decal : ck.TileMode.Clamp;
@@ -356,6 +368,17 @@ export abstract class SkiaRenderContext extends RenderContext {
 
     private clipRestoreStack: number[] = [];
 
+    /**
+     * The {@link Clip} each open `beginClip` scope was given, innermost last.
+     *
+     * The canvas keeps the clip as *state* — there is no reading a path back out
+     * of it — but a shader effect that has to know the shape it is confined to
+     * needs the outline itself (see {@link silhouetteShader}). Retaining the
+     * `Clip` rather than a built path costs a push and a pop: the path is only
+     * combined when an effect actually asks for it, which almost none do.
+     */
+    private clipShapeStack: Clip[] = [];
+
     private fillHandler!: FillHandler;
     private strokeHandler!: StrokeHandler;
     private shapeHandler!: ShapeHandler;
@@ -445,6 +468,52 @@ export abstract class SkiaRenderContext extends RenderContext {
 
     pixelRatio: number = 1;
 
+    /**
+     * A pan and zoom applied to the whole pass — an editor showing part of the
+     * frame close up, rather than the frame.
+     *
+     * Identity by default, and every existing caller leaves it that way: an
+     * export, a thumbnail and a plain player all draw the whole frame at 1:1, and
+     * for them this costs one comparison per pass and changes nothing.
+     *
+     * It exists because zooming a preview by scaling the *canvas element* is
+     * resolution-destroying. The surface holds `viewport × pixelRatio` device
+     * pixels however far in the view is zoomed, so a 4× zoom stretches a
+     * 1920-wide raster across four times the screen and the browser interpolates
+     * the difference. Raising `pixelRatio` to compensate is not a fix either: it
+     * supersamples the *entire* frame to show a crop of it, so covering 8× on a
+     * 1920×1080 project means a 15360×8640 surface — hundreds of megabytes to
+     * display a panel's worth of pixels.
+     *
+     * Putting the zoom here instead inverts that. The surface is sized to the
+     * *viewing area* rather than to the frame, only what is on screen is
+     * rasterized, and it is rasterized at exactly the display's resolution at any
+     * zoom. The cost stops depending on the zoom altogether — and, since nothing
+     * about the surface changes when the view does, so does the surface rebuild
+     * that a zoom used to trigger.
+     *
+     * `x`/`y` are in the same logical pixels as the surface, applied before the
+     * zoom; positive `y` moves the frame down, matching a CSS translate.
+     */
+    view: { zoom: number; x: number; y: number } = { zoom: 1, x: 0, y: 0 };
+
+    /**
+     * The project's frame in scene units, when the surface is not the frame.
+     *
+     * Required whenever {@link view} is used, and meaningless otherwise. Two
+     * things stop being derivable from the surface once the two sizes come apart,
+     * and both are wrong in ways that are easy to miss:
+     *
+     * - **What is off-frame stays off-frame.** A node parked outside the frame is
+     *   currently hidden by the edge of the canvas and by nothing else. With a
+     *   surface bigger than the frame it would simply be *visible*, so the frame
+     *   boundary has to become a real clip.
+     * - **`'global'` fill space means the frame**, not the window onto it. Left to
+     *   read the surface, a global gradient would re-stretch itself every time the
+     *   view was panned or zoomed — the one thing a preview must never do.
+     */
+    frame: { width: number; height: number } | null = null;
+
     private executePass(callback: () => void): void {
         // The surface is freed on dispose()/unmount(). A late async render (e.g. a
         // seek resolving after a StrictMode/HMR remount disposed this context)
@@ -452,12 +521,39 @@ export abstract class SkiaRenderContext extends RenderContext {
         if (!this.mounted || !this.surface) return;
         this.currentCanvas = this.surface.getCanvas();
         this.activeSurface = this.surface;
-        this.currentCanvas.clear(this.canvasKit.BLACK);
+        // Transparent wherever the surface is larger than the frame, so whatever is
+        // behind the canvas still shows *around* the picture — a preview's panel
+        // and its backdrop, which a full-bleed black would paint over. The frame's
+        // own black goes down inside the clip below, so the picture itself is
+        // unchanged. With no frame the surface *is* the picture and the plain
+        // full-surface clear is exactly right.
+        this.currentCanvas.clear(this.frame ? this.canvasKit.TRANSPARENT : this.canvasKit.BLACK);
         this.currentCanvas.save();
         const logicalW = this.surface.width() / this.pixelRatio;
         const logicalH = this.surface.height() / this.pixelRatio;
         this.currentCanvas.scale(this.pixelRatio, this.pixelRatio);
-        this.currentCanvas.translate(logicalW / 2, logicalH / 2);
+        this.currentCanvas.translate(logicalW / 2 + this.view.x, logicalH / 2 + this.view.y);
+        if (this.view.zoom !== 1) {
+            this.currentCanvas.scale(this.view.zoom, this.view.zoom);
+        }
+        // The frame's own edge, now that the surface's is somewhere else. Anti-
+        // aliased, so a fractional zoom doesn't leave a hard stair-stepped border
+        // down the side of the picture.
+        if (this.frame) {
+            const ck = this.canvasKit;
+            const halfW = this.frame.width / 2;
+            const halfH = this.frame.height / 2;
+            this.currentCanvas.clipRect(
+                ck.LTRBRect(-halfW, -halfH, halfW, halfH),
+                ck.ClipOp.Intersect,
+                true,
+            );
+            // The frame's backdrop, in the space the full-surface clear used to
+            // cover. `Src` rather than the default source-over, so it *replaces*
+            // the transparent clear instead of compositing onto it — the frame is
+            // opaque black, exactly as it has always been.
+            this.currentCanvas.drawColor(ck.BLACK, ck.BlendMode.Src);
+        }
 
         // Bracket the pass so the 3D backend can tell which nodes drew this frame
         // and free the graphs of ones that didn't (a removed View3D, a scene
@@ -531,6 +627,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         this.currentCanvas = undefined as any;
         this.effectLayerStack.length = 0;
         this.clipRestoreStack.length = 0;
+        this.clipShapeStack.length = 0;
         this.deferredPaintsStack.length = 0;
         this.effectScopeStack.length = 0;
         // three's geometries, materials, textures and GL context are not
@@ -589,6 +686,14 @@ export abstract class SkiaRenderContext extends RenderContext {
      * encoders, so a browser goes through a 2D canvas, Node through its own PNG/JPEG
      * encoder, a native embedder through Skia's codecs. Unpremultiplied because that
      * maps 1:1 onto `ImageData` and onto what every encoder expects.
+     *
+     * With a {@link frame} set the read is narrowed to the frame's device rect
+     * rather than the whole surface, because there the surface is a *window* onto
+     * the picture and includes whatever panel sits around it. A snapshot has to be
+     * of the work, not of the editor — so what comes back is the frame, and only
+     * the part of it the window is currently showing. A caller wanting the whole
+     * frame should put the view back to fitted first (or use the offscreen export
+     * path, which never involves a view at all).
      */
     snapshotPixels(): { pixels: Uint8Array; width: number; height: number } | undefined {
         if (!this.mounted) {
@@ -599,9 +704,24 @@ export abstract class SkiaRenderContext extends RenderContext {
         const image = this.surface.makeImageSnapshot();
         if (!image) return undefined;
         const ck = this.canvasKit;
-        const width = image.width();
-        const height = image.height();
-        const pixels = image.readPixels(0, 0, {
+        // Clamped to the surface: a zoomed-in view puts most of the frame off the
+        // edge, and asking Skia to read outside its own buffer fails the read.
+        //
+        // The extent is rounded as a *length* rather than as two independently
+        // rounded edges. Rounding the edges lets the two errors pull apart, which
+        // is how a 16:9 frame comes back 738×414 — an image that is a fraction of
+        // a percent off the project's aspect, and off by a different fraction
+        // depending on where the frame happened to land on the surface.
+        const crop = this.frameDeviceRect();
+        const left = crop ? Math.max(0, Math.round(crop.left)) : 0;
+        const top = crop ? Math.max(0, Math.round(crop.top)) : 0;
+        const width = crop
+            ? Math.max(1, Math.min(image.width() - left, Math.round(crop.right - crop.left)))
+            : image.width();
+        const height = crop
+            ? Math.max(1, Math.min(image.height() - top, Math.round(crop.bottom - crop.top)))
+            : image.height();
+        const pixels = image.readPixels(left, top, {
             width,
             height,
             colorType: ck.ColorType.RGBA_8888,
@@ -998,6 +1118,29 @@ export abstract class SkiaRenderContext extends RenderContext {
         return out;
     }
 
+    /**
+     * Where the project's frame lands on the surface, in device pixels.
+     *
+     * The pass transform is known rather than queried — `getTotalMatrix()` at the
+     * point this is called is deep inside whatever node is painting — so this
+     * re-applies it: `scale(pixelRatio) · translate(centre + view) · scale(zoom)`,
+     * exactly as {@link executePass} lays it down.
+     */
+    private frameDeviceRect(): SpaceRect | null {
+        if (!this.frame || !this.surface) return null;
+        const pr = this.pixelRatio;
+        const originX = this.surface.width() / pr / 2 + this.view.x;
+        const originY = this.surface.height() / pr / 2 + this.view.y;
+        const halfW = (this.frame.width / 2) * this.view.zoom;
+        const halfH = (this.frame.height / 2) * this.view.zoom;
+        return {
+            left: (originX - halfW) * pr,
+            top: (originY - halfH) * pr,
+            right: (originX + halfW) * pr,
+            bottom: (originY + halfH) * pr,
+        };
+    }
+
     // Resolve the reference rect for a fill `space`, in the current node's local
     // space. `parent` is supplied by the node via begin(); `global` is the render
     // viewport mapped from device space through the inverse current matrix.
@@ -1010,6 +1153,30 @@ export abstract class SkiaRenderContext extends RenderContext {
             if (!m) return null;
             const inv = this.canvasKit.Matrix.invert(m);
             if (!inv) return null;
+            // A preview drawing a crop: the surface is a window onto the frame
+            // rather than the frame, so the frame is what `global` has to span.
+            // Reading the surface here would re-stretch every global gradient on
+            // every pan and zoom — the fill would be a function of where the
+            // editor was looking, which is exactly what "global" promises it
+            // isn't. Only on the mounted surface: inside a Surface2D the buffer
+            // really is the world, and the branch below is right for it.
+            // The frame goes through the *same* inverse the surface corners do,
+            // rather than being returned as-is: `inv` maps device space to the
+            // current node's local space, and the frame is only in scene units at
+            // the root of the pass.
+            const framed = this.frame && this.activeSurface === this.surface
+                ? this.frameDeviceRect()
+                : null;
+            if (framed) {
+                const tl = this.canvasKit.Matrix.mapPoints(inv, [framed.left, framed.top]);
+                const br = this.canvasKit.Matrix.mapPoints(inv, [framed.right, framed.bottom]);
+                return {
+                    left: Math.min(tl[0], br[0]),
+                    top: Math.min(tl[1], br[1]),
+                    right: Math.max(tl[0], br[0]),
+                    bottom: Math.max(tl[1], br[1]),
+                };
+            }
             // Surface corners in device px → local space. Inside a Surface2D the
             // "viewport" is that surface's buffer, which is what a `global` fill
             // should span there.
@@ -1324,6 +1491,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         const canvas = this.currentCanvas;
         canvas.save();
         this.clipRestoreStack.push(1);
+        this.clipShapeStack.push(clip);
 
         const ops = clip.ops();
         // Fast path — a single shape with no cut clips natively (clipRect/clipRRect
@@ -1352,6 +1520,7 @@ export abstract class SkiaRenderContext extends RenderContext {
             return;
         }
         const restores = this.clipRestoreStack.pop() ?? 0;
+        this.clipShapeStack.pop();
         for (let i = 0; i < restores; i++) {
             this.currentCanvas.restore();
         }
@@ -1576,19 +1745,152 @@ export abstract class SkiaRenderContext extends RenderContext {
         const content = snapshot.makeShaderOptions(
             ck.TileMode.Clamp, ck.TileMode.Clamp, filterMode(ck, handler.sampling!.filterMode), ck.MipmapMode.None,
         );
+        const geom = this.shaderGeometry(m, width, height);
         const extra = handler.resources?.(effect, ck, this.effectResources()) ?? [];
-        const lens = handler.makeShader!(effect, ck, content, this.shaderGeometry(m, width, height), extra);
-        if (lens == null) {
-            // Unlike the foreground path there is nothing to paint back: the
-            // backdrop is already on the canvas, untouched.
-            content.delete();
-            snapshot.delete();
-            return;
+        const inputs = this.buildRenderInputs(handler, effect, geom, snapshot, m);
+
+        const lens = handler.makeShader!(effect, ck, content, geom, extra, inputs.shaders);
+        // Unlike the foreground path a null lens means there is nothing to paint
+        // back: the backdrop is already on the canvas, untouched.
+        if (lens != null) {
+            this.paintShaderInDeviceSpace(lens, m);
+            lens.delete();
         }
-        this.paintShaderInDeviceSpace(lens, m);
-        lens.delete();
+        // Built per draw from the live clip and the live snapshot, so unlike
+        // `extra` (which the handler caches) this context owns them.
+        inputs.dispose();
         content.delete();
         snapshot.delete();
+    }
+
+    /**
+     * Build whatever the handler asked for via {@link EffectHandler.renderInputs}
+     * — the node's silhouette, a pre-blurred copy of the source, or neither.
+     * Anything that could not be built is simply absent; handlers read these by
+     * name and treat a missing one as "not this frame", no-opping rather than
+     * rendering something wrong.
+     */
+    private buildRenderInputs(
+        handler: EffectHandler,
+        effect: SceneEffect,
+        geom: EffectGeometry,
+        source: CKImage,
+        m: number[],
+    ): { shaders: RenderInputShaders; dispose(): void } {
+        const request = handler.renderInputs?.(effect, geom);
+        if (!request) return { shaders: {}, dispose: NOOP };
+
+        const shaders: RenderInputShaders = {};
+        const cleanups: (() => void)[] = [];
+
+        if (request.silhouette !== undefined) {
+            const built = this.silhouetteMask(request.silhouette, m);
+            if (built) {
+                shaders.silhouette = built.shader;
+                cleanups.push(built.dispose);
+            }
+        }
+        if (request.blurredSource !== undefined) {
+            const built = this.blurredCopy(source, request.blurredSource);
+            if (built) {
+                shaders.blurredSource = built.shader;
+                cleanups.push(built.dispose);
+            }
+        }
+
+        return { shaders, dispose: () => { for (const free of cleanups) free(); } };
+    }
+
+    /**
+     * Rasterise the active silhouette clip into a device-space alpha mask,
+     * blurred by `sigma`, and wrap it as a child shader. Returns `null` when
+     * there is no clip to trace or the offscreen could not be made.
+     *
+     * The blur is a **mask filter with `respectCTM: false`**, not an image
+     * filter: `sigma` is already in device px (the handler derived it from
+     * {@link EffectGeometry}, which is device-space), and an image filter's
+     * sigma would be scaled by the CTM on the way through — so a node inside a
+     * scaled group, or a zoomed camera, would get a bevel of the wrong width. A
+     * mask filter also blurs the coverage directly, which is all this needs.
+     */
+    private silhouetteMask(sigma: number, m: number[]): BuiltInput | null {
+        const clip = this.clipShapeStack[this.clipShapeStack.length - 1];
+        if (!clip || clip.isEmpty()) return null;
+
+        const ck = this.canvasKit;
+        const path = this.combineClipPath(clip);
+        if (!path) return null;
+
+        const offscreen = this.activeSurface.makeSurface(this.activeSurface.imageInfo());
+        if (!offscreen) {
+            path.delete();
+            return null;
+        }
+
+        const canvas = offscreen.getCanvas();
+        canvas.clear(ck.TRANSPARENT);
+        // The clip path is authored in the node's local space, so replicate the
+        // CTM exactly as the foreground capture does — the mask then lines up
+        // with the fragCoords the lens shader is evaluated at.
+        canvas.save();
+        canvas.concat(m);
+        const paint = new ck.Paint();
+        paint.setAntiAlias(true);
+        paint.setColor(ck.WHITE);
+        const blur = sigma > 0 ? ck.MaskFilter.MakeBlur(ck.BlurStyle.Normal, sigma, false) : null;
+        if (blur) paint.setMaskFilter(blur);
+        canvas.drawPath(path, paint);
+        canvas.restore();
+
+        blur?.delete();
+        paint.delete();
+        path.delete();
+        // Decal, not Clamp: beyond the surface the mask must read zero, or a
+        // shape running off the edge would have its bevel smeared to infinity.
+        return this.wrapOffscreen(offscreen, ck.TileMode.Decal);
+    }
+
+    /**
+     * Redraw `source` into an offscreen through a Gaussian and wrap the result
+     * as a child shader. Drawn under an identity CTM, so `sigma` stays the
+     * device-px figure the handler measured.
+     */
+    private blurredCopy(source: CKImage, sigma: number): BuiltInput | null {
+        const ck = this.canvasKit;
+        const offscreen = this.activeSurface.makeSurface(this.activeSurface.imageInfo());
+        if (!offscreen) return null;
+
+        const canvas = offscreen.getCanvas();
+        canvas.clear(ck.TRANSPARENT);
+        const paint = new ck.Paint();
+        // Clamp: the blur must not darken toward the edges of the surface, which
+        // Decal would do by pulling transparency in from beyond them.
+        const blur = sigma > 0 ? ck.ImageFilter.MakeBlur(sigma, sigma, ck.TileMode.Clamp, null) : null;
+        if (blur) paint.setImageFilter(blur);
+        canvas.drawImage(source, 0, 0, paint);
+
+        blur?.delete();
+        paint.delete();
+        return this.wrapOffscreen(offscreen, ck.TileMode.Clamp);
+    }
+
+    /**
+     * Snapshot an offscreen and wrap it as a child shader, with a disposer that
+     * frees the three objects in the order the rest of this file uses: the
+     * shader first, then what backs it.
+     */
+    private wrapOffscreen(offscreen: Surface, tile: TileMode): BuiltInput {
+        const ck = this.canvasKit;
+        const image = offscreen.makeImageSnapshot();
+        const shader = image.makeShaderOptions(tile, tile, ck.FilterMode.Linear, ck.MipmapMode.None);
+        return {
+            shader,
+            dispose: () => {
+                shader.delete();
+                image.delete();
+                offscreen.delete();
+            },
+        };
     }
 
     /**

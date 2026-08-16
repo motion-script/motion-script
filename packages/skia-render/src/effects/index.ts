@@ -39,6 +39,7 @@ export { streakEffectHandler } from "./streak";
 export { godRaysEffectHandler } from "./god-rays";
 export { oilPaintEffectHandler } from "./oil-paint";
 export { textureEffectHandler } from "./texture";
+export { glassEffectHandler } from "./glass";
 export { GlyphAtlasCache, atlasCell, atlasGlyphCount } from "./glyph-atlas";
 export type { GlyphAtlas, GlyphAtlasSpec } from "./glyph-atlas";
 export { skslEffectHandler } from "./sksl";

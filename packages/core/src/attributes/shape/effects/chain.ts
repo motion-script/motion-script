@@ -494,6 +494,35 @@ export interface TrailsOptions extends EffectOptions {
     blend?: BlendMode;
 }
 
+/**
+ * Bevelled glass over the backdrop. Scalar shorthand sets `refraction`.
+ *
+ * Every amount is 0–100 rather than a pixel figure — the renderer scales each
+ * against the node's own size, so the same numbers read the same on a chip and
+ * on a full-bleed panel (see {@link GlassEffect}). All five default to 100 and
+ * the light to `0°` at full intensity, matching Figma's own defaults, so a bare
+ * `FX.glass()` is the effect as a designer coming from Figma expects it.
+ *
+ * Defaults to `{ mode: 'backdrop' }`; there is nothing to refract in a node's
+ * own paint, so the foreground is a no-op.
+ */
+export interface GlassOptions extends EffectOptions {
+    /** Direction the light arrives from, in degrees clockwise from the right (default 0). */
+    lightAngle?: number;
+    /** 0–100 brightness of the specular rim (default 100). */
+    lightIntensity?: number;
+    /** 0–100 sideways pull along the edge normal (default 100). */
+    refraction?: number;
+    /** 0–100 how far inward the bevel reaches (default 100). */
+    depth?: number;
+    /** 0–100 spread between the R/G/B samples (default 100). */
+    dispersion?: number;
+    /** 0–100 blend toward a blurred backdrop (default 100). */
+    frost?: number;
+    /** 0–100 spread of the highlight — 0 a glint, 100 a rim wash (default 100). */
+    splay?: number;
+}
+
 /** Colour-depth reduction. Scalar shorthand sets `bits`. */
 export interface BitCrushOptions extends EffectOptions {
     /** Bits per channel when `palette` is `'none'`, 1–8 (default 3). */
@@ -1198,6 +1227,35 @@ export class EffectChain {
                 blend: o.blend ?? "screen",
             },
             o,
+        ));
+    }
+
+    /**
+     * Append bevelled glass — the backdrop refracted, dispersed and frosted
+     * through the node's silhouette, with a specular rim along the bevel.
+     *
+     * Like `magnify`, this reads what is painted *beneath* the node and is
+     * clipped to its outline, so the shape's own edges stay sharp. Unlike
+     * `displace` it needs no map: the bevel is derived from the silhouette
+     * itself, so it follows a rounded rect, an ellipse or a hand-drawn path
+     * equally.
+     *
+     * Defaults to `{ mode: 'backdrop' }`; pass `mode` explicitly to override.
+     */
+    glass(options?: number | GlassOptions) {
+        const o = scalarOptions(options, "refraction");
+        return this.append(withEffectOptions(
+            {
+                type: "glass" as const,
+                lightAngle: o.lightAngle ?? 0,
+                lightIntensity: o.lightIntensity ?? 100,
+                refraction: o.refraction ?? 100,
+                depth: o.depth ?? 100,
+                dispersion: o.dispersion ?? 100,
+                frost: o.frost ?? 100,
+                splay: o.splay ?? 100,
+            },
+            { mode: o.mode ?? "backdrop" },
         ));
     }
 

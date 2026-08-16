@@ -41,6 +41,7 @@ export type { TwirlEffect } from "./implementations/twirl";
 export type { ProgressiveBlurEffect, ProgressiveBlurShape } from "./implementations/progressive-blur";
 export type { KaleidoscopeEffect } from "./implementations/kaleidoscope";
 export type { TrailsEffect } from "./implementations/trails";
+export type { GlassEffect } from "./implementations/glass";
 export { ASCII_CHARSETS, resolveAsciiCharset } from "./implementations/ascii";
 
 /** Chainable effect builder API, chain class, and union input type. */
@@ -90,6 +91,7 @@ export type {
     ProgressiveBlurOptions,
     KaleidoscopeOptions,
     TrailsOptions,
+    GlassOptions,
 } from './chain';
 
 export type { EffectData, EffectMode, EffectSurface, EffectAxis, EffectOptions, ModedEffect } from './effect-data';

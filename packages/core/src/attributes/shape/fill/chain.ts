@@ -8,6 +8,8 @@ import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageCrop, ImageFit, ImageMatrix } from "./implementations/image";
 import type { Anchor } from "@/attributes/layout/anchor";
 import type { FractalNoiseFillProp } from "./implementations/fractal-noise";
+import type { DotGridFillProp } from "./implementations/dot-grid";
+import type { GridFillProp } from "./implementations/grid";
 import type { ShaderFillProp } from "./implementations/shader";
 import type { Graphics3D } from "@/render3d/graphics3d";
 
@@ -200,6 +202,46 @@ export class FillChain {
     stripe(options?: FillOptions & { gap?: number; strokeWidth?: number; angle?: number; color?: Color }) {
         const { gap, strokeWidth, angle, color, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'stripe' as const, gap, strokeWidth, angle, color }, common)]);
+    }
+
+    /**
+     * Append a dot-grid fill — a lattice of dots at a pixel pitch.
+     *
+     * Tween `offset` to drift the field under a shape that isn't moving; tween
+     * `spacing` or `radius` to breathe it.
+     *
+     * @example
+     * Fills.dotGrid({ radius: 1.5, spacing: 24, color: 'muted' })
+     */
+    dotGrid(options?: FillOptions & Omit<DotGridFillProp, 'type' | 'opacity' | 'blend'>) {
+        const { radius, spacing, offset, color, ...common } = options ?? {};
+        return new FillChain([...this.list, withOptions(
+            { type: 'dotGrid' as const, radius, spacing, offset, color },
+            common,
+        )]);
+    }
+
+    /**
+     * Append a grid fill — ruled lines dividing the shape into cells, with an
+     * optional finer ruling nested inside each one.
+     *
+     * Sized in divisions of the shape rather than in px (unlike {@link dotGrid}),
+     * so it holds its structure as the shape resizes.
+     *
+     * @example
+     * Fills.grid({ divisions: 8, subdivisions: 4, color: 'border' })
+     */
+    grid(options?: FillOptions & Omit<GridFillProp, 'type' | 'opacity' | 'blend'>) {
+        const {
+            divisions, subdivisions, offset, strokeWidth, subdivisionWidth, color, ...common
+        } = options ?? {};
+        return new FillChain([...this.list, withOptions(
+            {
+                type: 'grid' as const,
+                divisions, subdivisions, offset, strokeWidth, subdivisionWidth, color,
+            },
+            common,
+        )]);
     }
 
     /**

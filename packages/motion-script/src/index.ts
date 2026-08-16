@@ -373,6 +373,7 @@ export type {
     ProgressiveBlurOptions,
     KaleidoscopeOptions,
     TrailsOptions,
+    GlassOptions,
 } from '@motion-script/core';
 
 /**
@@ -451,6 +452,7 @@ export type {
     ProgressiveBlurShape,
     KaleidoscopeEffect,
     TrailsEffect,
+    GlassEffect,
 } from '@motion-script/core';
 
 // =============================================================

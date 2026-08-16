@@ -116,6 +116,20 @@ export interface FillRendererContext {
     clipFilterToShape: boolean;
 }
 
+/**
+ * One device pixel, expressed in the shape-local logical px a fill's shader
+ * works in — the coverage ramp width for a shader that antialiases its own
+ * edges (the dot-grid and grid fills).
+ *
+ * Reading the live scale rather than assuming 1 is what keeps such a fill sharp
+ * under camera zoom and at export scale: a fixed one-logical-px ramp spans many
+ * device pixels when zoomed in (a blurred edge) and less than one when zoomed
+ * out (a jagged one).
+ */
+export function featherPx(ctx: FillRendererContext): number {
+    return 1 / Math.max(ctx.getDeviceScale(), 0.0001);
+}
+
 export abstract class FillRenderer<T extends FillResolved = FillResolved> {
     /**
      * Configure `ctx.paint` for this fill and return true, or return false to be

@@ -41,6 +41,7 @@ import { twirlEffectHandler } from "./twirl";
 import { progressiveBlurEffectHandler } from "./progressive-blur";
 import { kaleidoscopeEffectHandler } from "./kaleidoscope";
 import { trailsEffectHandler } from "./trails";
+import { glassEffectHandler } from "./glass";
 import { exposureEffectHandler } from "../fills/filters/exposure";
 import { alphaEffectHandler } from "../fills/filters/alpha";
 import { colorMatrixEffectHandler } from "../fills/filters/color-matrix";
@@ -190,6 +191,7 @@ EffectRegistry.register(twirlEffectHandler);
 EffectRegistry.register(progressiveBlurEffectHandler);
 EffectRegistry.register(kaleidoscopeEffectHandler);
 EffectRegistry.register(trailsEffectHandler);
+EffectRegistry.register(glassEffectHandler);
 EffectRegistry.register(skslEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the

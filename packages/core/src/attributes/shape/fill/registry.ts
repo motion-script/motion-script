@@ -10,6 +10,8 @@ import { conicGradientFill } from "./implementations/conic-gradient";
 import { noiseFill } from "./implementations/noise";
 import { fractalNoiseFill } from "./implementations/fractal-noise";
 import { stripeFill } from "./implementations/stripe";
+import { dotGridFill } from "./implementations/dot-grid";
+import { gridFill } from "./implementations/grid";
 import { shaderFill } from "./implementations/shader";
 import { imageFill } from "./implementations/image";
 import { videoFill } from "./implementations/video";
@@ -36,6 +38,8 @@ const FILLS = new Map<string, FillData<FillResolved>>([
     ["noise", noiseFill as FillData<FillResolved>],
     ["fractalNoise", fractalNoiseFill as FillData<FillResolved>],
     ["stripe", stripeFill as FillData<FillResolved>],
+    ["dotGrid", dotGridFill as FillData<FillResolved>],
+    ["grid", gridFill as FillData<FillResolved>],
     ["shader", shaderFill as FillData<FillResolved>],
     ["image", imageFill as FillData<FillResolved>],
     ["video", videoFill as FillData<FillResolved>],

@@ -21,6 +21,9 @@ export type { FractalNoiseFillProp, FractalNoiseFillResolved, FractalNoiseBasis 
 export type { RadialGradientFillProp, RadialGradientFillResolved } from './implementations/radial-gradient';
 export type { ShaderFillProp, ShaderFillResolved, ShaderFillCoords, ShaderTexture } from './implementations/shader';
 export type { StripeFillProp, StripeFillResolved } from './implementations/stripe';
+export type { DotGridFillProp, DotGridFillResolved } from './implementations/dot-grid';
+export type { GridFillProp, GridFillResolved } from './implementations/grid';
+export { MINOR_WIDTH_RATIO } from './implementations/grid';
 export type { VideoFillProp, VideoFillResolved } from './implementations/video';
 export { resolveVideoTimestamp } from './implementations/video';
 export type { View3DFillProp, View3DFillResolved } from './implementations/view3d';

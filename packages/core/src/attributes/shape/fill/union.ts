@@ -32,6 +32,8 @@ import { FractalNoiseFillProp, FractalNoiseFillResolved } from "./implementation
 import { RadialGradientFillProp, RadialGradientFillResolved } from "./implementations/radial-gradient";
 import { ShaderFillProp, ShaderFillResolved } from "./implementations/shader";
 import { StripeFillProp, StripeFillResolved } from "./implementations/stripe";
+import { DotGridFillProp, DotGridFillResolved } from "./implementations/dot-grid";
+import { GridFillProp, GridFillResolved } from "./implementations/grid";
 import { VideoFillProp, VideoFillResolved } from "./implementations/video";
 import { View3DFillProp, View3DFillResolved } from "./implementations/view3d";
 import type { Graphics3D } from "@/render3d/graphics3d";
@@ -64,6 +66,8 @@ export type FillProp =
     | WithCommon<FractalNoiseFillProp>
     | WithCommon<ShaderFillProp>
     | WithCommon<StripeFillProp>
+    | WithCommon<DotGridFillProp>
+    | WithCommon<GridFillProp>
     | WithCommon<LinearGradientFillProp>
     | WithCommon<RadialGradientFillProp>
     | WithCommon<ConicGradientFillProp>
@@ -78,6 +82,8 @@ export type FillResolved =
     | WithCommon<FractalNoiseFillResolved>
     | WithCommon<ShaderFillResolved>
     | WithCommon<StripeFillResolved>
+    | WithCommon<DotGridFillResolved>
+    | WithCommon<GridFillResolved>
     | WithCommon<LinearGradientFillResolved>
     | WithCommon<RadialGradientFillResolved>
     | WithCommon<ConicGradientFillResolved>

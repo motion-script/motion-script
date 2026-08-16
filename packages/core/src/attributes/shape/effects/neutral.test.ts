@@ -59,6 +59,10 @@ const NEUTRAL: Record<string, () => EffectChain> = {
     // fold count of 1 — a tween from 1 segment would snap rather than ramp.
     kaleidoscope: () => Effects.kaleidoscope({ amount: 0 }),
     trails: () => Effects.trails({ echoes: 0 }),
+    // No bevel means no edge to refract or light along: every term the shader
+    // adds is scaled by the bevel falloff, so `depth: 0` passes the backdrop
+    // through untouched whatever the other six are set to.
+    glass: () => Effects.glass({ depth: 0 }),
     // Resolution-relative: inert only while the cell is finer than the pixel grid.
     pixelate: () => Effects.pixelate(1920),
     halftone: () => Effects.halftone({ size: 0.5 }),

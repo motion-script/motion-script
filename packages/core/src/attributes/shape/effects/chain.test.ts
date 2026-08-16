@@ -90,6 +90,30 @@ describe('FX builders', () => {
         ]);
     });
 
+    it('glass defaults every amount to 100 and runs on the backdrop', () => {
+        // The Figma defaults, verbatim: a bare `FX.glass()` is the effect a
+        // designer arriving from Figma expects, and backdrop is the only target
+        // it means anything on.
+        expect([...Effects.glass()]).toEqual([
+            {
+                type: 'glass',
+                lightAngle: 0,
+                lightIntensity: 100,
+                refraction: 100,
+                depth: 100,
+                dispersion: 100,
+                frost: 100,
+                splay: 100,
+                mode: 'backdrop',
+            },
+        ]);
+    });
+
+    it('glass lets mode be overridden like magnify does', () => {
+        const [effect] = [...Effects.glass({ depth: 40, mode: 'foreground' })];
+        expect(effect).toMatchObject({ type: 'glass', depth: 40, mode: 'foreground' });
+    });
+
     it('bloom takes intensity as the scalar', () => {
         expect([...Effects.bloom(2.5)]).toEqual([
             { type: 'bloom', threshold: 0.7, radius: 12, intensity: 2.5 },
@@ -466,6 +490,7 @@ describe('scalar shorthand', () => {
         ['blockDisplace', () => Effects.blockDisplace(30), () => Effects.blockDisplace({ amount: 30 })],
         ['bitCrush', () => Effects.bitCrush(2), () => Effects.bitCrush({ bits: 2 })],
         ['ascii', () => Effects.ascii(16), () => Effects.ascii({ size: 16 })],
+        ['glass', () => Effects.glass(60), () => Effects.glass({ refraction: 60 })],
     ])('%s(n) is identical to its options form', (_name, scalar, options) => {
         expect([...scalar()]).toEqual([...options()]);
     });

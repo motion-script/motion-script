@@ -46,6 +46,15 @@ export interface PrecompProgress {
     complete: boolean;
 }
 
+/**
+ * What every caller that doesn't ask for a view gets: the whole frame, 1:1.
+ *
+ * A shared frozen object rather than a literal, so the view effect's dependency
+ * on its fields is stable across renders for the overwhelming majority of
+ * players, which never pass `view` at all.
+ */
+const IDENTITY_VIEW = Object.freeze({ zoom: 1, x: 0, y: 0 });
+
 function precompProgressOf(result: { scenes: readonly { measured: boolean }[]; complete: boolean }): PrecompProgress {
     return {
         measuredScenes: result.scenes.filter(s => s.measured).length,
@@ -101,6 +110,38 @@ type Props = {
      * project's full resolution out of it.
      */
     renderScale?: number;
+    /**
+     * The canvas's own size in CSS pixels, when it is **not** the frame.
+     *
+     * Omitted — the default — the canvas is the frame: sized `viewport ×
+     * renderScale` and stretched over its box by CSS, which is what every export,
+     * thumbnail and plain player wants.
+     *
+     * Supplied, together with {@link view}, the canvas becomes a *window* onto the
+     * frame: it takes the size of the area it is being shown in, `renderScale`
+     * stops meaning "fraction of the project's resolution" and starts meaning
+     * plain device pixels per CSS pixel (i.e. `devicePixelRatio`), and only what
+     * is actually on screen is rasterized. That is what lets an editor zoom in
+     * without either going soft or paying for the whole frame at the zoomed
+     * resolution — see {@link view}.
+     *
+     * It re-creates the surface exactly as `renderScale` does, and for the same
+     * reason, so it wants the same treatment: quantize it and let it settle rather
+     * than driving it straight from a resize observer.
+     */
+    surfaceSize?: Size2D;
+    /**
+     * A pan and zoom applied to the render itself. Requires {@link surfaceSize}.
+     *
+     * `zoom` multiplies scene units; `x`/`y` offset the frame's centre in CSS
+     * pixels, positive `y` downwards — the same sign convention as a CSS
+     * translate, so a preview can hand over the pan it was already computing.
+     *
+     * Changing it costs a repaint and nothing else: no surface, no textures, no
+     * precomp. That is the point of it living here rather than in a CSS transform
+     * on the canvas, which cannot add resolution it was not rasterized with.
+     */
+    view?: { zoom: number; x: number; y: number };
     /** Scenes composed into a single timeline by an internal {@link Precomp}. */
     scenes: Scene[];
     /** Manifest describing the media assets referenced by `scenes`. */
@@ -225,6 +266,8 @@ export function MotionPlayer({
     fps,
     viewport,
     renderScale = 1,
+    surfaceSize,
+    view,
     scenes,
     assets,
     theme,
@@ -274,16 +317,44 @@ export function MotionPlayer({
     const renderScaleRef = useRef(renderScale);
     /** The live render context, so the resize effect can reach it after mount. */
     const renderContextRef = useRef<WebRenderContext | null>(null);
+
     /**
-     * The scale the current surface was actually built at.
+     * The canvas's backing store, in device pixels.
      *
-     * Compared against the prop rather than trusting the effect to fire once:
+     * `viewport × renderScale` in the default case, where the canvas *is* the
+     * frame. With {@link Props.surfaceSize} it is the viewing area instead, and
+     * `renderScale` is the display's pixel ratio rather than a fraction of the
+     * project's resolution — see that prop.
+     *
+     * Floored at 1 so a degenerate scale can't ask CanvasKit for a zero-sized
+     * surface, which fails the surface creation outright.
+     */
+    const bufferWidth = Math.max(1, Math.round((surfaceSize?.width ?? viewport.width) * renderScale));
+    const bufferHeight = Math.max(1, Math.round((surfaceSize?.height ?? viewport.height) * renderScale));
+
+    /**
+     * The view transform to draw with, and the frame to clip and anchor against.
+     *
+     * Both are only meaningful together (see {@link SkiaRenderContext.frame}), so
+     * they are resolved in one place: no `surfaceSize` means the canvas is the
+     * frame, and both revert to the identity behaviour every other caller gets.
+     */
+    const activeView = surfaceSize && view ? view : IDENTITY_VIEW;
+    const activeFrame = surfaceSize && view ? viewport : null;
+
+    /**
+     * What the current surface was actually built for.
+     *
+     * Compared against the props rather than trusting the effect to fire once:
      * the resize effect and the mount effect can both run in the same commit (a
      * scene edit that also changes the preview's size), and the mount already
-     * builds at the new scale â€” without this the resize effect would immediately
+     * builds at the new size â€” without this the resize effect would immediately
      * throw that surface away and build an identical one.
      */
-    const appliedScaleRef = useRef(renderScale);
+    const appliedSurfaceRef = useRef({ scale: renderScale, width: bufferWidth, height: bufferHeight });
+    /** Read by the mount effect, for the same reason as {@link renderScaleRef}. */
+    const viewRef = useRef(activeView);
+    const frameRectRef = useRef(activeFrame);
 
     // Keep callback/value refs current without touching them during render.
     useEffect(() => {
@@ -295,6 +366,8 @@ export function MotionPlayer({
         precompCacheRef.current = precompCache;
         precompProfileRef.current = precompProfile;
         renderScaleRef.current = renderScale;
+        viewRef.current = activeView;
+        frameRectRef.current = activeFrame;
     });
 
     useEffect(() => {
@@ -312,7 +385,13 @@ export function MotionPlayer({
         // `width`/`height` â€” React has already written those at this scale, so the
         // two agree from the first frame and nothing paints at the wrong ratio.
         renderContext.pixelRatio = renderScaleRef.current;
-        appliedScaleRef.current = renderScaleRef.current;
+        renderContext.view = viewRef.current;
+        renderContext.frame = frameRectRef.current;
+        appliedSurfaceRef.current = {
+            scale: renderScaleRef.current,
+            width: canvas.width,
+            height: canvas.height,
+        };
         renderContext.mount(canvas);
         renderContextRef.current = renderContext;
 
@@ -383,7 +462,8 @@ export function MotionPlayer({
     }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds]);
 
     /**
-     * Rebuild the surface when {@link Props.renderScale} changes.
+     * Rebuild the surface when the backing store changes â€” {@link Props.renderScale}
+     * or {@link Props.surfaceSize}.
      *
      * Separate from the mount effect on purpose: a scale change must cost one
      * surface, not a whole playback controller. Everything the controller owns â€”
@@ -405,8 +485,9 @@ export function MotionPlayer({
         const renderContext = renderContextRef.current;
         const canvas = canvasRef.current;
         if (!renderContext || !canvas) return;
-        if (appliedScaleRef.current === renderScale) return;
-        appliedScaleRef.current = renderScale;
+        const applied = appliedSurfaceRef.current;
+        if (applied.scale === renderScale && applied.width === bufferWidth && applied.height === bufferHeight) return;
+        appliedSurfaceRef.current = { scale: renderScale, width: bufferWidth, height: bufferHeight };
         renderContext.pixelRatio = renderScale;
         // `mount` detaches the old surface first, which also drops the storage
         // adapter's texture-backed images â€” they belong to the surface that made
@@ -414,7 +495,32 @@ export function MotionPlayer({
         // still images are raster-backed and survive.
         renderContext.mount(canvas);
         controller.repaint();
-    }, [controller, renderScale]);
+    }, [controller, renderScale, bufferWidth, bufferHeight]);
+
+    /**
+     * Apply {@link Props.view} â€” a repaint and nothing more.
+     *
+     * The whole reason the zoom lives in the render rather than in a CSS transform
+     * on the canvas is that this is all it costs. The surface, its textures, the
+     * precomp and the playhead are all indifferent to where the view is pointed,
+     * so panning and zooming an editor never touches any of them â€” which is a
+     * strict improvement on the arrangement it replaces, where zooming far enough
+     * to change `renderScale` rebuilt the surface and dropped every decoded video
+     * frame with it.
+     *
+     * Depends on the fields rather than the object so a caller passing a fresh
+     * `{zoom, x, y}` each render â€” which is every caller, since it is derived from
+     * a gesture â€” doesn't repaint on renders where the view didn't actually move.
+     */
+    useEffect(() => {
+        if (!controller) return;
+        const renderContext = renderContextRef.current;
+        if (!renderContext) return;
+        renderContext.view = { zoom: activeView.zoom, x: activeView.x, y: activeView.y };
+        renderContext.frame = activeFrame;
+        controller.repaint();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [controller, activeView.zoom, activeView.x, activeView.y, activeFrame?.width, activeFrame?.height]);
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
@@ -509,15 +615,40 @@ export function MotionPlayer({
                 ref={canvasRef}
                 // The backing store, in device pixels. CSS below stretches it back
                 // over the whole box either way, so this is purely how much gets
-                // rasterized â€” see {@link Props.renderScale}. Floored at 1 so a
-                // degenerate scale can't ask CanvasKit for a zero-sized surface,
-                // which fails the surface creation outright.
-                width={Math.max(1, Math.round(viewport.width * renderScale))}
-                height={Math.max(1, Math.round(viewport.height * renderScale))}
+                // rasterized â€” see {@link Props.renderScale} and
+                // {@link Props.surfaceSize}.
+                width={bufferWidth}
+                height={bufferHeight}
                 style={{
                     display: isInitialized && controller ? "block" : "none",
-                    width: "100%",
-                    height: "100%",
+                    ...(surfaceSize
+                        ? {
+                              // `surfaceSize` is the canvas's CSS size, so it is
+                              // honoured literally rather than stretched to the
+                              // box: it is quantized by its caller (a canvas
+                              // rebuilt on every pixel of a panel drag is a
+                              // dropped texture set per pixel), which means it is
+                              // usually a little larger than the box and rarely
+                              // the same shape. Stretched, that difference would
+                              // land as a non-uniform scale â€” a picture squashed
+                              // on one axis, which is a far worse artefact than
+                              // the softness this whole arrangement exists to
+                              // remove.
+                              //
+                              // Centred, so the surface's midpoint is the box's
+                              // midpoint. `executePass` puts the scene origin at
+                              // the centre of the surface, so this is what makes
+                              // the frame land where the caller's own layout says
+                              // it is; the spare pixels hang off all four edges
+                              // and are clipped by whatever is holding this.
+                              position: "absolute",
+                              left: "50%",
+                              top: "50%",
+                              width: `${surfaceSize.width}px`,
+                              height: `${surfaceSize.height}px`,
+                              transform: "translate(-50%, -50%)",
+                          }
+                        : { width: "100%", height: "100%" }),
                 }}
             />
         </div>

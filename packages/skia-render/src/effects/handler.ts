@@ -114,6 +114,51 @@ export interface EffectResources {
 }
 
 /**
+ * Extra child shaders a backdrop effect wants the renderer to rasterise for it,
+ * each given as a blur sigma in **device px** (0 means no blur). An omitted
+ * entry is not built at all.
+ *
+ * Both are things a handler cannot make on its own: one needs the clip path the
+ * canvas has already swallowed, the other needs the source as an *image* where
+ * `makeShader` is only handed a shader.
+ */
+export interface RenderInputRequest {
+    /**
+     * The node's outline, rasterised white-on-transparent in device space.
+     *
+     * A backdrop snapshot covers the whole surface at full alpha, so an effect
+     * running there cannot tell where the node *is*. Clipping the result to the
+     * outline afterwards bounds the effect but does not shape it; this is how
+     * the shape itself gets in.
+     *
+     * The sigma is how a **distance field** arrives. A Gaussian over a filled
+     * shape reads 0.5 exactly on the edge and climbs to 1 about 2σ inside, so
+     * the mask's alpha is a smooth signed distance near the boundary and its
+     * gradient is the edge normal — a distance transform for the price of one
+     * blur, and one that follows any silhouette (a rounded rect, an ellipse, a
+     * hand-drawn path) where an analytic SDF would have to be written per shape.
+     */
+    silhouette?: number;
+
+    /**
+     * A pre-blurred copy of the same source `content` wraps.
+     *
+     * Blurring in the lens shader instead means a disc of taps per fragment,
+     * and a disc cheap enough to run per fragment ghosts anything with a hard
+     * edge in it — a Gaussian worth the name is separable and needs two passes.
+     * One offscreen with a real blur on it is both cheaper and better, which is
+     * why this is the renderer's job rather than the shader's.
+     */
+    blurredSource?: number;
+}
+
+/** The shaders {@link RenderInputRequest} asked for, by name. */
+export interface RenderInputShaders {
+    silhouette?: Shader;
+    blurredSource?: Shader;
+}
+
+/**
  * How one effect type is realised against CanvasKit.
  *
  * A handler declares one or both capabilities, and the **call site** picks which
@@ -148,6 +193,8 @@ export interface EffectHandler<T extends RenderEffect = any> {
      * @param extra   whatever {@link resources} produced, in the same order, or
      *                an empty array. Pass these to `makeShaderWithChildren`
      *                *after* `content` so the SkSL child order lines up.
+     * @param built   whatever {@link renderInputs} asked for, by name. Empty on
+     *                the foreground path, which does not honour that hook.
      */
     makeShader?(
         effect: T,
@@ -155,7 +202,20 @@ export interface EffectHandler<T extends RenderEffect = any> {
         content: Shader,
         geom: EffectGeometry,
         extra?: readonly Shader[],
+        built?: RenderInputShaders,
     ): Shader | null;
+
+    /**
+     * Ask the renderer to build the inputs an effect cannot build for itself —
+     * see {@link RenderInputRequest}. Handed to {@link makeShader} as `built`,
+     * by name, so there is no index to keep in step with {@link resources}.
+     *
+     * Honoured on the **backdrop** path only. A foreground effect already has
+     * everything both entries offer: its content snapshot's alpha *is* the
+     * silhouette (see `outline`), and it can pre-blur nothing the ImageFilter
+     * chain could not have blurred first.
+     */
+    renderInputs?(effect: T, geom: EffectGeometry): RenderInputRequest | null;
 
     /**
      * Bake the extra textures this effect samples besides its source, as child

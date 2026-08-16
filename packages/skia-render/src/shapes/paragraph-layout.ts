@@ -324,13 +324,42 @@ export function layoutTextBlock(
     const laid = layOutParagraph(canvasKit, fontMgr, [segment], opts);
     const { paragraph, builder, fontCollection, blockWidth, blockHeight, shiftX, shiftY } = laid;
 
+    const text = segment.text;
+    const lineMetrics = paragraph.getLineMetrics();
     const lines: TextBlockLine[] = [];
-    for (const metrics of paragraph.getLineMetrics()) {
-        // `endIndex` of the three Skia reports is the one a caret wants: it keeps
-        // trailing spaces (you can put a cursor after them) but drops the newline
-        // (that slot belongs to the next line's start, not this line's end).
-        const start = metrics.startIndex;
-        const end = Math.max(start, metrics.endIndex);
+    // Where the line being read begins. Tracked rather than taken from each
+    // line's own `startIndex`, for the reason spelled out below.
+    let cursor = 0;
+    for (let n = 0; n < lineMetrics.length; n++) {
+        const metrics = lineMetrics[n];
+        const start = cursor;
+        // Skia reports three ends per line and they disagree about what a line
+        // contains — `endExcludingWhitespaces` drops trailing spaces a cursor is
+        // entitled to sit after, and `endIndex` was assumed to drop the hard
+        // break but does not: for `"abc\n"` it comes back as 4, and the trailing
+        // empty line is then reported as *starting* at 3. Two lines that overlap
+        // like that make the caret array write index 3 twice — once as the end of
+        // line one, once as the empty line's only slot — so the cursor after a
+        // newline landed at the right-hand end of the text it had just left.
+        //
+        // So the ranges are derived rather than read: the largest end still
+        // inside the text says where the *next* line starts, the running cursor
+        // says where this one did, and the hard break is put back on neither side
+        // by looking at the character itself. A soft wrap keeps its trailing
+        // space, which is the behaviour that was wanted all along.
+        const next = n === lineMetrics.length - 1
+            ? text.length
+            : Math.min(
+                text.length,
+                Math.max(
+                    start,
+                    metrics.endIncludingNewline,
+                    metrics.endIndex,
+                    metrics.endExcludingWhitespaces,
+                ),
+            );
+        const end = next > start && text[next - 1] === "\n" ? next - 1 : next;
+        cursor = next;
         const top = metrics.baseline - metrics.ascent + shiftY;
         const bottom = metrics.baseline + metrics.descent + shiftY;
 
@@ -340,9 +369,17 @@ export function layoutTextBlock(
         }
         // One more slot after the last character — the position a cursor sits in
         // at end of line, which no character's leading edge describes.
+        //
+        // An empty line has no character to measure against at all, and asking
+        // for the rect of one past the end of the text answers nothing — which
+        // used to fall back to 0 and put the caret at the left of the layout box
+        // whatever the alignment said. The line box's own left edge is the
+        // answer: it is where this line's first glyph *would* start, already
+        // shifted by the alignment, which is exactly what a cursor on an empty
+        // line is pointing at.
         carets.push(end > start
             ? charEdge(paragraph, canvasKit, end - 1, true) + shiftX
-            : lineStartX(paragraph, canvasKit, start) + shiftX);
+            : metrics.left + shiftX);
 
         lines.push({ start, end, top, bottom, carets });
     }
@@ -372,21 +409,6 @@ function charEdge(
     const rect = rects[0]?.rect;
     if (!rect) return 0;
     return trailing ? rect[2] : rect[0];
-}
-
-/** x of the caret on an empty line — where its first character would have begun. */
-function lineStartX(
-    paragraph: LaidOutParagraph["paragraph"],
-    canvasKit: CanvasKit,
-    index: number,
-): number {
-    const rects = paragraph.getRectsForRange(
-        index,
-        index + 1,
-        canvasKit.RectHeightStyle.Max,
-        canvasKit.RectWidthStyle.Max,
-    );
-    return rects[0]?.rect[0] ?? 0;
 }
 
 // Find the segment whose character range [start, start+len) contains charPos.
