@@ -84,6 +84,18 @@ export class PlaybackController {
     /** Set by dispose(); once true the controller must never touch its (now-freed) render context again. */
     private disposed = false;
     /**
+     * Whether a frame has ever been drawn, which is what {@link repaint} waits
+     * for before it will draw one of its own.
+     *
+     * Set by the render passes rather than by the loads that precede them, and
+     * that is the point: every caller that reaches a render pass — a seek, a
+     * clock tick, a scene swap — has loaded the frame's assets first. `repaint`
+     * is the one caller that hasn't, so what this really records is "somebody who
+     * loads has been through here", after which repainting the same frame is
+     * safe. See {@link repaint} for what went wrong without it.
+     */
+    private hasPainted = false;
+    /**
      * Monotonic token bumped by every seek / tick / seekWhilePlaying. A render
      * pass captures it at entry and, after each await, bails before painting if a
      * newer pass has begun â€” so a superseded seek (parked on loadAt /
@@ -393,6 +405,7 @@ export class PlaybackController {
         // After the generators, before layout: an override must beat whatever the
         // scene evaluated to, and be visible to the layout pass that follows.
         this.applyOverrides();
+        this.hasPainted = true;
         try {
             this.stateEvaluator.layout(this.measureScope);
             this.renderContext.execute(() => {
@@ -402,6 +415,12 @@ export class PlaybackController {
             // Reported rather than rethrown — see `captureRenderError`. Layout is
             // inside the guard too: a missing font throws while *measuring*, which
             // is the same failure arriving one phase earlier.
+            //
+            // This guard was decorative until recently: the Skia context's
+            // `execute` was `async` while the abstract declares `: void`, so a
+            // draw's throw left as a rejected promise no caller could see and
+            // every draw-time failure reached the console as an unhandled
+            // rejection instead of the errors panel. It is synchronous now.
             this.captureRenderError(error);
         }
     }
@@ -422,6 +441,7 @@ export class PlaybackController {
         const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled, this.replayBudgetMs);
         if (!reached || this.disposed || isCancelled?.()) return false;
         this.applyOverrides();
+        this.hasPainted = true;
         try {
             this.stateEvaluator.layout(this.measureScope);
             this.renderContext.execute(() => {
@@ -760,8 +780,28 @@ export class PlaybackController {
      * Re-lay-out and repaint the current frame without re-running any generator.
      * Cheap enough for a pointer-rate drag loop: `stateAt` early-returns for the
      * frame that is already current, so this is layout + draw only.
+     *
+     * **Does nothing before the first frame has been drawn**, and that guard is
+     * the same principle {@link replaceScene} states at length: do not paint a
+     * frame whose assets have not been loaded — keep showing the last complete
+     * one. Before any frame exists, the last complete one is a blank surface,
+     * which is exactly what should stay up.
+     *
+     * Without it, a host that mounts a controller and then adjusts the surface or
+     * the view — which every editor does on mount, as soon as its container
+     * measures — repainted in the window between the controller being built and
+     * its initial `seek` loading anything. Every scene holding a media fill drew
+     * a frame it had no pixels for and threw {@link AssetNotLoadedError} on open,
+     * about an asset that was loading perfectly well and would be on screen a
+     * moment later. Nothing was gained by that paint: the seek already in flight
+     * is the first real frame, and it lands with its media.
+     *
+     * Repaints *after* that are the ones this method is for — a rebuilt surface
+     * starts blank, and a paused editor would otherwise sit black until something
+     * moved — and they are unaffected.
      */
     repaint(): void {
+        if (!this.hasPainted) return;
         this.renderAt(this.stateEvaluator.currentFrame);
     }
 

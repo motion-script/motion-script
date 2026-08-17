@@ -568,14 +568,22 @@ export abstract class SkiaRenderContext extends RenderContext {
         // SkiaAssets.claimVideoFrame).
         this.storageAdapter.beginRenderPass();
 
+        // `finally`, because a draw can throw — reaching for an asset that isn't
+        // loaded is the designed way for one to fail (`AssetNotLoadedError`), and
+        // the controller reports those rather than rethrowing. Without this the
+        // pass would unwind having left `isRendering` set and the canvas one
+        // `save()` deep, so the *next* frame would draw inside the abandoned
+        // frame's clip and transform. A reported error would have quietly
+        // corrupted every frame after it.
         this.isRendering = true;
-        callback();
-        this.isRendering = false;
-
-        view3D?.sweep();
-
-        this.currentCanvas.restore();
-        this.surface.flush();
+        try {
+            callback();
+        } finally {
+            this.isRendering = false;
+            view3D?.sweep();
+            this.currentCanvas.restore();
+            this.surface.flush();
+        }
     }
 
     begin(state: NodeRenderState): void {
@@ -644,9 +652,20 @@ export abstract class SkiaRenderContext extends RenderContext {
         super.dispose();
     }
 
-    /** Runs one synchronous draw pass (`callback`) against the mounted surface. */
-    async execute(callback: () => void): Promise<void> {
-        await this.executePass(callback);
+    /**
+     * Runs one synchronous draw pass (`callback`) against the mounted surface.
+     *
+     * **Synchronous**, like the `RenderContext.execute` it implements and like
+     * every other implementation of it. It used to be `async` — awaiting a
+     * `void` — and the difference was not cosmetic: an `async` method turns
+     * everything the draw throws into a *rejected promise*, and the abstract
+     * declares `: void`, so no caller could see the promise to handle it. The
+     * playback controller wraps this call in a `try`/`catch` that reports render
+     * errors into the errors panel, and that guard was catching nothing at all;
+     * a missing image surfaced as an unhandled rejection in the console instead.
+     */
+    execute(callback: () => void): void {
+        this.executePass(callback);
     }
 
     /**

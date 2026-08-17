@@ -515,6 +515,27 @@ describe('PlaybackController – direct manipulation', () => {
         expect(controller.currentFrame).toBe(4);
     });
 
+    // A host adjusts the surface and the view the moment its container measures,
+    // which is before the mount seek has loaded anything. Painting there drew a
+    // frame with no pixels behind its media fills — an AssetNotLoadedError on
+    // open, about an asset that was loading fine. The seek in flight is the first
+    // real frame; there is nothing for a repaint to preserve until it lands.
+    it('repaint draws nothing until a frame has been rendered', async () => {
+        const { controller, rc } = makeRealController();
+        expect(rc.renderCount).toBe(0);
+
+        controller.repaint();
+        controller.repaint();
+
+        expect(rc.renderCount).toBe(0);
+
+        // …and it goes back to painting the moment a real frame has landed.
+        await controller.seek(0);
+        const after = rc.renderCount;
+        controller.repaint();
+        expect(rc.renderCount).toBe(after + 1);
+    });
+
     it('an override on a stale path is silently ignored', async () => {
         const { controller } = makeRealController();
         await controller.seek(0);

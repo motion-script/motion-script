@@ -168,7 +168,7 @@ async function renderWarmFrame(
     draw: () => void,
 ): Promise<void> {
     for (let pass = 0; pass < WARM_PASSES; pass++) {
-        await renderContext.execute(draw);
+        renderContext.execute(draw);
         if (!(await storageAdapter.warmPendingVideo())) break;
     }
 }
