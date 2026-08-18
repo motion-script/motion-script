@@ -247,18 +247,56 @@ export class Latex extends ShapeNode<LatexProps> {
     }
 
     protected renderSelf(ctx: RenderContext): void {
+        this.eachToken(ctx, (graphics, opacity) => graphics
+            .fill(scaleFillopacity(this.fill as FillResolved[], opacity))
+            .stroke(this.stroke).shadow(this.shadow));
+    }
+
+    /**
+     * The overlay, painted *through* the glyphs.
+     *
+     * `ShapeNode`'s inherited overlay pass fills whatever {@link
+     * ShapeNode.shapeGraphics} describes, and this node describes nothing there:
+     * a formula has no single fillable silhouette — its silhouette *is* the list
+     * of token paths, which is why `renderSelf` is overridden rather than a
+     * `shapeGraphics` supplied. So the generic pass drew nothing and an overlay
+     * set on a LaTeX node simply never appeared, with no error to say why.
+     *
+     * Painted the same way the fill is: one `Graphics` per token, all sharing the
+     * centre frame, each scaled by its token's animated opacity — so a morph
+     * carries the overlay along with the glyph it is laid over instead of leaving
+     * a wash hanging over glyphs that have faded out.
+     *
+     * The stroke is *not* re-drawn here. `renderSelf` already strokes each token
+     * (there is no silhouette for the deferred {@link ShapeNode.renderStroke} to
+     * outline), so it is painted under the overlay rather than over it — the one
+     * place this node's draw order differs from a plain shape's, and the price of
+     * a stroke that follows glyphs rather than a box.
+     */
+    protected override renderOverlay(ctx: RenderContext): void {
+        const overlay = this.overlay as FillResolved[];
+        if (overlay.length === 0) return;
+        this.eachToken(ctx, (graphics, opacity) => graphics.fill(scaleFillopacity(overlay, opacity)));
+    }
+
+    /**
+     * Draws every visible token's path once, handing each one to `paint` to have
+     * its paint ops appended.
+     *
+     * A fresh `Graphics` per token per pass, because `.fill()`/`.stroke()` push
+     * onto one op list and return `this` — a silhouette shared between the fill
+     * pass and the overlay pass would accumulate both.
+     */
+    private eachToken(ctx: RenderContext, paint: (graphics: Graphics, opacity: number) => Graphics): void {
         for (const token of this._tokens) {
             if (token.opacity <= 0) continue;
-
-            // Scale each token's fill opacity by the token's animated opacity
-            const scaledFill = scaleFillopacity(this.fill as FillResolved[], token.opacity);
 
             // Translate the path by token's interpolated position offset
             const pathStr = token.x !== 0 || token.y !== 0
                 ? toPathString(offsetPath(token.path, token.x, token.y))
                 : toPathString(token.path);
 
-            ctx.draw(new Graphics()
+            ctx.draw(paint(new Graphics()
                 .path({
                     data: pathStr,
                     start: this.start,
@@ -267,9 +305,7 @@ export class Latex extends ShapeNode<LatexProps> {
                     // layout — without this each glyph centers on its own bbox and
                     // they all stack on the origin.
                     centerBounds: this._bounds,
-                })
-                .fill(scaledFill)
-                .stroke(this.stroke).shadow(this.shadow));
+                }), token.opacity));
         }
     }
 }
