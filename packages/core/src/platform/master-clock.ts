@@ -4,7 +4,14 @@ export type TickCallback = (time: number) => Promise<void>;
 /** Fired when playback starts. Receives the time at which playback began, the playback speed multiplier, and whether playback is reversed. */
 export type PlayCallback = (time: number, speed: number, reverse: boolean) => void;
 
-/** Fired whenever the playhead position changes. */
+/**
+ * Fired when the playhead reaches a new frame.
+ *
+ * Once per frame, not once per animation frame — see
+ * {@link MasterClock.setCurrentTime}. A subclass advancing its clock faster than
+ * the project's frame rate (which every rAF-driven one does on a high-refresh
+ * display) keeps the extra positions to itself.
+ */
 export type TimeCallback = (time: number) => void;
 
 /**
@@ -45,10 +52,27 @@ export abstract class MasterClock {
         this._duration = duration;
     }
 
-    /** Updates the playhead and notifies time listeners. No-ops if the time hasn't changed. */
-    protected setCurrentTime(t: number): void {
+    /**
+     * Updates the playhead and notifies time listeners. No-ops if the time hasn't
+     * changed.
+     *
+     * `notify` exists because the two halves of that sentence want different
+     * rates. The playhead itself has to be exact — `pause` and `play` anchor
+     * their elapsed-time maths on it, so it is advanced on every frame of the
+     * subclass's loop — while a *listener* is a host drawing a timecode or
+     * seeking a renderer, and neither can do anything with a position that has
+     * not reached the next frame yet.
+     *
+     * Passing `false` therefore keeps the clock exact and the subscribers quiet.
+     * A subclass that knows its frame rate uses it to fire {@link onTime} once
+     * per frame rather than once per animation frame; on a 144Hz display those
+     * are not the same number, and the difference was landing on hosts as a React
+     * render per refresh to drive a 60fps render.
+     */
+    protected setCurrentTime(t: number, notify: boolean = true): void {
         if (this._currentTime === t) return;
         this._currentTime = t;
+        if (!notify) return;
         for (const cb of this.timeCallbacks) cb(t);
     }
 

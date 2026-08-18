@@ -108,16 +108,25 @@ export class WebMasterClock extends MasterClock {
                 ? this.seekOffset - elapsed
                 : this.seekOffset + elapsed;
             const clamped = Math.max(0, Math.min(next, this.duration));
-            this.setCurrentTime(clamped);
+            const ended = this.reverse ? clamped <= 0 : clamped >= this.duration;
+            // Whether this animation frame has carried the playhead onto a new
+            // *scene* frame. This loop runs at the display's refresh rate, which
+            // on a 120 or 144Hz panel is two or three times the rate anything is
+            // rendered at — so the clock advances every time round (the elapsed
+            // maths in `play`/`pause` depend on it being exact) while listeners
+            // hear about it once per frame. The end of the run always reports,
+            // whether or not it landed on a boundary, or the final position would
+            // never reach a host. See `MasterClock.setCurrentTime`.
+            const crossed = Math.abs(clamped - lastTickTime) >= frameDt;
+            this.setCurrentTime(clamped, crossed || ended);
 
-            if (Math.abs(clamped - lastTickTime) >= frameDt) {
+            if (crossed) {
                 lastTickTime = clamped;
                 // Await so that a slow tick (asset load on a scene
                 // boundary) doesn't queue a second concurrent tick.
                 await this.tick();
             }
 
-            const ended = this.reverse ? clamped <= 0 : clamped >= this.duration;
             if (ended) {
                 this.rafId = null;
                 return;

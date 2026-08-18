@@ -291,8 +291,6 @@ export function MotionPlayer({
     const onLoadingChangeRef = useRef(onLoadingChange);
     /** Monotonic seek id; only the latest may clear the loading flag. */
     const seekTokenRef = useRef(0);
-    // Force a re-render on each time tick; the value itself is unused.
-    const [, setC] = useState(0);
     const initialFrameRef = useRef(initialFrame);
     const onFrameChangeRef = useRef(onFrameChange);
     const onBuildErrorsRef = useRef(onBuildErrors);
@@ -437,9 +435,16 @@ export function MotionPlayer({
             onBuildErrorsRef.current?.(errors);
         };
 
+        // Report the frame and nothing else. There used to be a `setC(t)` here —
+        // a state write whose value was never read, existing only to force this
+        // component to re-render on every tick. Nothing in the render depends on
+        // the playhead: the frame is painted by the controller straight onto the
+        // canvas, and React is not involved in it. So the render it forced did no
+        // work, but it did drag every host that lists this component's subtree
+        // through a reconcile at clock rate — which on a high-refresh display was
+        // faster than the project's own frame rate.
         pc.onTime((t: number) => {
             onFrameChangeRef.current?.(Math.trunc(t * fps));
-            setC(t);
         });
         controllerRef.current = pc;
         setController(pc);
