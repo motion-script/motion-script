@@ -16,9 +16,9 @@ export type ProgressiveBlurShape = "linear" | "radial";
 /**
  * Blur whose radius *ramps* across the node instead of being uniform.
  *
- * A plain blur is a constant; this interpolates from sharp to `radius` between
- * `start` and `end` along the ramp, which is what makes content appear to
- * dissolve into softness rather than simply being out of focus.
+ * A plain blur is a constant; this interpolates from `startRadius` to `radius`
+ * between `start` and `end` along the ramp, which is what makes content appear
+ * to dissolve into softness rather than simply being out of focus.
  *
  * **In `mode: 'backdrop'` this is the frosted panel with a falloff** — the
  * translucent bar whose blur fades out at its edge instead of stopping at a hard
@@ -32,6 +32,16 @@ export interface ProgressiveBlurEffect extends ModedEffect {
     type: "progressiveBlur";
     /** Blur spread in px at the far end of the ramp. 0 = off. */
     radius: number;
+    /**
+     * Blur spread in px at the *near* end of the ramp — where the ramp begins,
+     * rather than where it arrives.
+     *
+     * `0` (the default, and what this effect did before the field existed) means
+     * the ramp starts from sharp. A non-zero value ramps between two softnesses
+     * instead of out of one, which is what a depth-of-field falloff actually
+     * looks like: the near field is rarely perfectly sharp either.
+     */
+    startRadius: number;
     /** How the ramp is laid out. */
     shape: ProgressiveBlurShape;
     /** 0–1 position along the ramp where the blur starts building. */
@@ -50,6 +60,7 @@ export const progressiveBlurEffect: EffectData<ProgressiveBlurEffect> = {
     lerp: (from, to, t) => ({
         type: "progressiveBlur",
         radius: lerpNumber(from.radius, to.radius, t),
+        startRadius: lerpNumber(from.startRadius, to.startRadius, t),
         shape: t < 0.5 ? from.shape : to.shape,
         start: lerpNumber(from.start, to.start, t),
         end: lerpNumber(from.end, to.end, t),
@@ -62,6 +73,7 @@ export const progressiveBlurEffect: EffectData<ProgressiveBlurEffect> = {
     }),
     equals: (a, b) =>
         a.radius === b.radius &&
+        a.startRadius === b.startRadius &&
         a.shape === b.shape &&
         a.start === b.start &&
         a.end === b.end &&

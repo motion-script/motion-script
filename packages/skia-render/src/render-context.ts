@@ -1965,7 +1965,18 @@ export abstract class SkiaRenderContext extends RenderContext {
         // the content still has to be painted back — dropping it here would make
         // a neutral effect erase the node, which is exactly the state every
         // "animate the effect on from nothing" tween starts in.
-        this.paintShaderInDeviceSpace(lens ?? content, m);
+        // `clip`: confine the effect to the silhouette it was handed. The
+        // snapshot *is* the node's own content, so blending the lens into it with
+        // SrcIn keeps only the part of the effect that lands where the node
+        // already had alpha — the shader-path twin of `EffectRegistry.compose`'s
+        // ImageFilter clip, and the reason the flag means the same thing whether
+        // an effect composes as a filter or resamples through a shader.
+        const clipped =
+            lens != null && (effect as { clip?: boolean }).clip === true
+                ? ck.Shader.MakeBlend(ck.BlendMode.SrcIn, content, lens)
+                : null;
+        this.paintShaderInDeviceSpace(clipped ?? lens ?? content, m);
+        clipped?.delete();
         lens?.delete();
         content.delete();
         snapshot.delete();

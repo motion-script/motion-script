@@ -81,6 +81,25 @@ export function sameEffectColor(a: Color, b: Color): boolean {
  */
 export interface ModedEffect {
     mode?: EffectMode;
+    /**
+     * Confine the effect's output to the alpha it was handed — the node's own
+     * silhouette, rather than the rectangle its bleed would otherwise fill.
+     *
+     * Off (the default) a blur, bloom, outline or streak spreads *past* the
+     * content that produced it, which is usually the point. On, the effect is
+     * clipped back into the shape: a bloom that lights the node without
+     * haloing the page around it, a blur that softens a fill without fraying its
+     * edge — Figma's "clip content" applied to the effect rather than the layer.
+     *
+     * Honoured on both render paths — `EffectRegistry.compose` clips an
+     * ImageFilter chain per effect, and `resolveForegroundCapture` blends a
+     * shader effect's lens into the content it was given — so the flag means the
+     * same thing whichever way an effect happens to be realised.
+     *
+     * Redundant in `mode: 'backdrop'`, where the effect is already confined to
+     * the node's silhouette by definition.
+     */
+    clip?: boolean;
 }
 
 /**
@@ -102,7 +121,7 @@ export type EffectOptions = ModedEffect;
  * `TEXT_STYLE_KEYS`), and `withEffectOptions` iterates it rather than naming
  * fields, so adding an option here is the only edit needed.
  */
-export const EFFECT_OPTION_KEYS = ["mode"] as const satisfies readonly (keyof EffectOptions)[];
+export const EFFECT_OPTION_KEYS = ["mode", "clip"] as const satisfies readonly (keyof EffectOptions)[];
 
 /**
  * Merge cross-cutting options onto a built effect, **skipping undefined keys**.
@@ -116,7 +135,10 @@ export function withEffectOptions<T extends object>(base: T, options?: EffectOpt
     if (!options) return out;
     for (const key of EFFECT_OPTION_KEYS) {
         const value = options[key];
-        if (value !== undefined) out[key] = value;
+        // Indexed write through a widened view: the keys no longer share one
+        // value type (`mode` is an EffectMode, `clip` a boolean), so `out[key]`
+        // narrows to their intersection — `never` — under a union key.
+        if (value !== undefined) (out as Record<string, unknown>)[key] = value;
     }
     return out;
 }

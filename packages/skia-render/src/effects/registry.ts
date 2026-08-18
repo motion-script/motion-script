@@ -98,6 +98,25 @@ function assertSurfaceAgrees(handler: EffectHandler): void {
  * only in which method they implement, and the *call site* already knows which
  * it wants.
  */
+/**
+ * Confine one effect's output to the alpha it was handed — see
+ * {@link ModedEffect.clip}.
+ *
+ * `MakeBlend(mode, background, foreground)` composites foreground over
+ * background; a `null` input means *this filter's own source*, i.e. the content
+ * as it arrived at this link in the chain. So `SrcIn` with the source as the
+ * background keeps the effect's output only where that content already had
+ * alpha, which is exactly "don't spread past the shape".
+ *
+ * Applied per effect rather than once around the whole chain, because that is
+ * what the flag means: a blur marked clip stays inside the shape even when a
+ * later un-clipped bloom is free to spill out of it.
+ */
+function clipToSource(filter: any, effect: RenderEffect, ck: CanvasKit): any {
+    if (filter == null || (effect as { clip?: boolean }).clip !== true) return filter;
+    return ck.ImageFilter.MakeBlend(ck.BlendMode.SrcIn, null, filter) ?? filter;
+}
+
 export const EffectRegistry = {
     register(handler: EffectHandler): void {
         assertSurfaceAgrees(handler);
@@ -127,7 +146,7 @@ export const EffectRegistry = {
     compose(effects: readonly RenderEffect[], ck: CanvasKit, geom: EffectGeometry): any | null {
         let composed: any = null;
         for (const effect of effects) {
-            const filter = this.makeImageFilter(effect, ck, geom);
+            const filter = clipToSource(this.makeImageFilter(effect, ck, geom), effect, ck);
             if (filter == null) continue;
             composed = composed === null ? filter : ck.ImageFilter.MakeCompose(filter, composed);
         }

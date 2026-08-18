@@ -454,6 +454,8 @@ export interface TwirlOptions extends EffectOptions {
 export interface ProgressiveBlurOptions extends EffectOptions {
     /** Blur spread in px at the far end of the ramp (default 24). */
     radius?: number;
+    /** Blur spread in px at the near end of the ramp (default 0, i.e. sharp). */
+    startRadius?: number;
     /** Ramp layout (default `'linear'`). */
     shape?: ProgressiveBlurShape;
     /** 0–1 where the blur starts building (default 0). */
@@ -1180,6 +1182,9 @@ export class EffectChain {
             {
                 type: "progressiveBlur" as const,
                 radius: o.radius ?? 24,
+                // Sharp at the near end unless asked otherwise — what this
+                // effect did before the field existed.
+                startRadius: o.startRadius ?? 0,
                 shape: o.shape ?? "linear",
                 start: o.start ?? 0,
                 end: o.end ?? 1,

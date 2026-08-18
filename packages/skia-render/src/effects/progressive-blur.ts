@@ -31,6 +31,10 @@ const MIN_SAMPLES = 2;
  *
  * The centre tap is always taken, so a pixel whose ramp is zero returns its
  * source value exactly rather than an average that merely rounds to it.
+ *
+ * The radius at a pixel is `mix(u_radius0, u_radius, ramp)`, so the ramp runs
+ * between two softnesses; `u_radius0 = 0` is the fade-out-of-sharp this effect
+ * did before it took a near-end radius.
  */
 function source(samples: number): string {
     return `
@@ -39,6 +43,7 @@ uniform vec2  u_center;     // ramp origin, device px
 uniform vec2  u_half;       // node half-extent, device px
 uniform vec2  u_dir;        // ramp direction (linear)
 uniform float u_radius;     // blur spread at the far end, device px
+uniform float u_radius0;    // blur spread at the near end, device px
 uniform float u_start;      // 0–1 where the blur starts building
 uniform float u_end;        // 0–1 where it reaches u_radius
 uniform float u_radial;     // 1 = radial ramp, 0 = linear
@@ -59,7 +64,9 @@ vec4 main(vec2 fragCoord) {
     // at u_start where the blur switches on, because the radius' derivative
     // jumps there. Smoothstep lands both at zero.
     float ramp = smoothstep(u_start, max(u_end, u_start + 0.0001), clamp(t, 0.0, 1.0));
-    float radius = u_radius * ramp;
+    // Between the two ends, not out of sharp: a ramp that starts blurred is a
+    // depth-of-field falloff rather than a fade-to-blur.
+    float radius = mix(u_radius0, u_radius, ramp);
 
     vec4 sum = u_content.eval(fragCoord);
     if (radius < 0.5) return sum;                 // sub-pixel — nothing to average
@@ -88,7 +95,8 @@ export const progressiveBlurEffectHandler: EffectHandler<ProgressiveBlurEffect> 
     sampling: { tileMode: "clamp", filterMode: "linear" },
 
     makeShader(effect, ck: CanvasKit, content, geom: EffectGeometry) {
-        if (effect.radius <= 0 || geom.width <= 0 || geom.height <= 0) return null;
+        const startRadius = effect.startRadius ?? 0;
+        if ((effect.radius <= 0 && startRadius <= 0) || geom.width <= 0 || geom.height <= 0) return null;
 
         const samples = Math.max(MIN_SAMPLES, Math.min(MAX_SAMPLES, Math.round(effect.samples)));
         const runtimeEffect = getOrCompileSkSL(source(samples), ck);
@@ -104,6 +112,7 @@ export const progressiveBlurEffectHandler: EffectHandler<ProgressiveBlurEffect> 
                 geom.width / 2, geom.height / 2,
                 Math.cos(radians), Math.sin(radians),
                 effect.radius * geom.scale,
+                startRadius * geom.scale,
                 effect.start, effect.end,
                 effect.shape === "radial" ? 1 : 0,
             ],

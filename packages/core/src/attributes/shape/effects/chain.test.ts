@@ -218,8 +218,34 @@ describe('FX builders', () => {
 
     it('progressiveBlur defaults to a downward linear ramp', () => {
         expect([...Effects.progressiveBlur(24)]).toEqual([
-            { type: 'progressiveBlur', radius: 24, shape: 'linear', start: 0, end: 1, angle: 90, center: { x: 0.5, y: 0.5 }, samples: 20 },
+            { type: 'progressiveBlur', radius: 24, startRadius: 0, shape: 'linear', start: 0, end: 1, angle: 90, center: { x: 0.5, y: 0.5 }, samples: 20 },
         ]);
+    });
+
+    it('progressiveBlur ramps between two radii when given a near end', () => {
+        // The default ramps out of sharp; a startRadius makes it a falloff
+        // between two softnesses instead (a depth-of-field near field).
+        const [effect] = [...Effects.progressiveBlur({ radius: 24, startRadius: 4 })];
+        expect(effect).toMatchObject({ startRadius: 4, radius: 24 });
+    });
+
+    it('carries clip onto the effect, like mode', () => {
+        // `clip` is the second cross-cutting option, so this is really a check
+        // that EFFECT_OPTION_KEYS still drives every builder rather than `mode`
+        // being special-cased somewhere.
+        expect([...Effects.blur({ radius: 8, clip: true })]).toEqual([
+            { type: 'blur', radius: 8, clip: true },
+        ]);
+        expect([...Effects.bloom({ clip: true, mode: 'backdrop' })][0]).toMatchObject({
+            clip: true,
+            mode: 'backdrop',
+        });
+    });
+
+    it('leaves clip off the effect when it was never asked for', () => {
+        // Omitted rather than `clip: undefined` — `equals()` compares the field
+        // directly, so a planted undefined is not equal to an effect without it.
+        expect([...Effects.blur(8)][0]).not.toHaveProperty('clip');
     });
 
     it('kaleidoscope rounds segments and defaults to a full fold', () => {
