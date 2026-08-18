@@ -386,6 +386,14 @@ export class Scene {
         this.root.sample();
     }
 
+    /**
+     * Record the scene's current positions as the motion history's previous
+     * frame, stamped `at`, deriving no velocity — see `Node.primeMotion`.
+     */
+    primeMotion(at: number): void {
+        this.root.primeMotion(at);
+    }
+
     /** Lay the scene's world out against the given (full-viewport) bounds. */
     layout(rect: BoxBounds, scope: Measurer): void {
         this.root.layout(rect, scope);

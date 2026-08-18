@@ -27,6 +27,36 @@ export interface MotionHistory {
     prevScale: number;
 }
 
+/**
+ * Record the current position as the history's previous frame, **without**
+ * deriving a velocity from it.
+ *
+ * The seam a driven scene primes through. A generator scene walks time forward
+ * one `dt` at a time, so its history is always the frame before and
+ * {@link sampleMotion}'s backward difference is a property of the timeline. A
+ * driven scene doesn't walk at all — it jumps straight to whatever frame is
+ * asked for — so differencing against "wherever the playhead last was" makes
+ * velocity a property of *how the viewer got here*: scrub quickly and a static
+ * node smears, hold still on the same frame and it doesn't, step backward and it
+ * reads zero. Priming with the position one frame earlier is what makes the
+ * answer depend on the frame alone.
+ */
+/** @internal */
+export function primeMotion(
+    history: MotionHistory,
+    x: number,
+    y: number,
+    rotation: number,
+    scale: number,
+    at: number,
+): void {
+    if (!history.prevPos) history.prevPos = { x, y };
+    else { history.prevPos.x = x; history.prevPos.y = y; }
+    history.prevTime = at;
+    history.prevRotation = rotation;
+    history.prevScale = scale;
+}
+
 /** Create the zeroed history holder a node keeps for its lifetime. */
 /** @internal */
 export function createMotionHistory(): MotionHistory {

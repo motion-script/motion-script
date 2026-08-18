@@ -25,7 +25,7 @@ import {
     saveState,
 } from "./node-reactive";
 import type { PropLayer } from "./node-reactive";
-import { advanceClock, createMotionHistory, MotionHistory, sampleMotion } from "./node-motion";
+import { advanceClock, createMotionHistory, MotionHistory, sampleMotion, primeMotion } from "./node-motion";
 import { addChildAtAnimated, removeChildAtAnimated, reparentAnimated } from "./node-lifecycle";
 
 import type { SceneEffect } from "@/attributes/shape/effects/union";
@@ -1280,6 +1280,27 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     /** Sample this node's own derived render state for the current frame. */
     private _sample(): void {
         this._sampleMotion();
+    }
+
+    /**
+     * Record the subtree's current positions as the motion history's previous
+     * frame, stamped `at`, deriving no velocity — see {@link primeMotion}.
+     *
+     * The driven path calls this with the props evaluated one frame back, so the
+     * `sample()` that follows measures against the timeline rather than against
+     * wherever the playhead happened to be.
+     */
+    public primeMotion(at: number): void {
+        const r = this.layoutRect;
+        primeMotion(
+            this._motionHistory,
+            (r?.x ?? 0) + this.x,
+            (r?.y ?? 0) - this.y,
+            this.rotation,
+            this.scale,
+            at,
+        );
+        for (const child of this._children) child.primeMotion(at);
     }
 
     // ---- Asset lifecycle --------------------------------------------------

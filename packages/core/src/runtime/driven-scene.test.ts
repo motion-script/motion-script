@@ -136,3 +136,77 @@ describe("createDrivenScene", () => {
         expect(x()).toBeCloseTo(atEnd, 4);
     });
 });
+
+/**
+ * Motion on a driven scene has to be a property of the *frame*, not of the seek
+ * that arrived at it.
+ *
+ * A driven scene never replays — it jumps straight to whatever frame is asked
+ * for — so a velocity taken as a backward difference against "wherever the
+ * playhead last sat" reads whatever the viewer's scrubbing happened to imply: a
+ * static node smears when the pointer moves fast, a frame held still shows
+ * nothing, and stepping backward reads zero. Motion blur and trails are built on
+ * that velocity, so the same frame looked different depending on how it was
+ * reached.
+ *
+ * The evaluator now evaluates the previous frame and primes the history from it,
+ * so these all have to agree.
+ */
+describe("driven motion is deterministic per frame", () => {
+    /**
+     * The sampled motion state, which nothing exposes publicly — it reaches the
+     * renderer through `ctx.begin(state)` and nowhere else.
+     */
+    const velocityOf = (node: Rect) =>
+        (node as unknown as { _renderState: { velocity: { x: number } } })
+            ._renderState.velocity.x
+
+    /** The rect's velocity at `frame`, reached by the given sequence of seeks. */
+    function velocityAfter(seeks: number[], frames = 60) {
+        const { driver } = slideDriver(2);
+        const scene = createDrivenScene(driver);
+        const evaluator = evaluatorFor(scene, frames);
+        let box: Rect | null = null;
+        for (const frame of seeks) {
+            evaluator.stateAt(frame);
+            box = scene.root.children[0] as Rect;
+        }
+        return velocityOf(box!);
+    }
+
+    it("reads the same velocity however the playhead got to the frame", () => {
+        const target = 30;
+        const stepped = velocityAfter([28, 29, target]);
+        const jumped = velocityAfter([target]);
+        const fromAhead = velocityAfter([55, target]);
+        const fromFarBehind = velocityAfter([1, target]);
+
+        expect(jumped).toBeCloseTo(stepped, 5);
+        expect(fromAhead).toBeCloseTo(stepped, 5);
+        expect(fromFarBehind).toBeCloseTo(stepped, 5);
+    });
+
+    it("keeps reading the same velocity when the frame is asked for twice", () => {
+        // Holding on a frame used to collapse dt to zero and take the blur away.
+        const { driver } = slideDriver(2);
+        const scene = createDrivenScene(driver);
+        const evaluator = evaluatorFor(scene, 60);
+        evaluator.stateAt(30);
+        const first = velocityOf(scene.root.children[0] as Rect);
+        evaluator.stateAt(31);
+        evaluator.stateAt(30);
+        const again = velocityOf(scene.root.children[0] as Rect);
+        expect(again).toBeCloseTo(first, 5);
+    });
+
+    it("measures the velocity the animation actually has", () => {
+        // 90px over 2s is 45px/s, and the ramp is linear, so any frame inside it
+        // should read that — not a number derived from how fast the seek was.
+        expect(velocityAfter([30])).toBeCloseTo(45, 1);
+    });
+
+    it("reads the first frame as stationary rather than inventing a jump", () => {
+        // There is no frame before it to difference against.
+        expect(velocityAfter([0])).toBe(0);
+    });
+});

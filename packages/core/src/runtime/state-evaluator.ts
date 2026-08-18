@@ -357,12 +357,39 @@ export class StateEvaluator {
         slot.scene.bindContext(ContextMap.EMPTY, false);
         slot.scene.ellapse(sceneTime);
         this.globals?.ellapse((slot.startFrame + localFrame) * this.dt);
-        slot.scene.evaluateAt(sceneTime);
-        // Layout runs after, not before: a generator body reads `layoutRect` as it
-        // steps, so the replay must lay out first — a driver writes props and
-        // reads nothing, so the layout that matters is the one the render pass
-        // does next, against the values just written.
+
+        // Motion, made a property of the frame rather than of the seek that got
+        // here. A generator scene walks time forward one `dt` at a time, so its
+        // backward difference is already against the frame before; a driven one
+        // jumps straight to the target, so differencing against wherever the
+        // playhead last sat is what makes a fast scrub smear a static node, a
+        // held frame show nothing, and a backward step read zero — the same
+        // frame looking different depending on how it was reached.
+        //
+        // So the previous frame is *evaluated*, not remembered: put the scene at
+        // `sceneTime - dt`, stamp that as the history, then evaluate the frame
+        // actually being drawn and difference against it. Two extra driver
+        // evaluations, on the path that skips the replay loop entirely.
+        //
+        // Clamped at zero so the first frame primes against itself and reads
+        // stationary, which is what it is — there is no frame before it.
+        // Each of the two frames is laid out before its position is read, because
+        // a node's world position is `layoutRect + x`: reading the new `x`
+        // against the previous seek's rect would put the same nondeterminism
+        // back in for anything an auto-layout places.
+        const previousTime = Math.max(0, sceneTime - this.dt);
+        slot.scene.evaluateAt(previousTime);
         this.layoutScene(slot.scene);
+        slot.scene.primeMotion(previousTime);
+
+        // Layout runs after the evaluation, not before: a generator body reads
+        // `layoutRect` as it steps, so the replay must lay out first — a driver
+        // writes props and reads nothing, so the layout that matters is the one
+        // against the values just written.
+        slot.scene.evaluateAt(sceneTime);
+        this.layoutScene(slot.scene);
+        slot.scene.sample();
+
         slot.localFrame = localFrame;
         return true;
     }
