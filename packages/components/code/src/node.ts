@@ -19,7 +19,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, Node, Measurer, InsetsResolved, property, resolveInsets, lerpInsets, NormalizedColor, AssetTracker, command, driveCommand, type Command } from "@motion-script/core";
+import { RenderContext, Graphics, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command } from "@motion-script/core";
 
 // Resolved layout geometry shared by measure() and drawSelf() so the two can't
 // drift, and cacheable across static frames. All widths/heights already fold in
@@ -40,7 +40,7 @@ interface CodeGeometry {
 }
 
 
-export class Code extends Node<CodeProps> {
+export class Code extends ShapeNode<CodeProps> {
 
 
     @property({ default: "" }) declare readonly code: string;
@@ -61,6 +61,15 @@ export class Code extends Node<CodeProps> {
     // showLineNumbers is on.
     @property({ default: 2 }) declare readonly lineNumberGap: number;
     @property({ default: 0, mapper: resolveInsets, tween: lerpInsets }) declare readonly padding: InsetsResolved;
+
+    // The background box's corners. Declared loose (assignment takes `8` or a
+    // per-corner object) while the accessor stores the resolved per-corner value,
+    // exactly as `Rect` declares its own — the two draw the same geometry and
+    // must accept the same values for it.
+    @cornerRadiusProperty()
+    declare cornerRadius: RectCornerRadius;
+    @cornerStyleProperty()
+    declare cornerStyle: RectCornerStyle;
 
     private tokenLines: IdLine[] = [];
     private tokenized: boolean = false;
@@ -304,18 +313,71 @@ export class Code extends Node<CodeProps> {
         // properties. This keeps the drawn half consistent with that.
         ctx.pushTextStyle(null);
         try {
-            super.onRender(ctx);
             // Keep retrying until the language+theme have actually loaded, so a frame
             // that rendered as plain text upgrades to full highlighting the moment the
             // asset loader resolves. canHighlight gates tokenize from being a no-op
-            // re-run every frame once we're done.
+            // re-run every frame once we're done. Ahead of the render rather than
+            // after it, so the frame that first has the grammar draws with it.
             if (!this.tokenized && canHighlight(this.language, this.theme)) {
                 this.tokenize();
             }
-            this.drawSelf(ctx);
+            super.onRender(ctx);
         } finally {
             ctx.popTextStyle();
         }
+    }
+
+    /**
+     * The background box, then the code set on it.
+     *
+     * The tokens used to be drawn from `onRender`, *after* `super.onRender` had
+     * already run the whole envelope — which put them outside every pass the base
+     * class defines. That was harmless while this was a plain `Node` with nothing
+     * in those passes, and wrong the moment it became a `ShapeNode`: an overlay
+     * would have washed the empty box and the code would have landed on top of
+     * it, and a `clip` would have cut the box while the text overhung it.
+     *
+     * Drawn here instead, in the slot the base class calls between the transform
+     * push and the children, the block composes like every other shape: shadow
+     * and fill (from `super`) under the tokens, children over them, then the
+     * overlay across the lot and the stroke around it.
+     */
+    protected override renderSelf(ctx: RenderContext): void {
+        super.renderSelf(ctx);
+        this.drawSelf(ctx);
+    }
+
+    /**
+     * The background box: the node's laid-out rect, which is the listing's own
+     * measured size (plus `padding`) whenever it hugs.
+     *
+     * Supplying this is the whole of what gives a code block `fill`, `overlay`,
+     * `stroke` and `shadow` — {@link ShapeNode} paints all four through it, so
+     * there is no per-slot code here at all.
+     */
+    protected override shapeGraphics(): Graphics {
+        return new Graphics().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+            start: this.start,
+            end: this.end,
+        });
+    }
+
+    /**
+     * The same box as a clip outline, so `clip` and any backdrop effect are
+     * confined to the block rather than to nothing — a listing set on a card is
+     * exactly where a backdrop blur is asked for.
+     */
+    protected override clipSelf(): Clip {
+        return new Clip().rect({
+            width: this.layoutRect.width,
+            height: this.layoutRect.height,
+            cornerRadius: this.cornerRadius,
+            cornerStyle: this.cornerStyle,
+        });
     }
 
     @command()
