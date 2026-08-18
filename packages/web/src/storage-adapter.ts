@@ -1,5 +1,5 @@
 import type { CanvasKit, Image as CKImage, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
-import { AssetCatalog, StorageAdapter, type Size2D } from "@motion-script/core";
+import { AssetCatalog, StorageAdapter, type AssetRecord, type Size2D } from "@motion-script/core";
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from "mediabunny";
 import { ParagraphShapeCache } from "@motion-script/skia-render/shapes/paragraph-cache";
 import type { SkiaAssets, SkiaTextureSource } from "@motion-script/skia-render/assets";
@@ -61,6 +61,23 @@ interface DecodedVideoFrame {
 function isSvgSrc(src: string): boolean {
     return /\.svg(?:[?#]|$)/i.test(src);
 }
+
+/**
+ * Longest edge, in pixels, an image is decoded at — the one bound on a decode
+ * now that the drawn box is not one (see {@link WebStorageAdapter.imageTargetPixels}).
+ *
+ * A ceiling rather than a fit: anything at or under it decodes untouched, so
+ * the overwhelming majority of sources are held exactly as authored and look
+ * right at any node size and any zoom. Only a source larger than this is
+ * resampled, and 4096 is the size at which that stops being a real loss — it is
+ * the conventional maximum GPU texture edge, so pixels past it could not be
+ * sampled in one draw anyway.
+ *
+ * The memory this bounds is RGBA8888 and unpacked: a 4096² source is 67 MB
+ * resident for the life of the render surface. Lower this if a project's images
+ * are big enough and numerous enough for that to bite.
+ */
+const MAX_IMAGE_DECODE_EDGE = 4096;
 
 
 
@@ -222,20 +239,120 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
     // ─── Image ───────────────────────────────────────────────────────────────
 
     /**
+     * Whether the decode already held for `key` covers this request.
+     *
+     * The size-aware half of the base class's `cachedAssets` gate — see
+     * {@link StorageAdapter.cacheSatisfies}. Only images have a size to be wrong
+     * about; everything else keeps the plain "loaded once" answer.
+     */
+    protected override cacheSatisfies(key: string, value: AssetRecord): boolean {
+        if (value.type !== "image") return true;
+        return this.imageDecodeCovers(key, value.width, value.height);
+    }
+
+    /**
+     * Whether the cached decode of `src` is already at least as detailed as a
+     * draw of `width`×`height` needs.
+     *
+     * This is what makes enlarging a node re-decode instead of upscaling pixels
+     * that were sized for a smaller box. Three cases, in order:
+     *
+     * - **Nothing cached** — not covered; the ordinary first load runs.
+     * - **Already at natural size** — covered, permanently. There is no more
+     *   detail in the source, so no draw however large can justify a re-fetch.
+     *   This is the case that keeps a full-resolution image from re-decoding on
+     *   every resize, and it is why the check consults the catalog's intrinsic
+     *   size rather than only comparing against the target.
+     * - **Downscaled** — covered only while the target is no bigger than what we
+     *   hold, on either axis.
+     *
+     * An SVG has no meaningful intrinsic pixel size (it is rasterized to the box
+     * it is drawn in), so it compares against the request alone and re-rasterizes
+     * whenever the box outgrows the raster — which is what its own docblock
+     * always claimed it did.
+     */
+    private imageDecodeCovers(src: string, width: number, height: number): boolean {
+        const cached = this.imagePixels.get(src);
+        if (!cached) return false;
+
+        if (isSvgSrc(src)) {
+            const target = this.svgTargetPixels(width, height, cached.width, cached.height);
+            // A pixel of slack, and it is load-bearing: `svgTargetPixels`
+            // renormalizes against whatever it is handed as the intrinsic size,
+            // so feeding it the previous raster returns that same raster give or
+            // take rounding. Compared exactly, that rounding would re-rasterize
+            // an unchanged SVG on every frame.
+            return cached.width + 1 >= target.width && cached.height + 1 >= target.height;
+        }
+
+        let meta;
+        try {
+            meta = this.catalog.getImageMeta(src);
+        } catch {
+            // No metadata to reason with: treat what we have as final rather
+            // than re-fetching on every frame that asks.
+            return true;
+        }
+        if (meta.width && meta.height && cached.width >= meta.width && cached.height >= meta.height) {
+            return true;
+        }
+
+        const target = this.imageTargetPixels(src, width, height);
+        // `null` means "decode at natural size", which we know we are not at.
+        if (!target) return false;
+        return cached.width >= target.width && cached.height >= target.height;
+    }
+
+    /**
+     * Drops the GPU copy of `src` so the next {@link getCKImage} re-uploads from
+     * whatever pixels are now cached.
+     *
+     * Called only after a re-decode has replaced them. Safe to delete here
+     * because a load runs between frames, never inside a draw: the renderer asks
+     * for the image and uses it within one synchronous paint, so there is no
+     * live reference to invalidate. (This is the release the image fill's
+     * "adapter-owned CKImage" comment defers to.)
+     */
+    private releaseCKImage(src: string): void {
+        const existing = this.imageCKCache.get(src);
+        if (!existing) return;
+        existing.delete();
+        this.imageCKCache.delete(src);
+    }
+
+    /**
      * Fetches and decodes `src` to RGBA pixels (cached for later GPU upload via
-     * {@link getCKImage}), no-op if already cached. SVGs are rasterized at the
-     * on-screen target size so they stay crisp when scaled up (see
-     * {@link rasterizeSvg}); raster formats decode via `createImageBitmap`,
-     * downscaled to target when that saves memory.
+     * {@link getCKImage}). SVGs are rasterized at the on-screen target size so
+     * they stay crisp when scaled up (see {@link rasterizeSvg}); raster formats
+     * decode via `createImageBitmap`, downscaled to target when that saves
+     * memory.
+     *
+     * A cached decode is reused only while it is big enough for the draw being
+     * asked for — see {@link imageDecodeCovers}. It used to be reused whatever
+     * the size, which, together with a decode sized to the drawn box, meant the
+     * *first* box an image appeared in fixed its resolution for the life of the
+     * render surface: a 4K photo first painted into a 100px node stayed 100px of
+     * data however far it was then scaled or zoomed, and only a teardown
+     * (navigating away from the canvas) got the detail back.
+     *
+     * Raster sources now decode at their own size, so that check passes trivially
+     * for them and this runs once. It still earns its keep for **SVG**, which has
+     * no natural pixel size and is rasterized to the box it is drawn in: growing
+     * the node re-rasterizes it crisply rather than magnifying the old raster.
      */
     async loadImage(src: string, width: number, height: number): Promise<void> {
-        if (this.imagePixels.has(src)) return;
+        if (this.imageDecodeCovers(src, width, height)) return;
+        const hadPixels = this.imagePixels.has(src);
 
         if (isSvgSrc(src)) {
             this.imagePixels.set(src, await this.rasterizeSvg(src, width, height));
+            if (hadPixels) this.releaseCKImage(src);
             return;
         }
 
+        // Independent of `width`/`height`: the source's own size, ceiling aside.
+        // So a raster image is decoded once and never re-decoded — there is
+        // nothing better to escalate to, whatever the node or the zoom later do.
         const target = this.imageTargetPixels(src, width, height);
 
         const response = await fetch(src);
@@ -264,6 +381,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
             height: canvas.height,
             pixels: new Uint8Array(data),
         });
+        if (hadPixels) this.releaseCKImage(src);
     }
 
     /**
@@ -301,20 +419,40 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         return { width: target.width, height: target.height, pixels: new Uint8Array(data) };
     }
 
-    private imageTargetPixels(src: string, width: number, height: number): { width: number; height: number } | null {
+    /**
+     * The size to decode `src` at: **its own**, bounded only by
+     * {@link MAX_IMAGE_DECODE_EDGE}. `null` means "decode the source as it is".
+     *
+     * This deliberately ignores the box the image is drawn in, which is what it
+     * used to be sized by. That was a sound memory trade and a wrong picture:
+     * the decode is cached per source, so the first box an image appeared in
+     * fixed its resolution, and every way of then looking at it closer — scaling
+     * the node, raising `scale`, zooming the preview — magnified those pixels
+     * instead of revealing the source's own.
+     *
+     * Zoom is the case that settles it. `viewport` is the scene's size in scene
+     * units and never moves; the preview's zoom is a transform applied above the
+     * canvas, and no part of it reaches this class. So *no* box-derived bound
+     * can be right: a 10×10 node holding a 4K photo is one gesture away from
+     * filling the screen, and the only decode that survives that gesture is the
+     * source's own.
+     *
+     * The cost is real and worth naming: an image now occupies its full decoded
+     * RGBA footprint for as long as the surface lives, rather than the footprint
+     * of the box it happened to be drawn in. The ceiling is what keeps that
+     * bounded, and it is the one number to turn if a project's images are large
+     * enough for it to matter.
+     */
+    private imageTargetPixels(src: string, _width: number, _height: number): { width: number; height: number } | null {
         let meta: { width: number; height: number };
         try { meta = this.catalog.getImageMeta(src); } catch { return null; }
         if (!meta.width || !meta.height) return null;
-        if (width <= 0 && height <= 0) return null;
 
-        const targetW = width > 0 ? Math.min(width, this.viewport.width) : 0;
-        const targetH = height > 0 ? Math.min(height, this.viewport.height) : 0;
+        // Only a source past the ceiling is resampled at all.
+        const longest = Math.max(meta.width, meta.height);
+        if (longest <= MAX_IMAGE_DECODE_EDGE) return null;
 
-        const sx = targetW > 0 ? targetW / meta.width : 0;
-        const sy = targetH > 0 ? targetH / meta.height : 0;
-        const ratio = Math.max(sx, sy);
-        if (ratio <= 0 || ratio >= 1) return null;
-
+        const ratio = MAX_IMAGE_DECODE_EDGE / longest;
         return {
             width: Math.max(1, Math.round(meta.width * ratio)),
             height: Math.max(1, Math.round(meta.height * ratio)),

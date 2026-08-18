@@ -38,10 +38,30 @@ export abstract class StorageAdapter {
 
     // ─── Asset loading dispatch ───────────────────────────────────────────────
 
+    /**
+     * Whether what is already cached for `key` covers this particular request.
+     *
+     * `cachedAssets` records only *that* a key loaded, which is the whole answer
+     * for a font or an audio buffer — they have no per-request dimension. An
+     * **image** does: it is decoded to the size it was first asked to draw at
+     * (see the web adapter's `imageTargetPixels`), so a later request for a
+     * bigger draw is a genuinely different request that the cached decode may
+     * not answer. Without this hook the set short-circuits it, and a node scaled
+     * up keeps painting the pixels it was decoded at when it was small — no
+     * error, just a picture that has quietly lost its resolution until the
+     * surface is torn down.
+     *
+     * Adapters that can improve on a cached asset override this; the default is
+     * the old behaviour, so nothing else has to care.
+     */
+    protected cacheSatisfies(_key: string, _value: AssetRecord): boolean {
+        return true;
+    }
+
     async loadAsset(key: string, value: AssetRecord): Promise<void> {
         const existing = this.inFlightLoads.get(key);
         if (existing) return existing;
-        if (this.cachedAssets.has(key)) return;
+        if (this.cachedAssets.has(key) && this.cacheSatisfies(key, value)) return;
 
         const job = this.runLoad(key, value);
         this.inFlightLoads.set(key, job);
