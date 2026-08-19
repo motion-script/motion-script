@@ -40,6 +40,7 @@ import type { ProgressiveBlurEffect } from "./implementations/progressive-blur";
 import type { KaleidoscopeEffect } from "./implementations/kaleidoscope";
 import type { TrailsEffect } from "./implementations/trails";
 import type { GlassEffect } from "./implementations/glass";
+import type { LutEffect } from "./implementations/lut";
 
 /** Discriminated union of every effect type a scene node can carry. */
 export type SceneEffect =
@@ -84,4 +85,5 @@ export type SceneEffect =
     | ProgressiveBlurEffect
     | KaleidoscopeEffect
     | TrailsEffect
-    | GlassEffect;
+    | GlassEffect
+    | LutEffect;

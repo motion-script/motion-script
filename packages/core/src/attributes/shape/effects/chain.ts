@@ -184,6 +184,22 @@ export interface VignetteOptions extends EffectOptions {
 }
 
 /** Film grain. Scalar shorthand sets `amount`. */
+/**
+ * A 3D colour lookup table — see {@link LutEffect} for the table's layout and
+ * why it is compared by reference.
+ *
+ * No scalar shorthand: the dominant argument is a whole cube, and a builder that
+ * took `Effects.lut(table)` would still need the size beside it to read it.
+ */
+export interface LutOptions extends EffectOptions {
+    /** The cube, flat RGB triples, red-fastest. */
+    table: Float32Array;
+    /** Entries per axis. */
+    size: number;
+    /** 0–1 mix against the ungraded colour (default 1 — the full look). */
+    amount?: number;
+}
+
 export interface GrainOptions extends EffectOptions {
     /** 0–1 noise amplitude (default 0.25). */
     amount?: number;
@@ -776,6 +792,29 @@ export class EffectChain {
      * `{ animated: true }` to re-seed it each frame — or tween `seed` when the
      * render has to stay deterministic.
      */
+    /**
+     * Apply a 3D colour lookup table.
+     *
+     * The whole point of a LUT is that it is *someone else's* colour science, so
+     * there is nothing to default beyond how much of it to use: `amount` is the
+     * mix and everything else is the file.
+     *
+     * @example
+     * FX.lut({ table, size: 33 })            // the full look
+     * FX.lut({ table, size: 33, amount: 0.6 })
+     */
+    lut(options: LutOptions) {
+        return this.append(withEffectOptions(
+            {
+                type: "lut" as const,
+                table: options.table,
+                size: options.size,
+                amount: options.amount ?? 1,
+            },
+            options,
+        ));
+    }
+
     grain(options?: number | GrainOptions) {
         const o = scalarOptions(options, "amount");
         return this.append(withEffectOptions(
@@ -902,7 +941,7 @@ export class EffectChain {
     }
 
     /**
-     * Append a tone curve — the same adjustment `ImageFilters.curves` applies to a
+     * Append a tone curve — the same adjustment `Adjustments.curves` applies to a
      * photo, on any node.
      */
     curves(options: CurvesOptions) {
@@ -914,7 +953,7 @@ export class EffectChain {
 
     /**
      * Append photographic grading (brightness / contrast / saturation / vibrance /
-     * shadows / highlights / temperature / tint) — `ImageFilters.colorAdjustment`
+     * shadows / highlights / temperature / tint) — `Adjustments.colorAdjustment`
      * on any node. For darkened edges use {@link EffectChain.vignette}.
      */
     colorAdjustment(options: ColorAdjustmentOptions) {

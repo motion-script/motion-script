@@ -42,6 +42,7 @@ import { progressiveBlurEffect } from "./implementations/progressive-blur";
 import { kaleidoscopeEffect } from "./implementations/kaleidoscope";
 import { trailsEffect } from "./implementations/trails";
 import { glassEffect } from "./implementations/glass";
+import { lutEffect } from "./implementations/lut";
 import { EffectData, EffectSurface } from "./effect-data";
 import type { AssetTracker } from "@/assets/tracker";
 
@@ -89,6 +90,7 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["kaleidoscope", kaleidoscopeEffect as EffectData<SceneEffect>],
     ["trails", trailsEffect as EffectData<SceneEffect>],
     ["glass", glassEffect as EffectData<SceneEffect>],
+    ["lut", lutEffect as EffectData<SceneEffect>],
 ]);
 
 /**

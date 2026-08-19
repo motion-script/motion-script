@@ -43,7 +43,7 @@ export class VideoFillRenderer extends FillRenderer<VideoFillResolved> {
         // will come back for it. See the note on `duration` above.
         if (!img) return false;
 
-        const echo = fill.filters?.find(
+        const echo = fill.preset?.adjustments.find(
             (f): f is VideoEchoFilter => f.type === "echo",
         );
 

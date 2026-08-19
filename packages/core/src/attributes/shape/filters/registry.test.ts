@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
     lerpFilter, lerpFilterArray, lerpOptionalFilters, isPixelFilter, hasFilter, filterSurface,
 } from '@/attributes/shape/filters/registry';
-import { MediaFilter, VideoMediaFilter } from '@/attributes/shape/filters/union';
+import { MediaAdjustment, VideoOnlyAdjustment } from '@/attributes/shape/filters/union';
 import { blurFilter } from '@/attributes/shape/filters/implementations/blur';
 import { curvesFilter } from '@/attributes/shape/filters/implementations/curves';
 
-type AnyFilter = MediaFilter | VideoMediaFilter;
+type AnyFilter = MediaAdjustment | VideoOnlyAdjustment;
 
 describe('FILTERS map', () => {
     it('contains every built-in filter, including the new video-only ones', () => {
@@ -55,7 +55,7 @@ describe('lerpFilter', () => {
             { type: 'blur', radius: 0 },
             { type: 'blur', radius: 10 },
             0.5,
-        ) as Extract<MediaFilter, { type: 'blur' }>;
+        ) as Extract<MediaAdjustment, { type: 'blur' }>;
         expect(result.radius).toBe(5);
     });
 
@@ -64,7 +64,7 @@ describe('lerpFilter', () => {
             { type: 'posterizeTime', fps: 4 },
             { type: 'posterizeTime', fps: 12 },
             0.5,
-        ) as Extract<VideoMediaFilter, { type: 'posterizeTime' }>;
+        ) as Extract<VideoOnlyAdjustment, { type: 'posterizeTime' }>;
         expect(result.fps).toBe(8);
     });
 
@@ -73,7 +73,7 @@ describe('lerpFilter', () => {
             { type: 'echo', echoes: 2, delay: 0.1, decay: 0.4, blend: 'screen' },
             { type: 'echo', echoes: 6, delay: 0.3, decay: 0.8, blend: 'lighten' },
             0.5,
-        ) as Extract<VideoMediaFilter, { type: 'echo' }>;
+        ) as Extract<VideoOnlyAdjustment, { type: 'echo' }>;
         expect(result.echoes).toBe(4);
         expect(result.delay).toBeCloseTo(0.2, 6);
         expect(result.decay).toBeCloseTo(0.6, 6);
@@ -92,7 +92,7 @@ describe('lerpFilter', () => {
             { type: 'oilPaint', radius: 0 },
             { type: 'oilPaint', radius: 6 },
             0.5,
-        ) as Extract<MediaFilter, { type: 'oilPaint' }>;
+        ) as Extract<MediaAdjustment, { type: 'oilPaint' }>;
         expect(result.radius).toBe(3);
     });
 });

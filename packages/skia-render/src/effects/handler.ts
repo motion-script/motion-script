@@ -1,15 +1,15 @@
 import type { CanvasKit, Image as CKImage, Shader, Surface, TypefaceFontProvider } from "@motion-script/canvaskit";
-import type { MediaFilter, SceneEffect } from "@motion-script/core";
+import type { MediaAdjustment, SceneEffect } from "@motion-script/core";
 
 /**
  * Anything the effect registry can render.
  *
- * Three arms: an authored {@link SceneEffect}, an authored {@link MediaFilter}
+ * Three arms: an authored {@link SceneEffect}, an authored {@link MediaAdjustment}
  * (image/video fills), or a renderer-internal effect produced during a draw and
  * never authored on a node (e.g. motion blur resolved against velocity). All
  * three are discriminated by a `type` string.
  */
-export type RenderEffect = SceneEffect | MediaFilter | { type: string };
+export type RenderEffect = SceneEffect | MediaAdjustment | { type: string };
 
 /**
  * Which content an effect scope samples from: the node's own painted content
@@ -175,7 +175,7 @@ export interface RenderInputShaders {
  * registry asserts the two agree at registration time.
  */
 export interface EffectHandler<T extends RenderEffect = any> {
-    /** Effect discriminator (matches `SceneEffect['type']` / `MediaFilter['type']`). */
+    /** Effect discriminator (matches `SceneEffect['type']` / `MediaAdjustment['type']`). */
     readonly type: string;
 
     /**

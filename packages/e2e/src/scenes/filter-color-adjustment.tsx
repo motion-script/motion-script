@@ -1,7 +1,7 @@
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link ImageFilters.colorAdjustment}: brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, and vignette all animating together for a full color-grade sweep. */
+/** {@link Adjustments.colorAdjustment}: brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, and vignette all animating together for a full color-grade sweep. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const rect = createRef<Rect>();
@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
                 cornerRadius={24}
                 fill={Fills.image('kingfisher.jpg', {
                     fit: 'fill',
-                    filters: ImageFilters.colorAdjustment({
+                    filters: Adjustments.colorAdjustment({
                         brightness: 0,
                         contrast: 1,
                         saturation: 1,
@@ -34,7 +34,7 @@ export default createScene(function* (stage) {
         {
             fill: Fills.image('kingfisher.jpg', {
                 fit: 'fill',
-                filters: ImageFilters.colorAdjustment({
+                filters: Adjustments.colorAdjustment({
                     brightness: 0.2,
                     contrast: 1.5,
                     saturation: 1.8,

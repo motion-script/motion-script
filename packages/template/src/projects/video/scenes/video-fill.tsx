@@ -7,7 +7,7 @@ import type { ImageFit } from "motion-script";
  * A labelled card holding one `Rect` whose fill is a *playing* video. The video
  * advances its timestamp each frame (via the dynamic fill's `update`), so the
  * card animates the clip even though nothing in the scene tweens. Subclasses
- * pick the `fit` and optional `MediaFilter`s; the base lays out the card
+ * pick the `fit` and optional `MediaAdjustment`s; the base lays out the card
  * and holds for the clip's length so scrubbing/export has frames to show.
  */
 export interface VideoFillSpec {

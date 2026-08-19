@@ -1,7 +1,7 @@
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link ImageFilters.alpha}: an image fill's opacity filter fading the image out from fully opaque to nearly transparent. */
+/** {@link Adjustments.alpha}: an image fill's opacity filter fading the image out from fully opaque to nearly transparent. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
@@ -20,12 +20,12 @@ export default createScene(function* (stage) {
                     width={'fill'}
                     height={'fill'}
                     cornerRadius={24}
-                    fill={Fills.image('cat.jpg', { fit: 'fill', filters: ImageFilters.alpha(1) })}
+                    fill={Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(1) })}
                 />
             </Rect>
         </Rect>,
     );
 
-    yield* image().to({ fill: Fills.image('cat.jpg', { fit: 'fill', filters: ImageFilters.alpha(0.1) }) }, 1.2, easeInOut('quad'));
+    yield* image().to({ fill: Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(0.1) }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

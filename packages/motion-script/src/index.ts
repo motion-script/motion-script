@@ -300,16 +300,20 @@ export type {
 } from '@motion-script/core';
 
 // =============================================================
-// Effects & Media Filters
+// Effects & Media Adjustments
 // =============================================================
 export {
     Effects,
     FX,
     EffectChain,
+    Adjustments,
+    VideoAdjustments,
+    AdjustmentChain,
+    VideoAdjustmentChain,
+    /** @deprecated Renamed to {@link Adjustments}. Removed in the next major. */
     ImageFilters,
+    /** @deprecated Renamed to {@link VideoAdjustments}. Removed in the next major. */
     VideoFilters,
-    ImageFilterChain,
-    FilterChain,
 } from '@motion-script/core';
 
 export type {
@@ -319,12 +323,13 @@ export type {
     EffectAxis,
     EffectSurface,
     EffectOptions,
-    ImageFilter,
-    VideoFilter,
-    /** The scene effects that also work as a media filter — see {@link ImageFilters}. */
-    EffectFilter,
-    MediaFilter,
-    VideoMediaFilter,
+    /** What an image fill's `preset.adjustments` accepts — one, a list, or a chain. */
+    ImageAdjustment,
+    VideoAdjustment,
+    /** The scene effects that also work as a media adjustment — see {@link Adjustments}. */
+    EffectAdjustment,
+    MediaAdjustment,
+    VideoOnlyAdjustment,
 } from '@motion-script/core';
 
 /**
@@ -374,11 +379,12 @@ export type {
     KaleidoscopeOptions,
     TrailsOptions,
     GlassOptions,
+    LutOptions,
 } from '@motion-script/core';
 
 /**
  * Per-builder options for the filters that exist only as filters. Everything
- * else on {@link ImageFilters} takes the matching effect options above, minus
+ * else on {@link Adjustments} takes the matching effect options above, minus
  * `mode` — a filter is on the fill's own pixels, so there is no backdrop to
  * point it at.
  */
@@ -453,6 +459,7 @@ export type {
     KaleidoscopeEffect,
     TrailsEffect,
     GlassEffect,
+    LutEffect,
 } from '@motion-script/core';
 
 // =============================================================

@@ -1,8 +1,8 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { ImageFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
+import { ImageAdjustment, resolveChainAdjustments } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
-import { MediaFilter } from "@/attributes/shape/filters/union";
+import { MediaAdjustment } from "@/attributes/shape/filters/union";
 import { ImageCrop, ImageFit, ImageFillProp, ImageFillResolved, ImageMatrix } from "@/attributes/shape/fill/implementations/image";
 import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
@@ -31,7 +31,7 @@ export interface ImageProps extends RectProps {
     anchor?: Anchor;
     /** Raw image→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds. */
     matrix?: ImageMatrix;
-    filters?: ImageFilter;
+    filters?: ImageAdjustment;
 }
 
 /**
@@ -51,8 +51,8 @@ export class Image extends Rect<ImageProps> {
     @property({ default: 1 }) declare zoom: number;
     @anchorProperty() declare anchor: Anchor;
     @property() declare matrix?: ImageMatrix;
-    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
-    declare filters?: MediaFilter[];
+    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainAdjustments })
+    declare filters?: MediaAdjustment[];
 
     constructor(props: NodeConfig<Image, ImageProps>) {
         super(props as NodeConfig<Rect, RectProps>);

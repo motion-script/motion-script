@@ -3,7 +3,7 @@ import type { ModedEffect, EffectData } from "../effect-data";
 
 /**
  * Photographic tonal and colour adjustments as a **scene effect** — the grading
- * panel `ImageFilters.colorAdjustment` gives an image fill, now available on any
+ * panel `Adjustments.colorAdjustment` gives an image fill, now available on any
  * node. All fields are optional and default to neutral.
  *
  * Shares its type name and renderer handler with `ColorAdjustmentFilter` (the

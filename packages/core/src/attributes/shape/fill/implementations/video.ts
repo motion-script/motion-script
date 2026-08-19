@@ -1,5 +1,5 @@
 import type { BlendMode } from '../blend';
-import type { MediaFilter, VideoMediaFilter } from '../../filters/union';
+import type { MediaAdjustment, VideoOnlyAdjustment } from '../../filters/union';
 import type { PosterizeTimeFilter } from '../../filters/implementations/posterize-time';
 import type { FillData } from '../registry';
 import type { ImageCrop, ImageFit, ImageMatrix } from './image';
@@ -8,10 +8,17 @@ import type { Anchor } from '@/attributes/layout/anchor';
 import type { InsetsResolved } from '@/attributes/layout/insets';
 import type { Vector2 } from '@/attributes/layout/vector2';
 import { lerpNumber } from '@/tween/lerp';
-import { lerpOptionalFilters, prepareFilter } from '../../filters/registry';
+import type { VideoAdjustment } from '../../filters/chain';
+import {
+    lerpMediaPreset,
+    prepareMediaPreset,
+    resolveMediaPreset,
+    type MediaPresetResolved,
+    type VideoPresetProp,
+} from '../media-preset';
 
-/** Filters a video fill carries — the pixel filters plus the video-only ones. */
-type VideoFillFilter = MediaFilter | VideoMediaFilter;
+/** Adjustments a video fill carries — the pixel ones plus the video-only ones. */
+type VideoFillFilter = MediaAdjustment | VideoOnlyAdjustment;
 
 export interface VideoFillProp {
     type: 'video';
@@ -51,7 +58,13 @@ export interface VideoFillProp {
      */
     playStart?: number;
     speed?: number;
-    filters?: VideoFillFilter[];
+    /** The grade laid over this footage — see {@link VideoPresetProp}. */
+    preset?: VideoPresetProp;
+    /**
+     * @deprecated Moved to `preset.adjustments`. Still read and folded into the
+     * preset on resolve. Removed in the next major.
+     */
+    filters?: VideoAdjustment;
     loop?: 'forward' | 'reverse' | 'none';
     duration?: number;
     opacity?: number;
@@ -73,7 +86,8 @@ export interface VideoFillResolved {
     trimEnd?: number;
     playStart?: number;
     speed?: number;
-    filters?: VideoFillFilter[];
+    /** Absent when the fill is ungraded — see {@link resolveMediaPreset}. */
+    preset?: MediaPresetResolved<VideoFillFilter>;
     loop?: 'forward' | 'reverse' | 'none';
     duration?: number;
     opacity?: number;
@@ -145,7 +159,7 @@ function rawTimestamp(
  * its whole interval, matching After Effects.
  */
 function posterizeTimestamp(fill: VideoFillResolved, start: number, timestamp: number): number {
-    const posterize = fill.filters?.find(
+    const posterize = fill.preset?.adjustments.find(
         (f): f is PosterizeTimeFilter => f.type === 'posterizeTime',
     );
     if (!posterize || posterize.fps <= 0) return timestamp;
@@ -155,9 +169,12 @@ function posterizeTimestamp(fill: VideoFillResolved, start: number, timestamp: n
 
 export const videoFill: FillData<VideoFillResolved> = {
     // See `imageFill.resolve` for why `crop`/`anchor` are destructured out.
-    resolve: ({ crop, anchor, ...prop }: VideoFillProp): VideoFillResolved => ({
+    resolve: ({ crop, anchor, preset, filters, ...prop }: VideoFillProp): VideoFillResolved => ({
         ...prop,
         ...resolveImagePlacement({ crop, anchor }),
+        preset: resolveMediaPreset(preset, filters) as
+            | MediaPresetResolved<VideoFillFilter>
+            | undefined,
         playing: prop.playing ?? true,
     }),
     lerp: (a, b, t) => ({
@@ -179,8 +196,8 @@ export const videoFill: FillData<VideoFillResolved> = {
             : lerpNumber(a.timestamp ?? 0, b.timestamp ?? 0, t),
         speed: lerpNumber(a.speed ?? 1, b.speed ?? 1, t),
         // See the note on `imageFill.lerp` — without this the *from* fill's
-        // filters ride the whole tween and snap at the end.
-        filters: lerpOptionalFilters(a.filters, b.filters, t),
+        // grade rides the whole tween and snaps at the end.
+        preset: lerpMediaPreset(a.preset, b.preset, t),
     }),
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
@@ -190,6 +207,6 @@ export const videoFill: FillData<VideoFillResolved> = {
             trimStart: fill.trimStart ?? 0,
             trimEnd: fill.trimEnd,
         });
-        for (const filter of fill.filters ?? []) prepareFilter(filter, manager, width, height);
+        prepareMediaPreset(fill.preset, manager, width, height);
     },
 };

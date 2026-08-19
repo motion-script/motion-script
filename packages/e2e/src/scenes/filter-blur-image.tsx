@@ -1,7 +1,7 @@
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link ImageFilters.blur}: an image fill's own pixel filter, blurring the image itself (not the node) from sharp to soft. */
+/** {@link Adjustments.blur}: an image fill's own pixel filter, blurring the image itself (not the node) from sharp to soft. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const rect = createRef<Rect>();
@@ -12,11 +12,11 @@ export default createScene(function* (stage) {
                 width={320}
                 height={320}
                 cornerRadius={24}
-                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.blur(0) })}
+                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.blur(0) })}
             />
         </Rect>,
     );
 
-    yield* rect().to({ fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.blur(16) }) }, 1.2, easeInOut('quad'));
+    yield* rect().to({ fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.blur(16) }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

@@ -1,7 +1,7 @@
-import { createScene, createRef, Rect, Fills, VideoFilters, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Fills, VideoAdjustments, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link VideoFilters.colorAdjustment}: a full color-grade sweep (contrast, saturation, temperature, vignette) applied live to a playing video. */
+/** {@link VideoAdjustments.colorAdjustment}: a full color-grade sweep (contrast, saturation, temperature, vignette) applied live to a playing video. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const rect = createRef<Rect>();
@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
                 cornerRadius={24}
                 fill={Fills.video('video.mp4', {
                     fit: 'fill',
-                    filters: VideoFilters.colorAdjustment({ contrast: 1, saturation: 1, temperature: 0, vignette: 0 }),
+                    filters: VideoAdjustments.colorAdjustment({ contrast: 1, saturation: 1, temperature: 0, vignette: 0 }),
                 })}
             />
         </Rect>,
@@ -24,7 +24,7 @@ export default createScene(function* (stage) {
         {
             fill: Fills.video('video.mp4', {
                 fit: 'fill',
-                filters: VideoFilters.colorAdjustment({ contrast: 1.6, saturation: 1.8, temperature: 0.4, vignette: 0.6 }),
+                filters: VideoAdjustments.colorAdjustment({ contrast: 1.6, saturation: 1.8, temperature: 0.4, vignette: 0.6 }),
             }),
         },
         1.4,

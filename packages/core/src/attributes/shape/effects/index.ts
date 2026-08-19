@@ -42,6 +42,7 @@ export type { ProgressiveBlurEffect, ProgressiveBlurShape } from "./implementati
 export type { KaleidoscopeEffect } from "./implementations/kaleidoscope";
 export type { TrailsEffect } from "./implementations/trails";
 export type { GlassEffect } from "./implementations/glass";
+export type { LutEffect } from "./implementations/lut";
 export { ASCII_CHARSETS, resolveAsciiCharset } from "./implementations/ascii";
 
 /** Chainable effect builder API, chain class, and union input type. */
@@ -76,6 +77,7 @@ export type {
     DuotoneOptions,
     CurvesOptions,
     ColorAdjustmentOptions,
+    LutOptions,
     RgbShiftOptions,
     ScanlinesOptions,
     BlockDisplaceOptions,

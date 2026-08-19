@@ -1,9 +1,8 @@
 import type { Color } from "./color/parser";
 import type { BlendMode } from "./blend";
 import type { Vector2 } from "@/attributes/layout/vector2";
-import { resolveChainFilters } from "../filters/chain";
-import type { ImageFilter, VideoFilter } from "../filters/chain";
-import type { MediaFilter } from "../filters/union";
+import type { ImageAdjustment, VideoAdjustment } from "../filters/chain";
+import type { MediaPresetProp, VideoPresetProp } from "./media-preset";
 import type { FillProp, FillResolved, FillSpace } from "./union";
 import type { ImageCrop, ImageFit, ImageMatrix } from "./implementations/image";
 import type { Anchor } from "@/attributes/layout/anchor";
@@ -29,7 +28,10 @@ export interface MediaPlacementOptions {
 
 /** Author-facing options for a {@link FillChain.video} layer. */
 export interface VideoFillOptions extends FillOptions, MediaPlacementOptions {
-    filters?: VideoFilter;
+    /** The grade laid over the footage — an adjustment chain plus a 0–1 mix. */
+    preset?: VideoPresetProp;
+    /** @deprecated Moved to `preset.adjustments`. Removed in the next major. */
+    filters?: VideoAdjustment;
     /**
      * Explicit source time to paint, in seconds. Omit it and the clip plays by
      * itself, timed from the moment the node painting it appeared — set it only
@@ -93,16 +95,25 @@ export class FillChain {
      * @example
      * Fills.image('./city.jpg', { zoom: 1.4, anchor: 'topCenter', crop: { bottom: 0.2 } })
      */
-    image(src: string, options?: FillOptions & MediaPlacementOptions & { filters?: ImageFilter }) {
-        const { fit, crop, zoom, anchor, matrix, filters, ...common } = options ?? {};
-        // `ImageFilter` admits only pixel filters, so the resolved array is safely
-        // a `MediaFilter[]` for the image prop (video-only filters can't reach here).
-        const imageFilters = filters ? (resolveChainFilters(filters) as MediaFilter[]) : undefined;
+    image(
+        src: string,
+        options?: FillOptions & MediaPlacementOptions & {
+            /** The grade laid over the picture — an adjustment chain plus a 0–1 mix. */
+            preset?: MediaPresetProp;
+            /** @deprecated Moved to `preset.adjustments`. Removed in the next major. */
+            filters?: ImageAdjustment;
+        },
+    ) {
+        const { fit, crop, zoom, anchor, matrix, preset, filters, ...common } = options ?? {};
+        // Both are forwarded unresolved: `imageFill.resolve` is the one place
+        // that flattens a chain and folds the deprecated prop into the preset,
+        // so a fill built here and a fill written as a literal cannot disagree
+        // about what a grade means.
         return new FillChain([...this.list, withOptions({
             type: 'image' as const,
             src,
             fit, crop, zoom, anchor, matrix,
-            filters: imageFilters,
+            preset, filters,
         }, common)]);
     }
 
@@ -113,11 +124,11 @@ export class FillChain {
      * stroke, shadow, a custom node's `Graphics`) with nothing to advance.
      */
     video(src: string, options?: VideoFillOptions) {
-        const { fit, crop, zoom, anchor, matrix, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
+        const { fit, crop, zoom, anchor, matrix, preset, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
-            fit, crop, zoom, anchor, matrix, filters: filters && resolveChainFilters(filters),
+            fit, crop, zoom, anchor, matrix, preset, filters,
             timestamp,
             playing: playing ?? true,
             trimStart, trimEnd, playStart, speed, loop, duration,

@@ -13,6 +13,7 @@ import { invertEffectHandler } from "./invert";
 import { scatterEffectHandler } from "./scatter";
 import { motionBlurEffectHandler } from "./motion-blur";
 import { skslEffectHandler } from "./sksl";
+import { lutEffectHandler } from "./lut";
 import { bulgeEffectHandler } from "./bulge";
 import { magnifyEffectHandler } from "./magnify";
 import { posterizeEffectHandler } from "./posterize";
@@ -212,6 +213,7 @@ EffectRegistry.register(kaleidoscopeEffectHandler);
 EffectRegistry.register(trailsEffectHandler);
 EffectRegistry.register(glassEffectHandler);
 EffectRegistry.register(skslEffectHandler);
+EffectRegistry.register(lutEffectHandler);
 
 // Media filters. `blur` and `grayscale` are deliberately absent — after the
 // field unification they are the same effect with the same implementation as

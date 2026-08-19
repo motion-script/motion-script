@@ -1,10 +1,11 @@
-import type { ImageFillResolved, MediaFilter } from "@motion-script/core";
+import type { ImageFillResolved, MediaAdjustment } from "@motion-script/core";
 import { AssetNotLoadedError, isPixelFilter } from "@motion-script/core";
 import type { Image as CKImage, Shader } from "@motion-script/canvaskit";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { type ShapeBounds } from "./handler";
 import { EffectRegistry } from "../effects/registry";
 import type { EffectGeometry } from "../effects/handler";
+import { getOrCompileSkSL } from "../sksl-cache";
 
 /** Shades with the adapter-decoded image and applies the fill's filter chain. */
 export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
@@ -37,8 +38,8 @@ export class ImageFillRenderer extends FillRenderer<ImageFillResolved> {
  * which is also the space `getShapeBounds()` reports and the space the image
  * shader's matrix maps into — so an authored px is a logical px here and the
  * CTM scales the whole thing afterwards. That is exactly the ImageFilter path's
- * convention (`scale: 1`), which is what keeps `ImageFilters.blur(8)` and
- * `ImageFilters.dither({ scale: 8 })` meaning the same size on screen.
+ * convention (`scale: 1`), which is what keeps `Adjustments.blur(8)` and
+ * `Adjustments.dither({ scale: 8 })` meaning the same size on screen.
  */
 function fillGeometry(bounds: ShapeBounds | null, elapsed: number): EffectGeometry {
     return {
@@ -50,7 +51,7 @@ function fillGeometry(bounds: ShapeBounds | null, elapsed: number): EffectGeomet
         time: elapsed,
         // A media filter is applied to the fill's own pixels — it has no node
         // motion of its own, which is why `motionBlur` and `trails` are not
-        // filters at all (see `EffectFilter` in core).
+        // filters at all (see `EffectAdjustment` in core).
         velocity: { x: 0, y: 0 },
         angularVelocity: 0,
     };
@@ -63,8 +64,8 @@ function fillGeometry(bounds: ShapeBounds | null, elapsed: number): EffectGeomet
  * is the one that matters: a `nearest` filter (dither, bit-crush) blurs into
  * mush if the texture beneath it is being bilinearly resampled.
  */
-export function samplingFor(fill: { filters?: { type: string }[] }): "linear" | "nearest" | undefined {
-    for (const filter of fill.filters ?? []) {
+export function samplingFor(fill: GradedFill): "linear" | "nearest" | undefined {
+    for (const filter of fill.preset?.adjustments ?? []) {
         const handler = EffectRegistry.resolveShader(filter, "foreground");
         if (handler) return handler.sampling?.filterMode;
     }
@@ -89,7 +90,7 @@ export function samplingFor(fill: { filters?: { type: string }[] }): "linear" | 
  * runs before the composed `ImageFilter`, because Skia applies a paint's image
  * filter to whatever its shader produced and CanvasKit exposes no way to feed an
  * `ImageFilter`'s output back in as a child shader. So
- * `ImageFilters.oilPaint(4).grayscale(1)` is honoured exactly, while
+ * `Adjustments.oilPaint(4).grayscale(1)` is honoured exactly, while
  * `.grayscale(1).oilPaint(4)` also paints brushwork over grey — the difference
  * being whether the brush windows saw colour. Order the chain resamplers-first
  * when it matters.
@@ -100,18 +101,24 @@ export function samplingFor(fill: { filters?: { type: string }[] }): "linear" | 
  * after drawing.
  */
 export function applyMediaFilters(
-    fill: { filters?: { type: string }[] },
+    fill: GradedFill,
     ctx: FillRendererContext,
     content: Shader,
 ): Shader {
-    const pixel = (fill.filters ?? []).filter((f): f is MediaFilter => isPixelFilter(f.type));
-    if (pixel.length === 0) {
+    const intensity = fill.preset?.intensity ?? 1;
+    const pixel = (fill.preset?.adjustments ?? []).filter(
+        (f): f is MediaAdjustment => isPixelFilter(f.type),
+    );
+    // A grade dialled to nothing is not a grade with tiny numbers — it is the
+    // ungraded fill, and taking the cheap path here is what makes `intensity: 0`
+    // cost the same as no preset at all.
+    if (pixel.length === 0 || intensity <= 0) {
         ctx.paint.setImageFilter(null);
         return content;
     }
 
     const geom = fillGeometry(ctx.getShapeBounds(), ctx.elapsed);
-    const composable: MediaFilter[] = [];
+    const composable: MediaAdjustment[] = [];
     let shader = content;
 
     for (const filter of pixel) {
@@ -131,15 +138,99 @@ export function applyMediaFilters(
         shader = lens;
     }
 
+    // The lens half of the mix. `shader === content` when every adjustment in
+    // the chain composed instead, in which case there is nothing to cross-fade.
+    if (intensity < 1 && shader !== content) {
+        const mixed = mixShaders(content, shader, intensity, ctx);
+        if (mixed) {
+            ctx.transientPaintObjects.push(mixed);
+            shader = mixed;
+        }
+    }
+
     const composed = composable.length > 0
         ? EffectRegistry.compose(composable, ctx.canvasKit, geom)
         : null;
     if (composed) ctx.transientPaintObjects.push(composed);
-    ctx.paint.setImageFilter(composed);
+    const graded = intensity < 1 && composed
+        ? fadeImageFilter(composed, intensity, ctx)
+        : composed;
+    if (graded && graded !== composed) ctx.transientPaintObjects.push(graded);
+    ctx.paint.setImageFilter(graded);
     // An image filter's output escapes the geometry it was computed from — see
     // `clipFilterToShape`. The lens run needs no such help.
-    ctx.clipFilterToShape = composed != null;
+    ctx.clipFilterToShape = graded != null;
     return shader;
+}
+
+/**
+ * The fill shape `applyMediaFilters` and `samplingFor` actually read: a grade,
+ * or nothing. Structural rather than `ImageFillResolved`, because the video fill
+ * hands in its own resolved type and the multi-tap echo path hands in a subset.
+ */
+export interface GradedFill {
+    preset?: { adjustments: { type: string }[]; intensity: number };
+}
+
+/**
+ * Cross-fade two premultiplied shaders.
+ *
+ * A `mix` in SkSL rather than a Skia blend, because there is no blend mode that
+ * means "interpolate": the nearest thing, drawing the graded copy over the
+ * ungraded one at reduced alpha, is only equal to a lerp where the content is
+ * opaque, and a fill's antialiased rim is exactly where it isn't. Premultiplied
+ * colours interpolate linearly, so the one-line shader is also the exact answer.
+ */
+function mixShaders(
+    dry: Shader,
+    wet: Shader,
+    t: number,
+    ctx: FillRendererContext,
+): Shader | null {
+    const rte = getOrCompileSkSL(MIX_SKSL, ctx.canvasKit);
+    if (!rte) return null;
+    return rte.makeShaderWithChildren([t], [dry, wet]);
+}
+
+const MIX_SKSL = `
+uniform shader u_dry;
+uniform shader u_wet;
+uniform float u_t;
+
+vec4 main(vec2 p) {
+    return mix(u_dry.eval(p), u_wet.eval(p), u_t);
+}
+`;
+
+/**
+ * `composed` at `t` of its full strength, over the ungraded source.
+ *
+ * The colour matrix scales **alpha alone**, and Skia's matrix colour filter runs
+ * on unpremultiplied colour — so re-premultiplying gives `wet · t`, which is
+ * precisely the source-over weight a lerp wants. `MakeBlend`'s null background
+ * is the ungraded input, so the pair composites to `wet·t + dry·(1 − t·wetAlpha)`
+ * — an exact lerp wherever the fill is opaque, which inside a picture is
+ * everywhere. The antialiased rim reads a shade less graded, and that is the
+ * price of the ImageFilter path having no interpolating blend; the lens path
+ * above pays nothing because it can use a shader.
+ */
+function fadeImageFilter(
+    composed: import("@motion-script/canvaskit").ImageFilter,
+    t: number,
+    ctx: FillRendererContext,
+): import("@motion-script/canvaskit").ImageFilter {
+    const ck = ctx.canvasKit;
+    const alpha = ck.ColorFilter.MakeMatrix([
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 0, t, 0,
+    ]);
+    const faded = ck.ImageFilter.MakeColorFilter(alpha, composed);
+    alpha.delete();
+    const blended = ck.ImageFilter.MakeBlend(ck.BlendMode.SrcOver, null, faded);
+    faded.delete();
+    return blended;
 }
 
 /** The placement fields `computeImageMatrix` reads off an image or video fill. */

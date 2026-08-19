@@ -1,4 +1,4 @@
-import { MediaFilter, VideoMediaFilter } from "./union";
+import { MediaAdjustment, VideoOnlyAdjustment } from "./union";
 import { effectSurface, hasEffect, lerpEffect, prepareEffect } from "../effects/registry";
 import type { SceneEffect } from "../effects/union";
 import type { AssetTracker } from "@/assets/tracker";
@@ -14,7 +14,7 @@ import { posterizeTimeFilter } from "./implementations/posterize-time";
 import { echoFilter } from "./implementations/echo";
 
 /** Any concrete filter object accepted on a media fill — pixel or video-only. */
-export type AnyFilter = MediaFilter | VideoMediaFilter;
+export type AnyFilter = MediaAdjustment | VideoOnlyAdjustment;
 
 /** Interpolation and equality contract every filter implementation must implement. */
 export interface FilterData<T extends AnyFilter> {
@@ -31,7 +31,7 @@ export interface FilterData<T extends AnyFilter> {
  * import to forget.
  *
  * It holds only the filters that exist *solely* as filters. Most of the roster
- * is {@link EffectFilter} — a scene effect applied to a fill's own pixels — and
+ * is {@link EffectAdjustment} — a scene effect applied to a fill's own pixels — and
  * those are looked up in the effects registry rather than duplicated here, so
  * `dither` interpolates the same way whether it is on a node or on an image.
  */
@@ -69,7 +69,7 @@ export function hasFilter(type: string): boolean {
  * Interpolate between two individual filters at progress `t`.
  * Falls back to a hard cut at t = 0.5 when the types differ or are unregistered.
  *
- * A type with no dedicated `FilterData` is an {@link EffectFilter}, so it is
+ * A type with no dedicated `FilterData` is an {@link EffectAdjustment}, so it is
  * handed to `lerpEffect` — one interpolation per effect, whether it is animated
  * on a node or inside a fill.
  */
@@ -84,7 +84,7 @@ export function lerpFilter(from: AnyFilter, to: AnyFilter, t: number): AnyFilter
  * Let `filter` declare the assets it needs at the current frame, so they are
  * loaded before it renders.
  *
- * The filters defined here reference nothing, but an {@link EffectFilter} can —
+ * The filters defined here reference nothing, but an {@link EffectAdjustment} can —
  * `texture` and `displace` sample an image, `ascii` bakes a glyph atlas — and
  * without this the backend's synchronous lookup returns nothing, which the
  * effect can only read as "no texture". Called from the image/video fills'
@@ -104,7 +104,7 @@ export function prepareFilter(
  * How a backend must realise `filter` — `"shader"` when it resamples pixel
  * positions and therefore has to wrap the fill's shader rather than compose
  * into its `ImageFilter` chain. The filters defined here are all `"filter"`;
- * an {@link EffectFilter} answers with its effect's own declaration.
+ * an {@link EffectAdjustment} answers with its effect's own declaration.
  */
 export function filterSurface(filter: AnyFilter): "filter" | "shader" {
     if (FILTERS.has(filter.type)) return "filter";

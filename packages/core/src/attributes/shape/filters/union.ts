@@ -17,6 +17,7 @@ import type { MagnifyEffect } from "../effects/implementations/magnify";
 import type { MotionBlurEffect } from "../effects/implementations/motion-blur";
 import type { TrailsEffect } from "../effects/implementations/trails";
 import type { OutlineEffect } from "../effects/implementations/outline";
+import type { GlassEffect } from "../effects/implementations/glass";
 
 /**
  * The scene effects that are **not** media filters, and why.
@@ -29,9 +30,11 @@ import type { OutlineEffect } from "../effects/implementations/outline";
  *
  * Two reasons land here:
  *
- * - **Needs something a fill layer doesn't have.** `magnify` samples the
- *   backdrop beneath the node; `motionBlur` and `trails` are derived from the
- *   node's sampled velocity. A fill has no backdrop and no motion of its own.
+ * - **Needs something a fill layer doesn't have.** `magnify` and `glass` sample
+ *   the backdrop beneath the node — glass is a slab you see *through*, and a
+ *   node's own paint is not something there is anything behind; `motionBlur` and
+ *   `trails` are derived from the node's sampled velocity. A fill has no
+ *   backdrop and no motion of its own.
  * - **Draws outside the silhouette.** `outline` paints a ring around the
  *   content, which the shape path a fill is clipped to would cut away.
  *
@@ -41,6 +44,7 @@ import type { OutlineEffect } from "../effects/implementations/outline";
  */
 type NonFilterEffect =
     | MagnifyEffect
+    | GlassEffect
     | MotionBlurEffect
     | TrailsEffect
     | OutlineEffect
@@ -56,15 +60,15 @@ type NonFilterEffect =
  * This is what lets a background image be oil-painted, dithered or posterized
  * without wrapping it in a node whose effect would also hit its children:
  *
- *     <Rect fill={Fills.image('bg.jpg', { filters: ImageFilters.oilPaint(4) })}>
+ *     <Rect fill={Fills.image('bg.jpg', { filters: Adjustments.oilPaint(4) })}>
  *         <Text text="still sharp" />
  *     </Rect>
  *
  * The effects carry a `mode` field that means nothing here (a fill has no
- * backdrop); the {@link FilterChain} builders drop it, and the renderer ignores
+ * backdrop); the {@link VideoAdjustmentChain} builders drop it, and the renderer ignores
  * it on this path.
  */
-export type EffectFilter = Exclude<SceneEffect, NonFilterEffect>;
+export type EffectAdjustment = Exclude<SceneEffect, NonFilterEffect>;
 
 /**
  * Discriminated union of pixel filters — the filters valid on both image and
@@ -72,7 +76,7 @@ export type EffectFilter = Exclude<SceneEffect, NonFilterEffect>;
  * applied via `paint.setImageFilter`, or — for the ones that resample pixel
  * *positions* — as a lens shader wrapping the fill's own shader.
  */
-export type MediaFilter =
+export type MediaAdjustment =
     | ExposureFilter
     | BlurFilter
     | GrayscaleFilter
@@ -80,13 +84,13 @@ export type MediaFilter =
     | ColorMatrixFilter
     | CurvesFilter
     | ColorAdjustmentFilter
-    | EffectFilter;
+    | EffectAdjustment;
 
 /**
  * Discriminated union of video-only filters — temporal/multi-frame effects that
  * are meaningless on a still image (a single frame has no time axis and no
  * previous frames). Consumed outside the pixel `setImageFilter` path.
  */
-export type VideoMediaFilter =
+export type VideoOnlyAdjustment =
     | PosterizeTimeFilter
     | VideoEchoFilter;

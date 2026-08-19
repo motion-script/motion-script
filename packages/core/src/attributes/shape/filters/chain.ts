@@ -1,4 +1,4 @@
-import { MediaFilter, VideoMediaFilter } from "./union";
+import { MediaAdjustment, VideoOnlyAdjustment } from "./union";
 import { EffectChain } from "../effects/chain";
 import type { BlendMode } from "../fill/blend";
 import type { ColorAdjustmentFilter } from "./implementations/color-adjustment";
@@ -20,6 +20,7 @@ import type {
     GrainOptions,
     HalftoneOptions,
     InvertOptions,
+    LutOptions,
     KaleidoscopeOptions,
     OilPaintOptions,
     PixelateOptions,
@@ -41,20 +42,41 @@ import type {
 } from "../effects/chain";
 
 /** Any concrete filter a chain may hold — pixel or video-only. */
-type AnyFilter = MediaFilter | VideoMediaFilter;
+type AnyFilter = MediaAdjustment | VideoOnlyAdjustment;
 
 /**
- * Media filters follow the same one-argument rule as scene effects: every
+ * ## Adjustments and filters are two layers, not two names for one thing
+ *
+ * An **adjustment** is the unit an author writes: `Adjustments.blur(8)`, one
+ * entry in the ordered chain a media fill's `preset` carries. A **filter** is
+ * the primitive the renderer realises it as — `BlurFilter`, `CurvesFilter`, and
+ * the `FilterData` handlers in `registry.ts`.
+ *
+ * Most of the time the two are one-to-one, which is what makes the distinction
+ * look like pedantry. It isn't: an editor above this layer composes adjustments
+ * that have no primitive of their own (a lift/gamma/gain grade is three
+ * per-channel `CurvesFilter`s), and one primitive — the LUT's texture lookup —
+ * is reached through no chain builder at all. Naming the two layers apart is
+ * what lets that mapping be written down instead of assumed.
+ *
+ * It also settles a collision with no good answer otherwise: the options for
+ * `Adjustments.colorAdjustment(…)` are named after the primitive they omit from
+ * (`ColorAdjustmentFilterOptions`), because `ColorAdjustmentAdjustmentOptions`
+ * is not a name anyone should have to type.
+ *
+ * ## The builders
+ *
+ * Media adjustments follow the same one-argument rule as scene effects: every
  * builder takes a single options object, and those with one dominant scalar
  * also accept that scalar directly. Field names are the shared vocabulary —
  * `radius` for a pixel distance, `amount` for a 0–1 intensity — so
- * `ImageFilters.blur(8)` and `Effects.blur(8)` describe the same quantity.
+ * `Adjustments.blur(8)` and `Effects.blur(8)` describe the same quantity.
  *
- * Most of the roster *is* the scene-effect roster: a filter is an effect
+ * Most of the roster *is* the scene-effect roster: an adjustment is an effect
  * applied to one fill layer's own pixels instead of to a node and everything
- * beneath it, so `ImageFilters.oilPaint(4)` and `Effects.oilPaint(4)` are the
- * same implementation reached two ways. See {@link EffectFilter} for the short
- * list of effects that cannot be filters.
+ * beneath it, so `Adjustments.oilPaint(4)` and `Effects.oilPaint(4)` are the
+ * same implementation reached two ways. See {@link EffectAdjustment} for the
+ * short list of effects that cannot be adjustments.
  */
 
 /** Gaussian blur. Scalar shorthand sets `radius`. */
@@ -147,16 +169,16 @@ function fromEffect(chain: EffectChain): AnyFilter {
  * fill.
  *
  * Each builder method returns a new chain with the filter appended, so chains
- * are safe to share and branch. {@link FilterChain} extends this with the
+ * are safe to share and branch. {@link VideoAdjustmentChain} extends this with the
  * video-only temporal filters; the split is what keeps `posterizeTime` off an
  * image fill, mirroring how `Fill` is structured.
  *
  * @example
- * const chain = ImageFilters.blur(4).grayscale(0.5);
+ * const chain = Adjustments.blur(4).grayscale(0.5);
  * node.filters = chain; // assign directly
  * node.filters = [...chain, { type: 'alpha', amount: 0.5 }]; // spread into array
  */
-export class ImageFilterChain {
+export class AdjustmentChain {
     constructor(public list: AnyFilter[] = []) { }
 
     /**
@@ -302,6 +324,11 @@ export class ImageFilterChain {
         return this.append(fromEffect(new EffectChain().grain(options)));
     }
 
+    /** Append a 3D colour lookup table — see {@link EffectChain.lut}. */
+    lut(options: AsFilterOptions<LutOptions>) {
+        return this.append(fromEffect(new EffectChain().lut(options as LutOptions)));
+    }
+
     /** Append CRT-style scanlines. */
     scanlines(options?: AsFilterOptions<number | ScanlinesOptions>) {
         return this.append(fromEffect(new EffectChain().scanlines(options)));
@@ -394,7 +421,7 @@ export class ImageFilterChain {
         return this.append(fromEffect(new EffectChain().sksl(options)));
     }
 
-    /** Allows spreading the chain into an array: `[...ImageFilters.blur(5)]`. */
+    /** Allows spreading the chain into an array: `[...Adjustments.blur(5)]`. */
     *[Symbol.iterator]() {
         yield* this.list;
     }
@@ -406,13 +433,13 @@ export class ImageFilterChain {
 }
 
 /**
- * An {@link ImageFilterChain} plus the video-only temporal filters — the
+ * An {@link AdjustmentChain} plus the video-only temporal filters — the
  * filters valid on a **video** fill.
  *
  * @example
- * node.filters = VideoFilters.posterizeTime(6).grayscale(1);
+ * node.filters = VideoAdjustments.posterizeTime(6).grayscale(1);
  */
-export class FilterChain extends ImageFilterChain {
+export class VideoAdjustmentChain extends AdjustmentChain {
     /** Append a posterize-time filter; snaps the video playhead to `fps`. */
     posterizeTime(options: number | PosterizeTimeFilterOptions) {
         const { fps } = scalarFilter(options, "fps");
@@ -430,50 +457,69 @@ export class FilterChain extends ImageFilterChain {
  * filter, a plain array of them, or a filter chain. Mirrors how `Fill` is the
  * loose author-facing union for a fill. Video-only filters are excluded here.
  */
-export type ImageFilter = MediaFilter | MediaFilter[] | ImageFilterChain;
+export type ImageAdjustment = MediaAdjustment | MediaAdjustment[] | AdjustmentChain;
 
 /**
  * Accepted shapes for a **video** fill's `filters` prop — the pixel filters
  * plus the video-only temporal filters (`posterizeTime`, `echo`).
  */
-export type VideoFilter =
-    | (MediaFilter | VideoMediaFilter)
-    | (MediaFilter | VideoMediaFilter)[]
-    | ImageFilterChain;
+export type VideoAdjustment =
+    | (MediaAdjustment | VideoOnlyAdjustment)
+    | (MediaAdjustment | VideoOnlyAdjustment)[]
+    | AdjustmentChain;
 
 /**
  * Entry point for building **image** filter chains fluently.
  *
- * An empty chain, so `ImageFilters.blur(8)` is `new ImageFilterChain().blur(8)`
+ * An empty chain, so `Adjustments.blur(8)` is `new AdjustmentChain().blur(8)`
  * — and every builder's signature and documentation has one definition, on
- * {@link ImageFilterChain}, which is what an editor shows on hover.
+ * {@link AdjustmentChain}, which is what an editor shows on hover.
  *
  * Contains only pixel filters; video-only filters (`posterizeTime`, `echo`)
- * live on {@link VideoFilters} because image fills cannot use them.
+ * live on {@link VideoAdjustments} because image fills cannot use them.
  *
  * @example
- * node.filters = ImageFilters.blur(8).grayscale(1);
- * <Rect fill={Fills.image('bg.jpg', { filters: ImageFilters.oilPaint(4) })} />
+ * node.filters = Adjustments.blur(8).grayscale(1);
+ * <Rect fill={Fills.image('bg.jpg', { filters: Adjustments.oilPaint(4) })} />
  */
-export const ImageFilters = new ImageFilterChain();
+export const Adjustments = new AdjustmentChain();
 
 /**
  * Entry point for building **video** filter chains fluently — every
- * {@link ImageFilters} builder plus the video-only temporal ones.
+ * {@link Adjustments} builder plus the video-only temporal ones.
  *
  * @example
- * node.filters = VideoFilters.posterizeTime(6);
- * node.filters = VideoFilters.grayscale(1).blur(6);
+ * node.filters = VideoAdjustments.posterizeTime(6);
+ * node.filters = VideoAdjustments.grayscale(1).blur(6);
  */
-export const VideoFilters = new FilterChain();
+export const VideoAdjustments = new VideoAdjustmentChain();
 
 /**
- * Normalises any `ImageFilter`/`VideoFilter` value to a plain filter array.
+ * The previous name for {@link Adjustments}.
+ *
+ * Kept because a scene is *source code in someone else's project*: a rename that
+ * only shows up as a compile error in a file we can't edit is still a rename that
+ * broke their build. The alias costs one line and buys a release in which both
+ * spellings work.
+ *
+ * @deprecated Use {@link Adjustments}. Removed in the next major.
+ */
+export const ImageFilters = Adjustments;
+
+/**
+ * The previous name for {@link VideoAdjustments}.
+ *
+ * @deprecated Use {@link VideoAdjustments}. Removed in the next major.
+ */
+export const VideoFilters = VideoAdjustments;
+
+/**
+ * Normalises any `ImageAdjustment`/`VideoAdjustment` value to a plain filter array.
  * Used internally when reading props before rendering or interpolation.
  */
-export function resolveChainFilters(filters: ImageFilter | VideoFilter | undefined): AnyFilter[] {
+export function resolveChainAdjustments(filters: ImageAdjustment | VideoAdjustment | undefined): AnyFilter[] {
     if (filters === undefined) return [];
-    if (filters instanceof ImageFilterChain) return filters.list;
+    if (filters instanceof AdjustmentChain) return filters.list;
     if (Array.isArray(filters)) return filters;
     return [filters];
 }

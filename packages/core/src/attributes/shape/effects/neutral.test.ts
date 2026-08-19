@@ -63,10 +63,27 @@ const NEUTRAL: Record<string, () => EffectChain> = {
     // adds is scaled by the bevel falloff, so `depth: 0` passes the backdrop
     // through untouched whatever the other six are set to.
     glass: () => Effects.glass({ depth: 0 }),
+    // A LUT's neutral is its *mix*, not its table: at `amount: 0` the source
+    // colour comes back whatever the cube holds. That is what makes a look
+    // dissolvable in at all — two different cubes have no meaningful midpoint,
+    // so the table cuts and only this ramps.
+    lut: () => Effects.lut({ table: IDENTITY_CUBE, size: 2, amount: 0 }),
     // Resolution-relative: inert only while the cell is finer than the pixel grid.
     pixelate: () => Effects.pixelate(1920),
     halftone: () => Effects.halftone({ size: 0.5 }),
 };
+
+/**
+ * The smallest cube that is the identity: every corner of the RGB unit cube
+ * mapped to itself, which trilinear interpolation extends to every colour
+ * between them. Red-fastest, matching {@link LutEffect.table}.
+ */
+const IDENTITY_CUBE = new Float32Array([
+    0, 0, 0, /**/ 1, 0, 0,
+    0, 1, 0, /**/ 1, 1, 0,
+    0, 0, 1, /**/ 1, 0, 1,
+    0, 1, 1, /**/ 1, 1, 1,
+]);
 
 /**
  * Effects with no neutral form, and why.

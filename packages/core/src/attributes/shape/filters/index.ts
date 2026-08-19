@@ -10,8 +10,10 @@
 /** @internal */ export type { VideoEchoFilter } from './implementations/echo';
 
 /** @internal Chainable filter builder API, chain classes, and the loose author-facing unions. */
-/** @internal */ export { ImageFilters, VideoFilters, ImageFilterChain, FilterChain, resolveChainFilters } from './chain';
-/** @internal */ export type { ImageFilter, VideoFilter } from './chain';
+/** @internal */ export { Adjustments, VideoAdjustments, AdjustmentChain, VideoAdjustmentChain, resolveChainAdjustments } from './chain';
+/** @internal @deprecated Renamed to `Adjustments`/`VideoAdjustments`. */
+/** @internal */ export { ImageFilters, VideoFilters } from './chain';
+/** @internal */ export type { ImageAdjustment, VideoAdjustment } from './chain';
 
 /** @internal Per-builder options. Each builder takes one of these, or its dominant scalar. */
 /** @internal */ export type {
@@ -27,10 +29,10 @@
 } from './chain';
 
 /**
- * @internal Unions of concrete filter types: pixel (`MediaFilter`), video-only,
+ * @internal Unions of concrete filter types: pixel (`MediaAdjustment`), video-only,
  * and the scene effects that double as filters.
  */
-/** @internal */ export type { MediaFilter, VideoMediaFilter, EffectFilter } from './union';
+/** @internal */ export type { MediaAdjustment, VideoOnlyAdjustment, EffectAdjustment } from './union';
 
 /** @internal Interpolation/equality registry: constants map plus the lerp helpers. */
 /** @internal */ export { lerpFilter, lerpFilterArray, isPixelFilter, hasFilter, prepareFilter, filterSurface } from './registry';

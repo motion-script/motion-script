@@ -1,8 +1,8 @@
 import { RenderContext } from "@/render/render-context";
 import { Graphics } from "@/render/graphics";
-import { VideoFilter, resolveChainFilters } from "@/attributes/shape/filters/chain";
+import { VideoAdjustment, resolveChainAdjustments } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
-import { MediaFilter, VideoMediaFilter } from "@/attributes/shape/filters/union";
+import { MediaAdjustment, VideoOnlyAdjustment } from "@/attributes/shape/filters/union";
 import { ImageCrop, ImageFit, ImageMatrix } from "@/attributes/shape/fill/implementations/image";
 import { Anchor } from "@/attributes/layout/anchor";
 import { InsetsResolved } from "@/attributes/layout/insets";
@@ -32,7 +32,7 @@ export interface VideoProps extends RectProps {
     /** Raw frame→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds. */
     matrix?: ImageMatrix;
     /** Visual filters applied to the rendered frame (blur, color, posterizeTime, echo, …). */
-    filters?: VideoFilter;
+    filters?: VideoAdjustment;
     /** Whether playback advances with the node's clock (drives both picture and sound). Default true. */
     playing?: boolean;
     /**
@@ -78,8 +78,8 @@ export class Video extends Rect<VideoProps> {
     @property({ default: 1 }) declare zoom: number;
     @anchorProperty() declare anchor: Anchor;
     @property() declare matrix?: ImageMatrix;
-    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainFilters })
-    declare filters?: (MediaFilter | VideoMediaFilter)[];
+    @property({ default: [], tween: lerpFilterArray, mapper: resolveChainAdjustments })
+    declare filters?: (MediaAdjustment | VideoOnlyAdjustment)[];
 
     @property({ default: true }) declare playing: boolean;
     @property() declare timestamp?: number | null;

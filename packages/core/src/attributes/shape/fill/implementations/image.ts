@@ -1,7 +1,14 @@
 import type { BlendMode } from '../blend';
-import type { MediaFilter } from '../../filters/union';
+import type { MediaAdjustment } from '../../filters/union';
+import type { ImageAdjustment } from '../../filters/chain';
 import type { FillData } from '../registry';
-import { lerpOptionalFilters, prepareFilter } from '../../filters/registry';
+import {
+    lerpMediaPreset,
+    prepareMediaPreset,
+    resolveMediaPreset,
+    type MediaPresetProp,
+    type MediaPresetResolved,
+} from '../media-preset';
 import { Anchor, resolveAnchor } from '@/attributes/layout/anchor';
 import { Insets, InsetsResolved, resolveInsets } from '@/attributes/layout/insets';
 import { Vector2, lerpVector2 } from '@/attributes/layout/vector2';
@@ -94,7 +101,14 @@ export interface ImageFillProp {
      */
     matrix?: ImageMatrix;
 
-    filters?: MediaFilter[];
+    /** The grade laid over this picture — see {@link MediaPresetProp}. */
+    preset?: MediaPresetProp;
+    /**
+     * @deprecated Moved to `preset.adjustments`. Still read, and folded into the
+     * preset on resolve, so a scene written against the old prop keeps grading
+     * the way it did. Removed in the next major.
+     */
+    filters?: ImageAdjustment;
     opacity?: number;
     blend?: BlendMode;
 }
@@ -109,7 +123,8 @@ export interface ImageFillResolved {
     /** Normalised `[-1, 1]` y-up point. */
     anchor?: Vector2;
     matrix?: ImageMatrix;
-    filters?: MediaFilter[];
+    /** Absent when the fill is ungraded — see {@link resolveMediaPreset}. */
+    preset?: MediaPresetResolved<MediaAdjustment>;
     opacity?: number;
     blend?: BlendMode;
 }
@@ -161,28 +176,30 @@ export const imageFill: FillData<ImageFillResolved> = {
     // `crop`/`anchor` are destructured out before the spread: an optional prop
     // re-added by a later spread widens to a *union* of both types, so leaving
     // them in would type the resolved crop as `ImageCrop | InsetsResolved`.
-    resolve: ({ crop, anchor, ...prop }: ImageFillProp): ImageFillResolved => ({
+    // `filters` is destructured out alongside them: it is the deprecated spelling
+    // of the grade, folded into `preset` here, and letting it through the spread
+    // would leave a stale array on the resolved fill for the renderer to find.
+    resolve: ({ crop, anchor, preset, filters, ...prop }: ImageFillProp): ImageFillResolved => ({
         ...prop,
         ...resolveImagePlacement({ crop, anchor }),
+        preset: resolveMediaPreset(preset, filters) as
+            | MediaPresetResolved<MediaAdjustment>
+            | undefined,
     }),
     lerp: (a, b, t) => ({
         src: t < 0.5 ? a.src : b.src,
         fit: a.fit ?? b.fit,
         ...lerpImagePlacement(a, b, t),
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
-        // Filters animate with the fill. Leaving them out let `lerpFill`'s
-        // `{...a, ...lerp()}` spread carry the *from* fill's filters for the
-        // whole tween, so tweening a fill from `grayscale(0)` to `grayscale(1)`
-        // did nothing until the signal snapped to the target at the end.
-        filters: lerpOptionalFilters(a.filters, b.filters, t),
+        // The grade animates with the fill. Leaving it out let `lerpFill`'s
+        // `{...a, ...lerp()}` spread carry the *from* fill's grade for the whole
+        // tween, so tweening a fill from `grayscale(0)` to `grayscale(1)` did
+        // nothing until the signal snapped to the target at the end.
+        preset: lerpMediaPreset(a.preset, b.preset, t),
     }),
     equals: (a, b) => a.src === b.src,
     prepare: (fill, manager, width, height) => {
         manager.addImage(fill.src, { width, height });
-        // A filter can reference an asset of its own — `texture` and `displace`
-        // sample an image, `ascii` bakes a glyph atlas — and the backend's
-        // lookup is synchronous, so an unrequested one just reads as "no
-        // texture" and the filter silently no-ops.
-        for (const filter of fill.filters ?? []) prepareFilter(filter, manager, width, height);
+        prepareMediaPreset(fill.preset, manager, width, height);
     },
 };

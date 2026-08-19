@@ -1,7 +1,7 @@
-import { createScene, createRef, Rect, Fills, ImageFilters, easeInOut } from 'motion-script';
+import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link ImageFilters.grayscale}: an image fill's own pixel filter desaturating the image as `amount` ramps from 0 to 1. */
+/** {@link Adjustments.grayscale}: an image fill's own pixel filter desaturating the image as `amount` ramps from 0 to 1. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const rect = createRef<Rect>();
@@ -12,11 +12,11 @@ export default createScene(function* (stage) {
                 width={320}
                 height={320}
                 cornerRadius={24}
-                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.grayscale(0) })}
+                fill={Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.grayscale(0) })}
             />
         </Rect>,
     );
 
-    yield* rect().to({ fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: ImageFilters.grayscale(1) }) }, 1.2, easeInOut('quad'));
+    yield* rect().to({ fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.grayscale(1) }) }, 1.2, easeInOut('quad'));
     yield* holdTail(1.2);
 });

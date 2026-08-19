@@ -1,4 +1,4 @@
-import { createScene, createRef, easeInOut, Fills, ImageFilters, Rect, Text } from "motion-script";
+import { createScene, createRef, easeInOut, Fills, Adjustments, Rect, Text } from "motion-script";
 
 /**
  * Filters on the *fill*, not on the node.
@@ -32,7 +32,7 @@ export default createScene(function* (stage) {
                 <Rect
                     width={'fill'} height={'fill'} cornerRadius={32} clip
                     flow={'vertical'} padding={40} gap={0}
-                    fill={Fills.image(src, { fit: 'fill', filters: ImageFilters.oilPaint(4) })}
+                    fill={Fills.image(src, { fit: 'fill', filters: Adjustments.oilPaint(4) })}
                 >
                     <Text text={'oilPaint'} fontSize={56} fill={'white'} />
                 </Rect>
@@ -41,7 +41,7 @@ export default createScene(function* (stage) {
                     flow={'vertical'} padding={40} gap={0}
                     fill={Fills.image(src, {
                         fit: 'fill',
-                        filters: ImageFilters.grayscale(1).dither({ levels: 3, matrix: 4, scale: 3 }),
+                        filters: Adjustments.grayscale(1).dither({ levels: 3, matrix: 4, scale: 3 }),
                     })}
                 >
                     <Text text={'grayscale + dither'} fontSize={56} fill={'white'} />
@@ -50,7 +50,7 @@ export default createScene(function* (stage) {
                     ref={live}
                     width={'fill'} height={'fill'} cornerRadius={32} clip
                     flow={'vertical'} padding={40} gap={0}
-                    fill={Fills.image(src, { fit: 'fill', filters: ImageFilters.halftone({ size: 8, angle: 30 }) })}
+                    fill={Fills.image(src, { fit: 'fill', filters: Adjustments.halftone({ size: 8, angle: 30 }) })}
                 >
                     <Text text={'halftone'} fontSize={56} fill={'white'} />
                 </Rect>
@@ -62,7 +62,7 @@ export default createScene(function* (stage) {
         {
             fill: Fills.image(src, {
                 fit: 'fill',
-                filters: ImageFilters.halftone({ size: 24, angle: 30 }),
+                filters: Adjustments.halftone({ size: 24, angle: 30 }),
             }),
         },
         2,

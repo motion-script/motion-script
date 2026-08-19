@@ -43,6 +43,7 @@ export { glassEffectHandler } from "./glass";
 export { GlyphAtlasCache, atlasCell, atlasGlyphCount } from "./glyph-atlas";
 export type { GlyphAtlas, GlyphAtlasSpec } from "./glyph-atlas";
 export { skslEffectHandler } from "./sksl";
+export { lutEffectHandler } from "./lut";
 export { motionBlurEffectHandler, resolveMotionBlur } from "./motion-blur";
 export type { MotionBlurResolved } from "./motion-blur";
 

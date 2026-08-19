@@ -12,7 +12,7 @@ import videoNode from './scenes/video-node?scene';
 /**
  * A project that walks through the video fill: a shape painted with a *playing*
  * video that advances its timestamp each frame. One scene per case — plain
- * playback, the fit/crop modes, a `MediaFilter` chain, and an opacity/blend
+ * playback, the fit/crop modes, a `MediaAdjustment` chain, and an opacity/blend
  * layer — to show video reuses every standard fill feature.
  *
  * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
