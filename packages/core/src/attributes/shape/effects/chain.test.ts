@@ -575,12 +575,23 @@ describe('foregroundShaderEffects', () => {
     });
 
     it('leaves the colour-matrix roadmap effects on the filter path', () => {
-        // duotone/curves/colorAdjustment are affine in the source channels, so
-        // they compose as ImageFilters rather than opening a snapshot scope.
+        // duotone/colorAdjustment are affine in the source channels, so they
+        // compose as Adjustments rather than opening a snapshot scope.
         const effects = resolveChainEffects(
-            Effects.duotone(1).curves({ points: [[0, 0], [1, 1]] }).colorAdjustment({ contrast: 1.2 }),
+            Effects.duotone(1).colorAdjustment({ contrast: 1.2 }),
         );
         expect(foregroundShaderEffects(effects)).toEqual([]);
+    });
+
+    it('opens a shader scope for a tone curve', () => {
+        // A curve is a *lookup*, which is the one thing a colour matrix cannot
+        // be. It used to sit on the filter path alongside the affine effects,
+        // and the renderer paid for that by fitting a straight line through it
+        // — throwing away the bends the curve was drawn for.
+        const effects = resolveChainEffects(
+            Effects.curves({ points: [[0, 0], [0.5, 0.8], [1, 1]] }),
+        );
+        expect(foregroundShaderEffects(effects).map((e) => e.type)).toEqual(['curves']);
     });
 
     it('treats a foreground sksl overlay as a filter, not a shader scope', () => {

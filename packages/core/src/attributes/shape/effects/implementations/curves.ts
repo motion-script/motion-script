@@ -3,7 +3,7 @@ import type { ModedEffect, EffectData } from "../effect-data";
 import type { CurvesChannel } from "../../filters/implementations/curves";
 
 /**
- * Tone curve as a **scene effect** — the same adjustment `ImageFilters.curves`
+ * Tone curve as a **scene effect** — the same adjustment `Adjustments.curves`
  * applies to a photo, now available on any node, so a group of shapes or a text
  * block can be graded the same way.
  *
@@ -37,4 +37,12 @@ export const curvesEffect: EffectData<CurvesEffect> = {
         a.mode === b.mode &&
         a.points.length === b.points.length &&
         a.points.every(([x, y], i) => x === b.points[i]?.[0] && y === b.points[i]?.[1]),
+    // A curve is a *lookup*, and a colour matrix cannot express one: it is affine
+    // by construction and a curve is authored for its bends. The renderer used to
+    // fit one straight line through the points and apply that, which is a grade
+    // with the only interesting part removed. Evaluating it per pixel needs the
+    // source as a shader it can read — the same reason `lut` is a shader scope,
+    // and the same trade: exact, at the cost of a pass. See the renderer's
+    // `curvesEffectHandler` for what that means for ordering.
+    surface: "shader",
 };
