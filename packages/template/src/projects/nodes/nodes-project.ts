@@ -53,7 +53,7 @@ export default createProject({
         // video,
         // path,
         // latex,
-        // code,
+        code,
         // customScene,
         // composite,
         // fanScene,

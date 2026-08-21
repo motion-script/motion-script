@@ -19,6 +19,9 @@ interface MotionScriptHeadlessBridge {
         sceneNames?: string[];
         split?: boolean;
         scale?: number;
+        codec?: 'avc' | 'hevc' | 'av1' | 'vp9';
+        bitrate?: number;
+        supersample?: number;
     }): Promise<void>;
     screenshot(options: {
         sceneNames?: string[];

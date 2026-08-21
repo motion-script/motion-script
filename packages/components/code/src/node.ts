@@ -1,47 +1,58 @@
 import type { CodeProps } from "./props";
 import { CodeRange, rangeToCharOffsets, charOffsetsToRange } from "./code-range";
 import { TokenAdvanceCache } from "./measure-cache";
-import {
-    IdToken,
-    IdLine,
-    makeIdToken,
-    makeIdLine,
-    tokenizeCodeToIdLines,
-    splitTokensAt,
-} from "./tokens";
+import { IdLine, tokenizeCodeToIdLines } from "./tokens";
+import { diffCode } from "./diff";
+import { CodeLayout, CodeMetrics, layoutCode, metricsSignature } from "./layout";
 import {
     AnimToken,
-    Transition,
+    CodeTransition,
+    DimTransition,
+    EntryDirection,
+    StructuralTransition,
     TokenState,
+    easeOutCubic,
     makeAnim,
+    phasesFor,
     resolveTokenStates,
-    resolveLineHeightScales,
+    smoothstep,
+    windowProgress,
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command } from "@motion-script/core";
+import { RenderContext, Graphics, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
 
-// Resolved layout geometry shared by measure() and drawSelf() so the two can't
-// drift, and cacheable across static frames. All widths/heights already fold in
-// the per-token widthScale and per-line heightScale for the current frame.
-interface CodeGeometry {
-    lineWidths: number[];   // per-line content width (widthScale applied)
-    lineHeights: number[];  // per-line height (heightScale applied)
-    maxLineWidth: number;
-    gutter: number;
-    // Inner content size (no padding) — what measure() needs for hug sizing.
-    measuredInnerW: number; // maxLineWidth + gutter
-    measuredInnerH: number; // sum of lineHeights
-    // Full block including padding — what drawSelf() positions against.
-    blockWidth: number;
-    blockHeight: number;
-    startX: number;
-    startY: number;
+/** Colour of a token the grammar had no opinion about. */
+const DEFAULT_TOKEN_COLOR: NormalizedColor = [0.82, 0.84, 0.86, 1];
+/** Gutter line-number colour: a muted version of the standard text colour. */
+const LINE_NUMBER_COLOR: NormalizedColor = [0.45, 0.5, 0.55, 1];
+
+// `parseColor` walks a CSS string; a listing asks for the same handful of theme
+// colours on every token of every frame, so the parse is memoized. Module-level,
+// because the answer depends only on the string.
+const colorCache = new Map<string, NormalizedColor>();
+function tokenColor(css: string | undefined): NormalizedColor {
+    if (!css) return DEFAULT_TOKEN_COLOR;
+    let hit = colorCache.get(css);
+    if (!hit) {
+        hit = parseColor(css);
+        colorCache.set(css, hit);
+    }
+    return hit;
 }
 
+function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number): NormalizedColor {
+    if (t <= 0) return from;
+    if (t >= 1) return to;
+    return [
+        from[0] + (to[0] - from[0]) * t,
+        from[1] + (to[1] - from[1]) * t,
+        from[2] + (to[2] - from[2]) * t,
+        from[3] + (to[3] - from[3]) * t,
+    ];
+}
 
 export class Code extends ShapeNode<CodeProps> {
-
 
     @property({ default: "" }) declare readonly code: string;
     @property({ default: "typescript" }) declare readonly language: string;
@@ -50,10 +61,8 @@ export class Code extends ShapeNode<CodeProps> {
     @property({ default: 16 }) declare readonly fontSize: number;
     @property({ default: 1.6 }) declare readonly lineHeight: number;
     // Extra horizontal space added after every glyph (in px), like CSS
-    // letter-spacing. Applied per-character so it scales with a token's
-    // widthScale during insert/remove/replace animations. Trailing spacing on
-    // the last glyph of a token is included in the token's advance, which keeps
-    // animated width-collapse seamless.
+    // letter-spacing. Folded into the advance a token is measured at, so
+    // measurement and drawing stay in lockstep.
     @property({ default: 1.1 }) declare readonly letterSpacing: number;
     @property({ default: false }) declare readonly showLineNumbers: boolean;
     // Horizontal gap between the line-number column and the code text, expressed
@@ -71,31 +80,23 @@ export class Code extends ShapeNode<CodeProps> {
     @cornerStyleProperty()
     declare cornerStyle: RectCornerStyle;
 
+    /** The settled structure. During an edit, the structure the edit lands on. */
     private tokenLines: IdLine[] = [];
     private tokenized: boolean = false;
 
-    private transitions: Transition[] = [];
+    private transitions: CodeTransition[] = [];
 
     // Caches expensive scope.measureText() calls; cleared when the font
     // signature (fontSize|fontFamily) changes. See TokenAdvanceCache.
     private advanceCache = new TokenAdvanceCache();
 
-    // Per-frame layout geometry cache. Bumped whenever tokenLines structure
-    // changes (see bumpStructure), so a cache hit only happens when content is
-    // identical. Only populated on static frames (no active transitions), where
-    // widthScale/lineHeightScale are all 1 and the geometry is frame-invariant.
+    // Layout cache for *settled* frames. Bumped whenever tokenLines is
+    // reassigned, so a cache hit only ever happens on identical content. Frames
+    // inside a structural edit are served from that edit's own two cached
+    // layouts instead (see StructuralTransition).
     private structureVersion = 0;
     private layoutCacheKey: string | null = null;
-    private layoutCache: CodeGeometry | null = null;
-
-    // Bump the structure version so the next computeGeometry() recomputes rather
-    // than reusing a cached layout. Called wherever tokenLines / a line's tokens
-    // are reassigned (tokenize/append/prepend/replace/insert/remove).
-    private bumpStructure(): void {
-        this.structureVersion++;
-        this.layoutCache = null;
-        this.layoutCacheKey = null;
-    }
+    private layoutCache: CodeLayout | null = null;
 
     // Persistent dim state set by highlight() — applied during render to all
     // tokens whose id is NOT in the highlight set. null means "not highlighting".
@@ -125,30 +126,38 @@ export class Code extends ShapeNode<CodeProps> {
     }
 
     private tokenize(): void {
-        this.tokenLines = tokenizeCodeToIdLines(this.code, this.language, this.theme);
-        this.bumpStructure();
+        this.setLines(tokenizeCodeToIdLines(this.code, this.language, this.theme));
         // Only consider ourselves tokenized once we actually highlighted; while
         // the language is still loading we keep retrying on each render.
         this.tokenized = canHighlight(this.language, this.theme);
     }
 
-
+    /**
+     * Swap in a new settled structure, invalidating the layout cache.
+     *
+     * The one place `tokenLines` is written, because the cache key is a version
+     * counter rather than a hash of the content — a write that skipped the bump
+     * would keep serving the previous frame's geometry for the new listing.
+     */
+    private setLines(lines: IdLine[]): void {
+        if (this.tokenLines === lines) return;
+        this.tokenLines = lines;
+        this.structureVersion++;
+        this.layoutCache = null;
+        this.layoutCacheKey = null;
+    }
 
     /**
      * The monospaced face this block measures and draws with, and the syntax
      * grammar it tokenizes with.
      *
      * Both belong to *layout*: token x positions are measured against the face,
-     * and how many tokens there are depends on the grammar. That timing was
-     * always the intent — but the grammar used to be loaded by a hook that
-     * returned a promise nothing awaited, so precomp laid this node out against
-     * untokenized plain text and `onRender` re-tokenized once the parser landed.
-     *
-     * Declared here instead, the grammar goes on the timeline as an ordinary
-     * asset: `AssetManager.loadAt` waits for it before the frame is laid out, so
-     * the first measurement is the right one. Deduped by `addAsync`'s key, so a
-     * static block doesn't re-dispatch it every frame. Nothing is freed on
-     * eviction — parsers are cheap to keep resident.
+     * and how many tokens there are depends on the grammar. Declared here, the
+     * grammar goes on the timeline as an ordinary asset: `AssetManager.loadAt`
+     * waits for it before the frame is laid out, so the first measurement is the
+     * right one. Deduped by `addAsync`'s key, so a static block doesn't
+     * re-dispatch it every frame. Nothing is freed on eviction — parsers are
+     * cheap to keep resident.
      */
     override prepareLayout(tracker: AssetTracker): void {
         tracker.addFont(this.fontFamily);
@@ -161,111 +170,83 @@ export class Code extends ShapeNode<CodeProps> {
         });
     }
 
-    // A token's advance width, honoring letterSpacing. The renderer applies the
-    // same letterSpacing when drawing (see drawSelf), so measure and draw stay
-    // in lockstep. fontWeight is left default; letterSpacing is the 5th arg.
-    private tokenAdvance(scope: Measurer | RenderContext, content: string): number {
-        return this.advanceCache.advance(scope, content, this.fontSize, this.fontFamily, this.letterSpacing);
-    }
+    // ── Geometry ────────────────────────────────────────────────────────────
 
-    // Horizontal gap between the line-number column and the code text. Kept in
-    // one place so gutterWidth() and the line-number x in drawSelf() agree.
-    // Sized in space-widths via the lineNumberGap prop so it scales with font.
-    // Measured with letterSpacing 0 — line numbers and the gap don't carry the
-    // code's letter-spacing.
-    private gutterGap(scope: Measurer | RenderContext): number {
-        return this.advanceCache.advance(scope, ' ', this.fontSize, this.fontFamily, 0) * this.lineNumberGap;
-    }
-
-    private gutterWidth(scope: Measurer | RenderContext): number {
-        if (!this.showLineNumbers) return 0;
-        const maxLine = Math.max(1, this.tokenLines.length);
-        const sample = String(maxLine);
-        const digitW = this.advanceCache.advance(scope, sample, this.fontSize, this.fontFamily, 0);
-        // digit column + the gap that separates the number from the code text.
-        return digitW + this.gutterGap(scope);
-    }
-
-    // Compute (and, on static frames, cache) all layout geometry. Both measure()
-    // and drawSelf() go through here so their sizing can never diverge. The
-    // expensive part — per-token advance measurement — is already memoized by
-    // advanceCache; this additionally skips the whole loop on static frames where
-    // the geometry is identical to the previous frame.
-    private computeGeometry(
-        scope: Measurer | RenderContext,
-        stateById: Map<number, TokenState>,
-        lineHeightScales: Map<number, number>,
-    ): CodeGeometry {
-        const pad = this.padding;
-        const lineH = this.fontSize * this.lineHeight;
-
-        // A frame is static (geometry-cacheable) when no transition is mid-flight.
-        // A persistent highlight dim (highlightDimOpacity) only touches opacity,
-        // never widthScale/heightScale, so held-highlight waits stay cacheable.
-        const isStatic = this.transitions.length === 0;
-        const key = [
-            this.structureVersion,
-            this.advanceCache.signature(this.fontSize, this.fontFamily),
-            pad.left, pad.right, pad.top, pad.bottom,
-            this.showLineNumbers ? 1 : 0,
-            this.lineNumberGap,
-            this.lineHeight,
-            this.tokenLines.length,
-        ].join("|");
-
-        if (isStatic && this.layoutCache && this.layoutCacheKey === key) {
-            return this.layoutCache;
-        }
-
-        const gutter = this.gutterWidth(scope);
-        const lineWidths: number[] = [];
-        const lineHeights: number[] = [];
-        let maxLineWidth = 0;
-        let measuredInnerH = 0;
-        for (const line of this.tokenLines) {
-            let w = 0;
-            for (const tok of line.tokens) {
-                const ws = stateById.get(tok.id)?.widthScale ?? 1;
-                w += this.tokenAdvance(scope, tok.content) * ws;
-            }
-            lineWidths.push(w);
-            if (w > maxLineWidth) maxLineWidth = w;
-            const h = lineH * (lineHeightScales.get(line.id) ?? 1);
-            lineHeights.push(h);
-            measuredInnerH += h;
-        }
-
-        const measuredInnerW = maxLineWidth + gutter;
-        const blockWidth = measuredInnerW + pad.left + pad.right;
-        const blockHeight = measuredInnerH + pad.top + pad.bottom;
-
-        const geometry: CodeGeometry = {
-            lineWidths,
-            lineHeights,
-            maxLineWidth,
-            gutter,
-            measuredInnerW,
-            measuredInnerH,
-            blockWidth,
-            blockHeight,
-            startX: -blockWidth / 2 + pad.left + gutter,
-            // y-up author space: the first line sits at the TOP of the block, so
-            // startY is the top edge (+half height, minus top padding) and the
-            // per-line cursor steps DOWNWARD by subtracting each line's height.
-            startY: blockHeight / 2 - pad.top,
+    private metrics(): CodeMetrics {
+        return {
+            fontSize: this.fontSize,
+            fontFamily: this.fontFamily,
+            lineHeight: this.lineHeight,
+            letterSpacing: this.letterSpacing,
+            padding: this.padding,
+            showLineNumbers: this.showLineNumbers,
+            lineNumberGap: this.lineNumberGap,
         };
+    }
 
-        // Only persist on static frames: a geometry computed mid-transition must
-        // never be reused once the transition ends.
-        if (isStatic) {
-            this.layoutCache = geometry;
-            this.layoutCacheKey = key;
-        } else {
-            this.layoutCache = null;
-            this.layoutCacheKey = null;
+    /** The structural edit currently in flight, if any. */
+    private activeEdit(): StructuralTransition | null {
+        for (let i = this.transitions.length - 1; i >= 0; i--) {
+            const tr = this.transitions[i];
+            if (tr.kind === "structural") return tr;
         }
+        return null;
+    }
 
-        return geometry;
+    private settledLayout(m: CodeMetrics, scope: Measurer | RenderContext): CodeLayout {
+        const key = `${this.structureVersion}|${metricsSignature(m)}|${this.advanceCache.signature(m.fontSize, m.fontFamily)}`;
+        if (this.layoutCache && this.layoutCacheKey === key) return this.layoutCache;
+        const layout = layoutCode(this.tokenLines, m, this.advanceCache, scope);
+        this.layoutCache = layout;
+        this.layoutCacheKey = key;
+        return layout;
+    }
+
+    /**
+     * The one or two layouts this frame is drawn from.
+     *
+     * A settled frame has one. A frame inside an edit has two — where every
+     * token was, and where it is going — and the frame is a point between them.
+     * That is the whole reason an insert no longer piles its glyphs at the left
+     * margin: a token's destination is *computed*, not approximated by collapsing
+     * the advance of everything around it.
+     *
+     * Both endpoints are fixed for the edit's duration, so they are built once
+     * and cached on the transition rather than rebuilt per frame.
+     */
+    private frameLayout(scope: Measurer | RenderContext): {
+        from: CodeLayout;
+        to: CodeLayout;
+        edit: StructuralTransition | null;
+    } {
+        const m = this.metrics();
+        const edit = this.activeEdit();
+        if (!edit) {
+            const layout = this.settledLayout(m, scope);
+            return { from: layout, to: layout, edit: null };
+        }
+        const key = `${metricsSignature(m)}|${this.advanceCache.signature(m.fontSize, m.fontFamily)}`;
+        if (edit.layoutKey !== key || !edit.fromLayout || !edit.toLayout) {
+            edit.fromLayout = layoutCode(edit.from, m, this.advanceCache, scope);
+            edit.toLayout = layoutCode(edit.to, m, this.advanceCache, scope);
+            edit.layoutKey = key;
+        }
+        return { from: edit.fromLayout, to: edit.toLayout, edit };
+    }
+
+    /** How far through the "everything reflows" phase this frame is, eased. */
+    private moveProgress(edit: StructuralTransition | null): number {
+        return edit ? smoothstep(windowProgress(edit.phases.move, edit.progress)) : 1;
+    }
+
+    /** How far a whole new row travels as it enters, and along which axis. */
+    private entryOffset(direction: EntryDirection): { x: number; y: number } {
+        const lineH = this.fontSize * this.lineHeight;
+        // y-up author space: a row arriving from *below* starts at a lower y and
+        // rises to zero, which is what "slide up" means on screen.
+        if (direction === "up") return { x: 0, y: -lineH * 0.85 };
+        if (direction === "down") return { x: 0, y: lineH * 0.85 };
+        return { x: -this.fontSize * 1.8, y: 0 };
     }
 
     override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
@@ -273,22 +254,21 @@ export class Code extends ShapeNode<CodeProps> {
         const wm = this.width;
         const hm = this.height;
 
-        const geo = this.computeGeometry(
-            scope,
-            this.resolveTokenStates(),
-            this.resolveLineHeightScales(),
-        );
+        const { from, to, edit } = this.frameLayout(scope);
+        const t = this.moveProgress(edit);
+        const innerW = edit ? lerpNumber(from.innerW, to.innerW, t) : to.innerW;
+        const innerH = edit ? lerpNumber(from.innerH, to.innerH, t) : to.innerH;
 
         const resolvedW = typeof wm === "number"
             ? wm
             : wm === "hug"
-                ? geo.measuredInnerW + this.padding.left + this.padding.right
+                ? innerW + this.padding.left + this.padding.right
                 : constraints.maxWidth ?? 0;
 
         const resolvedH = typeof hm === "number"
             ? hm
             : hm === "hug"
-                ? geo.measuredInnerH + this.padding.top + this.padding.bottom
+                ? innerH + this.padding.top + this.padding.bottom
                 : constraints.maxHeight ?? 0;
 
         return { width: resolvedW, height: resolvedH };
@@ -307,18 +287,13 @@ export class Code extends ShapeNode<CodeProps> {
         // 700 weight arriving through the draw scope would shape glyphs the
         // geometry was never measured for, and the block would come apart
         // column-by-column rather than merely look different.
-        //
-        // Text nodes never had this problem: `applyTextDefaults` only writes onto
-        // `Text`/`RichText`, and `Code` declares its typography as its own
-        // properties. This keeps the drawn half consistent with that.
         ctx.pushTextStyle(null);
         try {
             // Keep retrying until the language+theme have actually loaded, so a frame
             // that rendered as plain text upgrades to full highlighting the moment the
-            // asset loader resolves. canHighlight gates tokenize from being a no-op
-            // re-run every frame once we're done. Ahead of the render rather than
-            // after it, so the frame that first has the grammar draws with it.
-            if (!this.tokenized && canHighlight(this.language, this.theme)) {
+            // asset loader resolves. Never mid-edit: re-tokenizing mints fresh ids,
+            // and an in-flight transition is keyed by the ones it captured.
+            if (!this.tokenized && !this.activeEdit() && canHighlight(this.language, this.theme)) {
                 this.tokenize();
             }
             super.onRender(ctx);
@@ -330,17 +305,10 @@ export class Code extends ShapeNode<CodeProps> {
     /**
      * The background box, then the code set on it.
      *
-     * The tokens used to be drawn from `onRender`, *after* `super.onRender` had
-     * already run the whole envelope — which put them outside every pass the base
-     * class defines. That was harmless while this was a plain `Node` with nothing
-     * in those passes, and wrong the moment it became a `ShapeNode`: an overlay
-     * would have washed the empty box and the code would have landed on top of
-     * it, and a `clip` would have cut the box while the text overhung it.
-     *
-     * Drawn here instead, in the slot the base class calls between the transform
-     * push and the children, the block composes like every other shape: shadow
-     * and fill (from `super`) under the tokens, children over them, then the
-     * overlay across the lot and the stroke around it.
+     * Drawn in the slot the base class calls between the transform push and the
+     * children, so the block composes like every other shape: shadow and fill
+     * (from `super`) under the tokens, children over them, then the overlay
+     * across the lot and the stroke around it.
      */
     protected override renderSelf(ctx: RenderContext): void {
         super.renderSelf(ctx);
@@ -352,8 +320,7 @@ export class Code extends ShapeNode<CodeProps> {
      * measured size (plus `padding`) whenever it hugs.
      *
      * Supplying this is the whole of what gives a code block `fill`, `overlay`,
-     * `stroke` and `shadow` — {@link ShapeNode} paints all four through it, so
-     * there is no per-slot code here at all.
+     * `stroke` and `shadow` — {@link ShapeNode} paints all four through it.
      */
     protected override shapeGraphics(): Graphics {
         return new Graphics().rect({
@@ -380,50 +347,88 @@ export class Code extends ShapeNode<CodeProps> {
         });
     }
 
+    // ── Editing commands ────────────────────────────────────────────────────
+
+    /**
+     * Append `code` to the end of the listing.
+     *
+     * Like every other edit here, this is stated as *what the source becomes*
+     * and {@link editTo} works out the rest — which is why appending a line that
+     * closes a block re-highlights the lines above it, instead of colouring the
+     * new text as though it were a program on its own.
+     */
     @command()
     append(code: string, duration: number, easing?: EasingFunction): Command<Record<string, never>> {
-        const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
-        this.tokenLines = [...this.tokenLines, ...newLines];
-        this.bumpStructure();
-
-        const animTokens: AnimToken[] = [];
-        const lineHeightScales = new Map<number, { values: number[]; keys: number[] }>();
-        const introducedIds = new Set<number>();
-
-        for (const line of newLines) {
-            lineHeightScales.set(line.id, { keys: [0, 1], values: [0, 1] });
-            for (const tok of line.tokens) {
-                introducedIds.add(tok.id);
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 1], values: [0, 1] },
-                }));
-            }
-        }
-
-        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+        return this.editTo(this.joinedSource() + code, duration, easing);
     }
 
+    /** Insert `code` above the listing. */
     @command()
     prepend(code: string, duration: number, easing?: EasingFunction): Command<Record<string, never>> {
-        const newLines = tokenizeCodeToIdLines(code, this.language, this.theme);
-        this.tokenLines = [...newLines, ...this.tokenLines];
-        this.bumpStructure();
+        return this.editTo(code + this.joinedSource(), duration, easing);
+    }
 
-        const animTokens: AnimToken[] = [];
-        const lineHeightScales = new Map<number, { values: number[]; keys: number[] }>();
-        const introducedIds = new Set<number>();
+    /**
+     * Insert `code` at the given (line, col). Both are 1-indexed; col is the
+     * column BEFORE which the new content is inserted (col=1 means start of
+     * line). If `code` contains newlines, new lines are created in the middle
+     * of the existing line.
+     */
+    @command()
+    insert(
+        position: [number, number],
+        code: string,
+        duration: number,
+        easing?: EasingFunction,
+    ): Command<Record<string, never>> {
+        const source = this.joinedSource();
+        const offset = this.offsetAt(position);
+        return this.editTo(source.slice(0, offset) + code + source.slice(offset), duration, easing);
+    }
 
-        for (const line of newLines) {
-            lineHeightScales.set(line.id, { keys: [0, 1], values: [0, 1] });
-            for (const tok of line.tokens) {
-                introducedIds.add(tok.id);
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 1], values: [0, 1] },
-                }));
-            }
+    /**
+     * Remove the code in `codeRange`.
+     *
+     * A range that covers whole lines takes their line breaks with it, so the
+     * rows below close up; a range inside a line takes only the characters, and
+     * the rest of the line reflows around the hole.
+     */
+    @command()
+    remove(
+        codeRange: CodeRange,
+        duration: number,
+        easing?: EasingFunction,
+    ): Command<Record<string, never>> {
+        const source = this.joinedSource();
+        let { start, end } = rangeToCharOffsets(codeRange, this.lineLengths());
+        // `lines(2)` resolves to the *characters* of line 2, not to the row —
+        // taking those alone would leave an empty line behind where an editor
+        // would have closed the gap. This is also what makes a blank row
+        // removable at all: it has no characters, so its range is empty, and
+        // "delete nothing" is not what `lines(2)` was asking for.
+        const atLineStart = start === 0 || source[start - 1] === "\n";
+        const atLineEnd = end === source.length || source[end] === "\n";
+        if (atLineStart && atLineEnd) {
+            if (end < source.length) end += 1;
+            else if (start > 0) start -= 1;
+        } else if (end <= start) {
+            return driveCommand(duration, () => { });
         }
+        if (end <= start) return driveCommand(duration, () => { });
+        return this.editTo(source.slice(0, start) + source.slice(end), duration, easing);
+    }
 
-        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+    /** Replace the code in `codeRange` with `next`. */
+    @command()
+    replace(
+        codeRange: CodeRange,
+        next: string,
+        duration: number,
+        easing?: EasingFunction,
+    ): Command<Record<string, never>> {
+        const source = this.joinedSource();
+        const { start, end } = rangeToCharOffsets(codeRange, this.lineLengths());
+        return this.editTo(source.slice(0, start) + next + source.slice(end), duration, easing);
     }
 
     /**
@@ -454,16 +459,14 @@ export class Code extends ShapeNode<CodeProps> {
                 const fromOp = wasHighlighted ? 1 : fromDim;
                 const toOp = isHighlighted ? 1 : toDim;
                 if (fromOp === toOp) continue;
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 1], values: [fromOp, toOp] },
-                }));
+                animTokens.push(makeAnim(tok.id, { keys: [0, 1], values: [fromOp, toOp] }));
             }
         }
 
         // Which tokens are dimmed is state the *next* highlight reads to know
         // what it is cross-fading from, so it is committed at the end and put
         // back below it — a `finally` could only ever have run forwards.
-        return this.runTransition({ tokens: animTokens }, duration, easing, (done) => {
+        return this.runDim(animTokens, duration, easing, (done) => {
             this.highlightDimOpacity = done ? toDim : (hadPrevious ? fromDim : null);
             this.highlightedIds = done ? matchIds : previousIds;
         });
@@ -483,324 +486,151 @@ export class Code extends ShapeNode<CodeProps> {
         const animTokens: AnimToken[] = [];
         for (const line of this.tokenLines) {
             for (const tok of line.tokens) {
-                const wasHighlighted = previousIds.has(tok.id);
-                const fromOp = wasHighlighted ? 1 : fromDim;
+                const fromOp = previousIds.has(tok.id) ? 1 : fromDim;
                 if (fromOp === 1) continue;
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 1], values: [fromOp, 1] },
-                }));
+                animTokens.push(makeAnim(tok.id, { keys: [0, 1], values: [fromOp, 1] }));
             }
         }
 
-        return this.runTransition({ tokens: animTokens }, duration, easing, (done) => {
+        return this.runDim(animTokens, duration, easing, (done) => {
             this.highlightDimOpacity = done ? null : fromDim;
             this.highlightedIds = done ? new Set() : previousIds;
         });
     }
 
     /**
-     * Replace the tokens in `codeRange` with `next`, cross-fading widths and
-     * opacities.
+     * Animate the listing to a new source.
+     *
+     * The engine behind every editing command, and behind `to({ code })`. Every
+     * edit is expressed as the source it produces, tokenized, and then *diffed*
+     * against what is on screen — so a token that survived the edit keeps its
+     * identity and simply travels to its new column, and only what genuinely
+     * changed is faded.
+     *
+     * The result runs in three phases (see {@link phasesFor}): what is leaving
+     * fades out, what stays reflows, and only then does what is new arrive.
+     * Playing them together is what made a replacement read as a cross-dissolve
+     * of two unrelated listings rather than as an edit being made.
      */
-    @command()
-    replace(
-        codeRange: CodeRange,
-        next: string,
-        duration: number,
-        easing?: EasingFunction,
-    ): Command<Record<string, never>> {
-        const span = this.rangeToTokenSpan(codeRange);
-        if (!span) return driveCommand(duration, () => { });
+    private editTo(next: string, duration: number, easing?: EasingFunction): Command<Record<string, never>> {
+        const from = this.tokenLines;
+        const fromCode = this.joinedSource();
+        if (next === fromCode) return driveCommand(duration, () => { });
 
-        const replacementLineGroups = tokenizeCodeToIdLines(next, this.language, this.theme);
-        const replacementTokens: IdToken[] = [];
-        for (let i = 0; i < replacementLineGroups.length; i++) {
-            for (const tok of replacementLineGroups[i].tokens) replacementTokens.push(tok);
-            if (i < replacementLineGroups.length - 1) {
-                replacementTokens.push(makeIdToken('\n'));
-            }
-        }
+        const edit = diffCode(from, tokenizeCodeToIdLines(next, this.language, this.theme));
 
-        const oldTokens: IdToken[] = [];
-        for (let li = span.fromLine; li <= span.toLine; li++) {
-            const line = this.tokenLines[li];
-            const start = li === span.fromLine ? span.fromIdx : 0;
-            const end = li === span.toLine ? span.toIdx : line.tokens.length;
-            for (let ti = start; ti < end; ti++) oldTokens.push(line.tokens[ti]);
-        }
-
-        const fromLine = this.tokenLines[span.fromLine];
-        const toLine = this.tokenLines[span.toLine];
-        const prefix = fromLine.tokens.slice(0, span.fromIdx);
-        const suffix = toLine.tokens.slice(span.toIdx);
-
-        const mergedLine: IdLine = makeIdLine([
-            ...prefix,
-            ...oldTokens,
-            ...replacementTokens,
-            ...suffix,
-        ]);
-        mergedLine.id = fromLine.id;
-
-        const before = this.tokenLines.slice(0, span.fromLine);
-        const after = this.tokenLines.slice(span.toLine + 1);
-        this.tokenLines = [...before, mergedLine, ...after];
-        this.bumpStructure();
-
-        const oldIds = new Set(oldTokens.map(t => t.id));
-
-        const animTokens: AnimToken[] = [];
-        const introducedIds = new Set<number>();
-
-        for (const tok of oldTokens) {
-            animTokens.push(makeAnim(tok.id, {
-                opacity: { keys: [0, 0.5, 1], values: [1, 0, 0] },
-                widthScale: { keys: [0, 0.5, 1], values: [1, 0, 0] },
-            }));
-        }
-        for (const tok of replacementTokens) {
-            introducedIds.add(tok.id);
-            animTokens.push(makeAnim(tok.id, {
-                opacity: { keys: [0, 0.5, 1], values: [0, 0, 1] },
-                widthScale: { keys: [0, 0.5, 1], values: [0, 1, 1] },
-            }));
-        }
-
-        // The outgoing tokens are dropped once the transition lands, and kept
-        // while it runs — they are what is being animated out. Restored below
-        // `t === 1` rather than dropped in a `finally`, so seeking back into the
-        // transition shows them again instead of an already-settled listing.
-        const withOutgoing = this.tokenLines.map(line => ({ ...line, tokens: [...line.tokens] }));
-        return this.runTransition({ tokens: animTokens, introducedIds }, duration, easing, (done) => {
-            if (done) {
-                for (const line of this.tokenLines) {
-                    line.tokens = line.tokens.filter(tok => !oldIds.has(tok.id));
-                }
-            } else {
-                this.tokenLines = withOutgoing.map(line => ({ ...line, tokens: [...line.tokens] }));
-            }
-            this.bumpStructure();
-        });
-    }
-
-    /**
-     * Insert `code` at the given (line, col). Both are 1-indexed; col is the
-     * column BEFORE which the new content is inserted (col=1 means start of
-     * line). If `code` contains newlines, new lines are created in the middle
-     * of the existing line.
-     */
-    @command()
-    insert(
-        position: [number, number],
-        code: string,
-        duration: number,
-        easing?: EasingFunction,
-    ): Command<Record<string, never>> {
-        if (this.tokenLines.length === 0) {
-            this.tokenLines = [makeIdLine([])];
-        }
-        const [rawLine, rawCol] = position;
-        const lineIdx = Math.max(0, Math.min(this.tokenLines.length - 1, rawLine - 1));
-        const targetLine = this.tokenLines[lineIdx];
-        const lineText = targetLine.tokens.map(t => t.content).join('');
-        const col = Math.max(0, Math.min(lineText.length, rawCol - 1));
-
-        // Split the target line's tokens at the character offset `col`.
-        const { before: tokBefore, after: tokAfter } = splitTokensAt(targetLine.tokens, col);
-
-        const insertedLineGroups = tokenizeCodeToIdLines(code, this.language, this.theme);
-        const animTokens: AnimToken[] = [];
-        const lineHeightScales = new Map<number, { values: number[]; keys: number[] }>();
-        const introducedIds = new Set<number>();
-
-        // Two curves:
-        //   - `newLineIntro`: for tokens on a line that's growing in height
-        //     (multi-line insert). Token opacity ramps linearly 0→1 to match
-        //     the line's heightScale ramp, so text, line number, and row
-        //     height all reveal together. No widthScale anim needed — there's
-        //     no existing content at the same x.
-        //   - `inlineIntro`: for tokens being spliced into an existing line
-        //     (single-line insert). The line's height isn't animating, so the
-        //     suffix has to make room horizontally — widthScale 0→1 over the
-        //     first half, then opacity fades in over the second half.
-        const collectIntro = (toks: IdToken[], mode: 'newLine' | 'inline') => {
-            for (const tok of toks) {
-                introducedIds.add(tok.id);
-                if (mode === 'newLine') {
-                    animTokens.push(makeAnim(tok.id, {
-                        opacity: { keys: [0, 1], values: [0, 1] },
-                    }));
-                } else {
-                    animTokens.push(makeAnim(tok.id, {
-                        opacity: { keys: [0, 0.5, 1], values: [0, 0, 1] },
-                        widthScale: { keys: [0, 0.5, 1], values: [0, 1, 1] },
-                    }));
-                }
-            }
+        const transition: StructuralTransition = {
+            kind: "structural",
+            from,
+            to: edit.lines,
+            removedIds: edit.removedIds,
+            addedIds: edit.addedIds,
+            entryByLine: entryDirections(edit.lines, edit.newLineIds),
+            fromColorById: edit.fromColorById,
+            phases: phasesFor(edit.removedIds.size > 0, edit.addedIds.size > 0),
+            progress: 0,
+            layoutKey: null,
+            fromLayout: null,
+            toLayout: null,
         };
 
-        let newLines: IdLine[];
-        if (insertedLineGroups.length === 1) {
-            // Single-line insertion: splice tokens into the existing line.
-            const insertedTokens = insertedLineGroups[0].tokens;
-            collectIntro(insertedTokens, 'inline');
-            const merged = makeIdLine([...tokBefore, ...insertedTokens, ...tokAfter]);
-            merged.id = targetLine.id;
-            newLines = [merged];
-        } else {
-            // Multi-line insertion. Split the inserted content into:
-            //   first  = prefix + insertedLineGroups[0]   (sits on the original line)
-            //   middle = insertedLineGroups[1..-2]        (entirely new lines)
-            //   last   = insertedLineGroups[-1] + suffix  (the original line's tail)
-            //
-            // Pre-existing tokens (tokBefore, tokAfter) keep their identity and
-            // shouldn't animate. Newly tokenized groups fade in.
-            //
-            // Critical for height animation: the line that contains the host
-            // line's pre-existing content must reuse the host id and NOT get a
-            // heightScale animation. The other produced lines are genuinely new
-            // and get the 0→1 reveal. We pick which side inherits the host id
-            // by where the cut lands — if tokAfter is empty (cut at end of
-            // line), the first produced line owns the original content. If
-            // tokBefore is empty (cut at start), the last produced line owns
-            // it. Otherwise both sides hold original content and the first
-            // keeps the host id by default.
-            const firstInserted = insertedLineGroups[0].tokens;
-            const middleInserted = insertedLineGroups.slice(1, -1).map(g => g.tokens);
-            const lastInserted = insertedLineGroups[insertedLineGroups.length - 1].tokens;
+        // A tokenize triggered by the grammar landing mid-edit would mint fresh
+        // ids underneath this transition, and the transition is keyed by the ones
+        // it captured — so the retry in `onRender` is gated on there being no edit
+        // in flight, which means this flag has to be honest now rather than once
+        // the edit settles.
+        this.tokenized = canHighlight(this.language, this.theme);
 
-            // The inheritor side (whichever produced line keeps the host id)
-            // doesn't get a height animation, so its inserted tokens need the
-            // inline (width-collapse) intro. The genuinely-new lines get the
-            // newLine intro (token fade matches the line's height ramp).
-            const cutAtStart = tokBefore.length === 0;
+        return driveCommand(duration, (t) => {
+            const running = t > 0 && t < 1;
+            const index = this.transitions.indexOf(transition);
+            if (running && index < 0) this.transitions.push(transition);
+            else if (!running && index >= 0) this.transitions.splice(index, 1);
 
-            const firstLine = makeIdLine([...tokBefore, ...firstInserted]);
-            const middleLines = middleInserted.map(toks => makeIdLine(toks));
-            const lastLine = makeIdLine([...lastInserted, ...tokAfter]);
+            transition.progress = easing ? easing(t) : t;
 
-            const inheritor = cutAtStart ? lastLine : firstLine;
-            inheritor.id = targetLine.id;
-
-            collectIntro(firstInserted, firstLine === inheritor ? 'inline' : 'newLine');
-            for (const m of middleInserted) collectIntro(m, 'newLine');
-            collectIntro(lastInserted, lastLine === inheritor ? 'inline' : 'newLine');
-
-            // Every produced line OTHER than the inheritor is genuinely new and
-            // grows in height from 0→1.
-            const allProduced = [firstLine, ...middleLines, lastLine];
-            for (const ln of allProduced) {
-                if (ln.id !== targetLine.id) {
-                    lineHeightScales.set(ln.id, { keys: [0, 1], values: [0, 1] });
-                }
+            // The settle, in both directions: asked for a time before the edit
+            // starts, the listing is what preceded it; at or past the end, the
+            // result. A `finally` could only ever have run forwards.
+            if (t <= 0) {
+                this.setLines(from);
+                this._writeProp("code", fromCode);
+            } else {
+                this.setLines(edit.lines);
+                this._writeProp("code", next);
             }
-
-            newLines = allProduced;
-        }
-
-        this.tokenLines = [
-            ...this.tokenLines.slice(0, lineIdx),
-            ...newLines,
-            ...this.tokenLines.slice(lineIdx + 1),
-        ];
-        this.bumpStructure();
-
-        return this.runTransition({ tokens: animTokens, lineHeightScales, introducedIds }, duration, easing);
+        });
     }
 
     /**
-     * Remove the tokens in `codeRange`. If the range spans whole lines, those
-     * lines collapse their height; partial line ranges only remove tokens
-     * (the surrounding text reflows).
+     * Put a dim transition on the stack, drive its progress, take it off and
+     * commit at the end.
+     *
+     * A {@link Command} rather than a generator, which is what makes a listing
+     * scrubbable: membership is a function of `t` (on the stack for `0 < t < 1`,
+     * off it outside), `settle(done)` replaces the `finally` and takes *which
+     * way*, and `progress` is assigned from `t` rather than accumulated.
      */
-    @command()
-    remove(
-        codeRange: CodeRange,
+    private runDim(
+        tokens: AnimToken[],
         duration: number,
         easing?: EasingFunction,
+        settle?: (done: boolean) => void,
     ): Command<Record<string, never>> {
-        const span = this.rangeToTokenSpan(codeRange);
-        if (!span) return driveCommand(duration, () => { });
+        const transition: DimTransition = { kind: "dim", tokens, progress: 0 };
 
-        const removedTokens: IdToken[] = [];
-        const fullyRemovedLineIds: number[] = [];
+        return driveCommand(duration, (t) => {
+            const running = t > 0 && t < 1;
+            const index = this.transitions.indexOf(transition);
+            if (running && index < 0) this.transitions.push(transition);
+            else if (!running && index >= 0) this.transitions.splice(index, 1);
 
-        // A line is "fully removed" when the range covers every one of its
-        // tokens. Fully-removed lines get a height collapse + linear fade.
-        // Partially-removed lines keep their height; their removed tokens
-        // shrink horizontally so the surrounding text reflows.
-        for (let li = span.fromLine; li <= span.toLine; li++) {
-            const line = this.tokenLines[li];
-            const start = li === span.fromLine ? span.fromIdx : 0;
-            const end = li === span.toLine ? span.toIdx : line.tokens.length;
-            for (let ti = start; ti < end; ti++) removedTokens.push(line.tokens[ti]);
-            if (start === 0 && end === line.tokens.length) {
-                fullyRemovedLineIds.push(line.id);
-            }
-        }
-
-        const animTokens: AnimToken[] = [];
-        const lineHeightScales = new Map<number, { values: number[]; keys: number[] }>();
-        const fullyRemovedLineIdSet = new Set(fullyRemovedLineIds);
-        const fullyRemovedTokenIds = new Set<number>();
-        for (const line of this.tokenLines) {
-            if (fullyRemovedLineIdSet.has(line.id)) {
-                for (const tok of line.tokens) fullyRemovedTokenIds.add(tok.id);
-            }
-        }
-
-        // Whole-line removal: linear fade matching the linear height collapse,
-        // so text, line number, and row height all close together.
-        for (const lineId of fullyRemovedLineIds) {
-            lineHeightScales.set(lineId, { keys: [0, 1], values: [1, 0] });
-        }
-        for (const tok of removedTokens) {
-            if (fullyRemovedTokenIds.has(tok.id)) {
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 1], values: [1, 0] },
-                }));
-            } else {
-                // Partial-line removal: still need width to collapse so the
-                // surrounding text on the line doesn't leave a gap.
-                animTokens.push(makeAnim(tok.id, {
-                    opacity: { keys: [0, 0.5, 1], values: [1, 0, 0] },
-                    widthScale: { keys: [0, 0.5, 1], values: [1, 0, 0] },
-                }));
-            }
-        }
-
-        const removedTokenIds = new Set(removedTokens.map(t => t.id));
-
-        // While the transition runs the removed tokens are still there — they are
-        // what is animating out. Snapshotted so seeking back into the transition
-        // puts them back, which a `finally` could not do.
-        const withRemoved = this.tokenLines.map(line => ({ ...line, tokens: [...line.tokens] }));
-        const highlightedBefore = new Set(this.highlightedIds);
-
-        return this.runTransition({ tokens: animTokens, lineHeightScales }, duration, easing, (done) => {
-            if (done) {
-                // Drop the tokens that animated out, then drop any lines that are
-                // either marked-fully-removed or have ended up empty.
-                const remaining: IdLine[] = [];
-                for (const line of withRemoved) {
-                    if (fullyRemovedLineIdSet.has(line.id)) continue;
-                    remaining.push({
-                        ...line,
-                        tokens: line.tokens.filter(tok => !removedTokenIds.has(tok.id)),
-                    });
-                }
-                this.tokenLines = remaining;
-                // Clean up highlight state pointing at removed tokens.
-                this.highlightedIds = new Set(
-                    [...highlightedBefore].filter(id => !removedTokenIds.has(id))
-                );
-            } else {
-                this.tokenLines = withRemoved.map(line => ({ ...line, tokens: [...line.tokens] }));
-                this.highlightedIds = new Set(highlightedBefore);
-            }
-            this.bumpStructure();
+            transition.progress = easing ? easing(t) : t;
+            settle?.(t >= 1);
         });
     }
+
+    /**
+     * Route a tweened `code` through the diff engine.
+     *
+     * `to({ code })` is the form an author reaches for first — it is how every
+     * other prop is animated — and a bare string prop would otherwise land in the
+     * generic tween's discrete-snap bucket and simply cut at the end. Intercepted
+     * here it becomes the same three-phase edit the named commands produce, while
+     * the rest of the step's props tween alongside it untouched.
+     */
+    override _prepareStep(
+        to: Partial<CodeProps>,
+        duration: number,
+        easing?: EasingFunction,
+    ): TweenStepper {
+        const next = to.code;
+        if (typeof next !== "string" || next === this.joinedSource()) {
+            return super._prepareStep(to, duration, easing);
+        }
+
+        const rest: Partial<CodeProps> = { ...to };
+        delete rest.code;
+        // Prepared before the edit, so a step that also moves `fontSize` has
+        // snapshotted its own start value against the listing that is still on
+        // screen.
+        const others = super._prepareStep(rest, duration, easing);
+        const edit = this.editTo(next, duration, easing)._stepper();
+
+        return {
+            seek: (elapsed: number) => {
+                others.seek(elapsed);
+                edit.seek(elapsed);
+            },
+            advance: (dt: number): boolean => {
+                const othersDone = others.advance(dt);
+                const editDone = edit.advance(dt);
+                return othersDone && editDone;
+            },
+        };
+    }
+
+    // ── Source queries ──────────────────────────────────────────────────────
 
     /**
      * Find every range matching the literal string `text` in the current
@@ -821,60 +651,15 @@ export class Code extends ShapeNode<CodeProps> {
         return ranges;
     }
 
-    /**
-     * Find the `index`th range matching `text`. Returns null if not found.
-     */
+    /** Find the `index`th range matching `text`. Returns null if not found. */
     findRangeAt(text: string, index: number): CodeRange | null {
         const all = this.findAllRanges(text);
         return all[index] ?? null;
     }
 
-    /**
-     * Find the first range matching `text`. Returns null if not found.
-     */
+    /** Find the first range matching `text`. Returns null if not found. */
     findFirstRange(text: string): CodeRange | null {
         return this.findRangeAt(text, 0);
-    }
-
-    /**
-     * The one engine every code command runs through: put a transition on the
-     * stack, drive its progress, take it off and commit at the end.
-     *
-     * A {@link Command} rather than a generator, which is what makes a listing
-     * scrubbable. All three of the things a generator got for free have to become
-     * functions of `t` here:
-     *
-     * - **membership.** The transition is on the stack for `0 < t < 1` and off it
-     *   outside, rather than pushed once and popped in a `finally`. Asked for a
-     *   time before it starts, the listing shows what preceded it; after it ends,
-     *   the settled result.
-     * - **the commit.** `settle(done)` replaces the `finally`, and takes *which
-     *   way*: at `t === 1` it applies the end state, below it restores what came
-     *   before. A `finally` can only ever run forwards.
-     * - **`progress`.** Assigned from `t`, never accumulated.
-     */
-    private runTransition(
-        partial: { tokens: AnimToken[]; lineHeightScales?: Map<number, { values: number[]; keys: number[] }>; introducedIds?: Set<number> },
-        duration: number,
-        easing?: EasingFunction,
-        settle?: (done: boolean) => void,
-    ): Command<Record<string, never>> {
-        const transition: Transition = {
-            tokens: partial.tokens,
-            lineHeightScales: partial.lineHeightScales ?? new Map(),
-            progress: 0,
-            introducedIds: partial.introducedIds ?? new Set(),
-        };
-
-        return driveCommand(duration, (t) => {
-            const running = t > 0 && t < 1;
-            const index = this.transitions.indexOf(transition);
-            if (running && index < 0) this.transitions.push(transition);
-            else if (!running && index >= 0) this.transitions.splice(index, 1);
-
-            transition.progress = easing ? easing(t) : t;
-            settle?.(t >= 1);
-        });
     }
 
     private joinedSource(): string {
@@ -887,6 +672,17 @@ export class Code extends ShapeNode<CodeProps> {
         return this.tokenLines.map(line =>
             line.tokens.reduce((acc, t) => acc + t.content.length, 0),
         );
+    }
+
+    /** Character offset of a 1-indexed (line, col), clamped into the document. */
+    private offsetAt(position: [number, number]): number {
+        const lens = this.lineLengths();
+        if (lens.length === 0) return 0;
+        const [rawLine, rawCol] = position;
+        const li = Math.max(0, Math.min(lens.length - 1, rawLine - 1));
+        let offset = 0;
+        for (let k = 0; k < li; k++) offset += lens[k] + 1;
+        return offset + Math.max(0, Math.min(lens[li], rawCol - 1));
     }
 
     /**
@@ -907,9 +703,7 @@ export class Code extends ShapeNode<CodeProps> {
             for (const tok of line.tokens) {
                 const tStart = off;
                 const tEnd = off + tok.content.length;
-                if (tEnd > rStart && tStart < rEnd) {
-                    result.add(tok.id);
-                }
+                if (tEnd > rStart && tStart < rEnd) result.add(tok.id);
                 off = tEnd;
             }
             if (li < this.tokenLines.length - 1) off += 1; // newline
@@ -917,154 +711,164 @@ export class Code extends ShapeNode<CodeProps> {
         return result;
     }
 
-    /**
-     * Resolve a CodeRange to a structural (fromLine, fromIdx)..(toLine, toIdx)
-     * token span. Snaps to whole tokens (any token that overlaps the range is
-     * included). Returns null if no tokens overlap.
-     */
-    private rangeToTokenSpan(
-        codeRange: CodeRange,
-    ): { fromLine: number; fromIdx: number; toLine: number; toIdx: number } | null {
-        const lineLens = this.lineLengths();
-        if (lineLens.length === 0) return null;
-        const { start: rStart, end: rEnd } = rangeToCharOffsets(codeRange, lineLens);
-        if (rEnd <= rStart) return null;
-
-        let off = 0;
-        let fromLine = -1, fromIdx = -1, toLine = -1, toIdx = -1;
-        for (let li = 0; li < this.tokenLines.length; li++) {
-            const line = this.tokenLines[li];
-            for (let ti = 0; ti < line.tokens.length; ti++) {
-                const tok = line.tokens[ti];
-                const tStart = off;
-                const tEnd = off + tok.content.length;
-                if (tEnd > rStart && tStart < rEnd) {
-                    if (fromLine === -1) { fromLine = li; fromIdx = ti; }
-                    toLine = li;
-                    toIdx = ti + 1;
-                }
-                off = tEnd;
-            }
-            if (li < this.tokenLines.length - 1) off += 1;
-        }
-
-        if (fromLine === -1) return null;
-        return { fromLine, fromIdx, toLine, toIdx };
-    }
+    // ── Drawing ─────────────────────────────────────────────────────────────
 
     protected drawSelf(draw: RenderContext): void {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
-        const pad = this.padding;
 
-        const stateById = this.resolveTokenStates();
-        const lineHeightScales = this.resolveLineHeightScales();
+        const dim = this.resolveTokenStates();
+        const { from, to, edit } = this.frameLayout(draw);
 
-        const { lineHeights, gutter, blockWidth, startX, startY } =
-            this.computeGeometry(draw, stateById, lineHeightScales);
+        const progress = edit ? edit.progress : 1;
+        const pOut = edit ? windowProgress(edit.phases.out, progress) : 1;
+        const pMove = this.moveProgress(edit);
+        const pIn = edit ? windowProgress(edit.phases.in, progress) : 1;
+        // Distance an entering row still has to travel: the whole offset when its
+        // fade begins, none of it by the time the fade ends.
+        const entryTravel = 1 - easeOutCubic(pIn);
 
-        // Gutter line-number color: a muted version of the standard text color.
-        const lineNumColor: NormalizedColorTuple = [0.45, 0.5, 0.55, 1];
+        const blockW = edit ? lerpNumber(from.blockW, to.blockW, pMove) : to.blockW;
+        const gutter = edit ? lerpNumber(from.gutter, to.gutter, pMove) : to.gutter;
+        const gutterGap = to.gutterGap || from.gutterGap;
+        // Right edge of the line-number column: one gap to the left of where the
+        // code text begins.
+        const numberRight = -blockW / 2 + this.padding.left + gutter - gutterGap;
 
-        let yCursor = startY;
-        // Visible line counter — only fully-non-collapsed lines get a number.
-        // We number every modeled line (1-indexed) regardless of hScale so that
-        // animations that collapse a line still show its label fading out, which
-        // matches normal editor behaviour.
-        for (let lineIdx = 0; lineIdx < this.tokenLines.length; lineIdx++) {
-            const line = this.tokenLines[lineIdx];
-            const hScale = lineHeightScales.get(line.id) ?? 1;
-            // The renderer centers each single-token block on the (x, y) we pass
-            // (it shifts by -blockWidth/2, -blockHeight/2). So we anchor every
-            // token at the *center* of its cell, not its top-left/baseline:
-            //   - y: the vertical middle of this line's slot. The slot is
-            //     lineHeights[lineIdx] tall (= lineH * hScale); the full-size
-            //     glyph block stays centered in it as the slot collapses.
-            //   - x: the horizontal middle of each token (set per-token below).
-            // Passing lineHeight makes the token block's height deterministic
-            // (fontSize * lineHeight) rather than the font's natural metrics, so
-            // the vertical center lands exactly on the slot center.
-            // y-up space: yCursor is the top of the slot, so the slot center sits
-            // half a line height BELOW it (subtract).
-            const centerY = yCursor - lineHeights[lineIdx] / 2;
+        const drawNumber = (label: string, y: number, opacity: number): void => {
+            if (opacity <= 0) return;
+            const labelW = this.advanceCache.advance(draw, label, this.fontSize, this.fontFamily, 0);
+            draw.draw(new Graphics()
+                .text({
+                    text: label,
+                    fontSize: this.fontSize,
+                    fontFamily: this.fontFamily,
+                    lineHeight: this.lineHeight,
+                    x: numberRight - labelW / 2,
+                    y,
+                    textAlign: 'left',
+                })
+                .fill([{ type: "solid", color: LINE_NUMBER_COLOR, opacity }]));
+        };
+
+        const drawToken = (text: string, x: number, y: number, color: NormalizedColor, opacity: number): void => {
+            if (opacity <= 0 || text.length === 0) return;
+            const width = this.advanceCache.advance(draw, text, this.fontSize, this.fontFamily, this.letterSpacing);
+            draw.draw(new Graphics()
+                .text({
+                    text,
+                    fontSize: this.fontSize,
+                    fontFamily: this.fontFamily,
+                    lineHeight: this.lineHeight,
+                    letterSpacing: this.letterSpacing,
+                    // The renderer centres a single-token block on the (x, y) it
+                    // is given, so every token is anchored at the centre of its
+                    // cell rather than at its left edge. Passing lineHeight makes
+                    // the block's height deterministic (fontSize × lineHeight)
+                    // rather than the font's natural metrics, so the vertical
+                    // centre lands exactly on the slot centre.
+                    x: x + width / 2,
+                    y,
+                    textAlign: 'left',
+                })
+                .fill([{ type: "solid", color, opacity }]));
+        };
+
+        // What survived the edit, and what it brought with it — drawn from the
+        // structure the edit lands on.
+        for (let i = 0; i < this.tokenLines.length; i++) {
+            const line = this.tokenLines[i];
+            const toIndex = to.lineIndex.get(line.id);
+            if (toIndex === undefined) continue;
+            const toY = to.lineY[toIndex];
+
+            const direction = edit?.entryByLine.get(line.id);
+            let rowY = toY;
+            let rowDX = 0;
+            let rowAlpha = 1;
+            if (edit && direction) {
+                // A wholly new row travels as one piece — the line arrives, not a
+                // spray of glyphs each finding its own way in.
+                const offset = this.entryOffset(direction);
+                rowY = toY + offset.y * entryTravel;
+                rowDX = offset.x * entryTravel;
+                rowAlpha = pIn;
+            } else if (edit) {
+                const fromIndex = from.lineIndex.get(line.id);
+                if (fromIndex !== undefined) rowY = lerpNumber(from.lineY[fromIndex], toY, pMove);
+            }
 
             if (this.showLineNumbers) {
-                const label = String(lineIdx + 1);
-                const labelW = this.advanceCache.advance(draw, label, this.fontSize, this.fontFamily, 0);
-                // Right-align the number so its right edge sits one gutterGap to
-                // the left of where the code text begins.
-                const gx = -blockWidth / 2 + pad.left + (gutter - labelW) - this.gutterGap(draw);
-                // When a highlight is active, the number dims along with the code
-                // unless the WHOLE line is highlighted. We take the min opacity of
-                // the line's tokens: a fully-highlighted line is all 1s (bright),
-                // any dimmed token drags the number down. This also tweens for
-                // free during highlight()/resetHighlight() transitions.
-                const lineHighlightOpacity = this.lineHighlightOpacity(line, stateById);
-                draw.draw(new Graphics()
-                    .text({
-                        text: label,
-                        fontSize: this.fontSize,
-                        fontFamily: this.fontFamily,
-                        lineHeight: this.lineHeight,
-                        x: gx + labelW / 2,
-                        y: centerY,
-                        textAlign: 'left',
-                    })
-                    .fill([{ type: "solid", color: lineNumColor, opacity: hScale * lineHighlightOpacity }]));
+                drawNumber(String(i + 1), rowY, rowAlpha * this.lineHighlightOpacity(line, dim));
             }
 
-            let x = startX;
             for (const token of line.tokens) {
-                if (token.content.length === 0) continue;
+                const box = to.tokens.get(token.id);
+                if (!box) continue;
 
-                const color: NormalizedColor = token.color ? parseColor(token.color) : [0.82, 0.84, 0.86, 1];
-                const state = stateById.get(token.id);
-                const opacity = (state?.opacity ?? 1) * hScale;
-                const offsetY = state?.offsetY ?? 0;
-                const widthScale = state?.widthScale ?? 1;
-                // Advance width includes letterSpacing, matching what the
-                // renderer lays down when drawing with the same letterSpacing.
-                const tokWidth = this.tokenAdvance(draw, token.content);
+                let x = box.x + rowDX;
+                let alpha = rowAlpha;
+                let color = tokenColor(token.color);
 
-                if (opacity > 0 && widthScale > 0) {
-                    draw.draw(new Graphics()
-                        .text({
-                            text: token.content,
-                            fontSize: this.fontSize,
-                            fontFamily: this.fontFamily,
-                            lineHeight: this.lineHeight,
-                            letterSpacing: this.letterSpacing,
-                            // Token is drawn at its natural width regardless of
-                            // widthScale (widthScale only shrinks the advance), so
-                            // its visual center is always x + tokWidth/2.
-                            x: x + tokWidth / 2,
-                            y: centerY + offsetY,
-                            textAlign: 'left',
-                        })
-                        .fill([{ type: "solid", color, opacity }]));
+                if (edit && !direction) {
+                    if (edit.addedIds.has(token.id)) {
+                        // Spliced into a row that already existed: the reflow
+                        // already opened the space, so this only has to appear.
+                        alpha = pIn;
+                    } else {
+                        const was = from.tokens.get(token.id);
+                        if (was) x = lerpNumber(was.x, box.x, pMove);
+                        if (edit.fromColorById.has(token.id)) {
+                            color = lerpColor(tokenColor(edit.fromColorById.get(token.id)), color, pMove);
+                        }
+                    }
                 }
 
-                x += tokWidth * widthScale;
+                drawToken(token.content, x, rowY, color, alpha * (dim.get(token.id)?.opacity ?? 1));
             }
+        }
 
-            // Advance the cursor downward (y-up: subtract) to the next line's top.
-            yCursor -= lineHeights[lineIdx];
+        // What the edit takes away, drawn from the structure it is leaving — it
+        // has no place in the new one, which is the whole reason it is fading.
+        if (edit && pOut < 1) {
+            for (let i = 0; i < edit.from.length; i++) {
+                const line = edit.from[i];
+                const fromIndex = from.lineIndex.get(line.id);
+                if (fromIndex === undefined) continue;
+                const toIndex = to.lineIndex.get(line.id);
+                // A row that survived the edit is still moving, so its outgoing
+                // tokens travel with it; a deleted row stays where it was and
+                // dissolves while the rows below close over it.
+                const y = toIndex === undefined
+                    ? from.lineY[fromIndex]
+                    : lerpNumber(from.lineY[fromIndex], to.lineY[toIndex], pMove);
+
+                let drewAny = false;
+                for (const token of line.tokens) {
+                    if (!edit.removedIds.has(token.id)) continue;
+                    const box = from.tokens.get(token.id);
+                    if (!box) continue;
+                    drewAny = true;
+                    drawToken(token.content, box.x, y, tokenColor(token.color), 1 - pOut);
+                }
+                if (drewAny && toIndex === undefined && this.showLineNumbers) {
+                    drawNumber(String(i + 1), y, 1 - pOut);
+                }
+            }
         }
     }
 
     // Is a highlight currently engaged — either a persistent dim is set, or a
-    // highlight()/resetHighlight() cross-fade is mid-flight? Intro/exit
-    // animations (append/insert/remove) are NOT highlights, so the line-number
-    // dimming below stays inert for them and only `hScale` affects the number.
+    // highlight()/resetHighlight() cross-fade is mid-flight? A structural edit is
+    // NOT a highlight, so the line-number dimming below stays inert for one.
     private isHighlightActive(): boolean {
         if (this.highlightDimOpacity !== null) return true;
-        return this.transitions.some(tr => tr.introducedIds.size === 0
-            && tr.lineHeightScales.size === 0);
+        return this.transitions.some(tr => tr.kind === "dim");
     }
 
     // Opacity multiplier for a line's number under the active highlight. The
     // number stays bright only when the WHOLE line is highlighted, so we take
     // the min token opacity on the line. Returns 1 (no dimming) when no
-    // highlight is active, so insert/remove intros don't drag the number down.
+    // highlight is active, so an edit's entries don't drag the number down.
     private lineHighlightOpacity(line: IdLine, stateById: Map<number, TokenState>): number {
         if (!this.isHighlightActive()) return 1;
         let min = 1;
@@ -1084,10 +888,33 @@ export class Code extends ShapeNode<CodeProps> {
             this.highlightedIds,
         );
     }
-
-    private resolveLineHeightScales(): Map<number, number> {
-        return resolveLineHeightScales(this.transitions);
-    }
 }
 
-type NormalizedColorTuple = [number, number, number, number];
+/**
+ * Where each wholly new row enters from, relative to the code that was already
+ * there: rows added below it rise into place, rows added above it descend, and
+ * rows spliced between existing ones slide in from the left.
+ *
+ * That distinction is the difference between an edit that reads as *content
+ * arriving* and one that reads as a list redrawing itself — a row appended to the
+ * end has to come from off the bottom, because that is where the block just grew.
+ */
+function entryDirections(lines: IdLine[], newLineIds: Set<number>): Map<number, EntryDirection> {
+    const out = new Map<number, EntryDirection>();
+    let first = -1;
+    let last = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (newLineIds.has(lines[i].id)) continue;
+        if (first < 0) first = i;
+        last = i;
+    }
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!newLineIds.has(line.id)) continue;
+        // Nothing survived, so there is no "within" to speak of: the whole
+        // listing is arriving, and it arrives from below like appended content.
+        if (first < 0) out.set(line.id, "up");
+        else out.set(line.id, i < first ? "down" : i > last ? "up" : "right");
+    }
+    return out;
+}

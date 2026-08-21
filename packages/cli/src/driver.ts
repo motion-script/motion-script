@@ -58,10 +58,18 @@ export type ExportFile = {
     bytes: Uint8Array;
 };
 
+export type VideoCodecName = 'avc' | 'hevc' | 'av1' | 'vp9';
+
 export type DriverExportOptions = {
     sceneNames?: string[];
     split?: boolean;
     scale?: number;
+    /** Video codec to encode with. Omitted → H.264. */
+    codec?: VideoCodecName;
+    /** Video bitrate in bits per second. Omitted → the exporter's own default for the size and frame rate. */
+    bitrate?: number;
+    /** Render each frame at this multiple of the output size and downsample before encoding. Omitted → the exporter's default. */
+    supersample?: number;
     /** Reports per-file progress in [0,1] as the export runs. */
     onProgress?: (file: string, progress: number) => void;
     /**
@@ -353,12 +361,15 @@ export class HeadlessDriver {
 
         try {
             await page.evaluate(
-                ({ sceneNames, split, scale }) =>
-                    window.__motionScript!.export({ sceneNames, split, scale }),
+                ({ sceneNames, split, scale, supersample, codec, bitrate }) =>
+                    window.__motionScript!.export({ sceneNames, split, scale, supersample, codec, bitrate }),
                 {
                     sceneNames: options.sceneNames,
                     split: options.split ?? false,
                     scale: options.scale ?? 1,
+                    supersample: options.supersample,
+                    codec: options.codec,
+                    bitrate: options.bitrate,
                 },
             );
         } finally {

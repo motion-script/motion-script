@@ -27,6 +27,12 @@ export type HeadlessExportOptions = {
     split?: boolean;
     /** Resolution multiplier applied to the project viewport (default 1). */
     scale?: number;
+    /** Video codec to encode with (default `'avc'`). */
+    codec?: 'avc' | 'hevc' | 'av1' | 'vp9';
+    /** Video bitrate in bits per second. Omitted → the exporter's resolution- and fps-aware default. */
+    bitrate?: number;
+    /** Render each frame at this multiple of the output size and downsample before encoding. Omitted → the exporter's default. */
+    supersample?: number;
 };
 
 export type HeadlessScreenshotOptions = {
@@ -155,7 +161,7 @@ export function installHeadlessBridge(): void {
         },
 
         async export(options) {
-            const { split = false, scale = 1 } = options;
+            const { split = false, scale = 1, supersample, codec, bitrate } = options;
             const scenes = selectScenes(options.sceneNames);
             if (scenes.length === 0) {
                 throw new Error('No scenes to export.');
@@ -184,6 +190,13 @@ export function installHeadlessBridge(): void {
                 backgrounds: config.backgrounds,
                 wasmUrl: '/canvaskit.wasm',
                 returnBytes: true as const,
+                // Only the keys the caller actually set: an explicit `undefined`
+                // would still shadow the exporter's own default.
+                ...(supersample !== undefined && { supersample }),
+                video: {
+                    ...(codec !== undefined && { codec }),
+                    ...(bitrate !== undefined && { bitrate }),
+                },
             };
 
             if (split) {

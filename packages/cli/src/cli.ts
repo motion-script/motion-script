@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import minimist from 'minimist';
 import kleur from 'kleur';
 import cliProgress from 'cli-progress';
-import { HeadlessDriver, resolveProjectRoot, type ExportFile, type FrameSpec } from './driver.js';
+import { HeadlessDriver, resolveProjectRoot, type ExportFile, type FrameSpec, type VideoCodecName } from './driver.js';
 
 const USAGE = `
 ${kleur.bold('ms')} — headless exporter for Motion Script projects
@@ -19,6 +19,17 @@ ${kleur.bold('Export options')}
   --scenes <a,b,c>              Comma-separated scene names to export (default: all)
   --split                       Export each scene as its own file (default: combine into one)
   --scale <n>                   Resolution multiplier, e.g. 2 for 2x (default: 1)
+  --codec <avc|hevc|av1|vp9>    Video codec (default: avc/H.264). hevc and av1 hold
+                                sharp edges better at the same bitrate; both fall
+                                back to avc where the machine cannot encode them.
+  --bitrate <n>                 Video bitrate in bits per second, or with a k/M
+                                suffix (e.g. 40M). Default scales with resolution
+                                and frame rate.
+  --supersample <n>             Render each frame n× the output size and downsample
+                                before encoding (default 2). Softens the colour
+                                fringing every browser codec's 4:2:0 chroma puts on
+                                saturated edges, at n² the render time. Pass 1 when
+                                turnaround matters more than the file.
   --out <dir>                   Output directory (default: out)
 
 ${kleur.bold('Screenshot')}
@@ -38,12 +49,41 @@ ${kleur.bold('Examples')}
   ms list
   ms export --scenes intro,outro --split
   ms export --scenes intro --scale 2
+  ms export --codec hevc --bitrate 40M
+  ms export --supersample 1
   ms screenshot last
   ms screenshot first --split
   ms screenshot 42 --format jpg
   ms screenshot 2.5s --scenes intro --scale 2
   ms clear
 `.trimStart();
+
+const VIDEO_CODECS = ['avc', 'hevc', 'av1', 'vp9'] as const;
+
+/** Parse `--codec hevc`, rejecting anything the exporter would not understand. */
+function parseCodec(raw: unknown): VideoCodecName | undefined {
+    if (raw === undefined) return undefined;
+    const value = String(raw).trim().toLowerCase();
+    if (!(VIDEO_CODECS as readonly string[]).includes(value)) {
+        throw new Error(`Invalid --codec value: ${raw}. Expected one of: ${VIDEO_CODECS.join(', ')}.`);
+    }
+    return value as VideoCodecName;
+}
+
+/**
+ * Parse `--bitrate` as bits per second, accepting the `k`/`M` suffixes anyone
+ * would reach for — `40M` is how this number is written everywhere else, and
+ * `40000000` is easy to mistype by an order of magnitude.
+ */
+function parseBitrate(raw: unknown): number | undefined {
+    if (raw === undefined) return undefined;
+    const match = /^\s*([0-9]*\.?[0-9]+)\s*([kKmM])?(?:bps|bit\/s)?\s*$/.exec(String(raw));
+    if (!match) throw new Error(`Invalid --bitrate value: ${raw}. Expected e.g. 12000000, 12000k or 12M.`);
+    const scale = match[2] === undefined ? 1 : (match[2].toLowerCase() === 'k' ? 1e3 : 1e6);
+    const bits = Math.round(Number(match[1]) * scale);
+    if (!Number.isFinite(bits) || bits <= 0) throw new Error(`Invalid --bitrate value: ${raw}`);
+    return bits;
+}
 
 const DEFAULT_OUT_DIR = 'out';
 const VIDEO_SUBDIR = 'videos';
@@ -169,6 +209,14 @@ async function runExport(projectRoot: string, args: minimist.ParsedArgs): Promis
     if (!Number.isFinite(scale) || scale <= 0) {
         throw new Error(`Invalid --scale value: ${args.scale}`);
     }
+    const codec = parseCodec(args.codec);
+    const bitrate = parseBitrate(args.bitrate);
+    // Left undefined when unset so the exporter's own default applies — a value
+    // restated here is a second default to keep in step with the first.
+    const supersample = args.supersample !== undefined ? Number(args.supersample) : undefined;
+    if (supersample !== undefined && (!Number.isInteger(supersample) || supersample < 1 || supersample > 4)) {
+        throw new Error(`Invalid --supersample value: ${args.supersample}. Expected a whole number from 1 to 4.`);
+    }
 
     const outDir = path.resolve(
         projectRoot,
@@ -185,7 +233,10 @@ async function runExport(projectRoot: string, args: minimist.ParsedArgs): Promis
         console.log(
             kleur.bold('Exporting ') + selected +
             (split ? kleur.dim(' (split)') : kleur.dim(' (combined)')) +
-            (scale !== 1 ? kleur.dim(` @ ${scale}x`) : ''),
+            (scale !== 1 ? kleur.dim(` @ ${scale}x`) : '') +
+            (supersample !== undefined ? kleur.dim(` · ${supersample}× supersampled`) : '') +
+            (codec ? kleur.dim(` · ${codec}`) : '') +
+            (bitrate ? kleur.dim(` · ${(bitrate / 1e6).toFixed(1)} Mbps`) : ''),
         );
 
         // cli-progress renders one redrawing bar per clip (multiple in --split),
@@ -259,6 +310,9 @@ async function runExport(projectRoot: string, args: minimist.ParsedArgs): Promis
                 sceneNames,
                 split,
                 scale,
+                supersample,
+                codec,
+                bitrate,
                 onProgress: (label, progress) => {
                     barFor(label).update(Math.round(progress * 100), { label });
                 },
@@ -450,9 +504,10 @@ async function main(): Promise<void> {
     const argv = minimist(process.argv.slice(2), {
         boolean: ['split', 'help', 'version'],
         // Keep these as strings so values aren't number-coerced (e.g. an `--out`
-        // dir that's all digits, or `--format jpg`). `--scale` stays unlisted so
-        // it parses as a number.
-        string: ['scenes', 'out', 'format'],
+        // dir that's all digits, or `--format jpg`). `--bitrate` is here because
+        // `40M` has to survive as written for the suffix parser to see it.
+        // `--scale` stays unlisted so it parses as a number.
+        string: ['scenes', 'out', 'format', 'codec', 'bitrate'],
         alias: { h: 'help', v: 'version' },
     });
 

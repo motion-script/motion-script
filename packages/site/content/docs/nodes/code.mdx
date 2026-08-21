@@ -8,6 +8,8 @@ import { CodeCanvas } from '@site/src/components/docs/node-scenes';
 
 The `Code` node renders syntax-highlighted code using [Lezer](https://lezer.codemirror.net/). Grammars are loaded lazily per language, and built-in themes are provided. It offers animation methods for highlighting, replacing, inserting, and removing code.
 
+Every edit is animated by **diffing** the listing against the source it becomes: tokens that survived the edit keep their identity and travel to their new columns, what is gone fades out first, and only then does what is new arrive.
+
 Supported languages: `typescript`, `tsx`, `javascript`, `jsx`, `python`, `json`, `html`, `css`, `rust`, `go`, `java`, `cpp`, `php`, `markdown`, `xml`, and `yaml`.
 
 <CodeCanvas />
@@ -52,9 +54,27 @@ export default createScene(function* (stage) {
 
 The highlighted language and color theme are configured via the `@motion-script/code` package settings. Themes are Lezer-based highlight styles (e.g. `github-dark`, `github-light`, `vscode-dark`, `vscode-light`) rather than Shiki themes.
 
+## Animating to new code
+
+The simplest way to change a listing is to tween `code` like any other prop:
+
+```tsx
+yield* ref().to({
+  code: `function greet(name: string) {
+  return \`Hi, \${name}.\`;
+}`,
+}, 1.2);
+```
+
+The node works out the difference for you. In the example above `function greet(name: string) {` and the closing brace never move, `Hello,` fades out where it stood, and `Hi,` fades in once the rest of the line has finished reflowing around it.
+
+New **rows** enter from the direction they arrived from — a row appended below the listing rises into place, a row inserted above it descends, and a row spliced between two existing rows slides in from the left. A row always moves as one piece.
+
+The named methods below are the same engine, expressed as an edit rather than as a whole document. Use whichever reads better: `to({ code })` when you have the finished source, a named edit when the interesting thing is the edit itself.
+
 ## Animation methods
 
-All methods return a `FrameGenerator` and must be `yield*`-ed.
+Each returns a `Command`, which can be `yield*`-ed like a generator or placed on a timeline.
 
 ### `highlight(range, duration, easing?)`
 
@@ -83,10 +103,32 @@ yield* ref().replace(word(1, 22, 6), 'string', 0.3);
 
 ### `remove(range, duration, easing?)`
 
-Remove a range of code with an animated transition:
+Remove a range of code with an animated transition. A range covering whole lines
+takes their line breaks with it, so the rows below close up; a range inside a
+line takes only the characters, and the rest of the line reflows around the hole:
 
 ```tsx
-yield* ref().remove(lines(2), 0.4);
+yield* ref().remove(lines(2), 0.4);       // the row disappears
+yield* ref().remove(word(1, 14, 3), 0.4); // the line closes over the gap
+```
+
+### `insert(position, text, duration, easing?)`
+
+Insert code at a 1-indexed `[line, column]`. The column is the one the new text
+is inserted *before*, so `1` is the start of the line:
+
+```tsx
+yield* ref().insert([1, 15], 'name: string', 0.5);
+```
+
+### `append(text, duration, easing?)` / `prepend(text, duration, easing?)`
+
+Add code below or above the listing. Because the whole document is
+re-highlighted, a line that closes a block re-colours the lines above it:
+
+```tsx
+yield* ref().append('\ngreet("world");', 0.6);
+yield* ref().prepend('import { greet } from "./greet";\n\n', 0.6);
 ```
 
 ## Range helpers
