@@ -12,14 +12,19 @@ Thank you for your interest in contributing to MotionScript! This guide covers h
 motion-script/
 ├── packages/
 │   ├── core/          # @motion-script/core — the animation engine
-│   ├── player/        # @motion-script/player — browser renderer
+│   ├── skia-render/   # @motion-script/skia-render — the Skia renderer
+│   ├── web/           # @motion-script/web — browser backend, exporter, audio
+│   ├── canvaskit/     # @motion-script/canvaskit — Skia CanvasKit (WASM)
+│   ├── cli/           # @motion-script/cli — the `ms` headless renderer
 │   ├── react/         # @motion-script/react — React bindings
-│   ├── docs/          # This documentation site
-│   ├── my-video/      # Example project / testbed
+│   ├── motion-script/ # motion-script — the flagship bundle
+│   ├── create/        # create-motion-script — project scaffolding
+│   ├── site/          # This documentation site
+│   ├── template/      # Example project / testbed
+│   ├── e2e/           # Visual regression tests
 │   └── components/
 │       ├── latex/     # @motion-script/latex
-│       ├── code/      # @motion-script/code
-│       └── three/     # @motion-script/three
+│       └── code/      # @motion-script/code
 ```
 
 The monorepo uses [pnpm workspaces](https://pnpm.io/workspaces) and [Turborepo](https://turbo.build/).
@@ -41,25 +46,31 @@ npm install -g pnpm
 pnpm install
 ```
 
-### Build core
+### Build the libraries
 
-The player and docs depend on the prebuilt `@motion-script/core` dist. Build it first:
+Everything else depends on the prebuilt `dist/` of the library packages. Build
+them first:
 
 ```bash
-pnpm --filter @motion-script/core build
+pnpm build:lib
 ```
 
 ### Start the docs site
 
 ```bash
-pnpm --filter @motion-script/docs start
+pnpm --filter @motion-script/site dev
 ```
 
-### Start the example project
+### Render the example project
+
+There is no dev server to start — rendering is what you run:
 
 ```bash
-pnpm --filter @motion-script/player dev
+pnpm --filter @motion-script/template exec ms list
+pnpm --filter @motion-script/template exec ms screenshot last
 ```
+
+Frames land in `packages/template/out/screenshots/`.
 
 ## Development workflow
 
@@ -77,8 +88,10 @@ Or run the watch mode:
 pnpm --filter @motion-script/core dev
 ```
 
-:::info Player dependency
-The player Vite config aliases `@motion-script/player` to its prebuilt dist. After rebuilding core, restart the dev server to pick up changes.
+:::info Rebuild before rendering
+`ms` renders against each package's built `dist/`, so rebuild the package you
+edited before running it again. The one exception is `packages/cli/harness/`,
+which Vite serves straight from source.
 :::
 
 ### Running tests

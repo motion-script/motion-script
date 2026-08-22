@@ -29,7 +29,7 @@
  * The packed packages share the workspace version (e.g. 2.9.2). If we declared
  * them as `file:*.tgz` deps and ran `pnpm install`, pnpm would key them by
  * name@version and could reuse a cached/registry extraction of the SAME version
- * for the transitive @motion-script/* peer deps (vite-plugin → core, etc.) —
+ * for the transitive @motion-script/* peer deps (cli → core, etc.) —
  * silently mixing a stale copy in with the fresh tarballs. To guarantee the
  * snapshot is exactly the bytes we just packed, we extract every tarball
  * directly into stable/node_modules/@motion-script/<name>/ (flat, real dirs) and
@@ -53,7 +53,7 @@ const stableModules = path.join(stableRoot, 'node_modules');
  * The publishable packages, in dependency order. These are the @motion-script/*
  * packages that lack `"private": true` — i.e. the ones that get published and
  * that an end-user project installs. The e2e scenes import core / code / latex;
- * the vite-plugin pulls in web / player / react / canvaskit at render time.
+ * the cli pulls in web / canvaskit at render time.
  *
  * Order matters: a package must appear after everything it depends on, so
  * skia-render sits between core and web (web is a thin binding layer over it).
@@ -66,10 +66,8 @@ const PACKAGES = [
     'packages/skia-render',
     'packages/web',
     'packages/react',
-    'packages/player',
     'packages/cli',
     'packages/motion-script',
-    'packages/vite-plugin',
     'packages/components/code',
     'packages/components/latex',
 ];
@@ -272,13 +270,8 @@ function scaffoldStableProject(thirdPartyDeps) {
     };
     fs.writeFileSync(path.join(stableRoot, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
 
-    fs.writeFileSync(
-        path.join(stableRoot, 'vite.config.ts'),
-        `import { defineConfig } from 'vite';\n` +
-        `import motionScript from '@motion-script/vite-plugin';\n\n` +
-        `export default defineConfig({\n  plugins: [motionScript()],\n  server: { port: 5274 },\n});\n`,
-    );
-
+    // No vite.config: the CLI supplies the whole build (and runs with
+    // `configFile: false`), so a stray config here would only be dead weight.
     fs.writeFileSync(
         path.join(stableRoot, 'tsconfig.json'),
         JSON.stringify(

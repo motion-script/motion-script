@@ -24,7 +24,7 @@ export class AssetCatalog {
      * Normalize a caller-supplied asset `src` into the manifest's lookup key.
      * The manifest stores image/video/audio keys as the file's path relative
      * to the scanned public folder, using forward slashes with no leading
-     * `./` or `/` (see `scanInto` in the vite-plugin's asset-manifest.ts).
+     * `./` or `/` (see `scanInto` in the CLI's asset-manifest.ts).
      * Scene authors write `src` in whichever equivalent form is natural — a
      * bare filename, `"./sub/file.png"`, `"/sub/file.png"`, or a
      * Windows-authored backslash path — so normalize all of them to the same

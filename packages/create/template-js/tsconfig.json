@@ -1,0 +1,20 @@
+{
+  // A JavaScript project still needs this file: it is where the JSX transform is
+  // configured, and Vite reads `jsx` / `jsxImportSource` from `tsconfig.json`
+  // (a `jsconfig.json` is not picked up). Without it your `.jsx` scenes would be
+  // compiled against React's JSX runtime instead of Motion Script's.
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "motion-script",
+    "experimentalDecorators": true,
+    "allowJs": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "src"
+  ]
+}

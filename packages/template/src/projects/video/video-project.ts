@@ -15,8 +15,8 @@ import videoNode from './scenes/video-node?scene';
  * playback, the fit/crop modes, a `MediaAdjustment` chain, and an opacity/blend
  * layer — to show video reuses every standard fill feature.
  *
- * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
- * preview it, re-export it as the default from `src/project.ts`.
+ * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
+ * temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Video Showcase',

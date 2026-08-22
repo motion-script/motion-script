@@ -91,10 +91,10 @@ pnpm e2e:compare
 pnpm --filter @motion-script/e2e run compare -- --threshold 0.25
 ```
 
-### Preview a scene interactively
+### Look at a single scene
 
 ```bash
-pnpm --filter @motion-script/e2e run dev     # opens the player on :5273
+pnpm --filter @motion-script/e2e exec ms screenshot last --scenes OpacityNode
 ```
 
 ---
@@ -207,8 +207,7 @@ packages/e2e/
 │   └── src/                  # copy of ../src (same scenes)
 ├── out/                      # GENERATED screenshots, diffs, report (gitignored)
 ├── Dockerfile
-├── docker-compose.yml
-└── vite.config.ts
+└── docker-compose.yml
 ```
 
 ### Why `stable/` extracts tarballs instead of `pnpm install`-ing them
@@ -216,7 +215,7 @@ packages/e2e/
 The packed packages share the workspace version (e.g. `2.9.2`). Installing them
 as `file:*.tgz` deps lets pnpm key them by `name@version` and reuse a cached
 extraction of that version for the *transitive* `@motion-script/*` deps
-(`vite-plugin` → `core`, …), silently mixing a stale copy in. To guarantee the
+(`cli` → `core`, …), silently mixing a stale copy in. To guarantee the
 snapshot is exactly the bytes just packed, `pack-stable.js` extracts every
 tarball into `stable/node_modules/@motion-script/<name>/` (flat, real dirs) and
 installs only third-party deps. With flat real dirs every `@motion-script/*`

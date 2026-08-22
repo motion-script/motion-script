@@ -24,9 +24,8 @@ import normal from './scenes/normal?scene';
  * left to right) over a photo, fading every square's opacity from 0 to 1
  * with the scene's blend mode applied.
  *
- * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
- * preview it, point the `@motion-script/vite-plugin` `entry` option at this
- * file, or temporarily re-export it as the default from `src/project.ts`.
+ * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
+ * temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Blend Modes Showcase',

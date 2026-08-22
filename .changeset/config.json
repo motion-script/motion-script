@@ -13,8 +13,6 @@
       "@motion-script/skia-render",
       "@motion-script/web",
       "@motion-script/react",
-      "@motion-script/player",
-      "@motion-script/vite-plugin",
       "@motion-script/create",
       "@motion-script/latex",
       "@motion-script/code",

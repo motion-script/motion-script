@@ -10,8 +10,7 @@ import { expensive } from '../../scenes/expensive';
  * evaluator has to replay from frame 0 to the target, so without abort/debounce
  * a fast backward drag freezes the UI; with them it stays responsive.
  *
- * Not auto-run — point `src/project.ts` at this (it already does by default) or
- * pass it as the vite-plugin `entry`.
+ * Not auto-run — re-export it as the default from `src/project.ts` to render it.
  */
 export default createProject({
     name: 'Expensive (scrub stress test)',

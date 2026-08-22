@@ -1,1 +1,1 @@
-/// <reference types="@motion-script/vite-plugin/project" />
+/// <reference types="@motion-script/cli/project" />

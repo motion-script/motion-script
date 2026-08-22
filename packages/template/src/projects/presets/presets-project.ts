@@ -40,8 +40,8 @@ import presetAnamorphic from './scenes/preset-anamorphic-glare?scene';
  * recipe is shown across the same four content types (photo, text, stroke, flat
  * fill) as a single effect is.
  *
- * Not auto-run by the vite plugin (which discovers `src/project.ts`). To preview
- * it, re-export it as the default from `src/project.ts`.
+ * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
+ * temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Recipes Showcase',

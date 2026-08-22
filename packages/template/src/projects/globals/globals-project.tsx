@@ -23,8 +23,7 @@ import outro from './scenes/outro?scene';
  * built inline here would resolve `fill="primary"` against an empty registry.
  * The runtime calls a factory after registration.
  *
- * Not auto-run by the vite plugin (which discovers `src/project.ts`). To preview
- * it, point the `@motion-script/vite-plugin` `entry` option at this file, or
+ * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
  * temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({

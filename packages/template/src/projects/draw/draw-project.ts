@@ -26,9 +26,8 @@ import smithChart from './scenes/smith-chart?scene';
  * pivot (the `pivot` passed inside `Graphics.rect(...)`, distinct from the
  * union-level `center`).
  *
- * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
- * preview it, point the `@motion-script/vite-plugin` `entry` option at this
- * file, or temporarily re-export it as the default from `src/project.ts`.
+ * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
+ * temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Draw Commands Showcase',

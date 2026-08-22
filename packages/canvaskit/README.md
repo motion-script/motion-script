@@ -16,7 +16,7 @@ The result is a smaller WASM binary and better runtime performance for image-hea
 
 ## Usage
 
-This package is consumed internally by `@motion-script/player` and `@motion-script/core`. You generally do not need to install it directly.
+This package is consumed internally by `@motion-script/cli` and `@motion-script/web`. You generally do not need to install it directly.
 
 ```ts
 import CanvasKitInit from "@motion-script/canvaskit";

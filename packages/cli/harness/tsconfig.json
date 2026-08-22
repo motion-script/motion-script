@@ -1,0 +1,22 @@
+{
+  // The harness is served to the browser by Vite, never compiled into this
+  // package's `dist` — so this config only ever type-checks (`noEmit`). It is
+  // separate from the CLI's own tsconfig because the two target different
+  // runtimes: Node (NodeNext, no DOM) vs. the browser (bundler resolution, DOM).
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client"],
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}

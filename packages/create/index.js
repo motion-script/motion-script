@@ -109,7 +109,6 @@ const MANIFEST = JSON.parse(
     `template-${response.language}`,
   );
   copyDirectory(templateDir, response.path);
-  createConfig(response);
 
   const manifest = JSON.parse(
     fs.readFileSync(path.join(templateDir, `package.json`), 'utf-8'),
@@ -137,11 +136,17 @@ const MANIFEST = JSON.parse(
   const boldManager = kleur.bold(manager);
   if (manager === 'yarn') {
     console.log(`  ${boldManager}`);
-    console.log(`  ${boldManager} dev`);
+    console.log(`  ${boldManager} screenshot`);
   } else {
     console.log(`  ${boldManager} install`);
-    console.log(`  ${boldManager} run dev`);
+    console.log(`  ${boldManager} run screenshot`);
   }
+  console.log();
+  console.log(
+    kleur.dim(
+      '  Renders go to out/. `run list` names the scenes, `run export` writes MP4s.',
+    ),
+  );
   console.log();
 })();
 
@@ -172,27 +177,6 @@ function copy(src, dest) {
   } else {
     fs.copyFileSync(src, dest);
   }
-}
-
-function createConfig(response) {
-  const configFile = path.resolve(
-    response.path,
-    `vite.config.${response.language}`,
-  );
-
-  fs.writeFileSync(
-    configFile,
-    `import { defineConfig } from 'vite';
-import motionScript from '@motion-script/vite-plugin';
-
-export default defineConfig({
-  plugins: [motionScript()],
-  server: {
-    port: 5173,
-  },
-});
-`,
-  );
 }
 
 function getPackageManager() {

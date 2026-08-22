@@ -18,9 +18,9 @@ developers and educators create animations from the browser.
 ## What is Motion Script?
 
 Motion Script lets you describe animations as TypeScript/JSX scenes and render
-them in real time in the browser. You write declarative scene code; the engine
-turns it into frames using a Skia (CanvasKit) rendering backend, and the bundled
-player gives you a timeline-based editor to preview, scrub, and export.
+them with a Skia (CanvasKit) backend. You write declarative scene code; the `ms`
+command-line renderer turns it into stills or video, headlessly — your project
+needs no bundler configuration of its own.
 
 ```tsx
 import { createScene, createRef, Rect, Ellipse } from 'motion-script';
@@ -60,11 +60,12 @@ Then:
 ```bash
 cd my-video
 npm install
-npm run dev
+npm run screenshot
 ```
 
-This launches a Vite dev server with the Motion Script player. Edit the scenes
-in `src/`, and the preview updates with hot reload.
+That renders the last frame of your timeline to `out/screenshots/`. Edit the
+scenes in `src/` and run it again to see the change; `npm run list` names the
+scenes and `npm run export` writes MP4s to `out/videos/`.
 
 For a full walkthrough, see the [Getting Started guide](https://motionscript.dev/docs/getting-started).
 
@@ -84,9 +85,7 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 | [`@motion-script/web`](packages/web) | Web rendering backend built on Skia/CanvasKit, plus the video exporter and audio playback. |
 | [`@motion-script/canvaskit`](packages/canvaskit) | A WASM build of Skia's CanvasKit API, packaged for Motion Script. |
 | [`@motion-script/react`](packages/react) | React bindings for embedding Motion Script. |
-| [`@motion-script/player`](packages/player) | The timeline-based editor/player UI. |
-| [`@motion-script/vite-plugin`](packages/vite-plugin) | Vite plugin that boots the player app around your project and wires up assets. |
-| [`@motion-script/cli`](packages/cli) | Headless command-line exporter for rendering scenes to video or stills. |
+| [`@motion-script/cli`](packages/cli) | The `ms` renderer: boots your project headlessly and writes stills or video. The only build tooling a project needs. |
 | [`@motion-script/code`](packages/components/code) | Syntax-highlighted code block component for use in scenes. |
 | [`@motion-script/latex`](packages/components/latex) | LaTeX math rendering component for use in scenes. |
 | [`@motion-script/create`](packages/create) | The project scaffolding CLI. |

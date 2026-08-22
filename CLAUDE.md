@@ -60,11 +60,11 @@ build (e2e-visual).
 ### Visually verifying a change with `ms screenshot`
 
 `@motion-script/cli` (`ms`) is a devDependency of every example/test project
-(`packages/template`, `packages/e2e`). It boots a real
-Vite dev server (via `@motion-script/vite-plugin`) headlessly with Playwright
-Chromium, so it needs the libraries built at least once first — run
-`pnpm build:lib` (or rebuild the specific package you touched) on a fresh
-checkout or after editing `core`/`web`/`player`.
+(`packages/template`, `packages/e2e`). It boots its own Vite dev server
+(`packages/cli/src/vite/plugin.ts`, rooted at `packages/cli/harness`) headlessly
+with Playwright Chromium, so it needs the libraries built at least once first —
+run `pnpm build:lib` (or rebuild the specific package you touched) on a fresh
+checkout or after editing `core`/`web`/`cli`.
 
 ```bash
 pnpm --filter @motion-script/template exec ms list             # scene names in that project
@@ -80,9 +80,8 @@ pnpm --filter @motion-script/template exec ms clear             # delete everyth
 `packages/template/out/screenshots/intro_75.png`) — after capturing, use the
 Read tool on that PNG path to actually look at the frame rather than assuming
 the render is correct. This is the fast way to confirm a node/attribute/tween
-change renders as intended without opening the interactive player. `ms export`
-(same driver) renders a scene to MP4 instead, for checking motion over time
-rather than a single frame.
+change renders as intended. `ms export` (same driver) renders a scene to MP4
+instead, for checking motion over time rather than a single frame.
 
 ### Build orchestration — read before touching a package's build config
 
@@ -106,30 +105,33 @@ Conventions to preserve when adding/editing a package:
   so it's covered by Turbo's `dist/**` output cache; each package's `files`
   excludes `*.tsbuildinfo` from the published tarball.
 - `build` = `tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`
-  (bundled packages like `react`/`player` add `&& vite build`); `typecheck` =
+  (bundled packages like `react` add `&& vite build`); `typecheck` =
   `tsc -p tsconfig.json --noEmit` (Vite app/solution packages use
   `tsc -b --noEmit`, which is safe there since `typecheck` never emits and
   can't race on `dist`); `clean` = `rimraf --glob dist .turbo *.tsbuildinfo`.
 
-### The player ships prebuilt — rebuild it after touching its dependencies
+### The CLI's harness is served from source, its driver is not
 
-`@motion-script/vite-plugin` aliases `@motion-script/player` to its **prebuilt
-`dist/`**, not source. If you change `core` (or anything else the player
-depends on), the editor UI won't see it until you rebuild the player:
+`packages/cli` has two halves that build differently. `src/` is compiled by
+`tsc` into `dist/` and runs in **Node** (the `ms` binary, the driver, the Vite
+plugin). `harness/` is **never compiled** — Vite serves it to the browser
+straight from source at render time, which is why it ships verbatim in the
+package's `files` and has its own `harness/tsconfig.json` (DOM libs, bundler
+resolution) that only ever type-checks. Editing `harness/` therefore needs no
+rebuild; editing `src/` does.
 
-```bash
-pnpm --filter @motion-script/player build
-```
+That split is also why `src/vite/data-transform.ts` imports `parseCSV` from
+`@motion-script/core/csv` rather than the package root: it runs in Node, and
+core's main entry is emitted for a bundler (extensionless relative specifiers),
+which Node's ESM loader rejects.
 
 ### canvaskit.wasm
 
 The binary lives committed in `packages/canvaskit/` (custom Skia build with
 variable-font support + WebCodecs image I/O, BSD-3-Clause). Nothing copies it
-there at install time — `@motion-script/vite-plugin` (`src/plugin.ts`,
+there at install time — `@motion-script/cli` (`src/vite/plugin.ts`,
 `resolveCanvasKitWasm`) resolves it directly from the installed
-`@motion-script/canvaskit` package: it's served via dev middleware and copied
-into `dist/` on build (`closeBundle`). Those per-project copies land at
-`**/public/canvaskit.wasm`, which *is* gitignored — never commit one. A stray/
+`@motion-script/canvaskit` package and serves it from dev middleware. A stray/
 mismatched custom `canvaskit.js` + `.wasm` in a working tree breaks the `web`
 browser tests with `_MakeSRGB undefined`; stash it first.
 
@@ -137,19 +139,18 @@ browser tests with `_MakeSRGB undefined`; stash it first.
 
 Three layers, cleanly separated: the **engine** (`core`) knows how a scene
 evolves over time but nothing about pixels; a **rendering backend** (`web`)
-knows how to draw a frame; the **player/vite-plugin** wires a user's project
-into an interactive editor.
+knows how to draw a frame; the **cli** drives a user's project through both,
+headlessly.
 
 ```
-your project (scenes, project.ts)
+your project (scenes, project.ts)   — no bundler config of its own
         │
         ▼
-@motion-script/vite-plugin   boots the player app, aliases your project,
-  (dev server + build)       serves canvaskit.wasm
-        │
+@motion-script/cli           `ms list` / `ms screenshot` / `ms export`
+  (driver + vite plugin)     boots Vite rooted at its own harness/, aliases
+        │                    your project as ~user-project, serves canvaskit.wasm
         ▼
-@motion-script/player        timeline, scene panel, scrubbing, export controls
-  (React editor UI)
+cli harness/ (browser)       installs window.__motionScript, calls the exporter
         │ uses
         ├──────────────────────────────┐
         ▼                              ▼
@@ -378,9 +379,9 @@ Things to know when working on this:
   offset, unlike `ScenePrecomp.audioRequests`. They are re-resolved on every
   timeline assembly, because the total duration grows as the background precomp
   measures more scenes.
-- **`layerAppliesTo` is the single selection rule.** The player's timeline draws
-  each layer's bar from it, so what is shown and what actually renders cannot
-  disagree.
+- **`layerAppliesTo` is the single selection rule.** Anything that needs to know
+  which scenes a layer covers asks it, so no second copy of the rule can drift
+  from what actually renders.
 
 ### `@motion-script/web` — the web rendering backend
 
@@ -506,9 +507,10 @@ three is reached through a lazy `import("three")`, so 2D-only projects never loa
 it. `View3D.prepareRender()` warms it during precomp (before any frame draws) via
 core's `registerView3DWarmup` seam; if a frame still beats it, the existing
 `warmPendingVideo` re-render loop covers it, so exports stay frame-accurate.
-Because the dev server's root is the player app, `vite-plugin` resolves `three`
-from `@motion-script/web`'s location and declares it in `optimizeDeps.include` —
-without that the dynamic import 504s under the headless CLI.
+Because the dev server's root is the CLI's harness app, the CLI's plugin resolves
+`three` from `@motion-script/skia-render`'s location and declares it in
+`optimizeDeps.include` — without that the dynamic import 504s under the headless
+render.
 
 #### 2D on 3D: `Tex.surface`
 
@@ -564,22 +566,6 @@ binary), BSD-3-Clause (rest of the repo is Apache-2.0). See
 
 React bindings for embedding Motion Script; depends on `core` and `web`.
 
-### `@motion-script/player`
-
-The editor UI itself: timeline, scene panel, node-names column, playback/
-scrubbing, export controls. Tailwind + Base UI + Zustand + `wavesurfer.js`.
-`private`, consumed by the vite plugin rather than published standalone.
-
-### `@motion-script/vite-plugin`
-
-What a user project actually depends on. Makes Vite boot the **player app**
-as `root` (not the user's project directly): aliases `~user-project` /
-`~user-script` to the user's `project.ts` and entry file, serves
-`canvaskit.wasm` in dev (middleware) and emits it on build (`closeBundle`),
-builds a virtual asset manifest from the user's `public/` folder, and
-resolves React from its own `node_modules` so it works whether or not the
-user installed React.
-
 ### `motion-script` (`packages/motion-script`)
 
 The flagship published package — bundles `core` + `@motion-script/code` +
@@ -588,14 +574,29 @@ depend on the library.
 
 ### `@motion-script/cli`
 
-Headless exporter: renders scenes to video/stills without the interactive
-player (`ms export`, `ms list` in a user project).
+What a user project actually depends on to render, and the only thing that does.
+`src/` (Node) owns the driver and the Vite plugin; `harness/` (browser, served
+from source) owns the render bridge — see
+[the CLI's harness](#the-clis-harness-is-served-from-source-its-driver-is-not).
+
+The plugin runs Vite rooted at `harness/` rather than the user's project, and
+supplies everything a render needs: `~user-project` aliased to the project's
+`src/project.ts`, a virtual `~asset-manifest` built from its `public/` folder
+plus the CLI's own bundled fonts (Inter, Fira Mono), the `?scene` import suffix,
+the `parseData` build-time macro, `canvaskit.wasm` from dev middleware, and a
+`three` alias for 3D. The driver starts that server with `configFile: false`, so
+a user project has **no bundler configuration of its own** — just `src/project.ts`
+and its scenes.
+
+Commands: `ms list`, `ms screenshot <when>`, `ms export`, `ms clear`.
 
 ### `create-motion-script` (`packages/create`)
 
 Scaffolding CLI: prompts for name/path/language, copies `template-ts` or
-`template-js`, writes a `vite.config` registering the plugin, pins
-`@motion-script/*` versions.
+`template-js`, pins `@motion-script/*` versions. The scaffolded project's only
+scripts are `ms` ones. Both templates ship a `tsconfig.json` — the JS one too,
+because that is where the JSX transform is configured and Vite reads
+`jsx`/`jsxImportSource` from `tsconfig.json` only (a `jsconfig.json` is ignored).
 
 ### Components: `@motion-script/code`, `@motion-script/latex`
 
@@ -605,7 +606,7 @@ Standalone scene components (syntax-highlighted code blocks; LaTeX math) that
 ### Supporting workspaces (not published)
 
 - **`site`** — the Next.js docs site (motionscript.dev). `predev`/`prebuild`
-  first build the player app (`build:app`) and the search index.
+  first build the API reference and the search index.
 - **`e2e`** — visual regression: renders every scene against a committed
   "stable" tarball baseline and the branch's "lib" build, then pixel-diffs.
 - **`template`** — an example project (scene demos) used to exercise the

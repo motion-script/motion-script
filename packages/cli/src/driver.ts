@@ -4,6 +4,7 @@ import os from 'node:os';
 import net from 'node:net';
 import { createServer, type ViteDevServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
+import { motionScriptHarness } from './vite/plugin.js';
 
 /** How long to wait for the headless bridge to install before giving up. */
 const BRIDGE_READY_TIMEOUT_MS = 60_000;
@@ -107,11 +108,15 @@ export type ScreenshotResult = {
 };
 
 /**
- * Drives a Motion Script project headlessly: starts the project's *own* Vite
- * dev server (so the `@motion-script/vite-plugin` resolves the user's scenes,
- * assets, and CanvasKit exactly as the live player does), opens it in a
- * headless Chromium via Playwright, and talks to the `window.__motionScript`
- * bridge the plugin installs in `?headless` mode.
+ * Drives a Motion Script project headlessly: starts a Vite dev server rooted at
+ * this package's own render harness (with {@link motionScriptHarness} resolving
+ * the user's scenes, assets and CanvasKit), opens it in a headless Chromium via
+ * Playwright, and talks to the `window.__motionScript` bridge the harness
+ * installs.
+ *
+ * The server is built here rather than loaded from a `vite.config` in the user's
+ * project: rendering is the CLI's job end to end, so a project needs no bundler
+ * configuration of its own — just `src/project.ts` and its scenes.
  *
  * One driver instance == one browser + one server. Always {@link close} it.
  */
@@ -129,11 +134,6 @@ export class HeadlessDriver {
 
     /** Start Vite + Chromium and wait until the headless bridge is installed. */
     async start(): Promise<void> {
-        // The vite-plugin reads `process.cwd()` to locate the user's project
-        // (entry, project.ts, public/). The CLI is run from the project root,
-        // so cwd is already correct — but pin `root` to the project dir too so
-        // Vite picks up the project's own vite.config.* (which registers the
-        // motionScript plugin).
         // Resolve a concrete free port up front and pin it with strictPort.
         // `server.port: 0` does NOT work here — Vite's config merge discards the
         // 0 and falls back to its default 5173, so we'd never actually get an
@@ -141,13 +141,18 @@ export class HeadlessDriver {
         const port = await findFreePort();
 
         this.server = await createServer({
-            root: this.projectRoot,
+            // Never load a config file. A Motion Script project has no bundler
+            // config of its own, and picking up a stray vite.config.* from the
+            // project (or an ancestor directory) would fight the harness config
+            // the plugin installs — starting with `root`, which must be the
+            // harness app, not the project.
+            configFile: false,
+            plugins: [motionScriptHarness(this.projectRoot)],
             // Quiet the dev-server banner; export progress is the only output
             // the user cares about.
             logLevel: 'warn',
             server: {
-                // Concrete free port (not the project's configured dev port, so we
-                // never collide with a player dev server the user has running).
+                // Concrete free port, so concurrent `ms` runs never collide.
                 port,
                 // Fail loudly if the port is taken rather than silently bumping to
                 // the next one — a silent bump would desync the page's module base
@@ -162,13 +167,12 @@ export class HeadlessDriver {
 
         // Force dep-optimization to fully complete (bundles committed to disk)
         // BEFORE the browser navigates. Otherwise the very first page load races
-        // the optimizer: main.tsx does `await import('./headless.ts')`, whose
-        // transitive deps (canvaskit, mathjax, mediabunny, …) get discovered
-        // mid-load and trigger a re-optimize + full page reload — but the headless
-        // server runs with hmr:false, so that reload signal never reaches the
-        // page and the in-flight dynamic import 504s ("Failed to fetch dynamically
-        // imported module"). Warming server-side first means the deps are already
-        // built when the browser asks for them.
+        // the optimizer: the entry's transitive deps (canvaskit, mathjax,
+        // mediabunny, …) get discovered mid-load and trigger a re-optimize + full
+        // page reload — but this server runs with hmr:false, so that reload signal
+        // never reaches the page and an in-flight import 504s ("Failed to fetch
+        // dynamically imported module"). Warming server-side first means the deps
+        // are already built when the browser asks for them.
         await this.warmOptimizer();
 
         const url = this.resolveServerUrl();
@@ -192,21 +196,21 @@ export class HeadlessDriver {
             this.onFile?.(scene, base64);
         });
 
-        await this.page.goto(`${url}?headless`, { waitUntil: 'load' });
+        await this.page.goto(url, { waitUntil: 'load' });
 
-        // The bridge installs asynchronously (dynamic import in main.tsx), then
-        // sets this attribute. Wait for it before calling in.
+        // The harness sets this attribute once the bridge is installed. Wait for
+        // it before calling in — `load` fires well before the entry's module
+        // graph (CanvasKit, the exporter, the user's scenes) finishes evaluating.
         await this.page.waitForSelector(
             'html[data-motion-script-headless="ready"]',
             { timeout: BRIDGE_READY_TIMEOUT_MS, state: 'attached' },
         );
 
-        // Verify the bridge exposes the exact shape this driver depends on,
-        // rather than matching a hand-maintained version number. The bridge
-        // ships in @motion-script/vite-plugin and the driver in the CLI — two
-        // independently-installed packages — so a stale plugin can present an
-        // older bridge. Checking capabilities (methods/props actually used)
-        // catches that with a clear error and needs no number to keep in sync.
+        // Verify the bridge exposes the exact shape this driver depends on.
+        // Driver and harness now ship in the same package, so a mismatch means a
+        // half-built `dist`/`harness` pair rather than a version skew — either
+        // way, a named-capability check fails with something actionable instead
+        // of an undefined-is-not-a-function deep inside page.evaluate.
         const missing = await this.page.evaluate(() => {
             const b = window.__motionScript;
             if (!b) return 'bridge not installed';
@@ -220,21 +224,21 @@ export class HeadlessDriver {
         });
         if (missing) {
             throw new Error(
-                `Incompatible Motion Script bridge (missing: ${missing}). ` +
-                `The installed @motion-script/vite-plugin is likely stale — ` +
-                `rebuild it and reinstall the project.`,
+                `Incompatible Motion Script render harness (missing: ${missing}). ` +
+                `The installed @motion-script/cli looks half-built — reinstall it, ` +
+                `or rebuild it if you are running from a source checkout.`,
             );
         }
     }
 
     /**
      * Drive Vite's dep-optimizer to completion server-side before the browser
-     * loads the page. We transform the headless entry chain (which is plugin-app's
-     * own src/main.tsx → src/headless.ts; Vite is rooted at plugin-app), wait for
-     * the static-import graph to settle, then await every optimized/discovered
-     * dep's `processing` promise so the bundles are written to disk. After this,
-     * the browser's first request for headless.ts and its deps is a cache hit —
-     * no mid-load re-optimize, no reload (which hmr:false would swallow anyway).
+     * loads the page. We transform the harness entry chain (Vite is rooted at
+     * the harness, so `/src/main.ts` is its entry), wait for the static-import
+     * graph to settle, then await every optimized/discovered dep's `processing`
+     * promise so the bundles are written to disk. After this, the browser's first
+     * request for the entry and its deps is a cache hit — no mid-load
+     * re-optimize, no reload (which hmr:false would swallow anyway).
      *
      * Best-effort: a transform error here isn't fatal (the page load + ready-wait
      * is still the real gate), so we swallow failures and let startup proceed.
@@ -243,8 +247,7 @@ export class HeadlessDriver {
         const server = this.server;
         if (!server) return;
         try {
-            await server.transformRequest('/src/main.tsx');
-            await server.transformRequest('/src/headless.ts');
+            await server.transformRequest('/src/main.ts');
             await server.waitForRequestsIdle();
 
             // The optimizer lives on the client environment in Vite's environment
@@ -421,8 +424,8 @@ export class HeadlessDriver {
 
 /**
  * Resolve and validate the Motion Script project root. A project is identified
- * by a `src/project.ts`/`src/project.js` entry (the convention the vite-plugin
- * discovers); a `vite.config.*` is expected but not strictly required.
+ * solely by a `src/project.ts`/`src/project.js` entry — the CLI supplies the
+ * whole build, so there is no config file to look for.
  */
 export function resolveProjectRoot(cwd: string): string {
     const hasProject =

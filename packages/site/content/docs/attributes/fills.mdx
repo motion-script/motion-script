@@ -255,7 +255,7 @@ Declare any of these and the renderer fills it in. An entry in `uniforms` with t
 | `u_time` | `float` | Seconds the node carrying the fill has existed |
 | `u_scale` | `float` | Device px per local px |
 
-Two caveats. `u_time` is **node age, not scene time** — it starts when the node appears, which is what makes it identical whether you played to a frame or seeked to it. And `u_scale` folds in the pixel ratio *and* the camera zoom, so a 4× export sees a different value from the player: use it for a hairline that should stay one pixel wide, not for anything that decides the look.
+Two caveats. `u_time` is **node age, not scene time** — it starts when the node appears, which is what makes it identical whether you played to a frame or seeked to it. And `u_scale` folds in the pixel ratio *and* the camera zoom, so a 4× export sees a different value from a 1× one: use it for a hairline that should stay one pixel wide, not for anything that decides the look.
 
 #### Coordinates
 
