@@ -1045,13 +1045,29 @@ export abstract class SkiaRenderContext extends RenderContext {
         const effects = state.effects ?? [];
         const pivot = state.pivot ?? { x: 0, y: 0 };
 
-        const pivotX = pivot.x * (width / 2);
-        const pivotY = -pivot.y * (height / 2);
+        // A node that mirrors or tilts out of its own plane hands over the whole
+        // local transform precomposed, because the engine needs that same matrix
+        // for `global` and hit testing and a second derivation here would be a
+        // second answer (see `TransformState.matrix`). It can carry a perspective
+        // row, so it goes in as a 3×3 — CanvasKit's row-major
+        // [scaleX skewX transX / skewY scaleY transY / persp0 persp1 persp2],
+        // which is this Matrix2D's [a c e / b d f / g h i] in order.
+        const matrix = state.matrix;
+        if (matrix) {
+            this.currentCanvas.concat([
+                matrix.a, matrix.c, matrix.e,
+                matrix.b, matrix.d, matrix.f,
+                matrix.g ?? 0, matrix.h ?? 0, matrix.i ?? 1,
+            ]);
+        } else {
+            const pivotX = pivot.x * (width / 2);
+            const pivotY = -pivot.y * (height / 2);
 
-        this.currentCanvas.translate(x + pivotX, y + pivotY);
-        this.currentCanvas.rotate(rotate, 0, 0);
-        this.currentCanvas.scale(scale, scale);
-        this.currentCanvas.translate(-pivotX, -pivotY);
+            this.currentCanvas.translate(x + pivotX, y + pivotY);
+            this.currentCanvas.rotate(rotate, 0, 0);
+            this.currentCanvas.scale(scale, scale);
+            this.currentCanvas.translate(-pivotX, -pivotY);
+        }
 
         // Backdrop-mode effects run on the backdrop layer (applyBackdropEffects),
         // not the node's own content — exclude them from the foreground filter chain.

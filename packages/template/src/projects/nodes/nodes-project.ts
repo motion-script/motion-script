@@ -21,6 +21,7 @@ import customScene from './scenes/custom-scene';
 import composite from './scenes/composite-scene?scene';
 import fanScene from './scenes/fan-scene?scene';
 import dataScene from './scenes/data-scene?scene';
+import transform3d from './scenes/transform-3d-scene?scene';
 
 /**
  * One scene per built-in node — used to generate the screenshots and
@@ -37,6 +38,7 @@ export default createProject({
         height: 1080,
     },
     scenes: [
+        // transform3d,
         // text,
         // richText,
         // number,

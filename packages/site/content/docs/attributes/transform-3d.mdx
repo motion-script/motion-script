@@ -1,0 +1,223 @@
+---
+sidebar_position: 10
+---
+
+# Mirrors and 3D
+
+Every node is a flat plane, and these props are the transforms a browser applies
+to a flat `<div>`: the two mirrors, the two out-of-plane rotations, a push along
+the view axis, and the perspective that makes the last two read as depth rather
+than as squashing.
+
+Nothing here turns a node into a 3D object. The node keeps its box, its layout
+cell and its children; what changes is how that plane is *projected*. Text,
+strokes, corner radii and nested nodes all come along with it — for real geometry
+in a lit 3D world, see the `View3D` node instead.
+
+---
+
+## Mirrors
+
+`flipHorizontal` reflects the node across its vertical centre line;
+`flipVertical` across its horizontal one. They are CSS's `scaleX(-1)` and
+`scaleY(-1)`: the node's box does not move and its layout is untouched, but its
+content — including every child — comes out reversed.
+
+```tsx
+<Rect flipHorizontal width={200} height={120} fill="royalblue">
+  <Text text="Mirror" fontFamily="Inter" fontSize={40} />
+</Rect>
+```
+
+They mirror about the node's **own centre**, and are the one part of this page
+that does not turn about `pivot`/`transformOrigin`. That is deliberate: a flip is
+an in-place reflection. Composed with the pivot the way CSS's `scaleX(-1)` is, a
+node hinged anywhere but its middle would *swing* when flipped — its position
+would change, and its handles with it — so the gesture would stop meaning
+"mirror this" and start meaning "mirror this and move it". A flip here never
+moves a node.
+
+---
+
+## rotationX, rotationY and rotationZ
+
+Three rotation axes, in degrees:
+
+- **`rotationX`** tilts about the horizontal axis — positive tips the **top edge
+  away** from the viewer.
+- **`rotationY`** tilts about the vertical axis — positive swings the **right
+  edge away**.
+- **`rotationZ`** turns the node in its own plane, like `rotation` does.
+
+```tsx
+<Rect rotationX={25} rotationY={-40} rotationZ={12} width={260} height={340} fill="tomato" />
+```
+
+They apply in CSS's own order, `rotateX · rotateY · rotateZ`, with the in-plane
+rotation innermost — so adding a tilt never changes what a Z rotation already
+meant.
+
+**`rotationZ` is not `rotation` under another name.** They are two independent
+numbers, and editing one never moves the other. What separates them is which
+side of the geometry/paint line they fall on (see [Geometry stays
+flat](#geometry-stays-flat) below): `rotation` turns the node's *shape*, so its
+box turns with it and everything reading that box follows, while `rotationZ` is
+part of the projection. Turning a node with `rotation` turns its selection
+outline; turning it with `rotationZ` spins the picture inside a box that stays
+where it was. Set both and they compose the only way two rotations about one
+axis can — they add.
+
+With no `perspective` the projection is parallel: a tilt foreshortens the node
+evenly and both edges shrink by the same factor. That is a valid look, and it is
+also the reason the next prop exists.
+
+---
+
+## perspective
+
+`perspective` is the distance from the viewer to the plane the node sits in, in
+pixels. `0` (the default) means no perspective at all. With one set, the edge that
+swung away recedes and the edge that swung toward you grows — which is what makes
+a tilt read as depth.
+
+```tsx
+<Rect rotationY={52} perspective={900} width={260} height={340} fill="tomato" />
+```
+
+Smaller values are more dramatic: the node subtends more of the field of view, so
+the convergence is stronger. Around 800–1500 reads like a page lying on a desk;
+a few hundred reads like a wide-angle lens.
+
+Unlike CSS, perspective is declared **per node** rather than inherited from an
+ancestor. A scene graph has no viewport element to hang it on, and a node that
+carries its own can be nested, reused and animated without its depth depending on
+where it was dropped.
+
+---
+
+## depth
+
+`depth` pushes the node along the view axis, in pixels — CSS's `translateZ`.
+Positive brings it toward the viewer, so it projects larger.
+
+```tsx
+<Rect depth={380} perspective={900} width={220} height={300} fill="royalblue" />
+```
+
+It is **inert without `perspective`**: a parallel projection has no viewpoint for
+a thing to be nearer to, so `z` is simply dropped. This matches CSS, and it is
+worth knowing before spending time wondering why a `depth` did nothing.
+
+---
+
+## backfaceVisible
+
+Whether the node still paints once a tilt has carried it past edge-on and it is
+showing its back. Defaults to `true`, as CSS's `backface-visibility` does.
+
+Set it `false` for a card flip — two nodes back to back, each hidden exactly
+while the other faces out:
+
+```tsx
+<Rect width={220} height={300} flow="freeform">
+  <Rect ref={front} transform3D={{ rotationY: 0,   perspective: 1200, backfaceVisible: false }}>
+    {/* … */}
+  </Rect>
+  <Rect ref={back}  transform3D={{ rotationY: 180, perspective: 1200, backfaceVisible: false }}>
+    {/* … */}
+  </Rect>
+</Rect>
+```
+
+```tsx
+yield* parallel(
+  front().to({ transform3D: { rotationY: 180 } }, 1.4, easeInOut('quad')),
+  back().to({ transform3D: { rotationY: 360 } }, 1.4, easeInOut('quad')),
+);
+```
+
+The test is the **tilt alone**: a `flipHorizontal` mirrors a node without turning
+it around, so it never hides it. (CSS derives the answer from the whole
+accumulated matrix, where a `scaleX(-1)` inverts orientation and takes the
+element with it — a surprising way to lose a node you only meant to flip.)
+
+A hidden node skips its whole subtree, so a face-down card costs nothing to draw.
+Its assets are still discovered, so the frame it turns back on is not the frame
+its images start loading.
+
+---
+
+## transformOrigin
+
+The point the whole transform turns about — CSS's `transform-origin`, in the same
+`[-1, 1]` vocabulary as [`pivot`](./position#pivot): a named anchor, or a
+`{ x, y }` where `(0, 0)` is the centre.
+
+Left unset it *is* the pivot, so a node goes on turning about whatever its anchor
+positioning gave it. Set, it wins for the whole transform rather than for the 3D
+half of it — one origin, the way CSS has one.
+
+```tsx
+// Hinged on its left edge: a door rather than a turntable.
+<Rect rotationY={52} perspective={900} transformOrigin="centerLeft"
+      width={260} height={340} fill="tomato" />
+```
+
+---
+
+## The `transform3D` shorthand
+
+All of the above in one bag, expanded onto the individual props before anything
+reads them — exactly as `size` is expanded into `width`/`height`. It works in
+construction props, in `set()` and in `to()`, and an explicitly named prop in the
+same object wins over the bag's field.
+
+```tsx
+<Rect transform3D={{ rotationX: 45, rotationY: -17, perspective: 900 }} />
+
+card().to({ transform3D: { rotationY: 180 } }, 0.8, easeInOut('quad'));
+```
+
+Because it is only sugar, each field has exactly one storage location: a tween of
+`transform3D.rotationY` and a tween of `rotationY` are the same tween, and the two
+forms can be mixed freely without either shadowing the other.
+
+| field | prop it expands to |
+| --- | --- |
+| `rotationX` | `rotationX` |
+| `rotationY` | `rotationY` |
+| `rotationZ` | `rotationZ` |
+| `depth` | `depth` |
+| `perspective` | `perspective` |
+| `backfaceVisible` | `backfaceVisible` |
+| `flipHorizontal` | `flipHorizontal` |
+| `flipVertical` | `flipVertical` |
+| `origin` | `transformOrigin` |
+
+---
+
+## Geometry stays flat
+
+The projection is **paint, not shape**. A mirrored or tilted node goes on
+measuring, reporting and hit-testing as the upright rectangle it was:
+`node.global` gives the un-tilted corners, `node.measuredWidth` the un-projected
+width, and a click lands where the flat box is. Only what is *drawn* is
+projected — `rotationZ` included, which is the whole difference between it and
+`rotation`.
+
+That is deliberate. Everything that reads a node's box reads it in order to put
+a handle on: a selection outline, a resize grip, a rotation dial,
+`other.global.topRight` as an alignment target. All of those mean something on a
+rectangle and stop meaning it on a trapezoid — a "width" handle on a
+foreshortened edge corresponds to no number anyone could type, and a corner that
+has swung behind the viewer has no screen position at all. Letting the
+projection through would make a tilt something that quietly breaks every other
+tool around it.
+
+`transformOrigin` is the exception, and only because it is not part of the
+projection: it moves where the ordinary 2D rotation turns about, so the node
+genuinely ends up somewhere else and every box says so.
+
+If you need the projected corners, compose the matrix yourself from the same
+fields — but the usual answer is that you want the flat box, which is what you
+already have.

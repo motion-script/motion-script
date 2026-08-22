@@ -32,12 +32,21 @@ import type { SceneEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Anchor } from "@/attributes/layout/anchor";
+import { Anchor, lerpAnchor, resolveAnchor } from "@/attributes/layout/anchor";
 import { bindAnchorTarget, findAnchorKey, resolveAnchorTargetOnce, validateAnchorProps } from "@/attributes/layout/anchor-resolve";
 import type { WorldTransform } from "@/attributes/layout/world-transform";
 import type { PropInputs } from "@/attributes/properties/inputs";
 import type { NodeClock } from "./node-clock";
-import { applyToPoint, invert, Matrix2D, multiply } from "@/attributes/layout/matrix2d";
+import {
+    applyToPoint,
+    facesAway,
+    hasProjection3D,
+    invert,
+    Matrix2D,
+    multiply,
+    type Projection3D,
+} from "@/attributes/layout/matrix2d";
+import { expandTransform3D, type NodeTransform3D } from "@/attributes/layout/transform3d";
 import { localMatrix, rotateOffset, worldAnchors } from "./node-transform";
 import {
     applyBackdropEffects as applyBackdropEffectsImpl,
@@ -68,6 +77,9 @@ import {
  * no parent, so consumers already handle it. See {@link Node.beforeRender}.
  */
 const NO_SPACE_RECTS: SpaceRects = {};
+
+/** The node centre in the normalised `[-1, 1]` anchor space — `pivot`'s own default. */
+const ORIGIN_2D: Vector2 = { x: 0, y: 0 };
 
 // NodeClock, WorldTransform, PropInput, and PropInputs now live in dedicated
 // modules (see imports above) and are re-exported below so existing
@@ -208,6 +220,104 @@ export interface NodeProps {
      * automatically when an anchor *positioning* prop is used.
      */
     pivot: Anchor;
+
+    // ---- Mirrors and the third dimension -----------------------------------
+    // A node is a flat plane, and these are the CSS transform functions that
+    // still apply to one: the two mirrors, the two out-of-plane rotations, a
+    // push along the view axis and the perspective that makes it read as depth.
+    // `rotation` supplies the Z axis (see `transform3D` for why there is no
+    // `rotationZ` beside it), and every one of them turns about `pivot` — or
+    // about `transformOrigin`, where that is set.
+
+    /**
+     * Mirror the node (and its whole subtree) across its vertical centre line.
+     * The same thing CSS's `scaleX(-1)` is: text reads backwards, a left-pointing
+     * arrow points right, and nothing about the node's box or its layout moves.
+     */
+    flipHorizontal: boolean;
+    /** Mirror across the horizontal centre line — CSS's `scaleY(-1)`. See {@link flipHorizontal}. */
+    flipVertical: boolean;
+    /** Tilt about the horizontal axis, in **degrees**. Positive tips the top edge away from the viewer. */
+    rotationX: number;
+    /** Tilt about the vertical axis, in **degrees**. Positive swings the right edge away from the viewer. */
+    rotationY: number;
+    /**
+     * In-plane rotation belonging to the 3D transform, in **degrees** clockwise —
+     * the Z axis of the `rotateX · rotateY · rotateZ` block.
+     *
+     * **Not a second name for {@link rotation}.** The two are independent numbers
+     * and editing one never moves the other. What separates them is which side of
+     * the geometry/paint line they fall on: `rotation` turns the node's *shape*,
+     * so its box turns with it and everything reading that box follows, while
+     * this is part of the projection, which is paint (see `Node._localMatrix`).
+     * Turning a node with `rotation` turns its selection outline; turning it with
+     * `rotationZ` spins the picture inside a box that stays where it was.
+     *
+     * They compose the only way two rotations about one axis can — they add.
+     */
+    rotationZ: number;
+    /**
+     * Push along the view axis, in px — CSS's `translateZ`. Positive brings the
+     * node toward the viewer, so it projects larger.
+     *
+     * **Inert without {@link perspective}.** With no perspective the projection is
+     * parallel and z is simply dropped, exactly as in CSS: there is no viewpoint
+     * for a thing to be nearer to.
+     */
+    depth: number;
+    /**
+     * Distance from the viewer to the plane the node sits in, in px. `0` (the
+     * default) is no perspective at all — a parallel projection, where a tilt
+     * squashes the node evenly rather than making its far edge recede.
+     *
+     * Smaller is more dramatic: the node subtends more of the field of view, so
+     * the convergence is stronger. Somewhere around 800–1500 reads like a page
+     * on a desk; a few hundred reads like a wide-angle lens.
+     *
+     * Declared per node rather than inherited from an ancestor, which is where
+     * CSS puts it. A scene graph has no viewport element to hang it on, and a
+     * node that carries its own is one that can be handed around, nested and
+     * animated without its depth depending on where it was dropped.
+     */
+    perspective: number;
+    /**
+     * Whether the node still paints once it has turned past edge-on and is
+     * showing its back — CSS's `backface-visibility`, defaulted the CSS way
+     * (`visible`).
+     *
+     * Set it `false` for the card-flip: two nodes back to back, one at
+     * `rotationY: 0` and one at `180`, each hidden exactly while the other faces
+     * out. The test is the tilt alone (see `facesAway`) — a {@link flipHorizontal}
+     * mirrors the node without turning it around, so it does not hide it.
+     */
+    backfaceVisible: boolean;
+    /**
+     * The point every rotation, scale and mirror turns about — CSS's
+     * `transform-origin`, in the same `[-1, 1]` vocabulary as {@link pivot}
+     * (a named anchor, or a {@link Vector2} where `(0,0)` is the centre).
+     *
+     * Unset (the default) it *is* the pivot, so a node keeps turning about
+     * whatever its anchor positioning gave it and nothing changes. Set, it wins
+     * for the whole transform rather than for the 3D half of it — one origin, the
+     * way CSS has one. A second origin that only some of the rotations respected
+     * would produce a picture nobody could predict.
+     */
+    transformOrigin: Anchor;
+    /**
+     * All of the above in one bag — construction sugar, expanded into the
+     * individual props before anything reads them (exactly as {@link size} is
+     * expanded into `width`/`height`), so `set()`, `to()` and reactive callbacks
+     * all behave identically whichever form is used.
+     *
+     * ```ts
+     * <Rect transform3D={{ rotationX: 45, rotationY: -17, perspective: 900 }} />
+     * card().to({ transform3D: { rotationY: 180 } }, 0.8)
+     * ```
+     *
+     * `rotationZ` is the block's own in-plane rotation and is **not** the node's
+     * {@link rotation} under another name — see its note for what separates them.
+     */
+    transform3D: NodeTransform3D;
 
     // ---- Anchor-based positioning -----------------------------------------
     // Pass any one of these instead of (or in addition to) x/y.
@@ -371,6 +481,47 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     @anchorProperty()
     declare readonly pivot: Anchor;
 
+    // ---- Mirrors and the third dimension -----------------------------------
+    // See the matching entries on NodeProps for what each one means. Plain
+    // numeric cells, so they tween like x/y/rotation do; the booleans snap at the
+    // end of a tween the way every other discrete cell does.
+
+    /** Mirror across the vertical centre line. See {@link NodeProps.flipHorizontal}. */
+    @property({ default: false }) declare flipHorizontal: boolean;
+    /** Mirror across the horizontal centre line. See {@link NodeProps.flipVertical}. */
+    @property({ default: false }) declare flipVertical: boolean;
+    /** Tilt about the horizontal axis, degrees. See {@link NodeProps.rotationX}. */
+    @property({ default: 0 }) declare rotationX: number;
+    /** Tilt about the vertical axis, degrees. See {@link NodeProps.rotationY}. */
+    @property({ default: 0 }) declare rotationY: number;
+    /** The 3D block's in-plane rotation, degrees — distinct from {@link rotation}. See {@link NodeProps.rotationZ}. */
+    @property({ default: 0 }) declare rotationZ: number;
+    /** Push along the view axis, px. See {@link NodeProps.depth}. */
+    @property({ default: 0 }) declare depth: number;
+    /** Viewer distance in px; `0` is a parallel projection. See {@link NodeProps.perspective}. */
+    @property({ default: 0 }) declare perspective: number;
+    /** Whether the node paints while showing its back. See {@link NodeProps.backfaceVisible}. */
+    @property({ default: true }) declare backfaceVisible: boolean;
+    /**
+     * The point the transform turns about, overriding {@link pivot}. See
+     * {@link NodeProps.transformOrigin}.
+     *
+     * `undefined` until set — that absence *is* "follow the pivot", which no
+     * default value could say, since every anchor is a real point including the
+     * centre. Same shape as the `column`/`row` cells above. Declared with the raw
+     * decorator rather than `@anchorProperty()` for exactly that reason: that one
+     * folds a missing `default` back onto `'center'`.
+     */
+    @property<Anchor | undefined, Vector2 | undefined>({
+        default: undefined,
+        mapper: (v) => (v === undefined ? undefined : resolveAnchor(v)),
+        // Tweening *into* an origin from "no origin set" starts where it ends —
+        // there is no point to travel from, and snapping to the target's own
+        // start is the one reading that isn't an invented one.
+        tween: (from, to, t) => lerpAnchor(from ?? to ?? ORIGIN_2D, to ?? ORIGIN_2D, t),
+    })
+    declare transformOrigin: Anchor | undefined;
+
     /** When true, content drawn by this node's children is clipped to its outline (see {@link clipSelf}). */
     @property({ default: false }) declare clip: boolean;
 
@@ -496,10 +647,13 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     protected _children: Node[] = [];
 
     constructor(props?: NodeConfig<any, P>) {
-        // Expand `size` sugar into width/height before anything reads either —
-        // in place, so the single object retained as `_props` below already
-        // carries the expanded values.
-        if (props) expandSize(props as Record<string, unknown>);
+        // Expand the `size` and `transform3D` sugar into the props they name
+        // before anything reads either — in place, so the single object retained
+        // as `_props` below already carries the expanded values.
+        if (props) {
+            expandSize(props as Record<string, unknown>);
+            expandTransform3D(props as Record<string, unknown>);
+        }
 
         // `layoutRect` is a cell like any prop, and a node whose box moved has to
         // redraw — so it reports to the same place. Wired here rather than at the
@@ -732,6 +886,14 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // `size` has no signal of its own — it's sugar written straight to
         // width/height (explicit width/height in the same call still wins).
         const sizeVal = (props as any).size;
+        // Same for `transform3D`, but expanded up front rather than after the
+        // loop: its fields are real signals, so distributing them into `props`
+        // first means the loop below writes them like any other key. Only the
+        // present-and-an-object case allocates, which is the rare one.
+        if ((props as any).transform3D !== undefined) {
+            props = { ...props };
+            expandTransform3D(props as Record<string, unknown>);
+        }
         for (const key in props) {
             const val = (props as any)[key];
             if (val !== undefined && signals.has(key)) this._writeProp(key, val);
@@ -793,7 +955,10 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         // `size` has no signal of its own — expand it into width/height targets
         // before anchor validation and the per-key tween setup below see it.
+        // `transform3D` is sugar in the same way, so it expands here too and its
+        // fields tween individually, exactly as if they had been named directly.
         expandSize(to as Record<string, unknown>);
+        expandTransform3D(to as Record<string, unknown>);
 
         validateAnchorProps(to as Record<string, unknown>);
 
@@ -1583,9 +1748,27 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
     // layout/x/y/rotation/scale/pivot signals.
 
     /**
-     * This node's local transform in canvas (y-down) space, matching the matrix
-     * the renderer pushes in {@link applyTransform}/`RenderContext.transform`.
-     * Composed with the parent chain by {@link worldMatrix}.
+     * This node's local transform in canvas (y-down) space — position, rotation,
+     * scale, about its origin. Composed with the parent chain by
+     * {@link worldMatrix}, and the matrix every world-space *reading* of the node
+     * comes from: {@link global}, `runtime/node-picking.ts`, and so any editor
+     * overlay drawn on top of a scene.
+     *
+     * **It is flat, deliberately, and the renderer's is not.** A node that
+     * mirrors or tilts ({@link NodeProps.rotationX}, {@link NodeProps.perspective},
+     * {@link NodeProps.flipHorizontal}, …) is *painted* through a projected
+     * matrix, but goes on measuring, reporting and hit-testing as the upright
+     * rectangle it was — see {@link applyTransform}.
+     *
+     * That is a choice, not an oversight. Everything that reads a node's box
+     * reads it to put a handle on: a selection outline, a resize grip, a rotation
+     * dial, `other.global.topRight` as an alignment target. Those all mean
+     * something on a rectangle and stop meaning it on a trapezoid — a "width"
+     * handle on a foreshortened edge does not correspond to any number, and a
+     * corner that has swung behind the viewer has no screen position at all.
+     * Letting the projection through would make the tilt a thing that quietly
+     * breaks every other tool in the editor; keeping the geometry flat makes it
+     * exactly what it looks like, a way of drawing the node.
      */
     /** @internal Composed with the camera scopes in between by `runtime/node-picking.ts`. */
     _localMatrix(): Matrix2D {
@@ -1593,7 +1776,42 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         const cx = (r?.x ?? 0) + this.x;
         const cy = (r?.y ?? 0) - this.y;
         // The accessor stores the resolved normalised pivot via the mapper.
-        return localMatrix(cx, cy, this.rotation, this.scale, this.pivot as Vector2, r?.width ?? 0, r?.height ?? 0);
+        // No projection: see the note above for why a node's *geometry* stays
+        // flat while its paint does not.
+        return localMatrix(
+            cx, cy, this.rotation, this.scale, this._transformOrigin(),
+            r?.width ?? 0, r?.height ?? 0,
+        );
+    }
+
+    /**
+     * The point this node's transform turns about, normalised: `transformOrigin`
+     * where one is set, the anchor-derived `pivot` otherwise. One resolution,
+     * read by {@link _localMatrix} and {@link applyTransform} alike.
+     */
+    private _transformOrigin(): Vector2 {
+        return (this.transformOrigin as Vector2 | undefined) ?? (this.pivot as Vector2);
+    }
+
+    // Reused for the same reason `_transformScratch` is: `_localMatrix` runs once
+    // per ancestor per `global` read, and the two functions that take a
+    // Projection3D read it synchronously and never retain it.
+    private readonly _projectionScratch: Projection3D = {
+        rotationX: 0, rotationY: 0, rotationZ: 0, depth: 0, perspective: 0,
+        flipHorizontal: false, flipVertical: false,
+    };
+
+    /** This node's out-of-plane fields, gathered for the matrix builders. */
+    private _projection(): Projection3D {
+        const p = this._projectionScratch;
+        p.rotationX = this.rotationX;
+        p.rotationY = this.rotationY;
+        p.rotationZ = this.rotationZ;
+        p.depth = this.depth;
+        p.perspective = this.perspective;
+        p.flipHorizontal = this.flipHorizontal;
+        p.flipVertical = this.flipVertical;
+        return p;
     }
 
     /**
@@ -1818,7 +2036,20 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         sampleMotion(this._renderState, this._motionHistory, x, y, this.rotation, this.scale, this._clock.time);
     }
 
-    /** Push this node's transform (position, scale, rotate, opacity, effects). */
+    /**
+     * Push this node's transform (position, scale, rotate, opacity, effects).
+     *
+     * The decomposed fields are the whole story for a node in its own plane, and
+     * that path is untouched: the backend translates, rotates and scales exactly
+     * as it always has. A node that mirrors or tilts hands over a precomposed
+     * {@link TransformState.matrix} instead, built by the same `localMatrix`
+     * {@link _localMatrix} calls — with the out-of-plane half switched on.
+     *
+     * **This is the one place that half is applied.** The mirrors and the tilt
+     * are paint, not geometry: the node goes on measuring and hit-testing as the
+     * upright rectangle it was, and only what is drawn is projected. See
+     * {@link _localMatrix} for why.
+     */
     protected applyTransform(ctx: RenderContext): void {
         const r = this.layoutRect;
         const s = this._transformScratch;
@@ -1831,7 +2062,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         s.opacity = this.opacity;
         s.blend = this.blend;
         s.effects = this.effects as SceneEffect[];
-        s.pivot = this.pivot as Vector2;
+        s.pivot = this._transformOrigin();
+        const projection = this._projection();
+        s.matrix = hasProjection3D(projection)
+            ? localMatrix(s.x, s.y, s.rotation, s.scale, s.pivot, s.width, s.height, projection)
+            : undefined;
         ctx.transform(s);
     }
 
@@ -2090,6 +2325,11 @@ export class Node<P extends NodeProps = NodeProps> implements SignalHost {
         // descend — an invisible node's font and images have to be discovered or
         // they will not have loaded by the time it fades in. See the flag's doc.
         if (ctx.drawsVisibleOnly && this.opacity <= 0) return;
+        // A node that has turned past edge-on and declines to show its back
+        // paints nothing either — same reasoning, same walk skipped, and the same
+        // exemption for the tracking pass, which still has to discover the assets
+        // of a card that is currently face-down and will be face-up in a moment.
+        if (ctx.drawsVisibleOnly && !this.backfaceVisible && facesAway(this.rotationX, this.rotationY)) return;
         this.beforeRender(ctx);
         this.onRender(ctx);
         this.afterRender(ctx);

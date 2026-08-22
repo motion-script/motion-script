@@ -1,5 +1,11 @@
 import { Vector2 } from "@/attributes/layout/vector2";
-import { Matrix2D, applyToPoint, nodeLocalMatrix } from "@/attributes/layout/matrix2d";
+import {
+    Matrix2D,
+    NO_PROJECTION_3D,
+    applyToPoint,
+    nodeProjectedMatrix,
+    type Projection3D,
+} from "@/attributes/layout/matrix2d";
 
 /**
  * Companion for {@link Node}'s transform/anchor/world-space math. The reactive
@@ -31,6 +37,17 @@ export function rotateOffset(x: number, y: number, rotationDeg: number, ox: numb
  * This node's local transform in canvas (y-down) space, matching the matrix the
  * renderer pushes in `applyTransform`. `cx`/`cy` are the positioned centre
  * (`layoutRect + x`, `layoutRect - y`); `pivot` is the resolved normalised pivot.
+ *
+ * `projection` carries the out-of-plane half (mirrors, tilt, depth, perspective)
+ * and defaults to none, in which case this is the plain six-number affine matrix
+ * it has always been.
+ *
+ * Both consumers of a node's transform go through here — `Node._localMatrix`
+ * (and so `worldMatrix`, `global`, and picking) and `Node.applyTransform` (and so
+ * the renderer) — so there is one definition of the arithmetic rather than two
+ * that agree by inspection. They differ in exactly one argument: the renderer
+ * passes the projection and the geometry does not, because the mirrors and the
+ * tilt are paint rather than shape. See `Node._localMatrix`.
  */
 /** @internal */
 export function localMatrix(
@@ -41,10 +58,11 @@ export function localMatrix(
     pivot: Vector2,
     width: number,
     height: number,
+    projection: Projection3D = NO_PROJECTION_3D,
 ): Matrix2D {
     const pivotX = pivot.x * (width / 2);
     const pivotY = -pivot.y * (height / 2);
-    return nodeLocalMatrix(cx, cy, rotation, scale, pivotX, pivotY);
+    return nodeProjectedMatrix(cx, cy, rotation, scale, pivotX, pivotY, projection);
 }
 
 /** The nine world-space anchor points produced by mapping centered y-up offsets through `m`. */
