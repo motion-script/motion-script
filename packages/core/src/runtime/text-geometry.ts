@@ -1,4 +1,4 @@
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Text } from "@/nodes/text/text-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { applyToPoint } from "@/attributes/layout/matrix2d";
@@ -69,7 +69,7 @@ export interface TextRangeQuad {
  * {@link nodeBox} applies to a node's corners.
  */
 export function nodeTextLayout(
-    node: Node,
+    node: Node2D,
     path: string,
     scope: Measurer,
 ): NodeTextLayout | null {

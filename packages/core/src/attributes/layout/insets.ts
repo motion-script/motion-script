@@ -25,7 +25,7 @@ export type InsetsProps = number | Partial<InsetsResolved> & Partial<SymmetricIn
  * Accepted shapes for a four-sided inset prop.
  *
  * The type is named for the shape (four edge insets), not for one use of it:
- * `Node.padding` insets a layout box in pixels, an image fill's `crop` insets a
+ * `Node2D.padding` insets a layout box in pixels, an image fill's `crop` insets a
  * source in fractions. Same value, same shorthands, same tween — different roles,
  * and each prop names its own.
  *

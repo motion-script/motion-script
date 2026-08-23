@@ -1,5 +1,5 @@
 /**
- * A node's timing state, advanced each frame by `Node.ellapse`. Read via
+ * A node's timing state, advanced each frame by `Node2D.ellapse`. Read via
  * `node.clock`; consumed by motion sampling and the render context's `elapsed`.
  */
 /** @internal */

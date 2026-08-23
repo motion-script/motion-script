@@ -10,6 +10,7 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, FlexDirection, GapSize } from "@/layout/flex";
 import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 
 /**
  * How a container arranges the children that take part in its layout:
@@ -34,7 +35,7 @@ export function flowDirection(mode: FlowMode): FlexDirection {
  * lives in one place rather than being duplicated per container.
  */
 export interface FlowHost {
-    readonly children: Node[];
+    readonly children: readonly Node[];
     readonly width: SizeInput;
     readonly height: SizeInput;
     readonly flow: FlowMode;
@@ -49,9 +50,9 @@ export interface FlowHost {
     effectivePadding(): InsetsResolved;
     /**
      * The subset of `children` this container actually positions — everything
-     * except the stage-pinned ones. See `Node.flowChildren`.
+     * except the stage-pinned ones. See `Node2D.flowChildren`.
      */
-    flowChildren(): Node[];
+    flowChildren(): Node2D[];
     /** Measure + place the stage-pinned children this container holds. */
     layoutAbsoluteChildren(scope: Measurer): void;
 }
@@ -59,7 +60,7 @@ export interface FlowHost {
 interface FlexNodeMeasure {
     kind: "flex";
     entries: FlexMeasureEntry<FlexChild>[];
-    children: Node[];
+    children: Node2D[];
     hugWidth: number;
     hugHeight: number;
 }
@@ -67,7 +68,7 @@ interface FlexNodeMeasure {
 interface FreeformNodeMeasure {
     kind: "freeform";
     sizes: Partial<Size2D>[];
-    children: Node[];
+    children: Node2D[];
     hugWidth: number;
     hugHeight: number;
 }
@@ -132,7 +133,7 @@ export class FlowLayout {
         const host = this.host;
         // Retain the scope on the host for off-tree measurement (the animated
         // child-insert in node-lifecycle.ts): Rect/Root delegate here instead of
-        // Node.measure, so capture it on the host node the same way.
+        // Node2D.measure, so capture it on the host node the same way.
         (host as unknown as { _lastScope?: Measurer })._lastScope = scope;
 
         const maxWidth = constraints.maxWidth ?? 0;

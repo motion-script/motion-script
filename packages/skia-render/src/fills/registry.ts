@@ -15,7 +15,7 @@ import { SolidFillRenderer } from "./solid";
 // does. `three` itself still arrives only via the dynamic `import("three")`, so
 // 2D-only bundles are unaffected — but a future attempt to lazy-load this
 // registry would pull the bridge in with it.
-import { View3DFillRenderer } from "./view3d";
+import { Canvas3DFillRenderer } from "./canvas3d";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 
 interface FillRendererEntry {
@@ -38,7 +38,7 @@ export class FillRenderRegistry {
         { name: "stripe", renderer: new StripeFillRenderer() },
         { name: "dotGrid", renderer: new DotGridFillRenderer() },
         { name: "grid", renderer: new GridFillRenderer() },
-        { name: "view3D", renderer: new View3DFillRenderer() },
+        { name: "canvas3D", renderer: new Canvas3DFillRenderer() },
     ];
 
     private static get(name: string): FillRenderer<FillResolved> | undefined {

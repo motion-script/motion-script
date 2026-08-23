@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 
 import { LayerStack, ProjectGlobals, audioTimelineDuration, layerAppliesTo, resolveGlobalAudio } from "@/runtime/globals";
 import { AudioFilters } from "@/attributes/audio/filters/chain";
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Rect } from "@/nodes/geometry/rect-node";
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { NullRenderContext } from "@/render/null-render-context";
 import { ContextMap } from "@/util/context";
 import { asCatalog, FakeAssetCatalog, FakeMeasurer } from "./runtime.fixtures";
@@ -14,14 +14,14 @@ const BOUNDS = { x: 0, y: 0, width: VIEWPORT.width, height: VIEWPORT.height };
 
 /**
  * A leaf that records the order it was drawn in. `NullRenderContext` is a real
- * `RenderContext` that never rasterizes, so it can drive a full render walk in a
+ * `RenderContext2D` that never rasterizes, so it can drive a full render walk in a
  * plain Node environment — the probe just appends its label as it goes.
  */
-class Probe extends Node {
+class Probe extends Node2D {
     constructor(private readonly log: string[], private readonly label: string) {
         super({ width: 10, height: 10 });
     }
-    protected override renderSelf(_ctx: RenderContext): void {
+    protected override renderSelf(_ctx: RenderContext2D): void {
         this.log.push(this.label);
     }
 }

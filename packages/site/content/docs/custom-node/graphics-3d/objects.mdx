@@ -8,40 +8,40 @@ Everything you put in a 3D scene: meshes, groups, and the specialised drawables 
 
 ## Meshes
 
-Fourteen shorthand methods create a mesh from one flat options object that mixes the geometry's own parameters, a placement, and a material.
+Fourteen mesh nodes, each taking its geometry's own parameters alongside a placement and a material — all as ordinary props, so any of them can be bound or tweened.
 
 ```tsx
-.box({ width: 2, height: 2, depth: 2, color: 'tomato', roughness: 0.3, position: [0, 1, 0] })
+<Box3D width={2} height={2} depth={2} color="tomato" roughness={0.3} position={[0, 1, 0]} />
 ```
 
-| Method | Main parameters |
+| Node | Main parameters |
 |---|---|
-| `box` | `width`, `height`, `depth`, `widthSegments`, `heightSegments`, `depthSegments` |
-| `sphere` | `radius`, `widthSegments`, `heightSegments`, `phiStart`, `phiLength`, `thetaStart`, `thetaLength` |
-| `plane` | `width`, `height`, `widthSegments`, `heightSegments` |
-| `cylinder` | `radiusTop`, `radiusBottom`, `height`, `radialSegments`, `openEnded` |
-| `cone` | `radius`, `height`, `radialSegments`, `openEnded` |
-| `torus` | `radius`, `tube`, `radialSegments`, `tubularSegments`, `arc` |
-| `torusKnot` | `radius`, `tube`, `tubularSegments`, `radialSegments`, `p`, `q` |
-| `circle` | `radius`, `segments`, `thetaStart`, `thetaLength` |
-| `ring` | `innerRadius`, `outerRadius`, `thetaSegments`, `thetaStart`, `thetaLength` |
-| `capsule` | `radius`, `height`, `capSegments`, `radialSegments` |
-| `polyhedron` | `shape`, `radius`, `detail` |
-| `extrude` | `shape`, `depth`, `bevel`, `bevelThickness`, `bevelSize` |
-| `lathe` | `points`, `segments`, `phiStart`, `phiLength` |
-| `tube` | `points`, `radius`, `tubularSegments`, `radialSegments`, `closed` |
+| `Box3D` | `width`, `height`, `depth`, `widthSegments`, `heightSegments`, `depthSegments` |
+| `Sphere3D` | `radius`, `widthSegments`, `heightSegments`, `phiStart`, `phiLength`, `thetaStart`, `thetaLength` |
+| `Plane3D` | `width`, `height`, `widthSegments`, `heightSegments` |
+| `Cylinder3D` | `radiusTop`, `radiusBottom`, `height`, `radialSegments`, `openEnded` |
+| `Cone3D` | `radius`, `height`, `radialSegments`, `openEnded` |
+| `Torus3D` | `radius`, `tube`, `radialSegments`, `tubularSegments`, `arc` |
+| `TorusKnot3D` | `radius`, `tube`, `tubularSegments`, `radialSegments`, `p`, `q` |
+| `Circle3D` | `radius`, `segments`, `thetaStart`, `thetaLength` |
+| `Ring3D` | `innerRadius`, `outerRadius`, `thetaSegments`, `thetaStart`, `thetaLength` |
+| `Capsule3D` | `radius`, `height`, `capSegments`, `radialSegments` |
+| `Polyhedron3D` | `shape`, `radius`, `detail` |
+| `Extrude3D` | `shape`, `depth`, `bevel`, `bevelThickness`, `bevelSize` |
+| `Lathe3D` | `points`, `segments`, `phiStart`, `phiLength` |
+| `Tube3D` | `points`, `radius`, `tubularSegments`, `radialSegments`, `closed` |
 
 All angle parameters are degrees.
 
-`extrude` takes the same path data the 2D [`Path` node](/docs/nodes/path) takes, so an existing outline becomes a solid with no new vocabulary:
+`Extrude3D` takes the same path data the 2D [`Path` node](/docs/nodes/path) takes, so an existing outline becomes a solid with no new vocabulary:
 
 ```tsx
-.extrude({ shape: 'M 0 -60 L 52 40 L -52 40 Z', depth: 20, bevel: true, bevelSize: 2 })
+<Extrude3D shape="M 0 -60 L 52 40 L -52 40 Z" depth={20} bevel bevelSize={2} />
 ```
 
 ## Placement
 
-Every mesh, light and group takes the same placement fields.
+Every 3D node takes the same placement props — they are `Node3D`'s own, the way `x`/`y`/`width` are `Node2D`'s.
 
 | Field | Type | Description |
 |---|---|---|
@@ -54,40 +54,45 @@ Every mesh, light and group takes the same placement fields.
 | `castShadow` | `boolean` | Cast into shadow maps |
 | `receiveShadow` | `boolean` | Receive shadows |
 | `renderOrder` | `number` | Draw-order override for transparent sorting |
-| `key` | `string` | Explicit identity. See [Animating](./animating#keys) |
+
 
 ## Material shorthand
 
-The same options object also accepts the common material fields, so the usual case is one flat call:
+Every mesh node also takes the common material fields directly, so the usual case needs no separate material:
 
 ```tsx
-.sphere({ radius: 1, color: 'cyan', roughness: 0.2, metalness: 0.8 })
-.plane({ width: 10, height: 10, color: '#11141c', roughness: 0.85 })
-.torus({ radius: 1.4, tube: 0.08, unlit: true, color: 'white' })
+<Sphere3D radius={1} color="cyan" roughness={0.2} metalness={0.8} />
+<Plane3D width={10} height={10} color="#11141c" roughness={0.85} />
+<Torus3D radius={1.4} tube={0.08} unlit color="white" />
 ```
 
 `color`, `opacity`, `transparent`, `roughness`, `metalness`, `emissive`, `emissiveIntensity`, `map`, `normalMap`, `roughnessMap`, `metalnessMap`, `aoMap`, `alphaMap`, `envMapIntensity`, `wireframe`, `flatShading`, `side`, `vertexColors`, `depthWrite`, `depthTest`, `blending`, `alphaTest` and `toneMapped` are all accepted this way.
 
-`unlit: true` uses a `basic` material instead of `standard`, which is right for anything that should read as its own light source rather than being shaded by the scene.
+`unlit` uses a `basic` material instead of `standard`, which is right for anything that should read as its own light source rather than being shaded by the scene.
 
 For full control, pass a `material` built with `Mat`. See [Materials and textures](./materials).
 
 ## Groups
 
-`group()` nests objects so they inherit a transform. Prefer the callback form, which cannot be left unbalanced.
+`Group3D` nests objects so they inherit its transform — the 3D `Rect` that only groups.
 
 ```tsx
-new Graphics3D()
-  .group({ position: [3, 0, 0], rotation: [0, 45, 0] }, g => g
-    .sphere({ radius: 0.8, color: 'cyan' })
-    .box({ width: 0.4, position: [0, 1.2, 0] }))
+<Group3D position={[3, 0, 0]} rotation={[0, 45, 0]}>
+  <Sphere3D radius={0.8} color="cyan" />
+  <Box3D width={0.4} position={[0, 1.2, 0]} />
+</Group3D>
 ```
 
-`push()` and `pop()` do the same thing imperatively. An unbalanced pair throws when the scene is drawn, rather than silently reparenting everything after it.
+Hold it with a ref and the whole rig animates as one thing:
+
+```tsx
+const rig = createRef<Group3D>();
+yield* rig().to({ rotation: [0, 360, 0], position: [0, 2, 0] }, 2);
+```
 
 ## Explicit geometry and material
 
-`mesh()` takes a geometry and a material as separate values, built with `Geo` and `Mat`. Hoist them and share them across meshes, since the renderer uploads a shared geometry to the GPU once no matter how many meshes reference it:
+`Mesh3D` takes a geometry and a material as separate values, built with `Geo` and `Mat`. Hoist them and share them across meshes, since the renderer uploads a shared geometry to the GPU once no matter how many meshes reference it:
 
 ```tsx
 import { Geo, Mat } from 'motion-script';
@@ -95,12 +100,11 @@ import { Geo, Mat } from 'motion-script';
 const brick = Geo.box({ width: 1, height: 0.5, depth: 0.5 });
 const red = Mat.standard({ color: 'tomato', roughness: 0.4 });
 
-new Graphics3D()
-  .mesh(brick, red, { position: [0, 0, 0] })
-  .mesh(brick, red, { position: [1, 0, 0] })   // same GPU buffer, same shader
+<Mesh3D geometry={brick} material={red} position={[0, 0, 0]} />
+<Mesh3D geometry={brick} material={red} position={[1, 0, 0]} />   {/* same GPU buffer, same shader */}
 ```
 
-`Geo` also has entries the shorthand methods do not: `tetrahedron`, `octahedron`, `icosahedron`, `dodecahedron`, `buffer`, `parametric`, `edges`, `wireframe` and `model`.
+`Geo` also has entries the mesh nodes do not: `tetrahedron`, `octahedron`, `icosahedron`, `dodecahedron`, `buffer`, `parametric`, `edges`, `wireframe` and `model`. Reach them through `Mesh3D`.
 
 ### `Geo.buffer`
 
@@ -140,12 +144,12 @@ Geo.parametric({
 Derived line geometry from another geometry. `edges` gives the hard edges only, which is a clean outline. `wireframe` gives every triangle edge.
 
 ```tsx
-.line({
-  geometry: Geo.edges(Geo.box({ width: 4, height: 4, depth: 4 })),
-  mode: 'segments',
-  color: 'white',
-  opacity: 0.4,
-})
+<Line3D
+  geometry={Geo.edges(Geo.box({ width: 4, height: 4, depth: 4 }))}
+  mode="segments"
+  color="white"
+  opacity={0.4}
+/>
 ```
 
 ## Instances
@@ -153,12 +157,12 @@ Derived line geometry from another geometry. `edges` gives the hard edges only, 
 Thousands of copies of one geometry in a single draw call. This is how you put a crowd on screen, since one mesh per copy will not keep up.
 
 ```tsx
-.instances(
-  Geo.box({ width: 0.2 }),
-  Mat.standard({ color: 'cyan' }),
-  positions.map(p => ({ position: p, rotation: [0, p.x * 20, 0] })),
-  { colors: tints },
-)
+<Instances3D
+  geometry={Geo.box({ width: 0.2 })}
+  material={Mat.standard({ color: 'cyan' })}
+  instances={positions.map(p => ({ position: p, rotation: [0, p.x * 20, 0] }))}
+  colors={tints}
+/>
 ```
 
 The instance array's length is the instance count. Each entry is a full placement. `colors` tints per instance and needs a material that reads instance colour.
@@ -166,8 +170,8 @@ The instance array's length is the instance count. Each entry is a full placemen
 ## Lines
 
 ```tsx
-.line({ points: [[0, 0, 0], [1, 2, 0], [3, 1, 2]], color: '#6990DD', width: 2 })
-.line({ geometry: Geo.edges(box), mode: 'segments', color: 'white', opacity: 0.4 })
+<Line3D points={[[0, 0, 0], [1, 2, 0], [3, 1, 2]]} color="#6990DD" width={2} />
+<Line3D geometry={Geo.edges(box)} mode="segments" color="white" opacity={0.4} />
 ```
 
 | Prop | Type | Default | Description |
@@ -184,7 +188,7 @@ The instance array's length is the instance count. Each entry is a full placemen
 A point cloud, one dot per vertex of the geometry:
 
 ```tsx
-.points(Geo.buffer({ position: cloud }), Mat.points({ size: 0.05, color: 'white' }))
+<Points3D geometry={Geo.buffer({ position: cloud })} material={Mat.points({ size: 0.05, color: 'white' })} />
 ```
 
 ## Sprites
@@ -192,7 +196,7 @@ A point cloud, one dot per vertex of the geometry:
 A camera-facing textured quad, which always presents flat to the viewer:
 
 ```tsx
-.sprite({ map: 'spark.png', position: [0, 2, 0], scale: 0.5 })
+<Sprite3D map="spark.png" position={[0, 2, 0]} scale={0.5} />
 ```
 
 ## Models
@@ -200,7 +204,7 @@ A camera-facing textured quad, which always presents flat to the viewer:
 Load a glTF, GLB or OBJ file:
 
 ```tsx
-.model({ src: 'robot.glb', position: [0, 0, 0], scale: 0.5 })
+<Model3D src="robot.glb" position={[0, 0, 0]} scale={0.5} />
 ```
 
 | Prop | Type | Description |

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Signal } from '@/signals/signal';
 
-/** A bare leaf node usable directly (Node's constructor accepts NodeProps). */
-class Tile extends Node {
+/** A bare leaf node usable directly (Node2D's constructor accepts Node2DProps). */
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
@@ -16,7 +16,7 @@ function drive(command: Iterable<void>, dt: number): void {
     while (!res.done) res = gen.next(dt);
 }
 
-describe('Node.save / restore', () => {
+describe('Node2D.save / restore', () => {
     it('restores a plain prop instantly', () => {
         const n = new Tile({ x: 10, y: 20 });
         n.save();

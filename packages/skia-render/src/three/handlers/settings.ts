@@ -7,13 +7,13 @@
  */
 
 import type * as THREE from "three";
-import type { Background3D, Environment3D, Fog3D } from "@motion-script/core";
+import type { BackgroundData3D, EnvironmentData3D, FogData3D } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { makeColor, writeColor } from "./constants";
 import type { TextureResolver } from "./texture";
 
 /** Apply (or clear) depth fog, reusing the existing fog object where possible. */
-export function applyFog(three: ThreeModule, scene: THREE.Scene, descriptor: Fog3D | null): void {
+export function applyFog(three: ThreeModule, scene: THREE.Scene, descriptor: FogData3D | null): void {
     if (!descriptor) {
         scene.fog = null;
         return;
@@ -53,7 +53,7 @@ export function applyFog(three: ThreeModule, scene: THREE.Scene, descriptor: Fog
 export function applyBackground(
     three: ThreeModule,
     scene: THREE.Scene,
-    descriptor: Background3D | null,
+    descriptor: BackgroundData3D | null,
     textures: TextureResolver,
 ): void {
     if (descriptor === null) {
@@ -67,7 +67,7 @@ export function applyBackground(
         return;
     }
 
-    const value = descriptor as Exclude<Background3D, string | readonly number[]>;
+    const value = descriptor as Exclude<BackgroundData3D, string | readonly number[]>;
     switch (value.type) {
         case "transparent":
             scene.background = null;
@@ -130,7 +130,7 @@ function setBackgroundColor(three: ThreeModule, scene: THREE.Scene, color: Param
 export function applyEnvironment(
     three: ThreeModule,
     scene: THREE.Scene,
-    descriptor: Environment3D | null,
+    descriptor: EnvironmentData3D | null,
     renderer: THREE.WebGLRenderer | null,
 ): void {
     if (!descriptor || descriptor.type !== "room" || !renderer) {

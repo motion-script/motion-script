@@ -23,7 +23,7 @@ import { Steppable, TweenStepper } from "./stepper";
  * Authored as a method on a node, which is what makes it nameable:
  *
  * ```ts
- * class Chart extends Node<ChartProps> {
+ * class Chart extends Node2D<ChartProps> {
  *     @command()
  *     draw(duration = 1, easing?: EasingFunction): Command<ChartProps> {
  *         const from = this.progress;

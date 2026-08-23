@@ -1,7 +1,8 @@
 import {
-    createScene, fillProperty, Node, Rect, Text, Graphics, Fills, wait,
+    Node,
+    createScene, fillProperty, Node2D, Rect, Text, Graphics2D, Fills, wait,
 } from "motion-script";
-import type { Fill, FillResolved, NodeProps, RenderContext } from "motion-script";
+import type { Fill, FillResolved, Node2DProps, RenderContext2D } from "motion-script";
 
 const CLIP = 'video.mp4';
 const HEADING = '#C9D2E4';
@@ -10,27 +11,27 @@ const HEADING = '#C9D2E4';
 const clip = () => Fills.video(CLIP, { fit: 'fill', loop: 'forward' });
 
 /**
- * A custom node painting the clip through raw `Graphics`. It declares its paint
+ * A custom node painting the clip through raw `Graphics2D`. It declares its paint
  * with `@fillProperty` (so the fill tweens like any built-in node's) and
  * overrides nothing but `renderSelf`: a video fill resolves the frame to show as
  * it paints, from the node's own clock, so there is no `tick` to write.
  */
 
-interface VideoBlobProps extends NodeProps {
+interface VideoBlobProps extends Node2DProps {
     fill: Fill;
 }
-class VideoBlob extends Node<VideoBlobProps> {
+class VideoBlob extends Node2D<VideoBlobProps> {
     @fillProperty() declare fill: Fill;
 
-    protected renderSelf(ctx: RenderContext): void {
+    protected renderSelf(ctx: RenderContext2D): void {
         const { width, height } = this.layoutRect;
-        ctx.draw(new Graphics().ellipse({ width, height }).fill(this.fill as FillResolved[]));
+        ctx.draw(new Graphics2D().ellipse({ width, height }).fill(this.fill as FillResolved[]));
     }
 }
 
 /**
  * One video fill, painted four ways at once — as a `fill`, inside a `stroke`,
- * through a `Text` node's glyphs, and by a custom node's raw `Graphics`.
+ * through a `Text` node's glyphs, and by a custom node's raw `Graphics2D`.
  *
  * All four run in lockstep with nothing in the scene advancing them: each
  * resolves the source frame as it paints, from how long the node carrying it has
@@ -64,7 +65,7 @@ export default createScene(function* (stage) {
                     <Rect width={'fill'} height={'fill'} flow={'freeform'} cornerRadius={24} fill={'card'}>
                         <Text text={'PLAY'} fontSize={150} fontWeight={800} fill={clip()} />
                     </Rect>)}
-                {card('custom node Graphics', <VideoBlob width={'fill'} height={'fill'} fill={clip()} />)}
+                {card('custom node Graphics2D', <VideoBlob width={'fill'} height={'fill'} fill={clip()} />)}
             </Rect>
         </Rect>
     );

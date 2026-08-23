@@ -10,9 +10,9 @@ import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
-import { Node, NodeConfig } from "../base/node";
+import { Node2D, NodeConfig } from "../base/node2d";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -41,7 +41,7 @@ export interface FlexProps extends ShapeProps {
 
 interface FlexMeasureCache {
     entries: FlexMeasureEntry<FlexChild>[];
-    children: Node[];
+    children: Node2D[];
     hugWidth: number;
     hugHeight: number;
 }
@@ -81,8 +81,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
 
     // ---- Drawing ----------------------------------------------------------
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -112,8 +112,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     // returns) — Row/Column each call this via a one-line override that passes
     // their own known-constant main axis instead of reading `this.direction`.
     protected applyFlexDefaultSize(props: NodeConfig<any, P> | undefined, mainAxis: "width" | "height"): void {
-        const children = Node.flowChildrenProp(props);
-        const mainDefault = Node.hasFillChild(children, mainAxis) ? "fill" : "hug";
+        const children = Node2D.flowChildrenProp(props);
+        const mainDefault = Node2D.hasFillChild(children, mainAxis) ? "fill" : "hug";
 
         if (!props || props.width === undefined) {
             this.applyProp("width", mainAxis === "width" ? mainDefault : "hug", { tween: lerpSizeInput });
@@ -142,7 +142,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
     }
 
     override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
-        // Retain constraints + scope for off-tree work (see Node.measure / the
+        // Retain constraints + scope for off-tree work (see Node2D.measure / the
         // animated child-insert in node-lifecycle.ts) — this override doesn't call
         // super, so mirror the base capture here.
         this.constraints = constraints;
@@ -193,7 +193,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         }
 
         // Stage-pinned children take no part in the flex run above — they're
-        // placed against the scene root instead. See NodeProps.childPositioning.
+        // placed against the scene root instead. See Node2DProps.childPositioning.
         this.layoutAbsoluteChildren(scope);
     }
 

@@ -1,7 +1,7 @@
 /**
  * Asset discovery for 3D scenes.
  *
- * Walks a {@link Graphics3D}'s descriptors for the resources it references and
+ * Walks a {@link Graphics3D}'s or {@link Scene3D}'s descriptors for the resources it references and
  * registers them with an {@link AssetTracker}, so the ordinary precomp →
  * `AssetManager.loadAt` chain has them decoded and resident *before* the frame
  * that needs them renders. That is what lets the 3D draw stay synchronous.
@@ -13,10 +13,11 @@
 
 import type { AssetTracker } from "@/assets/tracker";
 import type { Graphics3D } from "./graphics3d";
+import { Scene3D } from "./scene3d";
 import type { Geometry3D } from "./geometry";
-import type { Environment3D } from "./scene-settings";
+import type { EnvironmentData3D } from "./scene-settings";
 import { texture3DSource } from "./texture";
-import { view3DResourceLoader, type View3DResourceKind } from "./resources";
+import { canvas3DResourceLoader, type Canvas3DResourceKind } from "./resources";
 import { forEachTexture3D } from "./walk";
 
 /**
@@ -32,7 +33,7 @@ import { forEachTexture3D } from "./walk";
  * backend's own loader rather than the image pipeline.
  */
 export function track3DResources(
-    g3: Graphics3D,
+    g3: Graphics3D | Scene3D,
     tracker: AssetTracker,
     width: number,
     height: number,
@@ -70,11 +71,12 @@ export function track3DResources(
         }
     }
 
-    trackEnvironment(g3.environmentDescriptor(), seen, tracker);
+    if (g3 instanceof Scene3D) trackEnvironment(g3.environmentDescriptor(), seen, tracker);
 }
 
-function trackEnvironment(
-    environment: Environment3D | null,
+/** @internal */
+export function trackEnvironment(
+    environment: EnvironmentData3D | null,
     seen: Set<string>,
     tracker: AssetTracker,
 ): void {
@@ -93,7 +95,7 @@ function trackEnvironment(
     }
 }
 
-function hdrKind(src: string): View3DResourceKind {
+function hdrKind(src: string): Canvas3DResourceKind {
     const lower = src.toLowerCase();
     if (lower.endsWith(".exr")) return "exr";
     return "hdr";
@@ -105,7 +107,7 @@ function hdrKind(src: string): View3DResourceKind {
  * usable headless.
  */
 function loader(
-    kind: View3DResourceKind,
+    kind: Canvas3DResourceKind,
     src: string,
     seen: Set<string>,
     tracker: AssetTracker,
@@ -114,7 +116,7 @@ function loader(
     if (seen.has(key)) return;
     seen.add(key);
 
-    const load = view3DResourceLoader();
+    const load = canvas3DResourceLoader();
     if (!load) return;
     tracker.addAsync(key, () => load(kind, src));
 }

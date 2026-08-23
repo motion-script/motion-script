@@ -1,6 +1,6 @@
 import {
-    Graphics3D, View3D, Tex, property,
-    type Color, type NodeConfig, type SurfaceSource3D, type View3DProps,
+    Graphics3D, Scene3D, Canvas3D, Tex, property,
+    type Color, type NodeConfig, type SurfaceSource3D, type Canvas3DProps,
 } from "motion-script";
 import { lerpColor, orbitOf, orbitPosition, resolveColor, snapFlag } from "./attributes";
 
@@ -8,14 +8,14 @@ import { lerpColor, orbitOf, orbitPosition, resolveColor, snapFlag } from "./att
 export interface MonitorScreen {
     /** Stable identity for the texture cache — see {@link Tex.surface}. */
     key: string;
-    /** A built `Graphics`, or a `Node` subtree. */
+    /** A built `Graphics2D`, or a `Node2D` subtree. */
     source: SurfaceSource3D;
     /** Buffer resolution. Also sets the panel's aspect, so nothing stretches. */
     width: number;
     height: number;
 }
 
-export interface MonitorWallProps extends View3DProps {
+export interface MonitorWallProps extends Canvas3DProps {
     /** The screens to build the rig around, left to right. */
     screens: MonitorScreen[];
     /**
@@ -75,9 +75,9 @@ const FOOT = { width: 1.6, height: 0.1, depth: 0.7 };
  *   ]} />
  *   yield* wall().to({ orbit: 16 }, 4, easeInOut('quad'));
  *
- * A source is a plain value — a built `Graphics`, or a `Node` subtree for
+ * A source is a plain value — a built `Graphics2D`, or a `Node2D` subtree for
  * anything wanting real layout, shaped `Text` or a loaded `Image`. It does not
- * have to live anywhere in the scene tree: `View3D` binds a node source to its
+ * have to live anywhere in the scene tree: `Canvas3D` binds a node source to its
  * own asset catalog, context and clock. Panel height follows each buffer's
  * aspect, so a screen authored at a different resolution gets a correctly
  * proportioned panel instead of a stretched texture.
@@ -87,7 +87,7 @@ const FOOT = { width: 1.6, height: 0.1, depth: 0.7 };
  * so `to()` drives them at all — `to()` only animates keys that are numeric or
  * carry a tween function, so a bare boolean prop would silently never change.
  */
-export class MonitorWall extends View3D<MonitorWallProps> {
+export class MonitorWall extends Canvas3D<MonitorWallProps> {
 
     /**
      * The screens, left to right. Hoist each `source` rather than rebuilding it
@@ -122,14 +122,15 @@ export class MonitorWall extends View3D<MonitorWallProps> {
     declare glow: Color;
 
     constructor(props?: NodeConfig<MonitorWall, MonitorWallProps>) {
-        super(props as NodeConfig<View3D<MonitorWallProps>, MonitorWallProps>);
+        super(props as NodeConfig<Canvas3D<MonitorWallProps>, MonitorWallProps>);
     }
 
-    protected override buildGraphics3D(): Graphics3D {
+    protected override buildScene3D(): Scene3D {
+        const scene = new Scene3D();
         const g3 = new Graphics3D();
         const background = this.background;
 
-        g3.perspective({
+        scene.perspective({
             fov: this.fov,
             // `orbit` is measured from head-on (+Z) because that is the useful zero
             // for a rig of screens facing the viewer; orbitPosition measures from
@@ -142,14 +143,14 @@ export class MonitorWall extends View3D<MonitorWallProps> {
             lookAt: [0, this.focus, 0],
         })
             .background(background)
-            .ambient({ intensity: 0.5 })
-            .directional({ intensity: 1.8, position: [5, 8, 6] })
-            .point({ intensity: 40, position: [0, 1, 5], color: this.glow });
+            .light({ type: "ambient", intensity: 0.5 })
+            .light({ type: "directional", intensity: 1.8 }, { position: [5, 8, 6] })
+            .light({ type: "point", intensity: 40, color: this.glow }, { position: [0, 1, 5] });
 
         // Fog in the background colour, so the rig fades into the backdrop rather
         // than into a seam. Cleared explicitly when off — the recorder holds the
         // last value written, and it is rebuilt from scratch each frame anyway.
-        g3.fog(this.fog ? { type: "linear", color: background, near: 15, far: 36 } : null);
+        scene.fog(this.fog ? { type: "linear", color: background, near: 15, far: 36 } : null);
 
         if (this.floor) {
             g3.plane({
@@ -160,6 +161,10 @@ export class MonitorWall extends View3D<MonitorWallProps> {
             });
         }
 
+        // The floor and the camera/lights above belong to the scene root, so draw
+        // what has accumulated so far before opening any monitor scope.
+        scene.draw(g3);
+
         const screens = this.screens ?? [];
         const half = ((screens.length - 1) / 2) * this.spacing;
         screens.forEach((screen, index) => {
@@ -167,20 +172,21 @@ export class MonitorWall extends View3D<MonitorWallProps> {
             // Turn each monitor inward in proportion to how far out it sits, so the
             // outermost pair lands exactly on ±toe and a centre screen stays square.
             const yaw = half > 0 ? -this.toe * (offset / half) : 0;
-            this.addMonitor(g3, screen, offset, yaw);
+            this.addMonitor(scene, screen, offset, yaw);
         });
 
-        return g3;
+        return scene;
     }
 
     /**
      * One monitor: bezel box, screen quad just proud of its face, stalk and foot.
      *
-     * Keyed by the screen's own `key` rather than its slot, so adding or removing
-     * a screen leaves the others' cached GPU objects alone instead of renumbering
-     * every later op's structural path.
+     * Scoped with `begin`/`end` — the same primitive a `Node3D` opens when it
+     * records itself — and keyed by the screen's own `key` rather than its slot, so
+     * adding or removing a screen leaves the others' cached GPU objects alone.
      */
-    private addMonitor(g3: Graphics3D, screen: MonitorScreen, x: number, yaw: number): void {
+    private addMonitor(scene: Scene3D, screen: MonitorScreen, x: number, yaw: number): void {
+        const g3 = new Graphics3D();
         const width = this.panelWidth;
         // The panel takes the buffer's own aspect, so a screen authored at any
         // resolution shows its texture unstretched.
@@ -188,8 +194,12 @@ export class MonitorWall extends View3D<MonitorWallProps> {
         const bezel = this.bezel;
         const bottom = -(height / 2 + bezel);
 
-        g3.group({ position: [x, this.lift, 0], rotation: [0, yaw, 0], key: `monitor:${screen.key}` }, m => m
-            .box({
+        scene.begin({
+            id: `monitor:${screen.key}`,
+            transform: { position: [x, this.lift, 0], rotation: [0, yaw, 0] },
+        });
+
+        g3.box({
                 width: width + bezel * 2, height: height + bezel * 2, depth: 0.18,
                 color: this.bezelColor, roughness: 0.55, metalness: 0.2,
             })
@@ -210,6 +220,8 @@ export class MonitorWall extends View3D<MonitorWallProps> {
                 ...FOOT,
                 position: [0, bottom - STALK.height - FOOT.height / 2, 0],
                 color: this.standColor, roughness: 0.6,
-            }));
+            });
+
+        scene.draw(g3).end();
     }
 }

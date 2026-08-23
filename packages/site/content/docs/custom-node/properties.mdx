@@ -106,9 +106,9 @@ This trips people up. The field is declared with the **author-facing** type so a
 class Card extends Rect<CardProps> {
   @fillProperty({ default: 'white/10' }) declare glow: Fill;
 
-  protected renderSelf(ctx: RenderContext): void {
+  protected renderSelf(ctx: RenderContext2D): void {
     ctx.draw(
-      new Graphics()
+      new Graphics2D()
         .rect({ width: 400, height: 240, cornerRadius: 24 })
         .fill(this.glow as FillResolved[]),
     );

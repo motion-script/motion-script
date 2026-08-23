@@ -7,7 +7,7 @@ import { valuesEqual, shallowEqual } from "@motion-script/skia-render/shapes/sha
  * object-valued fields (`pivot`, `points`, per-corner `cornerRadius`/`cornerStyle`)
  * every frame, so a reference-based comparison misses on every frame even when the
  * geometry is identical. `valuesEqual`/`shallowEqual` compare those known small
- * structures by value so an animated Graphics hits the cache — while failing closed
+ * structures by value so an animated Graphics2D hits the cache — while failing closed
  * on anything else so a genuine change is never mistaken for equal.
  */
 describe("valuesEqual", () => {

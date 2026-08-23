@@ -18,7 +18,7 @@ import { resolveCornerRadius } from "@/attributes/shape/corners/corner-radius";
  * pixels and the grab region derive from it.
  *
  * Every point and every descriptor coordinate here is in **y-up author space**
- * (the space `Graphics`/`Clip` descriptors are written in; the renderer flips to
+ * (the space `Graphics2D`/`Clip` descriptors are written in; the renderer flips to
  * canvas y-down at draw time — see `flipPositionY`). Angles follow from that:
  * `startAngle`/`sweep` measure counter-clockwise from +x.
  */

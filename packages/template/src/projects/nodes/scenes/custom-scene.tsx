@@ -1,13 +1,13 @@
 
 
-import { createScene, createRef, Path, Rect, easeInOut, parallel, wait, Node, RenderContext, Graphics, Text, Ellipse } from "motion-script";
+import { createScene, createRef, Path, Rect, easeInOut, parallel, wait, Node2D, RenderContext2D, Graphics2D, Text, Ellipse } from "motion-script";
 import { nodeCard } from "./node-card";
 
 
-class CustomNode extends Node {
+class CustomNode extends Node2D {
 
-    protected renderSelf(ctx: RenderContext): void {
-        ctx.draw(new Graphics().rect({ width: 200, height: 200 }).fill('red'));
+    protected renderSelf(ctx: RenderContext2D): void {
+        ctx.draw(new Graphics2D().rect({ width: 200, height: 200 }).fill('red'));
     }
 }
 

@@ -9,9 +9,9 @@ const GRADIENT = ['#6990DD', '#E8617C', '#F5C26B'];
 
 /**
  * Shows every named {@link AnchorKey} passed as `textAlignment` on
- * {@link TextDrawShape} — the pivot handed to `Graphics.text({ pivot, ... })`.
+ * {@link TextDrawShape} — the pivot handed to `Graphics2D.text({ pivot, ... })`.
  *
- * Text contributes no measurable bounds to a Graphics union, so `pivot` is the
+ * Text contributes no measurable bounds to a Graphics2D union, so `pivot` is the
  * only lever that steers which point of the text sits at its drawn origin
  * (`x: 0, y: 0`). One cell per anchor, laid out in the same 3×3 grid as
  * {@link ../scenes/shape-pivot.tsx}, with a ✕ marking the drawn origin so the
@@ -58,7 +58,7 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={24}>
-            <Text fontFamily={'Pixelify Sans'} text={'Graphics text — pivot anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
+            <Text fontFamily={'Pixelify Sans'} text={'Graphics2D text — pivot anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={32}>
                 {rows}
             </Rect>

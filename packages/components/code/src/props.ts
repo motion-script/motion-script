@@ -2,7 +2,7 @@ import { InsetsProps, RectCornerRadius, RectCornerStyle, ShapeProps } from '@mot
 import { CodeTheme } from './style';
 
 /**
- * Extends {@link ShapeProps} rather than the bare `NodeProps` this used to, so a
+ * Extends {@link ShapeProps} rather than the bare `Node2DProps` this used to, so a
  * listing carries the four paint slots every other drawable has: a `fill` behind
  * the tokens, an `overlay` washed over them, a `stroke` framing the block and a
  * `shadow` under it.

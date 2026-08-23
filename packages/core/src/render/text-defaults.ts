@@ -1,6 +1,6 @@
 import { TEXT_SHAPING_KEYS, type TextShapingKey, type TextStyle } from "@/runtime/builtin-context";
 import type { ResolvedTextSpan } from "@/attributes/text/span";
-import { Graphics, type GraphicsOp, type GraphicsShapeOp } from "./graphics";
+import { Graphics2D, type GraphicsOp, type GraphicsShapeOp } from "./graphics2d";
 
 /** The recorded `text` op, state and all. */
 type TextOp = Extract<GraphicsShapeOp, { kind: "text" }>;
@@ -27,9 +27,9 @@ const RICHTEXT_BLOCK_KEYS = [
  * shaping field unset — the drawn-text half of `<DefaultTextStyle>`.
  *
  * A `Text` node inherits defaults through the context channel, once, at bind
- * time (`applyTextDefaults`); a raw `Graphics` has no node to bind, so it
+ * time (`applyTextDefaults`); a raw `Graphics2D` has no node to bind, so it
  * inherits here instead, at draw time, from the scope it is drawn in. Called
- * from `RenderContext.draw`, so a custom node's `ctx.draw(...)`, an offscreen
+ * from `RenderContext2D.draw`, so a custom node's `ctx.draw(...)`, an offscreen
  * rasterization and the precomp pass's asset walk all see the same resolved op
  * list — which is what makes an inherited font actually *load* rather than
  * merely be asked for.
@@ -39,7 +39,7 @@ const RICHTEXT_BLOCK_KEYS = [
  * Returns `graphics` itself when nothing changes, which is the common case (the
  * scene sets no defaults, or every op already names its own).
  */
-export function applyGraphicsTextDefaults(graphics: Graphics, style: TextStyle): Graphics {
+export function applyGraphicsTextDefaults(graphics: Graphics2D, style: TextStyle): Graphics2D {
     if (!hasShapingDefaults(style)) return graphics;
 
     const ops = graphics.ops();

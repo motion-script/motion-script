@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Rect } from "@/nodes/geometry/rect-node";
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { NullRenderContext } from "@/render/null-render-context";
 import { NodeTransform3D } from "@/attributes/layout/transform3d";
 import { isProjective } from "@/attributes/layout/matrix2d";
 import type { TransformState } from "@/render/descriptors/transform";
-import type { RenderContext } from "@/render/render-context";
+import type { RenderContext2D } from "@/render/render-context2d";
 import { ContextMap } from "@/util/context";
 import { FakeMeasurer } from "@/runtime/runtime.fixtures";
 
@@ -26,7 +26,7 @@ import { FakeMeasurer } from "@/runtime/runtime.fixtures";
 const scope = new FakeMeasurer();
 
 /** A leaf whose layout cell can be set directly, mirroring what a parent would assign. */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
@@ -106,7 +106,7 @@ describe("transform3D — the geometry stays flat", () => {
      * The whole contract, from the reading side: a mirrored or tilted node goes
      * on measuring, reporting and hit-testing as the upright rectangle it was.
      *
-     * Not an omission — see `Node._localMatrix`. Everything that reads a node's
+     * Not an omission — see `Node2D._localMatrix`. Everything that reads a node's
      * box reads it to put a handle on, and a selection outline, a resize grip or
      * an alignment target all mean something on a rectangle and stop meaning it
      * on a trapezoid. So the projection reaches the canvas and nothing else.
@@ -158,7 +158,7 @@ describe("transform3D — the geometry stays flat", () => {
 class RecordingContext extends NullRenderContext {
     override readonly drawsVisibleOnly = true;
     readonly states: Partial<TransformState>[] = [];
-    override transform(state: Partial<TransformState>): RenderContext {
+    override transform(state: Partial<TransformState>): RenderContext2D {
         // The scratch is reused per node per frame, so snapshot rather than retain.
         this.states.push({ ...state });
         return super.transform(state);
@@ -174,15 +174,15 @@ function laidOut(node: Rect): Rect {
 /** Runs `body` while counting how many shape ops any node submitted. */
 function countingOps(body: () => void): number {
     let ops = 0;
-    const original = Graphics.prototype.rect;
-    Graphics.prototype.rect = function (this: Graphics, ...args: never[]) {
+    const original = Graphics2D.prototype.rect;
+    Graphics2D.prototype.rect = function (this: Graphics2D, ...args: never[]) {
         ops++;
         return original.apply(this, args as never);
     } as never;
     try {
         body();
     } finally {
-        Graphics.prototype.rect = original;
+        Graphics2D.prototype.rect = original;
     }
     return ops;
 }

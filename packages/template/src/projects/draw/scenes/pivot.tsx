@@ -9,7 +9,7 @@ const GRADIENT = ['#6990DD', '#E8617C', '#F5C26B'];
 
 /**
  * Shows the graphics-level **pivot** — the `center` argument to
- * `Graphics.rotation(angle, center)`.
+ * `Graphics2D.rotation(angle, center)`.
  *
  * Three *identical* drawn clock-hand figures sit side by side, each spun about a
  * different pivot — given as **named anchors** (the same `'center'` / `'topRight'`
@@ -63,7 +63,7 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={80} gap={32}>
-            <Text fontFamily={'Pixelify Sans'} text={'Graphics pivot'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
+            <Text fontFamily={'Pixelify Sans'} text={'Graphics2D pivot'} fontSize={96} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={48}>
                 {cells}
             </Rect>

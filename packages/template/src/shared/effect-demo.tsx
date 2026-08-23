@@ -3,7 +3,7 @@
 import {
     SceneGenerator, createRef, Reference, Text, Rect, Ellipse, Polygram, Image,
     EffectChain, easeOut, parallel,
-    Node,
+    Node2D,
     Effects,
 } from "motion-script";
 
@@ -179,7 +179,7 @@ export const effectDemo = (spec: EffectDemoSpec): SceneGenerator => function* (s
     const { label, from, to, background = false, duration = 3 } = spec;
     stage.set({ fill: STAGE });
 
-    const refs: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
+    const refs: Reference<any>[] = SAMPLES.map(() => createRef<Node2D>());
 
     stage.add(sampleGrid(label, [
         sampleRow(`Without ${label}`, { lens: background }),

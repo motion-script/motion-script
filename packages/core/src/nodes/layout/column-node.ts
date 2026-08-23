@@ -1,6 +1,6 @@
 import { FlexDirection } from "@/layout/flex";
 import { FlexNode, FlexProps } from "./flex-node";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 
 
 export interface ColumnProps extends FlexProps { }

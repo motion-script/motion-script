@@ -1,13 +1,13 @@
 
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import type { PathData } from "@/render/descriptors/path";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { lerpPath } from "@/attributes/shape/path/morph";
 import { measurePathData } from "@/attributes/shape/path/bounds";
@@ -66,15 +66,15 @@ export class Path extends ShapeNode<PathProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().path({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().path({
             data: this.data,
             start: this.start,
             end: this.end,
         });
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         // Stroke is deferred to renderStroke (drawn after children + overlay).
         draw.draw(this.shapeGraphics().fill(this.fill));
     }

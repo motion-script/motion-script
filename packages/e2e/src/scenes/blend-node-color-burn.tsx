@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'color-burn'`, darkening the backdrop based on the circle's color. */
+/** Node2D-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'color-burn'`, darkening the backdrop based on the circle's color. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const circle = createRef<Rect>();

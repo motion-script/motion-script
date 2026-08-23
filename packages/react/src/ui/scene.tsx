@@ -89,7 +89,7 @@ type Props = {
      * the fill, the shader work and the effect offscreens, for an image the
      * display cannot resolve the difference in. `@motion-script/web`'s
      * `StillRenderer` calls the same thing `scale`, and `exportScenesAsVideo`
-     * takes it as `scale` too â€” all three drive `RenderContext.pixelRatio`.
+     * takes it as `scale` too â€” all three drive `RenderContext2D.pixelRatio`.
      *
      * Two things to know before animating it:
      *

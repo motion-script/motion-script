@@ -28,6 +28,10 @@ import { SizeInput } from "@/attributes/layout/size";
 import { lerpInsets, lerpSizeInput } from "@/layout/tweens";
 
 import { lerpText } from "@/attributes/text/lerp";
+import {
+    lerpEuler3, lerpVector3, resolveVector3, slerpQuaternion,
+    type Euler3, type Quaternion, type Vector3, type Vector3Input,
+} from "@/render3d/vector3";
 import { PathData } from "@/render/descriptors/path";
 
 /**
@@ -76,6 +80,13 @@ export interface AttributePropOptions<Ext, Int> {
  *
  * `fallback` is a factory rather than a value so array/object defaults aren't a
  * single instance shared by every property declared through the decorator.
+ *
+ * An **explicit** `default: undefined` means "this prop has no default" and is
+ * honoured as such — the key's presence is what's tested, not its value. That
+ * distinction matters for an optional attribute whose absence is meaningful: a
+ * light with no `color` must stay absent from the descriptor so the renderer's own
+ * default applies, where folding it onto the fallback would silently paint every
+ * light black.
  */
 function attributeProperty<Ext, Int>(
     fallback: () => Ext,
@@ -84,7 +95,7 @@ function attributeProperty<Ext, Int>(
 ) {
     return (opts?: AttributePropOptions<Ext, Int>) =>
         property<Ext, Int>({
-            default: opts?.default ?? fallback(),
+            default: opts && "default" in opts ? opts.default : fallback(),
             mapper: opts?.mapper ?? mapper,
             tween: opts?.tween ?? tween,
         });
@@ -185,7 +196,7 @@ export const insetsProperty = attributeProperty<Insets, InsetsResolved>(
  * a per-axis {@link Vector2} in `[-1, 1]` (x: -1 left … +1 right, y: -1 bottom …
  * +1 top), tweened as a vector so `'centerLeft' → 'centerRight'` slides.
  *
- * One decorator for every "which point of this box" prop — `Node.pivot`, a
+ * One decorator for every "which point of this box" prop — `Node2D.pivot`, a
  * container's `align`, an image fill's `anchor`. They previously had two
  * decorators (`alignProperty`/`pivotProperty`) that differed only in whether the
  * default was spelled `'center'` or `{ x: 0, y: 0 }` — the same value either side
@@ -224,4 +235,42 @@ export const textProperty = attributeProperty<string, string>(
     () => "",
     undefined,
     lerpText,
+);
+
+/**
+ * A 3D position or scale, from the loose {@link Vector3Input} an author writes
+ * (`[1, 2, 3]`, `{ x, y, z }`, or a scalar for "all three") to the resolved
+ * {@link Vector3} the renderer reads.
+ *
+ * The mapper is what makes `position={2}` and `position={[0, 1, 0]}` the same
+ * kind of thing, and the tween is what makes `to({ position: [0, 3, 0] })`
+ * interpolate rather than snap.
+ */
+export const vector3Property = attributeProperty<Vector3Input, Vector3>(
+    () => ({ x: 0, y: 0, z: 0 }),
+    resolveVector3,
+    lerpVector3,
+);
+
+/**
+ * A Euler rotation in **degrees**, matching 2D `rotation`.
+ *
+ * Interpolated per axis. For a tumble where that would gimbal, declare the prop
+ * with {@link quaternionProperty} instead and tween the quaternion.
+ */
+export const euler3Property = attributeProperty<Vector3Input | Euler3, Euler3>(
+    () => ({ x: 0, y: 0, z: 0 }),
+    (input) => {
+        const v = resolveVector3(input as Vector3Input);
+        const order = (input as Euler3)?.order;
+        return order ? { ...v, order } : v;
+    },
+    lerpEuler3,
+);
+
+/** A rotation as a unit quaternion, interpolated with {@link slerpQuaternion}. */
+export const quaternionProperty = attributeProperty<Quaternion, Quaternion>(
+    () => ({ x: 0, y: 0, z: 0, w: 1 }),
+    undefined,
+    slerpQuaternion,
 );

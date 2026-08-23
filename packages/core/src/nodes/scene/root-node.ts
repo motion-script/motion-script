@@ -1,5 +1,5 @@
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { TweenOptions } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
@@ -19,12 +19,12 @@ import { resolveFillArray, lerpFillArray, prepareFill } from "@/attributes/shape
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { AssetTracker } from "@/assets/tracker";
 import { Fill } from "@/attributes/shape/fill/chain";
-import { CameraScope, Node, NodeConfig, NodeProps } from "../base/node";
+import { CameraScope, Node2D, NodeConfig, Node2DProps } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { anchorProperty, fillProperty } from "@/attributes/properties/typed";
 
 /** @internal */
-export interface RootProps extends NodeProps {
+export interface RootProps extends Node2DProps {
     /**
      * Background fill layer(s). Each item can be a CSS color string, a fill
      * prop object, an already-resolved fill, or a {@link FillChain} from the
@@ -58,7 +58,7 @@ export interface RootProps extends NodeProps {
 /**
  * The single root container every {@link Scene} builds into.
  *
- * A `RootNode` is a plain {@link Node} that doubles as the scene's layout frame
+ * A `RootNode` is a plain {@link Node2D} that doubles as the scene's layout frame
  * and camera. It lays its children out (flex `horizontal`/`vertical` or
  * `freeform`, with `gap`, `align`, `padding`) and paints a scene-wide background
  * (`fill`) and `overlay` — *and* views those laid-out children through a viewport
@@ -70,14 +70,14 @@ export interface RootProps extends NodeProps {
  * the root directly without exposing per-shape geometry the scene root never has.
  *
  * It is also the frame absolutely-positioned nodes anywhere in the tree are
- * pinned to — see {@link NodeProps.childPositioning}.
+ * pinned to — see {@link Node2DProps.childPositioning}.
  *
  * The flex/freeform child layout (including the cross-mode `flow` blend) is the
  * same {@link FlowLayout} engine {@link Rect} uses; this node implements
  * {@link FlowHost} so the engine can read it.
  */
 /** @internal */
-export class RootNode extends Node<RootProps> implements FlowHost {
+export class RootNode extends Node2D<RootProps> implements FlowHost {
 
     // ---- Background paint -------------------------------------------------
     // Author-facing paint props. Like Rect, the declared type is the loose
@@ -220,21 +220,21 @@ export class RootNode extends Node<RootProps> implements FlowHost {
     // ---- Drawing ----------------------------------------------------------
 
     // The viewport-sized background box behind the children.
-    private shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    private shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
         });
     }
 
-    protected override renderSelf(draw: RenderContext): void {
+    protected override renderSelf(draw: RenderContext2D): void {
         const fill = this.fill as FillResolved[];
         if (fill.length === 0) return;
         draw.draw(this.shapeGraphics().fill(fill));
     }
 
     // Overlay over fill + children, clipped to the viewport silhouette.
-    protected override renderOverlay(ctx: RenderContext): void {
+    protected override renderOverlay(ctx: RenderContext2D): void {
         const overlay = this.overlay as FillResolved[];
         if (overlay.length === 0) return;
         ctx.draw(this.shapeGraphics().fill(overlay));
@@ -243,7 +243,7 @@ export class RootNode extends Node<RootProps> implements FlowHost {
     /**
      * The scene background and its overlay.
      *
-     * This extends `Node` rather than `ShapeNode` — it is the world container,
+     * This extends `Node2D` rather than `ShapeNode` — it is the world container,
      * not a shape — so it carries its own `fill`/`overlay` and declares them
      * itself. A scene whose background is an image or a video lives here.
      */
@@ -280,7 +280,7 @@ export class RootNode extends Node<RootProps> implements FlowHost {
         return { lookAt: this.lookAt, zoom: this.zoom, heading: this.heading };
     }
 
-    override renderChildren(ctx: RenderContext): void {
+    override renderChildren(ctx: RenderContext2D): void {
         if (this.zoom === 1 && this.heading === 0 && this.lookAt.x === 0 && this.lookAt.y === 0) {
             super.renderChildren(ctx);
             return;
@@ -299,7 +299,7 @@ export class RootNode extends Node<RootProps> implements FlowHost {
             this.heading,
         );
 
-        for (const child of this._children) child.render(ctx);
+        for (const child of this._children) if (child instanceof Node2D) child.render(ctx);
 
         ctx.endCamera();
     }

@@ -81,10 +81,11 @@ The backend-agnostic heart of the library. It has no DOM/canvas dependencies; it
 describes *what* should be drawn and *how it changes over time*, leaving the
 *how to draw* to a render context. Key areas under `packages/core/src`:
 
-- **`nodes/`**: the scene graph. A base `Node` plus geometry (`Rect`,
-  `Ellipse`, `Line`, `Path`, `Polygon`, `Polygram`, `Grid`), text (`Text`,
-  `RichText`), media (`Image`), and structural nodes (`Scene`, `Camera`,
-  `Boolean`, `Mask`).
+- **`nodes/`**: the scene graph. A dimension-agnostic base `Node`, split into
+  `Node2D` (layout and 2D drawing) and `Node3D` (a transform in space), plus
+  geometry (`Rect`, `Ellipse`, `Line`, `Path`, `Polygon`, `Polygram`, `Grid`),
+  text (`Text`, `RichText`), media (`Image`), structural nodes (`Scene`,
+  `Camera`, `Boolean`, `Mask`) and the 3D tree under `three/`.
 - **`attributes/`**: the animatable properties of nodes: layout
   (size/bounds/constraints/padding), shape (fill, stroke, corners, shadow,
   filters/effects, paths), text, and audio. Each attribute knows how to
@@ -96,8 +97,8 @@ describes *what* should be drawn and *how it changes over time*, leaving the
   (`yield*`), `wait`, and the generator-driven timeline. Scenes are generators;
   `yield*`-ing a tween hands control back to the engine to advance time.
 - **`layout/`**: flexbox layout and size resolution for laying out child nodes.
-- **`render/`**: **render descriptors** and the abstract `RenderContext` /
-  `Render2DContext` interface. Descriptors are the contract a backend
+- **`render/`**: **render descriptors** and the abstract `RenderContext2D` /
+  `RenderContext3D` interfaces. Descriptors are the contract a backend
   implements; `core` produces them, a backend consumes them. Also `BuildStage`
   and `MeasureScope`.
 - **`jsx/`**: the JSX runtime (`jsx-runtime` / `jsx-dev-runtime`) so scenes can
@@ -110,7 +111,7 @@ describes *what* should be drawn and *how it changes over time*, leaving the
 
 ### `@motion-script/web`: the web rendering backend
 
-Implements `core`'s `RenderContext` against Skia/CanvasKit and provides the
+Implements `core`'s `RenderContext2D` against Skia/CanvasKit and provides the
 browser-specific machinery. Notable exports (`packages/web/src/index.ts`):
 
 - `WebRenderContext`: draws frames via CanvasKit.

@@ -1,5 +1,5 @@
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { VideoAdjustment, resolveChainAdjustments } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaAdjustment, VideoOnlyAdjustment } from "@/attributes/shape/filters/union";
@@ -11,7 +11,7 @@ import { anchorProperty, insetsProperty } from "@/attributes/properties/typed";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { AssetTracker } from "@/assets/tracker";
 import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
@@ -241,8 +241,8 @@ export class Video extends Rect<VideoProps> {
     }
 
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -252,7 +252,7 @@ export class Video extends Rect<VideoProps> {
         });
     }
 
-    protected override renderSelf(draw: RenderContext): void {
+    protected override renderSelf(draw: RenderContext2D): void {
         this.syncVideo();
         // Paint the video fill first (so it sits behind any user-supplied `fill`
         // layers — a tint or vignette over the frame), styled as the rect's fill.

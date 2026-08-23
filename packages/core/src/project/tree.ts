@@ -1,6 +1,6 @@
 /**
  * Structural key for a node within its scene: the child-index path from the
- * scene root, joined with ".". The root is "". Node ids are per-instance UUIDs
+ * scene root, joined with ".". The root is "". Node2D ids are per-instance UUIDs
  * that change on every rebuild, so lifespan tracking keys on this instead — the
  * build is deterministic, so the same structural slot maps to the same path in
  * both the precomp pass and playback.

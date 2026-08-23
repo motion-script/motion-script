@@ -10,7 +10,7 @@ import fillShapes from './scenes/fill-shapes?scene';
 import fillStack from './scenes/fill-stack?scene';
 
 /**
- * 3D scenes, exercising the `View3D` node and the `Graphics3D` API.
+ * 3D scenes, exercising the `Canvas3D` node and the `Graphics3D` API.
  *
  * To preview: re-export as the default from `src/project.ts`.
  * To screenshot: `ms screenshot last --scenes SpinningCube` — scene names come

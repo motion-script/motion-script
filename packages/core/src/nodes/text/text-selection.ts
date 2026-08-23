@@ -117,7 +117,7 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
      * Resolve one `to()` step into a flat {@link TweenStepper}. Numeric props
      * (opacity/x/y/scale/rotation/fontWeight/letterSpacing) interpolate
      * directly; `fill`/`stroke` resolve their target once and lerp via the
-     * shared fill/stroke array lerps — mirroring {@link Node._prepareStep}.
+     * shared fill/stroke array lerps — mirroring {@link Node2D._prepareStep}.
      */
     _prepareStep(
         to: Partial<TextSelectionProps>,

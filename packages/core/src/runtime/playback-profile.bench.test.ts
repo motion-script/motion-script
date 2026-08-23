@@ -20,7 +20,7 @@ import { profilePlayback } from "./playback-profile.fixtures";
  *
  * The counts here are **deterministic**, and that is the point. The wall clock on
  * a developer machine moves ±25% between runs, which is wider than most changes
- * worth making; a count of nodes visited or `Graphics` submitted is the same on
+ * worth making; a count of nodes visited or `Graphics2D` submitted is the same on
  * every run, so a difference is a behaviour change and nothing else.
  *
  * Not assertions of performance — machines differ and CI would flake. Opt in:
@@ -157,7 +157,7 @@ describe("playback counts", () => {
     it("builds a fresh drawing for every visible node, every frame", () => {
         // The immediate-mode contract, stated as a count. Nothing between
         // `shapeGraphics` and the renderer caches: a node contributes one fresh
-        // `Graphics` per frame whether it moved or not. Asserted in both
+        // `Graphics2D` per frame whether it moved or not. Asserted in both
         // directions below so that reintroducing a cache — deliberately or by
         // accident — shows up here as a number rather than as a stale frame.
         const still = profilePlayback(staticScene(10), 5);

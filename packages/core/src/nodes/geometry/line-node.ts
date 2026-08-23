@@ -1,11 +1,11 @@
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { nearPolyline, pointInPolygon } from "@/render/clip-contains";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 
 import { Vector2 } from "@/attributes/layout/vector2";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { BoxBounds } from "@/attributes/layout/bounds";
 export interface LineProps extends ShapeProps {
     points: Vector2[];
@@ -25,8 +25,8 @@ export class Line extends ShapeNode<LineProps> {
         super(props);
     }
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().line({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().line({
             points: this.points,
             radius: this.radius,
             closed: this.closed,

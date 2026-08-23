@@ -30,7 +30,7 @@ export interface GraphicsTransform {
 }
 
 /**
- * The kinds of shape ops a {@link Graphics} can record. Each carries the partial
+ * The kinds of shape ops a {@link Graphics2D} can record. Each carries the partial
  * descriptor state for that shape, exactly as the old per-shape context methods
  * accepted.
  */
@@ -45,10 +45,10 @@ export type GraphicsShapeOp =
     | { kind: "richText"; state: Partial<RichTextState> & ShapeAnchorInput };
 
 /**
- * A single recorded operation in a {@link Graphics} command list. Shape ops
+ * A single recorded operation in a {@link Graphics2D} command list. Shape ops
  * declare geometry; paint ops (fill/stroke/shadow) apply to the accumulated
  * shapes; cut/mask ops composite. The renderer replays this list in order via
- * `RenderContext.draw()`.
+ * `RenderContext2D.draw()`.
  */
 export type GraphicsOp =
     | GraphicsShapeOp
@@ -68,12 +68,12 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
 /**
  * A renderer-agnostic, chainable shape/paint builder.
  *
- * `Graphics` records a sequence of shape declarations and paint/compositing
- * operations without touching any renderer. A built `Graphics` is handed to a
- * `RenderContext` via `ctx.draw(graphics)`, which replays the recorded ops
+ * `Graphics2D` records a sequence of shape declarations and paint/compositing
+ * operations without touching any renderer. A built `Graphics2D` is handed to a
+ * `RenderContext2D` via `ctx.draw(graphics)`, which replays the recorded ops
  * against its concrete drawing backend.
  *
- *   const g = new Graphics()
+ *   const g = new Graphics2D()
  *       .ellipse({ width: 100, height: 100 })
  *       .rect({ width: 40, height: 40, rotation: 30 }) // per-shape: tilts this rect only
  *       .fill(Fills.color("red"))
@@ -103,11 +103,11 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  * `effects()` scopes like `fill()`: it applies to the shapes and paints
  * accumulated *since the previous `effects()` call* (or the start), then closes
  * that group off — shapes declared after it start a fresh, unaffected group, as
- * if a new `Graphics` had begun. So `.ellipse().ellipse().fill().effects(FX.blur(8))`
+ * if a new `Graphics2D` had begun. So `.ellipse().ellipse().fill().effects(FX.blur(8))`
  * blurs those two ellipses as one union, and a following `.rect().fill()` renders
  * crisp. Chaining a second `.effects()` later filters only that later group.
  */
-export class Graphics {
+export class Graphics2D {
     private _ops: GraphicsOp[] = [];
     private _opacity: number = 1;
     private _rotation: number = 0;
@@ -207,8 +207,6 @@ export class Graphics {
         return this;
     }
 
-    // ─── 3D ──────────────────────────────────────────────────────────────────
-
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
     /**
@@ -224,11 +222,11 @@ export class Graphics {
     /**
      * Apply image effects to the current shape group, scoped like {@link fill}:
      * the shapes and paints recorded since the previous `effects()` call (or the
-     * start of this `Graphics`) are composited through the composed filter as one
+     * start of this `Graphics2D`) are composited through the composed filter as one
      * layer, so the effect reads that group's union silhouette (a blur bleeds
      * across the group's combined edges, not each shape's). Calling `effects()`
      * *closes* the group — shapes declared afterwards start a fresh, unfiltered
-     * group, as if a new `Graphics` had begun. Accepts an {@link Effect} — a
+     * group, as if a new `Graphics2D` had begun. Accepts an {@link Effect} — a
      * single effect, an array, or an `FX`/`EffectChain` builder result —
      * normalised to a `SceneEffect[]`.
      */
@@ -265,12 +263,12 @@ export class Graphics {
 
     // ─── Consumption ─────────────────────────────────────────────────────────
 
-    /** The recorded ops, in order. Consumed by `RenderContext.draw()`. */
+    /** The recorded ops, in order. Consumed by `RenderContext2D.draw()`. */
     ops(): readonly GraphicsOp[] {
         return this._ops;
     }
 
-    /** Graphics-level opacity (0–1) for the whole group. Default 1. */
+    /** Graphics2D-level opacity (0–1) for the whole group. Default 1. */
     groupOpacity(): number {
         return this._opacity;
     }
@@ -295,7 +293,7 @@ export class Graphics {
         return { rotation: this._rotation, scale: this._scale, center: this._transformCenter };
     }
 
-    /** True when this Graphics has no shape ops (only paint/compositing) — used by
+    /** True when this Graphics2D has no shape ops (only paint/compositing) — used by
      * renderers to paint an externally-prepared surface (e.g. a boolean result)
      * without resetting their shape accumulator. */
     isPaintOnly(): boolean {
@@ -308,7 +306,7 @@ export class Graphics {
      * over.
      *
      * A copy rather than a mutation because a node is free to build one
-     * `Graphics` and submit it more than once — `Text` draws the same op list for
+     * `Graphics2D` and submit it more than once — `Text` draws the same op list for
      * its fill, overlay and stroke passes — and each submission may sit under
      * different ambient state. Rewriting the shared instance would leak one
      * scope's resolution into the next.
@@ -318,8 +316,8 @@ export class Graphics {
      * of the authoring surface.
      */
     /** @internal */
-    _withOps(ops: GraphicsOp[]): Graphics {
-        const next = new Graphics();
+    _withOps(ops: GraphicsOp[]): Graphics2D {
+        const next = new Graphics2D();
         next._ops = ops;
         next._opacity = this._opacity;
         next._rotation = this._rotation;

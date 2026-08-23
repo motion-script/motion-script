@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, easeInOut } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `opacity`: the whole node — fill, stroke, and children together — fades as one unit. */
+/** Node2D-level `opacity`: the whole node — fill, stroke, and children together — fades as one unit. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();

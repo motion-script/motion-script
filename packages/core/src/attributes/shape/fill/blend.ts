@@ -38,7 +38,7 @@ export type BlendMode = typeof BlendModes[number];
  */
 export const NodeBlendModes = [...BlendModes, "pass-through"] as const;
 
-/** Layer blend mode — {@link BlendMode} plus `pass-through`. Node-only. */
+/** Layer blend mode — {@link BlendMode} plus `pass-through`. Node2D-only. */
 export type NodeBlendMode = typeof NodeBlendModes[number];
 
 // Pre-built reverse lookup so getBlendModeHash is O(1).

@@ -117,12 +117,12 @@ export const Tex = {
      * A texture painted from Motion Script's own 2D output — the bridge from 2D
      * onto 3D geometry.
      *
-     * `source` is a **value**: a built `Graphics` command list, or a `Node`
+     * `source` is a **value**: a built `Graphics2D` command list, or a `Node2D`
      * subtree for anything needing real layout, shaped `Text` or a loaded
      * `Image`. Both are passed directly; there is no name to match and nothing
      * has to be mounted anywhere in particular.
      *
-     *   const scope = new Graphics().line({ points: trace(phase()) }).stroke(…);
+     *   const scope = new Graphics2D().line({ points: trace(phase()) }).stroke(…);
      *   g3.plane({ map: Tex.surface(scope, 1024, 640) });
      *
      *   const stats = <Rect flow="vertical" padding={48}><Text text="CPU" /></Rect>;

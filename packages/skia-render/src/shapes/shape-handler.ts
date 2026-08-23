@@ -68,7 +68,7 @@ export interface CurrentShape {
 // few small object-valued fields that are *freshly allocated every frame* by the
 // renderer's y-flip helpers — `pivot` ({x,y}), `points` (Vector2[]), and per-
 // corner `cornerRadius`/`cornerStyle` records. A plain `!==` on those always sees
-// distinct references, so an animated Graphics whose shapes carry any of them
+// distinct references, so an animated Graphics2D whose shapes carry any of them
 // would miss the cross-frame shape cache on every frame (rebuilding its wasm path
 // each frame even though the geometry is identical). This comparator restores the
 // hit by comparing those known small structures by value.
@@ -458,7 +458,7 @@ export class ShapeHandler {
     // ─── Nested render scope ───────────────────────────────────────────────────
 
     // Open a nested render of a *different* node subtree in the middle of this
-    // node's draw (a Surface2D rasterized offscreen by its View3D parent).
+    // node's draw (a Surface2D rasterized offscreen by its Canvas3D parent).
     //
     // Unlike beginMeasure() the cross-frame cache stays **live**: the nested nodes
     // have real, stable ids of their own, so their shapes should be cached exactly

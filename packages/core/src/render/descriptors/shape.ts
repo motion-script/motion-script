@@ -6,7 +6,7 @@ import { Vector2 } from "@/attributes/layout/vector2";
  * Per-shape descriptor state. Shapes carry geometry and a *local* transform
  * (`rotation`/`scale` baked into the path before it joins the union) but **not**
  * layer effects: effects are applied to the whole drawn union via
- * {@link Graphics.effects}, not per shape. So `ShapeState` omits
+ * {@link Graphics2D.effects}, not per shape. So `ShapeState` omits
  * `TransformState.effects` (which remains for node-level transforms).
  */
 export interface ShapeState extends Omit<TransformState, "effects" | "pivot"> {
@@ -65,7 +65,7 @@ export const SHAPE_ANCHOR_KEYS: AnchorKey[] = [
 ];
 
 /**
- * Validate a shape descriptor's anchor usage — mirrors `Node.validateAnchorProps`,
+ * Validate a shape descriptor's anchor usage — mirrors `Node2D.validateAnchorProps`,
  * extended to also reject `x`/`y` (a shape positioned by an anchor cannot also set
  * its centre). Throws if more than one anchor is set, or an anchor is combined with
  * `pivot`, `x`, or `y`. `x`/`y`/`pivot` may freely combine with each other.
@@ -101,7 +101,7 @@ export function stripShapeAnchorKeys<T extends object>(descriptor: T): Omit<T, k
  * When an anchor is present its normalised pivot `a` (in `[-1, 1]`, y-up) is mapped
  * onto the shape's own `width`×`height` box: the centre that lands the named anchor
  * on `target` is `centre = target − a · (size / 2)`, and `pivot` is set to `a`
- * (matching `Node`'s auto-pivot). Otherwise `x`/`y`/`pivot` pass through unchanged —
+ * (matching `Node2D`'s auto-pivot). Otherwise `x`/`y`/`pivot` pass through unchanged —
  * `pivot` alone never repositions the shape here, since this same function re-runs
  * on already-resolved state (`with*Descriptor` is called again from
  * `BaseShape.resolveState`) and re-deriving an offset from an already-resolved

@@ -82,8 +82,8 @@ Most lit materials accept the same texture slots:
 A bare string works anywhere a texture is expected, so `Tex.image` is only needed when you want sampler options:
 
 ```tsx
-.plane({ width: 4, height: 4, map: 'floor.jpg' })
-.plane({ width: 4, height: 4, map: Tex.image('floor.jpg', { repeat: [4, 4], wrapS: 'repeat', wrapT: 'repeat' }) })
+<Plane3D width={4} height={4} map="floor.jpg" />
+<Plane3D width={4} height={4} map={Tex.image('floor.jpg', { repeat: [4, 4], wrapS: 'repeat', wrapT: 'repeat' })} />
 ```
 
 | Option | Type | Description |
@@ -113,9 +113,10 @@ Tex.data(bytes, 256, 1, { magFilter: 'linear' })
 A `standard` or `physical` material with high `metalness` renders black unless the scene has an environment to reflect. The fastest fix needs no asset:
 
 ```tsx
-new Graphics3D()
-  .environment({ type: 'room' })
-  .sphere({ radius: 1, color: '#c9ccd4', metalness: 1, roughness: 0.15 })
+<Canvas3D>
+  <Environment3D environment={{ type: 'room' }} />
+  <Sphere3D radius={1} color="#c9ccd4" metalness={1} roughness={0.15} />
+</Canvas3D>
 ```
 
 See [Environment](./scene#environment).

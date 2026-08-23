@@ -1,12 +1,13 @@
 import {
     createScene, createSignal, easeInOut, parallel, wait,
-    Ellipse, Fills, Graphics3D, Path, Rect, Row, Text,
+    Ellipse, Fills, Graphics3D, Scene3D, Path, Rect, Row, Text,
 } from "motion-script";
 
 /**
- * What the 3D *node* could not do: 3D painted through arbitrary shape paths.
+ * What a `Canvas3D` could not do on its own: 3D painted through arbitrary shape
+ * paths.
  *
- * A `view3D` fill becomes a shader on the paint, so the ordinary `drawPath` that
+ * A `canvas3D` fill becomes a shader on the paint, so the ordinary `drawPath` that
  * fills any shape confines it. None of these are special-cased — an `Ellipse`, a
  * `Path` and a run of `Text` all just get a shader, the same way an image fill
  * works. The `Text` case is the real proof: text has no path to union, so it
@@ -15,18 +16,24 @@ import {
 
 const spin = createSignal(0);
 
-/** One scene, framed so it reads at any of these sizes. */
-function scene(color: string): Graphics3D {
-    return new Graphics3D()
+/**
+ * One scene, framed so it reads at any of these sizes.
+ *
+ * Hand-built rather than written as a `<Canvas3D>` tree, because the point here is
+ * to shade a shape that isn't a rect — so what's wanted is the recorded `Scene3D`
+ * value itself, which is exactly what a `Canvas3D` would have produced.
+ */
+function scene(color: string): Scene3D {
+    return new Scene3D()
         .perspective({ position: [0, 1.6, 5], lookAt: 0, fov: 45 })
         .background("#0b0d12")
-        .ambient({ intensity: 0.45 })
-        .directional({ intensity: 2.6, position: [4, 6, 3] })
-        .torusKnot({
+        .light({ type: "ambient", intensity: 0.45 })
+        .light({ type: "directional", intensity: 2.6 }, { position: [4, 6, 3] })
+        .draw(new Graphics3D().torusKnot({
             radius: 1.1, tube: 0.36,
             color, roughness: 0.25, metalness: 0.4,
             rotation: [spin() * 0.6, spin(), 0],
-        });
+        }));
 }
 
 export default createScene(function* (stage) {
@@ -44,7 +51,7 @@ export default createScene(function* (stage) {
                     width={420}
                     height={420}
                     data={"M50,88 C-20,45 8,2 50,26 C92,2 120,45 50,88 Z"}
-                    fill={() => Fills.view3D(scene("#4ea1ff"))}
+                    fill={() => Fills.canvas3D(scene("#4ea1ff"))}
                 />
             </Row>
 

@@ -15,11 +15,11 @@ import { gridFill } from "./implementations/grid";
 import { shaderFill } from "./implementations/shader";
 import { imageFill } from "./implementations/image";
 import { videoFill } from "./implementations/video";
-import { view3DFill } from "./implementations/view3d";
+import { canvas3DFill } from "./implementations/canvas3d";
 // The one value import from `render3d` into the fill layer, for the bare-scene
 // coercion in `resolveFill`. Acyclic: `render3d` only imports `Color` back from
 // here, and does so type-only.
-import { Graphics3D } from "@/render3d/graphics3d";
+import { Scene3D } from "@/render3d/scene3d";
 
 type FillResult<T extends FillResolved> = Omit<Omit<T, "type">, "blend">;
 
@@ -43,7 +43,7 @@ const FILLS = new Map<string, FillData<FillResolved>>([
     ["shader", shaderFill as FillData<FillResolved>],
     ["image", imageFill as FillData<FillResolved>],
     ["video", videoFill as FillData<FillResolved>],
-    ["view3D", view3DFill as FillData<FillResolved>],
+    ["canvas3D", canvas3DFill as FillData<FillResolved>],
 ]);
 
 function get(name: string): FillData<FillResolved> {
@@ -56,7 +56,7 @@ export function resolveFill(prop: FillProp): FillResolved {
     if (typeof prop === "string") return resolveFill({ type: "solid", color: prop });
     // A bare built scene is shorthand for a 3D fill, the same way a bare CSS
     // string is shorthand for a solid one.
-    if (prop instanceof Graphics3D) return resolveFill({ type: "view3D", graphics3D: prop });
+    if (prop instanceof Scene3D) return resolveFill({ type: "canvas3D", scene: prop });
     const resolved = get(prop.type).resolve(prop);
     // `space` is a cross-cutting rendering directive (like `blend`); carry it
     // through generically so each fill `resolve()` doesn't have to know about it.

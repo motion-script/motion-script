@@ -352,7 +352,7 @@ describe('PlaybackController – direct manipulation', () => {
     /**
      * `FakeRenderContext` implements only `execute`/`screenshot`, which is enough
      * for a `FakeScene` (it never draws). A real scene graph calls the whole
-     * `RenderContext` surface, so stub the rest as no-ops — the geometry under
+     * `RenderContext2D` surface, so stub the rest as no-ops — the geometry under
      * test comes from layout, not from anything the context returns.
      */
     function nullRenderContext(): FakeRenderContext {

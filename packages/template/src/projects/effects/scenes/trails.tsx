@@ -1,4 +1,4 @@
-import { createScene, createRef, Node, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
+import { createScene, createRef, Node2D, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
 import { STAGE, SAMPLES, TRAVELLING_SAMPLE, sampleGrid, sampleRow } from "../../../shared/effect-demo";
 
 const LABEL = 'Trails';
@@ -26,8 +26,8 @@ const SWEEP = 0.6;
 export default createScene(function* (stage) {
     stage.set({ fill: STAGE });
 
-    const plain: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
-    const trailed: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
+    const plain: Reference<any>[] = SAMPLES.map(() => createRef<Node2D>());
+    const trailed: Reference<any>[] = SAMPLES.map(() => createRef<Node2D>());
 
     stage.add(sampleGrid(LABEL, [
         sampleRow(`Without ${LABEL}`, { style: TRAVELLING_SAMPLE, refs: plain }),

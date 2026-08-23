@@ -98,7 +98,7 @@ an ellipse, a path, or a run of text just like any other fill.
 The frame it shows is worked out as it paints, from **how long the node carrying
 the fill has existed** — so the clip runs on its own wherever paint is accepted:
 a `fill`, an `overlay`, inside a `stroke` or `shadow`, or in a custom node's raw
-`Graphics`. Nothing has to advance it, and a frame looks the same whether you
+`Graphics2D`. Nothing has to advance it, and a frame looks the same whether you
 scrubbed to it, exported it, or played into it.
 
 | Prop | Type | Default | Description |
@@ -312,7 +312,7 @@ Shader fills also paint a node's stroke and its shadow, so a shader-filled shape
 | `'fractalNoise'` | – | `basis`, `octaves`, `frequency`, `lacunarity`, `gain`, `seed`, `offset`, `angle`, `colors`, `stops`, `contrast`, `opacity`, `blend` |
 | `'stripe'` | – | `gap`, `strokeWidth`, `angle`, `color`, `opacity`, `blend` |
 | `'shader'` | `source` | `uniforms`, `coords`, `textures`, `opacity`, `blend` |
-| `'view3D'` | `graphics3D` | `maxPixelRatio`, `antialias`, `opacity`, `blend` |
+| `'canvas3D'` | `scene` | `maxPixelRatio`, `antialias`, `opacity`, `blend` |
 
 Every fill also takes `space` (`'local'` | `'parent'` | `'global'`), which chooses the rect it resolves against, and a plain CSS colour string is shorthand for `'solid'`.
 

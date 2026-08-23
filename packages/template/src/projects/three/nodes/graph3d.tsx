@@ -1,6 +1,6 @@
 import {
-    Geo, Graphics3D, Mat, lerpNumber, property, View3D,
-    type Color, type NodeConfig, type NormalizedColor, type View3DProps, type Vector3Input,
+    Geo, Graphics3D, Scene3D, Mat, lerpNumber, property, Canvas3D,
+    type Color, type NodeConfig, type NormalizedColor, type Canvas3DProps, type Vector3Input,
 } from "motion-script";
 import {
     lerpColor, lerpCount, lerpFinite, orbitOf, orbitPosition, resolveColor, sanitizeHeight,
@@ -89,7 +89,7 @@ export interface GridControls {
     axesSize?: number;
 }
 
-export interface Graph3DProps extends View3DProps {
+export interface Graph3DProps extends Canvas3DProps {
     /** Surfaces to plot. Each is evaluated as `z = f(x, y)` over the domain. */
     formulas: Formula[];
     camera: CameraControls;
@@ -158,10 +158,10 @@ const DEFAULT_POSITION = { x: 15, y: 12, z: 18 };
  * A 3D function grapher — plots any number of `z = f(x, y)` surfaces with a
  * helper grid and axes.
  *
- * Extends {@link View3D} (which is itself a `Node`) rather than `Node` directly:
- * `View3D` owns the bridge from the 2D scene graph into the 3D renderer, so
+ * Extends {@link Canvas3D} (which is itself a `Node2D`) rather than `Node2D` directly:
+ * `Canvas3D` owns the bridge from the 2D scene graph into the 3D renderer, so
  * subclassing it means this node only has to describe *what* to draw. It
- * overrides `view3D`, the same single seam the real render and the asset-tracking
+ * overrides `canvas3D`, the same single seam the real render and the asset-tracking
  * replay both go through.
  *
  *   <Graph3D
@@ -177,7 +177,7 @@ const DEFAULT_POSITION = { x: 15, y: 12, z: 18 };
  * tween, `to({ grid: … })` would hold the old value and snap at the end, which is
  * the standard trap for an object-valued attribute.
  */
-export class Graph3D extends View3D<Graph3DProps> {
+export class Graph3D extends Canvas3D<Graph3DProps> {
 
     /**
      * The plotted surfaces.
@@ -223,7 +223,7 @@ export class Graph3D extends View3D<Graph3DProps> {
     @property() declare zoom: number;
 
     constructor(props?: NodeConfig<Graph3D, Graph3DProps>) {
-        super(props as NodeConfig<View3D<Graph3DProps>, Graph3DProps>);
+        super(props as NodeConfig<Canvas3D<Graph3DProps>, Graph3DProps>);
         this.applyCameraDefaults(props);
     }
 
@@ -247,7 +247,7 @@ export class Graph3D extends View3D<Graph3DProps> {
     }
 
     // Re-derive the camera baseline after the base class re-creates its signals
-    // (root-node reuse only — see Node.reinit). Mirrors Rect's `group` handling.
+    // (root-node reuse only — see Node2D.reinit). Mirrors Rect's `group` handling.
     protected override reinitProps(force = false): void {
         if (this.__signals && !force) return;
         super.reinitProps(force);
@@ -256,13 +256,14 @@ export class Graph3D extends View3D<Graph3DProps> {
 
     // ---- Drawing ----------------------------------------------------------
 
-    protected override buildGraphics3D(): Graphics3D {
+    protected override buildScene3D(): Scene3D {
+        const scene = new Scene3D();
         const g3 = new Graphics3D();
         const camera = this.camera as CameraResolved;
         const grid = this.grid as unknown as GridResolved;
         const formulas = this.formulas as unknown as FormulaResolved[];
 
-        g3.perspective({
+        scene.perspective({
             fov: 45,
             near: 0.1,
             far: 1000,
@@ -276,14 +277,14 @@ export class Graph3D extends View3D<Graph3DProps> {
             lookAt: 0,
         });
 
-        g3.background(this.background);
+        scene.background(this.background);
 
         // Lighting mirrors the reference: a soft ambient fill plus a key light and
         // a weaker back light, so the underside of a surface stays readable when
         // the camera orbits beneath it.
-        g3.ambient({ intensity: 0.4 })
-            .directional({ intensity: 0.6, position: [10, 20, 10] })
-            .directional({ intensity: 0.4, position: [-10, -20, -10] });
+        scene.light({ type: "ambient", intensity: 0.4 })
+            .light({ type: "directional", intensity: 0.6 }, { position: [10, 20, 10] })
+            .light({ type: "directional", intensity: 0.4 }, { position: [-10, -20, -10] });
 
         if (grid.showGrid) this.addGrid(g3, grid);
         if (grid.showAxes) this.addAxes(g3, grid.axesSize);
@@ -295,7 +296,7 @@ export class Graph3D extends View3D<Graph3DProps> {
             this.addSurface(g3, formula, index, domain, segments, maxHeight);
         });
 
-        return g3;
+        return scene.draw(g3);
     }
 
     /**

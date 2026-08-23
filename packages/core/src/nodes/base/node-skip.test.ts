@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Rect } from "@/nodes/geometry/rect-node";
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { NullRenderContext } from "@/render/null-render-context";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
@@ -25,7 +25,7 @@ import { ContextMap } from "@/util/context";
  * The tracking context with the *painting* capability flipped on.
  *
  * Stands in for a real renderer without stubbing one: `NullRenderContext` is
- * already a complete, concrete `RenderContext`, and the only thing that decides
+ * already a complete, concrete `RenderContext2D`, and the only thing that decides
  * whether the invisible-subtree skip applies is `drawsVisibleOnly`. Flipping it
  * exercises exactly the branch a Skia context would take.
  */
@@ -36,15 +36,15 @@ class PaintingContext extends NullRenderContext {
 /** Runs `body` while counting how many shape ops any node submitted. */
 function countingOps(body: () => void): number {
     let ops = 0;
-    const original = Graphics.prototype.rect;
-    Graphics.prototype.rect = function (this: Graphics, ...args: never[]) {
+    const original = Graphics2D.prototype.rect;
+    Graphics2D.prototype.rect = function (this: Graphics2D, ...args: never[]) {
         ops++;
         return original.apply(this, args as never);
     } as never;
     try {
         body();
     } finally {
-        Graphics.prototype.rect = original;
+        Graphics2D.prototype.rect = original;
     }
     return ops;
 }

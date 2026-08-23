@@ -1,4 +1,4 @@
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
@@ -286,7 +286,7 @@ export class StateEvaluator {
      * because the layers sit outside the scene root, neither is touched by the
      * scene camera or its clip.
      */
-    render(context: RenderContext) {
+    render(context: RenderContext2D) {
         this.globals?.backgrounds.render(context);
         this.currentScene.render(context);
         this.globals?.overlays.render(context);
@@ -561,7 +561,7 @@ export class StateEvaluator {
      * synchronous {@link stateAt} and the time-sliced {@link stateAtAsync} can
      * never drift apart in per-frame ordering or semantics.
      *
-     * `ellapse()` both ticks and samples motion for the frame (see `Node.ellapse`),
+     * `ellapse()` both ticks and samples motion for the frame (see `Node2D.ellapse`),
      * so running it on every advanced frame — not just rendered ones — keeps
      * velocity-derived effects (motion blur) correct after a scrub/rewind.
      *

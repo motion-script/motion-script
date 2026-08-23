@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Ellipse } from '@/nodes/geometry/ellipse-node';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
@@ -7,10 +7,10 @@ import { SizeInput } from '@/attributes/layout/size';
 
 /**
  * A fixed-size leaf that also exposes the box its parent laid it into — the
- * `layoutRect` is protected on Node, so a test subclass is the supported seam
+ * `layoutRect` is protected on Node2D, so a test subclass is the supported seam
  * for reading a child's resolved position. Mirrors the one in rect-node.test.ts.
  */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(width: SizeInput, height: SizeInput) {
         super({ width, height });
     }
@@ -20,20 +20,20 @@ class Tile extends Node {
 }
 
 /** Read a node's own laid-out box (protected `layoutRect` seam). */
-class ProbeNode extends Node {
+class ProbeNode extends Node2D {
     get rect(): BoxBounds {
         return this.layoutRect;
     }
 }
 
-describe('Node – base freeform hug measure', () => {
+describe('Node2D – base freeform hug measure', () => {
     const scope = new FakeMeasurer();
 
-    it('a plain Node with children hugs to its largest child (basic freeform), not 0', () => {
+    it('a plain Node2D with children hugs to its largest child (basic freeform), not 0', () => {
         // Regression: the base measure resolved "hug" against a content size of
-        // 0, so any non-Rect container (plain Node, Ellipse, Camera, …)
+        // 0, so any non-Rect container (plain Node2D, Ellipse, Camera, …)
         // collapsed to 0×0 and rendered nothing. It now hugs like a freeform Rect.
-        const node = new Node({ children: [new Tile(400, 300)] });
+        const node = new Node2D({ children: [new Tile(400, 300)] });
         // Base "populated → hug" default.
         expect((node as any).width).toBe('hug');
         expect((node as any).height).toBe('hug');
@@ -44,21 +44,21 @@ describe('Node – base freeform hug measure', () => {
     });
 
     it('hug takes the max child extent per axis (children overlap, do not sum)', () => {
-        const node = new Node({ children: [new Tile(400, 200), new Tile(250, 500)] });
+        const node = new Node2D({ children: [new Tile(400, 200), new Tile(250, 500)] });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
         expect(size.width).toBe(400); // max, not 400+250
         expect(size.height).toBe(500); // max, not 200+500
     });
 
     it('padding expands the hugged size and is reserved around the content', () => {
-        const node = new Node({ padding: 40, children: [new Tile(400, 300)] });
+        const node = new Node2D({ padding: 40, children: [new Tile(400, 300)] });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
         expect(size.width).toBe(480); // 400 + 40*2
         expect(size.height).toBe(380); // 300 + 40*2
     });
 
-    it('an empty Node fills its parent (childless default), measured as before', () => {
-        const node = new Node({});
+    it('an empty Node2D fills its parent (childless default), measured as before', () => {
+        const node = new Node2D({});
         expect((node as any).width).toBe('fill');
         expect((node as any).height).toBe('fill');
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
@@ -67,14 +67,14 @@ describe('Node – base freeform hug measure', () => {
     });
 
     it('explicit width/height still win over the hug default', () => {
-        const node = new Node({ width: 800, height: 600, children: [new Tile(400, 400)] });
+        const node = new Node2D({ width: 800, height: 600, children: [new Tile(400, 400)] });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
         expect(size.width).toBe(800);
         expect(size.height).toBe(600);
     });
 
     it('a mixed axis: hug width + fixed height resolves each independently', () => {
-        const node = new Node({ height: 720, children: [new Tile(500, 300)] });
+        const node = new Node2D({ height: 720, children: [new Tile(500, 300)] });
         const size = node.measure({ maxWidth: 1920, maxHeight: 1080 }, scope);
         expect(size.width).toBe(500); // hugged to child
         expect(size.height).toBe(720); // fixed

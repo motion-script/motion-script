@@ -9,7 +9,7 @@ import { PathBuilder } from "./descriptors/path-builder";
 
 /**
  * The shape ops a {@link Clip} can record — the same geometry primitives a
- * {@link Graphics} can draw, minus text/image (which have no clippable outline).
+ * {@link Graphics2D} can draw, minus text/image (which have no clippable outline).
  * Each carries the partial descriptor state for that shape.
  */
 export type ClipShapeOp =
@@ -24,12 +24,12 @@ export type ClipShapeOp =
  * A single recorded op in a {@link Clip}. Shape ops add geometry to the clip
  * region; `cut` subtracts the last-declared shape from the ones before it. The
  * renderer replays this list into a single clip path via
- * `RenderContext.beginClip()`.
+ * `RenderContext2D.beginClip()`.
  */
 export type ClipOp = ClipShapeOp | { kind: "cut" };
 
 /**
- * A renderer-agnostic, chainable clip-region builder — `Graphics` for clipping.
+ * A renderer-agnostic, chainable clip-region builder — `Graphics2D` for clipping.
  *
  * `Clip` records a sequence of shape declarations (and optional `cut()`s) that
  * the renderer unions into a single clip path. Multiple shapes combine, so a
@@ -91,7 +91,7 @@ export class Clip {
     /**
      * Use the last-declared shape as a cutter: union the shapes before it and
      * subtract that last shape, punching a hole in the clip region. Mirrors
-     * {@link Graphics.cut}.
+     * {@link Graphics2D.cut}.
      */
     cut(): this {
         this._ops.push({ kind: "cut" });
@@ -100,7 +100,7 @@ export class Clip {
 
     // ─── Consumption ─────────────────────────────────────────────────────────
 
-    /** The recorded ops, in order. Consumed by `RenderContext.beginClip()`. */
+    /** The recorded ops, in order. Consumed by `RenderContext2D.beginClip()`. */
     ops(): readonly ClipOp[] {
         return this._ops;
     }

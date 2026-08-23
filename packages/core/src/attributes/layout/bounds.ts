@@ -4,7 +4,7 @@ import { Vector2 } from "@/attributes/layout/vector2";
 /**
  * An axis-aligned box as an origin plus a size — `{ x, y, width, height }` in
  * pixels. The general shape for "a rectangle somewhere", used for a node's
- * laid-out cell, for the extent of what it draws ({@link Node._localBounds}),
+ * laid-out cell, for the extent of what it draws ({@link Node2D._localBounds}),
  * and anywhere else a positioned box is passed around.
  *
  * What `x`/`y` mean is **not** part of the type: the layout engine's rects are

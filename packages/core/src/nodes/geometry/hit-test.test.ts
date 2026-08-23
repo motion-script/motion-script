@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Rect } from '@/nodes/geometry/rect-node';
 import { Ellipse } from '@/nodes/geometry/ellipse-node';
 import { Polygram } from '@/nodes/geometry/polygram-node';
@@ -14,7 +14,7 @@ import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { nodeBox, pickNode } from '@/runtime/node-picking';
 
 /**
- * `Node.hitTestSelf` is the seam that decides what "clicking a node" means. The
+ * `Node2D.hitTestSelf` is the seam that decides what "clicking a node" means. The
  * default is the layout box; `ShapeNode` narrows it to the outline the node
  * already declares for clipping, and `Line` — which has no outline *and* no
  * layout size — tests its polyline directly.
@@ -25,7 +25,7 @@ import { nodeBox, pickNode } from '@/runtime/node-picking';
 
 const scope = new FakeMeasurer();
 
-function place(node: Node, rect: BoxBounds): void {
+function place(node: Node2D, rect: BoxBounds): void {
     node.layout(rect, scope);
 }
 
@@ -36,7 +36,7 @@ function expectPoint(actual: Vector2, x: number, y: number): void {
 }
 
 /** Put `node` alone under a scene root and hand back a point-tester. */
-function stage(node: Node, size: BoxBounds): (p: Vector2, tolerance?: number) => boolean {
+function stage(node: Node2D, size: BoxBounds): (p: Vector2, tolerance?: number) => boolean {
     const root = new RootNode({});
     root.addChild(node);
     place(root, { x: 0, y: 0, width: 800, height: 600 });

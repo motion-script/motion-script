@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { createRef, Reference } from "@/util/reference";
 import { createScene } from "@/nodes/scene/scene-node";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -36,7 +36,7 @@ const TILE = 200;
 const REMOVE_DURATION = 1.0; // seconds → 10 frames of shrink
 
 /** A probe leaf that surfaces its laid-out box for assertions. */
-class Probe extends Node {
+class Probe extends Node2D {
     get rect(): BoxBounds {
         return this.layoutRect;
     }

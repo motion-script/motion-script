@@ -45,7 +45,7 @@ describe('Text – path and selections are mutually exclusive', () => {
         let captured: any;
         const fakeCtx = { draw: (g: any) => { captured = g; } } as any;
         (t as any).renderSelf(fakeCtx);
-        // The text op is the first op recorded on the Graphics.
+        // The text op is the first op recorded on the Graphics2D.
         return (captured as any)._ops.find((o: any) => o.kind === 'text').state;
     };
 

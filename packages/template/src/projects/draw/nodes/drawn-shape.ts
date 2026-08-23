@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, PathBuilder,
     FillSpace, FillResolved, property,
 
 } from "motion-script";
@@ -19,7 +19,7 @@ export interface DrawnShapeProps extends ShapeProps {
  * A node that paints one complex silhouette *entirely from draw commands*.
  *
  * Rather than composing JSX `Rect`/`Ellipse`/`Path`/`BooleanGroup` nodes, the
- * whole figure is recorded as a single {@link Graphics} command list inside
+ * whole figure is recorded as a single {@link Graphics2D} command list inside
  * {@link renderSelf}: an outer rounded **rect**, an **ellipse** lobe and a
  * bezier **path** wing are accumulated into one surface, then two holes are
  * punched with `.cut()` (an ellipse eye and a rect slot). Because the shapes
@@ -52,7 +52,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
         return (this.fill as FillResolved[]).map(fill => ({ ...fill, space }));
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const e = this.extent;
         // Shared frame for the path commands so they sit in the same centred box
         // as the rect/ellipse offsets rather than self-centering on their bbox.
@@ -66,7 +66,7 @@ export class DrawnShape extends ShapeNode<DrawnShapeProps> {
             .bezierCurveTo(e * 0.2, -e * 0.45, e * 0.2, -e * 0.0, e * 0.1, e * 0.55)
             .close();
 
-        const g = new Graphics()
+        const g = new Graphics2D()
             // ── Solid body, accumulated as one surface (y-up: +y is up) ───────
             // Outer rounded rect — the main mass.
             .rect({ x: -e * 0.15, y: -20, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })

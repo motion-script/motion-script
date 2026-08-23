@@ -1,7 +1,7 @@
 import { AssetCatalog } from "@/assets/catalog";
 import { Clip } from "@/render/clip";
-import { Graphics } from "@/render/graphics";
-import { RenderContext } from "@/render/render-context";
+import { Graphics2D } from "@/render/graphics2d";
+import { RenderContext2D } from "@/render/render-context2d";
 import type { BooleanOperation } from "@/attributes/mask/boolean";
 import type { MaskOptions } from "@/attributes/mask/mask";
 import type { Scene } from "@/nodes/scene/scene-node";
@@ -29,7 +29,7 @@ import { FakeAssetCatalog, FakeMeasurer, asCatalog } from "./runtime.fixtures";
  * most changes worth making — a stopwatch cannot tell a real 15% win from noise,
  * and it certainly cannot tell a *regression* from a lucky run. So the primary
  * output is a set of **deterministic counts**: how many nodes the walk visited,
- * how many `Graphics` it submitted, how many ops those carried. Those numbers are
+ * how many `Graphics2D` it submitted, how many ops those carried. Those numbers are
  * identical on every run of the same code, so a change of one is a change in
  * behaviour and nothing else. Timings ride along for scale, and should be read as
  * an order of magnitude rather than a measurement.
@@ -41,7 +41,7 @@ export interface PlaybackCounts {
     frames: number;
     /** `begin()` calls — one per node the render walk actually entered. */
     nodesVisited: number;
-    /** `draw()` calls — one per `Graphics` handed to the renderer. */
+    /** `draw()` calls — one per `Graphics2D` handed to the renderer. */
     graphicsDrawn: number;
     /** Total ops across those, i.e. how much the renderer was asked to do. */
     opsDrawn: number;
@@ -52,7 +52,7 @@ export interface PlaybackCounts {
     /** `measureText()` calls, the expensive half of layout in a text-heavy scene. */
     textMeasures: number;
     /**
-     * Distinct `Graphics` **instances** seen across the whole run.
+     * Distinct `Graphics2D` **instances** seen across the whole run.
      *
      * The one number that can see descriptor *reuse*. `graphicsDrawn` cannot: a
      * cache avoids **building** a descriptor, not submitting one, so the draw
@@ -81,14 +81,14 @@ export interface PlaybackProfile {
 }
 
 /**
- * A concrete {@link RenderContext} that draws nothing and counts everything.
+ * A concrete {@link RenderContext2D} that draws nothing and counts everything.
  *
  * Declares `drawsVisibleOnly` (the default), so it takes the same branches a real
  * painting backend does — including the invisible-subtree skip, which is the
  * whole point: a fake context that behaved like the tracker would report the walk
  * a *precomp* does, not the one a frame does.
  */
-export class CountingRenderContext extends RenderContext {
+export class CountingRenderContext extends RenderContext2D {
     nodesVisited = 0;
     graphicsDrawn = 0;
     opsDrawn = 0;
@@ -96,7 +96,7 @@ export class CountingRenderContext extends RenderContext {
     transforms = 0;
     textMeasures = 0;
     /** Identities seen, so a reused descriptor is counted once. */
-    readonly seen = new Set<Graphics>();
+    readonly seen = new Set<Graphics2D>();
 
     reset(): void {
         this.nodesVisited = 0;
@@ -108,12 +108,12 @@ export class CountingRenderContext extends RenderContext {
         this.seen.clear();
     }
 
-    override begin(state: Parameters<RenderContext["begin"]>[0]): void {
+    override begin(state: Parameters<RenderContext2D["begin"]>[0]): void {
         this.nodesVisited++;
         super.begin(state);
     }
 
-    protected drawGraphics(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics2D): void {
         this.graphicsDrawn++;
         this.opsDrawn += graphics.ops().length;
         this.seen.add(graphics);
@@ -130,7 +130,7 @@ export class CountingRenderContext extends RenderContext {
     unmount(): void { }
     screenshot(): string | undefined { return undefined; }
 
-    transform(_state: Partial<TransformState>): RenderContext {
+    transform(_state: Partial<TransformState>): RenderContext2D {
         this.transforms++;
         return this;
     }

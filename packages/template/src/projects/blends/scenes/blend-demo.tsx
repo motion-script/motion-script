@@ -41,7 +41,7 @@ function generateColorCircleCoordinates(radius: number, overlapFactor: number = 
 export interface BlendDemoOpts {
     /**
      * The `mix-blend-mode` keyword this scene demonstrates. Named `mode` (not
-     * `blend`) to avoid shadowing the {@link Node.blend} layer-blend prop, which
+     * `blend`) to avoid shadowing the {@link Node2D.blend} layer-blend prop, which
      * would isolate the whole scene node instead of the per-fill blend we want.
      */
     mode: BlendMode;

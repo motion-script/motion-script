@@ -7,8 +7,8 @@ import { DrawnShapePivot } from "../nodes/drawn-shape-pivot";
 const GRADIENT = ['#6990DD', '#E8617C', '#F5C26B'];
 
 /**
- * Tests the **cardinal-point positioning API** on `Graphics` shapes —
- * `new Graphics().rect({ topRight: { x, y }, width, height })` and friends.
+ * Tests the **cardinal-point positioning API** on `Graphics2D` shapes —
+ * `new Graphics2D().rect({ topRight: { x, y }, width, height })` and friends.
  *
  * One cell per cardinal anchor (`center`, `topLeft`, `topRight`, …). In each, a
  * rect is positioned *only* by that anchor onto a fixed off-centre target, and a
@@ -63,7 +63,7 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'vertical'} padding={64} gap={24}>
-            <Text fontFamily={'Pixelify Sans'} text={'Graphics shape — cardinal anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
+            <Text fontFamily={'Pixelify Sans'} text={'Graphics2D shape — cardinal anchors'} fontSize={80} fill={'gray'} width={'fill'} textAlign={'start'} />
             <Rect width={'fill'} height={'fill'} flow={'vertical'} gap={32}>
                 {rows}
             </Rect>

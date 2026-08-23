@@ -1,6 +1,6 @@
 
 
-import { Node, Rect, Text, Reference } from "motion-script";
+import { Node, Node2D, Rect, Text, Reference } from "motion-script";
 
 /**
  * Shared scaffolding for the layout showcase scenes.

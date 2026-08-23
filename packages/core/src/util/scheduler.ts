@@ -39,7 +39,7 @@ function messageChannelYield(): Promise<void> | null {
     if (!channel) {
         channel = new MessageChannel();
         channel.port1.onmessage = () => queue.shift()?.();
-        // Node keeps the event loop alive for an open port, which would hang
+        // Node2D keeps the event loop alive for an open port, which would hang
         // vitest on exit. Browsers have no unref and don't need one.
         (channel.port1 as unknown as { unref?: () => void }).unref?.();
         (channel.port2 as unknown as { unref?: () => void }).unref?.();
@@ -64,7 +64,7 @@ function messageChannelYield(): Promise<void> | null {
  * 1. `scheduler.yield()` — resumes at continuation priority, so a sliced task
  *    isn't starved behind unrelated work queued while it was parked.
  * 2. `MessageChannel` — a true macrotask with no clamping, in browsers and
- *    Node ≥ 15.
+ *    Node2D ≥ 15.
  * 3. `setTimeout(0)` — last resort; clamps to ~4 ms once nested, capping the
  *    slice rate, but always available.
  */

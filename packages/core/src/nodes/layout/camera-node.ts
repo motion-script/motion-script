@@ -1,5 +1,6 @@
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Node2D, CameraScope, NodeConfig  } from "@/nodes/base/node2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
@@ -11,7 +12,6 @@ import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
-import { CameraScope, NodeConfig } from "../base/node";
 
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
@@ -63,7 +63,7 @@ export class Camera extends ShapeNode<CameraProps> {
     }
 
     // ---- Camera motion helpers --------------------------------------------
-    // Mirror the base Node `moveTo`/`rotateTo` family for the camera's own
+    // Mirror the base Node2D `moveTo`/`rotateTo` family for the camera's own
     // viewport props (`zoom`, `lookAt`, `heading`).
 
     /**
@@ -99,8 +99,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // ---- Drawing ----------------------------------------------------------
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -122,9 +122,9 @@ export class Camera extends ShapeNode<CameraProps> {
     // ---- Layout -----------------------------------------------------------
 
     // No flex/freeform layout — the world (children) is freeform-laid-out (centered)
-    // by the base Node.layout default, then viewed through the camera.
+    // by the base Node2D.layout default, then viewed through the camera.
 
-    // No custom measure — the base `Node.measure` hugs children stack-style on a
+    // No custom measure — the base `Node2D.measure` hugs children stack-style on a
     // `"hug"` axis, which is exactly the camera's convention (its world is
     // centered inside the viewport box). So a bare `<Camera>` sizes itself to its
     // world, and an explicit `width`/`height`/`'fill'` still resolves as given.
@@ -140,7 +140,7 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // Render the world through the camera viewport transform instead of the
     // straight `renderChildren` ShapeNode uses for its content.
-    override renderChildren(ctx: RenderContext): void {
+    override renderChildren(ctx: RenderContext2D): void {
         const rect = this.layoutRect;
         const w = rect?.width ?? 0;
         const h = rect?.height ?? 0;
@@ -154,7 +154,7 @@ export class Camera extends ShapeNode<CameraProps> {
             this.heading,
         );
 
-        for (const child of this._children) child.render(ctx);
+        for (const child of this._children) if (child instanceof Node2D) child.render(ctx);
 
         ctx.endCamera();
     }

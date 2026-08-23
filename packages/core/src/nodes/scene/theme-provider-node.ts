@@ -1,9 +1,9 @@
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { ContextMap } from "@/util/context";
 import { ThemeToken, DataToken, SeedToken } from "@/runtime/builtin-context";
 
-export interface ThemeProviderProps extends NodeProps {
+export interface ThemeProviderProps extends Node2DProps {
     /** Named values (e.g. colors) merged onto any ancestor theme, read via
      * `node.useContext(ThemeToken)`. */
     theme: Record<string, unknown>;
@@ -23,7 +23,7 @@ export interface ThemeProviderProps extends NodeProps {
  *
  * Layout-transparent like {@link Provider} — it carries context, not appearance.
  */
-export class ThemeProvider extends Node<ThemeProviderProps> {
+export class ThemeProvider extends Node2D<ThemeProviderProps> {
     @property({ default: undefined }) declare readonly theme?: Record<string, unknown>;
     @property({ default: undefined }) declare readonly data?: Record<string, unknown>;
     @property({ default: undefined }) declare readonly seed?: string | number;

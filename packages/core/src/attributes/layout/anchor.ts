@@ -18,7 +18,7 @@ export type AnchorKey =
 
 /**
  * A normalised point inside a box — the single value type behind every "which
- * point of this thing" prop: `Node.pivot` (what it rotates about), a container's
+ * point of this thing" prop: `Node2D.pivot` (what it rotates about), a container's
  * `align` (where children sit), a gradient's `center` (where it emits from) and
  * an image fill's `anchor` (which point of the source meets the box).
  *

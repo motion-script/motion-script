@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'exclusion'`, a lower-contrast cousin of `'difference'`. */
+/** Node2D-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'exclusion'`, a lower-contrast cousin of `'difference'`. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const circle = createRef<Rect>();

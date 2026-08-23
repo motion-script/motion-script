@@ -323,7 +323,7 @@ export class AssetTracker {
  * Coerce a declared weight to the number a {@link FontRecord} stores.
  *
  * Accepts a number or a string because a node may hold either — `Text.fontWeight`
- * is a number, a `Graphics` text op's is whatever the author wrote. Anything
+ * is a number, a `Graphics2D` text op's is whatever the author wrote. Anything
  * unparseable lands on 400, which is what an unspecified weight means anyway.
  */
 function normalizeWeight(weight: number | string | undefined): number {

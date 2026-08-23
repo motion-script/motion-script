@@ -77,7 +77,7 @@ ${taps}
  * Derived from the node's **sampled velocity**, exactly as `motionBlur` is,
  * rather than from a buffer of past frames. That choice is what makes the effect
  * a pure function of the playhead: `NodeRenderState.velocity` is sampled on every
- * *advanced* frame, not merely every rendered one (see `Node`'s motion-sampling
+ * *advanced* frame, not merely every rendered one (see `Node2D`'s motion-sampling
  * notes), so it is already correct after a backward scrub — which is precisely
  * the case a frame-history implementation cannot serve, because seeking replays
  * the generator without drawing the frames it passes through.

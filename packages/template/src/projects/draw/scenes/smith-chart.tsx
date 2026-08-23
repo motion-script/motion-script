@@ -2,7 +2,7 @@ import { createScene, createRef, Text, Rect, easeInOut } from "motion-script";
 import { SmithChart } from "../nodes/smith-chart";
 
 /**
- * Shows a Smith chart drawn entirely from `Graphics` commands (see
+ * Shows a Smith chart drawn entirely from `Graphics2D` commands (see
  * {@link SmithChart}). The whole conformal grid — constant-resistance circles,
  * orthogonal constant-reactance arcs clipped to the boundary, the boundary ring
  * and the 360° degree scale — is one command list inside the node's

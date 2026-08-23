@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `blend`: a bright circle isolates and blends against a colorful backdrop via `'luminosity'`, taking the circle's luminosity while keeping the backdrop's hue and saturation. */
+/** Node2D-level `blend`: a bright circle isolates and blends against a colorful backdrop via `'luminosity'`, taking the circle's luminosity while keeping the backdrop's hue and saturation. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const circle = createRef<Rect>();

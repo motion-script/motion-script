@@ -1,6 +1,6 @@
 import { AssetManager } from "../assets/manager";
 import { Measurer } from "../render/measurer";
-import { RenderContext } from "../render/render-context";
+import { RenderContext2D } from "../render/render-context2d";
 import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
@@ -11,7 +11,7 @@ import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { NodeBox, collectBoxes, nodeBox, pickNode } from "./node-picking";
@@ -26,7 +26,7 @@ export type NodeOverride = Record<string, unknown>;
 
 /** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
-    renderContext: RenderContext;
+    renderContext: RenderContext2D;
     measureScope: Measurer;
     storageAdapter: StorageAdapter;
     masterClock: MasterClock;
@@ -74,7 +74,7 @@ export type ControllerParams = {
  * `screenshot`, `getTreeState`, and `getNodeState`.
  */
 export class PlaybackController {
-    private renderContext: RenderContext;
+    private renderContext: RenderContext2D;
     private measureScope: Measurer;
     private storageAdapter: StorageAdapter;
     private masterClock: MasterClock;
@@ -845,14 +845,14 @@ export class PlaybackController {
     }
 }
 
-// Every Node is a container (children may be empty); kept for callers that
+// Every Node2D is a container (children may be empty); kept for callers that
 // want an explicit "has children" check.
-export function isParentNode(node: Node): boolean {
+export function isParentNode(node: Node2D): boolean {
     return node.children.length > 0;
 }
 
 function nodeToTreeState(
-    node: Node,
+    node: Node2D,
     path: string,
     lifespans?: ReadonlyMap<string, NodeLifespan>,
     sceneStart = 0,
@@ -906,9 +906,9 @@ function waveformsByOwner(requests: readonly AudioRequest[]): Map<string, Wavefo
  * its node, or `null` when the tree no longer has that slot. The counterpart to
  * {@link nodePath}, which builds the same keys during the tree walk.
  */
-function findNodeByPath(root: Node, path: string): Node | null {
+function findNodeByPath(root: Node2D, path: string): Node2D | null {
     if (path === "") return root;
-    let node: Node = root;
+    let node: Node2D = root;
     for (const seg of path.split(".")) {
         const next = node.children[Number(seg)];
         if (!next) return null;
@@ -917,7 +917,7 @@ function findNodeByPath(root: Node, path: string): Node | null {
     return node;
 }
 
-function findNode(root: Node, id: string): Node | null {
+function findNode(root: Node2D, id: string): Node2D | null {
     if (root.id === id) return root;
 
     for (const child of root.children) {

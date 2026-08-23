@@ -3,7 +3,7 @@ import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
 import { Column } from "@/nodes/layout/column-node";
-import { Node, NodeProps, NodeConfig } from "@/nodes/base/node";
+import { Node2D, Node2DProps, NodeConfig } from "@/nodes/base/node2d";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
@@ -35,12 +35,12 @@ interface Stat {
     value: string;
 }
 
-interface StatBoardProps extends NodeProps {
+interface StatBoardProps extends Node2DProps {
     stats: Stat[];
 }
 
 /** Builds one Text child per stat taken from the `stats` prop — the scene's StatBoard. */
-class StatBoard extends Node<StatBoardProps> {
+class StatBoard extends Node2D<StatBoardProps> {
     constructor(props: NodeConfig<StatBoard, StatBoardProps>) {
         super(props);
         const raw = props.stats;

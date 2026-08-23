@@ -1,5 +1,5 @@
 import {
-    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
+    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
     AnchorKey, Anchor, property, resolveAnchor, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
@@ -18,7 +18,7 @@ interface PivotPolygonProps extends ShapeProps {
 }
 
 /**
- * Draws a `Graphics().polygon({ pivot, x: 0, y: 0, rotation, scale })`
+ * Draws a `Graphics2D().polygon({ pivot, x: 0, y: 0, rotation, scale })`
  * triangle (an asymmetric silhouette so rotation reads clearly) plus a marker
  * dot at the drawn origin: the named corner/edge of the polygon's bounding box
  * stays pinned to the marker as the shape turns and grows about that same
@@ -34,8 +34,8 @@ class PivotPolygon extends ShapeNode<PivotPolygonProps> {
         super(props);
     }
 
-    protected renderSelf(draw: RenderContext): void {
-        const tri = new Graphics()
+    protected renderSelf(draw: RenderContext2D): void {
+        const tri = new Graphics2D()
             .polygon({
                 width: 70, height: 70, sides: 3, pivot: this.anchor, x: 0, y: 0,
                 rotation: this.shapeRotation, scale: this.shapeScale,
@@ -43,7 +43,7 @@ class PivotPolygon extends ShapeNode<PivotPolygonProps> {
             .fill('primary');
         draw.draw(tri);
 
-        const marker = new Graphics()
+        const marker = new Graphics2D()
             .ellipse({ width: 10, height: 10, x: 0, y: 0 })
             .fill('accent');
         draw.draw(marker);
@@ -51,7 +51,7 @@ class PivotPolygon extends ShapeNode<PivotPolygonProps> {
 }
 
 /**
- * `Graphics().polygon({ pivot, x: 0, y: 0 })` for all nine named anchors,
+ * `Graphics2D().polygon({ pivot, x: 0, y: 0 })` for all nine named anchors,
  * animating the descriptor's own `rotation`/`scale` (not the node-level
  * transform): with no cardinal-anchor shorthand, a plain `pivot` combined with
  * `x`/`y` should still land that named corner/edge of the polygon's bounding

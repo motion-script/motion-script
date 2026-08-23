@@ -1,22 +1,25 @@
 /**
- * `Graphics3D` op list → a live, cached `THREE.Scene`.
+ * `Scene3D` op list → a live, cached `THREE.Scene`.
  *
- * A `Graphics3D` is rebuilt from scratch every frame (that's what makes the whole
+ * A `Scene3D` is rebuilt from scratch every frame (that's what makes the whole
  * design seekable), but the three objects it describes are *not*. Rebuilding a
  * scene graph at 60 fps would reallocate vertex buffers and recompile shader
  * programs continuously. So this keeps one live object per op and mutates it
  * between frames, rebuilding only when something structural actually changed.
  *
  * ── Identity ──────────────────────────────────────────────────────────────────
- * An op is keyed by its **structural path** — its `push`/`pop` nesting plus its
- * index within that group — and its discriminant, e.g. `"2.0|mesh"`. That is
- * stable for a builder that emits the same ops in the same order every frame,
- * which is the normal case, and needs nothing from the author.
+ * An op is keyed by its **structural path** plus its discriminant, e.g.
+ * `"2.0|mesh"`. Including the discriminant means a slot that changes from `mesh`
+ * to `light` misses the cache and rebuilds rather than trying to mutate the wrong
+ * object type.
  *
- * Including the discriminant means a slot that changes from `mesh` to `light`
- * misses the cache and rebuilds, rather than trying to mutate the wrong object
- * type. A conditional builder (`if (t > 2) g.box(...)`) renumbers every later slot
- * and rebuilds the tail — the author opts out of that with `key`.
+ * A `push` carrying an explicit `key` — which is every group a `Node3D` opens,
+ * keyed by its node id — *restarts* the path rather than extending it. That is
+ * what gives the cache real identity: a conditional sibling appearing or
+ * disappearing renumbers nothing inside its neighbours, because their paths are
+ * relative to their own node rather than to their index among siblings. Ops a
+ * single node emits are still positional within that node, which is stable
+ * because a node builds its `Graphics3D` the same way every frame.
  *
  * ── Sweeping ──────────────────────────────────────────────────────────────────
  * Every entry touched this frame is stamped with the frame counter. Anything not
@@ -26,10 +29,10 @@
 
 import type * as THREE from "three";
 import type {
-    Camera3D, Color, Graphics3D, Graphics3DOp, Geometry3D, Material3D, Transform3D,
+    CameraData3D, Color, Geometry3D, Material3D, Scene3D, Scene3DOp, Transform3D,
 } from "@motion-script/core";
 import type { ThreeModule } from "./bridge";
-import { view3DRendererHost } from "./renderer-seam";
+import { canvas3DRendererHost } from "./renderer-seam";
 import { shadowType, toneMapping, writeColor } from "./handlers/constants";
 import {
     createGeometry, geometrySignature, isDynamicGeometry,
@@ -42,10 +45,13 @@ import { applyTransform } from "./handlers/transform";
 import { applyBackground, applyEnvironment, applyFog } from "./handlers/settings";
 import type { TextureResolver } from "./handlers/texture";
 
+/** The ops that put a live object in the scene — everything but the tree shaping. */
+type DrawableOp = Exclude<Scene3DOp, { kind: "push" } | { kind: "pop" } | { kind: "camera" }>;
+
 /** One cached object, with the signatures that decide mutate-vs-rebuild. */
 interface CachedObject {
     object: THREE.Object3D;
-    kind: Graphics3DOp["kind"];
+    kind: Scene3DOp["kind"];
     geometrySig?: string;
     materialSig?: string;
     lightSig?: string;
@@ -54,7 +60,7 @@ interface CachedObject {
      * descriptor supplied one.
      *
      * Kept per cached object rather than on the descriptor because the descriptor
-     * is rebuilt from scratch every frame — a `Graphics3D` is a recording, so
+     * is rebuilt from scratch every frame — a `Scene3D` is a recording, so
      * there is no stable object to hang "what did I evaluate last time" on. This
      * entry *is* the thing that persists across frames.
      */
@@ -66,12 +72,12 @@ interface CachedObject {
 }
 
 /**
- * The live three scene for one `View3D` node.
+ * The live three scene for one `Canvas3D` node.
  *
  * One graph per node instance: two 3D nodes in a project each need their own
  * scene, camera and cache, or they'd overwrite each other's objects.
  */
-export class View3DGraph {
+export class Canvas3DGraph {
     private readonly scene: THREE.Scene;
     private camera: THREE.Camera;
     private readonly cache = new Map<string, CachedObject>();
@@ -88,7 +94,7 @@ export class View3DGraph {
      * `width`/`height` are device pixels, used for the camera's aspect ratio.
      */
     sync(
-        g3: Graphics3D,
+        g3: Scene3D,
         width: number,
         height: number,
         textures: TextureResolver,
@@ -101,23 +107,38 @@ export class View3DGraph {
         // joining it yields the structural path. `parents` tracks where to attach.
         const counters: number[] = [-1];
         const parents: THREE.Object3D[] = [this.scene];
+        // The path each level's indices are relative to. A keyed group resets it,
+        // so a node's contents are numbered within that node rather than within
+        // the whole scene.
+        const roots: string[] = [""];
+        let cameraSeen = false;
 
         for (const op of g3.ops()) {
             if (op.kind === "pop") {
-                // Guard against a malformed list; Graphics3D.assertBalanced()
+                // Guard against a malformed list; Scene3D.assertBalanced()
                 // normally catches this at the author's source first.
-                if (parents.length > 1) { parents.pop(); counters.pop(); }
+                if (parents.length > 1) { parents.pop(); counters.pop(); roots.pop(); }
                 continue;
             }
 
             counters[counters.length - 1]++;
-            const path = counters.join(".");
+            const root = roots[roots.length - 1];
+            const path = root ? `${root}.${counters[counters.length - 1]}` : String(counters[counters.length - 1]);
             const parent = parents[parents.length - 1];
 
             if (op.kind === "push") {
                 const group = this.resolveGroup(path, op.transform, parent);
                 parents.push(group);
                 counters.push(-1);
+                roots.push(op.transform?.key ? `@${op.transform.key}` : path);
+                continue;
+            }
+
+            if (op.kind === "camera") {
+                // Parented rather than placed absolutely, so a camera inside a
+                // moving group is carried by it — three composes the world matrix.
+                this.resolveCamera(op.camera, width, height, parent);
+                cameraSeen = true;
                 continue;
             }
 
@@ -132,7 +153,7 @@ export class View3DGraph {
         // The renderer is the platform's (see ./renderer-seam). A host that has no
         // WebGL returns null here and environment maps are skipped, which is the
         // same degradation as three not having loaded yet.
-        const host = view3DRendererHost();
+        const host = canvas3DRendererHost();
         applyEnvironment(three, this.scene, g3.environmentDescriptor(), host?.active() ?? null);
 
         const shadows = g3.shadowSettings();
@@ -144,7 +165,8 @@ export class View3DGraph {
             toneMappingExposure: tone?.exposure ?? 1,
         });
 
-        this.resolveCamera(g3.cameraDescriptor(), width, height);
+        // No camera op: fall back to the renderer's own framing, hung off the scene.
+        if (!cameraSeen) this.resolveCamera(null, width, height, this.scene);
         return { scene: this.scene, camera: this.camera };
     }
 
@@ -168,7 +190,7 @@ export class View3DGraph {
 
     /** Create-or-mutate one drawable op. */
     private resolveDrawable(
-        op: Exclude<Graphics3DOp, { kind: "push" } | { kind: "pop" }>,
+        op: DrawableOp,
         key: string,
         parent: THREE.Object3D,
         textures: TextureResolver,
@@ -196,7 +218,7 @@ export class View3DGraph {
     private ensure(
         entry: CachedObject | undefined,
         key: string,
-        op: Exclude<Graphics3DOp, { kind: "push" } | { kind: "pop" }>,
+        op: DrawableOp,
         textures: TextureResolver,
     ): CachedObject | undefined {
         const signatures = signaturesFor(op);
@@ -219,7 +241,7 @@ export class View3DGraph {
 
     /** Build the three object for an op from scratch. */
     private build(
-        op: Exclude<Graphics3DOp, { kind: "push" } | { kind: "pop" }>,
+        op: DrawableOp,
         textures: TextureResolver,
     ): THREE.Object3D | null {
         const three = this.three;
@@ -292,7 +314,7 @@ export class View3DGraph {
     /** Write this frame's values onto an existing object. The cheap path. */
     private mutate(
         entry: CachedObject,
-        op: Exclude<Graphics3DOp, { kind: "push" } | { kind: "pop" }>,
+        op: DrawableOp,
         textures: TextureResolver,
     ): void {
         const three = this.three;
@@ -427,12 +449,27 @@ export class View3DGraph {
     }
 
     /** Reuse or replace the camera, then frame it to the destination size. */
-    private resolveCamera(descriptor: Camera3D | null, width: number, height: number): void {
+    private resolveCamera(
+        descriptor: CameraData3D | null,
+        width: number,
+        height: number,
+        parent: THREE.Object3D,
+    ): void {
         const three = this.three;
         if (descriptor && !cameraMatches(three, this.camera, descriptor)) {
             this.camera = createCamera(three, descriptor);
         }
         applyCamera(three, this.camera, descriptor, width, height);
+
+        // Attached only when a *group* declared it, which is what lets a camera
+        // ride inside an animated rig. A camera at the scene root already places
+        // itself in world space, so leaving it detached keeps the scene's own
+        // children to the things that actually draw.
+        if (parent !== this.scene) {
+            if (this.camera.parent !== parent) parent.add(this.camera);
+        } else if (this.camera.parent) {
+            this.camera.removeFromParent();
+        }
     }
 
     /** Drop every entry not touched this frame. Handles disappearing ops. */
@@ -471,14 +508,14 @@ export class View3DGraph {
 }
 
 /** The cache key for a drawable: an explicit key wins over the structural path. */
-function keyFor(path: string, op: Graphics3DOp): string {
+function keyFor(path: string, op: Scene3DOp): string {
     const explicit = (op as { transform?: Transform3D }).transform?.key
         ?? (op as { material?: { key?: string } }).material?.key;
     return explicit ? `@${explicit}|${op.kind}` : `${path}|${op.kind}`;
 }
 
 /** The structural signatures for an op — any difference forces a rebuild. */
-function signaturesFor(op: Exclude<Graphics3DOp, { kind: "push" } | { kind: "pop" }>): Partial<CachedObject> {
+function signaturesFor(op: DrawableOp): Partial<CachedObject> {
     switch (op.kind) {
         case "mesh":
             return {

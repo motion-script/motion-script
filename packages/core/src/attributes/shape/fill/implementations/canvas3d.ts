@@ -1,6 +1,6 @@
 import type { BlendMode } from '../blend';
 import type { FillData } from '../registry';
-import type { Graphics3D } from '@/render3d/graphics3d';
+import type { Scene3D } from '@/render3d/scene3d';
 import { track3DResources } from '@/render3d/tracking';
 
 /**
@@ -11,18 +11,18 @@ import { track3DResources } from '@/render3d/tracking';
  * `Ellipse`, a `Path`, a run of `Text` — stacks with the other fills in the
  * array, and inherits the fill layer's `opacity`/`blend`/`space` like any other.
  *
- *   <Ellipse fill={Fills.view3D(g3)} />
- *   <Rect fill={["#0b0d12", g3, Fills.linearGradient(["transparent", "#000/60"])]} />
+ *   <Ellipse fill={Fills.canvas3D(scene)} />
+ *   <Rect fill={["#0b0d12", scene, Fills.linearGradient(["transparent", "#000/60"])]} />
  *
- * The payload is a **built** {@link Graphics3D}, never a builder callback. Per-frame
+ * The payload is a **built** {@link Scene3D}, never a builder callback. Per-frame
  * freshness comes from where the value is produced — a `renderSelf` runs every
  * frame, and a `() => …` prop is an ordinary reactive binding — which is exactly
  * how every other fill behaves.
  */
-export interface View3DFillProp {
-    type: 'view3D';
+export interface Canvas3DFillProp {
+    type: 'canvas3D';
     /** The scene to draw. Rebuilt by its producer each frame; never a callback. */
-    graphics3D: Graphics3D;
+    scene: Scene3D;
     /**
      * Ceiling on the 3D buffer's device-pixel ratio. Default 2.
      *
@@ -37,19 +37,19 @@ export interface View3DFillProp {
     blend?: BlendMode;
 }
 
-export interface View3DFillResolved {
-    type: 'view3D';
-    graphics3D: Graphics3D;
+export interface Canvas3DFillResolved {
+    type: 'canvas3D';
+    scene: Scene3D;
     maxPixelRatio?: number;
     antialias?: boolean;
     opacity?: number;
     blend?: BlendMode;
 }
 
-export const view3DFill: FillData<View3DFillResolved> = {
+export const canvas3DFill: FillData<Canvas3DFillResolved> = {
     // Nothing to normalise — the defaults for maxPixelRatio/antialias are applied
     // at render time so the resolved shape stays minimal and comparable.
-    resolve: (prop: View3DFillProp) => ({ ...prop }),
+    resolve: (prop: Canvas3DFillProp) => ({ ...prop }),
 
     // A scene is a command list: there is no meaningful value halfway between two
     // of them, so it snaps, exactly as an image fill's `src` does. Only `opacity`
@@ -58,16 +58,16 @@ export const view3DFill: FillData<View3DFillResolved> = {
     // also what makes the ragged-array self-pair (a fill fading against a copy of
     // itself, when the two fill arrays differ in length) work.
     lerp: (a, b, t) => ({
-        graphics3D: t < 0.5 ? a.graphics3D : b.graphics3D,
+        scene: t < 0.5 ? a.scene : b.scene,
         maxPixelRatio: a.maxPixelRatio ?? b.maxPixelRatio,
         antialias: a.antialias ?? b.antialias,
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
 
-    // Reference identity is the only comparison a Graphics3D supports — it has no
+    // Reference identity is the only comparison a Scene3D supports — it has no
     // structural hash and `ops()` returns its live array. Nothing in the codebase
     // calls this today; it exists to satisfy the interface.
-    equals: (a, b) => a.graphics3D === b.graphics3D,
+    equals: (a, b) => a.scene === b.scene,
 
     // The precomp seam. Runs off the same descriptors the renderer consumes, so
     // what gets loaded cannot drift from what gets drawn.
@@ -76,6 +76,6 @@ export const view3DFill: FillData<View3DFillResolved> = {
     // 3D fill on a raw `path`/`line` reports 0×0 — the same pre-existing caveat
     // every fill has there.
     prepare: (fill, tracker, width, height) => {
-        track3DResources(fill.graphics3D, tracker, width, height);
+        track3DResources(fill.scene, tracker, width, height);
     },
 };

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Rect } from '@/nodes/geometry/rect-node';
 
-/** A bare leaf node usable directly (Node's constructor accepts NodeProps). */
-class Tile extends Node {
+/** A bare leaf node usable directly (Node2D's constructor accepts Node2DProps). */
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
@@ -11,7 +11,7 @@ class Tile extends Node {
 
 /** Drive a Command (or any Iterable<void>) to completion with a fixed frame
  *  delta, collecting the value of `prop` after each resume. */
-function driveCollect(n: Node, command: Iterable<void>, dt: number, prop: string): number[] {
+function driveCollect(n: Node2D, command: Iterable<void>, dt: number, prop: string): number[] {
     const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
     const seen: number[] = [];
     let res = gen.next();               // prime to first yield
@@ -30,7 +30,7 @@ function drive(command: Iterable<void>, dt: number): void {
     while (!res.done) res = gen.next(dt);
 }
 
-describe('Node.wiggle', () => {
+describe('Node2D.wiggle', () => {
     it('settles back exactly on the base value when it finishes', () => {
         const n = new Tile({ x: 40 });
         const vals = driveCollect(n, n.wiggle({ x: 10 }, 1), 0.1, 'x');
@@ -135,7 +135,7 @@ describe('Node.wiggle', () => {
         // plain number, so wiggle rides on the resolved base directly. The offset
         // is not re-mapped (the mapper is one-way), which is the correct
         // behaviour — no double application.
-        class Knob extends Node {
+        class Knob extends Node2D {
             constructor(p?: any) { super(p ?? {}); }
         }
         const k = new Knob({ x: 0 });

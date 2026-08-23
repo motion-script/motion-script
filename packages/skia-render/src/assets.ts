@@ -5,7 +5,7 @@ import type { ParagraphShapeCache } from "./shapes/paragraph-cache";
  * The slice of the platform's storage adapter this renderer reads.
  *
  * Split into narrow sub-interfaces rather than one wide type, following the
- * precedent {@link Skia3DAssets} was extracted from (it was `View3DAssets`, whose
+ * precedent {@link Skia3DAssets} was extracted from (it was `Canvas3DAssets`, whose
  * docstring already made the argument: narrowed "so the reconciler and texture
  * cache stay testable without a real CanvasKit surface"). Each consumer asks for
  * the smallest slice it uses, which is also what keeps them unit-testable with a

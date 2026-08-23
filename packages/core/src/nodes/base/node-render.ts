@@ -1,11 +1,11 @@
-import { RenderContext, SpaceRects } from "@/render/render-context";
+import { RenderContext2D, SpaceRects } from "@/render/render-context2d";
 import { Clip } from "@/render/clip";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { SceneEffect } from "@/attributes/shape/effects/union";
 import { backdropEffects, foregroundShaderEffects } from "@/attributes/shape/effects/backdrop";
 
 /**
- * Companion for {@link Node}'s render pipeline. The orchestration that weaves the
+ * Companion for {@link Node2D}'s render pipeline. The orchestration that weaves the
  * `protected` override seams (`onRender`, `renderContentWithEffects`,
  * `renderSelf`/`renderOverlay`/`renderStroke`/`renderChildren`) stays on the
  * class so subclass overrides and `super.*` dispatch correctly, and
@@ -52,7 +52,7 @@ export function computeSpaceRects(
  */
 /** @internal */
 export function applyBackdropEffects(
-    ctx: RenderContext,
+    ctx: RenderContext2D,
     effects: SceneEffect[],
     clip: Clip | null,
     width: number,
@@ -81,7 +81,7 @@ export function applyBackdropEffects(
  */
 /** @internal */
 export function applyContentEffectScope(
-    ctx: RenderContext,
+    ctx: RenderContext2D,
     effects: SceneEffect[],
     clipPath: Clip | null,
     width: number,

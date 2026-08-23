@@ -1,4 +1,4 @@
-import { RenderContext, Graphics, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, commandSequence, type Command, type ChainableCommand, type TweenStepper } from "@motion-script/core";
+import { RenderContext2D, Graphics2D, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, commandSequence, type Command, type ChainableCommand, type TweenStepper } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
 import { AnimatedToken, prepareLatexTween } from "./tween";
@@ -246,7 +246,7 @@ export class Latex extends ShapeNode<LatexProps> {
         }, easing) as Command<LatexProps>;
     }
 
-    protected renderSelf(ctx: RenderContext): void {
+    protected renderSelf(ctx: RenderContext2D): void {
         this.eachToken(ctx, (graphics, opacity) => graphics
             .fill(scaleFillopacity(this.fill as FillResolved[], opacity))
             .stroke(this.stroke).shadow(this.shadow));
@@ -262,7 +262,7 @@ export class Latex extends ShapeNode<LatexProps> {
      * `shapeGraphics` supplied. So the generic pass drew nothing and an overlay
      * set on a LaTeX node simply never appeared, with no error to say why.
      *
-     * Painted the same way the fill is: one `Graphics` per token, all sharing the
+     * Painted the same way the fill is: one `Graphics2D` per token, all sharing the
      * centre frame, each scaled by its token's animated opacity — so a morph
      * carries the overlay along with the glyph it is laid over instead of leaving
      * a wash hanging over glyphs that have faded out.
@@ -273,7 +273,7 @@ export class Latex extends ShapeNode<LatexProps> {
      * place this node's draw order differs from a plain shape's, and the price of
      * a stroke that follows glyphs rather than a box.
      */
-    protected override renderOverlay(ctx: RenderContext): void {
+    protected override renderOverlay(ctx: RenderContext2D): void {
         const overlay = this.overlay as FillResolved[];
         if (overlay.length === 0) return;
         this.eachToken(ctx, (graphics, opacity) => graphics.fill(scaleFillopacity(overlay, opacity)));
@@ -283,11 +283,11 @@ export class Latex extends ShapeNode<LatexProps> {
      * Draws every visible token's path once, handing each one to `paint` to have
      * its paint ops appended.
      *
-     * A fresh `Graphics` per token per pass, because `.fill()`/`.stroke()` push
+     * A fresh `Graphics2D` per token per pass, because `.fill()`/`.stroke()` push
      * onto one op list and return `this` — a silhouette shared between the fill
      * pass and the overlay pass would accumulate both.
      */
-    private eachToken(ctx: RenderContext, paint: (graphics: Graphics, opacity: number) => Graphics): void {
+    private eachToken(ctx: RenderContext2D, paint: (graphics: Graphics2D, opacity: number) => Graphics2D): void {
         for (const token of this._tokens) {
             if (token.opacity <= 0) continue;
 
@@ -296,7 +296,7 @@ export class Latex extends ShapeNode<LatexProps> {
                 ? toPathString(offsetPath(token.path, token.x, token.y))
                 : toPathString(token.path);
 
-            ctx.draw(paint(new Graphics()
+            ctx.draw(paint(new Graphics2D()
                 .path({
                     data: pathStr,
                     start: this.start,

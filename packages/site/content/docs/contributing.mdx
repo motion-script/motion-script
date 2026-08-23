@@ -126,7 +126,7 @@ pnpm typecheck
 ## Adding a new node
 
 1. Create `packages/core/src/nodes/<category>/<name>-node.ts`.
-2. Extend `ShapeNode<YourProps>` and implement `renderSelf(draw: RenderContext)`.
+2. Extend `ShapeNode<YourProps>` and implement `renderSelf(draw: RenderContext2D)`.
 3. Export from `packages/core/src/nodes/index.ts`.
 4. Add a page under `packages/site/content/docs/nodes/`.
 

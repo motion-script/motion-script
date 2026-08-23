@@ -3,14 +3,14 @@ import { BoxBounds } from "./bounds";
 import { Vector2 } from "./vector2";
 
 /**
- * Shared anchor-positioning math for {@link Node}, used by both the constructor
+ * Shared anchor-positioning math for {@link Node2D}, used by both the constructor
  * (reactive binding form) and a `to()` step (one-shot form).
  *
  * A named anchor (`'topRight'`, `'centerLeft'`, …) resolves to a normalised
  * pivot `a` in `[-1, 1]` (y-up). To land that anchor on a target scene-space
  * point, the node's centre must sit at `target - a·(size/2)` — the inverse of
  * the offset from centre to the anchor. This file is the single source of that
- * formula; previously it was duplicated between `Node`'s constructor and
+ * formula; previously it was duplicated between `Node2D`'s constructor and
  * `_prepareStep`.
  */
 

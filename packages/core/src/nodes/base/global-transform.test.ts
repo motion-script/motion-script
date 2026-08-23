@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 
 const scope = new FakeMeasurer();
 
 /** A leaf whose layout cell can be set directly, mirroring what a parent would assign. */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
@@ -20,7 +20,7 @@ function closeTo(actual: number, expected: number, eps = 1e-9): void {
     expect(Math.abs(actual - expected)).toBeLessThanOrEqual(eps);
 }
 
-describe('Node.global', () => {
+describe('Node2D.global', () => {
     it('equals local position for a root node at the layout origin', () => {
         const n = new Tile({ x: 30, y: 40 });
         n.place({ x: 0, y: 0, width: 100, height: 60 });

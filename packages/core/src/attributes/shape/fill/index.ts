@@ -26,4 +26,4 @@ export type { GridFillProp, GridFillResolved } from './implementations/grid';
 export { MINOR_WIDTH_RATIO } from './implementations/grid';
 export type { VideoFillProp, VideoFillResolved } from './implementations/video';
 export { resolveVideoTimestamp } from './implementations/video';
-export type { View3DFillProp, View3DFillResolved } from './implementations/view3d';
+export type { Canvas3DFillProp, Canvas3DFillResolved } from './implementations/canvas3d';

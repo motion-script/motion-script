@@ -1,7 +1,7 @@
 /**
  * `Texture3D` descriptor → `THREE.Texture`.
  *
- * Image textures come from core's ordinary asset pipeline: `View3D.prepareRender`
+ * Image textures come from core's ordinary asset pipeline: `Canvas3D.prepareRender`
  * declares each `src` via `tracker.addImage`, so by the time a frame draws,
  * `AssetManager.loadAt` has already awaited the decode and the pixels are sitting
  * in the storage adapter. This resolver only has to wrap them — which is why the
@@ -33,7 +33,7 @@ import { colorSpace as toColorSpace, deg, magFilter, minFilter, wrap } from "./c
  * so the reconciler and texture cache stay testable without a real CanvasKit
  * surface.
  */
-export interface View3DAssets {
+export interface Canvas3DAssets {
     /** Raw decoded RGBA pixels for an asset path, or null until loaded. */
     getImagePixels(src: string): { pixels: Uint8Array; width: number; height: number } | null;
     /** Free the CanvasKit composite texture held for a node that's gone away. */
@@ -61,7 +61,7 @@ export class TextureResolver {
 
     constructor(
         private readonly three: ThreeModule,
-        private readonly assets: View3DAssets,
+        private readonly assets: Canvas3DAssets,
     ) { }
 
     /**
@@ -260,7 +260,7 @@ function textureKey(
         // Contents are handled by `revision`; including them would make the key
         // change on every mutation and orphan the texture each frame.
         if (key === "data" || key === "revision") continue;
-        // A `source` is a Graphics/Node instance: it serialises to `{}` or worse,
+        // A `source` is a Graphics2D/Node2D instance: it serialises to `{}` or worse,
         // so identity comes from `key` + owner below instead.
         if (key === "source") continue;
         parts.push(`${key}=${JSON.stringify(bag[key])}`);

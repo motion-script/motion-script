@@ -63,13 +63,13 @@ export { WebMasterClock } from "./master-clock";
 // @motion-script/skia-render now; this package supplies only the WebGL renderer
 // that rasterizes what they build. Re-exported here so the specifiers consumers
 // already use keep resolving.
-export { View3DBackend, view3DBackend, loadView3D, disposeView3DBackend } from "@motion-script/skia-render";
-export type { View3DAssets, RenderedView3D } from "@motion-script/skia-render";
+export { Canvas3DBackend, canvas3DBackend, loadCanvas3D, disposeCanvas3DBackend } from "@motion-script/skia-render";
+export type { Canvas3DAssets, RenderedCanvas3D } from "@motion-script/skia-render";
 
-import { registerView3DBackend, registerView3DRendererHost } from "@motion-script/skia-render";
-import { webView3DRendererHost } from "./three/renderer";
+import { registerCanvas3DBackend, registerCanvas3DRendererHost } from "@motion-script/skia-render";
+import { webCanvas3DRendererHost } from "./three/renderer";
 
-// Hand core the three-loading hook so `View3D.prepareRender()` can preload the
+// Hand core the three-loading hook so `Canvas3D.prepareRender()` can preload the
 // runtime during precomp, before any frame draws. Done at module scope rather
 // than lazily because core has no way to reach into this package on its own — the
 // registration is the seam.
@@ -78,7 +78,7 @@ import { webView3DRendererHost } from "./three/renderer";
 // call has no observable effect for a 2D-only project (it just stores a function
 // reference), and because it lives in the barrel every consumer imports, a
 // bundler can't drop it while keeping anything else here.
-registerView3DBackend();
+registerCanvas3DBackend();
 
 // Hand skia-render the WebGL renderer, for the same reason and with the same
 // constraint: it MUST be registered from this barrel.
@@ -86,8 +86,8 @@ registerView3DBackend();
 // `./three/renderer` is no longer statically imported by anything else in this
 // package — the reconciler that used to import it moved out. Combined with
 // `sideEffects: false`, a module-scope registration inside that file could be
-// tree-shaken away, and the failure is silent: `view3DBackend()` returns null
+// tree-shaken away, and the failure is silent: `canvas3DBackend()` returns null
 // forever, the warm-and-retry loop exhausts its three passes, and every frame
 // ships its 2D parts with no 3D and no error. Registering here keeps the module
 // reachable and the behaviour explicit.
-registerView3DRendererHost(webView3DRendererHost);
+registerCanvas3DRendererHost(webCanvas3DRendererHost);

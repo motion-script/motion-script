@@ -18,7 +18,7 @@ import { resolveFillArray, lerpFillArray } from '@/attributes/shape/fill/registr
 import { Fills } from '@/attributes/shape/fill/chain';
 import { Effects } from '@/attributes/shape/effects/chain';
 import { Rect, RectProps } from '@/nodes/geometry/rect-node';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import type { Fill } from '@/attributes/shape/fill/chain';
 import type { Stroke } from '@/attributes/shape/stroke/mapper';
 import type { Shadow } from '@/attributes/shape/shadow/resolver';
@@ -136,8 +136,8 @@ describe('attribute-typed props on a real node', () => {
         expect(keys.indexOf('fill')).toBeLessThan(keys.indexOf('glow'));
     });
 
-    it('works on a bare Node subclass too', () => {
-        class Blob extends Node {
+    it('works on a bare Node2D subclass too', () => {
+        class Blob extends Node2D {
             @fillProperty({ default: 'red' }) declare paint: Fill;
         }
         expect((new Blob({}).paint as any)[0].type).toBe('solid');

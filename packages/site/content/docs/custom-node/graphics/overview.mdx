@@ -2,14 +2,14 @@
 sidebar_position: 1
 ---
 
-# Graphics
+# Graphics2D
 
-`Graphics` is the 2D drawing API. A node like [`Rect`](/docs/nodes/rect) or [`Path`](/docs/nodes/path) gives you one shape with layout and props attached. A `Graphics` lets you record many shapes and paints into a single list and draw them as one figure.
+`Graphics2D` is the 2D drawing API. A node like [`Rect`](/docs/nodes/rect) or [`Path`](/docs/nodes/path) gives you one shape with layout and props attached. A `Graphics2D` lets you record many shapes and paints into a single list and draw them as one figure.
 
 ```tsx
-import { Graphics } from 'motion-script';
+import { Graphics2D } from 'motion-script';
 
-const g = new Graphics()
+const g = new Graphics2D()
   .ellipse({ width: 200, height: 200 })
   .fill('royalblue')
   .stroke({ weight: 4, fill: 'white' });
@@ -19,7 +19,7 @@ That builds a value. Nothing appears on screen until a node draws it, which is c
 
 ## When to use it
 
-Use `Graphics` when the figure is not a tree of nodes:
+Use `Graphics2D` when the figure is not a tree of nodes:
 
 * **Too many pieces to be nodes.** A grid with 400 tick marks, a waveform, a scatter plot. Every node carries layout, signals and its own render scope. Drawing commands carry none of that.
 * **The pieces belong together.** One gradient across a whole figure, or a shape with holes in it, is a single painted surface rather than a stack of siblings.
@@ -32,7 +32,7 @@ For a single shape in a layout, use a node instead. Nodes are the right tool whe
 Every method appends an operation and returns the same object, so a figure is one chain:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 100, height: 100 })   // a shape
   .fill('red')                          // a paint
 ```
@@ -40,19 +40,19 @@ new Graphics()
 The list replays in order when the node draws it. Two things follow from that:
 
 * **Order matters.** A paint applies to the shapes recorded before it. A `cut()` uses the shape recorded immediately before it.
-* **Nothing accumulates.** A `Graphics` is a plain value, rebuilt each frame. Frame 10 looks the same whether you played to it or scrubbed back to it.
+* **Nothing accumulates.** A `Graphics2D` is a plain value, rebuilt each frame. Frame 10 looks the same whether you played to it or scrubbed back to it.
 
 ## Drawing one
 
 Override `renderSelf` on a node and hand the list to the render context:
 
 ```tsx
-import { Node, RenderContext, Graphics } from 'motion-script';
+import { Node2D, RenderContext2D, Graphics2D } from 'motion-script';
 
-class Blob extends Node {
-  protected renderSelf(ctx: RenderContext): void {
+class Blob extends Node2D {
+  protected renderSelf(ctx: RenderContext2D): void {
     ctx.draw(
-      new Graphics()
+      new Graphics2D()
         .ellipse({ width: 200, height: 200 })
         .fill('tomato'),
     );
@@ -67,7 +67,7 @@ class Blob extends Node {
 Drawing commands are authored **y up**, with the origin at the node's own centre. Positive `y` is up the screen.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ x: 0, y: 100, width: 40, height: 40 })   // 100px above centre
   .rect({ x: 0, y: -100, width: 40, height: 40 }); // 100px below centre
 ```
@@ -83,7 +83,7 @@ This matches node `x`/`y` and `rotation`, so a drawn figure and a figure built f
 | [Compositing](./compositing) | `cut` `mask` `applyMask` `endMask` | Punch holes, or clip content to a drawn shape |
 | [Transforms](./transforms) | `rotation` `scale` `opacity` `effects` | Turn, fade or filter the result |
 
-## What Graphics does not do
+## What Graphics2D does not do
 
 * **No layout.** Drawing commands use absolute coordinates in the node's local space. Flex, `gap` and `padding` belong to nodes.
 * **No refs or `.to()`.** You cannot animate a recorded operation. Animation comes from rebuilding the figure each frame from values that change. See [Animating a drawing](../introduction#animating-a-drawing).

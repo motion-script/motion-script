@@ -10,7 +10,7 @@ import type { FractalNoiseFillProp } from "./implementations/fractal-noise";
 import type { DotGridFillProp } from "./implementations/dot-grid";
 import type { GridFillProp } from "./implementations/grid";
 import type { ShaderFillProp } from "./implementations/shader";
-import type { Graphics3D } from "@/render3d/graphics3d";
+import type { Scene3D } from "@/render3d/scene3d";
 
 /** Placement options shared by the image and video fill builders. */
 export interface MediaPlacementOptions {
@@ -121,7 +121,7 @@ export class FillChain {
      * Append a video fill from `src`. Plays by default: its source timestamp is
      * derived as it paints, from how long the node carrying the fill has
      * existed — so the clip runs wherever the fill is used (fill, overlay,
-     * stroke, shadow, a custom node's `Graphics`) with nothing to advance.
+     * stroke, shadow, a custom node's `Graphics2D`) with nothing to advance.
      */
     video(src: string, options?: VideoFillOptions) {
         const { fit, crop, zoom, anchor, matrix, preset, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
@@ -258,7 +258,7 @@ export class FillChain {
     /**
      * Append a 3D scene, painted through the shape's own path.
      *
-     * Takes a **built** {@link Graphics3D}, never a builder — per-frame freshness
+     * Takes a **built** {@link Scene3D}, never a builder — per-frame freshness
      * comes from where the value is produced (a `renderSelf`, or a `() => …`
      * reactive binding), like every other fill.
      *
@@ -266,9 +266,9 @@ export class FillChain {
      * command list has no meaningful in-between. To dissolve between two scenes,
      * stack them and tween their opacities in opposite directions.
      */
-    view3D(graphics3D: Graphics3D, options?: FillOptions & { maxPixelRatio?: number; antialias?: boolean }) {
+    canvas3D(scene: Scene3D, options?: FillOptions & { maxPixelRatio?: number; antialias?: boolean }) {
         const { maxPixelRatio, antialias, ...common } = options ?? {};
-        return new FillChain([...this.list, withOptions({ type: 'view3D' as const, graphics3D, maxPixelRatio, antialias }, common)]);
+        return new FillChain([...this.list, withOptions({ type: 'canvas3D' as const, scene, maxPixelRatio, antialias }, common)]);
     }
 
     /** Allows spreading the chain into an array: `[...Fills.color('red')]`. */

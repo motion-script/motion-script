@@ -1,4 +1,4 @@
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { Clip } from "@/render/clip";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Camera } from "../layout/camera-node";
@@ -28,9 +28,9 @@ export abstract class ViewportPattern<P extends ShapeProps = ShapeProps> extends
      * path ops drawn here is `[bounds.x - w/2, bounds.y - h/2, bounds.x + w/2,
      * bounds.y + h/2]`.
      */
-    protected abstract renderPattern(draw: RenderContext, bounds: BoxBounds): void;
+    protected abstract renderPattern(draw: RenderContext2D, bounds: BoxBounds): void;
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const bounds = this.visibleBounds();
         // Clip to the visible region so geometry overscanned past the edge (so
         // thick lines slide out instead of popping) trims cleanly. When inside a

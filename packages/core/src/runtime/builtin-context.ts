@@ -5,7 +5,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { type Stroke } from "@/attributes/shape/stroke/mapper";
 import { type Shadow } from "@/attributes/shape/shadow/resolver";
-import type { Node } from "@/nodes/base/node";
+import type { Node2D } from "@/nodes/base/node2d";
 
 /**
  * Built-in context tokens. These are ordinary {@link createContext} tokens —
@@ -45,10 +45,10 @@ export const TEXT_STYLE_KEYS = [
 
 /**
  * The subset of {@link TEXT_STYLE_KEYS} describing how text is *shaped* rather
- * than how it is *painted* — the keys a raw `Graphics` `text`/`richText` op can
- * inherit from {@link RenderContext.defaultTextStyle}.
+ * than how it is *painted* — the keys a raw `Graphics2D` `text`/`richText` op can
+ * inherit from {@link RenderContext2D.defaultTextStyle}.
  *
- * `fill`/`stroke`/`shadow` are deliberately absent. In a `Graphics` those are
+ * `fill`/`stroke`/`shadow` are deliberately absent. In a `Graphics2D` those are
  * separate, **group-scoped** ops: `.text(…).rect(…).fill('red')` paints both
  * shapes with one fill, and a shape with no paint op after it draws nothing at
  * all. There is no per-shape paint slot to default into, and synthesising a
@@ -72,7 +72,7 @@ export const EMPTY_TEXT_STYLE: TextStyle = Object.freeze({});
  * The project-wide base text style — `theme.typography.default`, registered by
  * {@link setTheme} — as a {@link TextStyle}.
  *
- * The bottom of {@link RenderContext}'s text-style stack, which is what keeps a
+ * The bottom of {@link RenderContext2D}'s text-style stack, which is what keeps a
  * drawn `text` op and a `Text` node agreeing on the project's base typography:
  * it is the same preset {@link applyTextDefaults} applies as its lowest-priority
  * source (step 4). Read per lookup rather than cached, so a `setTheme` between
@@ -115,7 +115,7 @@ export const SeedToken = createContext<string | number | undefined>(undefined, "
  * exactly as if the author had written it). `props` is the node's own
  * constructor props.
  */
-export function applyTextDefaults(node: Node, props?: Record<string, unknown>): void {
+export function applyTextDefaults(node: Node2D, props?: Record<string, unknown>): void {
     const inherited = node.useContext(TextStyleToken);
     const variant = props?.variant as string | undefined;
     const preset = variant ? getTypographyPreset(variant) : undefined;

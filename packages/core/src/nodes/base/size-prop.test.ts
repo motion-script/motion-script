@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Signal } from '@/signals/signal';
 
-/** A bare leaf node usable directly (Node's constructor accepts NodeProps). */
-class Tile extends Node {
+/** A bare leaf node usable directly (Node2D's constructor accepts Node2DProps). */
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
 }
 
-describe('Node `size` prop', () => {
+describe('Node2D `size` prop', () => {
     it('sets width and height to the same numeric value at construction', () => {
         const n = new Tile({ size: 200 });
         expect(n.width).toBe(200);

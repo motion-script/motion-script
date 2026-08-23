@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 
 import { AssetManager } from "@/assets/manager";
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Image } from "@/nodes/media/image-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { createScene, Scene } from "@/nodes/scene/scene-node";
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { NullRenderContext } from "@/render/null-render-context";
 import { Precomp } from "@/runtime/precompisition";
 import { ProjectGlobals } from "@/runtime/globals";
@@ -36,11 +36,11 @@ const scope = new FakeMeasurer();
 const catalog = (durations: Record<string, number> = {}) => asCatalog(new FakeAssetCatalog(durations));
 
 /** A leaf that appends its label to a shared log as it draws. */
-class Probe extends Node {
+class Probe extends Node2D {
     constructor(private readonly log: string[], private readonly label: string) {
         super({ width: 10, height: 10 });
     }
-    protected override renderSelf(_ctx: RenderContext): void {
+    protected override renderSelf(_ctx: RenderContext2D): void {
         this.log.push(this.label);
     }
 }

@@ -5,6 +5,7 @@ import { Sound } from "@/attributes/audio/sound";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { RootNode } from "@/nodes/scene/root-node";
 import type {
     AudioTrack,
@@ -13,7 +14,7 @@ import type {
     SceneSelector,
 } from "@/project/config";
 import { Measurer } from "@/render/measurer";
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { ContextMap } from "@/util/context";
 
 /**
@@ -136,7 +137,7 @@ export class LayerStack {
         this.entries = (config ?? []).map((item, index) => {
             const layer = toLayer(item);
             const owned = typeof layer.node === "function";
-            const node = owned ? (layer.node as () => Node)() : (layer.node as Node);
+            const node = owned ? (layer.node as () => Node2D)() : (layer.node as Node2D);
             // Recover a node the *previous* controller disposed: a config-provided
             // instance outlives any single runtime (StrictMode double-mount, HMR)
             // and would otherwise be left with freed signals. Mirrors what
@@ -205,7 +206,7 @@ export class LayerStack {
         for (const entry of this._active) entry.frame.ellapse(totalTime);
     }
 
-    /** Seed per-frame derived state without a full ellapse (see `Node.sample`). */
+    /** Seed per-frame derived state without a full ellapse (see `Node2D.sample`). */
     sample(): void {
         for (const entry of this._active) entry.frame.sample();
     }
@@ -238,7 +239,7 @@ export class LayerStack {
     }
 
     /** Draw every active layer, in config order. */
-    render(context: RenderContext): void {
+    render(context: RenderContext2D): void {
         for (const entry of this._active) entry.frame.render(context);
     }
 

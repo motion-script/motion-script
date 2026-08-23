@@ -18,9 +18,10 @@ import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Measurer } from "@/render/measurer";
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { RootNode, RootProps } from "./root-node";
 import { NodeClock } from "../base/node-clock";
+import { Node2D } from "../base/node2d";
 import { Node } from "../base/node";
 
 /**
@@ -74,7 +75,7 @@ export type SceneGenerator = (stage: Stage) => FrameGenerator;
  * forwarding to the root. The two declaration phases are ordered around `layout`
  * because that is what separates them: fonts and anything else measurement
  * depends on have to be named before it, and anything sized against a
- * `layoutRect` after it. See {@link Node.prepareLayout}.
+ * `layoutRect` after it. See {@link Node2D.prepareLayout}.
  *
  * The scene's authoring methods (`add`/`set`/`to`/camera/paint/sounds) all act
  * on its {@link RootNode} `root`. They're merged with a {@link BuildStage} into
@@ -156,7 +157,13 @@ export class Scene {
     // reaching for `stage.root`. For anything not forwarded, `stage.root` is the
     // full node.
 
-    /** Add a node (or array of nodes) as a child of the scene's root. */
+    /**
+     * Add a node (or array of nodes) as a child of the scene's root.
+     *
+     * Typed to the shared base because that is what JSX produces; the root is 2D,
+     * so handing it a `Node3D` throws (see `Node.acceptsChild`) rather than
+     * silently drawing nothing.
+     */
     add(node: Node | Node[]): void {
         if (Array.isArray(node)) {
             this.root.addChildren(node);
@@ -369,7 +376,7 @@ export class Scene {
      * Push inherited context (theme/data/seed/text-style and user tokens) down
      * the scene's whole subtree. `runInit` true at start-of-pass (also fires each
      * node's `init`); false for the per-frame structural re-push. Mirrors
-     * {@link bindAssets}. See `Node.bindContext`.
+     * {@link bindAssets}. See `Node2D.bindContext`.
      */
     bindContext(context: ContextMap, runInit: boolean): void {
         this.root.bindContext(context, runInit);
@@ -388,7 +395,7 @@ export class Scene {
 
     /**
      * Record the scene's current positions as the motion history's previous
-     * frame, stamped `at`, deriving no velocity — see `Node.primeMotion`.
+     * frame, stamped `at`, deriving no velocity — see `Node2D.primeMotion`.
      */
     primeMotion(at: number): void {
         this.root.primeMotion(at);
@@ -400,14 +407,14 @@ export class Scene {
     }
 
     /** Render the scene's world into `context`. */
-    render(context: RenderContext): void {
+    render(context: RenderContext2D): void {
         this.root.render(context);
     }
 
     /**
      * Collect what the tree needs to be **laid out** — fonts, and any async load
      * measurement depends on. Call before {@link layout}; see
-     * {@link Node.prepareLayout}.
+     * {@link Node2D.prepareLayout}.
      */
     prepareLayoutAssets(tracker: AssetTracker): void {
         this.root.prepareLayoutAssets(tracker);
@@ -552,7 +559,7 @@ export type StillContent = (stage: Stage) => Node | Node[] | void;
  *   });
  */
 export function createStill(content: StillContent): Scene {
-    if (content instanceof Node || Array.isArray(content)) {
+    if (content instanceof Node2D || Array.isArray(content)) {
         throw new TypeError(
             "createStill() takes a factory, not a node — write createStill(() => <Rect/>). " +
             "A scene is built more than once per frame and its children are disposed between " +
@@ -560,7 +567,7 @@ export function createStill(content: StillContent): Scene {
         );
     }
     return createScene(function* (stage) {
-        // A `() => Node` factory ignores the argument, so both shapes — "build me
+        // A `() => Node2D` factory ignores the argument, so both shapes — "build me
         // a tree" and "author the stage" — go through this one call.
         const nodes = content(stage);
         if (nodes) stage.add(nodes);

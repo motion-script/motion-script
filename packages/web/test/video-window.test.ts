@@ -490,17 +490,17 @@ describe("upload3DFrame", () => {
         expect(counts.updated).toBe(0);
         // The stale texture is freed rather than leaked.
         expect(deleted).toHaveBeenCalledTimes(1);
-        expect(a.view3DTextures.size).toBe(1);
+        expect(a.canvas3DTextures.size).toBe(1);
     });
 
     it("release3DTexture frees the slot so a removed node stops pinning GPU memory", () => {
         const { a, deleted } = fake3DSurface();
 
         a.upload3DFrame("node#0", { fake: "canvas" }, 320, 240);
-        expect(a.view3DTextures.size).toBe(1);
+        expect(a.canvas3DTextures.size).toBe(1);
 
         a.release3DTexture("node#0");
         expect(deleted).toHaveBeenCalledTimes(1);
-        expect(a.view3DTextures.size).toBe(0);
+        expect(a.canvas3DTextures.size).toBe(0);
     });
 });

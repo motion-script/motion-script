@@ -1,8 +1,8 @@
 import { property } from "@/attributes/properties/decorator";
 import { strokeProperty } from "@/attributes/properties/typed";
-import { NodeConfig } from "../base/node";
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { NodeConfig } from "../base/node2d";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { PathCommand } from "@/render/descriptors/path";
 import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
@@ -86,7 +86,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
         }
     }
 
-    protected renderPattern(draw: RenderContext, bounds: BoxBounds): void {
+    protected renderPattern(draw: RenderContext2D, bounds: BoxBounds): void {
         const halfW = bounds.width / 2;
         const halfH = bounds.height / 2;
         // The clip (set by ViewportPattern) confines drawing to `bounds`; here we
@@ -101,7 +101,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
         const bottom = bounds.y + halfH;
 
         // Fill paints across the whole visible region, behind the lines.
-        draw.draw(new Graphics()
+        draw.draw(new Graphics2D()
             .rect({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, start: this.start, end: this.end })
             .shadow(this.shadow)
             .fill(this.fill));
@@ -140,7 +140,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
     // pattern is locked to world space: as new lines scroll into view they pick up
     // the phase their position would have had, and the dashes never crawl.
     private drawGroup(
-        draw: RenderContext,
+        draw: RenderContext2D,
         xAxis: GridAxis,
         yAxis: GridAxis,
         subdivisions: number,
@@ -165,7 +165,7 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
             const data: PathCommand[] = [];
             for (const px of verticals) data.push({ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom });
             for (const py of horizontals) data.push({ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py });
-            if (data.length > 0) draw.draw(new Graphics().path({ data, centerBounds }).stroke(stroke));
+            if (data.length > 0) draw.draw(new Graphics2D().path({ data, centerBounds }).stroke(stroke));
             return;
         }
 
@@ -173,11 +173,11 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
         // world coordinate along its run (top for verticals, left for horizontals).
         for (const px of verticals) {
             const data: PathCommand[] = [{ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom }];
-            draw.draw(new Graphics().path({ data, centerBounds }).stroke(phaseShift(stroke, g.top)));
+            draw.draw(new Graphics2D().path({ data, centerBounds }).stroke(phaseShift(stroke, g.top)));
         }
         for (const py of horizontals) {
             const data: PathCommand[] = [{ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py }];
-            draw.draw(new Graphics().path({ data, centerBounds }).stroke(phaseShift(stroke, g.left)));
+            draw.draw(new Graphics2D().path({ data, centerBounds }).stroke(phaseShift(stroke, g.left)));
         }
     }
 }

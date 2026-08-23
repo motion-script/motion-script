@@ -5,7 +5,7 @@ import { TransformState } from "./descriptors/transform";
 import { Measurer } from "./measurer";
 import { TextState } from "./descriptors/text";
 import { TextBlockLayout } from "./text-layout";
-import { Graphics } from "./graphics";
+import { Graphics2D } from "./graphics2d";
 import { Clip } from "./clip";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { MaskOptions } from "@/attributes/mask/mask";
@@ -25,12 +25,12 @@ import { applyGraphicsTextDefaults } from "./text-defaults";
  * Where an effect scope draws: `'foreground'` warps/filters the node's *own*
  * content (its fill, stroke and children), `'backdrop'` warps/filters the canvas
  * content already painted *beneath* the node (clipped to its silhouette). See
- * {@link RenderContext.beginEffectScope}.
+ * {@link RenderContext2D.beginEffectScope}.
  */
 export type EffectTarget = "foreground" | "backdrop";
 
 /**
- * Pixels produced by {@link RenderContext.rasterizeOffscreen}: RGBA8888,
+ * Pixels produced by {@link RenderContext2D.rasterizeOffscreen}: RGBA8888,
  * unpremultiplied, top-down (canvas row order). `width`/`height` are **device**
  * px, so they reflect the pixel ratio the renderer actually used rather than the
  * logical size that was asked for.
@@ -65,7 +65,7 @@ export interface SpaceRects {
 }
 
 /**
- * Per-node state supplied to {@link RenderContext.begin} for the duration of a
+ * Per-node state supplied to {@link RenderContext2D.begin} for the duration of a
  * node's draw scope. Carries the node identity and gradient-space `rects` (what
  * `begin` used to take as separate arguments) plus the node's per-frame motion,
  * sampled at render time. Motion-driven effects (e.g. motion blur) read the
@@ -98,38 +98,32 @@ export interface NodeRenderState {
 }
 
 /**
- * Low-level shape-drawing API. Shapes are no longer declared directly on the
- * context — they are built with a {@link Graphics} command list and submitted
- * via {@link draw}. Multiple shapes chained on a `Graphics` before a paint call
- * are combined into a single surface and painted together.
+ * The rendering context passed to every {@link Node2D} when it draws itself.
  *
- *   ctx.draw(new Graphics().ellipse(...).rect(...).fill(...));  // shared surface
- */
-export abstract class Render2DContext {
-    /** Paint a built `Graphics` command list against this context. */
-    abstract draw(graphics: Graphics): void;
-}
-
-
-
-
-/**
- * The full rendering context passed to every scene-graph node when it draws
- * itself. Combines shape drawing (`Render2DContext`), text measurement
- * (`Measurer`), and higher-level scoping operations (transforms, masks,
- * clips, camera, boolean ops, backdrop effects).
+ * Shapes are never declared directly on the context — they are built with a
+ * {@link Graphics2D} command list and submitted via {@link draw}. Multiple shapes
+ * chained on a `Graphics2D` before a paint call are combined into a single surface
+ * and painted together:
  *
- * `begin(id)` / `end()` bracket each node's draw call so the context can
- * track which node is active and look up per-node state (space rects, etc.).
- * The concrete implementations (`CanvasKitRenderContext`, `SvgRenderContext`,
- * …) translate these abstract calls into renderer-specific drawing commands.
+ *   ctx.draw(new Graphics2D().ellipse(...).rect(...).fill(...));  // shared surface
+ *
+ * On top of that it carries text measurement (`Measurer`) and the higher-level
+ * scoping operations — transforms, masks, clips, camera, boolean ops, backdrop
+ * effects. `begin(state)` / `end()` bracket each node's draw call so the context
+ * can track which node is active and look up its per-node state.
+ *
+ * `RenderContext3D` is its sibling, not its subclass: the two share no members,
+ * because a 3D scene is described with lights, a camera and meshes rather than
+ * with paths and paint. Concrete implementations (`SkiaRenderContext`,
+ * `NullRenderContext`, …) translate these abstract calls into renderer-specific
+ * drawing commands.
  */
-export abstract class RenderContext extends Render2DContext implements Measurer {
+export abstract class RenderContext2D implements Measurer {
     abstract measureText(text: string, fontSize: number, fontFamily: string, fontWeight?: number, letterSpacing?: number, fontStyle?: FontStyle): number;
 
     // ---- Inherited text-style defaults ------------------------------------
     // `<DefaultTextStyle>` reaches a `Text`/`RichText` node through the context
-    // map, applied once when the node binds. A raw `Graphics` has no node to
+    // map, applied once when the node binds. A raw `Graphics2D` has no node to
     // bind, so it inherits the same defaults here instead — pushed around a
     // subtree's draw scope, and folded into each `text`/`richText` op by
     // `draw()`. Same vocabulary (`TextStyle`), same precedence, two channels.
@@ -184,7 +178,7 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * drawn label and a node label agree on the project's base typography.
      *
      * Carries all ten {@link TEXT_STYLE_KEYS}, but only the shaping ones reach a
-     * `Graphics` op; see {@link TEXT_SHAPING_KEYS} for why `fill`/`stroke`/
+     * `Graphics2D` op; see {@link TEXT_SHAPING_KEYS} for why `fill`/`stroke`/
      * `shadow` stay a node-level concern.
      */
     defaultTextStyle(): TextStyle {
@@ -192,7 +186,7 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
     }
 
     /**
-     * Replay a built `Graphics` against this context.
+     * Replay a built `Graphics2D` against this context.
      *
      * Final by convention — it resolves the ambient text defaults onto the op
      * list and hands the result to {@link drawGraphics}, which is where a backend
@@ -202,13 +196,13 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * resolves and the other doesn't is a font that never loads and glyphs that
      * never paint.
      */
-    override draw(graphics: Graphics): void {
+    draw(graphics: Graphics2D): void {
         this.drawGraphics(applyGraphicsTextDefaults(graphics, this.defaultTextStyle()));
     }
 
-    /** Paint a `Graphics` whose text ops have already been resolved against the
+    /** Paint a `Graphics2D` whose text ops have already been resolved against the
      *  ambient defaults. Backends implement this instead of {@link draw}. */
-    protected abstract drawGraphics(graphics: Graphics): void;
+    protected abstract drawGraphics(graphics: Graphics2D): void;
 
     /**
      * See {@link Measurer.layoutTextBlock}. Concrete rather than abstract,
@@ -258,13 +252,13 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * `this` so subsequent draw calls are issued in the transformed space.
      * The transform is popped when `end()` is called for the node that pushed it.
      */
-    abstract transform(state: Partial<TransformState>): RenderContext;
+    abstract transform(state: Partial<TransformState>): RenderContext2D;
 
     /**
      * Open a boolean-path collection scope. Shapes drawn until `endBoolean()`
      * are gathered (fills/strokes suppressed) and combined with `op`. After
      * `endBoolean()` the merged path is left as the active surface, so a
-     * paint-only `Graphics` (`new Graphics().fill(...).stroke(...)`) submitted via
+     * paint-only `Graphics2D` (`new Graphics2D().fill(...).stroke(...)`) submitted via
      * `draw()` styles the combined result.
      */
     abstract beginBoolean(op: BooleanOperation): void;
@@ -274,12 +268,12 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
     // that manage the scope with explicit begin/apply/end:
     //
     //   beginMask({ mode, inverted })
-    //   <render mask child>          // child draws its own Graphics
+    //   <render mask child>          // child draws its own Graphics2D
     //   applyMask()
-    //   <render content children>    // children draw their own Graphics
+    //   <render content children>    // children draw their own Graphics2D
     //   endMask()
     //
-    // The chain-friendly form lives on `Graphics` (`.mask().applyMask().endMask()`)
+    // The chain-friendly form lives on `Graphics2D` (`.mask().applyMask().endMask()`)
     // for inline use within a single `draw()`.
     //
     // For `vector` mode the mask child's path is collected and used as a
@@ -329,7 +323,7 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * origin at the centre, matching the space a node draws in — so `draw` can be
      * an ordinary `render()` call on a node subtree and needs no special casing.
      *
-     * This is what backs {@link SurfaceTexture3D}: `View3D` rasterizes each of
+     * This is what backs {@link SurfaceTexture3D}: `Canvas3D` rasterizes each of
      * its `Surface2D` children through here, then hands the pixels to the 3D
      * backend as a texture. It runs *inside* the frame that consumes it, so a
      * scrubbed frame is identical to a played one.
@@ -374,10 +368,9 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * Whether this context ever reads `NodeRenderState.rects`.
      *
      * True for anything that actually paints, since a fill with `space:'parent'`
-     * resolves against them. A context that only inspects *what* would be drawn —
-     * `TrackRenderContext`, which walks the same op lists to discover assets —
+     * resolves against them. A context that only inspects *what* would be drawn
      * never looks at them, and computing them costs an object allocation per node
-     * per frame. Nodes check this before doing that work; see `Node.beforeRender`.
+     * per frame. Nodes check this before doing that work; see `Node2D.beforeRender`.
      */
     readonly readsSpaceRects: boolean = true;
 
@@ -387,17 +380,17 @@ export abstract class RenderContext extends Render2DContext implements Measurer 
      * True for anything that paints: a subtree at zero opacity contributes no
      * pixels, so walking it produces draw calls the rasterizer will discard.
      *
-     * **False for `TrackRenderContext`**, and that is the whole reason this is a
-     * capability rather than an unconditional check. The tracking walk exists to
-     * discover which images, videos, fonts and effects a frame *references* —
-     * regardless of whether they can be seen. An invisible node's font still has
-     * to load, because it may fade in two frames later and glyphs that were never
-     * registered never paint. Skipping it there is not an optimisation, it is a
-     * missing asset.
+     * A context that inspects rather than paints sets this `false`, and that is
+     * the whole reason this is a capability rather than an unconditional check:
+     * such a walk exists to discover which images, videos, fonts and effects a
+     * frame *references* — regardless of whether they can be seen. An invisible
+     * node's font still has to load, because it may fade in two frames later and
+     * glyphs that were never registered never paint. Skipping it there is not an
+     * optimisation, it is a missing asset.
      *
      * Same shape and same reasoning as {@link readsSpaceRects}: the context
      * declares what it needs, and nodes check before doing work that would be
-     * thrown away. See `Node.render`.
+     * thrown away. See `Node2D.render`.
      */
     readonly drawsVisibleOnly: boolean = true;
 

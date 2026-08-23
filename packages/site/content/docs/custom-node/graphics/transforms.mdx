@@ -25,7 +25,7 @@ Baked into that shape's geometry before it joins the group. Every other shape is
 Called on the chain:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 100, height: 100 })
   .ellipse({ x: 120, y: 0, width: 80, height: 80 })
   .fill('white')
@@ -36,7 +36,7 @@ Applied to the combined result as one transform, so the whole drawing turns toge
 
 ```tsx
 // Two rects that each lean 15 degrees, in a figure turned 45 degrees
-new Graphics()
+new Graphics2D()
   .rect({ x: -80, y: 0, width: 60, height: 200, rotation: 15 })
   .rect({ x:  80, y: 0, width: 60, height: 200, rotation: 15 })
   .fill('white')
@@ -69,7 +69,7 @@ Omit it and both pivot about the centre, of the shape's box or of the figure's b
 Set on the graphics, and unlike a per-shape `opacity` it composites the whole drawing into one layer first:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .ellipse({ x: -40, y: 0, width: 160, height: 160 })
   .ellipse({ x:  40, y: 0, width: 160, height: 160 })
   .fill('white')
@@ -85,9 +85,9 @@ Like `rotation` and `scale` it is a setter, so the last call wins and it applies
 `effects()` runs a filter over the drawing. It takes anything the [`effects` attribute](/docs/effects/introduction) takes: one effect, an array, or an `Effects` chain.
 
 ```tsx
-import { Graphics, Effects } from 'motion-script';
+import { Graphics2D, Effects } from 'motion-script';
 
-new Graphics()
+new Graphics2D()
   .ellipse({ width: 200, height: 200 })
   .fill('#6990DD')
   .effects(Effects.blur(24));
@@ -98,7 +98,7 @@ new Graphics()
 `effects()` is not a setter. It applies to the shapes and paints recorded since the previous `effects()` call, or since the start, and then closes that group. Shapes after it start fresh and unfiltered.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .ellipse({ x: -60, y: 0, width: 200, height: 200 })
   .ellipse({ x:  60, y: 0, width: 200, height: 200 })
   .fill('#6990DD')
@@ -122,7 +122,7 @@ A second `effects()` later filters only the later group:
 A group starts at the first shape after a paint or after an `effects()` call, so content already closed off by its own paint is not swept into a later effect:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 800, height: 400, cornerRadius: 12 })
   .fill('#141824')                             // closes the backdrop group
 

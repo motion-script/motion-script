@@ -1,5 +1,5 @@
 
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -13,7 +13,7 @@ import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 
@@ -62,8 +62,8 @@ export class Grid extends ShapeNode<GridProps> {
 
     // ---- Drawing -------------------------------------------------------------
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -149,7 +149,7 @@ export class Grid extends ShapeNode<GridProps> {
         }
 
         // Stage-pinned children get no track of their own — they're placed
-        // against the scene root. See NodeProps.childPositioning.
+        // against the scene root. See Node2DProps.childPositioning.
         this.layoutAbsoluteChildren(scope);
     }
 

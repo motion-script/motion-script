@@ -6,7 +6,7 @@ import { TweenStepper } from "@/tween/stepper";
 import { getPropertyMeta, PropOptions } from "@/attributes/properties/decorator";
 
 /**
- * Companion implementation of {@link Node}'s reactive-property machinery and its
+ * Companion implementation of {@link Node2D}'s reactive-property machinery and its
  * save/restore state stack. The bodies live here as free functions over a
  * narrow {@link ReactiveHost} so `node.ts` keeps only thin delegators (and the
  * hot-path `set`/`_writeProp`, which stay inline on the class). Mirrors the
@@ -14,16 +14,16 @@ import { getPropertyMeta, PropOptions } from "@/attributes/properties/decorator"
  */
 
 /**
- * The slice of a {@link Node} these helpers touch: the {@link SignalHost} maps
+ * The slice of a {@link Node2D} these helpers touch: the {@link SignalHost} maps
  * plus the internal write/tween seams. `_writeProp` and `_prepareStep` remain
- * methods on `Node`; the helpers call back through them so subclass behaviour
+ * methods on `Node2D`; the helpers call back through them so subclass behaviour
  * and the inline hot path are preserved.
  */
 /** @internal */
 export interface ReactiveHost extends SignalHost {
     _writeProp(field: string, value: unknown): void;
     _prepareStep(to: Record<string, unknown>, duration: number, easing?: EasingFunction): TweenStepper;
-    /** LIFO stack of save() snapshot layers; owned as an instance field on Node. */
+    /** LIFO stack of save() snapshot layers; owned as an instance field on Node2D. */
     _stateStack: Map<string, SignalSnapshot<any>>[];
     /** Told when any of this host's cells goes stale; see {@link SignalOwner}. */
     markDirty(): void;
@@ -31,7 +31,7 @@ export interface ReactiveHost extends SignalHost {
 
 /**
  * Create the Signal cell + accessor for a freshly-declared prop and register its
- * tween/mapper metadata. Extracted from `Node._registerProp`; defines the
+ * tween/mapper metadata. Extracted from `Node2D._registerProp`; defines the
  * getter/setter on `host` so reads track the cell and writes route through
  * `host._writeProp` (mapper-aware, binding-aware).
  */
@@ -40,7 +40,7 @@ export function registerProp<Int>(host: ReactiveHost, field: string, options?: P
     const cell = new Signal<Int>(undefined as unknown as Int);
     // The one place every animatable prop is created, and therefore the one place
     // to say who owns it. Without this a node cannot tell whether anything about
-    // it changed this frame — see `Node.markDirty`.
+    // it changed this frame — see `Node2D.markDirty`.
     cell.owner = host as unknown as SignalOwner;
     if (!host.__signals) host.__signals = new Map();
     host.__signals.set(field, cell);
@@ -67,7 +67,7 @@ export function registerProp<Int>(host: ReactiveHost, field: string, options?: P
  * call creates the cell via {@link registerProp}; a subsequent call for the same
  * field reuses the cell and only refines its tween/mapper (so a subclass can
  * override a parent default without losing the cell or its bindings), then
- * writes the value. Extracted from `Node.applyProp`.
+ * writes the value. Extracted from `Node2D.applyProp`.
  */
 /** @internal */
 export function applyProp<Ext, Int = Ext>(
@@ -95,7 +95,7 @@ export function applyProp<Ext, Int = Ext>(
 
 /**
  * Re-apply every `@property` default to `host`, recreating disposed cells and
- * restoring values. Drives `Node.reinitProps`; the method keeps the
+ * restoring values. Drives `Node2D.reinitProps`; the method keeps the
  * `if (__signals && !force) return` guard and the `super` seam.
  */
 /** @internal */
@@ -121,7 +121,7 @@ export function collectProperties(host: ReactiveHost): Record<string, any> {
 
 /**
  * Every reactive prop of a node, captured as the value **or binding** its cell
- * holds — see {@link Node.captureProps}, which is the public way to make one.
+ * holds — see {@link Node2D.captureProps}, which is the public way to make one.
  *
  * Keyed by prop name. Opaque on purpose: what a cell holds is the *mapped*,
  * internal form, and reading it out to write back through `set` is exactly the

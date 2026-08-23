@@ -6,8 +6,8 @@ import {
     createContext,
     Context,
     ContextMap,
-    Node,
-    NodeProps,
+    Node2D,
+    Node2DProps,
     Provider,
     DefaultTextStyle,
     Rect,
@@ -36,7 +36,7 @@ const StatsContext: Context<Stat[]> = createContext<Stat[]>([], "stats");
  * A custom composite node that draws nothing itself — it **pulls its data down
  * the tree**. Here the *structure* (how many tiles) is itself a context value, so
  * the tiles can't be built in the constructor (context isn't resolved yet). They
- * are built once in {@link Node.resolveContext}, the hook that runs after the node
+ * are built once in {@link Node2D.resolveContext}, the hook that runs after the node
  * is linked in and its ancestors' providers are resolved — it fires exactly once
  * per instance, so there's no accumulation and no `clearChildren`.
  *
@@ -45,7 +45,7 @@ const StatsContext: Context<Stat[]> = createContext<Stat[]>([], "stats");
  * text-style context. The scene never hands the board its data directly; the
  * `<Provider>` and `<DefaultTextStyle>` ancestors do.
  */
-class StatBoard extends Node<NodeProps> {
+class StatBoard extends Node2D<Node2DProps> {
     protected override resolveContext(ctx: ContextMap): void {
         const stats = ctx.get(StatsContext);
 

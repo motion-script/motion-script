@@ -39,7 +39,7 @@ export interface ResolvedSoundProps {
 }
 
 /**
- * A playable audio clip. Deliberately *not* a {@link Node} — audio lives on a
+ * A playable audio clip. Deliberately *not* a {@link Node2D} — audio lives on a
  * parallel timeline, not in the visual scene graph.
  *
  * Wire it up by calling {@link tick} from your node or scene's tick(), then call

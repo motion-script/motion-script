@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { Rect } from '@/nodes/geometry/rect-node';
 import { RootNode } from '@/nodes/scene/root-node';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 
 /**
  * A fixed-size leaf that exposes the box its parent laid it into. `layoutRect` is
- * protected on Node, so a test subclass is the supported seam for reading a
+ * protected on Node2D, so a test subclass is the supported seam for reading a
  * child's resolved position — same shape as the tile in rect-node.test.ts.
  */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(props: { width?: SizeInput; height?: SizeInput } & Record<string, unknown> = {}) {
         super(props as any);
     }
@@ -160,7 +160,7 @@ describe('positioning — absolute children are placed against the stage', () =>
         expect(b.global.x).toBeCloseTo(400, 6);
     });
 
-    it('works through a plain Node container (the default layout path)', () => {
+    it('works through a plain Node2D container (the default layout path)', () => {
         const scope = new FakeMeasurer();
         const pinned = new Tile({ width: 100, height: 100, x: 200, relativeToParent: 'absolute' });
         const holder = new Tile({ width: 300, height: 300, x: -500 });

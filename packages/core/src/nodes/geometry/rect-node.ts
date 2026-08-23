@@ -1,4 +1,4 @@
-import { Graphics } from "@/render/graphics";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -12,7 +12,7 @@ import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { Node, NodeConfig } from "../base/node";
+import { Node2D, NodeConfig } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { anchorProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { lerpSizeInput } from "@/layout/tweens";
@@ -88,13 +88,13 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     }
 
     /**
-     * Figma-style smart default (see base {@link Node.applyDefaultSize}), plus
+     * Figma-style smart default (see base {@link Node2D.applyDefaultSize}), plus
      * one refinement for flex/freeform containers: hugging an axis that a direct
      * child asks to `"fill"` stacks the child against nothing — the child would
      * either collapse to 0 (freeform, or the container's cross axis) or measure
      * unconstrained (horizontal/vertical main axis; see `measureFlex`'s
      * Figma-mirroring comment). Since JSX children are already-constructed
-     * `Node`s by the time they reach this constructor, their own resolved
+     * `Node2D`s by the time they reach this constructor, their own resolved
      * `width`/`height` can be inspected here — so a bare `fill` child flips
      * *this* default from `hug` to `fill` on that exact axis, matching what the
      * author almost certainly wants. An explicit `width`/`height` on this Rect
@@ -108,15 +108,15 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
      * fills the stage, not this box.
      */
     protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
-        const children = Node.flowChildrenProp(props);
+        const children = Node2D.flowChildrenProp(props);
         const hasChildren = children.length > 0;
         const flow: FlowMode = (props as any)?.flow ?? "freeform";
 
         const widthIsMain = flow === "horizontal" || flow === "freeform";
         const heightIsMain = flow === "vertical" || flow === "freeform";
 
-        const defaultWidth = hasChildren && widthIsMain && Node.hasFillChild(children, "width") ? "fill" : hasChildren ? "hug" : "fill";
-        const defaultHeight = hasChildren && heightIsMain && Node.hasFillChild(children, "height") ? "fill" : hasChildren ? "hug" : "fill";
+        const defaultWidth = hasChildren && widthIsMain && Node2D.hasFillChild(children, "width") ? "fill" : hasChildren ? "hug" : "fill";
+        const defaultHeight = hasChildren && heightIsMain && Node2D.hasFillChild(children, "height") ? "fill" : hasChildren ? "hug" : "fill";
 
         if (!props || props.width === undefined) this.applyProp("width", defaultWidth, { tween: lerpSizeInput });
         if (!props || props.height === undefined) this.applyProp("height", defaultHeight, { tween: lerpSizeInput });
@@ -133,8 +133,8 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
 
     // ---- Drawing ----------------------------------------------------------
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,

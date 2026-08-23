@@ -14,7 +14,7 @@ import { Measurer } from "@/render/measurer";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { StorageAdapter } from "@/platform/storage-adapter";
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { AudioRequest } from "@/attributes/audio/request";
 import { AssetRecord } from "@/assets/record";
 import { PrecompResult, AssetTrack, ScenePrecomp } from "@/runtime/precompisition";
@@ -196,7 +196,7 @@ export function asCatalog(c: FakeAssetCatalog): AssetCatalog {
 export class FakeRenderContext {
     renderCount = 0;
     screenshotValue: string | undefined = "data:image/png;base64,FAKE";
-    /** Invokes the draw callback, mirroring the real RenderContext.execute() contract. */
+    /** Invokes the draw callback, mirroring the real RenderContext2D.execute() contract. */
     execute(cb: () => void): void {
         this.renderCount++;
         cb();
@@ -205,8 +205,8 @@ export class FakeRenderContext {
         return this.screenshotValue;
     }
 }
-export function asRenderContext(c: FakeRenderContext): RenderContext {
-    return c as unknown as RenderContext;
+export function asRenderContext(c: FakeRenderContext): RenderContext2D {
+    return c as unknown as RenderContext2D;
 }
 
 export class FakeStorageAdapter {

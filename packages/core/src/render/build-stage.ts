@@ -89,7 +89,7 @@ export class BuildStage<S = unknown> {
      * The seed lives on the returned source, not on the stage, so determinism is
      * scoped per source: several `random(...)` calls with distinct seeds give
      * independent reproducible streams. A string seed is djb2-hashed; omit the
-     * seed to get the fixed default `0` (matching `Node.random`), so an unseeded
+     * seed to get the fixed default `0` (matching `Node2D.random`), so an unseeded
      * source is stable rather than time-varying — the stage keeps no seed of its
      * own.
      *

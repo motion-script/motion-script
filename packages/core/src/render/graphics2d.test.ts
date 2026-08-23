@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { Graphics, GraphicsShapeOp } from '@/render/graphics';
+import { Graphics2D, GraphicsShapeOp } from '@/render/graphics2d';
 import { PathBuilder } from '@/render/descriptors/path-builder';
 import { Effects } from '@/attributes/shape/effects/chain';
 
-describe('Graphics', () => {
+describe('Graphics2D', () => {
     it('records shapes and paint ops in order', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .ellipse({ width: 10, height: 10 })
             .rect({ width: 5, height: 5 })
             .fill('red')
@@ -19,7 +19,7 @@ describe('Graphics', () => {
 
     it('normalizes a PathBuilder into a path op with a PathState', () => {
         const builder = new PathBuilder().moveTo(0, 0).lineTo(10, 10).close();
-        const g = new Graphics().path(builder);
+        const g = new Graphics2D().path(builder);
 
         const op = g.ops()[0] as GraphicsShapeOp;
         expect(op.kind).toBe('path');
@@ -28,7 +28,7 @@ describe('Graphics', () => {
     });
 
     it('rotation/scale/opacity are graphics-level modifiers, not shape ops', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .rect({ width: 1, height: 1 })
             .rotation(30)
             .scale(2)
@@ -48,7 +48,7 @@ describe('Graphics', () => {
     });
 
     it('effects() records an ordered op (scoped like fill), not a graphics-level field', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .rect({ width: 1, height: 1 })
             .fill('red')
             .effects([{ type: 'blur', radius: 2 }]);
@@ -61,7 +61,7 @@ describe('Graphics', () => {
     });
 
     it('effects() accepts an Effect (FX builder) and resolves the op to a SceneEffect[]', () => {
-        const g = new Graphics().rect({ width: 1, height: 1 }).effects(Effects.blur(8).grayscale(1));
+        const g = new Graphics2D().rect({ width: 1, height: 1 }).effects(Effects.blur(8).grayscale(1));
         expect(g.ops()[1]).toEqual({
             kind: 'effects',
             effects: [
@@ -72,7 +72,7 @@ describe('Graphics', () => {
     });
 
     it('effects() scopes per group: each call closes its group, shapes after start fresh', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .ellipse({ width: 2, height: 2 })
             .ellipse({ width: 3, height: 3 })
             .fill('red')
@@ -82,7 +82,7 @@ describe('Graphics', () => {
             .effects(Effects.scatter(2));
 
         // Two independent segments, each ending in its own effects op — as if two
-        // separate Graphics were drawn.
+        // separate Graphics2D were drawn.
         expect(g.ops().map((o) => o.kind)).toEqual([
             'ellipse', 'ellipse', 'fill', 'effects', 'rect', 'fill', 'effects',
         ]);
@@ -91,14 +91,14 @@ describe('Graphics', () => {
     });
 
     it('rotation/scale accept an explicit center pivot', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .rect({ width: 1, height: 1 })
             .rotation(45, { x: 10, y: 20 });
         expect(g.groupTransform()).toEqual({ rotation: 45, scale: 1, center: { x: 10, y: 20 } });
     });
 
     it('rotation/scale accept a named-anchor center pivot (resolved later by the renderer)', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .rect({ width: 1, height: 1 })
             .rotation(90, 'topRight');
         // The anchor name is carried through verbatim; the renderer resolves it
@@ -107,22 +107,22 @@ describe('Graphics', () => {
     });
 
     it('groupTransform is null when rotation/scale are identity', () => {
-        expect(new Graphics().rect({ width: 1, height: 1 }).opacity(0.2).groupTransform()).toBeNull();
+        expect(new Graphics2D().rect({ width: 1, height: 1 }).opacity(0.2).groupTransform()).toBeNull();
     });
 
     it('rotation/scale before any shape still record group transform; ops stay empty', () => {
-        const g = new Graphics().rotation(10).scale(3).opacity(0.2);
+        const g = new Graphics2D().rotation(10).scale(3).opacity(0.2);
         expect(g.ops()).toHaveLength(0);
         expect(g.groupOpacity()).toBe(0.2);
         expect(g.groupTransform()).toEqual({ rotation: 10, scale: 3, center: undefined });
     });
 
     it('needsGroupLayer is false for a plain graphics', () => {
-        expect(new Graphics().rect({ width: 1, height: 1 }).fill('red').needsGroupLayer()).toBe(false);
+        expect(new Graphics2D().rect({ width: 1, height: 1 }).fill('red').needsGroupLayer()).toBe(false);
     });
 
     it('records cut/mask/applyMask/endMask compositing ops in order', () => {
-        const g = new Graphics()
+        const g = new Graphics2D()
             .mask({ mode: 'alpha' })
             .ellipse({ width: 1, height: 1 })
             .fill('white')
@@ -136,8 +136,8 @@ describe('Graphics', () => {
         ]);
     });
 
-    it('isPaintOnly is true for a fill/stroke-only Graphics (e.g. boolean result)', () => {
-        expect(new Graphics().fill('red').stroke({ weight: 1, fill: 'black' }).isPaintOnly()).toBe(true);
-        expect(new Graphics().rect({ width: 1, height: 1 }).fill('red').isPaintOnly()).toBe(false);
+    it('isPaintOnly is true for a fill/stroke-only Graphics2D (e.g. boolean result)', () => {
+        expect(new Graphics2D().fill('red').stroke({ weight: 1, fill: 'black' }).isPaintOnly()).toBe(true);
+        expect(new Graphics2D().rect({ width: 1, height: 1 }).fill('red').isPaintOnly()).toBe(false);
     });
 });

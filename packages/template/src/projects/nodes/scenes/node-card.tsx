@@ -1,6 +1,6 @@
 
 
-import { Node, Rect, Text } from "motion-script";
+import { Node, Node2D, Rect, Text } from "motion-script";
 
 /**
  * Shared chrome for every node showcase scene.

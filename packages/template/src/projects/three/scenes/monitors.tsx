@@ -1,6 +1,10 @@
 import {
     createScene, createSignal, easeInOut, linear, parallel,
-    Graphics, Graphics3D, Rect, Tex, Text, View3D, type SurfaceSource3D,
+    Graphics2D, Rect, Tex, Text,
+    Canvas3D, PerspectiveCamera3D, Background3D, Fog3D,
+    AmbientLight3D, DirectionalLight3D, PointLight3D,
+    Group3D, Box3D, Plane3D,
+    type SurfaceSource3D,
 } from "motion-script";
 
 /**
@@ -10,12 +14,12 @@ import {
  * The point of the scene is that the two screens are authored in the two ways a
  * surface source accepts, and both animate:
  *
- *  - **left** — a built `Graphics` command list, whose trace is phase-driven.
- *  - **right** — a `Node` subtree (`Rect`/`Text` in a column layout), whose bars
+ *  - **left** — a built `Graphics2D` command list, whose trace is phase-driven.
+ *  - **right** — a `Node2D` subtree (`Rect`/`Text` in a column layout), whose bars
  *    are driven by timeline signals.
  *
- * Neither is a child of the `View3D`, and neither has a name: they are values
- * handed to `Tex.surface`. The node binds a `Node` source to its own asset
+ * Neither is a child of the `Canvas3D`, and neither has a name: they are values
+ * handed to `Tex.surface`. The node binds a `Node2D` source to its own asset
  * catalog, context and clock, which is what lets its webfont shape.
  */
 
@@ -29,31 +33,39 @@ const PANEL_W = 4;
 const PANEL_H = PANEL_W * (SCREEN_H / SCREEN_W);
 const BEZEL = 0.12;
 
-/** A monitor: bezel box, screen quad just proud of its face, stalk and foot. */
-function monitor(g3: Graphics3D, key: string, source: SurfaceSource3D, x: number, yaw: number): Graphics3D {
-    return g3.group({ position: [x, 0.35, 0], rotation: [0, yaw, 0], key: `monitor:${key}` }, m => m
-        .box({
-            width: PANEL_W + BEZEL * 2, height: PANEL_H + BEZEL * 2, depth: 0.18,
-            color: "#15181f", roughness: 0.55, metalness: 0.2,
-        })
-        // `unlit` so the screen reads as its own light source; a lit material
-        // would tint the texture with the scene's lighting and read muddy.
-        .plane({
-            width: PANEL_W, height: PANEL_H,
-            position: [0, 0, 0.095],
-            unlit: true,
-            map: Tex.surface(source, SCREEN_W, SCREEN_H, { key }),
-        })
-        .box({
-            width: 0.24, height: 0.9, depth: 0.24,
-            position: [0, -(PANEL_H / 2 + BEZEL) - 0.45, 0],
-            color: "#0f1218", roughness: 0.6,
-        })
-        .box({
-            width: 1.6, height: 0.1, depth: 0.7,
-            position: [0, -(PANEL_H / 2 + BEZEL) - 0.92, 0],
-            color: "#0f1218", roughness: 0.6,
-        }),
+/**
+ * A monitor: bezel box, screen quad just proud of its face, stalk and foot.
+ *
+ * A plain function returning a subtree — the same way a reusable 2D component is
+ * written. The `Group3D` carries the whole rig's placement, so moving one monitor
+ * is one prop.
+ */
+function monitor(key: string, source: SurfaceSource3D, x: number, yaw: number) {
+    return (
+        <Group3D position={[x, 0.35, 0]} rotation={[0, yaw, 0]}>
+            <Box3D
+                width={PANEL_W + BEZEL * 2} height={PANEL_H + BEZEL * 2} depth={0.18}
+                color="#15181f" roughness={0.55} metalness={0.2}
+            />
+            {/* `unlit` so the screen reads as its own light source; a lit material
+                would tint the texture with the scene's lighting and read muddy. */}
+            <Plane3D
+                width={PANEL_W} height={PANEL_H}
+                position={[0, 0, 0.095]}
+                unlit
+                map={Tex.surface(source, SCREEN_W, SCREEN_H, { key })}
+            />
+            <Box3D
+                width={0.24} height={0.9} depth={0.24}
+                position={[0, -(PANEL_H / 2 + BEZEL) - 0.45, 0]}
+                color="#0f1218" roughness={0.6}
+            />
+            <Box3D
+                width={1.6} height={0.1} depth={0.7}
+                position={[0, -(PANEL_H / 2 + BEZEL) - 0.92, 0]}
+                color="#0f1218" roughness={0.6}
+            />
+        </Group3D>
     );
 }
 
@@ -85,9 +97,9 @@ export default createScene(function* (stage) {
     // a tween of its own.
     const barWidth = (value: () => number) => () => 48 + value() * (barTrack - 48);
 
-    // ── Screen 1: a Graphics command list ────────────────────────────────────
-    const scope = (): Graphics => {
-        const g = new Graphics();
+    // ── Screen 1: a Graphics2D command list ────────────────────────────────────
+    const scope = (): Graphics2D => {
+        const g = new Graphics2D();
         const w = SCREEN_W - INSET * 2;
         const h = SCREEN_H - INSET * 2;
 
@@ -145,34 +157,33 @@ export default createScene(function* (stage) {
     );
 
     stage.add(
-        <View3D
+        <Canvas3D
             width={1760}
             height={960}
             cornerRadius={32}
-            graphics3D={() => {
-                const g3 = new Graphics3D();
-                const radians = (orbit() * Math.PI) / 180;
-                g3.perspective({
-                    position: [Math.sin(radians) * 13, 2.4, Math.cos(radians) * 13],
-                    lookAt: [0, 0.2, 0],
-                    fov: 42,
-                })
-                    .background("#080a10")
-                    .fog({ type: "linear", color: "#080a10", near: 15, far: 36 })
-                    .ambient({ intensity: 0.5 })
-                    .directional({ intensity: 1.8, position: [5, 8, 6] })
-                    .point({ intensity: 40, position: [0, 1, 5], color: "#5f7fd0" })
-                    .plane({
-                        width: 60, height: 60,
-                        rotation: [-90, 0, 0], position: [0, -2.1, 0],
-                        color: "#11141c", roughness: 0.85,
-                    });
+        >
+            <PerspectiveCamera3D
+                position={() => {
+                    const radians = (orbit() * Math.PI) / 180;
+                    return [Math.sin(radians) * 13, 2.4, Math.cos(radians) * 13];
+                }}
+                lookAt={[0, 0.2, 0]}
+                fov={42}
+            />
+            <Background3D background="#080a10" />
+            <Fog3D color="#080a10" near={15} far={36} />
+            <AmbientLight3D intensity={0.5} />
+            <DirectionalLight3D intensity={1.8} position={[5, 8, 6]} />
+            <PointLight3D intensity={40} position={[0, 1, 5]} color="#5f7fd0" />
+            <Plane3D
+                width={60} height={60}
+                rotation={[-90, 0, 0]} position={[0, -2.1, 0]}
+                color="#11141c" roughness={0.85}
+            />
 
-                monitor(g3, "scope", scope(), -3.1, 22);
-                monitor(g3, "stats", stats, 3.1, -22);
-                return g3;
-            }}
-        />,
+            {monitor("scope", scope(), -3.1, 22)}
+            {monitor("stats", stats, 3.1, -22)}
+        </Canvas3D>,
     );
 
     yield* parallel(

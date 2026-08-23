@@ -1,6 +1,6 @@
 import { TextAlign } from "@/attributes/text/align";
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Measurer } from "@/render/measurer";
 import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
@@ -10,7 +10,7 @@ import { resolveStrokeArray, StrokeResolved } from "@/attributes/shape/stroke/ma
 import { Size2D } from "@/attributes/layout/size";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { ContextMap } from "@/util/context";
 import { FontStyle, ResolvedTextSpan, TextSpan } from "@/attributes/text/span";
 import { applyTextDefaults } from "@/runtime/builtin-context";
@@ -209,8 +209,8 @@ export class RichText extends ShapeNode<RichTextProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    protected override renderSelf(ctx: RenderContext): void {
-        ctx.draw(new Graphics().richText({
+    protected override renderSelf(ctx: RenderContext2D): void {
+        ctx.draw(new Graphics2D().richText({
             spans: this.runs(),
             lineHeight: this.lineHeight,
             textAlign: this.textAlign,

@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, Fills,
     Anchor, resolveAnchor, property,
 } from "motion-script";
 
@@ -8,7 +8,7 @@ export interface DrawnPivotProps extends ShapeProps {
     extent: number;
     /**
      * The pivot the whole drawn union turns about — passed straight to
-     * `Graphics.rotation(angle, center)`. Either a **named anchor** (`'center'`,
+     * `Graphics2D.rotation(angle, center)`. Either a **named anchor** (`'center'`,
      * `'topRight'`, `'bottomLeft'`, … — the node `align` vocabulary), which the
      * renderer resolves against the union's bounding box, or an explicit
      * `Vector2` in local pixels.
@@ -27,7 +27,7 @@ export interface DrawnPivotProps extends ShapeProps {
  *
  * The figure is a stylised clock hand — a rounded-rect shaft growing up out of a
  * round hub, with a notch cut from the shaft — recorded as a single
- * {@link Graphics} command list. The whole silhouette is then rotated with
+ * {@link Graphics2D} command list. The whole silhouette is then rotated with
  * `g.rotation(this.angle, this.spinPivot)`: every shape turns together about that
  * one point. Because `spinPivot` is a prop, three identical figures can be placed
  * side by side, each spun about a different pivot (its centre, a corner, an
@@ -54,7 +54,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
         this.applyProp("height", props.height ?? props.extent ?? 300 * 2);
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const e = this.extent;
 
         // ── The figure: a clock hand turned about the pivot as one union ──────
@@ -63,7 +63,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
         // drawn silhouette (not stacked primitives). `spinPivot` is handed straight
         // to g.rotation — the renderer resolves a named anchor against the union's
         // bbox, so the whole thing turns about that point.
-        const figure = new Graphics()
+        const figure = new Graphics2D()
             // Shaft: a tall rounded rect rising up from the hub (y-up: +y is up).
             .rect({ x: 0, y: e * 0.35, width: e * 0.22, height: e * 1.3, cornerRadius: e * 0.11 })
             // Hub: a disc at the local origin (the figure's natural anchor).
@@ -84,7 +84,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
         // canvas). A ✕ pins where the figure turns around.
         const marker = this.pivotPoint(e);
         const m = e * 0.07;
-        const cross = new Graphics()
+        const cross = new Graphics2D()
             .line({ points: [{ x: marker.x - m, y: marker.y - m }, { x: marker.x + m, y: marker.y + m }] })
             .line({ points: [{ x: marker.x - m, y: marker.y + m }, { x: marker.x + m, y: marker.y - m }] })
             .stroke({ weight: e * 0.03, fill: '#ffffff' });
@@ -92,7 +92,7 @@ export class DrawnPivot extends ShapeNode<DrawnPivotProps> {
         draw.draw(cross);
 
         // A faint ring around the marker so the pivot reads even over the figure.
-        const ring = new Graphics()
+        const ring = new Graphics2D()
             .ellipse({ x: marker.x, y: marker.y, width: e * 0.2, height: e * 0.2 })
             .stroke({ weight: e * 0.012, fill: Fills.color('#ffffff', { opacity: 0.5 }) });
 

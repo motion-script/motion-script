@@ -15,7 +15,7 @@
  */
 
 /**
- * The positioning a container hands its children — `Node.childPositioning`.
+ * The positioning a container hands its children — `Node2D.childPositioning`.
  *
  * - `'relative'` (default) — children are laid out by this node: measured against
  *   its content box and placed by its `flow` pass.
@@ -27,7 +27,7 @@ export type ChildPositioning = "relative" | "absolute";
 
 /**
  * One child's override of its parent's {@link ChildPositioning} —
- * `Node.relativeToParent`.
+ * `Node2D.relativeToParent`.
  *
  * - `'inherit'` (default) — take the parent's `childPositioning`.
  * - `'relative'` — be laid out by the parent even inside an absolute container.

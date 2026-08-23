@@ -1,19 +1,11 @@
 import type { Color } from "@/attributes/shape/fill/color/parser";
-import type { Camera3D, OrthographicCamera3D, PerspectiveCamera3D } from "./camera";
 import type {
     BoxGeometry3D, CapsuleGeometry3D, CircleGeometry3D, ConeGeometry3D,
     CylinderGeometry3D, ExtrudeGeometry3D, Geometry3D, LatheGeometry3D,
     PlaneGeometry3D, PolyhedronGeometry3D, RingGeometry3D, SphereGeometry3D,
     TorusGeometry3D, TorusKnotGeometry3D, TubeGeometry3D,
 } from "./geometry";
-import type {
-    AmbientLight3D, DirectionalLight3D, HemisphereLight3D, Light3D,
-    PointLight3D, RectAreaLight3D, SpotLight3D,
-} from "./light";
 import type { Material3D } from "./material";
-import type {
-    Background3D, Environment3D, Fog3D, PostEffect3D, ShadowSettings3D, ToneMapping3D,
-} from "./scene-settings";
 import type { Texture3D } from "./texture";
 import { type Transform3D, type Blending3D, type Side3D } from "./transform";
 import type { Vector3Input } from "./vector3";
@@ -41,17 +33,16 @@ export interface ModelAnimation3D {
 /**
  * One recorded operation in a {@link Graphics3D} command list.
  *
- * Hierarchy is expressed with `push`/`pop`; a drawable's geometry and material
- * are *inline sub-descriptors*, not ops, because in a 3D scene graph they are
- * properties of an object rather than children of it.
+ * Every op draws something. Hierarchy, lights and the camera are *scene*
+ * concerns, recorded by the `Node3D` tree into a `Scene3D` — this is only ever
+ * "what one node paints", which is exactly what a `Graphics2D` is in 2D.
+ *
+ * A drawable's geometry and material are *inline sub-descriptors*, not ops,
+ * because in a 3D scene graph they are properties of an object rather than
+ * children of it.
  */
 export type Graphics3DOp =
-    // Hierarchy
-    | { kind: "push"; transform?: Transform3D }
-    | { kind: "pop" }
-    // Drawables
     | { kind: "mesh"; geometry: Geometry3D; material: Material3D | readonly Material3D[]; transform?: Transform3D }
-    | { kind: "light"; light: Light3D; transform?: Transform3D }
     | {
         kind: "instances";
         geometry: Geometry3D;
@@ -80,8 +71,14 @@ export type Graphics3DOp =
         transform?: Transform3D;
     };
 
-/** Op kinds that put something in the scene (as opposed to shaping the tree). */
-const DRAWABLE_KINDS: ReadonlySet<Graphics3DOp["kind"]> = new Set([
+/**
+ * Op kinds that put something in the scene (as opposed to shaping the tree).
+ *
+ * Shared with `Scene3D`, whose op list is this one plus `push`/`pop`/`light`/
+ * `camera` — so "is anything actually drawn here" has a single definition.
+ */
+/** @internal */
+export const DRAWABLE_KINDS: ReadonlySet<string> = new Set([
     "mesh", "light", "instances", "points", "line", "sprite", "model",
 ]);
 
@@ -190,28 +187,26 @@ type ParamsOf<G> = Omit<G, "type">;
 // ─── Recorder ────────────────────────────────────────────────────────────────
 
 /**
- * A renderer-agnostic, chainable 3D scene builder — the `Graphics` of 3D.
+ * What one 3D node draws — the `Graphics2D` of 3D.
  *
- * Records an ordered op list describing an object graph, plus scene-level
- * settings (camera, fog, background, environment, shadows, tone mapping, post
- * chain) held as fields and read back through query methods, exactly as
- * `Graphics` holds `opacity`/`rotation`/`scale`. Nothing here touches a renderer:
- * a built `Graphics3D` is handed to a `Graphics` via `g.view3D(g3, state)`, and
- * the backend replays it.
+ * Records an ordered list of drawables (meshes, instanced meshes, points, lines,
+ * sprites, models), each with its own geometry, material and local transform.
+ * That is the whole surface: it holds no camera, no lights and no hierarchy,
+ * because those are properties of a *scene* rather than of a thing in one, and
+ * the `Node3D` tree owns them. The exact division `Graphics2D` and
+ * `RenderContext2D` already make in 2D.
  *
- *   const g3 = new Graphics3D()
- *       .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
- *       .background("#0b0d12")
- *       .ambient({ intensity: 0.35 })
- *       .directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true })
- *       .box({ width: 2, height: 2, depth: 2, color: "#e0533d", roughness: 0.3 })
- *       .group({ position: [3, 0, 0] }, g =>
- *           g.sphere({ radius: 0.8, color: "cyan" })
- *            .torus({ radius: 1.4, tube: 0.08, unlit: true, color: "white" }));
+ *   protected renderSelf(ctx: RenderContext3D): void {
+ *       ctx.draw(new Graphics3D()
+ *           .box({ width: 2, height: 2, depth: 2, color: "#e0533d", roughness: 0.3 }));
+ *   }
+ *
+ * Nothing here touches a renderer: a built `Graphics3D` is handed to a
+ * {@link RenderContext3D}, which splices its ops into the scene being recorded.
  *
  * ── Angles are DEGREES ────────────────────────────────────────────────────────
- * Every angle here — Euler rotations, spot cone angles, sweep arcs, UV rotation —
- * is in degrees, matching motion-script's 2D `rotation`. The renderer converts.
+ * Every angle here — Euler rotations, sweep arcs, UV rotation — is in degrees,
+ * matching motion-script's 2D `rotation`. The renderer converts.
  *
  * ── Animation ─────────────────────────────────────────────────────────────────
  * A `Graphics3D` is rebuilt from scratch every frame, so animation is just
@@ -229,73 +224,21 @@ type ParamsOf<G> = Omit<G, "type">;
  *
  * ── Reconciliation identity ───────────────────────────────────────────────────
  * The renderer caches one live 3D object per op and mutates it between frames
- * rather than rebuilding. Identity is the op's **structural path**: its `group()`
- * nesting plus its index within that group. That is stable for a builder emitting
- * the same ops in the same order every frame, which is the normal case. When a
- * builder emits ops *conditionally*, set `key` on the transform so identity
- * follows the logical object rather than the slot — otherwise inserting an op
- * renumbers every later slot and rebuilds the tail.
+ * rather than rebuilding. Identity comes from the owning `Node3D` — stable across
+ * a conditional sibling appearing or disappearing, which a positional index is
+ * not. Set `key` on the transform to distinguish two drawables recorded by the
+ * *same* node.
  *
  * ── What is cheap to animate ──────────────────────────────────────────────────
- * Transforms and most material/light values are in-place writes, so they cost
- * nothing per frame. **Geometry parameters are not** — three geometries are
- * immutable, so tweening `.box({ width: signal() })` reallocates the mesh every
- * frame. Scale the object instead: `.box({ width: 1, scale: [signal(), 1, 1] })`.
- * The fields marked "structural" on `MaterialCommon3D` recompile the shader
- * program and should be set once, not tweened.
+ * Transforms and most material values are in-place writes, so they cost nothing
+ * per frame. **Geometry parameters are not** — three geometries are immutable, so
+ * tweening `.box({ width: signal() })` reallocates the mesh every frame. Scale the
+ * object instead: `.box({ width: 1, scale: [signal(), 1, 1] })`. The fields marked
+ * "structural" on `MaterialCommon3D` recompile the shader program and should be
+ * set once, not tweened.
  */
 export class Graphics3D {
     private _ops: Graphics3DOp[] = [];
-    private _camera: Camera3D | null = null;
-    private _fog: Fog3D | null = null;
-    private _background: Background3D | null = null;
-    private _environment: Environment3D | null = null;
-    private _shadows: ShadowSettings3D | null = null;
-    private _tone: ToneMapping3D | null = null;
-    private _post: PostEffect3D[] = [];
-    /** Open `push` count, so {@link assertBalanced} can report a leak. */
-    private _depth = 0;
-
-    // ─── Hierarchy ───────────────────────────────────────────────────────────
-
-    /**
-     * Open a child group. Everything recorded until the matching {@link pop} is
-     * nested inside it and inherits `transform`.
-     *
-     * Prefer the callback form of {@link group}, which cannot be left unbalanced.
-     */
-    push(transform?: Transform3D): this {
-        this._ops.push({ kind: "push", transform });
-        this._depth++;
-        return this;
-    }
-
-    /** Close the group opened by the matching {@link push}. */
-    pop(): this {
-        this._ops.push({ kind: "pop" });
-        this._depth--;
-        return this;
-    }
-
-    /**
-     * Record a nested group — `push`, run `build`, `pop`. The preferred form: the
-     * nesting is visible in the source and can't be left open.
-     *
-     *   g.group({ position: [0, 2, 0] }, g => g.sphere({ radius: 0.5 }))
-     */
-    group(transform: Transform3D, build: (g: this) => unknown): this;
-    group(build: (g: this) => unknown): this;
-    group(
-        transformOrBuild: Transform3D | ((g: this) => unknown),
-        maybeBuild?: (g: this) => unknown,
-    ): this {
-        const isCallback = typeof transformOrBuild === "function";
-        const transform = isCallback ? undefined : transformOrBuild;
-        const build = isCallback ? transformOrBuild : maybeBuild;
-        this.push(transform);
-        build?.(this);
-        return this.pop();
-    }
 
     // ─── Meshes ──────────────────────────────────────────────────────────────
 
@@ -368,49 +311,6 @@ export class Graphics3D {
     }
     tube(options: ParamsOf<TubeGeometry3D> & MeshShorthand3D): this {
         return this.sugar("tube", options);
-    }
-
-    // ─── Lights ──────────────────────────────────────────────────────────────
-
-    /** Record a light from an explicit descriptor. */
-    light(light: Light3D, transform?: Transform3D): this {
-        this._ops.push({ kind: "light", light, transform });
-        return this;
-    }
-
-    /**
-     * Record a light from a flat bag mixing the light's own params with its
-     * placement — `.directional({ intensity: 2, position: [4, 6, 3] })`. The
-     * transform keys are split out; everything else belongs to the light.
-     */
-    private sugarLight(type: Light3D["type"], options?: object): this {
-        const source = options ?? {};
-        const bag = source as Record<string, unknown>;
-        const light: Record<string, unknown> = { type };
-        for (const key in bag) {
-            if ((TRANSFORM_KEYS as readonly string[]).includes(key)) continue;
-            if (bag[key] !== undefined) light[key] = bag[key];
-        }
-        return this.light(light as unknown as Light3D, pickTransform(source));
-    }
-
-    ambient(options?: ParamsOf<AmbientLight3D> & Transform3D): this {
-        return this.sugarLight("ambient", options);
-    }
-    hemisphere(options?: ParamsOf<HemisphereLight3D> & Transform3D): this {
-        return this.sugarLight("hemisphere", options);
-    }
-    directional(options?: ParamsOf<DirectionalLight3D> & Transform3D): this {
-        return this.sugarLight("directional", options);
-    }
-    point(options?: ParamsOf<PointLight3D> & Transform3D): this {
-        return this.sugarLight("point", options);
-    }
-    spot(options?: ParamsOf<SpotLight3D> & Transform3D): this {
-        return this.sugarLight("spot", options);
-    }
-    rectArea(options?: ParamsOf<RectAreaLight3D> & Transform3D): this {
-        return this.sugarLight("rectArea", options);
     }
 
     // ─── Other drawables ─────────────────────────────────────────────────────
@@ -537,80 +437,6 @@ export class Graphics3D {
         return this;
     }
 
-    // ─── Scene settings ──────────────────────────────────────────────────────
-    //
-    // These are graphics-level fields rather than ops: a scene has exactly one
-    // camera, one fog, one background. Recording them positionally would imply an
-    // ordering that doesn't exist. Last writer wins.
-
-    /** Set the camera from an explicit descriptor. */
-    camera(camera: Camera3D): this {
-        this._camera = camera;
-        return this;
-    }
-
-    /** Set a perspective camera. The usual choice. */
-    perspective(options?: ParamsOf<PerspectiveCamera3D>): this {
-        return this.camera({ type: "perspective", ...options } as PerspectiveCamera3D);
-    }
-
-    /** Set an orthographic camera — parallel projection, for isometric looks. */
-    orthographic(options?: ParamsOf<OrthographicCamera3D>): this {
-        return this.camera({ type: "orthographic", ...options } as OrthographicCamera3D);
-    }
-
-    /** Set depth fog. A bare {@link Color} is sugar for linear fog in that colour. */
-    fog(fog: Fog3D | Color | null): this {
-        if (fog === null) {
-            this._fog = null;
-        } else if (typeof fog === "string" || Array.isArray(fog)) {
-            this._fog = { type: "linear", color: fog as Color };
-        } else {
-            this._fog = fog as Fog3D;
-        }
-        return this;
-    }
-
-    /**
-     * Set what fills the uncovered pixels. Defaults to transparent, so the 2D
-     * scene behind the node shows through. A bare {@link Color} is a solid clear.
-     */
-    background(background: Background3D | null): this {
-        this._background = background;
-        return this;
-    }
-
-    /**
-     * Light the scene with an environment image. Needed for metals to read as
-     * metal — without something to reflect, a metallic surface renders black.
-     * `{ type: "room" }` needs no asset and is the quickest fix.
-     */
-    environment(environment: Environment3D | null): this {
-        this._environment = environment;
-        return this;
-    }
-
-    /** Enable and configure shadow mapping. `true` is shorthand for `{ enabled: true }`. */
-    shadows(settings?: ShadowSettings3D | boolean): this {
-        if (settings === undefined || settings === true) this._shadows = { enabled: true };
-        else if (settings === false) this._shadows = { enabled: false };
-        else this._shadows = settings;
-        return this;
-    }
-
-    /** Set tone mapping and exposure. */
-    tone(settings: ToneMapping3D): this {
-        this._tone = settings;
-        return this;
-    }
-
-    /** Append post-processing passes, applied in order after the scene renders. */
-    post(effects: PostEffect3D | readonly PostEffect3D[]): this {
-        if (Array.isArray(effects)) this._post.push(...(effects as PostEffect3D[]));
-        else this._post.push(effects as PostEffect3D);
-        return this;
-    }
-
     // ─── Consumption ─────────────────────────────────────────────────────────
 
     /** The recorded ops, in order. Replayed by the renderer. */
@@ -618,50 +444,9 @@ export class Graphics3D {
         return this._ops;
     }
 
-    /** The camera, or `null` to let the renderer supply a default framing. */
-    cameraDescriptor(): Camera3D | null {
-        return this._camera;
-    }
-    fogDescriptor(): Fog3D | null {
-        return this._fog;
-    }
-    backgroundDescriptor(): Background3D | null {
-        return this._background;
-    }
-    environmentDescriptor(): Environment3D | null {
-        return this._environment;
-    }
-    shadowSettings(): ShadowSettings3D | null {
-        return this._shadows;
-    }
-    toneSettings(): ToneMapping3D | null {
-        return this._tone;
-    }
-    postEffects(): readonly PostEffect3D[] {
-        return this._post;
-    }
-
-    /**
-     * True when nothing would be drawn — no mesh, light or other drawable. The
-     * node skips the whole 3D pass (and the WebGL context entirely) in that case.
-     */
+    /** True when this node draws nothing. */
     isEmpty(): boolean {
-        return !this._ops.some((op) => DRAWABLE_KINDS.has(op.kind));
-    }
-
-    /**
-     * Throw if `push` and `pop` are unbalanced. Called once by the consumer before
-     * replay, so a mismatched group fails loudly at the source rather than
-     * silently reparenting everything after it.
-     */
-    assertBalanced(): void {
-        if (this._depth !== 0) {
-            const verb = this._depth > 0 ? "unclosed push()" : "extra pop()";
-            throw new Error(
-                `Graphics3D has ${Math.abs(this._depth)} ${verb}. ` +
-                `Prefer group(transform, g => …), which cannot be left unbalanced.`,
-            );
-        }
+        return this._ops.length === 0;
     }
 }
 

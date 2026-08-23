@@ -4,7 +4,7 @@ import { Rect } from '@/nodes/geometry/rect-node';
 import { Ellipse } from '@/nodes/geometry/ellipse-node';
 import { ShapeNode } from '@/nodes/geometry/shape-node';
 import { Text } from '@/nodes/text/text-node';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 
 describe('createRef', () => {
     it('throws when read before assignment', () => {
@@ -52,7 +52,7 @@ describe('createRef', () => {
 describe('ref variance', () => {
     it('accepts a ref declared as a supertype of the node', () => {
         const shape = createRef<ShapeNode>();
-        const node = createRef<Node>();
+        const node = createRef<Node2D>();
 
         const rect = new Rect({ ref: shape, width: 10, height: 10 });
         new Ellipse({ ref: node, width: 10, height: 10 });

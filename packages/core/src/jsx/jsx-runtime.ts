@@ -23,6 +23,10 @@ export const jsxs = jsx;
 export const Fragment = Symbol.for("motion.fragment");
 
 export namespace JSX {
+    // The dimension-agnostic base, so both trees are valid JSX. Which children a
+    // node will actually accept is a runtime check (`Node.acceptsChild`) rather
+    // than a type-level one: `children` is one prop shared by every node, and
+    // splitting JSX by dimension would mean two runtimes for one syntax.
     export type Element = Node;
     export interface ElementClass extends Node<any> { }
     export interface ElementChildrenAttribute { children: {} }

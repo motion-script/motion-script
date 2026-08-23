@@ -2,7 +2,7 @@ import { EasingFunction } from "@/tween/ease/type";
 import { commandParallel, commandSequence, driveCommand, type Command } from "@/tween/command";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Measurer } from "@/render/measurer";
-import type { Node, NodeProps } from "./node";
+import type { Node2D, Node2DProps } from "./node2d";
 
 /**
  * Measure `child`'s natural size **without attaching it to `parent`** — so the
@@ -13,7 +13,7 @@ import type { Node, NodeProps } from "./node";
  * and `parent._lastScope` — internal layout state the lifecycle helpers are the
  * intended in-directory consumer of.
  */
-function measureDetached(parent: Node, child: Node): { width: number; height: number } | null {
+function measureDetached(parent: Node2D, child: Node2D): { width: number; height: number } | null {
     const p = parent as unknown as { constraints?: SizeConstraints; _lastScope?: Measurer };
     const scope = p._lastScope;
     // The scope (text measurement) is the essential input and is only present once
@@ -31,9 +31,9 @@ function measureDetached(parent: Node, child: Node): { width: number; height: nu
 }
 
 /**
- * Companion for {@link Node}'s animated child-management methods. The sync
+ * Companion for {@link Node2D}'s animated child-management methods. The sync
  * variants (addChild/removeChild/addChildren/clearChildren/addChildAt/
- * removeChildAt) stay inline on Node — each is a 3–5 line method that mutates
+ * removeChildAt) stay inline on Node2D — each is a 3–5 line method that mutates
  * `_children`/`_parent` and calls `bindAssets`/`bindChildContext`, so there is
  * no body worth moving. These are the animated overloads, returned as
  * {@link Command}s built from `child.to(...)` composed with
@@ -91,19 +91,19 @@ const SIZE_PHASE = 0.7;
  * it falls back to its authored token and fades in without a width tween.
  */
 export function addChildAtAnimated(
-    parent: Node,
-    child: Node,
+    parent: Node2D,
+    child: Node2D,
     index: number,
     duration: number,
     easing?: EasingFunction,
 ): Command<Record<string, never>> {
-    let animation: Command<NodeProps> | null = null;
+    let animation: Command<Node2DProps> | null = null;
     let isNumericW = false;
     let isNumericH = false;
-    let origW: NodeProps["width"];
-    let origH: NodeProps["height"];
+    let origW: Node2DProps["width"];
+    let origH: Node2DProps["height"];
 
-    const setup = (): Command<NodeProps> => {
+    const setup = (): Command<Node2DProps> => {
         const targetOpacity = child.opacity;
         // Remember the authored size tokens so a hug/fill axis can be restored
         // after the numeric grow-in tween finishes.
@@ -134,10 +134,10 @@ export function addChildAtAnimated(
             gapScale: 0,
             ...(tweenW ? { width: 0 } : {}),
             ...(tweenH ? { height: 0 } : {}),
-        } as Partial<NodeProps>);
+        } as Partial<Node2DProps>);
         parent.addChildAt(child, index);
 
-        const sizeProps: Partial<NodeProps> = {};
+        const sizeProps: Partial<Node2DProps> = {};
         if (tweenW) sizeProps.width = targetW;
         if (tweenH) sizeProps.height = targetH;
         // Two sequential phases so the fading-in child never overlaps siblings
@@ -147,14 +147,14 @@ export function addChildAtAnimated(
         // size so siblings slide over continuously instead of jumping by `gap`.
         const grow = duration * SIZE_PHASE;
         const fade = duration - grow;
-        return commandSequence<NodeProps>(
+        return commandSequence<Node2DProps>(
             child,
-            commandParallel<NodeProps>(
+            commandParallel<Node2DProps>(
                 child,
                 child.to(sizeProps, grow, easing),
-                child.to({ gapScale: 1 } as Partial<NodeProps>, grow, easing),
+                child.to({ gapScale: 1 } as Partial<Node2DProps>, grow, easing),
             ),
-            child.to({ opacity: targetOpacity } as Partial<NodeProps>, fade, easing),
+            child.to({ opacity: targetOpacity } as Partial<Node2DProps>, fade, easing),
         );
     };
 
@@ -165,10 +165,10 @@ export function addChildAtAnimated(
             // Restore any hug/fill token so the child reflows naturally from
             // here on; the tween already landed the axis on its measured pixel
             // size, so this is seamless.
-            const restore: Partial<NodeProps> = {};
+            const restore: Partial<Node2DProps> = {};
             if (!isNumericW) restore.width = origW;
             if (!isNumericH) restore.height = origH;
-            if (!isNumericW || !isNumericH) child.set(restore as Partial<NodeProps>);
+            if (!isNumericW || !isNumericH) child.set(restore as Partial<Node2DProps>);
         }
     });
 }
@@ -185,13 +185,13 @@ export function addChildAtAnimated(
  * directions rather than a one-way commit.
  */
 export function removeChildAtAnimated(
-    parent: Node,
+    parent: Node2D,
     index: number,
     duration: number,
     easing?: EasingFunction,
 ): Command<Record<string, never>> {
-    let child: Node | null = null;
-    let animation: Command<NodeProps> | null = null;
+    let child: Node2D | null = null;
+    let animation: Command<Node2DProps> | null = null;
     let setupDone = false;
 
     const setup = (): void => {
@@ -205,7 +205,7 @@ export function removeChildAtAnimated(
         // parent layout.
         const lw = child.measuredWidth;
         const lh = child.measuredHeight;
-        child.set({ width: lw, height: lh } as Partial<NodeProps>);
+        child.set({ width: lw, height: lh } as Partial<Node2DProps>);
 
         // Mirror of the insert: fade the child out first (box held at full
         // size, so it doesn't overlap siblings mid-fade), then collapse the
@@ -213,13 +213,13 @@ export function removeChildAtAnimated(
         // closes continuously.
         const fade = duration * (1 - SIZE_PHASE);
         const shrink = duration - fade;
-        animation = commandSequence<NodeProps>(
+        animation = commandSequence<Node2DProps>(
             child,
-            child.to({ opacity: 0 } as Partial<NodeProps>, fade, easing),
-            commandParallel<NodeProps>(
+            child.to({ opacity: 0 } as Partial<Node2DProps>, fade, easing),
+            commandParallel<Node2DProps>(
                 child,
-                child.to({ width: 0, height: 0 } as Partial<NodeProps>, shrink, easing),
-                child.to({ gapScale: 0 } as Partial<NodeProps>, shrink, easing),
+                child.to({ width: 0, height: 0 } as Partial<Node2DProps>, shrink, easing),
+                child.to({ gapScale: 0 } as Partial<Node2DProps>, shrink, easing),
             ),
         );
     };
@@ -241,7 +241,7 @@ export function removeChildAtAnimated(
             // refs), and a plain (non-animated) addChild wouldn't reset it.
             // Restore the default so a stale 0 can't silently swallow a gap on
             // re-insert.
-            child.set({ gapScale: 1 } as Partial<NodeProps>);
+            child.set({ gapScale: 1 } as Partial<Node2DProps>);
         }
     });
 }
@@ -254,23 +254,23 @@ export function removeChildAtAnimated(
  * {@link removeChildAtAnimated} uses.
  */
 export function reparentAnimated(
-    node: Node,
-    newParent: Node,
+    node: Node2D,
+    newParent: Node2D,
     duration: number,
     easing?: EasingFunction,
 ): Command<Record<string, never>> {
     const half = duration / 2;
-    let animation: Command<NodeProps> | null = null;
-    let oldParent: Node | null = null;
+    let animation: Command<Node2DProps> | null = null;
+    let oldParent: Node2D | null = null;
 
-    const setup = (): Command<NodeProps> => {
+    const setup = (): Command<Node2DProps> => {
         const targetOpacity = node.opacity;
         oldParent = node.parent;
 
         // Pin to current rendered size so exit shrink reflows the old parent.
         const lw = node.measuredWidth;
         const lh = node.measuredHeight;
-        node.set({ width: lw, height: lh } as Partial<NodeProps>);
+        node.set({ width: lw, height: lh } as Partial<Node2DProps>);
 
         // Exit the old parent (fade out, then collapse the box + gap) over the
         // first half, then enter the new one (open the box + gap, then fade
@@ -286,20 +286,20 @@ export function reparentAnimated(
         const exitShrink = half - exitFade;
         const enterGrow = half * SIZE_PHASE;
         const enterFade = half - enterGrow;
-        return commandSequence<NodeProps>(
+        return commandSequence<Node2DProps>(
             node,
-            node.to({ opacity: 0 } as Partial<NodeProps>, exitFade, easing),
-            commandParallel<NodeProps>(
+            node.to({ opacity: 0 } as Partial<Node2DProps>, exitFade, easing),
+            commandParallel<Node2DProps>(
                 node,
-                node.to({ width: 0, height: 0 } as Partial<NodeProps>, exitShrink, easing),
-                node.to({ gapScale: 0 } as Partial<NodeProps>, exitShrink, easing),
+                node.to({ width: 0, height: 0 } as Partial<Node2DProps>, exitShrink, easing),
+                node.to({ gapScale: 0 } as Partial<Node2DProps>, exitShrink, easing),
             ),
-            commandParallel<NodeProps>(
+            commandParallel<Node2DProps>(
                 node,
-                node.to({ width: lw, height: lh } as Partial<NodeProps>, enterGrow, easing),
-                node.to({ gapScale: 1 } as Partial<NodeProps>, enterGrow, easing),
+                node.to({ width: lw, height: lh } as Partial<Node2DProps>, enterGrow, easing),
+                node.to({ gapScale: 1 } as Partial<Node2DProps>, enterGrow, easing),
             ),
-            node.to({ opacity: targetOpacity } as Partial<NodeProps>, enterFade, easing),
+            node.to({ opacity: targetOpacity } as Partial<Node2DProps>, enterFade, easing),
         );
     };
 

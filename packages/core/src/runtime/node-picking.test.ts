@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { Rect } from '@/nodes/geometry/rect-node';
 import { RootNode } from '@/nodes/scene/root-node';
 import { Camera } from '@/nodes/layout/camera-node';
@@ -11,7 +11,7 @@ import { nodeBox, pickNode, collectBoxes, NodeBox } from '@/runtime/node-picking
 const scope = new FakeMeasurer();
 
 /** A plain leaf; its layout cell is assigned directly by {@link place}. */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(props?: any) {
         super(props ?? {});
     }
@@ -29,7 +29,7 @@ class LeftHalf extends Tile {
  * container also lays out its children, so place the parent first and then
  * override each child's cell.
  */
-function place(node: Node, rect: BoxBounds): void {
+function place(node: Node2D, rect: BoxBounds): void {
     node.layout(rect, scope);
 }
 
@@ -85,7 +85,7 @@ describe('nodeBox – geometry', () => {
         place(parent, { x: 0, y: 0, width: 400, height: 400 });
         place(child, { x: 100, y: 0, width: 50, height: 50 });
 
-        // World x = cell.x (100) + child.x (5), mirroring Node.global.
+        // World x = cell.x (100) + child.x (5), mirroring Node2D.global.
         closeTo(nodeBox(child, '0').center.x, 105);
     });
 
@@ -106,8 +106,8 @@ describe('nodeBox – geometry', () => {
 describe('nodeBox – camera', () => {
     /**
      * The assertion the whole render-matrix walk exists for. A camera is applied
-     * at *render* time (`beginCamera`), so it is not part of `Node.worldMatrix`
-     * and `Node.global` is blind to it — a box built from `global` alone would sit
+     * at *render* time (`beginCamera`), so it is not part of `Node2D.worldMatrix`
+     * and `Node2D.global` is blind to it — a box built from `global` alone would sit
      * off the pixels the moment a scene zooms. If this fails, suspect
      * `cameraMatrix`'s argument order or the `vy = -rect.y` sign, not the walk.
      */
@@ -179,7 +179,7 @@ describe('nodeBox – camera', () => {
 });
 
 describe('pickNode – ordering and visibility', () => {
-    function stack(...children: Node[]): RootNode {
+    function stack(...children: Node2D[]): RootNode {
         const root = new RootNode({});
         for (const c of children) root.addChild(c);
         place(root, { x: 0, y: 0, width: 800, height: 600 });

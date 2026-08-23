@@ -4,7 +4,7 @@ import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from 
 import { ParagraphShapeCache } from "@motion-script/skia-render/shapes/paragraph-cache";
 import type { SkiaAssets, SkiaTextureSource } from "@motion-script/skia-render/assets";
 // Type-only three usage keeps this a real lazy boundary — see three/bridge.ts.
-import { warmPendingView3D } from "@motion-script/skia-render/three/bridge";
+import { warmPendingCanvas3D } from "@motion-script/skia-render/three/bridge";
 
 interface CachedPixels {
     width: number;
@@ -530,7 +530,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
      * Persistent CanvasKit texture per 3D node, so a 60 fps 3D scene doesn't
      * allocate and free a GPU texture every frame.
      */
-    private view3DTextures = new Map<string, CKImage>();
+    private canvas3DTextures = new Map<string, CKImage>();
 
     /**
      * Upload a 3D renderer's canvas into a GPU-resident CanvasKit image, creating
@@ -568,13 +568,13 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
             colorSpace: this.canvasKit.ColorSpace.SRGB,
         };
 
-        let image = this.view3DTextures.get(key);
+        let image = this.canvas3DTextures.get(key);
 
         // The buffer can grow (see the renderer's size quantisation); a texture is
         // fixed-size, so a size change needs a fresh one.
         if (image && (image.width() !== width || image.height() !== height)) {
             image.delete();
-            this.view3DTextures.delete(key);
+            this.canvas3DTextures.delete(key);
             image = undefined;
         }
 
@@ -584,7 +584,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
             // makes for ImageBitmap.
             const made = surface.makeImageFromTextureSource(source as never, info, true);
             if (!made) return null;
-            this.view3DTextures.set(key, made);
+            this.canvas3DTextures.set(key, made);
             return made;
         }
 
@@ -594,8 +594,8 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
 
     /** Release a 3D node's texture — called when its node is swept. */
     release3DTexture(key: string): void {
-        this.view3DTextures.get(key)?.delete();
-        this.view3DTextures.delete(key);
+        this.canvas3DTextures.get(key)?.delete();
+        this.canvas3DTextures.delete(key);
     }
 
     // ─── Video ───────────────────────────────────────────────────────────────
@@ -619,8 +619,8 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         this.clearVideoAltSlots();
         // 3D composites are texture-backed too, so they're bound to the surface
         // that made them and must be dropped alongside the video textures.
-        for (const image of this.view3DTextures.values()) image.delete();
-        this.view3DTextures.clear();
+        for (const image of this.canvas3DTextures.values()) image.delete();
+        this.canvas3DTextures.clear();
 
         this.surface = surface;
     }
@@ -980,7 +980,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         );
         this.pendingEchoFrames.clear();
 
-        // 3D shares this hatch. A `view3D` op that couldn't be drawn
+        // 3D shares this hatch. A `canvas3D` op that couldn't be drawn
         // synchronously — the three runtime still importing on a cold first frame —
         // registers itself, and every existing caller of this method (export,
         // screenshot, seek) already re-renders while it returns true. So 3D warms
@@ -988,7 +988,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         //
         // Drained before the early return below so a 3D-only scene, which queues no
         // video work at all, still gets its runtime loaded.
-        const warmed3D = await warmPendingView3D();
+        const warmed3D = await warmPendingCanvas3D();
 
         if (pending.length === 0 && echo.length === 0) return warmed3D;
         await Promise.all([
@@ -1362,8 +1362,8 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         this.imageCKCache.clear();
         this.imagePixels.clear();
 
-        for (const image of this.view3DTextures.values()) image.delete();
-        this.view3DTextures.clear();
+        for (const image of this.canvas3DTextures.values()) image.delete();
+        this.canvas3DTextures.clear();
 
         // Close window bitmaps, tracking them so shared echo entries aren't
         // double-closed below.

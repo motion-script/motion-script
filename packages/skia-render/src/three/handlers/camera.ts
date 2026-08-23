@@ -1,5 +1,5 @@
 /**
- * `Camera3D` descriptor → `THREE.Camera`, and the default framing when a scene
+ * `CameraData3D` descriptor → `THREE.Camera`, and the default framing when a scene
  * declares no camera at all.
  *
  * `fov`/`near`/`far`/aspect changes cost one projection-matrix rebuild, so they're
@@ -8,19 +8,19 @@
  */
 
 import type * as THREE from "three";
-import type { Camera3D } from "@motion-script/core";
+import type { CameraData3D } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { applyTransform } from "./transform";
 
 /** True when `camera` matches the kind `descriptor` asks for. */
-export function cameraMatches(three: ThreeModule, camera: THREE.Camera, descriptor: Camera3D): boolean {
+export function cameraMatches(three: ThreeModule, camera: THREE.Camera, descriptor: CameraData3D): boolean {
     return descriptor.type === "perspective"
         ? camera instanceof three.PerspectiveCamera
         : camera instanceof three.OrthographicCamera;
 }
 
 /** Build a camera for `descriptor`. */
-export function createCamera(three: ThreeModule, descriptor: Camera3D | null): THREE.Camera {
+export function createCamera(three: ThreeModule, descriptor: CameraData3D | null): THREE.Camera {
     if (descriptor?.type === "orthographic") return new three.OrthographicCamera();
     return new three.PerspectiveCamera();
 }
@@ -35,7 +35,7 @@ export function createCamera(three: ThreeModule, descriptor: Camera3D | null): T
 export function applyCamera(
     three: ThreeModule,
     camera: THREE.Camera,
-    descriptor: Camera3D | null,
+    descriptor: CameraData3D | null,
     width: number,
     height: number,
 ): void {

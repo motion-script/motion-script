@@ -3,33 +3,33 @@ import { property, getPropertyMeta, PROPERTY_META } from '@/attributes/propertie
 
 describe('property decorator + getPropertyMeta', () => {
     it('registers a property with its default on the prototype', () => {
-        class Node { }
-        property({ default: 0 })(Node.prototype, 'x');
+        class Node2D { }
+        property({ default: 0 })(Node2D.prototype, 'x');
 
-        const meta = getPropertyMeta(new Node());
+        const meta = getPropertyMeta(new Node2D());
         expect(meta).toHaveLength(1);
         expect(meta[0]).toMatchObject({ key: 'x', default: 0 });
     });
 
     it('omits options when neither mapper nor tween is given', () => {
-        class Node { }
-        property({ default: 1 })(Node.prototype, 'a');
-        expect(getPropertyMeta(new Node())[0].options).toBeUndefined();
+        class Node2D { }
+        property({ default: 1 })(Node2D.prototype, 'a');
+        expect(getPropertyMeta(new Node2D())[0].options).toBeUndefined();
     });
 
     it('captures mapper/tween into options when provided', () => {
-        class Node { }
+        class Node2D { }
         const mapper = (v: number) => v * 2;
-        property({ mapper })(Node.prototype, 'scaled');
-        const meta = getPropertyMeta(new Node())[0];
+        property({ mapper })(Node2D.prototype, 'scaled');
+        const meta = getPropertyMeta(new Node2D())[0];
         expect(meta.options?.mapper).toBe(mapper);
     });
 
     it('does not register the same key twice on one class', () => {
-        class Node { }
-        property({ default: 0 })(Node.prototype, 'x');
-        property({ default: 5 })(Node.prototype, 'x');
-        const meta = getPropertyMeta(new Node());
+        class Node2D { }
+        property({ default: 0 })(Node2D.prototype, 'x');
+        property({ default: 5 })(Node2D.prototype, 'x');
+        const meta = getPropertyMeta(new Node2D());
         expect(meta.filter((m) => m.key === 'x')).toHaveLength(1);
     });
 
@@ -46,8 +46,8 @@ describe('property decorator + getPropertyMeta', () => {
     });
 
     it('stores metadata under the PROPERTY_META symbol', () => {
-        class Node { }
-        property({ default: 0 })(Node.prototype, 'x');
-        expect(Array.isArray((Node.prototype as any)[PROPERTY_META])).toBe(true);
+        class Node2D { }
+        property({ default: 0 })(Node2D.prototype, 'x');
+        expect(Array.isArray((Node2D.prototype as any)[PROPERTY_META])).toBe(true);
     });
 });

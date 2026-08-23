@@ -4,111 +4,123 @@ sidebar_position: 1
 
 # 3D Graphics
 
-MotionScript draws 3D with the same split it uses for everything else. You describe a scene as plain data with `Graphics3D`, and the renderer turns it into pixels. Nothing in your project imports a 3D engine.
+MotionScript draws 3D with the same split it uses for everything else. You describe a scene as plain data, and the renderer turns it into pixels. Nothing in your project imports a 3D engine.
 
 ```tsx
-import { View3D, Graphics3D } from 'motion-script';
+import {
+  Canvas3D, PerspectiveCamera3D, AmbientLight3D, DirectionalLight3D, Box3D,
+} from 'motion-script';
 
-<View3D
-  width={1600}
-  height={900}
-  graphics3D={() => new Graphics3D()
-    .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
-    .ambient({ intensity: 0.4 })
-    .directional({ intensity: 2.4, position: [4, 6, 3] })
-    .box({ width: 2, color: 'tomato', roughness: 0.3 })}
-/>
+<Canvas3D width={1600} height={900}>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
+  <AmbientLight3D intensity={0.4} />
+  <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} />
+  <Box3D width={2} color="tomato" roughness={0.3} />
+</Canvas3D>
 ```
 
 That is a complete 3D scene: a camera, two lights and a lit cube.
 
-## A 3D scene is a fill
+## A 3D scene is a tree
 
-The 3D scene is not a special kind of node. It is a **fill**, the same as a colour, a gradient or an image. The renderer draws the scene to a texture and paints it through whatever shape asked for it.
-
-Three things follow, and they are the reason 3D is built this way:
-
-* **3D clips to any shape.** An ellipse, a path, or a run of text can all carry a 3D fill and confine it to their own outline.
-* **3D stacks with other fills.** It is one layer in the fill array, so paint order, `opacity` and `blend` work as usual.
-* **3D needs no special node.** [`View3D`](./view3d) is convenience on top of the fill, not machinery.
+Everything in a 3D scene is a node, and a 3D node is a node in every sense that matters. It takes a `ref`, it holds children, it reads context, it has its own clock, and it animates with the same `to()` you use everywhere else:
 
 ```tsx
-<Ellipse width={420} height={420} fill={() => scene()} />
-<Text text="DEPTH" fontSize={320} fill={() => scene()} />
-<Rect fill={() => ['#0b0d12', Fills.view3D(scene())]} />
+const rig = createRef<Group3D>();
+
+<Canvas3D width="fill" height="fill">
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} />
+  <AmbientLight3D intensity={0.4} />
+
+  <Group3D ref={rig}>
+    <Box3D width={2} color="tomato" />
+    <Sphere3D radius={0.8} position={[3, 0, 0]} />
+  </Group3D>
+</Canvas3D>
+
+yield* rig().to({ rotation: [0, 360, 0] }, 2);
 ```
 
-A bare `Graphics3D` coerces to a 3D fill the same way a bare CSS string coerces to a solid colour.
+Moving the `Group3D` moves everything under it, so a rig animates as one thing.
 
-## There is no 3D node tree
+## Two trees, one API
 
-Everything inside a 3D scene is described with `Graphics3D`, never with nodes. Node props are 2D concepts, so `x`, `y`, `width`, `opacity`, `flex`, `padding` and anchors mean nothing for a mesh positioned in 3D space.
+The scene graph is one tree over two spaces:
+
+* **`Node2D`** — laid out in a box on the page. Everything with a `width`, an anchor or a fill.
+* **`Node3D`** — placed in space by a position, a rotation and a scale. Meshes, lights, cameras, fog.
+
+They share a base, `Node`, which is where the tree itself lives along with reactive props, commands, context and the clock. What differs is only the two things that genuinely differ: how a node is placed, and how it draws.
+
+The two never mix. Putting a `Box3D` inside a `Rect` throws, with a message pointing you at the one node that holds both.
+
+## `Canvas3D` is where the two meet
+
+`Canvas3D` is a `Rect` that hosts a 3D scene. Its `Node3D` children describe the scene; its `Node2D` children draw over the result as a HUD:
 
 ```tsx
-new Graphics3D()
-  .perspective({ position: [0, 2, 6], lookAt: 0 })
-  .directional({ intensity: 2, position: [4, 6, 3] })
-  .box({ width: 2, color: 'tomato' })
-  .group({ position: [3, 0, 0] }, g => g.sphere({ radius: 0.8, color: 'cyan' }))
+<Canvas3D width="fill" height="fill" cornerRadius={24}>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} />
+  <AmbientLight3D intensity={0.4} />
+  <Box3D width={2} color="tomato" />
+
+  <Text text="FPS 60" fontSize={32} />
+</Canvas3D>
 ```
 
-## Rules that apply everywhere
+Being a `Rect` is what makes it lay out in flex and stack groups, take `cornerRadius` and `clip`, and be masked, blended and filtered like anything else.
 
-**Angles are degrees.** Euler rotations, spotlight cone angles, sweep arcs and texture rotation are all degrees, matching 2D `rotation`. You never write `Math.PI`.
+## 3D is still a fill
 
-**Colours are ordinary colours.** `'tomato'`, `'#e0533d'`, `oklch(...)`, theme tokens and `'white/10'` all work, exactly as in 2D.
+Underneath, a 3D scene is a **fill**, the same as a colour, a gradient or an image: the renderer draws it to a texture and paints it through whatever shape asked for it. `Canvas3D` is convenience on top of that, not machinery.
 
-**A `Graphics3D` is a value, not a builder you keep.** Build a new one each frame. Freshness comes from where it is produced, and the same frame always looks the same however you reached it.
+That is what lets 3D clip to shapes a rect cannot describe. Build the scene by hand as a `Scene3D` — which is exactly what `Canvas3D` produces internally — and use it as a fill:
 
-**Signals holding non-numbers need a lerp.** `createSignal({ x: 0, y: 0, z: 0 }, lerpVector3)`, otherwise the value snaps at the end of the tween instead of interpolating. See [Animating](./animating).
+```tsx
+const scene = new Scene3D()
+  .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+  .light({ type: 'ambient', intensity: 0.4 })
+  .draw(new Graphics3D().box({ width: 2, color: 'tomato' }));
 
-## The pages
+<Ellipse width={420} height={420} fill={scene} />
+<Text text="DEPTH" fontSize={320} fill={scene} />
+<Rect fill={['#0b0d12', scene]} />
+```
 
-| Page | What it covers |
+A bare `Scene3D` coerces to a 3D fill the same way a bare CSS string coerces to a solid colour. Because it is one layer in the fill array, paint order, `opacity` and `blend` work as usual.
+
+## The three values
+
+Three names come up constantly, and they divide cleanly:
+
+| | what it is |
 |---|---|
-| [View3D](./view3d) | The node, its props, and painting 3D through other shapes |
-| [Scene setup](./scene) | Camera, lights, background, fog, shadows, tone mapping, post effects |
-| [Objects](./objects) | Meshes, geometry, groups, instances, lines, points, sprites and models |
-| [Materials and textures](./materials) | Choosing a material, maps, and the shader escape hatch |
-| [Animating](./animating) | Driving a scene from signals, and what is cheap to change |
-| [2D on 3D](./surfaces) | Rendering 2D content onto geometry with `Tex.surface` |
+| `Graphics3D` | what **one node** draws — geometry and material. The 3D `Graphics2D`. |
+| `RenderContext3D` | what a node draws **into**. Lights, camera and scene settings are calls on it. |
+| `Scene3D` | the **recorded** result: camera, lights, fog and every drawable, ready to paint. |
 
-## A first scene
+You rarely touch any of them directly. They matter when you write a custom 3D node, which is the same shape as a custom 2D node:
 
 ```tsx
-import {
-  createScene, createSignal, easeInOut, lerpVector3, parallel,
-  View3D, Graphics3D, type Vector3,
-} from 'motion-script';
-
-export default createScene(function* (stage) {
-  stage.set({ fill: '#05070c' });
-
-  const spin = createSignal(0);                                    // degrees
-  const lift = createSignal<Vector3>({ x: 0, y: 0, z: 0 }, lerpVector3);
-
-  stage.add(
-    <View3D
-      width={1600}
-      height={900}
-      cornerRadius={32}
-      graphics3D={() => new Graphics3D()
-        .perspective({ position: [0, 2.5, 6], lookAt: lift(), fov: 45 })
-        .ambient({ intensity: 0.4 })
-        .directional({ intensity: 2.4, position: [4, 6, 3] })
-        .box({
-          width: 2, height: 2, depth: 2,
-          color: '#e0533d', roughness: 0.4, metalness: 0.1,
-          position: lift(), rotation: [0, spin(), 0],
-        })}
-    />,
-  );
-
-  yield* parallel(
-    spin(720, 3, easeInOut('quad')),
-    lift({ x: 0, y: 1.5, z: 0 }, 1.5, easeInOut('quad')),
-  );
-});
+class Blob3D extends Node3D {
+  protected renderSelf(ctx: RenderContext3D): void {
+    ctx.draw(new Graphics3D().sphere({ radius: 1, color: 'red' }));
+  }
+}
 ```
 
-The builder runs every frame and reads `spin()` and `lift()` at that frame's values, so nothing accumulates and scrubbing backwards lands on exactly the same pixels as playing forwards.
+## Angles are degrees
+
+Every angle in the 3D API — Euler rotations, spot cone angles, sweep arcs, texture rotation — is in degrees, matching 2D `rotation`. You never write `Math.PI`.
+
+## What is cheap to animate
+
+Transforms, material values and light values are written in place every frame, so they cost nothing. **Geometry parameters are not**: the underlying geometries are immutable, so tweening a `radius` rebuilds the mesh each frame. Scale the object instead:
+
+```tsx
+{/* expensive — rebuilds the box every frame */}
+<Box3D width={() => grow()} />
+
+{/* cheap — one matrix write */}
+<Box3D width={1} scale={() => [grow(), 1, 1]} />
+```

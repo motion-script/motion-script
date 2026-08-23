@@ -1,7 +1,7 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
-import { Graphics } from "@/render/graphics";
+import { NodeConfig } from "../base/node2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 
 export interface EllipseProps extends ShapeProps {
@@ -20,8 +20,8 @@ export class Ellipse extends ShapeNode<EllipseProps> {
         super(props);
     }
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().ellipse({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().ellipse({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             startAngle: this.startAngle,

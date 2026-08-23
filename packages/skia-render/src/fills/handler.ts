@@ -40,7 +40,7 @@ export class FillHandler {
     private getSpaceRect: (space: FillSpace) => ShapeBounds | null;
     private assets: SkiaAssets;
     // Accumulated pass-through alpha to fold into every fill (set by the owning
-    // RenderContext as pass-through nodes fade). Defaults to 1.
+    // RenderContext2D as pass-through nodes fade). Defaults to 1.
     private getWorldAlpha: () => number;
     private getNodeId: () => string;
     private getElapsed: () => number;
@@ -176,7 +176,7 @@ export class FillHandler {
      * Nothing to release: the handler owns no CanvasKit objects of its own (the
      * paint and canvas belong to the render context, and per-fill
      * `transientImages` are freed inside `applyFills`). Kept because
-     * `RenderContext.dispose()` calls it and a handler that later acquires its own
+     * `RenderContext2D.dispose()` calls it and a handler that later acquires its own
      * resources should already have the hook.
      *
      * Deliberately does *not* call `FillRenderRegistry.disposeRenderers()`: that

@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `blend`: a saturated circle isolates and blends against a desaturated backdrop via `'saturation'`, taking the circle's saturation while keeping the backdrop's hue and luminosity. */
+/** Node2D-level `blend`: a saturated circle isolates and blends against a desaturated backdrop via `'saturation'`, taking the circle's saturation while keeping the backdrop's hue and luminosity. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const circle = createRef<Rect>();

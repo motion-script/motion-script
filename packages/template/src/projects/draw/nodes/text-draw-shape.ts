@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, PathBuilder,
     FillSpace, FillResolved, property,
     Anchor,
     resolveAnchor,
@@ -28,10 +28,10 @@ export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
 
 
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
 
 
-        const g = new Graphics().text({
+        const g = new Graphics2D().text({
             fontSize: 32, text: 'Hello World',
 
             pivot: this.textAlignment,
@@ -41,7 +41,7 @@ export class TextDrawShape extends ShapeNode<TextDrawShapeProps> {
 
 
         draw.draw(g);
-        const center = new Graphics().ellipse({
+        const center = new Graphics2D().ellipse({
             width: 24, height: 24,
             pivot: 'center', x: 0, y: 0,
         }).stroke({ weight: 2, fill: '#c2c2c2' });

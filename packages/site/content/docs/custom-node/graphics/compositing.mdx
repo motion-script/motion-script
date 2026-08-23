@@ -11,7 +11,7 @@ Two tools for the two ways one shape can shape another. `cut()` subtracts, and t
 `cut()` takes the shape declared immediately before it and subtracts it from everything declared before that in the current group. The result stays in the accumulator, so the next paint sees one figure with a hole in it.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 240, height: 240, cornerRadius: 24 })   // the body
   .ellipse({ width: 100, height: 100 })                  // the cutter
   .cut()
@@ -23,7 +23,7 @@ The gradient maps across the ring that is left, and you can see through the hole
 Chain them to punch several holes:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 400, height: 200, cornerRadius: 16 })
   .ellipse({ x: -80, y: 0, width: 60, height: 60 })
   .cut()
@@ -45,7 +45,7 @@ Each `cut()` consumes only the shape immediately before it, so the code reads in
 Three calls bracket it:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .mask()          // everything from here is the mask
   .path(figure)
   .fill('white')
@@ -72,7 +72,7 @@ new Graphics()
 The mask is a drawing scope, not a static clip. Anything you can draw can be the mask, including a mask with a `cut()` hole in it, so the content shows through the shape and the hole both:
 
 ```tsx
-const g = new Graphics().mask({ mode: 'alpha' });
+const g = new Graphics2D().mask({ mode: 'alpha' });
 
 // Mask: a figure with an eye punched out of it.
 g.rect({ width: 360, height: 500, cornerRadius: 90 })
@@ -102,7 +102,7 @@ Slide `shift` and the stripes travel under a stationary figure.
 
 ### Rules
 
-* It all happens inside one `draw()` call. A mask scope does not span two `Graphics`.
+* It all happens inside one `draw()` call. A mask scope does not span two `Graphics2D`.
 * Close every `mask()` with an `endMask()`. Operations recorded after an unclosed scope keep landing inside it.
 * Masks and cuts compose within the current paint group. Neither starts a new group.
 

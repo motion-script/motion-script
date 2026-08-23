@@ -27,7 +27,7 @@ import { WebAudioDevice } from "../src/audio/player";
  * So: draw a red rect through the real `WebRenderContext`, read the framebuffer
  * back, and compare the extent of the red pixels with the box the controller
  * reports. The camera cases are the point of the exercise — a camera is applied
- * at render time (`beginCamera`) and is invisible to `Node.global`, so a box
+ * at render time (`beginCamera`) and is invisible to `Node2D.global`, so a box
  * built without it looks perfectly reasonable and sits in the wrong place the
  * moment a scene zooms.
  */
@@ -191,10 +191,10 @@ describe("getNodeBox lands on the pixels Skia drew", () => {
         expectAligned(reported, drawn);
     });
 
-    it("under a zoomed camera — the case Node.global cannot see", async () => {
+    it("under a zoomed camera — the case Node2D.global cannot see", async () => {
         const { reported, drawn } = await boxAndPixels({ zoom: 1.5 });
         // Scaled about the viewport centre: centre (45, 30) ⇒ pixel (145, 70),
-        // half-extents 30 × 18. `Node.global` still reports (30, 20).
+        // half-extents 30 × 18. `Node2D.global` still reports (30, 20).
         expect(reported).toEqual({ minX: 115, maxX: 174, minY: 52, maxY: 87 });
         expectAligned(reported, drawn);
     });

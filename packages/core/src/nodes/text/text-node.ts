@@ -3,15 +3,15 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { ContextMap } from "@/util/context";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { EasingFunction } from "@/tween/ease/type";
 import { type ChainableCommand } from "@/tween/chain";
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { TextSegment, TextState } from "@/render/descriptors/text";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { prepareFill } from "@/attributes/shape/fill/registry";
@@ -392,16 +392,16 @@ export class Text extends ShapeNode<TextProps> {
         };
     }
 
-    // The bare text op as a Graphics (no paint), plus whether selection segments
+    // The bare text op as a Graphics2D (no paint), plus whether selection segments
     // are active. Text has no single fillable silhouette path, so the generic
     // ShapeNode.shapeGraphics() stays null and Text drives its own overlay/stroke
     // passes off this builder instead.
-    private textOpGraphics(): { g: Graphics; segments: boolean } {
+    private textOpGraphics(): { g: Graphics2D; segments: boolean } {
         const state = this._textState();
-        return { g: new Graphics().text(state), segments: state.segments != null };
+        return { g: new Graphics2D().text(state), segments: state.segments != null };
     }
 
-    protected override renderSelf(ctx: RenderContext): void {
+    protected override renderSelf(ctx: RenderContext2D): void {
         const { g, segments } = this.textOpGraphics();
         g.shadow(this.shadow);
         // With segments the renderer paints each run eagerly with the segment's
@@ -417,7 +417,7 @@ export class Text extends ShapeNode<TextProps> {
 
     // Overlay and stroke only apply to the non-segment / text-on-path case; the
     // segmented branch paints its own fill/stroke per run in renderSelf.
-    protected override renderOverlay(ctx: RenderContext): void {
+    protected override renderOverlay(ctx: RenderContext2D): void {
         const overlay = this.overlay as FillResolved[];
         if (overlay.length === 0) return;
         const { g, segments } = this.textOpGraphics();
@@ -425,7 +425,7 @@ export class Text extends ShapeNode<TextProps> {
         ctx.draw(g.fill(overlay));
     }
 
-    protected override renderStroke(ctx: RenderContext): void {
+    protected override renderStroke(ctx: RenderContext2D): void {
         const stroke = this.stroke as StrokeResolved[];
         if (stroke.length === 0) return;
         const { g, segments } = this.textOpGraphics();

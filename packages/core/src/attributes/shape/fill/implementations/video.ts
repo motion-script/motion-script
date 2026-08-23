@@ -37,11 +37,11 @@ export interface VideoFillProp {
      * Source time to paint, in seconds — an **explicit override**. Omit it (the
      * default) and the timestamp is derived at draw time from how long the node
      * painting the fill has existed, so a video fill plays on its own wherever
-     * it is used (fill, overlay, stroke, shadow, a raw `Graphics` in a custom
+     * it is used (fill, overlay, stroke, shadow, a raw `Graphics2D` in a custom
      * node) with nothing to wire up. Set it to drive the playhead yourself —
      * e.g. tween it to scrub the clip.
      *
-     * Pass `null` to hand the playhead back to the clock: `Node.set` skips
+     * Pass `null` to hand the playhead back to the clock: `Node2D.set` skips
      * `undefined` values (it merges a partial), so `null` is what un-does an
      * override that is already live.
      */
@@ -102,7 +102,7 @@ export interface VideoFillResolved {
  * the same way a motion blur is resolved against the node's sampled velocity.
  * Deriving it at draw time (rather than advancing a stored timestamp each tick)
  * is what lets a video fill play anywhere paint is accepted — stroke, shadow,
- * text selection, a custom node's raw `Graphics` — instead of only on the two
+ * text selection, a custom node's raw `Graphics2D` — instead of only on the two
  * nodes that remembered to update it. It also makes frame *N* identical however
  * the playhead reached it, so scrubbing and export agree with playback.
  *

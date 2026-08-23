@@ -10,13 +10,13 @@
  * The cost of that is an async step in front of an otherwise synchronous render
  * pass, which this module manages:
  *
- *  - {@link loadView3D} is the memoised loader. `View3D.prepareRender()` calls
+ *  - {@link loadCanvas3D} is the memoised loader. `Canvas3D.prepareRender()` calls
  *    it through core's warmup seam during **precomp**, before any frame is drawn,
  *    so in practice the runtime is resident before the first 3D frame paints.
  *  - {@link threeModule} is the synchronous accessor the render pass uses. It
  *    returns `null` until the import resolves.
  *  - If a frame does hit a 3D op with the runtime still loading, it registers via
- *    {@link requestView3DWarm} and draws its 2D parts only. The existing
+ *    {@link requestCanvas3DWarm} and draws its 2D parts only. The existing
  *    "re-render until warm" loop that `warmPendingVideo` drives (export,
  *    screenshot, seek) then picks it up, so exported frames stay accurate without
  *    any call site learning about 3D.
@@ -24,7 +24,7 @@
  * Modelled on `getCanvasKit` (`../getter.ts`) — same memoised-promise shape.
  */
 
-import { registerView3DWarmup, type View3DResourceKind } from "@motion-script/core";
+import { registerCanvas3DWarmup, type Canvas3DResourceKind } from "@motion-script/core";
 
 /** The three.js module namespace. Type-only: this import emits nothing. */
 export type ThreeModule = typeof import("three");
@@ -36,10 +36,10 @@ let loading: Promise<ThreeModule> | null = null;
 const pendingNodes = new Set<string>();
 
 /** Parsed resources awaiting a loader that core couldn't route (HDR, glTF). */
-const pendingResources = new Map<string, View3DResourceKind>();
+const pendingResources = new Map<string, Canvas3DResourceKind>();
 
 /**
- * The three.js module, or `null` before {@link loadView3D} has resolved.
+ * The three.js module, or `null` before {@link loadCanvas3D} has resolved.
  *
  * Synchronous by necessity: the render pass ends in `surface.flush()` and cannot
  * await. A `null` here means "draw the 2D parts and ask to be re-rendered".
@@ -52,7 +52,7 @@ export function threeModule(): ThreeModule | null {
  * Load the three.js runtime. Idempotent and memoised — safe to call from a
  * render pass or once per frame.
  */
-export function loadView3D(): Promise<void> {
+export function loadCanvas3D(): Promise<void> {
     if (mod) return Promise.resolve();
     loading ??= import("three").then((loaded) => {
         mod = loaded;
@@ -65,12 +65,12 @@ export function loadView3D(): Promise<void> {
  * Register that a 3D fill slot's content could not be drawn synchronously, so the
  * caller's re-render loop knows there is warming to do.
  */
-export function requestView3DWarm(key: string): void {
+export function requestCanvas3DWarm(key: string): void {
     pendingNodes.add(key);
 }
 
 /** Register a resource that needs the backend's own loader. */
-export function requestView3DResource(key: string, kind: View3DResourceKind): void {
+export function requestCanvas3DResource(key: string, kind: Canvas3DResourceKind): void {
     pendingResources.set(key, kind);
 }
 
@@ -83,7 +83,7 @@ export function requestView3DResource(key: string, kind: View3DResourceKind): vo
  * design would silently run out of budget on a scene whose resources are
  * discovered behind the runtime import.
  */
-export async function warmPendingView3D(): Promise<boolean> {
+export async function warmPendingCanvas3D(): Promise<boolean> {
     let warmed = false;
 
     // Bounded: each iteration must strictly reduce the queue or we stop.
@@ -94,7 +94,7 @@ export async function warmPendingView3D(): Promise<boolean> {
         const resources = [...pendingResources];
         pendingResources.clear();
 
-        await loadView3D();
+        await loadCanvas3D();
         if (resources.length > 0) await Promise.all(resources.map(([key]) => loadResource(key)));
         warmed = true;
     }
@@ -106,7 +106,7 @@ export async function warmPendingView3D(): Promise<boolean> {
 const resourceCache = new Map<string, unknown>();
 
 /** A parsed resource, or `null` if it hasn't been loaded. */
-export function view3DResource(key: string): unknown {
+export function canvas3DResource(key: string): unknown {
     return resourceCache.get(key) ?? null;
 }
 
@@ -123,19 +123,19 @@ async function loadResource(key: string): Promise<void> {
 }
 
 /**
- * Hand core the warmup hook so `View3D.prepareRender()` can preload the runtime
+ * Hand core the warmup hook so `Canvas3D.prepareRender()` can preload the runtime
  * during precomp. Runs at module load; `../index.ts` imports this module so the
  * registration always happens for a consumer of this package.
  */
-export function registerView3DBackend(): void {
-    registerView3DWarmup(loadView3D);
+export function registerCanvas3DBackend(): void {
+    registerCanvas3DWarmup(loadCanvas3D);
 }
 
 /**
  * Reset module state. Test-only — the memoised module is process-wide, so a suite
  * exercising the cold-import path needs a way back to the initial state.
  */
-export function __resetView3DBridgeForTests(): void {
+export function __resetCanvas3DBridgeForTests(): void {
     mod = null;
     loading = null;
     pendingNodes.clear();

@@ -4,21 +4,31 @@ sidebar_position: 6
 
 # Animating
 
-A `Graphics3D` is rebuilt from scratch every frame, so animation is just reading changing values while you build it.
+3D nodes animate the way every other node does. Bind a prop to a signal, or hold a ref and call `to()`:
 
 ```tsx
 const spin = createSignal(0);
 
-<View3D graphics3D={() => new Graphics3D()
-  .perspective({ position: [0, 2, 6], lookAt: 0 })
-  .directional({ intensity: 2, position: [4, 6, 3] })
-  .box({ width: 2, color: 'tomato', rotation: [0, spin(), 0] })}
-/>
+<Canvas3D>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} />
+  <DirectionalLight3D intensity={2} position={[4, 6, 3]} />
+  <Box3D width={2} color="tomato" rotation={() => [0, spin(), 0]} />
+</Canvas3D>
 
 yield* spin(360, 2, easeInOut('quad'));
 ```
 
-Nothing accumulates, so frame 10 looks the same whether you played to it or scrubbed back to it.
+Or, without a signal at all:
+
+```tsx
+const box = createRef<Box3D>();
+
+<Box3D ref={box} width={2} color="tomato" />
+
+yield* box().to({ rotation: [0, 360, 0], color: 'cyan' }, 2, easeInOut('quad'));
+```
+
+The scene is rebuilt from scratch every frame, so nothing accumulates: frame 10 looks the same whether you played to it or scrubbed back to it.
 
 ## Signals need a lerp for non-numbers
 
@@ -37,25 +47,23 @@ Use `slerpQuaternion` with a `quaternion` for tumbles where Euler interpolation 
 
 ## There is no `t`
 
-A `graphics3D={() => ...}` prop is a reactive binding. It re-evaluates when the **signals** it reads change. `clock.elapsed` is a plain field, not a signal, so this computes once and freezes:
+A `prop={() => ...}` binding re-evaluates when the **signals** it reads change. `clock.elapsed` is a plain field, not a signal, so this computes once and freezes:
 
 ```tsx
-// Wrong. Runs once, then never again. No error, just a still image.
-graphics3D={() => build(this.clock.elapsed)}
+{/* Wrong. Runs once, then never again. No error, just a still image. */}
+<Box3D rotation={() => [0, this.clock.elapsed * 90, 0]} />
 ```
 
 Two correct options:
 
 * Drive the motion from a tweened signal. This also puts it on the timeline, so it scrubs.
-* Read `this.clock.elapsed` inside `buildGraphics3D()`, which does re-run every frame.
+* Read `this.clock.elapsed` inside `renderSelf()` or `buildScene3D()`, which do re-run every frame.
 
 ```tsx
-class Spinner extends View3D {
-  protected override buildGraphics3D(): Graphics3D {
+class Spinner extends Node3D {
+  protected override renderSelf(ctx: RenderContext3D): void {
     const t = this.clock.elapsed;
-    return new Graphics3D()
-      .perspective({ position: [0, 2, 6], lookAt: 0 })
-      .box({ width: 2, rotation: [0, t * 90, 0] });
+    ctx.draw(new Graphics3D().box({ width: 2, rotation: [0, t * 90, 0] }));
   }
 }
 ```
@@ -83,14 +91,14 @@ Not every field costs the same per frame.
 | Geometry parameters | Expensive | Geometries are immutable, so the mesh is reallocated every frame |
 | Structural material fields | Expensive | Recompiles the shader program |
 
-The trap is geometry. `.box({ width: signal() })` rebuilds the geometry on every frame. Scale the object instead:
+The trap is geometry. A bound `width` on a `Box3D` rebuilds the geometry every frame. Scale the object instead:
 
 ```tsx
-// Slow
-.box({ width: size() })
+{/* Slow — rebuilds the geometry every frame */}
+<Box3D width={() => size()} />
 
-// Fast, same result
-.box({ width: 1, scale: [size(), 1, 1] })
+{/* Fast, same result — one matrix write */}
+<Box3D width={1} scale={() => [size(), 1, 1]} />
 ```
 
 The same applies to sphere `radius`, torus `tube` and every other geometry parameter. Model the change as a transform where you can.
@@ -99,45 +107,57 @@ Structural material fields are ones that change how the shader is built rather t
 
 ## Keys
 
-The renderer caches one live object per operation and mutates it between frames rather than rebuilding it. Identity comes from the operation's **structural path**: its `group()` nesting plus its index within that group. That is stable for a builder that emits the same operations in the same order every frame, which is the normal case.
-
-When your builder emits operations conditionally, set `key` so identity follows the logical object rather than the slot:
+The renderer caches one live GPU object per node and mutates it between frames rather than rebuilding it. Identity comes from **the node itself**, so a conditional sibling appearing or disappearing costs nothing:
 
 ```tsx
-if (showFloor) {
-  g3.plane({ width: 60, height: 60, rotation: [-90, 0, 0], key: 'floor' });
-}
+<Canvas3D>
+  {showFloor && <Plane3D width={60} height={60} rotation={[-90, 0, 0]} />}
 
-screens.forEach(screen => {
-  g3.group({ position: [screen.x, 0, 0], key: `monitor:${screen.id}` }, m => m
-    .box({ width: 4, height: 2.4, color: '#15181f' }));
-});
+  {screens.map(screen => (
+    <Group3D position={[screen.x, 0, 0]}>
+      <Box3D width={4} height={2.4} color="#15181f" />
+    </Group3D>
+  ))}
+</Canvas3D>
 ```
 
-Without a key, inserting an operation renumbers every later slot and forces the rest of the cache to rebuild.
+There is nothing to declare: adding or removing the floor leaves every monitor's cached geometry alone, because their identity never depended on their position in a list.
+
+A single node that draws several things through one `Graphics3D` numbers them positionally within that node. That is stable as long as the node emits the same drawables in the same order; when it emits them conditionally, set `key` on the transform to pin identity.
 
 ## Cameras animate like anything else
 
-The camera is a value in the same builder, so orbiting is just arithmetic on a signal:
+The camera is a node, so orbiting is arithmetic on a signal:
 
 ```tsx
 const angle = createSignal(0);   // degrees
 
-graphics3D={() => {
-  const a = (angle() * Math.PI) / 180;
-  return new Graphics3D()
-    .perspective({ position: [Math.cos(a) * 12, 5, Math.sin(a) * 12], lookAt: 0, fov: 45 })
-    .directional({ intensity: 2, position: [4, 6, 3] })
-    .torusKnot({ radius: 1.5, tube: 0.4, color: 'tomato' });
-}}
+<PerspectiveCamera3D
+  position={() => {
+    const a = (angle() * Math.PI) / 180;
+    return [Math.cos(a) * 12, 5, Math.sin(a) * 12];
+  }}
+  lookAt={0}
+  fov={45}
+/>
 
 yield* angle(360, 6, easeInOut('quad'));
+```
+
+Or put it inside a `Group3D` and rotate the group, which needs no trigonometry at all:
+
+```tsx
+<Group3D ref={rig}>
+  <PerspectiveCamera3D position={[0, 5, 12]} lookAt={0} />
+</Group3D>
+
+yield* rig().to({ rotation: [0, 360, 0] }, 6, easeInOut('quad'));
 ```
 
 When an object moves, aim the camera at it rather than at the origin, or it will leave the frame:
 
 ```tsx
-.perspective({ position: [0, 2.5, 6], lookAt: lift(), fov: 45 })
+<PerspectiveCamera3D position={[0, 2.5, 6]} lookAt={() => lift()} fov={45} />
 ```
 
 ## Animating a component's props
@@ -145,16 +165,16 @@ When an object moves, aim the camera at it rather than at the origin, or it will
 For a reusable component, put the knobs on the node with `@property` and animate them with `.to()`, exactly as for any other custom node:
 
 ```tsx
-class Turntable extends View3D<TurntableProps> {
+class Turntable extends Canvas3D<TurntableProps> {
   @property({ default: 0 }) declare orbit: number;
   @property({ default: 8 }) declare zoom: number;
 
-  protected override buildGraphics3D(): Graphics3D {
+  protected override buildScene3D(): Scene3D {
     const a = (this.orbit * Math.PI) / 180;
-    return new Graphics3D()
+    return new Scene3D()
       .perspective({ position: [Math.cos(a) * this.zoom, 2, Math.sin(a) * this.zoom], lookAt: 0 })
-      .directional({ intensity: 2, position: [4, 6, 3] })
-      .torus({ radius: 1.5, tube: 0.4, color: 'tomato' });
+      .light({ type: 'directional', intensity: 2 }, { position: [4, 6, 3] })
+      .draw(new Graphics3D().torus({ radius: 1.5, tube: 0.4, color: 'tomato' }));
   }
 }
 

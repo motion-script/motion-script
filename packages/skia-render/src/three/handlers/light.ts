@@ -1,5 +1,5 @@
 /**
- * `Light3D` descriptor → `THREE.Light`.
+ * `LightData3D` descriptor → `THREE.Light`.
  *
  * Almost everything on a light is a free in-place write (colour, intensity, cone
  * angle, falloff), so {@link applyLight} runs every frame and lights are only
@@ -8,13 +8,13 @@
  */
 
 import type * as THREE from "three";
-import type { Light3D, Vector3Input } from "@motion-script/core";
+import type { LightData3D, Vector3Input } from "@motion-script/core";
 import { resolveVector3 } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { deg, writeColor } from "./constants";
 
 /** Build a light for `descriptor`. */
-export function createLight(three: ThreeModule, descriptor: Light3D): THREE.Light {
+export function createLight(three: ThreeModule, descriptor: LightData3D): THREE.Light {
     switch (descriptor.type) {
         case "ambient": return new three.AmbientLight();
         case "hemisphere": return new three.HemisphereLight();
@@ -30,7 +30,7 @@ export function createLight(three: ThreeModule, descriptor: Light3D): THREE.Ligh
 export function applyLight(
     three: ThreeModule,
     light: THREE.Light,
-    descriptor: Light3D,
+    descriptor: LightData3D,
     structural = false,
 ): void {
     const bag = descriptor as unknown as Record<string, unknown>;
@@ -74,7 +74,7 @@ export function applyLight(
     }
 }
 
-function applyShadow(light: THREE.Light, descriptor: Light3D, structural: boolean): void {
+function applyShadow(light: THREE.Light, descriptor: LightData3D, structural: boolean): void {
     const shadow = (descriptor as { shadow?: Record<string, unknown> }).shadow;
     if (!shadow || !("shadow" in light) || !light.shadow) return;
 
@@ -123,7 +123,7 @@ function applyShadow(light: THREE.Light, descriptor: Light3D, structural: boolea
  * in-place write. Shadow *presence* is included because turning shadows on for a
  * light recompiles every material it lights.
  */
-export function lightSignature(descriptor: Light3D): string {
+export function lightSignature(descriptor: LightData3D): string {
     const shadow = (descriptor as { shadow?: { mapSize?: number } }).shadow;
     const parts: string[] = [descriptor.type];
     if (shadow) parts.push(`shadow=${shadow.mapSize ?? "default"}`);

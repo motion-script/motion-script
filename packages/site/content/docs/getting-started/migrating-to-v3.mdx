@@ -1,0 +1,217 @@
+---
+sidebar_position: 9
+---
+
+# Migrating to v3
+
+v3 makes the scene graph one tree API over two spaces. A 3D scene is now written
+as a tree of nodes rather than as a builder chain, and those nodes get everything
+a 2D node has: refs, `to()`/`set()`/`save()`/`restore()`, signal bindings, context,
+per-node clocks, and composition by subclassing.
+
+Making room for that meant renaming the things that were implicitly "the 2D one".
+Every change is mechanical, and your editor's rename will do most of it.
+
+## The renames
+
+| before | after |
+|---|---|
+| `Node` | `Node2D` |
+| `NodeProps` | `Node2DProps` |
+| `Graphics` | `Graphics2D` |
+| `RenderContext` | `RenderContext2D` |
+| `View3D` | `Canvas3D` |
+| `View3DProps` | `Canvas3DProps` |
+| `Fills.view3D(g3)` | `Fills.canvas3D(scene)` |
+
+`Node` still exists — it is now the **shared base** of `Node2D` and `Node3D`, and
+holds everything that is true of a node whichever space it lives in. Custom 2D
+nodes extend `Node2D`:
+
+```ts
+// before
+class Blob extends Node {
+    protected renderSelf(ctx: RenderContext): void {
+        ctx.draw(new Graphics().rect({ width: 200 }).fill("red"));
+    }
+}
+
+// after
+class Blob extends Node2D {
+    protected renderSelf(ctx: RenderContext2D): void {
+        ctx.draw(new Graphics2D().rect({ width: 200 }).fill("red"));
+    }
+}
+```
+
+`Render2DContext` is gone; its one method now lives on `RenderContext2D` directly.
+
+## JSX is typed as `Node`
+
+One JSX runtime serves both trees, so a JSX expression is typed as the shared base.
+If you annotate your own JSX, widen the annotation:
+
+```ts
+// before
+function card(label: string): Node { … return <Rect>…</Rect>; }
+
+// after — `Node` is still the right answer, it just means something broader now
+function card(label: string): Node { … return <Rect>…</Rect>; }
+```
+
+The change bites where you wrote the *narrow* type explicitly:
+
+```ts
+// before
+const children: Node2D[] = [];          // was `Node[]`, i.e. the 2D base
+children.push(<Rect />);                // ✗ v3: JSX is `Node`, not `Node2D`
+
+// after
+const children: Node[] = [];
+children.push(<Rect />);                // ✓
+```
+
+Library surfaces that receive JSX — `stage.add`, a project's `backgrounds` /
+`overlays`, `Tex.surface` — already take `Node`. Handing one a 3D node throws with
+a clear message rather than silently drawing nothing.
+
+## 3D: from a builder to a tree
+
+`Graphics3D` is now *what one node draws* — geometry and material, the way
+`Graphics2D` is shapes and paint. Everything that belongs to the scene rather than
+to a thing in it is a node:
+
+```tsx
+// before
+<View3D
+    width="fill" height="fill" cornerRadius={24}
+    graphics3D={() => new Graphics3D()
+        .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+        .ambient({ intensity: 0.4 })
+        .directional({ intensity: 2.4, position: [4, 6, 3] })
+        .fog({ type: "linear", color: "#0b0d12", near: 5, far: 30 })
+        .box({ width: 2, color: "tomato", rotation: [0, spin(), 0] })
+        .group({ position: [3, 0, 0] }, g3 => g3.sphere({ radius: 0.8 }))}
+/>
+
+// after
+<Canvas3D width="fill" height="fill" cornerRadius={24}>
+    <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
+    <AmbientLight3D intensity={0.4} />
+    <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} />
+    <Fog3D color="#0b0d12" near={5} far={30} />
+
+    <Box3D width={2} color="tomato" rotation={() => [0, spin(), 0]} />
+    <Group3D position={[3, 0, 0]}>
+        <Sphere3D radius={0.8} />
+    </Group3D>
+</Canvas3D>
+```
+
+Every builder method has a node:
+
+| `Graphics3D` method | node |
+|---|---|
+| `.box`, `.sphere`, `.plane`, `.cylinder`, `.cone`, `.torus`, `.torusKnot`, `.circle`, `.ring`, `.capsule`, `.polyhedron`, `.extrude`, `.lathe`, `.tube` | `Box3D`, `Sphere3D`, `Plane3D`, … |
+| `.mesh(geometry, material)` | `<Mesh3D geometry material />` |
+| `.instances`, `.points`, `.line`, `.sprite`, `.model` | `Instances3D`, `Points3D`, `Line3D`, `Sprite3D`, `Model3D` |
+| `.ambient`, `.hemisphere`, `.directional`, `.point`, `.spot`, `.rectArea` | `AmbientLight3D`, `HemisphereLight3D`, `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `RectAreaLight3D` |
+| `.perspective`, `.orthographic` | `PerspectiveCamera3D`, `OrthographicCamera3D` |
+| `.fog`, `.background`, `.environment`, `.shadows`, `.tone`, `.post` | `Fog3D`, `Background3D`, `Environment3D`, `Shadows3D`, `ToneMapping3D`, `PostEffects3D` |
+| `.group(transform, build)` | `<Group3D {...transform}>…</Group3D>` |
+
+Because they are nodes, they animate like nodes:
+
+```tsx
+const rig = createRef<Group3D>();
+
+<Group3D ref={rig}><Box3D width={2} /></Group3D>
+
+yield* rig().to({ rotation: [0, 360, 0], position: [0, 1, 0] }, 2);
+```
+
+Geometry parameters are still the expensive thing to animate — three's geometries
+are immutable, so a tweened `radius` reallocates the mesh every frame. Tween
+`scale` instead.
+
+## 3D through an arbitrary shape
+
+Still supported, and still the reason 3D is a fill rather than a special node. What
+you hand to the fill is a recorded `Scene3D` — which is exactly what a `Canvas3D`
+produces internally:
+
+```tsx
+const scene = new Scene3D()
+    .perspective({ position: [0, 0, 2.6], lookAt: 0, fov: 55 })
+    .light({ type: "ambient", intensity: 0.4 })
+    .light({ type: "directional", intensity: 2.4 }, { position: [2, 4, 3] })
+    .draw(new Graphics3D().box({ width: 2.4, color: "#4f8ef7" }));
+
+<Ellipse width={360} height={280} fill={scene} />
+<Text text="DEPTH" fontSize={320} fill={Fills.canvas3D(scene)} />
+```
+
+A bare `Scene3D` coerces to a `canvas3D` fill the way a bare CSS string coerces to
+a solid one, so `fill={scene}` and `fill={["#0b0d12", scene]}` both work.
+
+Note the shape of `.light()`: a light's own parameters and its *placement* are
+separate arguments, because placement is a transform. `.directional({ intensity,
+position })` becomes `.light({ type: "directional", intensity }, { position })`.
+
+## Reusable 3D components
+
+`View3D` subclasses that overrode `buildGraphics3D()` become `Canvas3D` subclasses
+that override `buildScene3D()`:
+
+```ts
+// before
+class Turntable extends View3D {
+    protected override buildGraphics3D(): Graphics3D {
+        return new Graphics3D()
+            .perspective({ position: orbit(this.angle), lookAt: 0 })
+            .ambient({ intensity: 0.4 })
+            .torus({ radius: 1.5, tube: 0.4, color: "tomato" });
+    }
+}
+
+// after
+class Turntable extends Canvas3D {
+    protected override buildScene3D(): Scene3D {
+        return new Scene3D()
+            .perspective({ position: orbit(this.angle), lookAt: 0 })
+            .light({ type: "ambient", intensity: 0.4 })
+            .draw(new Graphics3D().torus({ radius: 1.5, tube: 0.4, color: "tomato" }));
+    }
+}
+```
+
+For a component that is a *thing in the scene* rather than a whole viewport,
+subclass `Node3D` instead — that is the new, and usually better, option:
+
+```ts
+class Turntable extends Node3D {
+    protected override renderSelf(ctx: RenderContext3D): void {
+        ctx.draw(new Graphics3D().torus({ radius: 1.5, tube: 0.4, color: "tomato" }));
+    }
+}
+```
+
+## Descriptor types
+
+The 3D descriptor interfaces took a `Data` infix so the node classes could have the
+obvious names: `Light3D` → `LightData3D`, `AmbientLight3D` → `AmbientLightData3D`,
+`Camera3D` → `CameraData3D`, `Fog3D` → `FogData3D`, and so on for
+`Background3D`, `Environment3D`, `ShadowSettings3D`, `ToneMapping3D` and
+`PostEffect3D`. `Geometry3D`, `Material3D`, `Texture3D` and `Transform3D` are
+unchanged — no node took those names.
+
+## Custom attribute properties
+
+If you declared an optional attribute prop with `@colorProperty({ default: undefined })`
+(or any other attribute decorator), it now stays genuinely undefined instead of
+falling back to the attribute's built-in default. That is a fix — the old behaviour
+turned "no colour set" into black — but if you were relying on the fallback, name it:
+
+```ts
+@colorProperty({ default: "white" }) declare tint: Color;
+```

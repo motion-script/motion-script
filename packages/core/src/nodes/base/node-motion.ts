@@ -1,10 +1,10 @@
-import { NodeRenderState } from "@/render/render-context";
+import { NodeRenderState } from "@/render/render-context2d";
 import { NodeClock } from "./node-clock";
 import { Vector2 } from "@/attributes/layout/vector2";
 
 /**
- * Companion for {@link Node}'s clock advance and per-frame motion sampling. The
- * reactive prop reads (x/y/rotation/scale) stay in Node's thin `_sampleMotion`
+ * Companion for {@link Node2D}'s clock advance and per-frame motion sampling. The
+ * reactive prop reads (x/y/rotation/scale) stay in Node2D's thin `_sampleMotion`
  * wrapper; the backward-difference math lives here as a pure function over the
  * reused scratch state — no per-frame allocation (the {@link MotionHistory}
  * holder is created once per node at construction).

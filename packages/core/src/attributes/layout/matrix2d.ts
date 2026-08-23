@@ -165,7 +165,7 @@ function invertProjective(m: Matrix2D): Matrix2D | null {
 
 /**
  * The viewport transform a camera scope pushes, in canvas (y-down) space — a
- * literal transcription of `RenderContext.beginCamera`:
+ * literal transcription of `RenderContext2D.beginCamera`:
  *
  *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-lookAt.x, +lookAt.y)
  *
@@ -194,7 +194,7 @@ export function cameraMatrix(
 
 /**
  * Build the local transform for a node, matching the renderer's
- * `RenderContext.transform` exactly (canvas y-down space):
+ * `RenderContext2D.transform` exactly (canvas y-down space):
  * `T(cx + pivotX, cy + pivotY) · R(deg) · S(scale) · T(-pivotX, -pivotY)`.
  *
  * @param cx       Canvas-space x of the node's layout-cell lookAt.
@@ -325,7 +325,7 @@ export function facesAway(rotationX: number, rotationY: number): boolean {
  * The Z angle is the **sum** of the two in-plane rotations the node carries, and
  * they stay two: `rotation` turns the node's *shape* — its box turns with it, and
  * so does anything reading that box — while {@link Projection3D.rotationZ} is
- * part of the projection, which is paint (see `Node._localMatrix`). Summing them
+ * part of the projection, which is paint (see `Node2D._localMatrix`). Summing them
  * is not a coupling but the definition of composing two rotations about one axis;
  * neither number moves when the other is edited.
  *

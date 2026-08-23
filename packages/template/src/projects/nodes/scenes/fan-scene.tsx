@@ -3,8 +3,8 @@
 import {
     createScene,
     createRef,
-    Node,
-    NodeProps,
+    Node2D,
+    Node2DProps,
     Ellipse,
     Text,
     BoxBounds,
@@ -16,7 +16,7 @@ import {
 } from "motion-script";
 import { nodeCard } from "./node-card";
 
-interface FanNodeProps extends NodeProps {
+interface FanNodeProps extends Node2DProps {
     /** Total sweep, in degrees, the children are fanned across. */
     spread: number;
     /** Distance, in pixels, from the fan's centre to each child's own centre. */
@@ -24,8 +24,8 @@ interface FanNodeProps extends NodeProps {
 }
 
 /**
- * A custom composite node — it extends {@link Node} and draws *nothing* of its
- * own (no `renderSelf`, no `Graphics`). Its only job is to arrange whatever
+ * A custom composite node — it extends {@link Node2D} and draws *nothing* of its
+ * own (no `renderSelf`, no `Graphics2D`). Its only job is to arrange whatever
  * regular node children it's given: it fans them out evenly along an arc,
  * centred on its own box, so the standard children (Rects, Ellipses, …) become
  * the visible content while this node just governs their placement.
@@ -33,11 +33,11 @@ interface FanNodeProps extends NodeProps {
  * `spread` (arc sweep) and `radius` are reactive props, so the composite can be
  * animated with `to()` like any built-in node and its children reflow to match.
  */
-class FanNode extends Node<FanNodeProps> {
+class FanNode extends Node2D<FanNodeProps> {
     @property({ default: 180 }) declare spread: number;
     @property({ default: 220 }) declare radius: number;
 
-    // No `measure` override: the base Node already resolves this container's
+    // No `measure` override: the base Node2D already resolves this container's
     // width/height (here `'fill'`) against the box the card allots it. We only
     // override `layout` to fan the children inside that box.
     override layout(rect: BoxBounds, scope: Measurer): void {
@@ -67,7 +67,7 @@ class FanNode extends Node<FanNodeProps> {
 
 /**
  * Showcases a **custom composite node**. `FanNode` is a user-defined subclass of
- * {@link Node} with no rendering of its own — it holds regular built-in node
+ * {@link Node2D} with no rendering of its own — it holds regular built-in node
  * children (Ellipses with Text labels) and lays them out along an arc. The scene
  * animates the composite's `spread` and `radius`, and the children reflow as one.
  */

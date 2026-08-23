@@ -2,7 +2,7 @@ import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
 /**
- * Node-level `blend`: a translucent group fades from `'pass-through'` (the
+ * Node2D-level `blend`: a translucent group fades from `'pass-through'` (the
  * default — not isolated, opacity scales each child while they blend directly
  * against the backdrop) to `'difference'` (isolated — children flatten into
  * one layer first, then that flat result blends against the backdrop), changing

@@ -1,12 +1,12 @@
 import type { Image as CKImage } from "@motion-script/canvaskit";
 import {
     forEachTexture3D, isSurfaceTexture3D,
-    type Graphics3D, type RasterizedSurface, type SurfaceTexture3D, type View3DFillResolved,
+    type Scene3D, type RasterizedSurface, type SurfaceTexture3D, type Canvas3DFillResolved,
 } from "@motion-script/core";
 import { FillRenderer, type FillRendererContext } from "./renderer";
 import { computeImageMatrix } from "./image";
-import { view3DBackend } from "../three/backend";
-import { requestView3DWarm } from "../three/bridge";
+import { canvas3DBackend } from "../three/backend";
+import { requestCanvas3DWarm } from "../three/bridge";
 
 /**
  * Rasterize every `Tex.surface` in a scene, keyed by descriptor identity.
@@ -17,7 +17,7 @@ import { requestView3DWarm } from "../three/bridge";
  * rasterizes once.
  */
 function rasterizeSurfaces(
-    g3: Graphics3D,
+    g3: Scene3D,
     ctx: FillRendererContext,
 ): ReadonlyMap<SurfaceTexture3D, RasterizedSurface> | undefined {
     let rasters: Map<SurfaceTexture3D, RasterizedSurface> | undefined;
@@ -45,21 +45,21 @@ function rasterizeSurfaces(
  * re-enters the render context and would otherwise reset the shared paint that
  * `applyFills` had already configured for this very fill.
  */
-export class View3DFillRenderer extends FillRenderer<View3DFillResolved> {
+export class Canvas3DFillRenderer extends FillRenderer<Canvas3DFillResolved> {
 
-    override preflight(fill: View3DFillResolved, ctx: FillRendererContext): void {
+    override preflight(fill: Canvas3DFillResolved, ctx: FillRendererContext): void {
         // Per-node-per-fill, so two 3D fills on one node keep separate scene
         // graphs, GPU buffers and textures. Without this the second fill's
         // upload would mutate the texture the first one's queued draw still
         // references — Skia resolves both at flush, so you'd see one scene twice.
         const key = `${ctx.nodeId}#${ctx.paintSlot(fill)}`;
 
-        const backend = view3DBackend(ctx.assets);
+        const backend = canvas3DBackend(ctx.assets);
         if (!backend) {
             // three hasn't loaded yet. Ask for a warm and skip this frame; the
             // exporter and screenshot paths drain the request and re-render, so
             // no frame ships without its 3D.
-            requestView3DWarm(key);
+            requestCanvas3DWarm(key);
             return;
         }
 
@@ -74,7 +74,7 @@ export class View3DFillRenderer extends FillRenderer<View3DFillResolved> {
         // 2D-on-3D. Rasterized here, before the scene syncs, so the material has
         // this frame's pixels — which is what keeps a scrubbed frame identical to
         // a played one.
-        const rasters = rasterizeSurfaces(fill.graphics3D, ctx);
+        const rasters = rasterizeSurfaces(fill.scene, ctx);
 
         // Device pixels come from the live canvas matrix, so a scaled parent, a
         // zoomed camera and a `--scale 2` export all size the buffer correctly.
@@ -82,7 +82,7 @@ export class View3DFillRenderer extends FillRenderer<View3DFillResolved> {
 
         const rendered = backend.render(
             key,
-            fill.graphics3D,
+            fill.scene,
             Math.max(1, Math.ceil(width * ratio)),
             Math.max(1, Math.ceil(height * ratio)),
             { antialias: fill.antialias !== false, rasters },
@@ -92,7 +92,7 @@ export class View3DFillRenderer extends FillRenderer<View3DFillResolved> {
         if (image) ctx.preflighted.set(fill, image);
     }
 
-    applyPaint(fill: View3DFillResolved, ctx: FillRendererContext): boolean {
+    applyPaint(fill: Canvas3DFillResolved, ctx: FillRendererContext): boolean {
         const image = ctx.preflighted.get(fill) as CKImage | undefined;
         // Nothing preflighted. Either three hasn't loaded (a warm was requested
         // above and the frame will be re-rendered), or this is the shadow /

@@ -1,4 +1,4 @@
-import { Node } from "@/nodes/base/node";
+import { Node2D } from "@/nodes/base/node2d";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Matrix2D, identity, multiply, invert, applyToPoint, cameraMatrix, translation } from "@/attributes/layout/matrix2d";
 import { worldAnchors } from "@/nodes/base/node-transform";
@@ -11,14 +11,14 @@ import { nodePath } from "@/project/tree";
  *
  * **Space.** Everything here is in *viewport space*: origin at the viewport
  * centre, y-up, units = the viewport pixels the player was given. That is the
- * same space `Node.global` reports, plus the camera — see {@link renderMatrix}.
+ * same space `Node2D.global` reports, plus the camera — see {@link renderMatrix}.
  */
 
 /**
  * A node's on-screen box at the current frame, in viewport space (origin at the
  * viewport centre, y-up).
  *
- * Unlike {@link Node.global} this folds in any active camera scope, so it
+ * Unlike {@link Node2D.global} this folds in any active camera scope, so it
  * describes where the node's pixels actually landed — which is what an editor
  * overlay needs in order to draw a selection box over them.
  */
@@ -27,7 +27,7 @@ export interface NodeBox {
     id: string;
     /** Structural path from the scene root (`""` is the root); stable across rebuilds. */
     path: string;
-    /** Node class name, e.g. `Rect`, `Text`. */
+    /** Node2D class name, e.g. `Rect`, `Text`. */
     type: string;
     /** Corners in draw order, viewport space. Rotated/scaled — not axis-aligned. */
     topLeft: Vector2;
@@ -38,7 +38,7 @@ export interface NodeBox {
     /**
      * Size of the box before rotation/scale, in scene units — the node's layout
      * size for everything whose drawing fills its cell, and the ink's own extent
-     * where the two differ (see {@link Node._localBounds}; a `Line` reports the
+     * where the two differ (see {@link Node2D._localBounds}; a `Line` reports the
      * span of its `points`, not its layout rect).
      */
     width: number;
@@ -53,7 +53,7 @@ export interface NodeBox {
 /**
  * The renderer's CTM at `node` — every ancestor's local matrix from the scene
  * root down, with a camera scope inserted wherever an ancestor pushes one
- * ({@link Node._cameraScope}; `RootNode`/`Camera` call `beginCamera` between
+ * ({@link Node2D._cameraScope}; `RootNode`/`Camera` call `beginCamera` between
  * their own transform and their children's).
  *
  * Mirrors the render walk exactly, including the camera's `translate(rect.x,
@@ -64,9 +64,9 @@ export interface NodeBox {
  * this one walk rather than two that agree by inspection.
  */
 /** @internal */
-export function renderMatrix(node: Node): Matrix2D {
-    const chain: Node[] = [];
-    for (let n: Node | null = node; n; n = n.parent) chain.push(n);
+export function renderMatrix(node: Node2D): Matrix2D {
+    const chain: Node2D[] = [];
+    for (let n: Node2D | null = node; n; n = n.parent) chain.push(n);
     chain.reverse();
 
     let m = identity();
@@ -88,15 +88,15 @@ export function renderMatrix(node: Node): Matrix2D {
 /**
  * Folded rotation / scale / opacity from the scene root down to `node`, matching
  * the renderer's nested transforms and its pass-through alpha fold. The same
- * accumulation {@link Node.global} does, extended with the camera scopes: a
+ * accumulation {@link Node2D.global} does, extended with the camera scopes: a
  * camera multiplies the scale by its `zoom` and adds `-heading` to the rotation
  * (the renderer applies `rotate(-heading)`).
  */
-function foldedTransform(node: Node): { rotation: number; scale: number; opacity: number } {
+function foldedTransform(node: Node2D): { rotation: number; scale: number; opacity: number } {
     let rotation = 0;
     let scale = 1;
     let opacity = 1;
-    for (let n: Node | null = node; n; n = n.parent) {
+    for (let n: Node2D | null = node; n; n = n.parent) {
         rotation += n.rotation;
         scale *= n.scale;
         opacity *= n.opacity;
@@ -111,7 +111,7 @@ function foldedTransform(node: Node): { rotation: number; scale: number; opacity
 }
 
 /** Build the viewport-space box for `node` at the current frame. */
-export function nodeBox(node: Node, path: string): NodeBox {
+export function nodeBox(node: Node2D, path: string): NodeBox {
     const b = node._localBounds();
     // `worldAnchors` maps offsets centred on the matrix's origin, so shift the
     // matrix onto the bounds' own centre first — that is what lets a node whose
@@ -151,7 +151,7 @@ export function nodeBox(node: Node, path: string): NodeBox {
  * confines its subtree: a point outside its box cannot hit anything inside it.
  * The scene root is never returned; it is the stage, not a selectable node.
  *
- * The hit region is {@link Node.hitTestSelf} — the rotated layout box by default,
+ * The hit region is {@link Node2D.hitTestSelf} — the rotated layout box by default,
  * narrowed to the declared outline for shapes. A click in the corner of a rect's
  * box selects it; a click in the empty notch of a star's box does not.
  *
@@ -164,11 +164,11 @@ export function nodeBox(node: Node, path: string): NodeBox {
  * pointer rate. If it ever matters, thread the parent's accumulated matrix down
  * through the walk instead of recomputing — a change confined to this file.
  */
-export function pickNode(root: Node, point: Vector2, tolerance = 0): NodeBox | null {
+export function pickNode(root: Node2D, point: Vector2, tolerance = 0): NodeBox | null {
     return pickIn(root, "", point, tolerance, true);
 }
 
-function pickIn(node: Node, path: string, point: Vector2, tolerance: number, isRoot: boolean): NodeBox | null {
+function pickIn(node: Node2D, path: string, point: Vector2, tolerance: number, isRoot: boolean): NodeBox | null {
     if (node.opacity === 0) return null;
 
     const inside = containsPoint(node, point, tolerance);
@@ -190,7 +190,7 @@ function pickIn(node: Node, path: string, point: Vector2, tolerance: number, isR
  * host can paint them in the order the renderer did). Skips `opacity: 0` nodes
  * and the scene root, matching {@link pickNode}.
  */
-export function collectBoxes(node: Node, path: string, out: NodeBox[], isRoot: boolean): void {
+export function collectBoxes(node: Node2D, path: string, out: NodeBox[], isRoot: boolean): void {
     if (node.opacity === 0) return;
     if (!isRoot) out.push(nodeBox(node, path));
     const children = node.children;
@@ -200,7 +200,7 @@ export function collectBoxes(node: Node, path: string, out: NodeBox[], isRoot: b
 }
 
 /** Map `point` into `node`'s local space and ask the node whether it was hit. */
-function containsPoint(node: Node, point: Vector2, tolerance: number): boolean {
+function containsPoint(node: Node2D, point: Vector2, tolerance: number): boolean {
     const inv = invert(renderMatrix(node));
     if (!inv) return false;                       // zero scale — nothing to hit
     // The render matrix works in canvas (y-down) space; `worldAnchors` flips y in

@@ -1,7 +1,7 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
-import { Graphics } from "@/render/graphics";
+import { NodeConfig } from "../base/node2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { CornerStyle } from "@/attributes/shape/corners/corner-style";
 import { lerpCornerScalarStyle } from "@/attributes/shape/corners/corner-scalar";
@@ -29,8 +29,8 @@ export class Polygon extends ShapeNode<PolygonProps> {
         super(props);
     }
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().polygon({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().polygon({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             sides: this.sides,

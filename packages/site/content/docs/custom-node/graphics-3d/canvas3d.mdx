@@ -1,0 +1,179 @@
+---
+sidebar_position: 2
+---
+
+# Canvas3D
+
+`Canvas3D` is a `Rect` that hosts a 3D scene. Because it is a rect, it lays out in flex and stack groups, takes `cornerRadius` and `clip`, and can be masked, blended and filtered.
+
+It is also the one node that holds both trees: its `Node3D` children describe the scene, and its `Node2D` children draw over the result.
+
+```tsx
+<Canvas3D width="fill" height="fill" cornerRadius={24}>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
+  <AmbientLight3D intensity={0.4} />
+  <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} />
+  <Box3D width={2} color="tomato" roughness={0.3} />
+</Canvas3D>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `maxPixelRatio` | `number` | `2` | Ceiling on the 3D buffer's device-pixel ratio |
+| `antialias` | `boolean` | `true` | Multisample the 3D pass |
+
+It also takes every [`Rect`](/docs/nodes/rect) prop.
+
+`maxPixelRatio` is the knob for an expensive scene. Lower it and the 3D renders into a smaller buffer that is scaled up when composited, trading sharpness for fill rate.
+
+### Size defaults
+
+A 3D viewport has no natural size and should not be sized by its overlay children, since hugging a label would collapse the viewport to the size of the text. So `Canvas3D` defaults to `width: 'fill'` and `height: 'fill'` whether or not it has children. Give it an explicit size when you want one.
+
+### Mixing the two trees
+
+`Canvas3D` is the only node that accepts both. Everywhere else, parenting a 3D node to a 2D one throws:
+
+```tsx
+<Rect>
+  <Box3D />     {/* ✗ throws: Rect (2d) cannot hold Box3D (3d) */}
+</Rect>
+```
+
+That is deliberate. A `Box3D` under a `Rect` would be skipped by the layout walk *and* by the 3D walk, and would simply never appear — a silent nothing is worse than a loud error.
+
+## Paint order
+
+The fill stack decides everything, with no special cases:
+
+1. Your own `fill` layers.
+2. The 3D scene.
+3. 2D children and `overlay`.
+4. `stroke`.
+
+So a `fill` paints beneath the 3D, and 2D children paint over it as a heads-up display:
+
+```tsx
+<Canvas3D width={1200} height={700} fill="#8b1e3f" cornerRadius={48}>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} />
+  <AmbientLight3D intensity={0.4} />
+  <Torus3D radius={1.5} tube={0.4} color="tomato" />
+
+  <Rect flow="vertical" gap={8} padding={32} align="topLeft">
+    <Text text="Turntable" fontSize={48} fill="white" />
+    <Text text="45 rpm" fontSize={28} fill="white/60" />
+  </Rect>
+</Canvas3D>
+```
+
+The red fill shows through wherever the 3D render is transparent, which by default is everywhere no geometry covers.
+
+`cornerRadius` and `cornerStyle` confine the 3D, because it is painted through the rect's own path.
+
+## 3D through other shapes
+
+`Canvas3D` is convenience. The primitive is a fill carrying a recorded `Scene3D`, so any shape can carry a 3D scene:
+
+```tsx
+import { Ellipse, Path, Text, Fills, Graphics3D, Scene3D } from 'motion-script';
+
+function scene(color: string): Scene3D {
+  return new Scene3D()
+    .perspective({ position: [0, 1.6, 5], lookAt: 0, fov: 45 })
+    .light({ type: 'ambient', intensity: 0.45 })
+    .light({ type: 'directional', intensity: 2.6 }, { position: [4, 6, 3] })
+    .draw(new Graphics3D().torusKnot({
+      radius: 1.1, tube: 0.36, color, roughness: 0.25, metalness: 0.4,
+    }));
+}
+
+// The ellipse's own path is the clip, so there is no rectangular bleed.
+<Ellipse width={420} height={420} fill={() => scene('#e0533d')} />
+
+// An arbitrary path works the same way.
+<Path
+  width={420}
+  height={420}
+  data="M50,88 C-20,45 8,2 50,26 C92,2 120,45 50,88 Z"
+  fill={() => Fills.canvas3D(scene('#4ea1ff'))}
+/>
+
+// Text has no single path, so it draws per glyph and carries the scene across the run.
+<Text text="DEPTH" fontSize={260} fill={() => scene('#3ddc84')} />
+```
+
+Note the shape of `.light()`: the light's own parameters and its *placement* are separate arguments, because placement is a transform.
+
+## Stacking two scenes
+
+A fill array can hold more than one 3D layer:
+
+```tsx
+<Rect
+  width={720}
+  height={720}
+  cornerRadius={32}
+  fill={() => [
+    '#0b0d12',
+    Fills.canvas3D(knot('#e0533d', -0.7)),
+    Fills.canvas3D(knot('#4ea1ff', 0.7), { opacity: 0.55 }),
+  ]}
+/>
+```
+
+Each layer keeps its own scene graph and GPU buffers, so the two render independently.
+
+## Reusable 3D components
+
+Most of the time the component you want is a **thing in the scene**, not a whole viewport. Subclass `Node3D`:
+
+```tsx
+import { Node3D, Graphics3D, RenderContext3D, property } from 'motion-script';
+
+class Gem extends Node3D {
+  @property({ default: 'tomato' }) declare tint: Color;
+
+  protected override renderSelf(ctx: RenderContext3D): void {
+    ctx.draw(new Graphics3D().polyhedron({
+      shape: 'icosahedron', radius: 1, color: this.tint, flatShading: true,
+    }));
+  }
+}
+
+<Canvas3D>
+  <PerspectiveCamera3D position={[0, 0, 6]} lookAt={0} />
+  <AmbientLight3D intensity={0.5} />
+  <Gem ref={gem} position={[0, 1, 0]} />
+</Canvas3D>
+
+yield* gem().to({ tint: 'cyan', rotation: [0, 360, 0] }, 2);
+```
+
+When the component really is a whole viewport, subclass `Canvas3D` and override `buildScene3D()`. It runs inside the render pass on every frame, so every signal read there samples the current frame:
+
+```tsx
+class Turntable extends Canvas3D {
+  readonly angle = createSignal(0);
+
+  protected override buildScene3D(): Scene3D {
+    const a = (this.angle() * Math.PI) / 180;
+    return new Scene3D()
+      .perspective({ position: [Math.cos(a) * 6, 2, Math.sin(a) * 6], lookAt: 0, fov: 45 })
+      .light({ type: 'ambient', intensity: 0.4 })
+      .draw(new Graphics3D().torus({ radius: 1.5, tube: 0.4, color: 'tomato' }));
+  }
+}
+```
+
+Add `@property` fields for anything a scene should animate with `.to()`, exactly as for any other custom node. See [Properties](../properties).
+
+## Cost
+
+The 3D pass renders into its own buffer and is composited into the 2D frame. It is not free, so the usual levers are:
+
+* Lower `maxPixelRatio` on large viewports.
+* Turn `antialias` off when the scene has no long straight edges.
+* Prefer `Instances3D` over many separate meshes. See [Objects](./objects#instances).
+* Avoid tweening geometry parameters. See [Animating](./animating#what-is-cheap-to-change).

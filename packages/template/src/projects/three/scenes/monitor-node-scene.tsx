@@ -1,6 +1,6 @@
 import {
     createRef, createScene, createSignal, easeInOut, linear, parallel,
-    Graphics, Rect, Text,
+    Graphics2D, Rect, Text,
 } from "motion-script";
 import { MonitorWall, type MonitorScreen } from "../nodes/monitor-wall";
 
@@ -15,11 +15,11 @@ import { MonitorWall, type MonitorScreen } from "../nodes/monitor-wall";
  *
  * Both source kinds are here, and both animate:
  *
- *  - **scope / net** — a built `Graphics` command list, rebuilt each frame from
+ *  - **scope / net** — a built `Graphics2D` command list, rebuilt each frame from
  *    the signals it reads.
- *  - **stats** — a `Node` subtree with real column layout and shaped `Text`,
+ *  - **stats** — a `Node2D` subtree with real column layout and shaped `Text`,
  *    whose bars follow timeline signals. It is never mounted in the scene tree;
- *    `View3D` binds it to its own asset catalog, context and clock, which is what
+ *    `Canvas3D` binds it to its own asset catalog, context and clock, which is what
  *    lets the webfont shape.
  */
 
@@ -60,9 +60,9 @@ export default createScene(function* (stage) {
     // a tween of its own.
     const barWidth = (value: () => number) => () => 48 + value() * (barTrack - 48);
 
-    // ── Screen 1: a Graphics command list ────────────────────────────────────
-    const scope = (): Graphics => {
-        const g = new Graphics();
+    // ── Screen 1: a Graphics2D command list ────────────────────────────────────
+    const scope = (): Graphics2D => {
+        const g = new Graphics2D();
         const w = SCREEN_W - INSET * 2;
         const h = SCREEN_H - INSET * 2;
 
@@ -120,8 +120,8 @@ export default createScene(function* (stage) {
     );
 
     // ── Screen 3: added by handing over one more source ──────────────────────
-    const net = (): Graphics => {
-        const g = new Graphics();
+    const net = (): Graphics2D => {
+        const g = new Graphics2D();
         const w = SCREEN_W - INSET * 2;
         const h = SCREEN_H - INSET * 2;
         const bars = 24;

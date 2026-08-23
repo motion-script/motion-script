@@ -16,7 +16,7 @@ export interface SignalSnapshot<T> {
 /**
  * Something that wants to hear when one of its cells goes stale.
  *
- * A `Node` implements this so the render walk can skip a subtree nothing has
+ * A `Node2D` implements this so the render walk can skip a subtree nothing has
  * touched. Deliberately one method and no identity: the signal layer must not
  * learn what a node is.
  */

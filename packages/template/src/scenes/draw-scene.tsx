@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills } from "motion-script";
+import { createScene, createRef, Ellipse, FX, Text, ShapeProps, ShapeNode, property, NodeConfig, RenderContext2D, Graphics2D, Clip, Fills } from "motion-script";
 export interface CustomShapeProps extends ShapeProps {
     ratio: number;
     sweep: number;
@@ -15,8 +15,8 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
         super(props);
     }
 
-    protected renderSelf(ctx: RenderContext): void {
-        // draw.draw(new Graphics()
+    protected renderSelf(ctx: RenderContext2D): void {
+        // draw.draw(new Graphics2D()
         //     .mask({ mode: 'alpha', apply: 'fill' })
         //     .text({ text: "Mask", fontSize: 200, width: this.layoutRect.width })
         //     .fill('white').stroke(this.stroke)
@@ -26,7 +26,7 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
         //     .ellipse({ x: 120, width: 320, height: 400 }).fill(['green'])
         //     .rect({ x: 360, width: 280, height: 500 }).fill(['blue'])
         //     .endMask());
-        const graphics = new Graphics().ellipse({
+        const graphics = new Graphics2D().ellipse({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
 

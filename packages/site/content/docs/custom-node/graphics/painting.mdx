@@ -7,7 +7,7 @@ sidebar_position: 3
 Three methods put pixels down: `fill`, `stroke` and `shadow`. Each one paints the shapes recorded since the last paint, then closes that group.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 200, height: 200 })
   .ellipse({ x: 140, y: 0, width: 120, height: 120 })
   .fill('royalblue')      // paints the rect and the ellipse together
@@ -18,7 +18,7 @@ new Graphics()
 Every shape joins an accumulator. A paint empties it onto the canvas. The next shape after a paint starts a new group.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ x: -100, y: 0, width: 120, height: 120 })
   .rect({ x:  100, y: 0, width: 120, height: 120 })
   .fill(Fills.linearGradient(['#6990DD', '#E8617C']))  // one gradient across both
@@ -34,7 +34,7 @@ The gradient in the first group maps across the combined bounds of the two rects
 The accumulator only resets on the next shape, so consecutive paint calls all target the same shapes:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .path(figure)
   .shadow({ blur: 24, fill: 'black/40', offset: { x: 0, y: 8 } })
   .fill('#1e293b')
@@ -56,7 +56,7 @@ Takes anything the [`fill` attribute](/docs/attributes/fills) takes: a CSS strin
 .fill(['#0b0d12', Fills.noise({ density: 0.4, color: 'white', opacity: 0.15 })])
 ```
 
-Assets a fill references are discovered from the drawing itself, so an image fill inside a `Graphics` loads with no extra setup.
+Assets a fill references are discovered from the drawing itself, so an image fill inside a `Graphics2D` loads with no extra setup.
 
 ## `stroke`
 
@@ -90,7 +90,7 @@ Give each open shape its own paint call. Closed shapes batch into one stroke cor
 Takes anything the [`shadow` attribute](/docs/attributes/shadows) takes. Since the group is painted as one surface, the shadow follows the combined outline rather than each shape's:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 200, height: 120, cornerRadius: 16 })
   .ellipse({ x: 90, y: 0, width: 120, height: 120 })
   .shadow({ blur: 30, fill: 'black/50', offset: { x: 0, y: 12 } })
@@ -104,7 +104,7 @@ One shadow under the whole figure, with no seam where the rect and ellipse overl
 A group starts at the first shape after a paint, or after an [`effects`](./transforms#effects) call. That is what gradients, shadows, cuts and effects all read.
 
 ```tsx
-new Graphics()
+new Graphics2D()
   // Backdrop
   .rect({ width: 800, height: 400, cornerRadius: 12 })
   .rect({ y: 230, width: 800, height: 48, cornerRadius: 12 })

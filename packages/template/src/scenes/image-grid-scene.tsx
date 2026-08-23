@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext, Graphics, Clip, Fills, BoxBounds, SizeConstraints, Size2D, Measurer, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext2D, Graphics2D, Clip, Fills, BoxBounds, SizeConstraints, Size2D, Measurer, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -32,7 +32,7 @@ class GridCell extends ShapeNode<ShapeProps> {
         super({});
     }
 
-    protected renderSelf(ctx: RenderContext): void {
+    protected renderSelf(ctx: RenderContext2D): void {
         const r = this.layoutRect;
         if (r.width <= 0 || r.height <= 0) return;
         const { width: W, height: H } = this.grid.gridSize();
@@ -45,7 +45,7 @@ class GridCell extends ShapeNode<ShapeProps> {
         // it, so pair it with a fully transparent fill — the slice covers the cell
         // anyway, and the offset/blurred shadow stays visible around it.
         if (shadow.length > 0) {
-            ctx.draw(new Graphics().rect({ width: r.width, height: r.height }).shadow(shadow).fill("transparent"));
+            ctx.draw(new Graphics2D().rect({ width: r.width, height: r.height }).shadow(shadow).fill("transparent"));
         }
 
         // The slice: draw the whole image covering the grid (mode 'fill' = cover,
@@ -72,14 +72,14 @@ class GridCell extends ShapeNode<ShapeProps> {
             width: r.width + left + right,
             height: r.height + top + bottom,
         }));
-        ctx.draw(new Graphics()
+        ctx.draw(new Graphics2D()
             .rect({ x: -r.x, y: -r.y, width: W, height: H })
             .fill(Fills.image(this.grid.src, { fit: "fill" })));
         ctx.endClip();
 
         // Stroke on top of the slice.
         if (stroke.length > 0) {
-            ctx.draw(new Graphics().rect({ width: r.width, height: r.height }).stroke(stroke));
+            ctx.draw(new Graphics2D().rect({ width: r.width, height: r.height }).stroke(stroke));
         }
     }
 }
@@ -173,7 +173,7 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
     // The grid draws nothing itself; its cells (children) render the image, and
     // each cell is an `Image`, which declares its own src — so there is nothing
     // for this node to add.
-    protected renderSelf(_ctx: RenderContext): void { }
+    protected renderSelf(_ctx: RenderContext2D): void { }
 }
 
 export default createScene(function* (stage) {

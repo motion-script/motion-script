@@ -1,5 +1,5 @@
 import {
-    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
+    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
     AnchorKey, Anchor, property, resolveAnchor, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
@@ -18,7 +18,7 @@ interface PivotTextProps extends ShapeProps {
 }
 
 /**
- * Draws a `Graphics().text({ pivot, x: 0, y: 0, rotation, scale })` label plus
+ * Draws a `Graphics2D().text({ pivot, x: 0, y: 0, rotation, scale })` label plus
  * a marker dot at the drawn origin. Text has no authored `width`/`height` (it
  * auto-sizes to its shaped content), so this is the case the pivot fix had to
  * cover separately from a box shape: the named corner/edge of the *shaped*
@@ -35,12 +35,12 @@ class PivotText extends ShapeNode<PivotTextProps> {
         super(props);
     }
 
-    // No font declaration needed: a raw `Graphics().text()` draw call is now
+    // No font declaration needed: a raw `Graphics2D().text()` draw call is now
     // scanned automatically by TrackRenderContext, which registers its font
     // the same way it registers image/video fills — inferred from the draw
     // call itself, not hand-declared.
-    protected renderSelf(draw: RenderContext): void {
-        const label = new Graphics()
+    protected renderSelf(draw: RenderContext2D): void {
+        const label = new Graphics2D()
             .text({
                 text: 'Hello', fontFamily: 'Inter', fontSize: 22, pivot: this.anchor, x: 0, y: 0,
                 rotation: this.shapeRotation, scale: this.shapeScale,
@@ -48,7 +48,7 @@ class PivotText extends ShapeNode<PivotTextProps> {
             .fill('primary');
         draw.draw(label);
 
-        const marker = new Graphics()
+        const marker = new Graphics2D()
             .ellipse({ width: 10, height: 10, x: 0, y: 0 })
             .fill('accent');
         draw.draw(marker);
@@ -56,7 +56,7 @@ class PivotText extends ShapeNode<PivotTextProps> {
 }
 
 /**
- * `Graphics().text({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
+ * `Graphics2D().text({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
  * the descriptor's own `rotation`/`scale` (not the node-level transform) so the
  * per-shape pivot fix is exercised under motion, not just a static pose: with no
  * cardinal-anchor shorthand and no authored box, a plain `pivot` combined with

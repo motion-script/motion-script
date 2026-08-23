@@ -1,8 +1,9 @@
 import type { Vector2 } from "@/attributes/layout/vector2";
 // Type-only, like `Color` above: `render3d` is pure data and never reaches into
 // the render or node layers at runtime. See SurfaceSource3D.
-import type { Graphics } from "@/render/graphics";
+import type { Graphics2D } from "@/render/graphics2d";
 import type { Node } from "@/nodes/base/node";
+import type { Node2D } from "@/nodes/base/node2d";
 
 /** How sampling behaves outside the 0–1 UV range. */
 export type TextureWrap3D = "clamp" | "repeat" | "mirror";
@@ -72,14 +73,14 @@ export interface DataTexture3D extends TextureOptions3D {
  * — the way to put a chart, a readout or a whole laid-out UI onto 3D geometry.
  *
  * `source` is a value, not a name and not a mounted node: either a built
- * {@link Graphics} command list, or a `Node` subtree. Both are supplied directly,
+ * {@link Graphics2D} command list, or a `Node2D` subtree. Both are supplied directly,
  * so there is no matching indirection and nothing has to live in a particular
  * place in the scene tree.
  *
  *   g3.plane({ map: Tex.surface(scopeGraphics, 1024, 640) })
  *   g3.plane({ map: Tex.surface(statsSubtree, 1024, 640) })
  *
- * A `Node` source is *adopted for binding* by whatever paints the scene — it gets
+ * A `Node2D` source is *adopted for binding* by whatever paints the scene — it gets
  * that node's asset catalog, inherited context and clock, which is what makes a
  * webfont shape and an `<Image>` load. It is never laid out or painted by the
  * scene tree; it is measured against `width`×`height` and drawn into the buffer.
@@ -89,7 +90,7 @@ export interface DataTexture3D extends TextureOptions3D {
  * leaking. Declare it once and pass the same instance.
  */
 export interface SurfaceTexture3D extends TextureOptions3D {
-    /** A built `Graphics`, or a `Node` subtree. Typed structurally — see below. */
+    /** A built `Graphics2D`, or a `Node2D` subtree. Typed structurally — see below. */
     source: SurfaceSource3D;
     /** Buffer width in pixels. This *is* the texture's resolution. */
     width: number;
@@ -116,36 +117,42 @@ export interface SurfaceTexture3D extends TextureOptions3D {
 }
 
 /**
- * What a {@link SurfaceTexture3D} can be painted from: a built {@link Graphics}
- * command list, or a {@link Node} subtree.
+ * What a {@link SurfaceTexture3D} can be painted from: a built {@link Graphics2D}
+ * command list, or a {@link Node2D} subtree.
  *
  * Both imports are **type-only**, exactly as `Color` is — `render3d` describes
  * scenes as data and never reaches into the render or node layers at runtime, and
- * a value import of `Node` here would close a real module cycle. Consumers narrow
+ * a value import of `Node2D` here would close a real module cycle. Consumers narrow
  * with {@link resolveSurfaceSource}.
  */
-export type SurfaceSource3D = Graphics | Node;
+export type SurfaceSource3D = Graphics2D | Node;
+
+// Declared against the dimension-agnostic base because that is what JSX produces
+// (`JSX.Element` is `Node`), so `Tex.surface(<Rect/>, …)` type-checks without a
+// cast. It has to be a 2D subtree in fact — the renderer lays it out and draws it
+// into a 2D buffer — and `resolveSurfaceSource` narrows to that; handing it a
+// `Node3D` fails at render time rather than here.
 
 /** A {@link SurfaceSource3D} narrowed to the arm its renderer should take. */
 export type ResolvedSurfaceSource =
-    | { kind: "graphics"; graphics: Graphics }
-    | { kind: "node"; node: Node };
+    | { kind: "graphics"; graphics: Graphics2D }
+    | { kind: "node"; node: Node2D };
 
 /**
- * Narrow a surface source to the arm that knows how to draw it: a `Graphics` is
- * replayed into a render context, a `Node` is laid out against the buffer and
+ * Narrow a surface source to the arm that knows how to draw it: a `Graphics2D` is
+ * replayed into a render context, a `Node2D` is laid out against the buffer and
  * rendered.
  *
  * Structural rather than `instanceof`, because that would need value imports of
- * both classes and close the cycle the type-only imports above avoid. `Graphics`
- * is a command recorder and exposes `ops()`; a `Node` has no such method. The
+ * both classes and close the cycle the type-only imports above avoid. `Graphics2D`
+ * is a command recorder and exposes `ops()`; a `Node2D` has no such method. The
  * union makes any *other* value a type error, so this only has to separate two
  * known shapes rather than validate an unknown one.
  */
 export function resolveSurfaceSource(source: SurfaceSource3D): ResolvedSurfaceSource {
-    return typeof (source as Graphics).ops === "function"
-        ? { kind: "graphics", graphics: source as Graphics }
-        : { kind: "node", node: source as Node };
+    return typeof (source as Graphics2D).ops === "function"
+        ? { kind: "graphics", graphics: source as Graphics2D }
+        : { kind: "node", node: source as Node2D };
 }
 
 /**

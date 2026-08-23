@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { Graphics, Node, RenderContext, DefaultTextStyle, type TextState } from '@motion-script/core';
+import { Graphics2D, Node2D, RenderContext2D, DefaultTextStyle, type TextState } from '@motion-script/core';
 import { Code } from './node';
 
 /** Records the op lists reaching the backend seam, so a test can assert what a
  *  draw resolved to without a CanvasKit surface. */
-class RecorderContext extends RenderContext {
-    readonly drawn: Graphics[] = [];
+class RecorderContext extends RenderContext2D {
+    readonly drawn: Graphics2D[] = [];
 
-    protected drawGraphics(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics2D): void {
         this.drawn.push(graphics);
     }
 
@@ -26,7 +26,7 @@ class RecorderContext extends RenderContext {
     unmount(): void { }
     execute(callback: () => void): void { callback(); }
     screenshot(): undefined { return undefined; }
-    transform(): RenderContext { return this; }
+    transform(): RenderContext2D { return this; }
     beginBoolean(): void { }
     endBoolean(): void { }
     beginMask(): void { }
@@ -41,7 +41,7 @@ class RecorderContext extends RenderContext {
 /** A minimal `Measurer` — `Code` only asks for advance widths. */
 const scope = { measureText: (text: string, fontSize: number) => text.length * fontSize * 0.6 };
 
-function render(root: Node): RecorderContext {
+function render(root: Node2D): RecorderContext {
     root.layout({ x: 0, y: 0, width: 600, height: 300 }, scope as never);
     const ctx = new RecorderContext();
     ctx.execute(() => root.render(ctx));
@@ -71,9 +71,9 @@ describe('Code refuses the ambient text-style defaults', () => {
     });
 
     it('closes its scope, so a sibling still inherits', () => {
-        class RawLabel extends Node {
-            protected override renderSelf(ctx: RenderContext): void {
-                ctx.draw(new Graphics().text({ text: 'Hi' }).fill('white'));
+        class RawLabel extends Node2D {
+            protected override renderSelf(ctx: RenderContext2D): void {
+                ctx.draw(new Graphics2D().text({ text: 'Hi' }).fill('white'));
             }
         }
 

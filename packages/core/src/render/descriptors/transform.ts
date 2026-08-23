@@ -29,9 +29,9 @@ export interface TransformState {
      * arithmetic from the same inputs. It may carry a perspective row, so it is a
      * full 3×3 — see {@link Matrix2D}.
      *
-     * Note this is deliberately *more* than `Node._localMatrix` reports: the
+     * Note this is deliberately *more* than `Node2D._localMatrix` reports: the
      * out-of-plane transform is paint rather than geometry, so it reaches the
-     * canvas and nothing else. See `Node._localMatrix` for why.
+     * canvas and nothing else. See `Node2D._localMatrix` for why.
      */
     matrix?: Matrix2D;
 }

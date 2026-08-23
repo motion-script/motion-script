@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Clip,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, Clip,
     Fills, property,
 } from "motion-script";
 
@@ -43,7 +43,7 @@ const VALUES = generateValues();
 
 /**
  * A Smith chart painted *entirely from draw commands* — the whole conformal grid,
- * boundary ring and degree scale as one {@link Graphics} list inside
+ * boundary ring and degree scale as one {@link Graphics2D} list inside
  * {@link renderSelf}, no Canvas 2D and no rAF loop.
  *
  * The figure is authored y-up in a box centred on the node origin spanning
@@ -96,7 +96,7 @@ export class SmithChart extends ShapeNode<SmithChartProps> {
         return hex;
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const R = this.radius;
         const spin = this.orientation;
 
@@ -109,7 +109,7 @@ export class SmithChart extends ShapeNode<SmithChartProps> {
         // group rotation doesn't disturb it.
         draw.beginClip(new Clip().ellipse({ x: 0, y: 0, width: R * 2, height: R * 2 }));
 
-        const grid = new Graphics();
+        const grid = new Graphics2D();
 
         // Background glow: faint centre → brighter rim, matching the reference's
         // radial gradient over the disc.
@@ -160,7 +160,7 @@ export class SmithChart extends ShapeNode<SmithChartProps> {
         draw.endClip();
 
         // ── Pass 2: crisp boundary rings + degree scale (unclipped) ───────────
-        const g = new Graphics();
+        const g = new Graphics2D();
 
         g.ellipse({ x: 0, y: 0, width: R * 2, height: R * 2 })
             .stroke({ weight: 2, fill: this.rgba(0.9) });

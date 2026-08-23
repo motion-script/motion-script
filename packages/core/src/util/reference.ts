@@ -23,7 +23,7 @@ export interface Reference<T> {
  * **supertype** of `T`.
  *
  * This is the type a node's `ref` prop takes, and the widening is deliberate:
- * the framework only ever writes into a ref (`props.ref(this)` in the `Node`
+ * the framework only ever writes into a ref (`props.ref(this)` in the `Node2D`
  * constructor) and the author only ever reads, so handing a `Rect` to a
  * `Reference<ShapeNode>` is sound in both directions — the write stores a
  * subtype, the read yields the supertype the author asked for. That is what

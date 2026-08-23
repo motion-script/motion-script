@@ -8,7 +8,7 @@ import type { Transform3D } from "./transform";
  * Extends {@link Transform3D}, so placement and aim use the same vocabulary as
  * everything else: `.perspective({ position: [0, 2, 6], lookAt: 0 })`.
  */
-export interface PerspectiveCamera3D extends Transform3D, Passthrough3D {
+export interface PerspectiveCameraData3D extends Transform3D, Passthrough3D {
     type: "perspective";
     /** Vertical field of view in **degrees**. Default 50. */
     fov?: number;
@@ -31,7 +31,7 @@ export interface PerspectiveCamera3D extends Transform3D, Passthrough3D {
  * and derives the width from the node's aspect ratio. Set the four explicit edges
  * instead only when you need an asymmetric frustum.
  */
-export interface OrthographicCamera3D extends Transform3D, Passthrough3D {
+export interface OrthographicCameraData3D extends Transform3D, Passthrough3D {
     type: "orthographic";
     /** Visible world-space height; width follows the node's aspect. Default 10. */
     frustumHeight?: number;
@@ -46,4 +46,4 @@ export interface OrthographicCamera3D extends Transform3D, Passthrough3D {
 }
 
 /** Every camera a scene can be viewed through. Discriminated on `type`. */
-export type Camera3D = PerspectiveCamera3D | OrthographicCamera3D;
+export type CameraData3D = PerspectiveCameraData3D | OrthographicCameraData3D;

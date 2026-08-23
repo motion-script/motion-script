@@ -9,18 +9,18 @@ import { fillProperty, shadowProperty, strokeProperty } from "@/attributes/prope
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { Fill } from "@/attributes/shape/fill/chain";
 
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { containsClip } from "@/render/clip-contains";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { property } from "@/attributes/properties/decorator";
-import { Node, NodeProps } from "../base/node";
+import { Node2D, Node2DProps } from "../base/node2d";
 import { TweenOptions } from "@/tween/lerp";
 import { commandSequence, type Command } from "@/tween/command";
 import { command } from "@/tween/command-decorator";
 
 
-export interface ShapeProps extends NodeProps {
+export interface ShapeProps extends Node2DProps {
     /**
      * Fill layer(s). Each item can be:
      * - A plain CSS color string → treated as a solid fill
@@ -53,13 +53,13 @@ export interface ShapeProps extends NodeProps {
 }
 
 
-export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<P> {
+export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2D<P> {
 
     // Author-facing paint props. The declared type is the loose `Fill`/`Stroke`/
     // `Shadow` so assignment (`this.fill = 'red'`) and reads share one simple
     // type. At runtime the @property accessor stores the *resolved* value (via
     // the mapper), and consumers that need the resolved shape cast at the read
-    // site — see `tick`/`prepare`/`*To` and the `Graphics` paint calls.
+    // site — see `tick`/`prepare`/`*To` and the `Graphics2D` paint calls.
     // Stroke weight feeds Rect.effectivePadding(), which insets children.
     @fillProperty()
     declare fill: Fill;
@@ -84,7 +84,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
     // No per-frame fill bookkeeping: a time-dependent fill (video) resolves its
     // own timestamp as it paints, from the node's clock — see
     // `resolveVideoTimestamp`. That is what lets one live anywhere paint is
-    // accepted (stroke, shadow, a custom node's raw `Graphics`) rather than only
+    // accepted (stroke, shadow, a custom node's raw `Graphics2D`) rather than only
     // on the nodes that remembered to advance it from tick().
 
     // No longer abstract: `renderSelf` below paints the silhouette that
@@ -95,7 +95,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
     // paint themselves.
 
     /**
-     * The node's bare silhouette as a {@link Graphics} with **no** paint ops.
+     * The node's bare silhouette as a {@link Graphics2D} with **no** paint ops.
      * `renderSelf` appends shadow + fill; {@link renderOverlay} appends the
      * overlay fill; {@link renderStroke} appends the stroke. Sharing one builder
      * keeps each shape's geometry defined in a single place.
@@ -104,7 +104,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
      * boolean groups, grids) — those override the paint hooks themselves or opt
      * out of the generic overlay/stroke passes.
      */
-    protected shapeGraphics(): Graphics | null {
+    protected shapeGraphics(): Graphics2D | null {
         return null;
     }
 
@@ -115,19 +115,19 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
      * body. A subclass whose paint differs (`Path`, `Image`, `Video`) still
      * overrides it.
      *
-     * Each hook composes its own `Graphics` rather than sharing one built once:
+     * Each hook composes its own `Graphics2D` rather than sharing one built once:
      * `.fill()`, `.stroke()` and `.shadow()` push onto `_ops` and return `this`,
      * so a single silhouette handed to all three would accumulate paint ops
      * across passes.
      */
-    protected override renderSelf(ctx: RenderContext): void {
+    protected override renderSelf(ctx: RenderContext2D): void {
         const base = this.shapeGraphics();
         if (base) ctx.draw(base.shadow(this.shadow).fill(this.fill));
     }
 
     // Overlay over fill + children, under stroke. Painted as a fill of the
     // node's silhouette, so it's clipped to the outline exactly like `fill`.
-    protected override renderOverlay(ctx: RenderContext): void {
+    protected override renderOverlay(ctx: RenderContext2D): void {
         const overlay = this.overlay as FillResolved[];
         if (overlay.length === 0) return;
         const base = this.shapeGraphics();
@@ -135,7 +135,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
     }
 
     // Deferred stroke, painted last so it frames the children + overlay.
-    protected override renderStroke(ctx: RenderContext): void {
+    protected override renderStroke(ctx: RenderContext2D): void {
         const stroke = this.stroke as StrokeResolved[];
         if (stroke.length === 0) return;
         const base = this.shapeGraphics();
@@ -157,7 +157,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
      *
      * A subclass that paints something *outside* these four slots — `Image` and
      * `Video` prepend a fill of their own, `Path` and the grids build a raw
-     * `Graphics` — overrides this and calls `super` first.
+     * `Graphics2D` — overrides this and calls `super` first.
      */
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
@@ -179,7 +179,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node<
      * Shapes hit on their outline, not their box: a click in the empty corner of
      * a star's bounding box should fall through to whatever is behind it. The
      * outline is the very one this node already declares for clipping
-     * ({@link Node.clipSelf}), so what is grabbable and what is drawn can never
+     * ({@link Node2D.clipSelf}), so what is grabbable and what is drawn can never
      * drift. Shapes that declare no outline (Text, RichText, Path) keep the base
      * box test, which is what selection should do for them anyway.
      */

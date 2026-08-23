@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { Graphics } from '@/render/graphics';
-import { RenderContext } from '@/render/render-context';
+import { Graphics2D } from '@/render/graphics2d';
+import { RenderContext2D } from '@/render/render-context2d';
 import { AssetTracker } from '@/assets/tracker';
 import { TextStyleToken } from '@/runtime/builtin-context';
 import { AssetCatalog } from '@/assets/catalog';
 import type { AssetManifest } from '@/assets/manifest';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { DefaultTextStyle } from '@/nodes/text/default-text-style-node';
 import { Text } from '@/nodes/text/text-node';
 import { setTheme } from '@/attributes/shape/fill/color/parser';
@@ -17,12 +17,12 @@ import type { ResolvedTextSpan } from '@/attributes/text/span';
 
 const scope = new FakeMeasurer();
 
-/** A `RenderContext` that records the op lists reaching the backend seam, so a
+/** A `RenderContext2D` that records the op lists reaching the backend seam, so a
  *  test can assert what a draw actually resolved to without a surface. */
-class RecorderContext extends RenderContext {
-    readonly drawn: Graphics[] = [];
+class RecorderContext extends RenderContext2D {
+    readonly drawn: Graphics2D[] = [];
 
-    protected drawGraphics(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics2D): void {
         this.drawn.push(graphics);
     }
 
@@ -49,7 +49,7 @@ class RecorderContext extends RenderContext {
     unmount(): void { }
     execute(callback: () => void): void { callback(); }
     screenshot(): undefined { return undefined; }
-    transform(): RenderContext { return this; }
+    transform(): RenderContext2D { return this; }
     beginBoolean(): void { }
     endBoolean(): void { }
     beginMask(): void { }
@@ -63,8 +63,8 @@ class RecorderContext extends RenderContext {
 
 /** A bare `.text()` op with nothing but content — the shape a custom node draws
  *  when it means "use whatever the document says". */
-function bareText(): Graphics {
-    return new Graphics().text({ text: 'Hi', width: 100, height: 40 }).fill('white');
+function bareText(): Graphics2D {
+    return new Graphics2D().text({ text: 'Hi', width: 100, height: 40 }).fill('white');
 }
 
 afterEach(() => setTheme());
@@ -80,17 +80,17 @@ describe('text-style defaults on the render context', () => {
     it('leaves a text op that names its own value alone', () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fontFamily: 'Inter', fontSize: 64 });
-        ctx.draw(new Graphics().text({ text: 'Hi', fontFamily: 'Fira Mono' }));
+        ctx.draw(new Graphics2D().text({ text: 'Hi', fontFamily: 'Fira Mono' }));
         // The op's own family wins; the size it didn't set is still inherited.
         expect(ctx.textState()).toMatchObject({ fontFamily: 'Fira Mono', fontSize: 64 });
     });
 
     it('never synthesises a paint op from fill/stroke/shadow defaults', () => {
-        // Those are group-scoped ops in a Graphics, not per-shape slots — adding
+        // Those are group-scoped ops in a Graphics2D, not per-shape slots — adding
         // one would change which shapes the group's paint covers.
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fill: 'red', stroke: { weight: 2, fill: 'black' }, shadow: { blur: 4 } });
-        ctx.draw(new Graphics().text({ text: 'Hi' }));
+        ctx.draw(new Graphics2D().text({ text: 'Hi' }));
         expect(ctx.kinds()).toEqual(['text']);
     });
 
@@ -129,15 +129,15 @@ describe('text-style defaults on the render context', () => {
         expect(state.fontWeight).toBeUndefined();
     });
 
-    it('hands the very same Graphics through when nothing needs filling in', () => {
+    it('hands the very same Graphics2D through when nothing needs filling in', () => {
         const ctx = new RecorderContext();
-        const g = new Graphics().rect({ width: 10, height: 10 }).fill('red');
+        const g = new Graphics2D().rect({ width: 10, height: 10 }).fill('red');
         ctx.pushTextStyle({ fontFamily: 'Inter' });
         ctx.draw(g);
         expect(ctx.drawn[0]).toBe(g);
     });
 
-    it('leaves the author\'s Graphics untouched when it does rewrite', () => {
+    it('leaves the author\'s Graphics2D untouched when it does rewrite', () => {
         const ctx = new RecorderContext();
         const g = bareText();
         ctx.pushTextStyle({ fontFamily: 'Inter' });
@@ -149,7 +149,7 @@ describe('text-style defaults on the render context', () => {
         expect(original && original.kind === 'text' && original.state.fontFamily).toBeUndefined();
     });
 
-    it('carries the group-level modifiers onto the rewritten Graphics', () => {
+    it('carries the group-level modifiers onto the rewritten Graphics2D', () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fontFamily: 'Inter' });
         ctx.draw(bareText().opacity(0.4).rotation(30, 'topRight'));
@@ -165,7 +165,7 @@ describe('text-style defaults on a richText op', () => {
     it('fills the defaults in span by span', () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fontFamily: 'Inter', fontWeight: 700 });
-        ctx.draw(new Graphics().richText({ spans: [bareSpan('a'), bareSpan('b')] }));
+        ctx.draw(new Graphics2D().richText({ spans: [bareSpan('a'), bareSpan('b')] }));
         expect(ctx.richTextState().spans).toMatchObject([
             { text: 'a', fontFamily: 'Inter', fontWeight: 700 },
             { text: 'b', fontFamily: 'Inter', fontWeight: 700 },
@@ -175,7 +175,7 @@ describe('text-style defaults on a richText op', () => {
     it('leaves a span that names its own family alone', () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fontFamily: 'Inter' });
-        ctx.draw(new Graphics().richText({
+        ctx.draw(new Graphics2D().richText({
             spans: [{ ...bareSpan('a'), fontFamily: 'Fira Mono' } as ResolvedTextSpan, bareSpan('b')],
         }));
         expect(ctx.richTextState().spans).toMatchObject([
@@ -187,7 +187,7 @@ describe('text-style defaults on a richText op', () => {
     it('applies lineHeight/textAlign to the block rather than to each span', () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ lineHeight: 1.8, textAlign: 'left' });
-        ctx.draw(new Graphics().richText({ spans: [bareSpan('a')] }));
+        ctx.draw(new Graphics2D().richText({ spans: [bareSpan('a')] }));
         expect(ctx.richTextState()).toMatchObject({ lineHeight: 1.8, textAlign: 'left' });
         expect(ctx.richTextState().spans?.[0]).not.toHaveProperty('lineHeight');
     });
@@ -195,7 +195,7 @@ describe('text-style defaults on a richText op', () => {
     it("skips an inherited 'autofit' size, which a run inside a block can't mean", () => {
         const ctx = new RecorderContext();
         ctx.pushTextStyle({ fontSize: 'autofit', fontFamily: 'Inter' });
-        ctx.draw(new Graphics().richText({ spans: [bareSpan('a')] }));
+        ctx.draw(new Graphics2D().richText({ spans: [bareSpan('a')] }));
         const span = ctx.richTextState().spans?.[0];
         expect(span).toMatchObject({ fontFamily: 'Inter' });
         expect(span?.fontSize).toBeUndefined();
@@ -204,20 +204,20 @@ describe('text-style defaults on a richText op', () => {
 
 describe('<DefaultTextStyle> over drawn graphics', () => {
     /** A custom node whose whole drawing is one under-specified text op. */
-    class RawLabel extends Node {
-        protected override renderSelf(ctx: RenderContext): void {
+    class RawLabel extends Node2D {
+        protected override renderSelf(ctx: RenderContext2D): void {
             ctx.draw(bareText());
         }
     }
 
-    function render(root: Node): RecorderContext {
+    function render(root: Node2D): RecorderContext {
         root.layout({ x: 0, y: 0, width: 200, height: 100 }, scope);
         const ctx = new RecorderContext();
         ctx.execute(() => root.render(ctx));
         return ctx;
     }
 
-    it('reaches a raw Graphics drawn by a descendant', () => {
+    it('reaches a raw Graphics2D drawn by a descendant', () => {
         const ctx = render(new DefaultTextStyle({
             fontFamily: 'Inter',
             fontWeight: 700,
@@ -228,7 +228,7 @@ describe('<DefaultTextStyle> over drawn graphics', () => {
 
     it('closes its scope, so a later sibling of the provider is unaffected', () => {
         const sibling = new RawLabel({ width: 100, height: 40 });
-        const root = new Node({
+        const root = new Node2D({
             width: 200,
             height: 100,
             children: [
@@ -259,8 +259,8 @@ describe('<DefaultTextStyle> over drawn graphics', () => {
 });
 
 describe('asset discovery sees the inherited family', () => {
-    class RawLabel extends Node {
-        protected override renderSelf(ctx: RenderContext): void {
+    class RawLabel extends Node2D {
+        protected override renderSelf(ctx: RenderContext2D): void {
             ctx.draw(bareText());
         }
     }
@@ -268,7 +268,7 @@ describe('asset discovery sees the inherited family', () => {
     /**
      * The same node, declaring the family it will draw with.
      *
-     * A raw `Graphics.text()` op is the one place a family cannot be read off a
+     * A raw `Graphics2D.text()` op is the one place a family cannot be read off a
      * prop: it has none, and inherits from the enclosing draw scope. A node that
      * draws one therefore has to say so — which it can, because the scope it will
      * inherit from is the context map it is already bound to.

@@ -1,5 +1,5 @@
 /**
- * Structural walks over a built {@link Graphics3D}.
+ * Structural walks over a built {@link Graphics3D} or {@link Scene3D}.
  *
  * A `Graphics3D` is a flat op list with a handful of scene-level descriptors
  * hanging off it, and more than one consumer needs to sweep the same surface for
@@ -13,8 +13,9 @@
  */
 
 import type { Graphics3D } from "./graphics3d";
+import { Scene3D } from "./scene3d";
 import type { Material3D } from "./material";
-import type { Background3D } from "./scene-settings";
+import type { BackgroundData3D } from "./scene-settings";
 import type { Texture3D } from "./texture";
 
 /** Material fields that hold a {@link Texture3D}. */
@@ -44,7 +45,7 @@ export function isTextureLike(value: unknown): boolean {
  * cover model/environment resources, which are not textures and go through the
  * backend's own loader — see `track3DResources`.
  */
-export function forEachTexture3D(g3: Graphics3D, visit: (texture: Texture3D) => void): void {
+export function forEachTexture3D(g3: Graphics3D | Scene3D, visit: (texture: Texture3D) => void): void {
     const uniforms = (bag: Record<string, unknown> | undefined): void => {
         if (!bag) return;
         for (const key in bag) {
@@ -86,6 +87,10 @@ export function forEachTexture3D(g3: Graphics3D, visit: (texture: Texture3D) => 
         }
     }
 
+    // Only a whole scene has a background or a post chain; what a single node
+    // draws has neither.
+    if (!(g3 instanceof Scene3D)) return;
+
     visitBackground(g3.backgroundDescriptor(), visit);
 
     for (const effect of g3.postEffects()) {
@@ -94,11 +99,11 @@ export function forEachTexture3D(g3: Graphics3D, visit: (texture: Texture3D) => 
 }
 
 function visitBackground(
-    background: Background3D | null,
+    background: BackgroundData3D | null,
     visit: (texture: Texture3D) => void,
 ): void {
     if (background === null || typeof background === "string" || Array.isArray(background)) return;
-    const value = background as Exclude<Background3D, string | readonly number[]>;
+    const value = background as Exclude<BackgroundData3D, string | readonly number[]>;
     switch (value.type) {
         case "texture":
         case "equirect":

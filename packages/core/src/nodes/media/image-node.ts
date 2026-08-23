@@ -1,5 +1,5 @@
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { ImageAdjustment, resolveChainAdjustments } from "@/attributes/shape/filters/chain";
 import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaAdjustment } from "@/attributes/shape/filters/union";
@@ -11,7 +11,7 @@ import { Anchor } from "@/attributes/layout/anchor";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { anchorProperty, insetsProperty } from "@/attributes/properties/typed";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 
 export interface ImageProps extends RectProps {
     src?: string;
@@ -75,8 +75,8 @@ export class Image extends Rect<ImageProps> {
         return resolveFill(prop as FillProp) as ImageFillResolved;
     }
 
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -86,7 +86,7 @@ export class Image extends Rect<ImageProps> {
         });
     }
 
-    protected override renderSelf(draw: RenderContext): void {
+    protected override renderSelf(draw: RenderContext2D): void {
         // Paint the image fill first (so it sits behind any user-supplied `fill`
         // layers — a tint or vignette over the picture), styled as the rect's fill.
         // Stroke is deferred to renderStroke (drawn after children + overlay), so

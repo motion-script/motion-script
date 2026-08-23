@@ -2,7 +2,7 @@
  * The live 3D backend: one three scene per 3D fill *slot*, reconciled and
  * rendered on demand.
  *
- * The unit of identity is a {@link View3DSlotKey}, not a node — a node can carry
+ * The unit of identity is a {@link Canvas3DSlotKey}, not a node — a node can carry
  * more than one 3D fill, and a fill cross-fade transiently produces two.
  *
  * Split out of `./index` so non-barrel modules (the render context) can import
@@ -10,16 +10,16 @@
  */
 
 import type * as THREE from "three";
-import type { Graphics3D, RasterizedSurface, SurfaceTexture3D } from "@motion-script/core";
+import type { RasterizedSurface, Scene3D, SurfaceTexture3D } from "@motion-script/core";
 import { threeModule, type ThreeModule } from "./bridge";
-import { View3DGraph } from "./reconciler";
-import { view3DRendererHost, type RenderedView3D, type View3DRendererHost } from "./renderer-seam";
-import { TextureResolver, type View3DAssets } from "./handlers/texture";
+import { Canvas3DGraph } from "./reconciler";
+import { canvas3DRendererHost, type RenderedCanvas3D, type Canvas3DRendererHost } from "./renderer-seam";
+import { TextureResolver, type Canvas3DAssets } from "./handlers/texture";
 
 /**
- * Renders `Graphics3D` scenes to a canvas, one live three scene per node.
+ * Renders `Scene3D` scenes to a canvas, one live three scene per node.
  *
- * Only obtainable once three has loaded — see {@link view3DBackend}.
+ * Only obtainable once three has loaded — see {@link canvas3DBackend}.
  */
 /**
  * Identity of one live 3D scene: `${nodeId}#${paintSlot}`.
@@ -27,24 +27,24 @@ import { TextureResolver, type View3DAssets } from "./handlers/texture";
  * Opaque to everything downstream — every consumer only uses it as a Map key, so
  * per-slot sweeping falls out of the existing per-key logic with no extra rules.
  */
-export type View3DSlotKey = string;
+export type Canvas3DSlotKey = string;
 
-export class View3DBackend {
-    private readonly graphs = new Map<View3DSlotKey, View3DGraph>();
+export class Canvas3DBackend {
+    private readonly graphs = new Map<Canvas3DSlotKey, Canvas3DGraph>();
     private readonly textures: TextureResolver;
     /** Frame counter, so graphs for removed nodes can be swept. */
     private frame = 0;
-    private readonly touched = new Set<View3DSlotKey>();
+    private readonly touched = new Set<Canvas3DSlotKey>();
 
     /**
      * `host` is held rather than looked up per call so {@link render} can return a
-     * non-nullable frame: {@link view3DBackend} only constructs a backend once a
+     * non-nullable frame: {@link canvas3DBackend} only constructs a backend once a
      * host is registered, so within an instance the renderer always exists.
      */
     constructor(
         private readonly three: ThreeModule,
-        private readonly assets: View3DAssets,
-        private readonly host: View3DRendererHost,
+        private readonly assets: Canvas3DAssets,
+        private readonly host: Canvas3DRendererHost,
     ) {
         this.textures = new TextureResolver(three, assets);
     }
@@ -57,8 +57,8 @@ export class View3DBackend {
      * the compositor does, both happening inside one synchronous draw.
      */
     render(
-        key: View3DSlotKey,
-        g3: Graphics3D,
+        key: Canvas3DSlotKey,
+        g3: Scene3D,
         width: number,
         height: number,
         options: {
@@ -66,10 +66,10 @@ export class View3DBackend {
             /** This frame's rasterized 2D buffers, keyed by descriptor identity. */
             rasters?: ReadonlyMap<SurfaceTexture3D, RasterizedSurface>;
         } = {},
-    ): RenderedView3D {
+    ): RenderedCanvas3D {
         let graph = this.graphs.get(key);
         if (!graph) {
-            graph = new View3DGraph(this.three);
+            graph = new Canvas3DGraph(this.three);
             this.graphs.set(key, graph);
         }
         this.touched.add(key);
@@ -111,7 +111,7 @@ export class View3DBackend {
     }
 
     /** Free everything held for one slot: its scene, buffer size and CK texture. */
-    private release(key: View3DSlotKey, graph: View3DGraph): void {
+    private release(key: Canvas3DSlotKey, graph: Canvas3DGraph): void {
         graph.dispose();
         this.host.forgetBuffer(key);
         this.assets.release3DTexture(key);
@@ -123,7 +123,7 @@ export class View3DBackend {
     }
 }
 
-let backend: View3DBackend | null = null;
+let backend: Canvas3DBackend | null = null;
 
 /**
  * The 3D backend, or `null` until three has loaded *and* a platform renderer is
@@ -137,22 +137,22 @@ let backend: View3DBackend | null = null;
  * than throwing mid-frame: a renderer with no GL context (a CPU-raster Node
  * backend, say) registers nothing, and every 3D fill simply declines to paint.
  */
-export function view3DBackend(assets: View3DAssets): View3DBackend | null {
+export function canvas3DBackend(assets: Canvas3DAssets): Canvas3DBackend | null {
     const three = threeModule();
     if (!three) return null;
-    const host = view3DRendererHost();
+    const host = canvas3DRendererHost();
     if (!host) return null;
-    backend ??= new View3DBackend(three, assets, host);
+    backend ??= new Canvas3DBackend(three, assets, host);
     return backend;
 }
 
 /** Tear down the backend. Called on render-context unmount/dispose. */
-export function disposeView3DBackend(): void {
+export function disposeCanvas3DBackend(): void {
     backend?.dispose();
     backend = null;
 }
 
 /** The three namespace once loaded, for tests and environment helpers. */
-export function view3DModule(): typeof THREE | null {
+export function canvas3DModule(): typeof THREE | null {
     return threeModule();
 }

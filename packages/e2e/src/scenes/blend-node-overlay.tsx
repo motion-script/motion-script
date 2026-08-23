@@ -1,7 +1,7 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** Node-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'overlay'` (multiply on dark areas, screen on light). */
+/** Node2D-level `blend`: a magenta circle isolates and blends against a cyan backdrop via `'overlay'` (multiply on dark areas, screen on light). */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const circle = createRef<Rect>();

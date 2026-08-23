@@ -1,9 +1,9 @@
 import type * as THREE from "three";
 import type {
-    RenderedView3D,
+    RenderedCanvas3D,
     ThreeModule,
-    View3DRendererHost,
-    View3DRendererSettings,
+    Canvas3DRendererHost,
+    Canvas3DRendererSettings,
 } from "@motion-script/skia-render";
 
 /**
@@ -112,7 +112,7 @@ function quantizeBuffer(key: string, width: number, height: number): { width: nu
  * texture) before rendering another node — which the compositor does, since both
  * happen inside one synchronous draw call.
  */
-export function renderView3D(
+export function renderCanvas3D(
     three: ThreeModule,
     key: string,
     scene: THREE.Scene,
@@ -120,7 +120,7 @@ export function renderView3D(
     width: number,
     height: number,
     options: { antialias?: boolean } = {},
-): RenderedView3D {
+): RenderedCanvas3D {
     const active = getRenderer(three, options.antialias !== false);
     const size = quantizeBuffer(key, width, height);
 
@@ -141,7 +141,7 @@ export function renderView3D(
 /** Apply renderer-level scene settings that live on the renderer, not the scene. */
 export function applyRendererSettings(
     three: ThreeModule,
-    settings: View3DRendererSettings,
+    settings: Canvas3DRendererSettings,
 ): void {
     if (!renderer) return;
     // Toggling shadow mapping recompiles every affected material, so only write
@@ -180,7 +180,7 @@ export function disposeSharedRenderer(): void {
 }
 
 /** Forget a node's buffer size, so a removed node stops pinning a large buffer. */
-export function forgetView3DBuffer(key: string): void {
+export function forgetCanvas3DBuffer(key: string): void {
     bufferSizes.delete(key);
 }
 
@@ -196,16 +196,16 @@ export function forgetView3DBuffer(key: string): void {
  * **Registered from `../index.ts`, deliberately not here.** After the extraction
  * nothing in this package statically imports this module, and the package declares
  * `sideEffects: false` — so a module-scope registration here could legitimately be
- * tree-shaken away, and 3D would silently render nothing at all (`view3DBackend()`
+ * tree-shaken away, and 3D would silently render nothing at all (`canvas3DBackend()`
  * returns null forever, the warm loop gives up after its three passes, and frames
  * ship with their 2D parts only and no error). It has to be in the barrel every
  * consumer imports, which is the same argument the comment on
- * `registerView3DBackend()` already makes.
+ * `registerCanvas3DBackend()` already makes.
  */
-export const webView3DRendererHost: View3DRendererHost = {
-    render: renderView3D,
+export const webCanvas3DRendererHost: Canvas3DRendererHost = {
+    render: renderCanvas3D,
     applySettings: applyRendererSettings,
     active: activeRenderer,
-    forgetBuffer: forgetView3DBuffer,
+    forgetBuffer: forgetCanvas3DBuffer,
     dispose: disposeSharedRenderer,
 };

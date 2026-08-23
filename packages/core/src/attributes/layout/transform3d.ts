@@ -3,7 +3,7 @@ import { Anchor } from "@/attributes/layout/anchor";
 /**
  * The out-of-plane transform as one bag — the shorthand form of the individual
  * `rotationX` / `rotationY` / `depth` / `perspective` / `backfaceVisible` /
- * `flipHorizontal` / `flipVertical` / `transformOrigin` props on {@link Node}.
+ * `flipHorizontal` / `flipVertical` / `transformOrigin` props on {@link Node2D}.
  *
  * Sugar, and only sugar: {@link expandTransform3D} writes each field onto the
  * prop it names before anything reads either, the same way `size` becomes

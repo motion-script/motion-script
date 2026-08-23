@@ -3,11 +3,11 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Measurer } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
 
 // Adjust this import path if needed
 
-export interface RotatedBoxProps extends NodeProps {
+export interface RotatedBoxProps extends Node2DProps {
     /** 
      * Visual rotation angle in degrees. Unlike standard `rotation`, 
      * animating this ALSO dynamically calculates a new bounding box 
@@ -16,7 +16,7 @@ export interface RotatedBoxProps extends NodeProps {
     angle: number;
 }
 
-export class RotatedBox extends Node<RotatedBoxProps> {
+export class RotatedBox extends Node2D<RotatedBoxProps> {
     @property({ default: -90 }) declare angle: number;
 
     constructor(props?: NodeConfig<RotatedBox, RotatedBoxProps>) {
@@ -24,7 +24,7 @@ export class RotatedBox extends Node<RotatedBoxProps> {
 
         // Clever trick: Automatically bind the inherited visual `rotation` prop to our `angle`.
         // This ensures the engine's built-in `applyTransform` pass physically rotates 
-        // the canvas just like a normal Node, while we handle the layout box math below.
+        // the canvas just like a normal Node2D, while we handle the layout box math below.
         this._writeProp('rotation', () => this.angle);
     }
 
@@ -86,7 +86,7 @@ export class RotatedBox extends Node<RotatedBoxProps> {
             height: rect.width * sin + rect.height * cos,
         };
 
-        // Let the base Node class center the children inside this un-rotated rect.
+        // Let the base Node2D class center the children inside this un-rotated rect.
         // When `applyTransform` executes the rotation, the child will visually pivot perfectly 
         // inside the original `rect` space without overflowing.
         super.layoutChildren(childRect, scope);

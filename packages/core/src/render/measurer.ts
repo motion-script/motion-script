@@ -11,7 +11,7 @@ import { TextBlockLayout } from "@/render/text-layout";
  * wide a run of text will be before actually drawing it (e.g. for layout
  * calculations, line-breaking, or positioning).
  *
- * `RenderContext` implements this interface so nodes can measure text through
+ * `RenderContext2D` implements this interface so nodes can measure text through
  * the same object they use to draw — no separate measurement pass needed.
  */
 export abstract class Measurer {

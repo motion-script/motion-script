@@ -20,7 +20,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext, Graphics, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
+import { RenderContext2D, Graphics2D, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
 
 /** Colour of a token the grammar had no opinion about. */
 const DEFAULT_TOKEN_COLOR: NormalizedColor = [0.82, 0.84, 0.86, 1];
@@ -193,7 +193,7 @@ export class Code extends ShapeNode<CodeProps> {
         return null;
     }
 
-    private settledLayout(m: CodeMetrics, scope: Measurer | RenderContext): CodeLayout {
+    private settledLayout(m: CodeMetrics, scope: Measurer | RenderContext2D): CodeLayout {
         const key = `${this.structureVersion}|${metricsSignature(m)}|${this.advanceCache.signature(m.fontSize, m.fontFamily)}`;
         if (this.layoutCache && this.layoutCacheKey === key) return this.layoutCache;
         const layout = layoutCode(this.tokenLines, m, this.advanceCache, scope);
@@ -214,7 +214,7 @@ export class Code extends ShapeNode<CodeProps> {
      * Both endpoints are fixed for the edit's duration, so they are built once
      * and cached on the transition rather than rebuilt per frame.
      */
-    private frameLayout(scope: Measurer | RenderContext): {
+    private frameLayout(scope: Measurer | RenderContext2D): {
         from: CodeLayout;
         to: CodeLayout;
         edit: StructuralTransition | null;
@@ -274,7 +274,7 @@ export class Code extends ShapeNode<CodeProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    onRender(ctx: RenderContext): void {
+    onRender(ctx: RenderContext2D): void {
         // Refuse the ambient `<DefaultTextStyle>` / theme typography defaults for
         // everything drawn inside this node.
         //
@@ -310,7 +310,7 @@ export class Code extends ShapeNode<CodeProps> {
      * (from `super`) under the tokens, children over them, then the overlay
      * across the lot and the stroke around it.
      */
-    protected override renderSelf(ctx: RenderContext): void {
+    protected override renderSelf(ctx: RenderContext2D): void {
         super.renderSelf(ctx);
         this.drawSelf(ctx);
     }
@@ -322,8 +322,8 @@ export class Code extends ShapeNode<CodeProps> {
      * Supplying this is the whole of what gives a code block `fill`, `overlay`,
      * `stroke` and `shadow` — {@link ShapeNode} paints all four through it.
      */
-    protected override shapeGraphics(): Graphics {
-        return new Graphics().rect({
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect({
             width: this.layoutRect.width,
             height: this.layoutRect.height,
             cornerRadius: this.cornerRadius,
@@ -713,7 +713,7 @@ export class Code extends ShapeNode<CodeProps> {
 
     // ── Drawing ─────────────────────────────────────────────────────────────
 
-    protected drawSelf(draw: RenderContext): void {
+    protected drawSelf(draw: RenderContext2D): void {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
 
         const dim = this.resolveTokenStates();
@@ -737,7 +737,7 @@ export class Code extends ShapeNode<CodeProps> {
         const drawNumber = (label: string, y: number, opacity: number): void => {
             if (opacity <= 0) return;
             const labelW = this.advanceCache.advance(draw, label, this.fontSize, this.fontFamily, 0);
-            draw.draw(new Graphics()
+            draw.draw(new Graphics2D()
                 .text({
                     text: label,
                     fontSize: this.fontSize,
@@ -753,7 +753,7 @@ export class Code extends ShapeNode<CodeProps> {
         const drawToken = (text: string, x: number, y: number, color: NormalizedColor, opacity: number): void => {
             if (opacity <= 0 || text.length === 0) return;
             const width = this.advanceCache.advance(draw, text, this.fontSize, this.fontFamily, this.letterSpacing);
-            draw.draw(new Graphics()
+            draw.draw(new Graphics2D()
                 .text({
                     text,
                     fontSize: this.fontSize,

@@ -1,5 +1,5 @@
 import {
-    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
+    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
     AnchorKey, Anchor, property, resolveAnchor, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
@@ -18,7 +18,7 @@ interface PivotRectProps extends ShapeProps {
 }
 
 /**
- * Draws a `Graphics().rect({ pivot, x: 0, y: 0, rotation, scale })` box plus a
+ * Draws a `Graphics2D().rect({ pivot, x: 0, y: 0, rotation, scale })` box plus a
  * marker dot at the drawn origin, so the anchor's effect on a plain `pivot` +
  * `x`/`y` descriptor (no cardinal-anchor shorthand) reads at a glance: the
  * named corner/edge of the box stays pinned to the marker as the box turns and
@@ -34,8 +34,8 @@ class PivotRect extends ShapeNode<PivotRectProps> {
         super(props);
     }
 
-    protected renderSelf(draw: RenderContext): void {
-        const box = new Graphics()
+    protected renderSelf(draw: RenderContext2D): void {
+        const box = new Graphics2D()
             .rect({
                 width: 90, height: 60, cornerRadius: 10, pivot: this.anchor, x: 0, y: 0,
                 rotation: this.shapeRotation, scale: this.shapeScale,
@@ -43,7 +43,7 @@ class PivotRect extends ShapeNode<PivotRectProps> {
             .fill('primary');
         draw.draw(box);
 
-        const marker = new Graphics()
+        const marker = new Graphics2D()
             .ellipse({ width: 10, height: 10, x: 0, y: 0 })
             .fill('accent');
         draw.draw(marker);
@@ -51,7 +51,7 @@ class PivotRect extends ShapeNode<PivotRectProps> {
 }
 
 /**
- * `Graphics().rect({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
+ * `Graphics2D().rect({ pivot, x: 0, y: 0 })` for all nine named anchors, animating
  * the descriptor's own `rotation`/`scale` (not the node-level transform) so the
  * per-shape pivot fix is exercised under motion, not just a static pose: with no
  * cardinal-anchor shorthand (`{ topRight: { x, y } }`), a plain `pivot` combined

@@ -7,7 +7,7 @@ sidebar_position: 2
 Eight methods declare geometry. Each takes one options object:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .rect({ width: 200, height: 120, cornerRadius: 16 })
   .ellipse({ x: 140, y: 0, width: 80, height: 80 })
   .fill('royalblue');
@@ -36,7 +36,7 @@ Shapes recorded before a paint call are combined into one surface and painted to
 
 ```tsx
 // Top-right corner sits at (200, 150)
-new Graphics().rect({ topRight: { x: 200, y: 150 }, width: 120, height: 60 });
+new Graphics2D().rect({ topRight: { x: 200, y: 150 }, width: 120, height: 60 });
 ```
 
 The anchors are `center`, `topLeft`, `topCenter`, `topRight`, `centerLeft`, `centerRight`, `bottomLeft`, `bottomCenter`, `bottomRight`.
@@ -132,7 +132,7 @@ A `line` is an open outline, so it is normally painted with `.stroke()`. Set `cl
 Vector paths, from an SVG `d` string, a command array, or a `PathBuilder`.
 
 ```tsx
-import { Graphics, PathBuilder } from 'motion-script';
+import { Graphics2D, PathBuilder } from 'motion-script';
 
 // From an SVG string, straight out of Figma or Illustrator
 .path({ data: 'M 0 -60 L 52 40 L -52 40 Z' })
@@ -158,7 +158,7 @@ A path positions itself from its own data rather than from `x` and `y`. By defau
 ```tsx
 const frame: [number, number, number, number] = [-300, -300, 300, 300];
 
-new Graphics()
+new Graphics2D()
   .path(bodyPath.toPathState({ centerBounds: frame }))
   .path(wingPath.toPathState({ centerBounds: frame }))
   .fill('tomato');
@@ -202,12 +202,12 @@ Leave a typography field off and the drawing inherits it, the same way a `Text` 
 </DefaultTextStyle>
 ```
 
-Only the shaping fields inherit: `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `letterSpacing`, `lineHeight` and `textAlign`. `fill`, `stroke` and `shadow` don't, because in a `Graphics` those are group-scoped paint ops rather than per-shape slots — `.text(…).rect(…).fill('red')` paints both shapes together, and a shape with no paint op after it draws nothing at all. Paint your drawn text explicitly.
+Only the shaping fields inherit: `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `letterSpacing`, `lineHeight` and `textAlign`. `fill`, `stroke` and `shadow` don't, because in a `Graphics2D` those are group-scoped paint ops rather than per-shape slots — `.text(…).rect(…).fill('red')` paints both shapes together, and a shape with no paint op after it draws nothing at all. Paint your drawn text explicitly.
 
 A node whose text is its own vocabulary rather than the document's opts out for everything it draws:
 
 ```tsx
-protected onRender(ctx: RenderContext): void {
+protected onRender(ctx: RenderContext2D): void {
   ctx.pushTextStyle(null);
   try { super.onRender(ctx); } finally { ctx.popTextStyle(); }
 }
@@ -220,7 +220,7 @@ The [`Code`](/docs/nodes/code) node does exactly this: its token positions are m
 Every shape takes `start` and `end`, the same outline trim the shape nodes have:
 
 ```tsx
-new Graphics()
+new Graphics2D()
   .path({ data: signature, end: progress })
   .stroke({ weight: 8, fill: 'white' });
 ```

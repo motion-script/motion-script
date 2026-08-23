@@ -1,8 +1,8 @@
-import { RenderContext } from "@/render/render-context";
+import { RenderContext2D } from "@/render/render-context2d";
 import { MaskMode } from "@/attributes/mask/mask";
-import { NodeProps, Node, NodeConfig } from "../base/node";
+import { Node2DProps, Node2D, NodeConfig } from "../base/node2d";
 
-export interface MaskGroupProps extends NodeProps {
+export interface MaskGroupProps extends Node2DProps {
     // How the mask shape determines content visibility:
     //   "alpha"     — mask alpha drives content alpha (default; matches Figma)
     //   "vector"    — fast hard clip using the mask's outline only
@@ -20,7 +20,7 @@ export interface MaskGroupProps extends NodeProps {
 //
 // If there is only a single child, it renders normally (a single child with
 // no content to mask is a no-op aside from drawing the child itself).
-export class MaskGroup extends Node<MaskGroupProps> {
+export class MaskGroup extends Node2D<MaskGroupProps> {
 
     declare mode: MaskMode;
     declare inverted: boolean;
@@ -32,9 +32,9 @@ export class MaskGroup extends Node<MaskGroupProps> {
     }
 
     // Mask + content children are stack-laid-out (centered) by the base
-    // Node.layout default — no override needed here.
+    // Node2D.layout default — no override needed here.
 
-    onRender(ctx: RenderContext): void {
+    onRender(ctx: RenderContext2D): void {
         // Apply own transform. Children's spaces are nested inside this.
         // Children are rendered through the mask scope below, not by the base.
         this.applyTransform(ctx);
@@ -45,7 +45,7 @@ export class MaskGroup extends Node<MaskGroupProps> {
         // MaskGroup honours `effects` and `clipPath` like any other node — the
         // foreground shader effects warp/band the masked result as one.
         this.renderContentWithEffects(ctx, () => {
-            const [mask, ...content] = this._children;
+            const [mask, ...content] = this.children;
 
             if (content.length === 0) {
                 // Nothing to clip — render the mask child as-is so authors can

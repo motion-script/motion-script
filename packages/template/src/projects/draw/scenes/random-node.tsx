@@ -4,7 +4,7 @@ import {
 import { RandomSwatch } from "../nodes/random-swatch";
 
 /**
- * Manual check for per-node `this.random` — every `Node` now carries its own
+ * Manual check for per-node `this.random` — every `Node2D` now carries its own
  * seeded `Random`, so a custom node can paint itself from randomness without a
  * `Random` threaded in from the stage. {@link RandomSwatch} does exactly that in
  * its `init()`.
@@ -55,7 +55,7 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Rect width={"fill"} height={"fill"} flow={"vertical"} padding={80} gap={32}>
-            <Text fontFamily={"Pixelify Sans"} text={"Node.random — per-node seeded draws"} fontSize={72} fill={"gray"} />
+            <Text fontFamily={"Pixelify Sans"} text={"Node2D.random — per-node seeded draws"} fontSize={72} fill={"gray"} />
             <Rect width={"fill"} height={"fill"} flow={"horizontal"} gap={64} align={"center"}>
                 {unseededColumn}
                 {seededGrid}

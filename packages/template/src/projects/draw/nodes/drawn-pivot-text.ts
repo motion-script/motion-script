@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, Fills,
     Anchor, resolveAnchor, property,
 } from "motion-script";
 
@@ -19,8 +19,8 @@ export interface DrawnPivotTextProps extends ShapeProps {
      * Named `spinPivot` (not `pivot`) so it doesn't shadow the node's own `pivot`
      * (the node-level transform pivot): this is the *graphics-union* pivot.
      *
-     * Text contributes *no* measurable bounds to a Graphics union, so a named
-     * anchor handed straight to `Graphics.rotation` would fall back to the local
+     * Text contributes *no* measurable bounds to a Graphics2D union, so a named
+     * anchor handed straight to `Graphics2D.rotation` would fall back to the local
      * origin. This node therefore resolves the anchor itself against the word's
      * estimated box and passes an explicit `Vector2` — which is exactly why a
      * pivot is the only way to steer where text turns.
@@ -31,14 +31,14 @@ export interface DrawnPivotTextProps extends ShapeProps {
 }
 
 /**
- * A node that draws a line of **text from a `Graphics` command** and turns the
+ * A node that draws a line of **text from a `Graphics2D` command** and turns the
  * whole drawn text about a **pivot**, so the text pivot is directly observable.
  *
- * Because text contributes no bounds to a Graphics' measured union, a
+ * Because text contributes no bounds to a Graphics2D' measured union, a
  * graphics-level rotation on text-only output would default to pivoting about the
  * local origin. So this node resolves {@link spinPivot} (a named anchor or an
  * explicit `Vector2`) against the word's *estimated* box and passes the concrete
- * point to `Graphics.rotation` — making the pivot the only way to steer where the
+ * point to `Graphics2D.rotation` — making the pivot the only way to steer where the
  * text turns, which it demonstrates by spinning the same word about different
  * pivots side by side.
  *
@@ -62,7 +62,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
         this.applyProp("height", props.height ?? 600);
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         // Resolve the pivot against the word's estimated box (text has no union
         // bounds for the renderer to anchor against). resolveAnchor gives the
         // normalised [-1,1] (y-up) anchor; map it onto the box in y-up author space.
@@ -78,7 +78,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
         // ── The drawn text, turned about the pivot as one unit ────────────────
         // `textAlign: 'center'` + origin `x:0,y:0` centres the word on the local
         // origin, so the `'center'` pivot lands at the word's middle.
-        const g = new Graphics()
+        const g = new Graphics2D()
             .text({
                 text: this.text,
                 fontSize: this.fontSize,
@@ -97,7 +97,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
         // Authored in y-up (the renderer flips it), so it lands on the canvas-space
         // pivot the rotation actually used (spinCenter = -pivot.y).
         const m = this.fontSize * 0.16;
-        const marker = new Graphics()
+        const marker = new Graphics2D()
             .line({ points: [{ x: pivot.x - m, y: pivot.y - m }, { x: pivot.x + m, y: pivot.y + m }] })
             .line({ points: [{ x: pivot.x - m, y: pivot.y + m }, { x: pivot.x + m, y: pivot.y - m }] })
             .stroke({ weight: this.fontSize * 0.06, fill: '#ffffff' });
@@ -105,7 +105,7 @@ export class DrawnPivotText extends ShapeNode<DrawnPivotTextProps> {
         draw.draw(marker);
 
         // A faint ring around the marker so the pivot reads even over the glyphs.
-        const ring = new Graphics()
+        const ring = new Graphics2D()
             .ellipse({ x: pivot.x, y: pivot.y, width: m * 3, height: m * 3 })
             .stroke({ weight: this.fontSize * 0.025, fill: Fills.color('#ffffff', { opacity: 0.5 }) });
 

@@ -7,63 +7,66 @@ sidebar_position: 7
 `Tex.surface` renders 2D MotionScript content into an offscreen buffer and binds it to any material map. It is how you put a chart on a monitor, a label on a sign, or a whole layout on a curved panel.
 
 ```tsx
-import { Graphics, Tex, View3D, Graphics3D } from 'motion-script';
+import { Graphics2D, Tex, Canvas3D, PerspectiveCamera3D, AmbientLight3D, Plane3D } from 'motion-script';
 
-const panel = new Graphics()
+const panel = new Graphics2D()
   .rect({ width: 512, height: 512 })
   .fill('#101826')
   .rect({ x: 0, y: 96, width: 384, height: 160 })
   .fill('#4f8ef7');
 
-<View3D
-  graphics3D={() => new Graphics3D()
-    .perspective({ position: [0, 0, 4.2], lookAt: 0, fov: 45 })
-    .ambient({ intensity: 0.8 })
-    .plane({ width: 3, height: 3, map: Tex.surface(panel, 512, 512), unlit: true })}
-/>
+<Canvas3D>
+  <PerspectiveCamera3D position={[0, 0, 4.2]} lookAt={0} fov={45} />
+  <AmbientLight3D intensity={0.8} />
+  <Plane3D width={3} height={3} map={Tex.surface(panel, 512, 512)} unlit />
+</Canvas3D>
 ```
 
 ## The source is a value
 
 `Tex.surface(source, width, height, options?)` takes two kinds of source:
 
-* A built [`Graphics`](../graphics/overview), for anything you can draw directly.
-* A `Node` subtree, for anything that needs real layout, shaped `Text` or a loaded `Image`.
+* A built [`Graphics2D`](../graphics/overview), for anything you can draw directly.
+* A `Node2D` subtree, for anything that needs real layout, shaped `Text` or a loaded `Image`.
 
 ```tsx
-const scope = new Graphics().line({ points: trace }).stroke({ weight: 6, fill: '#6990DD' });
+const scope = new Graphics2D().line({ points: trace }).stroke({ weight: 6, fill: '#6990DD' });
 const stats = <Rect flow="vertical" padding={48} gap={16}>
   <Text text="CPU" fontSize={64} fill="white" />
   <Text text="42%" fontSize={96} fill="#6990DD" />
 </Rect>;
 
-g3.plane({ map: Tex.surface(scope, 1024, 640) })
-  .plane({ map: Tex.surface(stats, 1024, 640), position: [5, 0, 0] });
+<Canvas3D>
+  <Plane3D map={Tex.surface(scope, 1024, 640)} />
+  <Plane3D map={Tex.surface(stats, 1024, 640)} position={[5, 0, 0]} />
+</Canvas3D>
 ```
 
-A node source does not have to live anywhere in the scene tree. It is a value in a descriptor, so `View3D` hands it the asset catalog, context and clock it would otherwise get from a parent.
+A node source does not have to live anywhere in the scene tree. It is a value in a descriptor, so `Canvas3D` hands it the asset catalog, context and clock it would otherwise get from a parent.
 
 `width` and `height` are the buffer's resolution in pixels, and they also set the panel's aspect. Match your plane's proportions to them or the texture will stretch.
 
 ## Hoist the source
 
-Build the source once, outside the scene builder. Rebuilding it every frame re-lays-out the subtree, defeats the texture cache, and leaks.
+Build the source once, outside any per-frame binding. Rebuilding it every frame re-lays-out the subtree, defeats the texture cache, and leaks.
 
 ```tsx
 // Right: built once, at module or scene scope
-const panel = new Graphics().rect({ width: 512, height: 512 }).fill('#101826');
+const panel = new Graphics2D().rect({ width: 512, height: 512 }).fill('#101826');
 
-<View3D graphics3D={() => new Graphics3D().plane({ map: Tex.surface(panel, 512, 512) })} />
+<Canvas3D>
+  <Plane3D map={Tex.surface(panel, 512, 512)} />
+</Canvas3D>
 ```
 
 ```tsx
-// Wrong: a fresh subtree every frame
-<View3D graphics3D={() => new Graphics3D()
-  .plane({ map: Tex.surface(new Graphics().rect({ /* ... */ }), 512, 512) })}
-/>
+// Wrong: a fresh source every frame
+<Canvas3D>
+  <Plane3D map={() => Tex.surface(new Graphics2D().rect({ /* ... */ }), 512, 512)} />
+</Canvas3D>
 ```
 
-The source itself can still animate. A `Graphics` source built from signals is fine, because the value changes while the identity stays put.
+The source itself can still animate. A `Graphics2D` source built from signals is fine, because the value changes while the identity stays put.
 
 ## Give a conditional surface a key
 
@@ -93,7 +96,7 @@ screens.forEach(screen => {
 A screen should read as its own light source. A lit material tints the texture with the scene's lighting and looks muddy:
 
 ```tsx
-.plane({ width, height, position: [0, 0, 0.095], unlit: true, map: Tex.surface(source, w, h) })
+<Plane3D width={width} height={height} position={[0, 0, 0.095]} unlit map={Tex.surface(source, w, h)} />
 ```
 
 ## Cost
@@ -118,33 +121,41 @@ interface Screen {
   height: number;
 }
 
-function monitorWall(screens: Screen[], spacing = 6): Graphics3D {
-  const g3 = new Graphics3D()
-    .perspective({ position: [0, 1, 13], lookAt: [0, 0.2, 0], fov: 42 })
-    .background('#080a10')
-    .ambient({ intensity: 0.5 })
-    .directional({ intensity: 1.8, position: [5, 8, 6] })
-    .point({ intensity: 40, position: [0, 1, 5], color: '#5f7fd0' });
+function monitor(screen: Screen, x: number) {
+  const width = 4;
+  const height = width * (screen.height / screen.width);
 
+  return (
+    <Group3D position={[x, 0.35, 0]}>
+      <Box3D
+        width={width + 0.24} height={height + 0.24} depth={0.18}
+        color="#15181f" roughness={0.55}
+      />
+      <Plane3D
+        width={width} height={height}
+        position={[0, 0, 0.095]}
+        unlit
+        map={Tex.surface(screen.source, screen.width, screen.height, { key: screen.id })}
+      />
+    </Group3D>
+  );
+}
+
+function monitorWall(screens: Screen[], spacing = 6) {
   const half = ((screens.length - 1) / 2) * spacing;
 
-  screens.forEach((screen, i) => {
-    const x = i * spacing - half;
-    const width = 4;
-    const height = width * (screen.height / screen.width);
+  return (
+    <Canvas3D width="fill" height="fill">
+      <PerspectiveCamera3D position={[0, 1, 13]} lookAt={[0, 0.2, 0]} fov={42} />
+      <Background3D background="#080a10" />
+      <AmbientLight3D intensity={0.5} />
+      <DirectionalLight3D intensity={1.8} position={[5, 8, 6]} />
+      <PointLight3D intensity={40} position={[0, 1, 5]} color="#5f7fd0" />
 
-    g3.group({ position: [x, 0.35, 0], key: `monitor:${screen.id}` }, m => m
-      .box({ width: width + 0.24, height: height + 0.24, depth: 0.18, color: '#15181f', roughness: 0.55 })
-      .plane({
-        width, height,
-        position: [0, 0, 0.095],
-        unlit: true,
-        map: Tex.surface(screen.source, screen.width, screen.height, { key: screen.id }),
-      }));
-  });
-
-  return g3;
+      {screens.map((screen, i) => monitor(screen, i * spacing - half))}
+    </Canvas3D>
+  );
 }
 ```
 
-Adding a third monitor is adding a third entry. The panel takes each buffer's own aspect, so a screen authored at any resolution shows its texture unstretched.
+Adding a third monitor is adding a third entry — and because each monitor's cache identity is its own node, adding one leaves the others' GPU objects untouched. The panel takes each buffer's own aspect, so a screen authored at any resolution shows its texture unstretched.

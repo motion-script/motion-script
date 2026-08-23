@@ -4,14 +4,16 @@ sidebar_position: 3
 
 # Scene setup
 
-Camera, lights and the scene-wide settings. These are the calls that decide how a scene reads before you add a single object.
+Camera, lights and the scene-wide settings. These are the nodes that decide how a scene reads before you add a single object.
+
+They are nodes like any other, so they take refs, animate with `to()`, and can be added or removed conditionally. What sets them apart is that most of them are **singletons**: a scene has one camera, one fog, one background. Declaring two is not an error — the last one wins.
 
 ## Camera
 
-A scene has one camera. Setting it twice keeps the last value.
+A scene has one camera. Declaring two keeps the last.
 
 ```tsx
-.perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+<PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
 ```
 
 | Prop | Type | Default | Description |
@@ -22,10 +24,20 @@ A scene has one camera. Setting it twice keeps the last value.
 | `near` / `far` | `number` | – | Clip planes |
 | `zoom` | `number` | `1` | Zoom factor |
 
-`.orthographic()` gives a parallel projection instead, for isometric looks. It takes `frustumHeight` or explicit `left`/`right`/`top`/`bottom`.
+`OrthographicCamera3D` gives a parallel projection instead, for isometric looks. It takes `frustumHeight` or explicit `left`/`right`/`top`/`bottom`.
 
 ```tsx
-.orthographic({ frustumHeight: 8, position: [6, 6, 6], lookAt: 0 })
+<OrthographicCamera3D frustumHeight={8} position={[6, 6, 6]} lookAt={0} />
+```
+
+A camera is placed like anything else, which means it can be **parented**. Drop one inside a `Group3D` and the group carries it, so orbiting the rig orbits the shot:
+
+```tsx
+<Group3D ref={rig}>
+  <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} />
+</Group3D>
+
+yield* rig().to({ rotation: [0, 360, 0] }, 4);
 ```
 
 Every position accepts three forms: `[x, y, z]`, `{ x, y, z }`, or a single number for all three axes.
@@ -34,16 +46,18 @@ Leave the camera out entirely and the renderer supplies a default framing, which
 
 ## Lights
 
-Six light types. Each takes its own parameters plus a placement in the same flat options object.
+Six light types. Each takes its own parameters plus the usual `Node3D` placement.
 
 ```tsx
-.ambient({ intensity: 0.4 })
-.directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true })
-.point({ intensity: 40, position: [0, 1, 5], color: '#5f7fd0' })
-.spot({ intensity: 30, position: [0, 6, 0], angle: 25, penumbra: 0.4 })
-.hemisphere({ skyColor: '#8ec5ff', groundColor: '#2b2118', intensity: 0.8 })
-.rectArea({ intensity: 6, width: 4, height: 2, position: [0, 3, 2] })
+<AmbientLight3D intensity={0.4} />
+<DirectionalLight3D intensity={2.4} position={[4, 6, 3]} castShadow />
+<PointLight3D intensity={40} position={[0, 1, 5]} color="#5f7fd0" />
+<SpotLight3D intensity={30} position={[0, 6, 0]} angle={25} penumbra={0.4} />
+<HemisphereLight3D color="#8ec5ff" groundColor="#2b2118" intensity={0.8} />
+<RectAreaLight3D intensity={6} width={4} height={2} position={[0, 3, 2]} />
 ```
+
+Unlike the settings below, lights are **not** singletons — add as many as you like, and they nest with the tree, so a light inside a `Group3D` moves with it.
 
 | Light | Parameters | Use for |
 |---|---|---|
@@ -51,7 +65,7 @@ Six light types. Each takes its own parameters plus a placement in the same flat
 | `directional` | `color`, `intensity`, `target`, `shadow` | Sun. Parallel rays from a direction |
 | `point` | `color`, `intensity`, `distance`, `decay`, `shadow` | A bulb radiating in all directions |
 | `spot` | `color`, `intensity`, `target`, `angle`, `penumbra`, `distance`, `decay`, `shadow` | A cone. `angle` and `penumbra` shape the edge |
-| `hemisphere` | `skyColor`, `groundColor`, `intensity` | Outdoor bounce, sky above and ground below |
+| `hemisphere` | `color`, `groundColor`, `intensity` | Outdoor bounce, sky above and ground below |
 | `rectArea` | `color`, `intensity`, `width`, `height` | A soft panel, like a studio softbox |
 
 A reliable starting point is one `ambient` at low intensity plus one `directional` for shape. Add a `point` or `spot` after that for accents.
@@ -63,12 +77,13 @@ Spot cone angles are in degrees, like every other angle.
 What fills the pixels no geometry covers. The default is transparent, so the 2D scene behind shows through.
 
 ```tsx
-.background('#0b0d12')                                   // solid colour
-.background({ type: 'transparent' })                     // the default
-.background({ type: 'texture', texture: 'sky.jpg' })     // flat image
-.background({ type: 'equirect', texture: 'pano.jpg' })   // 360 panorama
-.background({ type: 'cubemap', faces: [px, nx, py, ny, pz, nz] })
+<Background3D background="#0b0d12" />                                  {/* solid colour */}
+<Background3D background={{ type: 'texture', texture: 'sky.jpg' }} />  {/* flat image */}
+<Background3D background={{ type: 'equirect', texture: 'pano.jpg' }} />{/* 360 panorama */}
+<Background3D background={{ type: 'cubemap', faces: [px, nx, py, ny, pz, nz] }} />
 ```
+
+Leave the node out entirely for a transparent background — the default.
 
 Cubemap faces are in the order `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`.
 
@@ -77,9 +92,9 @@ Cubemap faces are in the order `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`.
 Image-based lighting: light the scene with an environment rather than with discrete lights. This is what makes metals read as metal. Without something to reflect, a metallic surface renders black.
 
 ```tsx
-.environment({ type: 'room' })                                    // built in, no asset
-.environment({ type: 'equirect', src: 'studio.hdr', intensity: 1 })
-.environment({ type: 'cubemap', faces: [...] })
+<Environment3D environment={{ type: 'room' }} />                                {/* built in, no asset */}
+<Environment3D environment={{ type: 'equirect', src: 'studio.hdr', intensity: 1 }} />
+<Environment3D environment={{ type: 'cubemap', faces: [...] }} />
 ```
 
 `{ type: 'room' }` is a built-in studio interior and needs no asset, which makes it the fastest fix for a black-looking metal.
@@ -89,11 +104,11 @@ Image-based lighting: light the scene with an environment rather than with discr
 Fades distant geometry toward a colour.
 
 ```tsx
-.fog('#0b0d12')                                                     // linear, in that colour
-.fog({ type: 'linear', color: '#0b0d12', near: 15, far: 36 })
-.fog({ type: 'exponential', color: '#0b0d12', density: 0.02 })
-.fog(null)                                                          // off
+<Fog3D color="#0b0d12" near={15} far={36} />          {/* linear, the default kind */}
+<Fog3D kind="exp2" color="#0b0d12" density={0.02} />  {/* exponential */}
 ```
+
+Leave the node out for no fog, or make it conditional: `{misty && <Fog3D … />}`.
 
 Linear fog is predictable and easy to tune. Exponential falls off more naturally and is controlled by one `density`.
 
@@ -104,8 +119,8 @@ Set the fog colour to the background colour and objects fade into the backdrop r
 Shadows are off by default, because enabling them recompiles every material that receives one. Treat it as setup rather than something to animate.
 
 ```tsx
-.shadows(true)
-.shadows({ enabled: true, type: 'pcfSoft', mapSize: 2048 })
+<Shadows3D />
+<Shadows3D type="pcfSoft" mapSize={2048} />
 ```
 
 | Option | Type | Default | Description |
@@ -117,11 +132,15 @@ Shadows are off by default, because enabling them recompiles every material that
 Turning shadows on is only half of it. Lights opt in with their own `shadow` field, and objects opt in with `castShadow` and `receiveShadow`:
 
 ```tsx
-new Graphics3D()
-  .shadows(true)
-  .directional({ intensity: 2.4, position: [4, 6, 3], castShadow: true, shadow: { mapSize: 2048 } })
-  .box({ width: 2, color: 'tomato', castShadow: true })
-  .plane({ width: 40, height: 40, rotation: [-90, 0, 0], position: [0, -1, 0], receiveShadow: true })
+<Canvas3D>
+  <Shadows3D />
+  <DirectionalLight3D
+    intensity={2.4} position={[4, 6, 3]}
+    castShadow shadow={{ mapSize: 2048 }}
+  />
+  <Box3D width={2} color="tomato" castShadow />
+  <Plane3D width={40} height={40} rotation={[-90, 0, 0]} position={[0, -1, 0]} receiveShadow />
+</Canvas3D>
 ```
 
 ## Tone mapping
@@ -129,7 +148,7 @@ new Graphics3D()
 How bright colour is mapped into displayable range.
 
 ```tsx
-.tone({ mapping: 'aces', exposure: 1.1 })
+<ToneMapping3D mapping="aces" exposure={1.1} />
 ```
 
 | Mode | Notes |
@@ -149,8 +168,8 @@ How bright colour is mapped into displayable range.
 Full-frame passes applied after the scene renders, in the order given.
 
 ```tsx
-.post({ type: 'bloom', strength: 0.8, radius: 0.4, threshold: 0.85 })
-.post([{ type: 'ssao', radius: 8 }, { type: 'fxaa' }])
+<PostEffects3D effects={{ type: 'bloom', strength: 0.8, radius: 0.4, threshold: 0.85 }} />
+<PostEffects3D effects={[{ type: 'ssao', radius: 8 }, { type: 'fxaa' }]} />
 ```
 
 | Effect | Parameters | What it does |
@@ -167,14 +186,17 @@ Post-processing forces the render through an offscreen target, which changes the
 ## Putting it together
 
 ```tsx
-new Graphics3D()
-  .perspective({ position: [0, 3, 9], lookAt: [0, 1, 0], fov: 42 })
-  .background('#080a10')
-  .environment({ type: 'room' })
-  .fog({ type: 'linear', color: '#080a10', near: 12, far: 30 })
-  .shadows({ enabled: true, mapSize: 2048 })
-  .tone({ mapping: 'aces', exposure: 1 })
-  .ambient({ intensity: 0.35 })
-  .directional({ intensity: 2.2, position: [5, 8, 6], castShadow: true })
-  .post({ type: 'bloom', threshold: 0.8 })
+<Canvas3D width="fill" height="fill">
+  <PerspectiveCamera3D position={[0, 3, 9]} lookAt={[0, 1, 0]} fov={42} />
+  <Background3D background="#080a10" />
+  <Environment3D environment={{ type: 'room' }} />
+  <Fog3D color="#080a10" near={12} far={30} />
+  <Shadows3D mapSize={2048} />
+  <ToneMapping3D mapping="aces" exposure={1} />
+  <AmbientLight3D intensity={0.35} />
+  <DirectionalLight3D intensity={2.2} position={[5, 8, 6]} castShadow />
+  <PostEffects3D effects={{ type: 'bloom', threshold: 0.8 }} />
+
+  {/* …objects… */}
+</Canvas3D>
 ```

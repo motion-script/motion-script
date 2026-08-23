@@ -1,26 +1,26 @@
 /**
  * The 3D backend's public face to the rest of `@motion-script/web`.
  *
- * The render context talks only to {@link View3DBackend}, so the lazy three
+ * The render context talks only to {@link Canvas3DBackend}, so the lazy three
  * import stays an implementation detail: a 2D-only project reaches
- * `view3DBackend()`, gets `null`, and never pulls in the chunk.
+ * `canvas3DBackend()`, gets `null`, and never pulls in the chunk.
  *
  * Pure re-export barrel — non-barrel modules must import the concrete file
  * (`./three/backend`, `./three/bridge`, …) rather than this.
  */
 
 export {
-    loadView3D, threeModule, registerView3DBackend,
-    requestView3DWarm, warmPendingView3D, __resetView3DBridgeForTests,
+    loadCanvas3D, threeModule, registerCanvas3DBackend,
+    requestCanvas3DWarm, warmPendingCanvas3D, __resetCanvas3DBridgeForTests,
 } from "./bridge";
 export {
-    View3DBackend, view3DBackend, disposeView3DBackend, view3DModule,
+    Canvas3DBackend, canvas3DBackend, disposeCanvas3DBackend, canvas3DModule,
 } from "./backend";
 export { disposeTextureCache } from "./handlers/texture";
 export {
-    registerView3DRendererHost, view3DRendererHost, __resetView3DRendererHostForTests,
+    registerCanvas3DRendererHost, canvas3DRendererHost, __resetView3DRendererHostForTests,
 } from "./renderer-seam";
 export type {
-    RenderedView3D, View3DRendererHost, View3DRendererSettings,
+    RenderedCanvas3D, Canvas3DRendererHost, Canvas3DRendererSettings,
 } from "./renderer-seam";
-export type { View3DAssets } from "./handlers/texture";
+export type { Canvas3DAssets } from "./handlers/texture";

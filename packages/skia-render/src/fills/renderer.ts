@@ -52,7 +52,7 @@ export interface FillRendererContext {
      */
     preflighted: Map<FillResolved, unknown>;
     /**
-     * Rasterize a 2D source (a built `Graphics`, or a detached `Node` subtree)
+     * Rasterize a 2D source (a built `Graphics2D`, or a detached `Node2D` subtree)
      * into an offscreen buffer of `width`×`height` logical px.
      *
      * Only safe from {@link FillRenderer.preflight} — it re-enters the render

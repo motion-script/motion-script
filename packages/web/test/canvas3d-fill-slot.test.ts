@@ -35,7 +35,7 @@ function slotOf(h: FillHandler, fill: FillResolved): number {
     return h.buildRendererCtx({} as never).paintSlot(fill);
 }
 
-const fill = (type = "view3D") => ({ type } as unknown as FillResolved);
+const fill = (type = "canvas3D") => ({ type } as unknown as FillResolved);
 
 describe("FillHandler paint slots", () => {
     it("gives the same resolved fill the same slot every time it is asked", () => {

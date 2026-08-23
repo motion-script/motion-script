@@ -19,15 +19,23 @@ export type {
 
 // =============================================================
 // Node & Provider — the base scene-graph primitives
+//
+// `Node` is dimension-agnostic (tree, signals, tweens, context, clock); `Node2D`
+// adds layout and 2D drawing, and is what a custom 2D node extends. `Node3D` and
+// its subclasses live in the 3D section below.
 // =============================================================
 export {
     Node,
+    Node2D,
     Provider,
     ThemeProvider,
 } from '@motion-script/core';
 export type {
     NodeProps,
+    Node2DProps,
     NodeConfig,
+    NodeChildren,
+    NodeDimension,
     ProviderProps,
     ThemeProviderProps,
 } from '@motion-script/core';
@@ -136,16 +144,29 @@ export type {
 } from '@motion-script/core';
 
 // =============================================================
-// 3D — the View3D node and the Graphics3D API
+// 3D — the Canvas3D node and the Graphics3D API
 // =============================================================
 // There is one 3D node; everything inside it is described with `Graphics3D`.
 // `Geo`/`Mat`/`Tex` build the geometry/material/texture descriptors, and the lerps
 // are what make a Vector3/Euler/Quaternion signal interpolate rather than snap.
-// `Surface2D` is the 2D→3D bridge: a child of `View3D` whose 2D content is
+// `Surface2D` is the 2D→3D bridge: a child of `Canvas3D` whose 2D content is
 // rasterized offscreen and bound to a material by `Tex.surface(name)`.
 export {
-    View3D,
+    Canvas3D,
+    // The 3D scene graph. `Node3D` is the base; the rest are what you write.
+    Node3D,
+    Group3D,
+    Mesh3D,
+    Box3D, Sphere3D, Plane3D, Cylinder3D, Cone3D, Torus3D, TorusKnot3D,
+    Circle3D, Ring3D, Capsule3D, Polyhedron3D, Extrude3D, Lathe3D, Tube3D,
+    Instances3D, Points3D, Line3D, Sprite3D, Model3D,
+    AmbientLight3D, HemisphereLight3D, DirectionalLight3D,
+    PointLight3D, SpotLight3D, RectAreaLight3D,
+    PerspectiveCamera3D, OrthographicCamera3D,
+    Fog3D, Background3D, Environment3D, Shadows3D, ToneMapping3D, PostEffects3D,
     Graphics3D,
+    Scene3D,
+    RenderContext3D,
     Geo,
     Mat,
     Tex,
@@ -159,8 +180,20 @@ export {
     resolveSurfaceSource,
 } from '@motion-script/core';
 export type {
-    View3DProps,
+    Canvas3DProps,
+    Node3DProps, Group3DProps, Mesh3DProps, Material3DProps,
+    Box3DProps, Sphere3DProps, Plane3DProps, Cylinder3DProps, Cone3DProps,
+    Torus3DProps, TorusKnot3DProps, Circle3DProps, Ring3DProps, Capsule3DProps,
+    Polyhedron3DProps, Extrude3DProps, Lathe3DProps, Tube3DProps,
+    Instances3DProps, Points3DProps, Line3DProps, Sprite3DProps, Model3DProps,
+    AmbientLight3DProps, HemisphereLight3DProps, DirectionalLight3DProps,
+    PointLight3DProps, SpotLight3DProps, RectAreaLight3DProps,
+    PerspectiveCamera3DProps, OrthographicCamera3DProps,
+    Fog3DProps, Background3DProps, Environment3DProps,
+    Shadows3DProps, ToneMapping3DProps, PostEffects3DProps,
+    Node3DRenderState,
     Graphics3DOp,
+    Scene3DOp,
     Vector3,
     Vector3Input,
     Euler3,
@@ -179,24 +212,24 @@ export type {
     SurfaceTexture3D,
     SurfaceSource3D,
     ResolvedSurfaceSource,
-    Light3D,
-    Camera3D,
-    Fog3D,
-    Background3D,
-    Environment3D,
-    ShadowSettings3D,
-    ToneMapping3D,
-    PostEffect3D,
+    LightData3D,
+    CameraData3D,
+    FogData3D,
+    BackgroundData3D,
+    EnvironmentData3D,
+    ShadowSettingsData3D,
+    ToneMappingData3D,
+    PostEffectData3D,
     LineMode3D,
     ModelAnimation3D,
 } from '@motion-script/core';
 
 // =============================================================
-// Rendering — Graphics builder, RenderContext & asset declaration
+// Rendering — Graphics2D builder, RenderContext2D & asset declaration
 // =============================================================
 export {
-    Graphics,
-    RenderContext,
+    Graphics2D,
+    RenderContext2D,
     PathBuilder,
     Clip,
     Measurer,

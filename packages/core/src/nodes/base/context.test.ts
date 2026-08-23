@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createContext, ContextMap } from "@/util/context";
-import { Node } from "./node";
+import { Node2D } from "./node2d";
 import { Rect } from "../geometry/rect-node";
 import { Text } from "../text/text-node";
 import { Provider } from "../scene/provider-node";
@@ -10,7 +10,7 @@ import { ThemeToken, DataToken, SeedToken } from "@/runtime/builtin-context";
 import { Random } from "@/util/random";
 
 /** Assemble a tree and run the start-of-pass bind walk, the way precomp does. */
-function bind(root: Node): void {
+function bind(root: Node2D): void {
     root.bindContext(ContextMap.EMPTY, true);
 }
 
@@ -99,7 +99,7 @@ describe("ThemeProvider built-in tokens", () => {
     });
 });
 
-describe("Node.random", () => {
+describe("Node2D.random", () => {
     /** A custom node that records a draw taken in its constructor — the documented
      * author pattern. The constructor runs once per instance and `this.random` is
      * fresh at its seed, so the draw is the head of the seed's sequence. */

@@ -14,7 +14,7 @@ export type RenderEffect = SceneEffect | MediaAdjustment | { type: string };
 /**
  * Which content an effect scope samples from: the node's own painted content
  * (`foreground`) or the canvas already painted beneath it (`backdrop`).
- * Mirrors `EffectTarget` in core's RenderContext.
+ * Mirrors `EffectTarget` in core's RenderContext2D.
  */
 export type EffectTarget = "foreground" | "backdrop";
 

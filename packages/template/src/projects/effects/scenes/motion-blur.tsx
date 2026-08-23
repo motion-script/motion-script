@@ -1,6 +1,6 @@
 
 
-import { createScene, createRef, Node, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
+import { createScene, createRef, Node2D, Reference, Effects as FX, easeInOut, easeIn, parallel } from "motion-script";
 import { STAGE, SAMPLES, TRAVELLING_SAMPLE, sampleGrid, sampleRow } from "../../../shared/effect-demo";
 
 const LABEL = 'Motion blur';
@@ -29,8 +29,8 @@ const SWEEP = 0.5;
 export default createScene(function* (stage) {
     stage.set({ fill: STAGE });
 
-    const sharp: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
-    const blurred: Reference<any>[] = SAMPLES.map(() => createRef<Node>());
+    const sharp: Reference<any>[] = SAMPLES.map(() => createRef<Node2D>());
+    const blurred: Reference<any>[] = SAMPLES.map(() => createRef<Node2D>());
 
     stage.add(sampleGrid(LABEL, [
         sampleRow(`Without ${LABEL}`, { style: TRAVELLING_SAMPLE, refs: sharp }),

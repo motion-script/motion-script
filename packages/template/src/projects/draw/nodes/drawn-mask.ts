@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, PathBuilder,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, PathBuilder,
     property,
 } from "motion-script";
 
@@ -13,7 +13,7 @@ export interface DrawnMaskProps extends ShapeProps {
 /**
  * A node that builds a Figma-style mask *inline from draw commands*.
  *
- * Within one {@link Graphics} list it opens a mask scope with `.mask()`, draws
+ * Within one {@link Graphics2D} list it opens a mask scope with `.mask()`, draws
  * the complex silhouette (rect + ellipse + bezier path, with a `.cut()` hole)
  * as the **mask**, calls `.applyMask()`, then draws the **content** — a band of
  * coloured diagonal stripes — and closes with `.endMask()`. Only the content
@@ -32,7 +32,7 @@ export class DrawnMask extends ShapeNode<DrawnMaskProps> {
         this.applyProp("height", props.height ?? props.extent ?? 320 * 2);
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const e = this.extent;
         const frame: [number, number, number, number] = [-e, -e, e, e];
 
@@ -43,7 +43,7 @@ export class DrawnMask extends ShapeNode<DrawnMaskProps> {
             .bezierCurveTo(e * 0.2, -e * 0.45, e * 0.2, -e * 0.0, e * 0.1, e * 0.55)
             .close();
 
-        const g = new Graphics().mask({ mode: 'alpha' });
+        const g = new Graphics2D().mask({ mode: 'alpha' });
 
         // ── Mask: the complex drawn silhouette (same figure as DrawnShape) ────
         g.rect({ x: -e * 0.15, y: 0, width: e * 1.1, height: e * 1.5, cornerRadius: e * 0.28 })

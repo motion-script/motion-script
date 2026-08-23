@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { Row } from '@/nodes/layout/row-node';
 import { Column } from '@/nodes/layout/column-node';
 import { Clip } from '@/render/clip';
-import type { RenderContext } from '@/render/render-context';
+import type { RenderContext2D } from '@/render/render-context2d';
 import type { BoxBounds } from '@/attributes/layout/bounds';
 
 /**
  * Records the clip / effect-scope calls a node issues during render so tests can
  * assert the begin/end balance without a real CanvasKit surface. Mirrors the
- * recorder used in geometry/clip.test.ts; every other RenderContext method the
+ * recorder used in geometry/clip.test.ts; every other RenderContext2D method the
  * node render path touches is a no-op.
  */
 class RecorderContext {
@@ -28,7 +28,7 @@ class RecorderContext {
     begin(): void { }
     end(): void { }
 
-    asCtx(): RenderContext { return this as unknown as RenderContext; }
+    asCtx(): RenderContext2D { return this as unknown as RenderContext2D; }
 }
 
 function setLayout(node: { layout: (r: BoxBounds, s: any) => void }, rect: BoxBounds): void {

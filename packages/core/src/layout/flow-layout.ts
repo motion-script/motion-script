@@ -1,7 +1,7 @@
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { Measurer } from "@/render/measurer";
-import type { Node } from "@/nodes/base/node";
+import type { Node2D } from "@/nodes/base/node2d";
 
 const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
 
@@ -9,7 +9,7 @@ const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
  * Freeform-layout a container's children, centered within its padded box.
  *
  * Container nodes that aren't a {@link Rect} (e.g. MaskGroup, BooleanGroup) and
- * every plain {@link Node} / {@link ShapeNode} leaf don't run flex/freeform layout
+ * every plain {@link Node2D} / {@link ShapeNode} leaf don't run flex/freeform layout
  * themselves, so without this their children never receive a layout pass and
  * render at zero size. This gives each child a `BoxBounds` centered in the
  * container's content area (origin = container center, matching the `Rect`
@@ -20,10 +20,10 @@ const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
  * from centre via their own `x`/`y`.
  *
  * `children` is the container's **flow** children — a stage-pinned child is
- * placed by `Node.layoutAbsoluteChildren` instead and must not be passed here.
+ * placed by `Node2D.layoutAbsoluteChildren` instead and must not be passed here.
  */
 export function layoutFlowChildren(
-    children: Node[],
+    children: Node2D[],
     rect: BoxBounds,
     scope: Measurer,
     pad: InsetsResolved = NO_PADDING,

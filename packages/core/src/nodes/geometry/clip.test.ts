@@ -6,14 +6,14 @@ import { Polygram } from '@/nodes/geometry/polygram-node';
 import { Grid } from '@/nodes/geometry/grid-node';
 import { ShapeNode, ShapeProps } from '@/nodes/geometry/shape-node';
 import { Clip } from '@/render/clip';
-import { NodeConfig } from '@/nodes/base/node';
-import type { RenderContext } from '@/render/render-context';
+import { NodeConfig } from '@/nodes/base/node2d';
+import type { RenderContext2D } from '@/render/render-context2d';
 import type { BoxBounds } from '@/attributes/layout/bounds';
 
 /**
  * Records the clip / scope calls a node issues during render so tests can assert
  * the begin/end balance without a real CanvasKit surface. Every other
- * RenderContext method the ShapeNode pipeline touches is a no-op.
+ * RenderContext2D method the ShapeNode pipeline touches is a no-op.
  */
 class ClipRecorderContext {
     /** One entry per beginClip(), holding the Clip it was passed. */
@@ -40,8 +40,8 @@ class ClipRecorderContext {
     beginEffectScope(): void { }
     endEffectScope(): void { }
 
-    asCtx(): RenderContext {
-        return this as unknown as RenderContext;
+    asCtx(): RenderContext2D {
+        return this as unknown as RenderContext2D;
     }
 }
 

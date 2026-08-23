@@ -32,7 +32,7 @@ describe('resolveVideoTimestamp', () => {
     });
 
     it('treats a null timestamp as derived — the way an override is handed back', () => {
-        // `Node.set` merges a partial and skips `undefined`, so `null` is what
+        // `Node2D.set` merges a partial and skips `undefined`, so `null` is what
         // un-does a live override.
         expect(resolveVideoTimestamp(video({ timestamp: null }), 3, DURATION)).toBe(3);
     });

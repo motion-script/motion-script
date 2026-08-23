@@ -1,7 +1,7 @@
 
 
 import {
-    SceneGenerator, createRef, Text, Rect, Fills, FillSpace, Node,
+    Node, SceneGenerator, createRef, Text, Rect, Fills, FillSpace, Node2D,
     easeInOut, sequence,
 } from "motion-script";
 import { DrawnShape } from "../nodes/drawn-shape";

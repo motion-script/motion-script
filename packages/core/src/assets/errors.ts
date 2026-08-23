@@ -4,7 +4,7 @@ import type { AssetType } from "./record";
  * A frame reached for an asset that was never loaded.
  *
  * This is the counterweight to declared asset tracking. A node states what it
- * needs into an `AssetTracker` (see `Node.prepareLayout`/`prepareRender`); if it
+ * needs into an `AssetTracker` (see `Node2D.prepareLayout`/`prepareRender`); if it
  * misses something, the renderer finds nothing when it goes to paint. The old
  * inference pass could not really get this wrong — it discovered assets *from*
  * the draw calls, so anything drawn was by construction requested — and the

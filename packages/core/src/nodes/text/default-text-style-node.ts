@@ -1,4 +1,4 @@
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { ContextMap } from "@/util/context";
 import { TextStyleToken, TextStyle, TEXT_STYLE_KEYS } from "@/runtime/builtin-context";
@@ -7,9 +7,9 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { type Stroke } from "@/attributes/shape/stroke/mapper";
 import { type Shadow } from "@/attributes/shape/shadow/resolver";
-import { type RenderContext } from "@/render/render-context";
+import { type RenderContext2D } from "@/render/render-context2d";
 
-export interface DefaultTextStyleProps extends NodeProps {
+export interface DefaultTextStyleProps extends Node2DProps {
     fontFamily: string;
     fontSize: number | 'autofit';
     fontWeight: number;
@@ -24,7 +24,7 @@ export interface DefaultTextStyleProps extends NodeProps {
 
 /**
  * Sets default text styling for everything drawn below it — the {@link Text} /
- * {@link RichText} nodes *and* the raw `Graphics` `text`/`richText` ops a custom
+ * {@link RichText} nodes *and* the raw `Graphics2D` `text`/`richText` ops a custom
  * node draws. A descendant inherits each style prop it didn't set itself, from
  * the nearest ancestor `DefaultTextStyle` that did — author-set props always win
  * over inherited ones. Nesting accumulates per key (an inner `fontSize` and an
@@ -39,13 +39,13 @@ export interface DefaultTextStyleProps extends NodeProps {
  *   author's *raw* prop values (not resolved cell values), so each consumer
  *   resolves them once through its own mapper — e.g. `fill='red'` is resolved by
  *   `Text`'s fill mapper, not pre-resolved here.
- * - **Graphics**, through the render context ({@link RenderContext.pushTextStyle}),
+ * - **Graphics2D**, through the render context ({@link RenderContext2D.pushTextStyle}),
  *   pushed around this node's children for the duration of their draw and folded
- *   into each under-specified text op. A `Graphics` isn't in the tree and has no
+ *   into each under-specified text op. A `Graphics2D` isn't in the tree and has no
  *   bind step, so the draw scope is the only place it can inherit from.
  *
  *   Only the *shaping* keys reach a drawn op — `fill`/`stroke`/`shadow` are
- *   group-scoped paint ops in a `Graphics`, not per-shape slots, so defaulting
+ *   group-scoped paint ops in a `Graphics2D`, not per-shape slots, so defaulting
  *   them would change which shapes a group's paint covers. See
  *   {@link TEXT_SHAPING_KEYS}.
  *
@@ -54,7 +54,7 @@ export interface DefaultTextStyleProps extends NodeProps {
  *
  * Layout-transparent like {@link Provider} — carries style, not appearance.
  */
-export class DefaultTextStyle extends Node<DefaultTextStyleProps> {
+export class DefaultTextStyle extends Node2D<DefaultTextStyleProps> {
     @property({ default: undefined }) declare readonly fontFamily?: string;
     @property({ default: undefined }) declare readonly fontSize?: number | 'autofit';
     @property({ default: undefined }) declare readonly fontWeight?: number;
@@ -86,13 +86,13 @@ export class DefaultTextStyle extends Node<DefaultTextStyleProps> {
 
     /**
      * Open the render-context text-style scope around this node's children, so
-     * the `Graphics` they draw inherit the same defaults their `Text` nodes do.
+     * the `Graphics2D` they draw inherit the same defaults their `Text` nodes do.
      *
      * `super.onRender` is what renders those children, so the scope has to wrap
      * it — and be closed in a `finally`, since the stack outlives this node and a
      * leaked frame would restyle every sibling drawn after it.
      */
-    override onRender(ctx: RenderContext): void {
+    override onRender(ctx: RenderContext2D): void {
         ctx.pushTextStyle(this.currentStyle());
         try {
             super.onRender(ctx);

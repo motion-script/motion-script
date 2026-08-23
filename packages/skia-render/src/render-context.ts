@@ -31,10 +31,10 @@ import {
     type PathBounds,
     type RectState,
     type ShapeAnchorInput,
-    Graphics,
+    Graphics2D,
     type GraphicsOp,
     type RasterizedSurface,
-    RenderContext,
+    RenderContext2D,
     type RichTextState,
     type SpaceRect,
     type NodeRenderState,
@@ -62,14 +62,14 @@ import {
 } from "@motion-script/core";
 
 
-// 3D backend. Only `view3DBackend`/`requestView3DWarm` are reached on a draw,
+// 3D backend. Only `canvas3DBackend`/`requestCanvas3DWarm` are reached on a draw,
 // and both are cheap no-ops until three has been lazily imported — so a 2D-only
 // project never pulls in the three chunk.
-import { disposeView3DBackend, view3DBackend } from "./three/backend";
+import { disposeCanvas3DBackend, canvas3DBackend } from "./three/backend";
 // Through the seam rather than reaching into `./three/renderer` directly: the
 // render context is portable and the renderer is not, so it must not know which
 // platform owns the GL context.
-import { view3DRendererHost } from "./three/renderer-seam";
+import { canvas3DRendererHost } from "./three/renderer-seam";
 import { disposeTextureCache } from "./three/handlers/texture";
 import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun } from "./shapes/paragraph-layout";
@@ -317,14 +317,14 @@ function applySegmentOpacityToStrokes(strokes: StrokeResolved[], segmentOpacity:
 }
 
 /**
- * CanvasKit/Skia implementation of {@link RenderContext} — the main render
+ * CanvasKit/Skia implementation of {@link RenderContext2D} — the main render
  * loop driving a mounted `<canvas>` (or an offscreen one during export).
  * Owns the WebGL surface and the per-frame draw stack (transforms, clips,
  * masks, camera, backdrop effects); delegates shape/fill/stroke painting to
  * the handlers built in {@link buildHandlers}. All async asset work happens
  * up front in the platform storage adapter so render() stays synchronous per frame.
  */
-export abstract class SkiaRenderContext extends RenderContext {
+export abstract class SkiaRenderContext extends RenderContext2D {
     private currentCanvas!: Canvas;
     /** Protected so a platform subclass can create its own surface — see {@link attach}. */
     protected canvasKit!: CanvasKit;
@@ -343,7 +343,7 @@ export abstract class SkiaRenderContext extends RenderContext {
 
     /**
      * Depth of nested {@link rasterizeOffscreen} passes. A `Surface2D` may hold a
-     * `View3D` which holds another `Surface2D`; the tree is finite so this can't
+     * `Canvas3D` which holds another `Surface2D`; the tree is finite so this can't
      * actually run away, but a mistake here costs a full GPU readback per level,
      * so it's bounded rather than trusted.
      */
@@ -556,10 +556,10 @@ export abstract class SkiaRenderContext extends RenderContext {
         }
 
         // Bracket the pass so the 3D backend can tell which nodes drew this frame
-        // and free the graphs of ones that didn't (a removed View3D, a scene
+        // and free the graphs of ones that didn't (a removed Canvas3D, a scene
         // switch). Cheap no-op before three has loaded.
-        const view3D = view3DBackend(this.storageAdapter);
-        view3D?.beginFrame();
+        const canvas3D = canvas3DBackend(this.storageAdapter);
+        canvas3D?.beginFrame();
         // Paint slots are per frame too, and key the 3D resources the sweep above
         // releases — the two brackets must stay together.
         this.fillHandler.beginFrame();
@@ -580,7 +580,7 @@ export abstract class SkiaRenderContext extends RenderContext {
             callback();
         } finally {
             this.isRendering = false;
-            view3D?.sweep();
+            canvas3D?.sweep();
             this.currentCanvas.restore();
             this.surface.flush();
         }
@@ -643,9 +643,9 @@ export abstract class SkiaRenderContext extends RenderContext {
         // switch from accumulating GPU memory. Unlike CanvasKit's context (kept
         // alive deliberately above), the three renderer owns its own canvas and is
         // safe to drop — it is recreated on the next 3D frame.
-        disposeView3DBackend();
+        disposeCanvas3DBackend();
         disposeTextureCache();
-        view3DRendererHost()?.dispose();
+        canvas3DRendererHost()?.dispose();
         EffectRegistry.disposeAll();
         disposeSkSLCache();
 
@@ -655,7 +655,7 @@ export abstract class SkiaRenderContext extends RenderContext {
     /**
      * Runs one synchronous draw pass (`callback`) against the mounted surface.
      *
-     * **Synchronous**, like the `RenderContext.execute` it implements and like
+     * **Synchronous**, like the `RenderContext2D.execute` it implements and like
      * every other implementation of it. It used to be `async` — awaiting a
      * `void` — and the difference was not cosmetic: an `async` method turns
      * everything the draw throws into a *rejected promise*, and the abstract
@@ -758,7 +758,7 @@ export abstract class SkiaRenderContext extends RenderContext {
      * {@link snapshotPixels} for why there is no portable encoder here.
      *
      * Abstract rather than returning `undefined` by default: core declares
-     * `screenshot()` on `RenderContext`, and a backend that silently produced
+     * `screenshot()` on `RenderContext2D`, and a backend that silently produced
      * nothing would be a much worse failure than one that won't compile.
      */
     abstract override screenshot(mime?: string, quality?: number): string | undefined;
@@ -767,24 +767,24 @@ export abstract class SkiaRenderContext extends RenderContext {
     // ─── Draw commands ───────────────────────────────────────────────────────
 
     /**
-     * Replay a built {@link Graphics} command list against this context. Shape
+     * Replay a built {@link Graphics2D} command list against this context. Shape
      * ops accumulate into the shape handler; paint ops (fill/stroke/shadow) paint
      * the accumulated shapes as one combined surface; cut/mask ops composite.
      *
-     * A paint-only Graphics (no shape ops — e.g. the fill/stroke applied to a
+     * A paint-only Graphics2D (no shape ops — e.g. the fill/stroke applied to a
      * boolean result after `endBoolean()`) does NOT reset the shape handler, so
      * it styles whatever surface is currently active.
      *
-     * Called by `RenderContext.draw()`, which has already folded the ambient
+     * Called by `RenderContext2D.draw()`, which has already folded the ambient
      * text-style defaults into the op list — so a `text` op that reaches here
      * with no `fontFamily` genuinely has none to inherit.
      */
-    protected drawGraphics(graphics: Graphics): void {
+    protected drawGraphics(graphics: Graphics2D): void {
         if (!this.isRendering) {
             console.warn("draw() must be called within the draw() method.");
             return;
         }
-        // Graphics-level opacity is pass-through: it folds into worldAlpha (so
+        // Graphics2D-level opacity is pass-through: it folds into worldAlpha (so
         // the group's paints fade while their blend modes keep mixing against the
         // backdrop), mirroring a pass-through node transform.
         const needsLayer = graphics.needsGroupLayer();
@@ -794,7 +794,7 @@ export abstract class SkiaRenderContext extends RenderContext {
             if (opacity < 1) this.worldAlpha *= opacity;
         }
 
-        // Graphics-level rotation/scale transforms the whole union as one figure.
+        // Graphics2D-level rotation/scale transforms the whole union as one figure.
         // It's realised as a canvas matrix about the pivot (default: the union's
         // bbox centre, sized in a throwaway measurement pass) wrapping the entire
         // op replay — so the combined silhouette turns/grows together and the CTM
@@ -821,7 +821,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         const ops = graphics.ops();
         const segmentStartFilter = this.buildEffectSegments(graphics);
 
-        // Shape ops reset the shape handler as needed; a paint-only Graphics (e.g.
+        // Shape ops reset the shape handler as needed; a paint-only Graphics2D (e.g.
         // the fill/stroke for a boolean result left active by endBoolean) is
         // applied to the currently-active surface without resetting it.
         let pushedEffectLayer = false;
@@ -836,7 +836,7 @@ export abstract class SkiaRenderContext extends RenderContext {
                 // No explicit bounds: let Skia size the layer from the filter's
                 // output so a blur/scatter/bloom that expands past the group's edges
                 // isn't clipped (matching the former whole-graphics effect layer).
-                // A Graphics segment has no per-segment clip to contain, unlike a
+                // A Graphics2D segment has no per-segment clip to contain, unlike a
                 // node, so the node path's tight-rect bounding doesn't apply here.
                 this.currentCanvas.saveLayer(this.layerPaint);
                 this.layerPaint.setImageFilter(null);
@@ -872,7 +872,7 @@ export abstract class SkiaRenderContext extends RenderContext {
     }
 
     /**
-     * Pre-scan a Graphics op list into effect segments. A *segment* is a run of
+     * Pre-scan a Graphics2D op list into effect segments. A *segment* is a run of
      * ops ending in an `effects` op; its filter wraps every shape/paint drawn
      * since the previous `effects` op (or the start). Because the filtered
      * `saveLayer` must open *before* the segment's shapes are drawn but the op is
@@ -886,7 +886,7 @@ export abstract class SkiaRenderContext extends RenderContext {
      * are resolved against the current node's velocity, matching {@link transform}.
      */
     private buildEffectSegments(
-        graphics: Graphics,
+        graphics: Graphics2D,
     ): Map<number, { filter: NonNullable<ReturnType<typeof EffectRegistry.compose>> }> {
         const ops = graphics.ops();
         const segments = new Map<number, { filter: NonNullable<ReturnType<typeof EffectRegistry.compose>> }>();
@@ -954,7 +954,7 @@ export abstract class SkiaRenderContext extends RenderContext {
      * Falls back to the local origin when there are no path-backed shapes (e.g.
      * text only).
      */
-    private resolveGroupCenter(graphics: Graphics, center: Anchor | undefined): Vector2 {
+    private resolveGroupCenter(graphics: Graphics2D, center: Anchor | undefined): Vector2 {
         // Explicit pixel pivot — no need to size the union.
         if (center !== undefined && typeof center !== "string") {
             return { x: center.x, y: center.y };
@@ -1028,7 +1028,7 @@ export abstract class SkiaRenderContext extends RenderContext {
      * Effects always need their own isolated buffer. Any pushed `saveLayer` is
      * tracked in {@link effectLayerStack} for `end()` to unwind.
      */
-    transform(state: Partial<TransformState>): RenderContext {
+    transform(state: Partial<TransformState>): RenderContext2D {
         if (!this.isRendering) {
             console.warn("transform() must be called within the draw() method.");
             return this;
@@ -1581,7 +1581,7 @@ export abstract class SkiaRenderContext extends RenderContext {
     /**
      * Replay a {@link Clip}'s ops into a single CanvasKit path: shapes union
      * together, and a `cut` subtracts the most-recently declared shape from the
-     * shapes before it (mirroring `Graphics.cut()`). Returns a freshly-owned path
+     * shapes before it (mirroring `Graphics2D.cut()`). Returns a freshly-owned path
      * the caller must `delete()`, or `null` when no shape produced a path.
      */
     private combineClipPath(clip: Clip): CKPath | null {
@@ -1642,7 +1642,7 @@ export abstract class SkiaRenderContext extends RenderContext {
     }> = [];
 
     /**
-     * Open an effect scope over the node (see {@link RenderContext.beginEffectScope}).
+     * Open an effect scope over the node (see {@link RenderContext2D.beginEffectScope}).
      * Effects are routed by the renderer, not the caller:
      *
      * - ImageFilter-composable effects (blur, grayscale, …) — only meaningful for
@@ -2068,13 +2068,13 @@ export abstract class SkiaRenderContext extends RenderContext {
     // ─── Offscreen rasterization ─────────────────────────────────────────────
 
     /**
-     * Rasterize a `Tex.surface` source — a built `Graphics`, or a detached `Node`
+     * Rasterize a `Tex.surface` source — a built `Graphics2D`, or a detached `Node2D`
      * subtree — into an offscreen buffer.
      *
-     * A `Node` source is laid out here rather than by the scene tree, because it
+     * A `Node2D` source is laid out here rather than by the scene tree, because it
      * *isn't* in the tree: its box is the texture's resolution, so it is measured
      * straight against that. Everything else it needs (asset catalog, context,
-     * clock) was bound by whatever painted the 3D scene — see `Node.adoptDetached`.
+     * clock) was bound by whatever painted the 3D scene — see `Node2D.adoptDetached`.
      */
     private rasterizeSurfaceSource(
         source: SurfaceSource3D,
@@ -2118,7 +2118,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         if (this.rasterDepth >= MAX_RASTER_DEPTH) {
             console.warn(
                 `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
-                "A Surface2D is most likely nested inside itself via a View3D.",
+                "A Surface2D is most likely nested inside itself via a Canvas3D.",
             );
             return null;
         }
@@ -2232,7 +2232,7 @@ export abstract class SkiaRenderContext extends RenderContext {
         this.flushDeferredPaints(deferred);
     }
 
-    // Graphics-op variants of the mask scope, used when a Graphics command list
+    // Graphics2D-op variants of the mask scope, used when a Graphics2D command list
     // opens an inline mask within a single draw(). They share the imperative
     // scope implementation above.
     private _maskOp(options?: MaskOptions): void {

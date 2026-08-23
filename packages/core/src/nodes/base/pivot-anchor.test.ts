@@ -6,7 +6,7 @@ import { Rect } from "../geometry/rect-node";
  * addition to an explicit Vector2; the @property mapper resolves it to the
  * normalised [-1,1] (y-up) pivot the transform uses.
  */
-describe("Node pivot accepts a named anchor", () => {
+describe("Node2D pivot accepts a named anchor", () => {
     it("resolves a named anchor to its normalised pivot", () => {
         expect((new Rect({ pivot: "topRight" }).pivot as any)).toEqual({ x: 1, y: 1 });
         expect((new Rect({ pivot: "bottomLeft" }).pivot as any)).toEqual({ x: -1, y: -1 });

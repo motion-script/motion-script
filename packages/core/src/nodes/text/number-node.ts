@@ -1,7 +1,7 @@
 import { EasingFunction } from "@/tween/ease/type";
 import { type ChainableCommand } from "@/tween/chain";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node";
+import { NodeConfig } from "../base/node2d";
 import { Text, TextProps } from "./text-node";
 
 

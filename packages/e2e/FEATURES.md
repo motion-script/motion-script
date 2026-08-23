@@ -93,7 +93,7 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `boolean-toggle`: Boolean node toggling child visibility at midpoint
 - [ ] `provider-theme`: Provider + ThemeProvider supplying custom theme colors
 - [ ] `default-text-style`: DefaultTextStyle node overriding font family for subtree
-- [ ] `default-text-style-graphics`: DefaultTextStyle reaching a custom node's raw `Graphics().text()` op (no `fontFamily` on the op), plus a `Code` block under the same provider keeping its own face
+- [ ] `default-text-style-graphics`: DefaultTextStyle reaching a custom node's raw `Graphics2D().text()` op (no `fontFamily` on the op), plus a `Code` block under the same provider keeping its own face
 
 ### Grid / Pattern
 
@@ -355,11 +355,11 @@ Each shows a ball moving across the screen with that easing, easeIn/easeOut/ease
 - [ ] `cardinal-node-bottomcenter`: bottomCenter
 - [ ] `cardinal-node-bottomright`: bottomRight
 - [ ] `cardinal-graphics-points`: Cardinal points used in a graphics/drawable context
-- [ ] `cardinal-graphics-rect`: `Graphics().rect({ pivot, x, y })` for all nine named anchors, animating rotation/scale
-- [ ] `cardinal-graphics-text`: `Graphics().text({ pivot, x, y })` for all nine named anchors, no authored box, animating rotation/scale
-- [ ] `cardinal-graphics-ellipse`: `Graphics().ellipse({ pivot, x, y })` for all nine named anchors, animating rotation/scale
-- [ ] `cardinal-graphics-polygon`: `Graphics().polygon({ pivot, x, y })` for all nine named anchors, animating rotation/scale
-- [ ] `cardinal-graphics-polygram`: `Graphics().polygram({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-rect`: `Graphics2D().rect({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-text`: `Graphics2D().text({ pivot, x, y })` for all nine named anchors, no authored box, animating rotation/scale
+- [ ] `cardinal-graphics-ellipse`: `Graphics2D().ellipse({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygon`: `Graphics2D().polygon({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygram`: `Graphics2D().polygram({ pivot, x, y })` for all nine named anchors, animating rotation/scale
 
 ---
 

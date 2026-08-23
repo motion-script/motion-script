@@ -1,5 +1,5 @@
 import {
-    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics,
+    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
     AnchorKey, Anchor, property, resolveAnchor, easeInOut,
 } from 'motion-script';
 import { holdTail } from './_lib';
@@ -18,7 +18,7 @@ interface PivotPolygramProps extends ShapeProps {
 }
 
 /**
- * Draws a `Graphics().polygram({ pivot, x: 0, y: 0, rotation, scale })` star
+ * Draws a `Graphics2D().polygram({ pivot, x: 0, y: 0, rotation, scale })` star
  * plus a marker dot at the drawn origin: the named corner/edge of the star's
  * bounding box stays pinned to the marker as the shape turns and grows about
  * that same pivot.
@@ -33,8 +33,8 @@ class PivotPolygram extends ShapeNode<PivotPolygramProps> {
         super(props);
     }
 
-    protected renderSelf(draw: RenderContext): void {
-        const star = new Graphics()
+    protected renderSelf(draw: RenderContext2D): void {
+        const star = new Graphics2D()
             .polygram({
                 width: 80, height: 80, sides: 5, ratio: 0.5, pivot: this.anchor, x: 0, y: 0,
                 rotation: this.shapeRotation, scale: this.shapeScale,
@@ -42,7 +42,7 @@ class PivotPolygram extends ShapeNode<PivotPolygramProps> {
             .fill('primary');
         draw.draw(star);
 
-        const marker = new Graphics()
+        const marker = new Graphics2D()
             .ellipse({ width: 10, height: 10, x: 0, y: 0 })
             .fill('accent');
         draw.draw(marker);
@@ -50,7 +50,7 @@ class PivotPolygram extends ShapeNode<PivotPolygramProps> {
 }
 
 /**
- * `Graphics().polygram({ pivot, x: 0, y: 0 })` for all nine named anchors,
+ * `Graphics2D().polygram({ pivot, x: 0, y: 0 })` for all nine named anchors,
  * animating the descriptor's own `rotation`/`scale` (not the node-level
  * transform): with no cardinal-anchor shorthand, a plain `pivot` combined with
  * `x`/`y` should still land that named corner/edge of the star's bounding box

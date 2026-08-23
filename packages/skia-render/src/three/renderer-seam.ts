@@ -13,7 +13,7 @@
  * and threading it down every call would change signatures the whole way.
  *
  * `@motion-script/web` registers its shared `WebGLRenderer` from its barrel. A
- * backend that registers nothing degrades gracefully — `view3DBackend()` returns
+ * backend that registers nothing degrades gracefully — `canvas3DBackend()` returns
  * null, the existing warm-and-re-render path treats that as "three isn't ready",
  * and frames paint their 2D parts.
  */
@@ -23,7 +23,7 @@ import type { ThreeModule } from "./bridge";
 import type { SkiaTextureSource } from "../assets";
 
 /** What the compositor needs to upload and place a rendered 3D frame. */
-export interface RenderedView3D {
+export interface RenderedCanvas3D {
     /**
      * The renderer's output, as an opaque texture source (see
      * {@link SkiaTextureSource}). Valid only until the next render — the buffer is
@@ -38,7 +38,7 @@ export interface RenderedView3D {
 }
 
 /** Renderer-level settings that live on the renderer rather than the scene. */
-export interface View3DRendererSettings {
+export interface Canvas3DRendererSettings {
     shadowsEnabled: boolean;
     shadowType: THREE.ShadowMapType;
     toneMapping: THREE.ToneMapping;
@@ -54,7 +54,7 @@ export interface View3DRendererSettings {
  * with a handful of 3D nodes. Slots render serially into the one renderer and each
  * result is uploaded before the next draws.
  */
-export interface View3DRendererHost {
+export interface Canvas3DRendererHost {
     /**
      * Render `scene` through `camera` at the given device-pixel size and return the
      * buffer for upload. `key` identifies the slot, so the host can keep a stable
@@ -69,10 +69,10 @@ export interface View3DRendererHost {
         width: number,
         height: number,
         options: { antialias?: boolean },
-    ): RenderedView3D;
+    ): RenderedCanvas3D;
 
     /** Apply shadow/tone-mapping settings, which live on the renderer. */
-    applySettings(three: ThreeModule, settings: View3DRendererSettings): void;
+    applySettings(three: ThreeModule, settings: Canvas3DRendererSettings): void;
 
     /**
      * The live renderer, or null before first use.
@@ -90,19 +90,19 @@ export interface View3DRendererHost {
     dispose(): void;
 }
 
-let host: View3DRendererHost | null = null;
+let host: Canvas3DRendererHost | null = null;
 
 /**
  * Install the platform's 3D renderer. Called once, from the platform package's
  * barrel — see the note in `@motion-script/web`'s `index.ts` about why it must be
  * the barrel and not the renderer module itself.
  */
-export function registerView3DRendererHost(next: View3DRendererHost): void {
+export function registerCanvas3DRendererHost(next: Canvas3DRendererHost): void {
     host = next;
 }
 
 /** The registered renderer, or null when the platform provides no 3D. */
-export function view3DRendererHost(): View3DRendererHost | null {
+export function canvas3DRendererHost(): Canvas3DRendererHost | null {
     return host;
 }
 

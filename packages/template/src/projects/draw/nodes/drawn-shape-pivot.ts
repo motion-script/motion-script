@@ -1,5 +1,5 @@
 import {
-    ShapeNode, ShapeProps, NodeConfig, RenderContext, Graphics, Fills,
+    ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D, Fills,
     AnchorKey, Vector2, property,
 } from "motion-script";
 
@@ -8,7 +8,7 @@ export interface DrawnShapePivotProps extends ShapeProps {
     extent: number;
     /**
      * Which **cardinal anchor** of the rect is pinned to the target point — the
-     * new `Graphics().rect({ <anchor>: { x, y } })` positioning API. One of the
+     * new `Graphics2D().rect({ <anchor>: { x, y } })` positioning API. One of the
      * nine `align` names (`'center'`, `'topRight'`, `'bottomLeft'`, …).
      */
     anchor: AnchorKey;
@@ -21,7 +21,7 @@ export interface DrawnShapePivotProps extends ShapeProps {
 }
 
 /**
- * A node that **tests the cardinal-point positioning API** on `Graphics` shapes.
+ * A node that **tests the cardinal-point positioning API** on `Graphics2D` shapes.
  *
  * It draws one rect positioned *purely by a named anchor* —
  * `g.rect({ [anchor]: target, width, height })` — and, independently, a ✕ marker
@@ -48,7 +48,7 @@ export class DrawnShapePivot extends ShapeNode<DrawnShapePivotProps> {
         this.applyProp("height", props.height ?? props.extent ?? 200 * 2);
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const e = this.extent;
         const t = this.target;
 
@@ -57,7 +57,7 @@ export class DrawnShapePivot extends ShapeNode<DrawnShapePivotProps> {
         // corner of this rect should come to rest exactly on `target`.
         const rw = e * 0.8;
         const rh = e * 0.8;
-        const figure = new Graphics()
+        const figure = new Graphics2D()
             .rect({ [this.anchor]: t, width: rw, height: rh, cornerRadius: e * 0.1 })
             .fill(this.fill)
             .stroke(this.stroke);
@@ -68,7 +68,7 @@ export class DrawnShapePivot extends ShapeNode<DrawnShapePivotProps> {
         // Drawn from the same y-up `target`, with no anchor — so it's an
         // independent witness of where the rect's named corner should land.
         const m = e * 0.08;
-        const cross = new Graphics()
+        const cross = new Graphics2D()
             .line({ points: [{ x: t.x - m, y: t.y - m }, { x: t.x + m, y: t.y + m }] })
             .line({ points: [{ x: t.x - m, y: t.y + m }, { x: t.x + m, y: t.y - m }] })
             .stroke({ weight: e * 0.03, fill: '#ffffff' });
@@ -76,7 +76,7 @@ export class DrawnShapePivot extends ShapeNode<DrawnShapePivotProps> {
         draw.draw(cross);
 
         // A faint ring around the marker so the target reads even over the rect.
-        const ring = new Graphics()
+        const ring = new Graphics2D()
             .ellipse({ x: t.x, y: t.y, width: e * 0.22, height: e * 0.22 })
             .stroke({ weight: e * 0.012, fill: Fills.color('#ffffff', { opacity: 0.5 }) });
 

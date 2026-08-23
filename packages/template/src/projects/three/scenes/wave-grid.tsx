@@ -1,6 +1,7 @@
 import {
-    createScene, createSignal, easeInOut, linear, parallel, Geo, Mat, View3D, Graphics3D,
-    Effects,
+    createScene, createSignal, easeInOut, linear, parallel, Geo, Mat,
+    Canvas3D, PerspectiveCamera3D, Background3D, AmbientLight3D, DirectionalLight3D,
+    Group3D, Mesh3D, Box3D, Line3D,
     Rect,
 } from "motion-script";
 
@@ -26,10 +27,16 @@ function heightColor(normalized: number): string {
  * no `three` import anywhere in this file.
  *
  * The travelling wave is driven by a `phase` **signal** tweened linearly across
- * the scene, not by the node's elapsed time. Two reasons: the builder is a
- * reactive binding, which re-evaluates when the signals it reads change and would
- * never see a clock tick; and a signal puts the motion on the timeline, so it
- * scrubs and exports frame-identically like everything else.
+ * the scene, not by the node's elapsed time. Two reasons: a prop is a reactive
+ * binding, which re-evaluates when the signals it reads change and would never
+ * see a clock tick; and a signal puts the motion on the timeline, so it scrubs and
+ * exports frame-identically like everything else.
+ *
+ * `geometry` is a bound prop here rather than a fixed descriptor, which is the
+ * expensive case on purpose: three's geometries are immutable, so a surface
+ * deformed every frame reallocates every frame. That is the cost of a genuinely
+ * per-vertex animation — a transform or a material value would be an in-place
+ * write instead.
  */
 export default createScene(function* (stage) {
     stage.set({ fill: "#05070c" });
@@ -38,75 +45,68 @@ export default createScene(function* (stage) {
     const angle = createSignal(0);            // camera orbit, degrees
     const phase = createSignal(0);            // travelling-wave phase, radians
 
+    /** Camera position on its orbit, at this frame's angle. */
+    const orbit = (): [number, number, number] => {
+        const radians = (angle() * Math.PI) / 180;
+        return [Math.cos(radians) * 35, 18, Math.sin(radians) * 35];
+    };
+
     stage.add(
         <Rect stroke={{ weight: 4, fill: 'red' }} clip={true} width={800} height={800}>
+            <Canvas3D width="fill" height="fill">
+                <PerspectiveCamera3D position={orbit} lookAt={0} fov={50} />
+                <Background3D background="#1a1a1a" />
+                <AmbientLight3D intensity={0.4} />
+                <DirectionalLight3D intensity={1.5} position={[10, 20, 10]} />
 
+                {/* The deformed surface. `vertex` is evaluated across the grid
+                    each frame; `color` gives the per-vertex height gradient. */}
+                <Mesh3D
+                    geometry={() => {
+                        const amp = amplitude();
+                        const p = phase();
+                        return Geo.parametric({
+                            segments: [GRID, GRID],
+                            vertex: (u, v) => {
+                                const x = (u - 0.5) * 2 * RANGE;
+                                const z = (v - 0.5) * 2 * RANGE;
+                                return { x, y: sombrero(x, z, p) * amp, z };
+                            },
+                            color: (_u, _v, at) => heightColor((at.y / amp + 1) / 2),
+                            computeNormals: true,
+                        });
+                    }}
+                    material={Mat.phong({
+                        side: "double",
+                        vertexColors: true,
+                        shininess: 80,
+                        specular: "#444444",
+                    })}
+                />
 
-            <View3D
-                width="fill"
-                height="fill"
-
-                graphics3D={() => {
-                    const amp = amplitude();
-                    const a = angle();
-                    const p = phase();
-                    const radians = (a * Math.PI) / 180;
-
-                    return new Graphics3D()
-                        .perspective({
-                            position: [Math.cos(radians) * 35, 18, Math.sin(radians) * 35],
-                            lookAt: 0,
-                            fov: 50,
-                        })
-                        .background("#1a1a1a")
-                        .ambient({ intensity: 0.4 })
-                        .directional({ intensity: 1.5, position: [10, 20, 10] })
-
-                        // The deformed surface. `vertex` is evaluated across the grid
-                        // each frame; `color` gives the per-vertex height gradient.
-                        .mesh(
-                            Geo.parametric({
-                                segments: [GRID, GRID],
-                                vertex: (u, v) => {
-                                    const x = (u - 0.5) * 2 * RANGE;
-                                    const z = (v - 0.5) * 2 * RANGE;
-                                    return { x, y: sombrero(x, z, p) * amp, z };
-                                },
-                                color: (_u, _v, p) => heightColor((p.y / amp + 1) / 2),
-                                computeNormals: true,
-                            }),
-                            Mat.phong({
-                                side: "double",
-                                vertexColors: true,
-                                shininess: 80,
-                                specular: "#444444",
-                            }),
-                        )
-
-                        // Translucent shell + its wireframe edges. `side: "back"` and
-                        // `depthWrite: false` are what stop the shell from occluding
-                        // the surface inside it.
-                        .group({ position: [0, 0, 0] }, (inner) => inner
-                            .box({
-                                width: RANGE * 2, height: 10, depth: RANGE * 2,
-                                unlit: true,
-                                color: "#88ccff",
-                                opacity: 0.05,
-                                transparent: true,
-                                side: "back",
-                                depthWrite: false,
-                            })
-                            .line({
-                                geometry: Geo.edges(
-                                    Geo.box({ width: RANGE * 2, height: 10, depth: RANGE * 2 }),
-                                ),
-                                mode: "segments",
-                                color: "white",
-                                opacity: 0.4,
-                            }),
-                        );
-                }}
-            />
+                {/* Translucent shell + its wireframe edges. `side: "back"` and
+                    `depthWrite: false` are what stop the shell from occluding
+                    the surface inside it. */}
+                <Group3D position={[0, 0, 0]}>
+                    <Box3D
+                        width={RANGE * 2} height={10} depth={RANGE * 2}
+                        unlit
+                        color="#88ccff"
+                        opacity={0.05}
+                        transparent
+                        side="back"
+                        depthWrite={false}
+                    />
+                    <Line3D
+                        geometry={Geo.edges(
+                            Geo.box({ width: RANGE * 2, height: 10, depth: RANGE * 2 }),
+                        )}
+                        mode="segments"
+                        color="white"
+                        opacity={0.4}
+                    />
+                </Group3D>
+            </Canvas3D>
         </Rect>
     );
 

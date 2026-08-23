@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rect } from '@/nodes/geometry/rect-node';
-import { Node } from '@/nodes/base/node';
+import { Node2D } from '@/nodes/base/node2d';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
@@ -8,10 +8,10 @@ import { SizeInput } from '@/attributes/layout/size';
 
 /**
  * A fixed-size leaf that also exposes the box its parent laid it into — the
- * `layoutRect` is protected on Node, so a test subclass is the supported seam
+ * `layoutRect` is protected on Node2D, so a test subclass is the supported seam
  * for reading a child's resolved position. Mirrors the one in flex-node.test.ts.
  */
-class Tile extends Node {
+class Tile extends Node2D {
     constructor(width: SizeInput, height: SizeInput) {
         super({ width, height });
     }

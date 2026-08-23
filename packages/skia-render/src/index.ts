@@ -13,7 +13,7 @@
 //   - GPU texture upload        → `SkiaStorageAdapter.uploadTextureSource`
 //   - video/still encoding      → `VideoFrameSink` / `ImageEncoder`
 //   - audio mixing             → `AudioMixer`
-//   - the 3D GL context         → `View3DHost`, via `registerView3DHost`
+//   - the 3D GL context         → `Canvas3DHost`, via `registerView3DHost`
 //
 // `@motion-script/web` supplies the browser implementations (WebGL surface,
 // WebCodecs/mediabunny, Web Audio, three's WebGLRenderer). A native backend —
@@ -78,18 +78,18 @@ export type {
 // ─── 3D ──────────────────────────────────────────────────────────────────────
 
 export {
-    View3DBackend, view3DBackend, disposeView3DBackend, view3DModule,
+    Canvas3DBackend, canvas3DBackend, disposeCanvas3DBackend, canvas3DModule,
 } from "./three/backend";
 export {
-    loadView3D, threeModule, registerView3DBackend,
-    requestView3DWarm, warmPendingView3D, __resetView3DBridgeForTests,
+    loadCanvas3D, threeModule, registerCanvas3DBackend,
+    requestCanvas3DWarm, warmPendingCanvas3D, __resetCanvas3DBridgeForTests,
 } from "./three/bridge";
 export { disposeTextureCache } from "./three/handlers/texture";
 export {
-    registerView3DRendererHost, view3DRendererHost, __resetView3DRendererHostForTests,
+    registerCanvas3DRendererHost, canvas3DRendererHost, __resetView3DRendererHostForTests,
 } from "./three/renderer-seam";
 export type { ThreeModule } from "./three/bridge";
-export type { View3DAssets } from "./three/handlers/texture";
+export type { Canvas3DAssets } from "./three/handlers/texture";
 export type {
-    RenderedView3D, View3DRendererHost, View3DRendererSettings,
+    RenderedCanvas3D, Canvas3DRendererHost, Canvas3DRendererSettings,
 } from "./three/renderer-seam";

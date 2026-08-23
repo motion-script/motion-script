@@ -12,7 +12,7 @@ import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "./runtime.fixtures";
  *
  * `precomp-incremental.test.ts` proves the scheduling logic; this proves it
  * against the real per-frame loop — real flexbox layout, real text measurement,
- * real node add/remove, real `Graphics` construction through
+ * real node add/remove, real `Graphics2D` construction through
  * `TrackRenderContext`. Those are the parts that could plausibly break when the
  * loop was reshaped into a suspendable generator, and a fake scene exercises
  * none of them.

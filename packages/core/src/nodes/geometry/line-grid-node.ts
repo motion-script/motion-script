@@ -1,9 +1,9 @@
 import { property } from "@/attributes/properties/decorator";
 import { strokeProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node";
-import { RenderContext } from "@/render/render-context";
-import { Graphics } from "@/render/graphics";
+import { NodeConfig } from "../base/node2d";
+import { RenderContext2D } from "@/render/render-context2d";
+import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { PathBounds, PathCommand } from "@/render/descriptors/path";
 import { Stroke, StrokeResolved } from "@/attributes/shape/stroke/mapper";
@@ -136,17 +136,17 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         }
 
         // Stage-pinned children float over the scene, not over this grid's
-        // centre. See NodeProps.childPositioning.
+        // centre. See Node2DProps.childPositioning.
         this.layoutAbsoluteChildren(scope);
     }
 
-    protected renderSelf(draw: RenderContext): void {
+    protected renderSelf(draw: RenderContext2D): void {
         const width = this.layoutRect.width;
         const height = this.layoutRect.height;
         const centerBounds: PathBounds = [-width / 2, -height / 2, width / 2, height / 2];
 
         // Fill + shadow paint across the whole grid rect, behind the lines.
-        draw.draw(new Graphics()
+        draw.draw(new Graphics2D()
             .rect({ width, height, start: this.start, end: this.end })
             .shadow(this.shadow)
             .fill(this.fill));
@@ -167,13 +167,13 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         draw.beginClip(new Clip().rect({ width, height }));
         // Minor (subdivision) lines first so the major lines sit on top of them.
         if (subdivisions > 1 && minorStroke.length > 0 && minorLines.length > 0) {
-            draw.draw(new Graphics()
+            draw.draw(new Graphics2D()
                 .path({ data: minorLines, centerBounds })
                 .stroke(minorStroke));
         }
         // Major (division) lines on top.
         if (majorLines.length > 0) {
-            draw.draw(new Graphics()
+            draw.draw(new Graphics2D()
                 .path({ data: majorLines, centerBounds })
                 .stroke(major));
         }

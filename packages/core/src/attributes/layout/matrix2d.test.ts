@@ -107,7 +107,7 @@ describe('matrix2d – cameraMatrix', () => {
         closeTo(p.y, 0);
     });
 
-    it('rotates by -heading, matching RenderContext.beginCamera', () => {
+    it('rotates by -heading, matching RenderContext2D.beginCamera', () => {
         // canvas.rotate(-90) maps +x → -y (upward in canvas space).
         const p = applyToPoint(cameraMatrix(0, 0, { x: 0, y: 0 }, 1, 90), { x: 10, y: 0 });
         closeTo(p.x, 0);

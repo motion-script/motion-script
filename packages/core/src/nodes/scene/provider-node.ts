@@ -1,8 +1,8 @@
-import { Node, NodeConfig, NodeProps } from "../base/node";
+import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { Context, ContextMap } from "@/util/context";
 
-export interface ProviderProps<T> extends NodeProps {
+export interface ProviderProps<T> extends Node2DProps {
     /** The context token this provider supplies to its descendants. */
     context: Context<T>;
     /** The value to provide. Omitted → the token's default value. */
@@ -32,10 +32,10 @@ export interface ProviderProps<T> extends NodeProps {
  * ```
  *
  * It's a layout-transparent container: it has no paint of its own and
- * stack-centers its children (the base {@link Node} layout), so dropping a
+ * stack-centers its children (the base {@link Node2D} layout), so dropping a
  * provider into a tree changes inheritance, not appearance.
  */
-export class Provider<T = unknown> extends Node<ProviderProps<T>> {
+export class Provider<T = unknown> extends Node2D<ProviderProps<T>> {
     @property({ default: undefined }) declare readonly context?: Context<T>;
     @property({ default: undefined }) declare readonly value?: T;
 

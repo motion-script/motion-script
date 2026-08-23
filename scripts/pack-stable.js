@@ -104,9 +104,25 @@ function readPkg(dir) {
     return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
 }
 
+/**
+ * Run `tar` with the archive named *relative to its own directory*.
+ *
+ * GNU tar reads an absolute Windows path as a remote spec — `C:\...` looks like
+ * host `C`, and it fails with "Cannot connect to C: resolve failed". Passing the
+ * bare filename with `cwd` set sidesteps that without a platform switch, and is
+ * identical everywhere else. `-C` is unaffected: only the archive operand is
+ * parsed for a host.
+ */
+function tar(tgz, flags, rest = [], options = {}) {
+    return execFileSync('tar', [...flags, path.basename(tgz), ...rest], {
+        ...options,
+        cwd: path.dirname(tgz),
+    });
+}
+
 /** Read a package.json embedded in a packed .tgz (package/package.json). */
 function readTarballPkg(tgz) {
-    const json = execFileSync('tar', ['-xzOf', tgz, 'package/package.json'], { encoding: 'utf8' });
+    const json = tar(tgz, ['-xzOf'], ['package/package.json'], { encoding: 'utf8' });
     return JSON.parse(json);
 }
 
@@ -309,7 +325,9 @@ function extractTarballs(tarballByName) {
         fs.rmSync(dest, { recursive: true, force: true });
         fs.mkdirSync(dest, { recursive: true });
         // --strip-components=1 drops the leading `package/` from every entry.
-        execFileSync('tar', ['-xzf', tgz, '-C', dest, '--strip-components=1']);
+        // Forward slashes: GNU tar escapes backslashes in `-C`, so a native
+        // Windows path arrives mangled. Every tar accepts `/` on every platform.
+        tar(tgz, ['-xzf'], ['-C', dest.split(path.sep).join('/'), '--strip-components=1']);
         console.log(`extracted ${name} → node_modules/${name}/`);
     }
 }

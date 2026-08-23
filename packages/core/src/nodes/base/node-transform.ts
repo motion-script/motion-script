@@ -8,9 +8,9 @@ import {
 } from "@/attributes/layout/matrix2d";
 
 /**
- * Companion for {@link Node}'s transform/anchor/world-space math. The reactive
+ * Companion for {@link Node2D}'s transform/anchor/world-space math. The reactive
  * prop reads (x/y/rotation/scale/pivot/layoutRect) and the parent-chain walk
- * stay in Node's getters; the pure geometry lives here. Reuses the matrix
+ * stay in Node2D's getters; the pure geometry lives here. Reuses the matrix
  * primitives in `attributes/layout/matrix2d.ts`.
  */
 
@@ -42,12 +42,12 @@ export function rotateOffset(x: number, y: number, rotationDeg: number, ox: numb
  * and defaults to none, in which case this is the plain six-number affine matrix
  * it has always been.
  *
- * Both consumers of a node's transform go through here — `Node._localMatrix`
- * (and so `worldMatrix`, `global`, and picking) and `Node.applyTransform` (and so
+ * Both consumers of a node's transform go through here — `Node2D._localMatrix`
+ * (and so `worldMatrix`, `global`, and picking) and `Node2D.applyTransform` (and so
  * the renderer) — so there is one definition of the arithmetic rather than two
  * that agree by inspection. They differ in exactly one argument: the renderer
  * passes the projection and the geometry does not, because the mirrors and the
- * tilt are paint rather than shape. See `Node._localMatrix`.
+ * tilt are paint rather than shape. See `Node2D._localMatrix`.
  */
 /** @internal */
 export function localMatrix(
