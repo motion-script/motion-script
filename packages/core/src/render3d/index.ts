@@ -38,6 +38,16 @@ export type { Vector3, Vector3Input, Euler3, EulerOrder, Quaternion } from "./ve
 
 export type { Transform3D, Side3D, Blending3D } from "./transform";
 
+export { geometryBounds3D } from "./bounds3d";
+export type { Box3 } from "./bounds3d";
+/** @internal */ export { centeredBox3, corners3, transformBox3, unionBox3 } from "./bounds3d";
+
+/** @internal */ export {
+    applyMatrix4, compose4, identity4, invert4, lookAtRotation4, multiply4,
+    orthographic4, perspective4, rotationOf4, transformMatrix4, translation4,
+} from "./matrix4";
+/** @internal */ export type { Matrix4, Vector4 } from "./matrix4";
+
 export { evaluateParametric } from "./geometry";
 export type {
     Geometry3D, Passthrough3D,

@@ -39,7 +39,7 @@
     }
   },
   "scripts": {
-    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths",
     "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
     "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
     "test": "vitest",

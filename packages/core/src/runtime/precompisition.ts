@@ -2,7 +2,7 @@ import { AudioRequest } from "@/attributes/audio/request";
 import { BuildStage } from "@/render/build-stage";
 import { Measurer } from "../render/measurer";
 import { AssetRecord } from "@/assets/record";
-import { Node2D } from "@/nodes/base/node2d";
+import { Node } from "@/nodes/base/node";
 import { nodePath } from "@/project/tree";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
@@ -1081,14 +1081,17 @@ function drivenFrameCount(scene: Scene, fps: number): number | null {
  * scene itself. The scene root (path "") is included so its own bar spans the
  * whole scene.
  */
-function recordLifespans(node: Node2D, path: string, frame: number, out: Map<string, NodeLifespan>): void {
+function recordLifespans(node: Node, path: string, frame: number, out: Map<string, NodeLifespan>): void {
     const existing = out.get(path);
     if (existing) {
         existing.endFrame = frame;
     } else {
         out.set(path, { startFrame: frame, endFrame: frame });
     }
-    const children = node.children;
+    // The authored list, so a `Canvas3D`'s meshes get lifespans of their own and
+    // its HUD children keep the indices every other path walk gives them — see
+    // {@link Node._allChildren}.
+    const children = node._allChildren;
     for (let i = 0; i < children.length; i++) {
         recordLifespans(children[i], nodePath(path, i), frame, out);
     }

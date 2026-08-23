@@ -3,6 +3,7 @@ packages:
   - "packages/cli"
   - "packages/core"
   - "packages/create"
+  - "packages/engine"
   - "packages/player"
   - "packages/react"
   - "packages/skia-render"

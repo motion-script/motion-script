@@ -21,7 +21,7 @@ FROM mcr.microsoft.com/playwright:v1.61.1-noble
 WORKDIR /repo
 
 # No usable GPU in a container → render through SwiftShader (software WebGL).
-# The CLI driver honours this flag (packages/cli/src/driver.ts).
+# The render engine honours this flag (packages/engine/src/launch.ts).
 ENV MS_SOFTWARE_RENDER=1
 # Keep Playwright from trying to (re)download browsers — the base image has them.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1

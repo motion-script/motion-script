@@ -139,7 +139,8 @@ Cleanly separated layers: the **engine** (`core`) knows how a scene evolves over
 time but nothing about pixels; a **renderer** (`skia-render`) knows how to draw a
 frame but not what it is drawing onto; a **platform** (`web`) supplies the surface,
 media decode, encoding and audio; the **player/vite-plugin** wires a user's project
-into an interactive editor, and the **cli** drives that same project headlessly.
+into an interactive editor, and the **engine/cli** drive that same project
+headlessly — from a server and from a terminal respectively.
 
 ```
 your project (scenes, project.ts)
@@ -148,9 +149,12 @@ your project (scenes, project.ts)
 @motion-script/vite-plugin   boots the player app, aliases your project,
   (dev server + build)       serves canvaskit.wasm
         │
-        ▼
-@motion-script/player        timeline, scene panel, scrubbing, export controls
-  (React editor UI)
+        ├───────────────────────────────────┐
+        ▼                                   ▼
+@motion-script/player        @motion-script/engine   (+ cli, a front end over it)
+  (React editor UI)            Node-side: Vite + a pool of headless Chromium
+  timeline, scene panel,       pages driving the plugin's ?headless bridge —
+  scrubbing, export controls   the same render, without the UI
         │ uses
         ├──────────────────────────────┐
         ▼                              ▼
@@ -167,7 +171,11 @@ your project (scenes, project.ts)
                               Skia CanvasKit (WASM)
 ```
 
-### `@motion-script/core` — the engine
+### `@motion-script/core` — the animation engine
+
+Not `@motion-script/engine`, which is the *render host* that drives a project
+headlessly from Node. This is the animation engine: what a scene is and how it
+evolves over time.
 
 Backend-agnostic: no DOM/canvas dependencies. Describes *what* to draw and
 *how it changes over time*; a render context does the actual drawing. Key
@@ -698,10 +706,43 @@ The flagship published package — bundles `core` + `@motion-script/code` +
 `@motion-script/latex` behind one import. The recommended way for end users to
 depend on the library.
 
+### `@motion-script/engine`
+
+The headless renderer as a library, for backend use. `createEngine({ projectRoot })`
+boots the project's own Vite dev server and a pool of Playwright Chromium pages
+and keeps them warm, then drives the same `?headless` bridge the vite-plugin
+installs — so a server-side render is the render the author previewed.
+
+It owns everything about *driving a project headlessly*: the Vite lifecycle
+(`server.ts`), the Chromium launch flags (`launch.ts` — including the
+`--headless=new` GPU path and the `MS_SOFTWARE_RENDER` SwiftShader fallback),
+the page pool and its concurrency (`pool.ts`, `semaphore.ts`), the bridge
+protocol (`session.ts`), and the option/frame-selector parsing a caller needs at
+its edge (`validate.ts`, `frame.ts`).
+
+Things to know when working on this:
+
+- **`@motion-script/cli` is a front end over it**, not a parallel implementation.
+  `HeadlessDriver` is a single-worker adapter kept for the batch scripts in
+  `packages/e2e`; anything new belongs on the engine, and a fix to the launch
+  flags or the bridge handshake must land here so both get it.
+- **The plugin resolves the project from `process.cwd()`**, so an engine rendering
+  a project elsewhere `chdir`s for the duration of the config load and restores
+  it (`cwd.ts`). That window is serialized across engines, because two starts
+  interleaving would each load the other's project.
+- **A failed job retires its page.** Nothing can interrupt a render already
+  running inside one, so cancellation and timeouts work by destroying the page;
+  a render *error* recycles too, since a page that threw mid-export may hold a
+  half-torn-down surface.
+- **Errors are coded, not prose.** `EngineError.code` is what a service maps onto
+  a response; a new failure mode needs a code rather than a distinguishable
+  message.
+
 ### `@motion-script/cli`
 
 Headless exporter: renders scenes to video/stills without the interactive
-player (`ms export`, `ms list` in a user project).
+player (`ms export`, `ms list` in a user project). Argument parsing, progress
+bars and file naming over `@motion-script/engine`.
 
 ### `create-motion-script` (`packages/create`)
 

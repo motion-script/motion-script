@@ -1,0 +1,48 @@
+{
+  "name": "@motion-script/engine",
+  "version": "2.15.0",
+  "description": "Render Motion Script projects to images and video from Node: pass in your project and scene objects, no browser and no project directory.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motion-script/motion-script.git",
+    "directory": "packages/engine"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@motion-script/canvaskit": "workspace:*",
+    "@motion-script/core": "workspace:*",
+    "@motion-script/skia-render": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "^6.1.3",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

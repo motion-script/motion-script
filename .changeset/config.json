@@ -19,6 +19,7 @@
       "@motion-script/latex",
       "@motion-script/code",
       "@motion-script/cli",
+      "@motion-script/engine",
       "motion-script"
     ]
   ],

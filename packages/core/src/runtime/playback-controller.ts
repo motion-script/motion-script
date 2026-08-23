@@ -11,10 +11,11 @@ import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
+import { Node } from "@/nodes/base/node";
 import { Node2D } from "@/nodes/base/node2d";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { NodeBox, collectBoxes, nodeBox, pickNode } from "./node-picking";
+import { NodeBox, collectBoxes, nodeBoxAt, pickNode } from "./node-picking";
 import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
 
 /**
@@ -681,8 +682,10 @@ export class PlaybackController {
     getNodeBox(path: string): NodeBox | null {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
-        const node = findNodeByPath(scene.root, path);
-        return node ? nodeBox(node, path) : null;
+        // Through `nodeBoxAt` rather than `nodeBox`, so a path naming a mesh
+        // inside a `Canvas3D` resolves too — it has no box of its own, only a
+        // projection into the viewport holding it. See `node-picking3d.ts`.
+        return nodeBoxAt(scene.root, path);
     }
 
     /**
@@ -712,7 +715,11 @@ export class PlaybackController {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
         const node = findNodeByPath(scene.root, path);
-        return node ? nodeTextLayout(node, path, this.measureScope) : null;
+        // 3D paths resolve here too now, and a mesh has no glyphs — the `Node2D`
+        // narrowing is what turns that into `null` rather than a bad cast.
+        return node instanceof Node2D
+            ? nodeTextLayout(node, path, this.measureScope)
+            : null;
     }
 
     /**
@@ -851,8 +858,18 @@ export function isParentNode(node: Node2D): boolean {
     return node.children.length > 0;
 }
 
+/**
+ * `node` and its subtree as {@link TreeState}, indexed over
+ * {@link Node._allChildren}.
+ *
+ * The authored list, not the 2D one, so a `Canvas3D`'s meshes are rows of their
+ * own and its HUD children keep the indices the author wrote them at. Every
+ * other structural-path walk in the engine reads the same list — the asset pass,
+ * the lifespan recorder and the picking walk — which is what lets a host key
+ * selection, lifespans and `getNodeBox` on one set of paths.
+ */
 function nodeToTreeState(
-    node: Node2D,
+    node: Node,
     path: string,
     lifespans?: ReadonlyMap<string, NodeLifespan>,
     sceneStart = 0,
@@ -862,7 +879,7 @@ function nodeToTreeState(
         id: node.id,
         path,
         type: node.name,
-        children: node.children.map((c, i) =>
+        children: node._allChildren.map((c, i) =>
             nodeToTreeState(c, nodePath(path, i), lifespans, sceneStart, waveformsByPath)),
     };
     // Waveforms come from the precomp requests (authoritative full timeline),
@@ -906,21 +923,29 @@ function waveformsByOwner(requests: readonly AudioRequest[]): Map<string, Wavefo
  * its node, or `null` when the tree no longer has that slot. The counterpart to
  * {@link nodePath}, which builds the same keys during the tree walk.
  */
-function findNodeByPath(root: Node2D, path: string): Node2D | null {
+/**
+ * The node at a structural path, walking {@link Node._allChildren}.
+ *
+ * The authored list rather than the 2D one, so the paths this resolves are the
+ * paths {@link getTreeState}, the lifespan recorder and {@link pickNode} all
+ * produce — including a `Canvas3D`'s meshes, which are not in its 2D children at
+ * all, and its HUD children, whose indices the 2D list shifts.
+ */
+function findNodeByPath(root: Node2D, path: string): Node | null {
     if (path === "") return root;
-    let node: Node2D = root;
+    let node: Node = root;
     for (const seg of path.split(".")) {
-        const next = node.children[Number(seg)];
+        const next = node._allChildren[Number(seg)];
         if (!next) return null;
         node = next;
     }
     return node;
 }
 
-function findNode(root: Node2D, id: string): Node2D | null {
+function findNode(root: Node, id: string): Node | null {
     if (root.id === id) return root;
 
-    for (const child of root.children) {
+    for (const child of root._allChildren) {
         const found = findNode(child, id);
         if (found) return found;
     }

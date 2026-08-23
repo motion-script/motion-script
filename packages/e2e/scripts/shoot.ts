@@ -18,7 +18,7 @@
  *              snapshotted library so `compare.ts` can diff the two renders.
  *
  * In a headless CI / Docker environment without a usable GPU, set
- * MS_SOFTWARE_RENDER=1 so Chromium falls back to SwiftShader (see the CLI driver).
+ * MS_SOFTWARE_RENDER=1 so Chromium falls back to SwiftShader (see @motion-script/engine).
  */
 import fs from 'node:fs';
 import path from 'node:path';

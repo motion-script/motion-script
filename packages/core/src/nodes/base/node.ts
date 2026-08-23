@@ -925,6 +925,26 @@ export abstract class Node<P extends NodeProps = NodeProps> implements SignalHos
     }
 
     /**
+     * Every child in **document order, both dimensions** — what {@link children}
+     * returns here, and what it filters on a {@link Node2D}.
+     *
+     * The one place the distinction bites is a `Canvas3D`, whose list is mixed:
+     * its `Node3D` children describe the scene it paints and its `Node2D`
+     * children are a HUD over it, and `Node2D.children` drops the former. That is
+     * right for layout — a mesh has no box to arrange — and wrong for anything
+     * keyed on a child's **index**, because dropping the meshes renumbers the
+     * HUD. A host that built its own path map over the authored tree would then
+     * put the selection box round the wrong node.
+     *
+     * So the picking walk reads this instead (see `runtime/node-picking.ts`), and
+     * every other reader keeps the filtered list it asked for.
+     */
+    /** @internal */
+    get _allChildren(): readonly Node[] {
+        return this._children;
+    }
+
+    /**
      * Compose this node's internal children — the constructor-friendly entry point
      * a custom composite calls to build its own subtree (a single node or an array,
      * JSX included). Sugar over {@link addChild}/{@link addChildren}: it works the

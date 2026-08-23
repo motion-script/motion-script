@@ -1,8 +1,11 @@
+import { Node } from "@/nodes/base/node";
 import { Node2D } from "@/nodes/base/node2d";
+import { Canvas3D } from "@/nodes/three/canvas3d-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Matrix2D, identity, multiply, invert, applyToPoint, cameraMatrix, translation } from "@/attributes/layout/matrix2d";
 import { worldAnchors } from "@/nodes/base/node-transform";
 import { nodePath } from "@/project/tree";
+import { collectBoxes3D, pickNode3D, type Canvas3DFrame } from "./node-picking3d";
 
 /**
  * Pure geometry for editor-style direct manipulation: where a node's pixels
@@ -140,6 +143,45 @@ export function nodeBox(node: Node2D, path: string): NodeBox {
 }
 
 /**
+ * The box at a structural path, in either dimension, or `null` when the path
+ * doesn't resolve.
+ *
+ * The one entry point that answers for a 3D node as well as a 2D one, which a
+ * bare {@link nodeBox} cannot: a mesh is not a `Node2D` and has no box of its
+ * own — what it has is a projection into the viewport that holds it, and finding
+ * that viewport is part of resolving the path (see `node-picking3d.ts`).
+ *
+ * Walks {@link Node._allChildren}, so the paths it accepts are the ones every
+ * other structural walk in the engine produces.
+ */
+export function nodeBoxAt(root: Node2D, path: string): NodeBox | null {
+    if (path === "") return nodeBox(root, path);
+
+    let node: Node = root;
+    let canvas: { node: Canvas3D; path: string } | null = null;
+    const segments = path.split(".");
+    for (let i = 0; i < segments.length; i++) {
+        if (node instanceof Canvas3D) canvas = { node, path: prefixPath(segments, i) };
+        const next = node._allChildren[Number(segments[i])];
+        if (!next) return null;
+        node = next;
+    }
+
+    if (node instanceof Node2D) return nodeBox(node, path);
+    // A 3D node: ask the viewport that holds it. There is always one — a `Node3D`
+    // cannot be parented anywhere else (motion-script throws rather than allowing
+    // it) — so a `null` here is a malformed tree rather than a missing case.
+    if (!canvas) return null;
+    const frame = canvas3DFrame(canvas.node, canvas.path);
+    return collectBoxes3D(canvas.node, frame, canvas.path).find((box) => box.path === path) ?? null;
+}
+
+/** The first `count` segments of a split path, rejoined. */
+function prefixPath(segments: readonly string[], count: number): string {
+    return segments.slice(0, count).join(".");
+}
+
+/**
  * The topmost node whose hit region contains `point` (viewport space, y-up,
  * origin at the viewport centre), or `null`. Children paint over their parent and
  * later siblings over earlier ones, so the walk tests children last-to-first
@@ -175,9 +217,21 @@ function pickIn(node: Node2D, path: string, point: Vector2, tolerance: number, i
     // A clipping node (or one that opens a camera viewport) gates its subtree.
     if (!inside && node._confinesChildren()) return null;
 
-    const children = node.children;
+    // A `Canvas3D`'s children come in both dimensions, and its 2D ones are
+    // indexed against the *whole* list — see {@link childSlots}.
+    const children = childSlots(node);
     for (let i = children.length - 1; i >= 0; i--) {
-        const hit = pickIn(children[i], nodePath(path, i), point, tolerance, false);
+        const slot = children[i];
+        if (slot === null) continue;
+        const hit = pickIn(slot, nodePath(path, i), point, tolerance, false);
+        if (hit) return hit;
+    }
+
+    // The 3D scene draws under the 2D children and over the canvas's own fill, so
+    // it is tested in that order too: a HUD label wins over the mesh behind it,
+    // and the mesh wins over the viewport it sits in.
+    if (node instanceof Canvas3D && inside) {
+        const hit = pickNode3D(node, canvas3DFrame(node, path), point, tolerance, path);
         if (hit) return hit;
     }
 
@@ -189,14 +243,47 @@ function pickIn(node: Node2D, path: string, point: Vector2, tolerance: number, i
  * Collect every visible node's box in draw order (parents before children, so a
  * host can paint them in the order the renderer did). Skips `opacity: 0` nodes
  * and the scene root, matching {@link pickNode}.
+ *
+ * A `Canvas3D` also contributes a box per `Node3D` inside it, projected into its
+ * plane — see `node-picking3d.ts`. They sit after the viewport's own box and
+ * before its 2D children's, which is where the 3D pass is painted; among
+ * themselves they are ordered **near camera first**, because a 3D scene has no
+ * draw order of its own for them to be in.
  */
 export function collectBoxes(node: Node2D, path: string, out: NodeBox[], isRoot: boolean): void {
     if (node.opacity === 0) return;
     if (!isRoot) out.push(nodeBox(node, path));
-    const children = node.children;
-    for (let i = 0; i < children.length; i++) {
-        collectBoxes(children[i], nodePath(path, i), out, false);
+
+    if (node instanceof Canvas3D) {
+        for (const box of collectBoxes3D(node, canvas3DFrame(node, path), path)) out.push(box);
     }
+
+    const children = childSlots(node);
+    for (let i = 0; i < children.length; i++) {
+        const slot = children[i];
+        if (slot !== null) collectBoxes(slot, nodePath(path, i), out, false);
+    }
+}
+
+/**
+ * The node's children as **index slots**, with a `null` wherever the slot holds
+ * something this walk doesn't descend into.
+ *
+ * Everywhere but a `Canvas3D` this is just `children`, and the array is returned
+ * untouched. A `Canvas3D` is the one node holding both dimensions, and its
+ * `Node2D.children` drops the meshes — which would renumber its HUD children and
+ * hand every one of them the path of an earlier sibling. So its slots are taken
+ * from the authored list with the 3D ones blanked out: same indices as the
+ * document, and the meshes reached through their own walk instead.
+ */
+function childSlots(node: Node2D): readonly (Node2D | null)[] {
+    if (!(node instanceof Canvas3D)) return node.children;
+    return node._allChildren.map((child) => (child instanceof Node2D ? child : null));
+}
+
+/** What the 3D walk needs to know about the viewport it is projecting into. */
+function canvas3DFrame(canvas: Canvas3D, path: string): Canvas3DFrame {
+    return { box: nodeBox(canvas, path), matrix: renderMatrix(canvas) };
 }
 
 /** Map `point` into `node`'s local space and ask the node whether it was hit. */

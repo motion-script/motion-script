@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist",
+        // NodeNext so the emitted output is runnable directly by Node's ESM
+        // loader (this package is consumed by Node servers, not bundled like
+        // the browser-side packages). It requires explicit `.js` extensions on
+        // relative imports.
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "lib": ["ES2023"],
+        "types": ["node"]
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "references": [
+        { "path": "../core/tsconfig.build.json" },
+        { "path": "../skia-render/tsconfig.build.json" }
+    ]
+}

@@ -1,5 +1,6 @@
 /** @internal */ export * from './playback-controller';
 export * from './node-picking';
+/** @internal */ export * from './node-picking3d';
 export * from './text-geometry';
 /** @internal */ export * from './state-evaluator';
 /** @internal */ export * from './precompisition';

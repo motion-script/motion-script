@@ -86,6 +86,7 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 | [`@motion-script/react`](packages/react) | React bindings for embedding Motion Script. |
 | [`@motion-script/player`](packages/player) | The timeline-based editor/player UI. |
 | [`@motion-script/vite-plugin`](packages/vite-plugin) | Vite plugin that boots the player app around your project and wires up assets. |
+| [`@motion-script/engine`](packages/engine) | Renders projects to video and stills from a Node server: a warm Vite server plus a pool of headless Chromium pages, with bounded concurrency, cancellation, and coded errors. |
 | [`@motion-script/cli`](packages/cli) | Headless command-line exporter for rendering scenes to video or stills. |
 | [`@motion-script/code`](packages/components/code) | Syntax-highlighted code block component for use in scenes. |
 | [`@motion-script/latex`](packages/components/latex) | LaTeX math rendering component for use in scenes. |

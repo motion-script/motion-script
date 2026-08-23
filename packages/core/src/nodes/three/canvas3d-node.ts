@@ -112,6 +112,25 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
     }
 
     /**
+     * This frame's scene, for a reader outside the render pass.
+     *
+     * {@link buildScene3D} is protected because a subclass overrides it, not
+     * because the result is private — the asset pass and the render already call
+     * it twice a frame. The editor geometry in `runtime/node-picking3d.ts` is the
+     * third caller, and it has to go through the *same* seam rather than walking
+     * the `Node3D` children itself: a subclass that builds its scene some other
+     * way (supplying a default camera and lighting rig, say) would otherwise be
+     * picked against a scene nobody renders.
+     *
+     * Recorded fresh, like the other two, so what it reports is this frame's
+     * state rather than a cache a scrub could leave behind.
+     */
+    /** @internal */
+    _scene3D(): Scene3D {
+        return this.buildScene3D();
+    }
+
+    /**
      * Declare the 3D runtime, plus every texture, model and env map the scene
      * references.
      *

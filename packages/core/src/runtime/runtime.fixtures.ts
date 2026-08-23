@@ -30,6 +30,16 @@ export class FakeNode {
         public children: FakeNode[] = [],
         public properties: Record<string, unknown> = {},
     ) { }
+
+    /**
+     * The authored child list, which every structural-path walk reads rather
+     * than `children` — see {@link Node._allChildren}. Identical here: a fake has
+     * no dimensions to keep apart, and the distinction only exists for a
+     * `Canvas3D`.
+     */
+    get _allChildren(): readonly FakeNode[] {
+        return this.children;
+    }
 }
 
 export interface FakeSceneOptions {
