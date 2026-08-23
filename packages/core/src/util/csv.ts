@@ -65,19 +65,20 @@ export function parseCSV(text: string, options: ParseCSVOptions = {}): DataRecor
 }
 
 /**
- * `parseData` only ever runs as an inlined literal — `@motion-script/cli`'s
- * build-time macro replaces `parseData("file.csv")` call sites with the
- * already-parsed rows before this body ever executes. This implementation exists
- * purely so the call type-checks and so an unresolved call site (a project not
- * built by the CLI, or a non-literal argument the macro couldn't statically
- * inline) fails loudly instead of silently returning nothing.
+ * `parseData` only ever runs as an inlined literal — the
+ * `@motion-script/vite-plugin` build-time macro replaces
+ * `parseData("file.csv")` call sites with the already-parsed rows before this
+ * body ever executes. This implementation exists purely so the call
+ * type-checks and so an unresolved call site (missing plugin, or a
+ * non-literal argument the macro couldn't statically inline) fails loudly
+ * instead of silently returning nothing.
  */
 export function parseData(file: string, _options?: ParseCSVOptions): DataRecord[] {
     throw new Error(
         `parseData("${file}") must be called with a static string literal so the ` +
-        `@motion-script/cli macro can inline it at build time. If you're seeing this ` +
-        `error at runtime, either the project wasn't built by the CLI, or this call's ` +
-        `argument isn't a plain string literal.`
+        `@motion-script/vite-plugin macro can inline it at build time. If you're seeing ` +
+        `this error at runtime, either the plugin isn't installed/registered, or this ` +
+        `call's argument isn't a plain string literal.`
     );
 }
 

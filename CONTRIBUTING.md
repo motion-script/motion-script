@@ -43,21 +43,21 @@ Workspaces live under `packages/*` (and `packages/components/*`). The root
 ## Architecture
 
 Motion Script separates the **animation engine** from the **rendering backend**
-from the **renderer front end**. This is the key design idea: `core` knows how to
-evolve a scene over time but knows nothing about pixels; a rendering backend
-(today, `web`) knows how to draw a frame; and the CLI drives a user's project
-through both, headlessly.
+from the **editor UI**. This is the key design idea: `core` knows how to evolve
+a scene over time but knows nothing about pixels; a rendering backend (today,
+`web`) knows how to draw a frame; and the player/plugin layer wires a user's
+project into an interactive editor.
 
 ```
                         ┌──────────────────────────────┐
-   your project  ──────▶│   @motion-script/cli           │  ms list / screenshot /
-   (scenes, project.ts)  │   (driver + vite plugin)       │  export; boots Vite,
+   your project  ──────▶│   @motion-script/vite-plugin   │  boots the player app,
+   (scenes, project.ts)  │   (dev server + build)         │  aliases your project,
                         └───────────────┬────────────────┘  serves canvaskit.wasm
                                         │
                                         ▼
                         ┌──────────────────────────────┐
-                        │   cli harness/ (browser)       │  installs the render
-                        │   served from source by Vite   │  bridge, calls the exporter
+                        │   @motion-script/player        │  timeline, scene panel,
+                        │   (React editor UI)            │  scrubbing, export controls
                         └───────────────┬────────────────┘
                                         │ uses
                         ┌───────────────┴────────────────┐
@@ -132,33 +132,40 @@ hand-edited (see below).
 React bindings (`@motion-script/react`) for embedding Motion Script in a React
 app. Depends on `core` and `web`.
 
-### `@motion-script/cli`: the renderer
+### `@motion-script/player`: the editor UI
 
-The only build tooling a user project needs. It has two halves that build very
-differently:
+The React app that is the actual editor: timeline, scene panel, node-names
+column, playback/scrubbing, and export controls. Built with Tailwind, Base UI,
+Zustand, and `wavesurfer.js` (audio). It's a `private` package consumed by the
+vite plugin rather than published as a standalone tool.
 
-- **`src/`** is compiled by `tsc` into `dist/` and runs in **Node**: the `ms`
-  binary, the Playwright driver, and the Vite plugin.
-- **`harness/`** is **never compiled** — Vite serves it to the browser straight
-  from source at render time. It ships verbatim in the package's `files` and has
-  its own `harness/tsconfig.json` (DOM libs, bundler resolution) purely to
-  type-check. Editing it needs no rebuild; editing `src/` does.
+### `@motion-script/vite-plugin`: the glue
 
-The plugin sets `harness/` as the Vite `root` (not the user's project), aliases
-`~user-project` to the project's `src/project.ts`, builds a virtual
-`~asset-manifest` from its `public/` folder plus the CLI's own bundled fonts
-(Inter, Fira Mono), implements the `?scene` suffix and the `parseData` macro,
-serves `canvaskit.wasm` from middleware, and aliases `three` for 3D scenes. The
-driver starts that server with `configFile: false`, which is why a project has no
-bundler configuration of its own.
+The plugin a user project depends on. It makes `vite` boot the **player app**
+(not the user's project directly): it sets the player as the Vite `root`, aliases
+`~user-project` / `~user-script` to the user's `project.ts` and entry file,
+serves `canvaskit.wasm` in dev (middleware) and emits it on build
+(`closeBundle`), builds a virtual asset manifest from the user's `public/`
+folder, and resolves React from its own `node_modules` so it works whether or
+not the user installed React.
+
+### `@motion-script/cli`: headless rendering
+
+The `ms` binary — `list`, `screenshot`, `export`, `clear`. It starts the
+project's *own* Vite dev server (so the plugin above supplies the whole
+pipeline), drives it in headless Chromium via Playwright, and talks to the render
+bridge the plugin installs in `?headless` mode. It runs from
+`packages/cli/dist/`, so rebuild it (`pnpm --filter @motion-script/cli build`)
+after changing `packages/cli/src/`.
 
 ### `create-motion-script`: scaffolding
 
 The `create-motion-script` CLI. Prompts for a project name/path/language, copies
-`template-ts` or `template-js`, and pins `@motion-script/*` dependency versions.
-Both templates ship a `tsconfig.json` — the JS one too, since that is where the
-JSX transform is configured and Vite reads `jsx`/`jsxImportSource` from
-`tsconfig.json` only (a `jsconfig.json` is ignored).
+`template-ts` or `template-js`, writes a `vite.config` that registers the plugin,
+and pins `@motion-script/*` dependency versions. Both templates ship a
+`tsconfig.json` — the JS one too, since that is where the JSX transform is
+configured and Vite reads `jsx`/`jsxImportSource` from `tsconfig.json` only (a
+`jsconfig.json` is ignored).
 
 ### Supporting workspaces
 
@@ -176,8 +183,8 @@ Most library packages support `dev`, `build`, `lint`, `typecheck`, and `test`
 # work on the engine with a watch build
 pnpm --filter @motion-script/core dev
 
-# render the example project to see a change
-pnpm --filter @motion-script/template exec ms screenshot last
+# run the editor against the example project
+pnpm --filter @motion-script/player dev
 
 # run core's tests in watch mode
 pnpm --filter @motion-script/core test
@@ -210,25 +217,31 @@ Conventions for a buildable package:
   restore. Each package's `files` excludes it from the published tarball
   (`"!dist/**/*.tsbuildinfo"`).
 - **Scripts:** `build` = `tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`
-  (or `&& vite build` for bundled packages like `react`);
+  (or `&& vite build` for bundled packages like `react`/`player`);
   `typecheck` = `tsc -p tsconfig.json --noEmit` (or `tsc -b --noEmit` for the
   Vite app/solution packages, safe because the `typecheck` task emits nothing
   and never races on `dist`); `clean` = `rimraf --glob dist .turbo *.tsbuildinfo`.
 
-### Important: the CLI must be rebuilt after touching `src/`
+### Important: the player ships prebuilt
 
-`ms` runs from `packages/cli/dist/`, so a change under `packages/cli/src/` (the
-driver or the Vite plugin) needs `pnpm --filter @motion-script/cli build` before
-it takes effect. A change under `packages/cli/harness/` does not — Vite serves
-that half from source.
+The vite plugin aliases `@motion-script/player` to its **prebuilt `dist/`**. If
+you change `core` (or anything the player depends on), rebuild the player so the
+editor picks up your changes:
+
+```bash
+pnpm --filter @motion-script/player build
+```
 
 ### The CanvasKit WASM binary
 
-The `canvaskit.wasm` binary lives committed in `packages/canvaskit/`. The CLI's
-Vite plugin resolves it out of the installed `@motion-script/canvaskit` package
-and serves it from dev middleware. If you have an uncommitted or custom
-`canvaskit.js` + `.wasm` in your working tree, stash it before running the `web`
-browser tests: a mismatched binary breaks them with `_MakeSRGB undefined`.
+The `canvaskit.wasm` binary lives **committed** in `packages/canvaskit/`, and
+nothing copies it at install time. The vite plugin resolves it out of the
+installed `@motion-script/canvaskit` package, serving it from dev middleware and
+emitting it into `dist/` on build (`closeBundle`) — those per-project copies land
+at `**/public/canvaskit.wasm`, which *is* gitignored, so never commit one. If you
+have an uncommitted or custom `canvaskit.js` + `.wasm` in your working tree, stash
+it before running the `web` browser tests: a mismatched binary breaks them with
+`_MakeSRGB undefined`.
 
 ## Testing
 

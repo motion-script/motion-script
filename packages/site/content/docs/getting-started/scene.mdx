@@ -66,21 +66,23 @@ export default createProject({
 
 Here's what you're telling MotionScript:
 
-- `name`: the project name, used for output filenames
+- `name`: what shows up in the player
 - `scenes`: the list of scenes to play, in order (just one for now)
 - `viewport`: the size of your video, in pixels
 - `fps`: how many frames per second to render
 
-:::tip The `?scene` suffix
-Each scene file `export default createScene(...)`; the `?scene` import hands you
-a ready-to-use scene instance with a stable identity stamped on it, so you list
-`myScene` directly rather than constructing anything yourself.
+:::tip Hot reloading
+The `?scene` suffix makes each scene file its own hot-reload boundary. When you
+edit a scene while the player is running, only that scene re-runs. The playhead
+stays put and the rest of the timeline is untouched. Each scene file
+`export default createScene(...)`; the `?scene` import hands you the ready-to-use
+scene, so you list `myScene` directly.
 :::
 
 :::info Reusing a scene with parameters
 `createScene` takes a generator, so a parameterized scene is just a function that
 returns one. Write the factory in a shared file, then call it per `?scene` file
-(one instance per file, so each keeps its own identity):
+(one instance per file keeps the hot-reload boundary intact):
 
 ```tsx title="src/scenes/card.ts"
 import type { SceneGenerator } from 'motion-script';
@@ -97,7 +99,7 @@ export default createScene(card('royalblue'));
 ```
 :::
 
-Render your project with `ms screenshot first` and you'll see your blue square sitting in the middle of the frame:
+Run your project and you'll see your blue square sitting in the middle of the frame:
 
 <FirstSceneCanvas />
 

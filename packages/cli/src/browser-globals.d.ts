@@ -1,9 +1,9 @@
-// Ambient declaration of the render bridge the harness app installs on `window`.
-// Mirrors the `HeadlessBridge` shape in harness/src/headless.ts. Declared
-// locally (rather than imported) because the harness is served to the browser by
-// Vite and never compiled into this package's `dist` — these globals are
-// referenced inside Playwright `page.evaluate` callbacks, which TypeScript
-// checks in this Node project.
+// Ambient declaration of the headless bridge the @motion-script/vite-plugin
+// installs on `window` in `?headless` mode. Mirrors the `HeadlessBridge` shape
+// in vite-plugin/plugin-app/src/headless.ts. Declared locally (rather than
+// imported) because the bridge module only exists in the browser bundle, not
+// as a published type — these globals are referenced inside Playwright
+// `page.evaluate` callbacks, which TypeScript checks in this Node project.
 
 /** Which frame a screenshot addresses: a global index, or the first/last frame. */
 type MotionScriptFrameSpec =

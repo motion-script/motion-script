@@ -23,8 +23,9 @@ import crossSceneBedB from './scenes/cross-scene-bed-b?scene';
  * scene pairs a label with a simple visual so the otherwise-invisible audio has
  * something to watch — `speed` clips visibly finish sooner.
  *
- * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
- * temporarily re-export it as the default from `src/project.ts`.
+ * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
+ * preview it, point the `@motion-script/vite-plugin` `entry` option at this
+ * file, or temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Audio Showcase',

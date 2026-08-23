@@ -29,10 +29,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./csv": {
-      "types": "./dist/util/csv.d.ts",
-      "default": "./dist/util/csv.js"
-    },
     "./jsx/jsx-runtime": {
       "types": "./dist/jsx/jsx-runtime.d.ts",
       "default": "./dist/jsx/jsx-runtime.js"

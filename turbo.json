@@ -13,6 +13,27 @@
                 "public/**"
             ]
         },
+        "build:app": {
+            "dependsOn": [
+                "^build"
+            ],
+            "outputs": [
+                "../site/public/player/**"
+            ]
+        },
+        "@motion-script/site#build": {
+            "dependsOn": [
+                "@motion-script/player#build:app",
+                "^build"
+            ],
+            "outputs": [
+                "dist/**",
+                ".next/**",
+                "!.next/cache/**",
+                "build/**",
+                "public/**"
+            ]
+        },
         "typecheck": {
             "dependsOn": [
                 "^typecheck"

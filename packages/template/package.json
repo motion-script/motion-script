@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "list": "ms list",
-    "screenshot": "ms screenshot last",
     "export": "ms export"
   },
   "dependencies": {
@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@motion-script/cli": "workspace:*",
+    "@motion-script/vite-plugin": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

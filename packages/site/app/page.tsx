@@ -1,5 +1,6 @@
 import Navbar from '@/components/landing/Navbar'
 import HeroSection from '@/components/landing/HeroSection'
+import EditorSection from '@/components/landing/EditorSection'
 import ProceduralSection from '@/components/landing/ProceduralSection'
 import FeaturesSection from '@/components/landing/FeaturesSection'
 import { ContributeSection } from '@/components/landing/DocsSection'
@@ -14,6 +15,8 @@ export default function Page() {
         <HeroSection />
 
         <div className="relative bg-background">
+          <EditorSection />
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
           <ProceduralSection />
           <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
           <FeaturesSection />

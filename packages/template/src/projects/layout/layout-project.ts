@@ -27,8 +27,9 @@ import addRemoveChild from './scenes/add-remove-child?scene';
  * hug-vs-shape behaviour of a `Rect` with and without children, nested flex
  * composition, and building a grid out of nested rows.
  *
- * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
- * temporarily re-export it as the default from `src/project.ts`.
+ * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
+ * preview it, point the `@motion-script/vite-plugin` `entry` option at this
+ * file, or temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Layout Showcase',

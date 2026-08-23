@@ -5,6 +5,7 @@
   "description": "Visual end-to-end test harness: renders one scene per TESTS.md checkbox at 960x540/30fps, screenshots first/mid/last frames, and pixel-diffs a stable build against the live library build.",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "gen": "tsx scripts/gen-scenes.ts",
     "list": "ms list",
     "screenshot": "tsx scripts/shoot.ts",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@motion-script/cli": "workspace:*",
+    "@motion-script/vite-plugin": "workspace:*",
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
     "pixelmatch": "^6.0.0",

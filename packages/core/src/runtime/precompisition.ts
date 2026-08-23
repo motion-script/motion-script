@@ -262,11 +262,9 @@ interface ScenePassOutcome {
  * source looks like — so it trusts what it is given and simply records fresh
  * passes back via {@link put}.
  *
- * A host implementing this typically keys entries by scene and validates them by
- * re-hashing whatever each entry recorded as its source dependencies.
- *
- * Note that a pass measured with `lifespans: false` is never offered to the
- * store: it is a *partial* measurement, and a store is shared across callers.
+ * See `@motion-script/vite-plugin`, which implements this over a project-local
+ * `.motion-script/precomp.json` and validates by re-hashing each entry's recorded
+ * source dependencies.
  */
 export interface PrecompCache {
     /** A previously-stored pass for `sceneKey`, already validated, or undefined. */
@@ -848,9 +846,9 @@ export class Precomp {
  * edits and would serve the pre-edit measurement forever.
  *
  * `__sceneHotId` is the fallback: the scene file's project-relative path,
- * stamped by the `?scene` transform (`@motion-script/cli`) — a sound key for a
- * host that validates its entries by re-hashing each one's recorded source
- * dependencies.
+ * stamped by the vite-plugin's `?scene` transform — the same identity hot
+ * reloading matches on, and a sound key for that host because it validates its
+ * entries by re-hashing each one's recorded source dependencies.
  *
  * A scene with neither has nothing stable to key on: class names collide and
  * array position changes when a scene is added. Those scenes simply measure
@@ -869,10 +867,10 @@ function storeKeyOf(scene: Scene): string | undefined {
  * than its content now points at the pre-edit measurement and must be refused.
  *
  * The distinction falls straight out of {@link storeKeyOf}'s two key kinds.
- * `__sceneHotId` is a slot: the `?scene` transform stamps the scene file's path,
- * which is deliberately stable across exactly the edits that bring us here, and
- * such a host validates its entries separately by re-hashing recorded source
- * deps — so on this path it is refused. `__precompKey` is the content itself, so a changed
+ * `__sceneHotId` is a slot: the vite-plugin stamps the scene file's path, which
+ * is deliberately stable across exactly the edits that bring us here, and that
+ * host validates its entries separately by re-hashing recorded source deps — so
+ * on this path it is refused. `__precompKey` is the content itself, so a changed
  * scene *is* a changed key and a hit can only be the right pass; refusing it
  * throws away the one mechanism built for this case, which for an editor is every
  * keystroke in the inspector.

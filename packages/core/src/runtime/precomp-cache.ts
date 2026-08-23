@@ -16,9 +16,9 @@ import type { NodeLifespan, ScenePrecomp } from "./precompisition";
  * replay a scene and land on an identical frame.
  *
  * Core stays host-agnostic: this module only defines the shape. Deciding *where*
- * the bytes live and *when* an entry is still valid belongs to the host, which
- * would typically key entries by scene and invalidate them by re-hashing each
- * entry's recorded source dependencies.
+ * the bytes live and *when* an entry is still valid belongs to the host — see
+ * `@motion-script/vite-plugin`, which keys entries by scene and invalidates them
+ * by re-hashing each entry's recorded source dependencies.
  *
  * ### What is deliberately not stored
  *

@@ -21,8 +21,9 @@ import wrapBounds from './scenes/wrap-bounds';
  * spans, combined fill/stroke/shadow paint, and the `Code` node's
  * syntax-aware editing.
  *
- * Not auto-run by `ms` (which discovers `src/project.ts`). To render it,
- * temporarily re-export it as the default from `src/project.ts`.
+ * Not auto-run by the vite plugin (which discovers `src/project.ts`). To
+ * preview it, point the `@motion-script/vite-plugin` `entry` option at this
+ * file, or temporarily re-export it as the default from `src/project.ts`.
  */
 export default createProject({
     name: 'Text Showcase',

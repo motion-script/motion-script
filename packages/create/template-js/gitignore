@@ -3,6 +3,9 @@ node_modules
 output
 out
 dist
+# Precomp cache — derived from your scenes, rebuilt on demand. Committing it is a
+# valid choice (it makes CI and fresh clones skip the measuring pass too).
+.motion-script/
 
 # Editor directories and files
 .vscode/*

@@ -112,7 +112,7 @@ describe('parseCSV', () => {
 
 describe('parseData', () => {
     it('throws when called directly, since it only runs as an inlined build-time literal', () => {
-        // This is deliberate, not a bug: the @motion-script/cli macro
+        // This is deliberate, not a bug: the @motion-script/vite-plugin macro
         // replaces static parseData("file.csv") calls before this body ever
         // executes. Calling it directly (unresolved call, or missing plugin)
         // should fail loudly rather than silently return nothing.
