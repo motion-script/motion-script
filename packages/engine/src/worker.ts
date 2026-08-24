@@ -1,8 +1,11 @@
 import type { CanvasKit } from '@motion-script/canvaskit';
 import { AssetCatalog, ManifestAssetCatalog, type AssetManifest, type Size2D } from '@motion-script/core';
-import { NodeRenderContext } from './render-context.js';
+import { NodeRenderContext, type NodeRenderBackend, type RenderContextFactory } from './render-context.js';
 import { NodeStorageAdapter, type AssetLoader, type ImageDecoder } from './storage-adapter.js';
 import type { EngineLogger } from './types.js';
+
+const defaultRenderContext: RenderContextFactory = (canvasKit, storageAdapter) =>
+    new NodeRenderContext(canvasKit, storageAdapter);
 
 /**
  * One render's Skia surface, storage adapter and decode caches.
@@ -17,7 +20,7 @@ import type { EngineLogger } from './types.js';
  * at a larger one; changing it rebuilds the adapter rather than reusing it.
  */
 export class RenderWorker {
-    private context: NodeRenderContext;
+    private context: NodeRenderBackend;
     private adapter: NodeStorageAdapter;
     private catalog: AssetCatalog;
     private viewport: Size2D;
@@ -29,6 +32,8 @@ export class RenderWorker {
             loadAsset: AssetLoader;
             decodeImage?: ImageDecoder;
             logger?: EngineLogger;
+            /** Swaps the render context implementation; see {@link RenderContextFactory}. */
+            createRenderContext?: RenderContextFactory;
         },
         viewport: Size2D,
     ) {
@@ -42,7 +47,7 @@ export class RenderWorker {
             decodeImage: deps.decodeImage,
             logger: deps.logger,
         });
-        this.context = new NodeRenderContext(canvasKit, this.adapter);
+        this.context = (deps.createRenderContext ?? defaultRenderContext)(canvasKit, this.adapter);
     }
 
     /**
@@ -67,7 +72,7 @@ export class RenderWorker {
         this.adapter.setCatalog(this.catalog);
     }
 
-    get renderContext(): NodeRenderContext { return this.context; }
+    get renderContext(): NodeRenderBackend { return this.context; }
     get storageAdapter(): NodeStorageAdapter { return this.adapter; }
     get assetCatalog(): AssetCatalog { return this.catalog; }
 
@@ -83,7 +88,7 @@ export class RenderWorker {
             decodeImage: this.deps.decodeImage,
             logger: this.deps.logger,
         });
-        this.context = new NodeRenderContext(this.canvasKit, this.adapter);
+        this.context = (this.deps.createRenderContext ?? defaultRenderContext)(this.canvasKit, this.adapter);
     }
 
     dispose(): void {

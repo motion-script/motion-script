@@ -23,13 +23,7 @@ import {
     Precomp,
     ProjectGlobals,
 } from "@motion-script/core";
-import {
-    WebAudioPlayer,
-    WebMasterClock,
-    WebMeasurer,
-    WebRenderContext,
-    WebStorageAdapter,
-} from "@motion-script/web";
+import { createWebPlayerBackend, type CreatePlayerBackend, type PlayerRenderContext } from "./backend";
 import { useMotionScript } from "./provider";
 
 /**
@@ -142,6 +136,20 @@ type Props = {
      * on the canvas, which cannot add resolution it was not rasterized with.
      */
     view?: { zoom: number; x: number; y: number };
+    /**
+     * Builds the render surface and the four platform seams
+     * `PlaybackController` runs on (measurer, storage adapter, audio device,
+     * master clock) — see {@link PlayerBackend}. Defaults to
+     * {@link createWebPlayerBackend}, `@motion-script/web`'s WebGL/Skia stack.
+     *
+     * Identity-compared like `scenes` below: pass a stable reference (a module-
+     * level function, or one memoized alongside the other structural props),
+     * not a fresh arrow function per render, or every render tears down and
+     * rebuilds the whole controller. Swapping it *is* a full remount whenever
+     * it does change — there is no such thing as hot-swapping a live render
+     * surface for a different one.
+     */
+    renderer?: CreatePlayerBackend;
     /** Scenes composed into a single timeline by an internal {@link Precomp}. */
     scenes: Scene[];
     /** Manifest describing the media assets referenced by `scenes`. */
@@ -268,6 +276,7 @@ export function MotionPlayer({
     renderScale = 1,
     surfaceSize,
     view,
+    renderer,
     scenes,
     assets,
     theme,
@@ -314,7 +323,7 @@ export function MotionPlayer({
      */
     const renderScaleRef = useRef(renderScale);
     /** The live render context, so the resize effect can reach it after mount. */
-    const renderContextRef = useRef<WebRenderContext | null>(null);
+    const renderContextRef = useRef<PlayerRenderContext | null>(null);
 
     /**
      * The canvas's backing store, in device pixels.
@@ -374,11 +383,13 @@ export function MotionPlayer({
         setTheme(theme);
         setVariables(variables);
         const catalog = new ManifestAssetCatalog(assets);
-        const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
-        const measure = new WebMeasurer(storage);
-        const audio = new WebAudioPlayer();
-        const clock = new WebMasterClock({ context: audio.getContext(), fps });
-        const renderContext = new WebRenderContext(canvasKit, storage);
+        const {
+            renderContext,
+            measurer: measure,
+            storageAdapter: storage,
+            audioDevice: audio,
+            masterClock: clock,
+        } = (renderer ?? createWebPlayerBackend)({ canvasKit, catalog, viewport, fps });
         // Before `mount`, which builds the Skia surface from the canvas's current
         // `width`/`height` â€” React has already written those at this scale, so the
         // two agree from the first frame and nothing paints at the wrong ratio.
@@ -464,7 +475,7 @@ export function MotionPlayer({
             pc.dispose();
             renderContext.dispose();
         };
-    }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds]);
+    }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds, renderer]);
 
     /**
      * Rebuild the surface when the backing store changes â€” {@link Props.renderScale}

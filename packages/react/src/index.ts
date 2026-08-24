@@ -6,4 +6,11 @@
 export { MotionScriptProvider, useMotionScript } from './ui/provider';
 export { MotionPlayer } from './ui/scene';
 export type { FrameHandle, PrecompProgress } from './ui/scene';
+export { createWebPlayerBackend } from './ui/backend';
+export type {
+    CreatePlayerBackend,
+    PlayerBackend,
+    PlayerBackendDeps,
+    PlayerRenderContext,
+} from './ui/backend';
 export type { BuildError } from '@motion-script/core';

@@ -9,7 +9,7 @@ import {
     type Scene,
     type Size2D,
 } from '@motion-script/core';
-import { renderFrameAt } from '@motion-script/skia-render/export';
+import { renderFrameAt, renderTimeline, type VideoFrameSink } from '@motion-script/skia-render/export';
 import { getCanvasKit } from './canvaskit.js';
 import { withDeadline } from './deadline.js';
 import { EngineError } from './errors.js';
@@ -24,7 +24,9 @@ import type {
     FontSource,
     RenderImageOptions,
     RenderSource,
+    RenderVideoOptions,
     RenderedImage,
+    RenderedVideo,
 } from './types.js';
 
 /** Default per-job budget: long enough for a real render, short enough to not wedge a queue forever. */
@@ -57,9 +59,14 @@ interface ResolvedSource {
  *
  * const project = createProject({ name: 'Promo', scenes: [intro, outro] });
  * const still = await engine.renderImage({ project, at: 'last' });
- * const video = await engine.renderVideo({ project });
+ * const video = await engine.renderVideo({ project, sink: myFfmpegSink });
  * const clips = await engine.renderClips({ project });
  * ```
+ *
+ * `renderVideo` has no built-in encoder — see {@link RenderVideoOptions.sink} —
+ * so `myFfmpegSink` above is a `VideoFrameSink` (from
+ * `@motion-script/skia-render/export`) the caller supplies, typically piping
+ * `SkiaRenderContext.snapshotPixels()` to an `ffmpeg` process over stdin.
  *
  * ### Renders are serialized
  *
@@ -169,6 +176,70 @@ export class MotionScriptEngine {
                 measuredAll: result.measuredAll,
                 format,
                 bytes: result.bytes,
+            };
+        });
+    }
+
+    /**
+     * Render scenes to video, driving `options.sink` frame by frame.
+     *
+     * There is no built-in encoder — see {@link RenderVideoOptions.sink} for why
+     * the caller supplies one. Everything else (precomp, state evaluation, asset
+     * windows, the warm-and-re-render retry that makes a frame accurate, audio
+     * scheduling, progress, cancellation) is the portable machinery
+     * `@motion-script/skia-render`'s `renderTimeline` drives regardless of what
+     * encodes the result — the same split `@motion-script/web`'s browser exporter
+     * is built on, with a mediabunny/WebCodecs sink in its place.
+     */
+    async renderVideo(options: RenderVideoOptions): Promise<RenderedVideo> {
+        const scale = parseScale(options.scale);
+        const source = this.resolveSource(options);
+
+        return this.run(options, async worker => {
+            worker.prepare(source.viewport, scale);
+            setTheme(source.theme);
+            setVariables(source.variables);
+
+            // `renderTimeline` only reports frame count and fps to the sink's
+            // `start` — captured here rather than measuring the timeline a second
+            // time to fill in `RenderedVideo`.
+            let frames = 0;
+            let fps = source.fps;
+            const addAudio = options.sink.addAudio?.bind(options.sink);
+            const sink: VideoFrameSink = {
+                start: async info => {
+                    frames = info.totalFrames;
+                    fps = info.fps;
+                    await options.sink.start(info);
+                },
+                addFrame: options.sink.addFrame.bind(options.sink),
+                addAudio,
+                finalize: options.sink.finalize.bind(options.sink),
+            };
+
+            const bytes = await renderTimeline({
+                scenes: source.scenes,
+                viewport: source.viewport,
+                fps: source.fps,
+                scale,
+                manifest: this.manifest,
+                overlays: source.overlays,
+                backgrounds: source.backgrounds,
+                renderContext: worker.renderContext,
+                storageAdapter: worker.storageAdapter,
+                assetCatalog: worker.assetCatalog,
+                sink,
+                mixer: options.mixer,
+                includeAudio: options.includeAudio,
+                onProgress: options.onProgress ? progress => options.onProgress!({ progress }) : undefined,
+                signal: options.signal,
+            });
+
+            return {
+                scenes: source.scenes,
+                frames,
+                duration: fps > 0 ? frames / fps : 0,
+                bytes: bytes ?? undefined,
             };
         });
     }

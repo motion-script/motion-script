@@ -7,7 +7,9 @@ import type {
     Theme,
     Variables,
 } from '@motion-script/core';
+import type { AudioMixer, VideoFrameSink } from '@motion-script/skia-render/export';
 import type { FrameSelector } from './frame.js';
+import type { RenderContextFactory } from './render-context.js';
 
 /** Video codecs the encoder can be asked for. */
 export type VideoCodec = 'avc' | 'hevc' | 'av1' | 'vp9';
@@ -86,6 +88,20 @@ export interface EngineOptions {
     fps?: number;
     /** Diagnostics sink. Default: silent. */
     logger?: EngineLogger;
+    /**
+     * Swaps the Skia platform binding every render mounts into. Default:
+     * {@link NodeRenderContext}, a CPU raster surface built straight from
+     * CanvasKit.
+     *
+     * The renderer itself — shapes, fills, strokes, effects, text, the 3D
+     * reconciler — lives in `@motion-script/skia-render` and is shared by every
+     * backend; this only replaces *how a surface is created*, the same seam
+     * `@motion-script/web`'s `WebRenderContext` fills in the browser. Reach for
+     * this to run on a different Skia platform binding (e.g. a native rust-skia
+     * build), not to use a different graphics engine — that needs a whole new
+     * `RenderContext2D` implementation, which is out of scope for an option.
+     */
+    createRenderContext?: RenderContextFactory;
 }
 
 /**
@@ -149,6 +165,27 @@ export interface VideoEncodeOptions {
 
 /** Options for {@link MotionScriptEngine.renderVideo} — one video, scenes concatenated. */
 export interface RenderVideoOptions extends RenderSource, JobOptions, VideoEncodeOptions {
+    /**
+     * Where finished frames go — the encoder.
+     *
+     * There is no built-in default: `codec`/`bitrate` above describe a future
+     * first-party encoder this backend doesn't ship yet (Node has no WebCodecs,
+     * so it can't reuse `@motion-script/web`'s mediabunny sink), so for now the
+     * caller supplies one — an ffmpeg pipe, a hardware encoder, anything
+     * implementing `VideoFrameSink` from `@motion-script/skia-render/export`.
+     * `renderVideo` drives it frame-by-frame the same way `@motion-script/web`'s
+     * browser exporter and a future default Node encoder both would.
+     */
+    sink: VideoFrameSink;
+    /** Mixes scheduled audio into whatever {@link sink.addAudio} expects. Omit for a silent render. */
+    mixer?: AudioMixer;
+    /**
+     * Set `false` to render a silent file with no audio track declared at all.
+     * Distinct from omitting {@link mixer}: the scenes' audio is still scheduled
+     * either way (it's driven by the same generator as the visuals), this only
+     * changes whether it gets encoded. Default `true`.
+     */
+    includeAudio?: boolean;
     /** Reports encode progress as it runs. */
     onProgress?(progress: VideoProgress): void;
 }
@@ -194,8 +231,12 @@ export interface RenderedVideo {
     frames: number;
     /** Duration in seconds. */
     duration: number;
-    /** Encoded MP4 bytes. */
-    bytes: Uint8Array;
+    /**
+     * Encoded bytes, if the sink produced them. `undefined` for a sink that
+     * delivers its own output (an ffmpeg process writing straight to a file) —
+     * see `VideoFrameSink.finalize` in `@motion-script/skia-render/export`.
+     */
+    bytes?: Uint8Array;
 }
 
 /** One video covering exactly one scene. */

@@ -447,17 +447,43 @@ export interface Node2DProps extends NodeProps {
         expandSize(to as Record<string, unknown>);
         expandTransform3D(to as Record<string, unknown>);
 
+        // `pivot`: an explicit, transient origin for *this step's* rotation and
+        // scale — `moveTo`/`rotateTo`/`scaleTo`'s own option (see their object-form
+        // overloads below), or just as well a bare key on a `to()` target. Not a
+        // real prop — nothing on the node holds a value named `pivot` that a tween
+        // interpolates — so it's read and stripped before anything else here (the
+        // anchor validation included) ever sees it.
+        const explicitPivot = (to as { pivot?: Anchor }).pivot;
+        if (explicitPivot !== undefined) delete (to as { pivot?: Anchor }).pivot;
+
         validateAnchorProps(to as Record<string, unknown>);
 
         // If an anchor key is in the tween target, resolve it to x/y targets and
-        // set pivot (one-shot form of the shared anchor math in anchor-resolve.ts).
+        // set the transform origin (one-shot form of the shared anchor math in
+        // anchor-resolve.ts).
         const anchorKey = findAnchorKey(to as Record<string, unknown>);
         if (anchorKey) {
             const raw = (to as any)[anchorKey] as Vector2;
             const { pivot, x, y } = resolveAnchorTargetOnce(anchorKey, this._layoutBounds.get(), raw);
-            this._writeProp('pivot', pivot);
+            // Was `this._writeProp('pivot', pivot)`. `pivot` is the node's
+            // *permanent* rotation/scale origin — set once, reactively, at
+            // construction (see `bindAnchorTarget`) from whichever anchor prop
+            // positions it there. A *tween's* target used to overwrite that
+            // permanent value with its own anchor every time one was used to
+            // state a position, which means a `moveTo` anchored differently from
+            // the node quietly re-pointed every rotation that ran after it.
+            // `transformOrigin` (see its own doc) is the right prop for this
+            // instead: it wins for the whole transform without being the node's
+            // one true pivot. An explicit `pivot` given on this same step (via
+            // `moveTo`/`rotateTo`/`scaleTo`'s object form) overrides the
+            // anchor-derived value in turn — the point a position is stated
+            // against and the point a rotation turns about are two different
+            // questions once a step can state them separately.
+            this._writeProp('transformOrigin', explicitPivot !== undefined ? resolveAnchor(explicitPivot) : pivot);
             (to as any).x = x;
             (to as any).y = y;
+        } else if (explicitPivot !== undefined) {
+            this._writeProp('transformOrigin', resolveAnchor(explicitPivot));
         }
 
         return super._prepareStep(to, duration, easing);
@@ -701,12 +727,41 @@ export interface Node2DProps extends NodeProps {
     /**
      * Animate both `x` and `y` to the given position.
      *
+     * The object form takes an optional `pivot` alongside them — the point
+     * rotation and scale turn about from here on, set into
+     * {@link Node2DProps.transformOrigin} rather than the node's own permanent
+     * {@link pivot} (which stays exactly what its own anchor positioning put it
+     * at). A plain move has nothing to turn, so on its own `pivot` here only
+     * matters if this node also has rotation or scale live on it already; it's
+     * offered because `x`/`y` and `pivot` are so often set together, not
+     * because a move animates either.
+     *
+     * Like every other prop, an unset `pivot` here carries forward whatever
+     * the last step that set one left behind — it does not reset itself back
+     * to the node's own pivot. State it explicitly (or clear
+     * `transformOrigin` directly) on whichever step needs to stop overriding.
+     *
      * @example
      * yield* node.moveTo(200, 100, 0.5, ease.outCubic);
+     * yield* node.moveTo({ x: 200, y: 100, pivot: 'topRight' }, 0.5);
      */
+    moveTo(x: number, y: number, duration: number, ease?: EasingFunction): Command<P>;
+    moveTo(props: { x?: number; y?: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;
     @command()
-    moveTo(x: number, y: number, duration: number, ease?: EasingFunction): Command<P> {
-        return this.to({ x, y } as Partial<P>, duration, ease);
+    moveTo(
+        xOrProps: number | { x?: number; y?: number; pivot?: Anchor },
+        yOrDuration: number,
+        durationOrEase?: number | EasingFunction,
+        ease?: EasingFunction,
+    ): Command<P> {
+        if (typeof xOrProps === "object") {
+            return this.to(
+                { x: xOrProps.x, y: xOrProps.y, pivot: xOrProps.pivot } as Partial<P>,
+                yOrDuration,
+                durationOrEase as EasingFunction | undefined,
+            );
+        }
+        return this.to({ x: xOrProps, y: yOrDuration } as Partial<P>, durationOrEase as number, ease);
     }
 
     /**
@@ -725,24 +780,68 @@ export interface Node2DProps extends NodeProps {
     /**
      * Animate `rotate` to the target angle (degrees, clockwise).
      *
+     * The object form takes an optional `pivot` — the point *this rotation*
+     * (and any scale/rotation after it that doesn't say otherwise) turns
+     * about, set into {@link Node2DProps.transformOrigin} rather than the
+     * node's own permanent {@link pivot}, which this never touches. Like
+     * every other prop it carries forward until something restates it — a
+     * later `rotateTo` with no `pivot` of its own keeps turning about
+     * whatever the last one that stated one set, not back about the node's
+     * own pivot. State it again (or set `transformOrigin` back to `undefined`
+     * directly) wherever it should stop applying.
+     *
      * @example
      * yield* node.rotateTo(180, 0.6, ease.inOutQuad);
+     * yield* node.rotateTo({ rotation: 180, pivot: 'topRight' }, 0.6);
      */
+    rotateTo(rotation: number, duration: number, ease?: EasingFunction): Command<P>;
+    rotateTo(props: { rotation: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;
     @command()
-    rotateTo(rotation: number, duration: number, ease?: EasingFunction): Command<P> {
-        return this.to({ rotation } as Partial<P>, duration, ease);
+    rotateTo(
+        rotationOrProps: number | { rotation: number; pivot?: Anchor },
+        duration: number,
+        ease?: EasingFunction,
+    ): Command<P> {
+        if (typeof rotationOrProps === "object") {
+            return this.to(
+                { rotation: rotationOrProps.rotation, pivot: rotationOrProps.pivot } as Partial<P>,
+                duration,
+                ease,
+            );
+        }
+        return this.to({ rotation: rotationOrProps } as Partial<P>, duration, ease);
     }
 
     /**
      * Animate `scale` to the target factor.
      *
+     * The object form takes an optional `pivot` — the point *this scale*
+     * grows or shrinks about, on the same terms {@link rotateTo}'s does:
+     * independent of the node's own permanent {@link pivot}, and carried
+     * forward (not reset) by whatever step runs after it, exactly as an
+     * unstated `rotation` or `scale` itself would be.
+     *
      * @example
      * yield* node.scaleTo(1.5, 0.4);   // grow
      * yield* node.scaleTo(0,   0.3);   // shrink to nothing
+     * yield* node.scaleTo({ scale: 2, pivot: 'topRight' }, 0.4);
      */
+    scaleTo(scale: number, duration: number, ease?: EasingFunction): Command<P>;
+    scaleTo(props: { scale: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;
     @command()
-    scaleTo(scale: number, duration: number, ease?: EasingFunction): Command<P> {
-        return this.to({ scale } as Partial<P>, duration, ease);
+    scaleTo(
+        scaleOrProps: number | { scale: number; pivot?: Anchor },
+        duration: number,
+        ease?: EasingFunction,
+    ): Command<P> {
+        if (typeof scaleOrProps === "object") {
+            return this.to(
+                { scale: scaleOrProps.scale, pivot: scaleOrProps.pivot } as Partial<P>,
+                duration,
+                ease,
+            );
+        }
+        return this.to({ scale: scaleOrProps } as Partial<P>, duration, ease);
     }
 
     // ---- Layout queries ---------------------------------------------------

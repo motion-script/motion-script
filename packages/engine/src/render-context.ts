@@ -17,6 +17,30 @@ import type { NodeStorageAdapter } from './storage-adapter.js';
  * display, no GPU and no driver — so it runs the same on a laptop and in a
  * scratch container, and produces identical pixels on both.
  */
+/**
+ * What {@link RenderWorker} needs from a render context: `SkiaRenderContext`'s
+ * portable drawing surface, plus how a CPU raster surface of a given device
+ * size is created and torn down.
+ *
+ * {@link NodeRenderContext} is the default implementation. A host that wants a
+ * different Skia platform binding underneath — a native rust-skia build, say —
+ * supplies its own class shaped like this instead, via
+ * {@link EngineOptions.createRenderContext}. This is the same seam
+ * `@motion-script/web`'s `WebRenderContext` fills in the browser: everything
+ * about *how a frame is drawn* stays in `@motion-script/skia-render` and is
+ * shared, only surface creation differs.
+ */
+export interface NodeRenderBackend extends SkiaRenderContext {
+    mount(width: number, height: number): void;
+    matches(width: number, height: number): boolean;
+}
+
+/** Builds the render context a {@link RenderWorker} mounts into. See {@link NodeRenderBackend}. */
+export type RenderContextFactory = (
+    canvasKit: CanvasKit,
+    storageAdapter: NodeStorageAdapter,
+) => NodeRenderBackend;
+
 export class NodeRenderContext extends SkiaRenderContext {
     private width = 0;
     private height = 0;
