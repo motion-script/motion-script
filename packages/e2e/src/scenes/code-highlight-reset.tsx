@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code, lines } from 'motion-script';
+import { Code, lines } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.resetHighlight}: a dimmed highlight restores to full opacity across every line. */

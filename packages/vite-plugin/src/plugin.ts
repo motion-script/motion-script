@@ -23,6 +23,8 @@ import {
 export interface MotionScriptOptions {
     /** Optional: Explicitly define the entry file for the animation script. */
     entry?: string;
+    /** Optional: Explicitly define the path to the components.json config file. */
+    componentsConfig?: string;
 }
 
 // __dirname here resolves to dist/ at runtime (the built location of this
@@ -235,6 +237,51 @@ function resolveThree(): string | null {
     try {
         return requireFromPlugin.resolve('three');
     } catch {
+        return null;
+    }
+}
+
+/**
+ * Shape of the `components.json` file written by `ms init` (see the CLI's
+ * `packages/cli/src/registry/`). Only the fields this plugin needs are
+ * declared here — duplicated rather than imported from `@motion-script/cli`
+ * so the two packages don't depend on each other.
+ */
+interface ComponentsConfig {
+    aliases?: { components?: string };
+    paths?: { components?: string };
+}
+
+/**
+ * Probe for the user's `components.json` (written by `ms init`, populated by
+ * `ms add`) and read the component alias/directory pair out of it, if
+ * present. Mirrors the entry/project-file probing in config() below:
+ * convention-based discovery from `userRoot`, overridable via
+ * {@link MotionScriptOptions.componentsConfig}.
+ *
+ * A missing file is the common case (no `ms add`/`ms init` used yet) and is
+ * silent — returns null so the caller registers no alias at all. A
+ * present-but-malformed file is treated the same way rather than crashing the
+ * dev server, but logs a warning so the user can find the problem.
+ */
+function resolveUserComponents(
+    userRoot: string,
+    explicitPath: string | undefined,
+): { alias: string; dir: string } | null {
+    const configPath = path.resolve(userRoot, explicitPath ?? 'components.json');
+    if (!fs.existsSync(configPath)) return null;
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as ComponentsConfig;
+        const alias = parsed.aliases?.components;
+        const dir = parsed.paths?.components;
+        if (!alias || !dir) return null;
+        return { alias, dir };
+    } catch (err) {
+        console.warn(
+            `[motion-script] failed to read ${configPath}; the components alias will ` +
+            `not be registered. ${err instanceof Error ? err.message : String(err)}`,
+        );
         return null;
     }
 }
@@ -486,6 +533,13 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                     fs.existsSync(path.resolve(userRoot, p))
                 );
 
+                // Convention-based discovery of components.json, written by `ms
+                // init`/`ms add` (see @motion-script/cli's registry). Absent for
+                // any project that hasn't used the component-add workflow, in
+                // which case no alias is registered below and behavior is
+                // unchanged from before this file knew components.json existed.
+                const userComponents = resolveUserComponents(userRoot, options?.componentsConfig);
+
                 // __dirname is dist/ at runtime; plugin's node_modules is one level up.
                 const pluginNodeModules = path.resolve(__dirname, '..', 'node_modules');
 
@@ -584,6 +638,15 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                             '~user-project': userProject
                                 ? path.resolve(userRoot, userProject)
                                 : path.resolve(pluginAppRoot, 'src/empty-project.ts'),
+                            // Only registered when components.json is present, so a
+                            // project that hasn't run `ms add` gets no alias at all.
+                            // Unlike '~user-script' above this points at a
+                            // *directory* — the same shape as pluginAppAliases —
+                            // since a component import needs subpaths to resolve
+                            // (e.g. '@/components/code/node').
+                            ...(userComponents ? {
+                                [userComponents.alias]: path.resolve(userRoot, userComponents.dir),
+                            } : {}),
                         },
                         // The player ships with @motion-script/core and /web
                         // marked external, so it imports them at runtime rather

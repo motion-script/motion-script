@@ -7,8 +7,15 @@
     "moduleResolution": "bundler",
     "lib": [
       "ES2022",
-      "WebWorker"
-    ]
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "paths": {
+        "@/components/*": [
+            "./src/components/*"
+        ]
+    }
   },
   "include": [
     "src"

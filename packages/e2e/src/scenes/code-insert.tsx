@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code } from 'motion-script';
+import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.insert}: a parameter is typed into the middle of an existing line, not just appended. */

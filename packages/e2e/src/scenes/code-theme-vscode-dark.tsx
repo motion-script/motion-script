@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code, lines } from 'motion-script';
+import { Code, lines } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** Code node rendered with the vscode-dark theme; highlights a line mid-scene. */

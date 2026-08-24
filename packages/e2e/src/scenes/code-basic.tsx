@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code, lines } from 'motion-script';
+import { Code, lines } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** Code node with a TypeScript snippet in the default theme, highlighting a line. */

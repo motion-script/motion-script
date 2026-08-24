@@ -5,6 +5,8 @@ import minimist from 'minimist';
 import kleur from 'kleur';
 import cliProgress from 'cli-progress';
 import { HeadlessDriver, resolveProjectRoot, type ExportFile, type FrameSpec, type VideoCodecName } from './driver.js';
+import { runInit } from './registry/init.js';
+import { runAdd } from './registry/add.js';
 
 const USAGE = `
 ${kleur.bold('ms')} — headless exporter for Motion Script projects
@@ -14,6 +16,8 @@ ${kleur.bold('Usage')}
   ms export [options]           Render scenes to MP4 in ./out/videos
   ms screenshot <when> [opts]   Capture a single frame to ./out/screenshots
   ms clear                      Delete exported videos and screenshots from ./out
+  ms init                       Create components.json for adding components
+  ms add [name...] [opts]       Add component source from a registry (interactive if no name given)
 
 ${kleur.bold('Export options')}
   --scenes <a,b,c>              Comma-separated scene names to export (default: all)
@@ -45,6 +49,14 @@ ${kleur.bold('Screenshot')}
   --format <png|jpg>            Image format (default: png)
   --out <dir>                   Output directory (default: out)
 
+${kleur.bold('Components')}
+  ms init                       Prompts for a components dir/alias, writes components.json
+  ms add [name...]              Copy component source into src/components (e.g. ms add code)
+  --yes                         Skip prompts, accept defaults, don't ask before overwriting
+  --overwrite                   Overwrite existing files without asking
+  --skip-install                Don't install npm dependencies after adding
+  --registry <url>              Override the default registry (a URL or a local path)
+
 ${kleur.bold('Examples')}
   ms list
   ms export --scenes intro,outro --split
@@ -56,6 +68,9 @@ ${kleur.bold('Examples')}
   ms screenshot 42 --format jpg
   ms screenshot 2.5s --scenes intro --scale 2
   ms clear
+  ms init
+  ms add code
+  ms add code latex --yes
 `.trimStart();
 
 const VIDEO_CODECS = ['avc', 'hevc', 'av1', 'vp9'] as const;
@@ -502,12 +517,12 @@ function runClear(projectRoot: string, args: minimist.ParsedArgs): void {
 
 async function main(): Promise<void> {
     const argv = minimist(process.argv.slice(2), {
-        boolean: ['split', 'help', 'version'],
+        boolean: ['split', 'help', 'version', 'yes', 'overwrite', 'skip-install', 'force'],
         // Keep these as strings so values aren't number-coerced (e.g. an `--out`
         // dir that's all digits, or `--format jpg`). `--bitrate` is here because
         // `40M` has to survive as written for the suffix parser to see it.
         // `--scale` stays unlisted so it parses as a number.
-        string: ['scenes', 'out', 'format', 'codec', 'bitrate'],
+        string: ['scenes', 'out', 'format', 'codec', 'bitrate', 'registry'],
         alias: { h: 'help', v: 'version' },
     });
 
@@ -541,6 +556,12 @@ async function main(): Promise<void> {
             break;
         case 'clear':
             runClear(projectRoot, argv);
+            break;
+        case 'init':
+            await runInit(projectRoot, argv);
+            break;
+        case 'add':
+            await runAdd(projectRoot, argv);
             break;
         default:
             console.error(kleur.red(`Unknown command: ${command}`));

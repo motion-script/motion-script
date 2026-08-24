@@ -6,12 +6,19 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "lib": [
-      "ES2022"
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
     ],
     "types": [
       "node"
     ],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+        "@/components/*": [
+            "./src/components/*"
+        ]
+    }
   },
   "include": [
     "src",

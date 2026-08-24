@@ -1,7 +1,7 @@
 
 
 import { createScene, createRef, Rect, Text, wait, easeOut } from "motion-script";
-import { Code } from "motion-script";
+import { Code } from "@/components/code";
 
 /**
  * The {@link Code} node is a specialized text renderer with its own

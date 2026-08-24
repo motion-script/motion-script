@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code } from 'motion-script';
+import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.append}: a new line is typed onto the end of an existing snippet. */

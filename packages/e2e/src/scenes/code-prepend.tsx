@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code } from 'motion-script';
+import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.prepend}: an import line is typed in above the existing snippet, pushing it down. */

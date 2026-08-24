@@ -1,0 +1,8 @@
+{
+  "label": "CLI",
+  "position": 9,
+  "link": {
+    "type": "generated-index",
+    "description": "The `ms` command-line tool: headless rendering, project scaffolding, and adding components."
+  }
+}

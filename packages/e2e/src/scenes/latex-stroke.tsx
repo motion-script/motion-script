@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, easeInOut } from 'motion-script';
-import { Latex } from 'motion-script';
+import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex `stroke`: an outlined-only formula (transparent fill) thickening its stroke weight. */

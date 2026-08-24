@@ -1,5 +1,5 @@
 import { createScene, createRef, wait, Rect } from "motion-script";
-import { Latex } from "motion-script";
+import { Latex } from "@/components/latex";
 
 export default createScene(function* (stage) {
         stage.set({ fill: 'bg', flow: 'vertical', gap: 60 });

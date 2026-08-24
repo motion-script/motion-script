@@ -1,0 +1,10 @@
+{
+  "$schema": "https://motionscript.dev/schema/components.json",
+  "project": "src/project.ts",
+  "aliases": {
+    "components": "@/components"
+  },
+  "paths": {
+    "components": "src/components"
+  }
+}

@@ -1,0 +1,90 @@
+---
+sidebar_position: 1
+---
+
+# Components
+
+Some Motion Script components (`Code`, `Latex`) don't ship as npm dependencies.
+Instead, `ms add` copies their source directly into your project — full
+customizability, no black-box package to work around, at the cost of picking
+up fixes manually. This is the same approach [shadcn/ui](https://ui.shadcn.com)
+popularized for UI components.
+
+## `components.json`
+
+`ms init` writes a `components.json` file to your project root and wires a
+`@/components/*` path alias into `tsconfig.json` (for editor/typechecker
+support — Vite resolves it directly from `components.json`, not from
+tsconfig):
+
+```bash
+ms init
+```
+
+```json title="components.json"
+{
+  "$schema": "https://motionscript.dev/schema/components.json",
+  "project": "src/project.ts",
+  "aliases": { "components": "@/components" },
+  "paths": { "components": "src/components" }
+}
+```
+
+`ms add` runs `ms init` for you the first time if `components.json` doesn't
+exist yet, so you rarely need to call it directly.
+
+## `ms add <name>`
+
+Copies a component's source into `<paths.components>/<name>/` (by default
+`src/components/<name>/`) and installs the npm packages it depends on:
+
+```bash
+ms add code
+ms add code latex --yes   # add more than one, skip prompts
+```
+
+Run `ms add` with no name for an interactive picker over everything the
+default registry offers. Useful flags:
+
+| Flag | Effect |
+|---|---|
+| `--yes` | Skip prompts, accept defaults, don't ask before overwriting |
+| `--overwrite` | Overwrite existing files without asking |
+| `--skip-install` | Don't install npm dependencies after adding |
+| `--registry <url>` | Override the default registry (a URL or a local path) |
+
+The copied files are yours — import them from the alias `ms init` set up
+rather than from `motion-script`:
+
+```tsx
+import { Code, lines, word } from '@/components/code';
+```
+
+## Registries
+
+A registry serves two endpoints: an index (`registry.json`, listing available
+components) and one JSON file per component (`<name>.json`, the source files
+plus npm dependencies). The default, unnamespaced registry is built into the
+CLI (`https://motionscript.dev/r`) — that's what `ms add code` resolves
+against.
+
+Additional or private registries go under `components.json`'s `registries`
+field, keyed by `@namespace`:
+
+```json title="components.json"
+{
+  "registries": {
+    "@acme": {
+      "url": "https://registry.acme.dev/{name}.json",
+      "headers": { "Authorization": "Bearer ${ACME_TOKEN}" }
+    }
+  }
+}
+```
+
+`ms add @acme/some-component` looks up the `@acme` entry, substitutes
+`some-component` into the `{name}` placeholder, and expands `${VAR}` in
+`headers` (and `params`) against your environment — so a token like
+`ACME_TOKEN` above never has to be written into the file. A registry `url`
+can also be a local filesystem path, for testing a registry before it's
+deployed anywhere.

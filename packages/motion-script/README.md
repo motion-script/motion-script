@@ -73,12 +73,14 @@ code, and animated LaTeX are all supported. See the
 - **Audio**: the `Sound` node.
 - **Utilities**: `createRef`, `clamp`, `generateList`, `createContext`,
   `Random`, the `@property` decorator.
-- **`Code`** (from `@motion-script/code`): syntax-highlighted, token-level
-  animated code blocks.
-- **`Latex`** (from `@motion-script/latex`): animated LaTeX formulas that
-  morph between states.
 - **JSX runtime**: `motion-script/jsx-runtime` and
   `motion-script/jsx-dev-runtime`, so scenes can be authored as TSX.
+
+`Code` (syntax-highlighted, token-level animated code blocks) and `Latex`
+(animated LaTeX formulas) are not bundled here — add them to your own project
+with `ms add code` / `ms add latex` (see
+[`@motion-script/cli`](../cli)), which copies their source directly into your
+project rather than installing them as a dependency.
 
 This package has no rendering backend of its own. Pair it with
 [`@motion-script/web`](../web) (Skia/CanvasKit) directly, or use

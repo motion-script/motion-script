@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, easeInOut } from 'motion-script';
-import { Latex } from 'motion-script';
+import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex `to({ latex })`: one formula morphs smoothly, token by token, into another. */

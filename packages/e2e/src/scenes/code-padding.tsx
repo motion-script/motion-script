@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, easeInOut } from 'motion-script';
-import { Code } from 'motion-script';
+import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.padding}: the inset between the code text and its frame growing from tight to spacious. */

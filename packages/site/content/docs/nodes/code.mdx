@@ -14,17 +14,21 @@ Supported languages: `typescript`, `tsx`, `javascript`, `jsx`, `python`, `json`,
 
 <CodeCanvas />
 
-Install the package:
+`Code` ships as a registry component, not a package dependency: `ms add` copies
+its source straight into your project, so you can read and edit it like any
+other file you own.
+
+Add the component to your project:
 
 ```bash
-npm install @motion-script/code
+ms add code
 ```
 
 ## Basic usage
 
 ```tsx
 import { createScene, createRef } from 'motion-script';
-import { Code, lines, word } from 'motion-script';
+import { Code, lines, word } from '@/components/code';
 
 export default createScene(function* (stage) {
   const ref = createRef<Code>();
@@ -133,10 +137,10 @@ yield* ref().prepend('import { greet } from "./greet";\n\n', 0.6);
 
 ## Range helpers
 
-Import range helpers from `@motion-script/code`:
+Import range helpers from `@/components/code`:
 
 ```tsx
-import { lines, word } from 'motion-script';
+import { lines, word } from '@/components/code';
 
 // Select line 2 (1-indexed)
 lines(2)
@@ -152,7 +156,7 @@ word(3, 10, 9)
 
 ```tsx
 import { createScene, createRef, wait, parallel, easeOut } from 'motion-script';
-import { Code, lines, word } from 'motion-script';
+import { Code, lines, word } from '@/components/code';
 
 export default createScene(function* (stage) {
   const ref = createRef<Code>();

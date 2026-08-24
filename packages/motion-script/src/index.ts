@@ -633,38 +633,3 @@ export type {
     NodeOverride,
     TreeState,
 } from '@motion-script/core';
-
-// =============================================================
-// Code Component (@motion-script/code)
-// =============================================================
-export {
-    Code,
-    word,
-    lines,
-    loadCodeLanguage,
-    initSyntaxHighlighter,
-    registerCodeTheme,
-    resolveTheme,
-    compileStyle,
-} from '@motion-script/code';
-export type {
-    CodeProps,
-    CodeRange,
-    CodeHighlightStyle,
-    CodeStyleRule,
-    CodeTheme,
-    CodeThemeName,
-} from '@motion-script/code';
-
-// =============================================================
-// LaTeX Component (@motion-script/latex)
-// =============================================================
-export {
-    Latex,
-    buildLatexPath,
-} from '@motion-script/latex';
-export type {
-    LatexProps,
-    LatexToken,
-    LatexPathResult,
-} from '@motion-script/latex';

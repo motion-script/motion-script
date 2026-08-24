@@ -6,19 +6,25 @@ import { LatexCanvas } from '@site/src/components/docs/node-scenes';
 
 # LaTeX
 
-The `Latex` node renders mathematical equations using MathJax. Install the separate package:
+The `Latex` node renders mathematical equations using MathJax.
 
 <LatexCanvas />
 
+`Latex` ships as a registry component, not a package dependency: `ms add`
+copies its source straight into your project, so you can read and edit it
+like any other file you own.
+
+Add the component to your project:
+
 ```bash
-npm install @motion-script/latex
+ms add latex
 ```
 
 ## Basic equation
 
 ```tsx
 import { createScene, createRef } from 'motion-script';
-import { Latex } from 'motion-script';
+import { Latex } from '@/components/latex';
 
 export default createScene(function* (stage) {
   const eq = createRef<Latex>();

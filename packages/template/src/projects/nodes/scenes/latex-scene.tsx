@@ -1,7 +1,7 @@
 
 
 import { createScene, createRef, Rect, easeInOut, wait } from "motion-script";
-import { Latex } from "motion-script";
+import { Latex } from "@/components/latex";
 import { nodeCard } from "./node-card";
 
 /**

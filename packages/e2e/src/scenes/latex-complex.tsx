@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, easeOut } from 'motion-script';
-import { Latex } from 'motion-script';
+import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex node rendering a more complex multi-symbol formula (an integral), fading in. */

@@ -47,9 +47,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@motion-script/core": "workspace:^",
-    "@motion-script/code": "workspace:^",
-    "@motion-script/latex": "workspace:^"
+    "@motion-script/core": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -1,5 +1,5 @@
 import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
-import { Latex } from 'motion-script';
+import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex `fill` as a linear gradient, sweeping its angle across the formula. */
