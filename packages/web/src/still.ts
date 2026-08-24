@@ -1,5 +1,5 @@
 import {
-    AssetCatalog,
+    AssetCatalog, ManifestAssetCatalog,
     createStill,
     Scene,
     setTheme,
@@ -178,7 +178,7 @@ export class StillRenderer {
         }
         this.sizeCanvas();
 
-        this.catalog = new AssetCatalog(this.manifest);
+        this.catalog = new ManifestAssetCatalog(this.manifest);
         this.storageAdapter = new WebStorageAdapter(
             canvasKit, this.catalog, this.viewportValue, this.fpsValue,
         );
@@ -236,7 +236,7 @@ export class StillRenderer {
     setManifest(manifest: AssetManifest): void {
         this.assertLive();
         this.manifest = manifest;
-        this.catalog = new AssetCatalog(manifest);
+        this.catalog = new ManifestAssetCatalog(manifest);
         this.storageAdapter.setCatalog(this.catalog);
     }
 

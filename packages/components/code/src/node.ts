@@ -20,7 +20,7 @@ import {
 } from "./transitions";
 import { canHighlight, ensureHighlighter } from "./highlight";
 import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext2D, Graphics2D, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
+import { RenderContext2D, RenderPass2D, Graphics2D, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer2D, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
 
 /** Colour of a token the grammar had no opinion about. */
 const DEFAULT_TOKEN_COLOR: NormalizedColor = [0.82, 0.84, 0.86, 1];
@@ -193,7 +193,7 @@ export class Code extends ShapeNode<CodeProps> {
         return null;
     }
 
-    private settledLayout(m: CodeMetrics, scope: Measurer | RenderContext2D): CodeLayout {
+    private settledLayout(m: CodeMetrics, scope: Measurer2D | RenderContext2D): CodeLayout {
         const key = `${this.structureVersion}|${metricsSignature(m)}|${this.advanceCache.signature(m.fontSize, m.fontFamily)}`;
         if (this.layoutCache && this.layoutCacheKey === key) return this.layoutCache;
         const layout = layoutCode(this.tokenLines, m, this.advanceCache, scope);
@@ -214,7 +214,7 @@ export class Code extends ShapeNode<CodeProps> {
      * Both endpoints are fixed for the edit's duration, so they are built once
      * and cached on the transition rather than rebuilt per frame.
      */
-    private frameLayout(scope: Measurer | RenderContext2D): {
+    private frameLayout(scope: Measurer2D | RenderContext2D): {
         from: CodeLayout;
         to: CodeLayout;
         edit: StructuralTransition | null;
@@ -249,7 +249,7 @@ export class Code extends ShapeNode<CodeProps> {
         return { x: -this.fontSize * 1.8, y: 0 };
     }
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
         const wm = this.width;
         const hm = this.height;
@@ -274,7 +274,7 @@ export class Code extends ShapeNode<CodeProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    onRender(ctx: RenderContext2D): void {
+    protected override renderContent(ctx: RenderPass2D): void {
         // Refuse the ambient `<DefaultTextStyle>` / theme typography defaults for
         // everything drawn inside this node.
         //
@@ -296,7 +296,7 @@ export class Code extends ShapeNode<CodeProps> {
             if (!this.tokenized && !this.activeEdit() && canHighlight(this.language, this.theme)) {
                 this.tokenize();
             }
-            super.onRender(ctx);
+            super.renderContent(ctx);
         } finally {
             ctx.popTextStyle();
         }
@@ -324,8 +324,8 @@ export class Code extends ShapeNode<CodeProps> {
      */
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -340,8 +340,8 @@ export class Code extends ShapeNode<CodeProps> {
      */
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
@@ -387,14 +387,19 @@ export class Code extends ShapeNode<CodeProps> {
     }
 
     /**
-     * Remove the code in `codeRange`.
+     * Erase the code in `codeRange`.
+     *
+     * Named `erase` rather than `remove` because a `Code` is also a node, and
+     * `Node.remove(child)` takes a child out of the tree. Two methods spelled
+     * the same on one object, doing entirely different things, is worse than one
+     * of them having a slightly less obvious name.
      *
      * A range that covers whole lines takes their line breaks with it, so the
      * rows below close up; a range inside a line takes only the characters, and
      * the rest of the line reflows around the hole.
      */
     @command()
-    remove(
+    erase(
         codeRange: CodeRange,
         duration: number,
         easing?: EasingFunction,

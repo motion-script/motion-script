@@ -1,11 +1,12 @@
-import { RenderContext2D } from "@/render/render-context2d";
+import { RenderPass2D } from "@/render/render-context2d";
 import { Size2D } from "@/attributes/layout/size";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { FrameGenerator } from "@/tween/generator";
-import { BuildStage } from "@/render/build-stage";
-import { Measurer } from "@/render/measurer";
+import { CanvasStage } from "@/nodes/scene/canvas-stage";
+import { Measurer2D } from "@/render/measurer";
 import { Scene } from "@/nodes/scene/scene-node";
+import type { AttachScope } from "@/nodes/node/node";
 import { ProjectGlobals } from "./globals";
 import { now, yieldToScheduler } from "@/util/scheduler";
 
@@ -62,7 +63,7 @@ type SceneSlot = {
  * (see `node-lifecycle.ts`). Those are only fresh after a `layout()`/`measure()`
  * pass. So the replay loop lays out **before** each `generator.next(dt)`,
  * exactly as `Precomp` does — otherwise the generator would read a stale (or
- * zero, for a just-added child) `layoutRect` and the animation would diverge
+ * zero, for a just-added child) `layoutBounds` and the animation would diverge
  * from forward playback. This is what makes a backward scrub reproduce the
  * forward result.
  */
@@ -77,10 +78,10 @@ export class StateEvaluator {
      * Text-measurement scope for the internal layout passes {@link stateAt} and
      * {@link resetSlot} run between generator steps. Held here (not just passed
      * into the public {@link layout}) so the replay loop can lay out every
-     * advanced frame — mirrors how {@link Precomp} keeps its own `measureScope`.
+     * advanced frame — mirrors how {@link Precomp} keeps its own `measurer`.
      * See the class doc for why the loop must lay out.
      */
-    private measureScope: Measurer;
+    private measurer: Measurer2D;
     /**
      * The project's background/overlay layers, drawn around every scene. Not part
      * of any scene tree — see {@link ProjectGlobals} — so the evaluator drives
@@ -105,7 +106,7 @@ export class StateEvaluator {
         return this._currentFrame;
     }
 
-    private readonly stage: BuildStage<Scene>;
+    private readonly stage: CanvasStage;
 
     /**
      * @param scenes  Scene list in timeline order.
@@ -115,7 +116,7 @@ export class StateEvaluator {
      * @param tracks  Per-scene frame counts in timeline order (one entry per
      *                scene). Used to build global frame ranges so `stateAt`
      *                can jump directly to the owning scene without scanning.
-     * @param measureScope Text-measurement scope for the internal layout passes
+     * @param measurer Text-measurement scope for the internal layout passes
      *                the replay loop runs between generator steps (see class doc).
      * @param globals The project's global layers/audio. Pass the **same instance**
      *                the {@link Precomp} was given (`precomp.globals`), so the
@@ -127,21 +128,18 @@ export class StateEvaluator {
         fps: number,
         assets: AssetCatalog,
         tracks: number[],
-        measureScope: Measurer,
+        measurer: Measurer2D,
         globals?: ProjectGlobals,
     ) {
         this.fps = fps;
         this.viewport = viewport;
         this.scenes = scenes;
         this.assets = assets;
-        this.measureScope = measureScope;
+        this.measurer = measurer;
         this.globals = globals;
-        this.stage = new BuildStage<Scene>(viewport, fps);
+        this.stage = new CanvasStage(viewport, fps);
 
-        for (const s of scenes) {
-            s.set({ width: viewport.width, height: viewport.height });
-            s.setViewport(viewport);
-        }
+        for (const s of scenes) s.setViewport(viewport);
         globals?.setViewport(viewport);
 
         let offset = 0;
@@ -178,8 +176,19 @@ export class StateEvaluator {
         if (!globals) return;
         const scene = this.scenes[index];
         globals.select(index, scene?.name ?? `Scene ${index}`);
-        globals.bindAssets(this.assets);
-        globals.bindContext(ContextMap.EMPTY);
+        globals.attach(this.scopeAt(0));
+    }
+
+    /**
+     * The attach scope for `time` — the catalog and (empty) root context every
+     * pass uses, plus the clock reading.
+     *
+     * Built per call rather than kept: `attach` reads it synchronously and never
+     * retains it, and the alternative is a mutable object two clocks share, which
+     * is exactly the bug the scene-local/project-absolute split exists to avoid.
+     */
+    private scopeAt(time: number): AttachScope {
+        return { assets: this.assets, context: ContextMap.EMPTY, time };
     }
 
     private _currentScene!: Scene;
@@ -225,19 +234,17 @@ export class StateEvaluator {
      */
     private resetSlot(slot: SceneSlot): void {
         slot.scene.reset();
-        slot.scene.bindAssets(this.assets);
-        slot.scene.bindContext(ContextMap.EMPTY, true);
-        slot.scene.ellapse(0);
+        slot.scene.attach(this.scopeAt(0));
         this.stage.reset();
-        const gen = slot.scene.build(this.stage);
+        const gen = this.stage.build(slot.scene);
         // Prime: advance to the first yield so frame-0 nodes are registered.
         gen.next(this.dt);
-        // ellapse(0) above ran before build() created the frame-0 nodes, so seed
+        // attach(0) above ran before build() created the frame-0 nodes, so seed
         // their sampling history now (zero velocity) — a forward step from here
         // then differentiates against a real previous frame.
         slot.scene.sample();
         // Lay out the primed frame-0 tree so the first advance-loop step (which
-        // runs the generator from frame 0 → 1) reads a real `layoutRect` — a
+        // runs the generator from frame 0 → 1) reads a real `layoutBounds` — a
         // frame-0 animated removeChildAt pins to `measuredWidth`, which is 0
         // until this pass. Precomp lays out at the top of its loop before the
         // first `generator.next`; this gives the reset path the same guarantee.
@@ -245,7 +252,7 @@ export class StateEvaluator {
         // Layers run on the project clock, so a slot primed at its scene's local
         // frame 0 still puts them at that scene's *global* start — a bed's fade or
         // a background video is continuous across the cut rather than restarting.
-        this.globals?.ellapse(slot.startFrame * this.dt);
+        this.globals?.attach(this.scopeAt(slot.startFrame * this.dt));
         this.globals?.sample();
         this.layoutGlobals();
         slot.generator = gen;
@@ -253,7 +260,7 @@ export class StateEvaluator {
     }
 
     /** Lay the active global layers out against the full viewport. */
-    private layoutGlobals(scope: Measurer = this.measureScope): void {
+    private layoutGlobals(scope: Measurer2D = this.measurer): void {
         if (!this.globals) return;
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.globals.layout(bounds, scope);
@@ -263,15 +270,15 @@ export class StateEvaluator {
      * Lay out a scene's node tree against the full viewport with the retained
      * measure scope. Shared by the public {@link layout} (render pass) and the
      * per-frame layout the replay loop / {@link resetSlot} run so generator
-     * bodies read a fresh `layoutRect` (see class doc).
+     * bodies read a fresh `layoutBounds` (see class doc).
      */
     private layoutScene(scene: Scene): void {
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
-        scene.layout(bounds, this.measureScope);
+        scene.layout(bounds, this.measurer);
     }
 
     /** Lay out the current scene's node tree — and the active global layers — against the full viewport. */
-    layout(scope: Measurer = this.measureScope) {
+    layout(scope: Measurer2D = this.measurer) {
         const bounds = { x: 0, y: 0, width: this.viewport.width, height: this.viewport.height };
         this.currentScene.layout(bounds, scope);
         this.layoutGlobals(scope);
@@ -286,7 +293,7 @@ export class StateEvaluator {
      * because the layers sit outside the scene root, neither is touched by the
      * scene camera or its clip.
      */
-    render(context: RenderContext2D) {
+    render(context: RenderPass2D) {
         this.globals?.backgrounds.render(context);
         this.currentScene.render(context);
         this.globals?.overlays.render(context);
@@ -353,10 +360,8 @@ export class StateEvaluator {
         if (!isDriven(slot.scene)) return false;
 
         const sceneTime = localFrame * this.dt;
-        slot.scene.bindAssets(this.assets);
-        slot.scene.bindContext(ContextMap.EMPTY, false);
-        slot.scene.ellapse(sceneTime);
-        this.globals?.ellapse((slot.startFrame + localFrame) * this.dt);
+        slot.scene.attach(this.scopeAt(sceneTime));
+        this.globals?.attach(this.scopeAt((slot.startFrame + localFrame) * this.dt));
 
         // Motion, made a property of the frame rather than of the seek that got
         // here. A generator scene walks time forward one `dt` at a time, so its
@@ -374,7 +379,7 @@ export class StateEvaluator {
         // Clamped at zero so the first frame primes against itself and reads
         // stationary, which is what it is — there is no frame before it.
         // Each of the two frames is laid out before its position is read, because
-        // a node's world position is `layoutRect + x`: reading the new `x`
+        // a node's world position is `layoutBounds + x`: reading the new `x`
         // against the previous seek's rect would put the same nondeterminism
         // back in for anything an auto-layout places.
         const previousTime = Math.max(0, sceneTime - this.dt);
@@ -383,7 +388,7 @@ export class StateEvaluator {
         slot.scene.primeMotion(previousTime);
 
         // Layout runs after the evaluation, not before: a generator body reads
-        // `layoutRect` as it steps, so the replay must lay out first — a driver
+        // `layoutBounds` as it steps, so the replay must lay out first — a driver
         // writes props and reads nothing, so the layout that matters is the one
         // against the values just written.
         slot.scene.evaluateAt(sceneTime);
@@ -587,23 +592,19 @@ export class StateEvaluator {
         // scene, in the same order as `Precomp.precompScene`'s loop (and as
         // `resetSlot` above). Fanning them out across every scene would be pure
         // waste (nothing mutates a frozen scene's tree during this replay) and
-        // actively wrong: `advanceClock` seeds `creation` on first touch and scene
-        // roots outlive `reset()`, so ellapsing an un-entered scene at a time its
-        // own clock has not reached births its root mid-scene, and a later seek
-        // into it then reports a negative `elapsed` for the rest of the session.
-        slot.scene.bindAssets(this.assets);
-        // Structural re-push only (runInit=false): refresh context on any subtree
-        // added this frame without re-firing init mid-tween.
-        slot.scene.bindContext(ContextMap.EMPTY, false);
-        slot.scene.ellapse(sceneTime);
+        // actively wrong: `advanceNodeTime` seeds `creation` on first touch, so
+        // attaching an un-entered scene at a time its own clock has not reached
+        // births its canvas mid-scene, and a later seek into it then reports a
+        // negative `elapsed` for the rest of the session.
+        slot.scene.attach(this.scopeAt(sceneTime));
         // Layers advance on the project clock, so they neither restart nor jump
         // at a scene cut.
-        this.globals?.ellapse(projectTime);
+        this.globals?.attach(this.scopeAt(projectTime));
         // Lay out before stepping the generator so any post-layout state it
         // reads (an animated removeChildAt pinning to `measuredWidth`, the
         // hug/fill addChildAt measuring against `_lastScope`) is fresh for
         // this frame — the ordering precomp uses. Without this the replay
-        // (backward seek / multi-frame jump) reads a stale layoutRect and
+        // (backward seek / multi-frame jump) reads a stale layoutBounds and
         // the animation diverges from forward playback (see class doc).
         this.layoutScene(slot.scene);
         // Read `slot.generator` fresh — never hoist it into a local across a yield.
@@ -661,7 +662,6 @@ export class StateEvaluator {
         // Install the new scene; the old one is owned by the project config, but
         // its prior signals/generator state are stale — dispose to free them.
         const oldScene = slot.scene;
-        newScene.set({ width: this.viewport.width, height: this.viewport.height });
         newScene.setViewport(this.viewport);
         this.scenes[index] = newScene;
         slot.scene = newScene;

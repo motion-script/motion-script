@@ -17,31 +17,31 @@ export interface VideoAssetOptions extends AssetSize {
 }
 
 /**
- * Collects the assets a node declares and maintains their frame-range entries.
+ * What a node declares its assets into — the whole of what `prepareLayout` and
+ * `prepareRender` may do, and nothing else.
  *
- * A node states what it needs synchronously, from `prepareLayout`/`prepareRender`,
- * against its current prop state — it is never inferred from a render pass. Call
- * {@link start} before walking a frame and {@link end} after; the `add*` methods
- * record into the frame that is open.
+ * A node states what it needs **synchronously**, against its current prop state;
+ * it is never inferred from a render pass. Declaring rather than inferring is
+ * what makes a whole scene's asset set knowable without drawing it: a host that
+ * can put the tree into its state at each command boundary can union the
+ * declarations and be done, instead of rendering every frame. It is also what
+ * lets fonts load *before* layout, since a family no longer has to be discovered
+ * by measuring text against it.
  *
- * Declaring rather than inferring is what makes a whole scene's asset set knowable
- * without drawing it: a host that can put the tree into its state at each command
- * boundary can union the declarations and be done, instead of rendering every frame.
- * It is also what lets fonts be loaded *before* layout, since a family no longer has
- * to be discovered by measuring text against it.
+ * The cost is that a node which forgets to declare something would paint
+ * nothing. That is caught rather than tolerated — see the load-or-throw rule in
+ * the fill renderers: an asset the tracker never saw throws when it is reached,
+ * during precomp as a `BuildError` and at playback as an exception.
  *
- * The cost is that a node which forgets to declare something would paint nothing.
- * That is caught rather than tolerated — see the load-or-throw rule in the fill
- * renderers: an asset the tracker never saw throws when it is reached, during
- * precomp as a `BuildError` and at playback as an exception.
+ * **An interface, because driving a pass is not declaring into one.**
+ * `start`/`end`/`discardOutside` and the accumulated records live on
+ * {@link CanvasAssetTracker}, where the runtime can reach them and a node
+ * cannot. A node that could close the frame it is declaring into would be able
+ * to drop its siblings' assets.
  */
-export class AssetTracker {
-    private readonly _catalog: AssetCatalog;
-    constructor(assetCatalog: AssetCatalog) {
-        this._catalog = assetCatalog;
-    }
-
-    get catalog(): AssetCatalog { return this._catalog; }
+export interface AssetTracker {
+    /** The catalog these declarations are validated against. */
+    readonly catalog: AssetCatalog;
 
     /**
      * Declare an opaque async load needed at the current frame, tracked on the
@@ -52,9 +52,89 @@ export class AssetTracker {
      *
      * This is where a node's *async* setup goes — a syntax grammar, a 3D runtime.
      * The hook that declares it stays synchronous; only the work is deferred, and
-     * the timeline decides when to run it. Resolve a {@link Disposer} to free what
+     * the timeline decides when to run it. Resolve a `Disposer` to free what
      * was loaded when the window closes, or resolve nothing to keep it resident.
      */
+    addAsync(key: string, load: LoaderFn): void;
+
+    /**
+     * Declare an image needed at the current frame, tracking the maximum size it
+     * is drawn at so the decode can be sized to it.
+     *
+     * Validates that `src` exists in the manifest. A missing asset (e.g. a
+     * deleted/renamed file, or a typo in `src`) throws here during the precomp
+     * build pass, where it is recorded as a `BuildError` that surfaces in the
+     * player's errors panel — rather than silently failing to paint at playback
+     * time.
+     *
+     * `size` is optional because a node that has not been laid out yet has no
+     * honest answer; omitting it declares the asset at its intrinsic size.
+     */
+    addImage(src: string, size?: AssetSize): void;
+
+    /** Declare a video needed at the current frame, tracking the maximum size it is drawn at. */
+    addVideo(src: string, options?: VideoAssetOptions): void;
+
+    /**
+     * Declare an audio file needed at the current frame (frame-range caching,
+     * like {@link addImage}).
+     */
+    addAudio(src: string): void;
+
+    /**
+     * Declare a font family needed at the current frame, keyed by family only.
+     *
+     * The key is deliberately *not* `family@weight`: `loadFont` registers the
+     * whole family at once (every weight file), and continuous/variable weight
+     * is rendered via the layout's `fontVariations` axis — never via a
+     * per-weight file. Including the weight in the key would mint a distinct
+     * asset entry for every frame of a weight tween (`Inter@437.2`, `Inter@482.9`,
+     * …), exploding the asset map and re-dispatching a load per weight on every
+     * prefetch tick. Keying by family collapses all of those to one stable entry.
+     *
+     * `fontWeight` is therefore optional and only seeds the record's nominal
+     * weight — it never affects which files load, so a caller that does not know
+     * the weight yet can leave it out.
+     */
+    addFont(fontFamily: string, fontWeight?: number | string): void;
+
+    /**
+     * Add an audio playback request. Stored by reference so mutations from
+     * `stop()` are reflected when the requests are read after the build.
+     * Deduplicated by id. Called from `Sound.prepare`.
+     */
+    addAudioRequest(req: AudioRequest): void;
+
+    /**
+     * Run `fn` with `path` recorded as the owner of any audio request added
+     * during it, so the timeline can attribute each clip to its node.
+     *
+     * Part of the declaration surface rather than the pass-management half
+     * because the *walk* drives it — `Node.prepareRenderAssets` brackets each
+     * node's own declarations with its structural path — and a node that hosts
+     * a detached subtree (`Canvas3D` and its `Tex.surface` sources) runs that
+     * same walk itself.
+     */
+    withOwnerPath(path: string, fn: () => void): void;
+}
+
+/**
+ * The {@link AssetTracker} the runtime drives.
+ *
+ * Adds the pass-management half a node must not see: {@link start} before
+ * walking a frame and {@link end} after, so the `add*` methods record into the
+ * frame that is open; the accumulated records and audio requests; and the
+ * frame-window bookkeeping the {@link AssetManager} reads.
+ */
+export class CanvasAssetTracker implements AssetTracker {
+    private readonly _catalog: AssetCatalog;
+    constructor(assetCatalog: AssetCatalog) {
+        this._catalog = assetCatalog;
+    }
+
+    get catalog(): AssetCatalog { return this._catalog; }
+
+    /** See {@link AssetTracker.addAsync}. */
     addAsync(key: string, load: LoaderFn): void {
         this.upsertAsset(key, (frame) => ({
             type: 'loader',
@@ -93,10 +173,9 @@ export class AssetTracker {
     }
 
     /**
-     * Add an audio playback request. Stored by reference so mutations from stop()
-     * are reflected when audioRequests is read after the build. Deduplicated by id.
-     * Called from {@link Sound.prepare}. The owning node's path (from the active
-     * {@link withOwnerPath} scope) is stamped on first add for timeline display.
+     * See {@link AssetTracker.addAudioRequest}. The owning node's path (from the
+     * active {@link withOwnerPath} scope) is stamped on first add for timeline
+     * display.
      */
     addAudioRequest(req: AudioRequest): void {
         if (this._audioIds.has(req.id)) return;
@@ -106,11 +185,10 @@ export class AssetTracker {
     }
 
     /**
-     * Declare an audio file needed at the current frame (frame-range caching,
-     * like {@link addImage}).
+     * See {@link AssetTracker.addAudio}.
      *
      * When `src` is already tracked as a *video* (the audio is the video's own
-     * track — a {@link Video} node playing its clip's sound), leave that record
+     * track — a `Video` node playing its clip's sound), leave that record
      * in place rather than clobbering it with an `audio` entry under the same
      * key. Audio data is fetched on demand via `fetchAudioData`/`syncAudio`, so
      * the record type is irrelevant for audio playback, and the video fill needs
@@ -197,24 +275,10 @@ export class AssetTracker {
         this.requestedAssets.set(key, makeEntry(frame));
     }
 
-    // ─── Public declaration API ───────────────────────────────────────────────
+    // ─── Declaration API (see AssetTracker for the contract) ──────────────────
 
-    /**
-     * Declare an image needed at the current frame, tracking the maximum size it
-     * is drawn at so the decode can be sized to it.
-     *
-     * Validates that `src` exists in the manifest. A missing asset (e.g. a
-     * deleted/renamed file, or a typo in `src`) throws here during the precomp
-     * build pass, where {@link precompScene} records it as a `BuildError` that
-     * surfaces in the player's errors panel — rather than silently failing to
-     * paint at playback time. This mirrors {@link addVideo}, which already
-     * throws via `getVideoDuration` on an unknown src.
-     *
-     * `size` is optional because a node that has not been laid out yet has no
-     * honest answer; omitting it declares the asset at its intrinsic size.
-     */
     addImage(src: string, size?: AssetSize): void {
-        // Throws "No image metadata for src: <src>" if the asset is unknown.
+        // Throws "Image asset not found: <src>" if the asset is unknown.
         this._catalog.getImageMeta(src);
         const width = size?.width ?? 0;
         const height = size?.height ?? 0;
@@ -238,7 +302,6 @@ export class AssetTracker {
         });
     }
 
-    /** Declare a video needed at the current frame, tracking the maximum size it is drawn at. */
     addVideo(src: string, options?: VideoAssetOptions): void {
         const width = options?.width ?? 0;
         const height = options?.height ?? 0;
@@ -264,21 +327,6 @@ export class AssetTracker {
         });
     }
 
-    /**
-     * Declare a font family needed at the current frame, keyed by family only.
-     *
-     * The key is deliberately *not* `family@weight`: loadFont registers the
-     * whole family at once (every weight file), and continuous/variable weight
-     * is rendered via the layout's `fontVariations` axis — never via a
-     * per-weight file. Including the weight in the key would mint a distinct
-     * asset entry for every frame of a weight tween (`Inter@437.2`, `Inter@482.9`,
-     * …), exploding the asset map and re-dispatching a load per weight on every
-     * prefetch tick. Keying by family collapses all of those to one stable entry.
-     *
-     * `fontWeight` is therefore optional and only seeds the record's nominal
-     * weight — it never affects which files load, so a caller that does not know
-     * the weight yet can leave it out.
-     */
     addFont(fontFamily: string, fontWeight?: number | string): void {
         this.upsertAsset(fontFamily, (frame) => ({
             type: 'font',
@@ -289,7 +337,6 @@ export class AssetTracker {
             src: fontFamily,
         }));
     }
-
 
     /** Remove all tracked entries whose frame ranges fall entirely outside [startFrame, endFrame]. */
     discardOutside(startFrame: number, endFrame: number): void {
@@ -307,8 +354,6 @@ export class AssetTracker {
         this._audioIds.clear();
     }
 
-
-
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     /** Release all state; the instance should not be used after this call. */
@@ -320,7 +365,7 @@ export class AssetTracker {
 }
 
 /**
- * Coerce a declared weight to the number a {@link FontRecord} stores.
+ * Coerce a declared weight to the number a `FontRecord` stores.
  *
  * Accepts a number or a string because a node may hold either — `Text.fontWeight`
  * is a number, a `Graphics2D` text op's is whatever the author wrote. Anything

@@ -1,12 +1,14 @@
 import { EasingFunction } from "@/tween/ease/type";
 import { TweenStepper } from "@/tween/stepper";
-import { toChain, type AnimationTarget, type ChainableCommand } from "@/tween/chain";
+import { toCommand, type AnimationTarget } from "@/tween/to-command";
 import { Fill } from "@/attributes/shape/fill/chain";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { resolveFillArray, lerpFillArray } from "@/attributes/shape/fill/registry";
 import { Stroke, StrokeResolved, resolveStrokeArray } from "@/attributes/shape/stroke/mapper";
 import { lerpStrokeArray } from "@/attributes/shape/stroke/lerp";
 import type { Text } from "./text-node";
+import { type Command } from "@/tween/command";
+import { command } from "@/tween/command-decorator";
 
 /** A half-open character range `[start, end)` of a Text node's string. */
 export interface TextRange {
@@ -105,12 +107,13 @@ export class TextSelection implements AnimationTarget<TextSelectionProps> {
         );
     }
 
+    @command()
     to(
         to: Partial<TextSelectionProps>,
         duration: number,
         easing?: EasingFunction,
-    ): ChainableCommand<TextSelectionProps> {
-        return toChain<TextSelectionProps>(this, to, duration, easing);
+    ): Command<TextSelectionProps> {
+        return toCommand<TextSelectionProps>(this, to, duration, easing);
     }
 
     /**

@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             fontWeight={700}
             fill={'#f4f6ff'}
             opacity={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             spans={[
                 { text: 'Stay ' },
                 { text: 'OUTLINED', fill: 'transparent', stroke: { weight: 3, fill: 'accent' } },

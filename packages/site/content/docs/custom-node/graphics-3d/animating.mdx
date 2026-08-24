@@ -47,22 +47,22 @@ Use `slerpQuaternion` with a `quaternion` for tumbles where Euler interpolation 
 
 ## There is no `t`
 
-A `prop={() => ...}` binding re-evaluates when the **signals** it reads change. `clock.elapsed` is a plain field, not a signal, so this computes once and freezes:
+A `prop={() => ...}` binding re-evaluates when the **signals** it reads change. `time.elapsed` is a plain field, not a signal, so this computes once and freezes:
 
 ```tsx
 {/* Wrong. Runs once, then never again. No error, just a still image. */}
-<Box3D rotation={() => [0, this.clock.elapsed * 90, 0]} />
+<Box3D rotation={() => [0, this.time.elapsed * 90, 0]} />
 ```
 
 Two correct options:
 
 * Drive the motion from a tweened signal. This also puts it on the timeline, so it scrubs.
-* Read `this.clock.elapsed` inside `renderSelf()` or `buildScene3D()`, which do re-run every frame.
+* Read `this.time.elapsed` inside `renderSelf()` or `buildScene3D()`, which do re-run every frame.
 
 ```tsx
 class Spinner extends Node3D {
   protected override renderSelf(ctx: RenderContext3D): void {
-    const t = this.clock.elapsed;
+    const t = this.time.elapsed;
     ctx.draw(new Graphics3D().box({ width: 2, rotation: [0, t * 90, 0] }));
   }
 }

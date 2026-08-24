@@ -3,11 +3,11 @@ import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import type { PathData } from "@/render/descriptors/path";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { lerpPath } from "@/attributes/shape/path/morph";
 import { measurePathData } from "@/attributes/shape/path/bounds";
@@ -40,7 +40,7 @@ export class Path extends ShapeNode<PathProps> {
         this.applyProp("height", props?.height ?? "hug");
     }
 
-    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         const wm = this.width;
         const hm = this.height;
 

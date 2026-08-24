@@ -1,5 +1,5 @@
 import {
-    AssetCatalog, type AssetManifest, type AudioTrack,
+    ManifestAssetCatalog, type AssetManifest, type AudioTrack,
     type GlobalLayerConfig, type PrecompCache, type Scene, type Size2D,
 } from "@motion-script/core";
 import {
@@ -428,7 +428,7 @@ export async function exportScenesAsVideo(params: ExportParams): Promise<Uint8Ar
     document.body.appendChild(offscreenCanvas);
 
     const canvasKit = await getCanvasKit(wasmUrl);
-    const assetCatalog = new AssetCatalog(manifest);
+    const assetCatalog = new ManifestAssetCatalog(manifest);
     const storageAdapter = new WebStorageAdapter(canvasKit, assetCatalog, viewport, fps);
     const renderContext = new WebRenderContext(canvasKit, storageAdapter);
     renderContext.mount(offscreenCanvas);

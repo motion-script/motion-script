@@ -1,7 +1,7 @@
 import { property } from "@/attributes/properties/decorator";
 import { strokeProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
@@ -15,7 +15,7 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { applyPadding } from "@/layout/padding";
 
 export interface LineGridProps extends ShapeProps {
@@ -69,7 +69,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     // writes accept the loose `Stroke`. Runtime accessor installed by @property.
     @strokeProperty()
     get subStroke(): StrokeResolved[] { return undefined!; }
-    set subStroke(_value: Stroke) { /* installed by @property */ }
+    set subStroke(value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
     declare readonly offset: Vector2;
 
@@ -79,7 +79,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
      */
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
         for (const stroke of this.subStroke) {
@@ -107,7 +107,7 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     // is measured against the padded content box and centred in the grid — the
     // grid is the backdrop, children float over its centre.
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         const size = super.measure(constraints, scope);
         // Measure children so they have a resolved size for layout(); the result
         // doesn't change the grid's own size (it never hugs its children).
@@ -117,8 +117,8 @@ export class LineGrid extends ShapeNode<LineGridProps> {
         return size;
     }
 
-    override layout(rect: BoxBounds, scope: Measurer): void {
-        this.setLayoutRect(rect);
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
+        this.setLayoutBounds(rect);
 
         const pad = this.padding as InsetsResolved;
         const inner = applyPadding(rect.width, rect.height, pad);
@@ -141,8 +141,8 @@ export class LineGrid extends ShapeNode<LineGridProps> {
     }
 
     protected renderSelf(draw: RenderContext2D): void {
-        const width = this.layoutRect.width;
-        const height = this.layoutRect.height;
+        const width = this.layoutBounds.width;
+        const height = this.layoutBounds.height;
         const centerBounds: PathBounds = [-width / 2, -height / 2, width / 2, height / 2];
 
         // Fill + shadow paint across the whole grid rect, behind the lines.
@@ -182,8 +182,8 @@ export class LineGrid extends ShapeNode<LineGridProps> {
 
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
         });
     }
 

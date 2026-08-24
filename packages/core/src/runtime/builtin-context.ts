@@ -5,7 +5,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { type Stroke } from "@/attributes/shape/stroke/mapper";
 import { type Shadow } from "@/attributes/shape/shadow/resolver";
-import type { Node2D } from "@/nodes/base/node2d";
+import type { Node2D } from "@/nodes/2d/node2d";
 
 /**
  * Built-in context tokens. These are ordinary {@link createContext} tokens —

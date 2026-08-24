@@ -8,8 +8,9 @@ import { Fills, resolveChainFill } from "@/attributes/shape/fill/chain";
 import { property } from "@/attributes/properties/decorator";
 import { track3DResources } from "@/render3d/tracking";
 import { Rect, RectProps } from "../geometry/rect-node";
-import { Node, NodeConfig } from "../base/node";
+import { Node, NodeConfig } from "@/nodes/node/node";
 import { Node3D } from "./node3d";
+import { declareLayoutAssets, declareRenderAssets } from "@/nodes/node/node-walk";
 
 export interface Canvas3DProps extends RectProps {
     /**
@@ -69,7 +70,7 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
      * Everywhere else a mixed tree is a mistake that would silently draw nothing
      * (see {@link Node.acceptsChild}); here it is the entire point.
      */
-    protected override acceptsChild(_child: Node): boolean {
+    protected override acceptsChild(child: Node): boolean {
         return true;
     }
 
@@ -152,7 +153,7 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
 
         const scene = this.buildScene3D();
         if (scene.isEmpty()) return;
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         track3DResources(scene, tracker, rect?.width ?? 0, rect?.height ?? 0);
         this.prepareSurfaceSources(scene, tracker);
     }
@@ -177,13 +178,13 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
             const node = source.node;
             // Bound before it is asked to declare anything: a `Text` reads its
             // inherited `<DefaultTextStyle>` to know which family to ask for.
-            this.adoptDetached(node);
+            this.attachDetached(node);
             // No layout pass first, and none needed: `prepareLayout` is specified
             // to run *before* layout, so a font is declared from the node's props
             // rather than from its box. The renderer lays the source out against
             // the buffer when it rasterizes it.
-            node.prepareLayoutAssets(tracker);
-            node.prepareRenderAssets(tracker);
+            declareLayoutAssets(node, tracker);
+            declareRenderAssets(node, tracker);
         });
     }
 
@@ -193,13 +194,13 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
      * A source node is detached — it is a value in a descriptor, not a child — so
      * nothing else would ever hand it an asset catalog, a context map or a clock.
      * This node has all three, and is the only thing that knows the scene, so it
-     * adopts them. See {@link Node.adoptDetached}.
+     * adopts them. See {@link Node.attachDetached}.
      */
     private bindSurfaceSources(scene: Scene3D): void {
         forEachTexture3D(scene, (texture) => {
             if (!isSurfaceTexture3D(texture)) return;
             const source = resolveSurfaceSource(texture.source);
-            if (source.kind === "node") this.adoptDetached(source.node);
+            if (source.kind === "node") this.attachDetached(source.node);
         });
     }
 

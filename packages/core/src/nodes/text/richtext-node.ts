@@ -2,7 +2,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
 import { FillResolved } from "@/attributes/shape/fill/union";
 import { AssetTracker } from "@/assets/tracker";
@@ -10,7 +10,7 @@ import { resolveStrokeArray, StrokeResolved } from "@/attributes/shape/stroke/ma
 import { Size2D } from "@/attributes/layout/size";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { ContextMap } from "@/util/context";
 import { FontStyle, ResolvedTextSpan, TextSpan } from "@/attributes/text/span";
 import { applyTextDefaults } from "@/runtime/builtin-context";
@@ -78,7 +78,7 @@ export class RichText extends ShapeNode<RichTextProps> {
     // any default the author didn't set; these node-level defaults are then folded
     // into each span. Context-value application (spans are fixed structure), so it
     // lives in resolveContext â€” runs once after the tree + context exist. See Text.
-    protected override resolveContext(_ctx: ContextMap): void {
+    protected override resolveContext(ctx: ContextMap): void {
         applyTextDefaults(this, this._props as Record<string, unknown> | undefined);
     }
 
@@ -150,7 +150,7 @@ export class RichText extends ShapeNode<RichTextProps> {
     /** Per-run paint, for the same reason: a span may carry a fill this node doesn't. */
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
         for (const run of this.runs()) {
@@ -161,7 +161,7 @@ export class RichText extends ShapeNode<RichTextProps> {
         }
     }
 
-    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         const runs = this.runs();
         let lineW = 0;
         let maxLineH = 0;
@@ -183,7 +183,7 @@ export class RichText extends ShapeNode<RichTextProps> {
                 // Called unconditionally (even for an empty segment, where
                 // measureTextCached short-circuits to 0) so an empty run still
                 // contributes its line height.
-                lineW += scope.measureText(segments[i], run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle);
+                lineW += scope.measureText(segments[i], run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle).width;
                 if (lh > maxLineH) maxLineH = lh;
             }
         }
@@ -214,8 +214,8 @@ export class RichText extends ShapeNode<RichTextProps> {
             spans: this.runs(),
             lineHeight: this.lineHeight,
             textAlign: this.textAlign,
-            width: this.layoutRect?.width ?? 0,
-            height: this.layoutRect?.height ?? 0,
+            width: this.layoutBounds?.width ?? 0,
+            height: this.layoutBounds?.height ?? 0,
         }));
     }
 }

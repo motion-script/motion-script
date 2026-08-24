@@ -20,7 +20,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 8, fill: 'accent', cap: 'round', join: 'round' }}
             start={0}
             end={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

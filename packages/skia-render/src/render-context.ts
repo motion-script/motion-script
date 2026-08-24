@@ -34,9 +34,11 @@ import {
     Graphics2D,
     type GraphicsOp,
     type RasterizedSurface,
-    RenderContext2D,
+    CanvasRenderContext2D,
+    type RenderContext2D,
     type RichTextState,
     type SpaceRect,
+    type Size2D,
     type NodeRenderState,
     type TextState,
     type TransformState,
@@ -236,7 +238,7 @@ function flipPathY(state: Partial<PathState>): Partial<PathState> {
 
 /**
  * A foreground shader effect mid-flight: drawing is redirected into `offscreen`
- * until {@link SkiaRenderContext.endEffectScope} snapshots it and repaints it
+ * until {@link SkiaRenderContext.endEffects} snapshots it and repaints it
  * through `handler`'s lens. `width`/`height` are the node's logical size,
  * `matrix` the CTM captured when the scope opened.
  */
@@ -289,7 +291,7 @@ function boxGeometry(width: number, height: number): EffectGeometry {
 /** Shared "no motion" vector, so the common case allocates nothing per frame. */
 const ZERO_VELOCITY = { x: 0, y: 0 } as const;
 
-/** Nesting ceiling for {@link SkiaRenderContext.rasterizeOffscreen}. */
+/** Nesting ceiling for {@link SkiaRenderContext.rasterize}. */
 const MAX_RASTER_DEPTH = 4;
 
 /**
@@ -324,7 +326,7 @@ function applySegmentOpacityToStrokes(strokes: StrokeResolved[], segmentOpacity:
  * the handlers built in {@link buildHandlers}. All async asset work happens
  * up front in the platform storage adapter so render() stays synchronous per frame.
  */
-export abstract class SkiaRenderContext extends RenderContext2D {
+export abstract class SkiaRenderContext extends CanvasRenderContext2D {
     private currentCanvas!: Canvas;
     /** Protected so a platform subclass can create its own surface — see {@link attach}. */
     protected canvasKit!: CanvasKit;
@@ -333,7 +335,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
     /**
      * The surface `currentCanvas` belongs to.
      *
-     * Normally the mounted one, but {@link rasterizeOffscreen} swaps both in
+     * Normally the mounted one, but {@link rasterize} swaps both in
      * lockstep. Anything that needs the *size of what is being drawn into* — the
      * device-space shader rect, the `'global'` fill space, a backdrop snapshot,
      * a compatible offscreen — must read this rather than `this.surface`, or a
@@ -342,7 +344,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
     private activeSurface!: Surface;
 
     /**
-     * Depth of nested {@link rasterizeOffscreen} passes. A `Surface2D` may hold a
+     * Depth of nested {@link rasterize} passes. A `Surface2D` may hold a
      * `Canvas3D` which holds another `Surface2D`; the tree is finite so this can't
      * actually run away, but a mistake here costs a full GPU readback per level,
      * so it's bounded rather than trusted.
@@ -401,7 +403,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
 
         this.buildHandlers();
     }
-    measureText(text: string, fontSize: number, fontFamily: string, fontWeight: number = 400, letterSpacing: number = 0, fontStyle: FontStyle = 'normal'): number {
+    measureText(text: string, fontSize: number, fontFamily: string, fontWeight: number = 400, letterSpacing: number = 0, fontStyle: FontStyle = 'normal'): Size2D {
         return measureTextCached(
             this.canvasKit,
             this.storageAdapter.getFontMgr(),
@@ -1631,7 +1633,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
 
     // ─── Effect scope (filters + shader effects, foreground or backdrop) ─────────
 
-    // One entry per open beginEffectScope/endEffectScope pair. `canvasRestores`
+    // One entry per open beginEffects/endEffects pair. `canvasRestores`
     // counts saveLayer()s pushed in begin (the backdrop filter layer) that end()
     // must pop. `captures` holds foreground offscreen captures (one per foreground
     // shader effect), resolved in end() inner-first so nested effects compose in
@@ -1642,7 +1644,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
     }> = [];
 
     /**
-     * Open an effect scope over the node (see {@link RenderContext2D.beginEffectScope}).
+     * Open an effect scope over the node (see {@link RenderContext2D.beginEffects}).
      * Effects are routed by the renderer, not the caller:
      *
      * - ImageFilter-composable effects (blur, grayscale, …) — only meaningful for
@@ -1651,14 +1653,14 @@ export abstract class SkiaRenderContext extends RenderContext2D {
      * - Shader effects (bulge, magnify, posterize, backdrop SkSL) are dispatched to
      *   their {@link EffectHandler} handler. Backdrop ones snapshot the surface and
      *   repaint warped in device space immediately; foreground ones redirect drawing
-     *   into a per-effect offscreen surface that {@link endEffectScope} resamples.
+     *   into a per-effect offscreen surface that {@link endEffects} resamples.
      *
      * `width`/`height` are logical px (size-relative filters and shader lens boxes
      * scale them by the CTM as needed).
      */
-    beginEffectScope(effects: SceneEffect[], target: EffectTarget, width: number, height: number): void {
+    beginEffects(effects: SceneEffect[], target: EffectTarget, width: number, height: number): void {
         if (!this.isRendering) {
-            console.warn("beginEffectScope() must be called within the draw() method.");
+            console.warn("beginEffects() must be called within the draw() method.");
             return;
         }
 
@@ -1689,10 +1691,10 @@ export abstract class SkiaRenderContext extends RenderContext2D {
             }
         } else {
             // Foreground: redirect drawing into an offscreen capture, resolved
-            // (resampled through the lens) in endEffectScope.
+            // (resampled through the lens) in endEffects.
             //
             // Opened in *reverse* author order, because the node's content is
-            // drawn into the innermost (last-opened) capture and endEffectScope
+            // drawn into the innermost (last-opened) capture and endEffects
             // unwinds inner-first. Reversing here makes effects[0] the innermost
             // scope, so it is the first to see the raw content — matching the
             // ImageFilter path, where index 0 is likewise applied first. Opening
@@ -1707,9 +1709,9 @@ export abstract class SkiaRenderContext extends RenderContext2D {
         this.effectScopeStack.push(entry);
     }
 
-    endEffectScope(): void {
+    endEffects(): void {
         if (!this.isRendering) {
-            console.warn("endEffectScope() must be called within the draw() method.");
+            console.warn("endEffects() must be called within the draw() method.");
             return;
         }
         const entry = this.effectScopeStack.pop();
@@ -2084,10 +2086,10 @@ export abstract class SkiaRenderContext extends RenderContext2D {
     ): RasterizedSurface | null {
         const resolved = resolveSurfaceSource(source);
         if (resolved.kind === "graphics") {
-            return this.rasterizeOffscreen(width, height, () => this.draw(resolved.graphics), pixelRatio);
+            return this.rasterize(width, height, () => this.draw(resolved.graphics), pixelRatio);
         }
         const node = resolved.node;
-        return this.rasterizeOffscreen(width, height, () => {
+        return this.rasterize(width, height, () => {
             node.layout({ x: 0, y: 0, width, height }, this);
             node.render(this);
         }, pixelRatio);
@@ -2107,7 +2109,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
      * is no shared texture to hand over). It is bounded by the surface's size,
      * which is why `Tex.surface` defaults to a pixel ratio of 1.
      */
-    override rasterizeOffscreen(
+    override rasterize(
         width: number,
         height: number,
         draw: () => void,
@@ -2117,7 +2119,7 @@ export abstract class SkiaRenderContext extends RenderContext2D {
         if (!(width > 0) || !(height > 0)) return null;
         if (this.rasterDepth >= MAX_RASTER_DEPTH) {
             console.warn(
-                `rasterizeOffscreen() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
+                `rasterize() nested more than ${MAX_RASTER_DEPTH} deep — skipping. ` +
                 "A Surface2D is most likely nested inside itself via a Canvas3D.",
             );
             return null;

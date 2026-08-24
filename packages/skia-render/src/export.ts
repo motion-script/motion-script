@@ -1,6 +1,6 @@
 import {
     AssetCatalog, AssetManager, AudioDevice, type AudioRequest, type AssetManifest,
-    type GlobalLayerConfig, type AudioTrack, Measurer, Precomp, type PrecompCache,
+    type GlobalLayerConfig, type AudioTrack, Measurer2D, Precomp, type PrecompCache,
     type PrecompResult, ProjectGlobals, type Scene, type Size2D, StateEvaluator,
     type StorageAdapter, yieldToScheduler,
 } from "@motion-script/core";
@@ -210,9 +210,14 @@ function prepare(params: CommonParams, options: PrepareOptions = {}) {
     // One instance, shared by the measuring pass and the render pass — the layers
     // whose assets precomp registers must be the ones the frames actually draw.
     const globals = new ProjectGlobals({ audioTracks: options.audioTracks, overlays, backgrounds }, viewport);
-    const measureScope = renderContext as unknown as Measurer;
+    // The render context *is* the measurer — `RenderContext2D` extends
+    // `Measurer2D` so a node measures and draws through one object. This used to
+    // be an `as unknown as` cast, which compiled happily whatever the two
+    // surfaces did; naming the type instead means the compiler checks it, and
+    // this package has no test suite to catch it otherwise.
+    const measurer: Measurer2D = renderContext;
 
-    const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measureScope, {
+    const precomper = new Precomp(scenes, viewport, fps, assetCatalog, measurer, {
         globals,
         cache: precompCache,
         // Neither entry point here draws a timeline, so the per-frame lifespan walk
@@ -225,9 +230,9 @@ function prepare(params: CommonParams, options: PrepareOptions = {}) {
     const precomp = options.upTo ? precompUpTo(precomper, options.upTo) : precomper.run();
     const tracks = precomp.scenes.map(s => s.frameCount);
     const stateEvaluator = new StateEvaluator(
-        scenes, viewport, fps, assetCatalog, tracks, measureScope, globals,
+        scenes, viewport, fps, assetCatalog, tracks, measurer, globals,
     );
-    return { precomp, stateEvaluator, measureScope };
+    return { precomp, stateEvaluator, measurer };
 }
 
 /**
@@ -289,7 +294,7 @@ export async function renderTimeline<TAudio>(
     signal?.throwIfAborted();
 
     renderContext.pixelRatio = scale;
-    const { precomp, stateEvaluator, measureScope } = prepare(
+    const { precomp, stateEvaluator, measurer } = prepare(
         { ...params, manifest: params.manifest ?? EMPTY_MANIFEST }, { audioTracks },
     );
 
@@ -325,7 +330,7 @@ export async function renderTimeline<TAudio>(
 
             await assetManager.loadAt(f);
             stateEvaluator.stateAt(f);
-            stateEvaluator.layout(measureScope);
+            stateEvaluator.layout(measurer);
             await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
 
             await sink.addFrame(globalTime, frameDuration);
@@ -401,7 +406,7 @@ export async function drawFrameAt(params: DrawFrameParams): Promise<DrawnFrame> 
     if (params.scenes.length === 0) throw new Error("No scenes to render.");
 
     renderContext.pixelRatio = scale;
-    const { precomp, stateEvaluator, measureScope } = prepare(
+    const { precomp, stateEvaluator, measurer } = prepare(
         { ...params, manifest: params.manifest ?? EMPTY_MANIFEST },
         { upTo: frame },
     );
@@ -419,7 +424,7 @@ export async function drawFrameAt(params: DrawFrameParams): Promise<DrawnFrame> 
         const assetManager = new AssetManager(precomp, storageAdapter, new NoopAudioDevice());
         await assetManager.loadAt(targetFrame);
         stateEvaluator.stateAt(targetFrame);
-        stateEvaluator.layout(measureScope);
+        stateEvaluator.layout(measurer);
         await renderWarmFrame(harness, () => stateEvaluator.render(renderContext));
 
         return { frame: targetFrame, totalFrames, measuredAll: precomp.complete };

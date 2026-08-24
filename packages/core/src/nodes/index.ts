@@ -1,13 +1,16 @@
 
 
-// Base
-export * from "./base/node";
-export * from "./base/node2d";
-// The layer type `Node2D.captureProps` hands back. Its contents are internal — a
-// cell's mapped value — but the name is public so a host can hold one.
-export type { PropLayer } from "./base/node-reactive";
+// The two halves of the tree: the dimension-agnostic base, and its 2D side.
+export * from "./node/node";
+export * from "./2d/node2d";
+export type { NodeTime } from "./node/node-time";
+// The per-frame subtree traversals the runtime drives. Free functions rather
+// than node methods — see the module docblock.
+/** @internal */ export { declareLayoutAssets, declareRenderAssets, primeMotionTree, sampleTree } from "./node/node-walk";
 export * from "./scene/scene-node";
-export * from "./scene/root-node";
+export type { Stage } from "./scene/stage";
+export * from "./scene/canvas-stage";
+export * from "./scene/canvas2d-node";
 export * from "./layout/camera-node";
 export * from "./geometry/boolean-node";
 export * from "./geometry/mask-node";

@@ -1,7 +1,7 @@
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { Measurer } from "@/render/measurer";
-import type { Node2D } from "@/nodes/base/node2d";
+import { Measurer2D } from "@/render/measurer";
+import type { Node2D } from "@/nodes/2d/node2d";
 
 const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
 
@@ -19,13 +19,13 @@ const NO_PADDING: InsetsResolved = { top: 0, right: 0, bottom: 0, left: 0 };
  * padded hug container reserves the same space it measured. Children then offset
  * from centre via their own `x`/`y`.
  *
- * `children` is the container's **flow** children — a stage-pinned child is
+ * `children` is the container's **flow** children — a canvas-pinned child is
  * placed by `Node2D.layoutAbsoluteChildren` instead and must not be passed here.
  */
 export function layoutFlowChildren(
     children: Node2D[],
     rect: BoxBounds,
-    scope: Measurer,
+    scope: Measurer2D,
     pad: InsetsResolved = NO_PADDING,
 ): void {
     const innerW = Math.max(0, rect.width - pad.left - pad.right);

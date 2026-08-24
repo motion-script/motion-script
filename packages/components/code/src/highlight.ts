@@ -210,7 +210,7 @@ function highlightAt(index: number, cache: HighlightCache): { color: string | nu
  * Split `code` into structural tokens at parse-tree leaf boundaries, including the
  * gaps between leaves (whitespace/punctuation). Mirrors Motion Canvas's
  * `LezerHighlighter.tokenize`; this segmentation is what the token-level
- * append/insert/remove/replace animations diff against, so matching it keeps the
+ * append/insert/erase/replace animations diff against, so matching it keeps the
  * animation behavior identical to Motion Canvas.
  */
 function tokenizeCode(code: string, language: string): string[] {

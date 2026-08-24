@@ -170,7 +170,7 @@ function invertProjective(m: Matrix2D): Matrix2D | null {
  *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-lookAt.x, +lookAt.y)
  *
  * `lookAt` is a y-up world point, hence the sign flip on its y. `vx`/`vy` are the
- * viewport centre the camera's callers pass (`layoutRect.x`, `-layoutRect.y`).
+ * viewport centre the camera's callers pass (`layoutBounds.x`, `-layoutBounds.y`).
  * Kept next to {@link nodeLocalMatrix} so the two stay in step with the renderer.
  */
 /** @internal */

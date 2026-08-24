@@ -10,7 +10,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const middle = createRef<Rect>();
     stage.add(
-        <Row width={760} height={200} gap={16} center={() => stage.root.center}>
+        <Row width={760} height={200} gap={16} center={() => stage.canvas.center}>
             <Rect flex={1} height={'fill'} fill={'primary'} cornerRadius={12} />
             <Rect ref={middle} flex={1} height={'fill'} fill={'accent'} cornerRadius={12} />
             <Rect flex={1} height={'fill'} fill={'primary'} cornerRadius={12} />

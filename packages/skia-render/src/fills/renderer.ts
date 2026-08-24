@@ -83,7 +83,7 @@ export interface FillRendererContext {
     /**
      * The bake context for a media filter that needs a second texture of its own
      * (`ascii`'s glyph atlas, `texture`/`displace`'s source image) — the same one
-     * `beginEffectScope` hands a scene effect, so a filter and the effect it
+     * `beginEffects` hands a scene effect, so a filter and the effect it
      * mirrors resolve their resources identically.
      *
      * `null` when the owning context has no surface to bake against; such a

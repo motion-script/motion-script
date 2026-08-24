@@ -103,7 +103,7 @@ export class FillHandler {
      * Drop the frame's paint slots. Called once per render pass, alongside the 3D
      * backend's own frame bracket.
      *
-     * Deliberately *not* called from `rasterizeOffscreen`: a fill painted inside a
+     * Deliberately *not* called from `rasterize`: a fill painted inside a
      * rasterized buffer must get a slot distinct from one on the main canvas, and
      * letting the counter run through the nested pass gives that for free.
      */

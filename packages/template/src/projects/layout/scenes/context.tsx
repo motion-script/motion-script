@@ -1,6 +1,6 @@
 import {
     createScene, createRef, createContext, ContextMap, Rect, Text, Provider,
-    DefaultTextStyle, easeInOut, Graphics2D, Node2D, RenderContext2D, property,
+    DefaultTextStyle, easeInOut, Graphics2D, Node2D, RenderContext2D, property, sequence,
 } from "motion-script";
 import { layoutCard } from "./layout-card";
 
@@ -91,6 +91,8 @@ export default createScene(function* (stage) {
     );
 
     // The inherited values are live, animatable props on each node like any other.
-    yield* heading().to({ fontSize: 120 }, 0.8, easeInOut("quad"))
-        .to({ fontSize: 96 }, 0.8, easeInOut("quad"));
+    yield* sequence(
+        heading().to({ fontSize: 120 }, 0.8, easeInOut("quad")),
+        heading().to({ fontSize: 96 }, 0.8, easeInOut("quad")),
+    );
 });

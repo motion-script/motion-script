@@ -13,7 +13,11 @@ export type {
     TypographyPreset,
     Scene,
     SceneGenerator,
+    // What a scene generator receives: the composition it draws into, the
+    // canvas it draws onto, and a seeded source for anything random.
     Stage,
+    NodeTime,
+    AttachScope,
     BoxBounds,
 } from '@motion-script/core';
 
@@ -27,12 +31,16 @@ export type {
 export {
     Node,
     Node2D,
+    // The scene's root container: layout frame, background paint and camera in
+    // one node. Reached as `stage.canvas`.
+    Canvas2D,
     Provider,
     ThemeProvider,
 } from '@motion-script/core';
 export type {
     NodeProps,
     Node2DProps,
+    Canvas2DProps,
     NodeConfig,
     NodeChildren,
     NodeDimension,
@@ -229,20 +237,16 @@ export type {
 // =============================================================
 export {
     Graphics2D,
-    RenderContext2D,
     PathBuilder,
     Clip,
-    Measurer,
-    AssetTracker,
 } from '@motion-script/core';
-
-/**
- * @deprecated Renamed to {@link Measurer}. It never was a "scope" in the sense
- * the rest of the codebase uses the word — it measures text, and that is the
- * whole of it. The alias keeps a custom node that types a `measure(constraints,
- * scope: MeasureScope)` override compiling; it will be removed in the next major.
- */
-export { Measurer as MeasureScope } from '@motion-script/core';
+export type {
+    RenderContext2D,
+    RenderPass2D,
+    Measurer2D,
+    AssetTracker,
+    TextBlockSource,
+} from '@motion-script/core';
 
 // =============================================================
 // Fill & Color
@@ -521,6 +525,10 @@ export type {
 // scene built only from these can be scrubbed in constant time, which one built
 // from generators cannot. `@command` marks the methods on a node that return one,
 // and is what a host scans for to know a node's animations without running them.
+//
+// One command shape, always: `node.to(a, 1)` is a single command, not a builder
+// you can append to. Sequence two with `sequence(...)`, run them together with
+// `parallel(...)` — the same two combinators everything else composes through.
 export {
     command,
     driveCommand,
@@ -530,7 +538,7 @@ export {
     commandSequence,
     commandParallel,
 } from '@motion-script/core';
-export type { Command, ChainableCommand } from '@motion-script/core';
+export type { Command, CommandMeta, CommandOptions } from '@motion-script/core';
 
 // =============================================================
 // Animation — Easing

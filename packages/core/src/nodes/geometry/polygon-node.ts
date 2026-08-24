@@ -1,6 +1,6 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { CornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -31,8 +31,8 @@ export class Polygon extends ShapeNode<PolygonProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().polygon({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             sides: this.sides,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
@@ -43,8 +43,8 @@ export class Polygon extends ShapeNode<PolygonProps> {
 
     protected override clipSelf(): Clip {
         return new Clip().polygon({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             sides: this.sides,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,

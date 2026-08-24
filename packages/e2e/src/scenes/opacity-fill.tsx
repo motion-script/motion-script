@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             cornerRadius={20}
             fill={Fills.color('primary', { opacity: 1 })}
             stroke={{ weight: 6, fill: '#f4f6ff' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

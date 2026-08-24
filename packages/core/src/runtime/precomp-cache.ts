@@ -11,7 +11,7 @@ import type { NodeLifespan, ScenePrecomp } from "./precompisition";
  * ten-minute project's generators to completion produces the same frame counts,
  * asset windows, audio and lifespans every time. That reproducibility is not an
  * assumption this module introduces — it is an existing engine invariant (seeded
- * RNG rewound by `BuildStage.reset()`, no wall-clock or `Math.random` anywhere in
+ * RNG rewound by `CanvasStage.reset()`, no wall-clock or `Math.random` anywhere in
  * the evaluation path), and it is the same property that lets a backward scrub
  * replay a scene and land on an identical frame.
  *

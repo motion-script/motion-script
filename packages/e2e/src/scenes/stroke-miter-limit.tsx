@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
             height={280}
             fill={'card'}
             stroke={{ weight: 14, fill: 'primary', join: 'miter', miterLimit: 8 }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

@@ -1,6 +1,7 @@
 import { AssetManager } from "../assets/manager";
-import { Measurer } from "../render/measurer";
-import { RenderContext2D } from "../render/render-context2d";
+import { Measurer2D } from "../render/measurer";
+import { CanvasRenderContext2D } from "../render/canvas-render-context2d";
+import { asTextBlockSource } from "../render/text-layout";
 import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
@@ -11,8 +12,8 @@ import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
 import { Size2D } from "@/attributes/layout/size";
-import { Node } from "@/nodes/base/node";
-import { Node2D } from "@/nodes/base/node2d";
+import { Node } from "@/nodes/node/node";
+import { Node2D } from "@/nodes/2d/node2d";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { NodeBox, collectBoxes, nodeBoxAt, pickNode } from "./node-picking";
@@ -27,8 +28,8 @@ export type NodeOverride = Record<string, unknown>;
 
 /** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
-    renderContext: RenderContext2D;
-    measureScope: Measurer;
+    renderContext: CanvasRenderContext2D;
+    measurer: Measurer2D;
     storageAdapter: StorageAdapter;
     masterClock: MasterClock;
     audioDevice: AudioDevice;
@@ -75,8 +76,8 @@ export type ControllerParams = {
  * `screenshot`, `getTreeState`, and `getNodeState`.
  */
 export class PlaybackController {
-    private renderContext: RenderContext2D;
-    private measureScope: Measurer;
+    private renderContext: CanvasRenderContext2D;
+    private measurer: Measurer2D;
     private storageAdapter: StorageAdapter;
     private masterClock: MasterClock;
     private stateEvaluator: StateEvaluator;
@@ -218,7 +219,7 @@ export class PlaybackController {
 
     constructor(params: ControllerParams) {
         this.renderContext = params.renderContext;
-        this.measureScope = params.measureScope;
+        this.measurer = params.measurer;
         this.masterClock = params.masterClock;
         this.storageAdapter = params.storageAdapter;
         this.audioDevice = params.audioDevice;
@@ -244,7 +245,7 @@ export class PlaybackController {
             this.fps,
             catalog,
             this.tracks,
-            this.measureScope,
+            this.measurer,
             // Read off the precomp rather than taken as a separate param: the two
             // must be the same instance, and there is no way to pass a mismatched
             // pair if only one of them is ever supplied.
@@ -408,7 +409,7 @@ export class PlaybackController {
         this.applyOverrides();
         this.hasPainted = true;
         try {
-            this.stateEvaluator.layout(this.measureScope);
+            this.stateEvaluator.layout(this.measurer);
             this.renderContext.execute(() => {
                 this.stateEvaluator.render(this.renderContext);
             });
@@ -444,7 +445,7 @@ export class PlaybackController {
         this.applyOverrides();
         this.hasPainted = true;
         try {
-            this.stateEvaluator.layout(this.measureScope);
+            this.stateEvaluator.layout(this.measurer);
             this.renderContext.execute(() => {
                 this.stateEvaluator.render(this.renderContext);
             });
@@ -654,17 +655,17 @@ export class PlaybackController {
         // its own bar (a Video's clip on the Video row, a scene's playSound on
         // the scene row). Requests with no owner fall back to the scene root.
         const waveformsByPath = waveformsByOwner(audioRequests);
-        // A scene is no longer a node â€” its world lives on `scene.root`. Walk the
+        // A scene is no longer a node â€” its world lives on `scene.canvas`. Walk the
         // root so structural paths (path "" = root) match how precomp records
         // lifespans, keeping the per-node bars aligned.
-        const tree = nodeToTreeState(scene.root, "", lifespans, sceneStart, waveformsByPath);
+        const tree = nodeToTreeState(scene.canvas, "", lifespans, sceneStart, waveformsByPath);
         return tree;
     }
 
     getNodeState(nodeId: string): NodeState | null {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
-        const node = findNode(scene.root, nodeId);
+        const node = findNode(scene.canvas, nodeId);
         if (!node) return null;
         return { id: node.id, type: node.name, properties: node.properties };
     }
@@ -685,7 +686,7 @@ export class PlaybackController {
         // Through `nodeBoxAt` rather than `nodeBox`, so a path naming a mesh
         // inside a `Canvas3D` resolves too — it has no box of its own, only a
         // projection into the viewport holding it. See `node-picking3d.ts`.
-        return nodeBoxAt(scene.root, path);
+        return nodeBoxAt(scene.canvas, path);
     }
 
     /**
@@ -697,14 +698,14 @@ export class PlaybackController {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return [];
         const out: NodeBox[] = [];
-        collectBoxes(scene.root, "", out, true);
+        collectBoxes(scene.canvas, "", out, true);
         return out;
     }
 
     /**
      * Where a Text node's caret slots landed on screen, or `null` when the path
      * doesn't resolve, the node isn't text, or the shape has no caret model (see
-     * {@link Measurer.layoutTextBlock}). See {@link NodeTextLayout}.
+     * {@link RenderContext2D.layoutTextBlock}). See {@link NodeTextLayout}.
      *
      * Measured on demand rather than carried with every frame: a host wants this
      * only while a text edit is open, and only for the node being edited.
@@ -714,12 +715,27 @@ export class PlaybackController {
     getTextLayout(path: string): NodeTextLayout | null {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
-        const node = findNodeByPath(scene.root, path);
+        const node = findNodeByPath(scene.canvas, path);
         // 3D paths resolve here too now, and a mesh has no glyphs — the `Node2D`
         // narrowing is what turns that into `null` rather than a bad cast.
         return node instanceof Node2D
-            ? nodeTextLayout(node, path, this.measureScope)
+            ? this.textLayoutOf(node, path)
             : null;
+    }
+
+    /**
+     * Lift `node`'s caret slots into viewport space, or `null` when this
+     * controller's measurer cannot report glyph positions.
+     *
+     * The capability is a real one and not every measurer has it: reporting
+     * *where* each character landed needs a shaper that keeps its line boxes,
+     * where {@link Measurer2D} only promises how wide a run comes out. A host
+     * built on a measurer without one gets "no caret model here" rather than a
+     * crash — see {@link asTextBlockSource}.
+     */
+    private textLayoutOf(node: Node2D, path: string): NodeTextLayout | null {
+        const source = asTextBlockSource(this.measurer);
+        return source ? nodeTextLayout(node, path, source) : null;
     }
 
     /**
@@ -731,7 +747,7 @@ export class PlaybackController {
     pickNode(point: Vector2, tolerance = 0): NodeBox | null {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return null;
-        return pickNode(scene.root, point, tolerance);
+        return pickNode(scene.canvas, point, tolerance);
     }
 
     /**
@@ -818,7 +834,7 @@ export class PlaybackController {
         const scene = this.stateEvaluator.currentScene;
         if (!scene) return;
         for (const [path, props] of this.overrides) {
-            findNodeByPath(scene.root, path)?.set(props as never);
+            findNodeByPath(scene.canvas, path)?.set(props as never);
         }
     }
 

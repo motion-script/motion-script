@@ -12,7 +12,7 @@ export default createScene(function* (stage) {
             fontSize={44}
             fill={'#f4f6ff'}
             opacity={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             spans={[
                 { text: 'Motion Script makes ' },
                 { text: 'rich text', fontWeight: 800, fill: 'accent' },

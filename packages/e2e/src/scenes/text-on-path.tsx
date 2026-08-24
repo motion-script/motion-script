@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             fontSize={40}
             fill={'primary'}
             path={'M -320 80 Q 0 -260 320 80'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             scale={0}
         />,
     );

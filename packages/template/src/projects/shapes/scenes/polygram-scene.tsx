@@ -17,7 +17,7 @@ const spec: ShapeSceneSpec = {
 };
 
 export default createScene(shapeScene(spec, (container, props) => {
-    container.addChild(
+    container.add(
         <Polygram
             width={320} height={320}
             fill={props.fill}

@@ -125,7 +125,7 @@ export class Sombrero extends Canvas3D<SombreroProps> {
         const frequency = this.frequency;
         // Phase from the node's elapsed time, not an accumulator — that is what
         // keeps the wave seekable.
-        const phase = this.clock.elapsed * this.speed;
+        const phase = this.time.elapsed * this.speed;
 
         const trough = this.trough as NormalizedColor;
         const crest = this.crest as NormalizedColor;
@@ -150,27 +150,27 @@ export class Sombrero extends Canvas3D<SombreroProps> {
         // The deformed surface. `vertex` is evaluated across the grid each
         // frame; `color` gives the per-vertex height gradient.
         g3.mesh(
-                Geo.parametric({
-                    segments: Math.max(1, Math.round(this.segments)),
-                    vertex: (u, v) => {
-                        const x = (u - 0.5) * 2 * range;
-                        const z = (v - 0.5) * 2 * range;
-                        return { x, y: sombreroHeight(x, z, phase, frequency) * amplitude, z };
-                    },
-                    // Returns a resolved tuple, which is a `Color` like any other —
-                    // so the gradient costs a lerp per vertex, not a parse.
-                    color: (_u, _v, p) =>
-                        lerpColor(trough, crest, clamp01((p.y * inverse + 1) / 2)),
-                    computeNormals: true,
-                }),
-                Mat.phong({
-                    side: "double",
-                    vertexColors: true,
-                    shininess: 80,
-                    specular: "#444444",
-                }),
-                { key: "surface" },
-            );
+            Geo.parametric({
+                segments: Math.max(1, Math.round(this.segments)),
+                vertex: (u, v) => {
+                    const x = (u - 0.5) * 2 * range;
+                    const z = (v - 0.5) * 2 * range;
+                    return { x, y: sombreroHeight(x, z, phase, frequency) * amplitude, z };
+                },
+                // Returns a resolved tuple, which is a `Color` like any other —
+                // so the gradient costs a lerp per vertex, not a parse.
+                color: (_u, _v, p) =>
+                    lerpColor(trough, crest, clamp01((p.y * inverse + 1) / 2)),
+                computeNormals: true,
+            }),
+            Mat.phong({
+                side: "double",
+                vertexColors: true,
+                shininess: 80,
+                specular: "#444444",
+            }),
+            { key: "surface" },
+        );
 
         if (this.shell) this.addShell(g3, range);
 

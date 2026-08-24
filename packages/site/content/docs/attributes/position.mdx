@@ -102,13 +102,6 @@ export default createScene(function* (stage) {
 yield* box().moveTo(300, 100, 0.6, easeOut('back'));
 ```
 
-### `.moveX()` / `.moveY()`: single-axis
-
-```tsx
-yield* box().moveX(400, 0.5);
-yield* box().moveY(-200, 0.5);
-```
-
 ### `.rotateTo()`: animate rotation
 
 ```tsx
@@ -122,42 +115,19 @@ yield* box().scaleTo(2, 0.4);
 yield* box().scaleTo(1, 0.4);
 ```
 
-### `.wiggle()`: organic jitter
+### One tween per command
 
-`wiggle(amplitudes, duration, options?)` continuously offsets numeric props around
-their **current** values using the node's seeded noise, then settles them back
-exactly where they started. The target is an object of prop → *amplitude*,
-mirroring `to()`'s prop → target — so you name props as keys (one call can jitter
-several) rather than passing a string. Unlike `to()`, it adds motion on top of a
-fixed base rather than driving toward a target, so it composes with other
-animations and is reproducible per node (give siblings a distinct `seed` prop to
-make them shake out of phase).
+Every `to()` and every helper above returns a **single** command. Sequence them
+with `sequence(...)` and run them together with `parallel(...)` — the same two
+combinators everything else in a scene composes through.
 
 ```tsx
-yield* box().wiggle({ x: 8 }, 0.6);        // shake, then rest where it began
-
-yield* parallel(
-  box().moveX(400, 2),                     // travel across…
-  box().wiggle({ y: 6, rotation: 2 }, 2, { frequency: 3 }), // …with a hand-held drift + wobble
+yield* sequence(
+  box().to({ x: 200 }, 1),
+  box().to({ x: 0 }, 1),
 );
 ```
 
-Call-wide shaping goes in the trailing options object:
-
-- **`frequency`** — oscillations per second (default `4`); higher is
-  faster/twitchier. It applies to every prop in the call — for a per-prop rate,
-  use a second `wiggle` in the same `parallel`.
-- **`settle`** — the fraction of the duration spent easing the offset back to the
-  base at the end. Defaults automatically; pass `settle: 0` for a hard cut.
-
-```tsx
-yield* box().wiggle({ x: 12, y: 12 }, 1, { frequency: 8, settle: 0 });
-```
-
-Pass `Infinity` as the duration inside a `parallel` for an endless jitter bounded
-by its siblings (no settle is applied then). Props whose value isn't a plain
-number (`width: 'fill'`, per-corner `cornerRadius`) are skipped with a console
-warning.
 
 ---
 

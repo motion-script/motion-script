@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 14, cap: 'round', join: 'round', fill: 'primary' }}
             start={0}
             end={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

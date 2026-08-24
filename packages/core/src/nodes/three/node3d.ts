@@ -3,7 +3,7 @@ import { euler3Property, quaternionProperty, vector3Property } from "@/attribute
 import type { Euler3, Quaternion, Vector3, Vector3Input } from "@/render3d/vector3";
 import type { RenderContext3D } from "@/render3d/render-context3d";
 import type { Transform3D } from "@/render3d/transform";
-import { Node, type NodeConfig, type NodeDimension, type NodeProps } from "../base/node";
+import { Node, type NodeConfig, type NodeDimension, type NodeProps } from "@/nodes/node/node";
 
 export interface Node3DProps extends NodeProps {
     /** Position in the parent's local space. A scalar sets all three axes. */
@@ -131,7 +131,7 @@ export class Node3D<P extends Node3DProps = Node3DProps> extends Node<P> {
      * for a plain {@link Group3D}. Children are recorded after it, nested inside
      * this node's transform.
      */
-    protected renderSelf(_ctx: RenderContext3D): void { }
+    protected renderSelf(ctx: RenderContext3D): void { }
 
     /**
      * Record this node and its subtree into `ctx`.

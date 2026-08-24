@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 
 import {
-    AssetCatalog,
+    ManifestAssetCatalog,
     PlaybackController,
     setTheme,
     setVariables,
@@ -373,7 +373,7 @@ export function MotionPlayer({
         if (!canvas || !canvasKit) return;
         setTheme(theme);
         setVariables(variables);
-        const catalog = new AssetCatalog(assets);
+        const catalog = new ManifestAssetCatalog(assets);
         const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
         const measure = new WebMeasurer(storage);
         const audio = new WebAudioPlayer();
@@ -400,7 +400,7 @@ export function MotionPlayer({
 
         const pc: PlaybackController = new PlaybackController({
             renderContext,
-            measureScope: measure,
+            measurer: measure,
             storageAdapter: storage,
             masterClock: clock,
             precomposition: new Precomp(scenes, viewport, fps, catalog, measure, {

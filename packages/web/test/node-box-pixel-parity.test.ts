@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import {
-    AssetCatalog,
+    ManifestAssetCatalog,
     PlaybackController,
     Line,
     Precomp,
@@ -62,7 +62,7 @@ function mount(scenes: Scene[]): Harness {
     canvas.style.display = "none";
     document.body.appendChild(canvas);
 
-    const catalog = new AssetCatalog({ image: {}, video: {}, audio: {}, font: {} });
+    const catalog = new ManifestAssetCatalog({ image: {}, video: {}, audio: {}, font: {} });
     const storage = new WebStorageAdapter(canvasKit, catalog, VIEWPORT, FPS);
     const measure = new WebMeasurer(storage);
     const audio = new WebAudioDevice();
@@ -71,7 +71,7 @@ function mount(scenes: Scene[]): Harness {
 
     const controller = new PlaybackController({
         renderContext,
-        measureScope: measure,
+        measurer: measure,
         storageAdapter: storage,
         masterClock: new WebMasterClock({ context: audio.getContext(), fps: FPS }),
         audioDevice: audio,

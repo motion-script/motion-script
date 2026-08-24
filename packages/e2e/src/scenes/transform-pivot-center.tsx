@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
     stage.add(
-        <Rect ref={card} width={240} height={120} cornerRadius={16} fill={'primary'} rotation={0} center={() => stage.root.center} />,
+        <Rect ref={card} width={240} height={120} cornerRadius={16} fill={'primary'} rotation={0} center={() => stage.canvas.center} />,
     );
 
     yield* card().to({ rotation: 360 }, 1.6, linear());

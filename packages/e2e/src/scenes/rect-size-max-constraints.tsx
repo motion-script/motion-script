@@ -12,7 +12,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const frame = createRef<Rect>();
     stage.add(
-        <Rect ref={frame} width={780} height={420} fill={'card'} cornerRadius={16} padding={16} center={() => stage.root.center}>
+        <Rect ref={frame} width={780} height={420} fill={'card'} cornerRadius={16} padding={16} center={() => stage.canvas.center}>
             <Rect width={'fill'} height={'fill'} fill={'primary'} cornerRadius={10} />
         </Rect>,
     );

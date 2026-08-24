@@ -1,23 +1,85 @@
 import { type AudioMeta, type FontMeta, type ImageMeta, AssetManifest, type VideoMeta } from "./manifest";
 
 /**
- * A read-only query engine for retrieving strongly-typed asset metadata from an {@link AssetManifest}.
- * * Use this class to safely extract dimensions, durations, and specific configurations for images, 
- * videos, audio files, and fonts, with built-in runtime validation.
- * * @example
+ * What a scene can ask about the assets available to it.
+ *
+ * Strictly read-only, and strictly about *metadata*: dimensions, durations, and
+ * the font faces a family resolves to. Nothing here loads anything — that is
+ * the {@link AssetManager}'s job, driven by what nodes declare into an
+ * {@link AssetTracker}. Reachable from any node as `node.assets` and from a
+ * scene generator as `stage.assets`.
+ *
+ * **Every lookup throws on a miss rather than returning `undefined`.** A missing
+ * asset is a typo or a deleted file, and it is worth finding out during the
+ * precomp pass (where it surfaces as a `BuildError` in the errors panel) rather
+ * than at playback as a shape that silently fails to paint.
+ *
+ * An interface so a host can supply its own — a test double, or a catalog
+ * backed by something other than a static manifest. {@link ManifestAssetCatalog}
+ * is the implementation the runtime builds from the project's asset manifest.
+ */
+export interface AssetCatalog {
+    /**
+     * Metadata for an image.
+     * @throws If the image is not in the manifest.
+     */
+    getImageMeta(src: string): ImageMeta;
+
+    /**
+     * Metadata for a video.
+     * @throws If the video is not in the manifest.
+     */
+    getVideoMeta(src: string): VideoMeta;
+
+    /**
+     * Metadata for an audio track.
+     * @throws If the audio file is not in the manifest.
+     */
+    getAudioMeta(src: string): AudioMeta;
+
+    /**
+     * Metadata for a single font face, by its `family@weight` lookup key.
+     * @throws If the key is not in the manifest.
+     */
+    getFontMeta(key: string): FontMeta;
+
+    /**
+     * Every face registered for a family, across all weights and slants — what
+     * the renderer registers so its font matcher can resolve any requested
+     * weight to the nearest available file. Empty if the family is unknown.
+     */
+    getFontFamilyMetas(fontFamily: string): FontMeta[];
+
+    /** Playback duration of a video, in seconds. */
+    getVideoDuration(src: string): number;
+
+    /** Playback duration of an audio file, in seconds. */
+    getAudioDuration(src: string): number;
+
+    /**
+     * Duration of any *playable* source — an audio file, or a video whose audio
+     * track is being played. Resolves against audio first and falls back to
+     * video, so a video `src` can drive a `Sound` without a duplicate audio-only
+     * manifest entry.
+     * @throws If `src` is in neither manifest.
+     */
+    getMediaDuration(src: string): number;
+
+    /** An image's intrinsic pixel dimensions. */
+    getImageSize(src: string): { width: number; height: number };
+}
+
+/**
+ * The {@link AssetCatalog} the runtime builds: a query engine over a static
+ * {@link AssetManifest}.
+ *
+ * @example
  * ```ts
- * import { AssetCatalog } from './catalog';
- * import { manifest } from './generated-manifest';
- * * const catalog = new AssetCatalog(manifest);
- * const dimensions = catalog.getImageSize("hero-banner.png");
- * console.log(dimensions.width); // 1920
+ * const catalog = new ManifestAssetCatalog(manifest);
+ * catalog.getImageSize("hero-banner.png");   // { width: 1920, height: 1080 }
  * ```
  */
-export class AssetCatalog {
-    /**
-     * Creates an instance of AssetCatalog.
-     * @param manifest - The underlying immutable asset manifest lookup structure.
-     */
+export class ManifestAssetCatalog implements AssetCatalog {
     constructor(private manifest: AssetManifest) { }
 
     /**
@@ -35,94 +97,42 @@ export class AssetCatalog {
         return src.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
     }
 
-    /**
-     * Retrieves the complete metadata object for a specified image.
-     * * @param src - The unique source path or identifier of the image asset.
-     * @returns The associated {@link ImageMeta} block.
-     * @throws {Error} If the image resource does not exist in the manifest.
-     */
     getImageMeta(src: string): ImageMeta {
         const meta = this.manifest.image[this.normalizeKey(src)];
         if (!meta) throw new Error(`Image asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
 
-    /**
-     * Retrieves the complete metadata object for a specified video.
-     * * @param src - The unique source path or identifier of the video asset.
-     * @returns The associated {@link VideoMeta} block.
-     * @throws {Error} If the video resource does not exist in the manifest.
-     */
     getVideoMeta(src: string): VideoMeta {
         const meta = this.manifest.video[this.normalizeKey(src)];
         if (!meta) throw new Error(`Video asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
         return meta;
     }
 
-    /**
-     * Retrieves the complete metadata object for a specified audio track.
-     * * @param src - The unique source path or identifier of the audio asset.
-     * @returns The associated {@link AudioMeta} block.
-     * @throws {Error} If the audio resource does not exist in the manifest.
-     */
     getAudioMeta(src: string): AudioMeta {
         const meta = this.manifest.audio[this.normalizeKey(src)];
         if (!meta) throw new Error(`No audio metadata for src: ${src}`);
         return meta;
     }
 
-    /**
-     * Retrieves the complete metadata object for a specified font face.
-     * * @param key - The unique lookup key or family name of the font asset.
-     * @returns The associated {@link FontMeta} block.
-     * @throws {Error} If the font resource key does not exist in the manifest.
-     */
     getFontMeta(key: string): FontMeta {
         const meta = this.manifest.font[key];
         if (!meta) throw new Error(`No font metadata for key: ${key}`);
         return meta;
     }
 
-    /**
-     * Return every font face registered for a family, across all weights and
-     * slants. Used to register the whole family with the renderer so the font
-     * matcher can resolve any requested weight to its nearest available file.
-     * @param fontFamily - The font family name (e.g. "Inter").
-     * @returns All matching {@link FontMeta} entries; empty if the family is unknown.
-     */
     getFontFamilyMetas(fontFamily: string): FontMeta[] {
         return Object.values(this.manifest.font).filter(meta => meta.fontFamily === fontFamily);
     }
 
-    /**
-     * Convenient shortcut to get the exact playback duration of a video asset.
-     * * @param src - The unique source path or identifier of the video asset.
-     * @returns The duration of the video in seconds (or frames, depending on manifest standard).
-     * @throws {Error} Inherits the missing asset error from {@link getVideoMeta}.
-     */
     getVideoDuration(src: string): number {
         return this.getVideoMeta(src).duration;
     }
 
-    /**
-     * Convenient shortcut to get the exact playback duration of an audio asset.
-     * * @param src - The unique source path or identifier of the audio asset.
-     * @returns The duration of the audio in seconds.
-     * @throws {Error} Inherits the missing asset error from {@link getAudioMeta}.
-     */
     getAudioDuration(src: string): number {
         return this.getAudioMeta(src).duration;
     }
 
-    /**
-     * Playback duration for a *playable* media source — an audio file or a video
-     * whose audio track is being played. Resolves against the audio manifest
-     * first, falling back to the video manifest so a video `src` (e.g. `clip.mp4`)
-     * can drive a {@link Sound} without a duplicate audio-only manifest entry.
-     * @param src - The audio or video source path.
-     * @returns The source's duration in seconds.
-     * @throws {Error} If `src` is in neither the audio nor the video manifest.
-     */
     getMediaDuration(src: string): number {
         const key = this.normalizeKey(src);
         const audio = this.manifest.audio[key];
@@ -132,12 +142,6 @@ export class AssetCatalog {
         throw new Error(`Audio asset not found: "${src}". Check the file exists in your public folder and the src matches its filename.`);
     }
 
-    /**
-     * Convenient shortcut to isolate the structural layout dimensions of an image asset.
-     * * @param src - The unique source path or identifier of the image asset.
-     * @returns An object containing the `width` and `height` dimensions of the asset.
-     * @throws {Error} Inherits the missing asset error from {@link getImageMeta}.
-     */
     getImageSize(src: string): { width: number; height: number } {
         const { width, height } = this.getImageMeta(src);
         return { width, height };

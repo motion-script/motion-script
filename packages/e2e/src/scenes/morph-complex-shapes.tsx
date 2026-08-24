@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const shape = createRef<Path>();
     stage.add(
-        <Path ref={shape} data={BLOB} fill={'primary'} center={() => stage.root.center} />,
+        <Path ref={shape} data={BLOB} fill={'primary'} center={() => stage.canvas.center} />,
     );
 
     yield* shape().to({ data: STAR }, 1.6, easeInOut('quad'));

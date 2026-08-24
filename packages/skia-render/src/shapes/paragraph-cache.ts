@@ -1,6 +1,9 @@
 import type { CanvasKit, TypefaceFontProvider } from "@motion-script/canvaskit";
 import { layoutParagraph, type ParagraphLayoutResult, type ParagraphSegment } from "./paragraph-layout";
-import type { FontStyle, TextAlign } from "@motion-script/core";
+import type { FontStyle, Size2D, TextAlign } from "@motion-script/core";
+
+/** Shared: an empty string has no extent, and no caller mutates the result. */
+const ZERO_SIZE: Size2D = { width: 0, height: 0 };
 
 /**
  * Caches the result of shaping a single-segment straight-text run, so the same
@@ -147,10 +150,14 @@ const MEASURE_ALIGN: TextAlign = 'center';
 const MEASURE_LINE_HEIGHT = 1;
 
 /**
- * Width of `text` under the given font, measured through the same paragraph
- * layout used to render (so hug/auto sizing matches the drawn width), but cached
+ * Size of `text` under the given font, measured through the same paragraph
+ * layout used to render (so hug/auto sizing matches the drawn size), but cached
  * in `cache` so a repeated measurement of the same string doesn't re-shape and
  * re-allocate+free Fonts every call. The cached Fonts are owned by `cache`.
+ *
+ * Both axes, because the shaper produced both: reconstructing a height from
+ * `fontSize × lineHeight` disagrees with it as soon as a fallback face or a
+ * script with taller glyphs is involved.
  */
 export function measureTextCached(
     canvasKit: CanvasKit,
@@ -163,8 +170,8 @@ export function measureTextCached(
     fontWeight: number,
     letterSpacing: number,
     fontStyle: FontStyle,
-): number {
-    if (text.length === 0) return 0;
+): Size2D {
+    if (text.length === 0) return ZERO_SIZE;
     const segment: ParagraphSegment = { text, fontFamily, fontSize, fontWeight, fontStyle, letterSpacing };
     const key = shapeKey(
         shapeKeyInputsFor(segment, MEASURE_ALIGN, MEASURE_LINE_HEIGHT, Infinity, 0),
@@ -177,5 +184,5 @@ export function measureTextCached(
         originX: 0,
         originY: 0,
     }));
-    return layout.width;
+    return { width: layout.width, height: layout.height };
 }

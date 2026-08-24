@@ -8,7 +8,7 @@ import {
     Ellipse,
     Text,
     BoxBounds,
-    Measurer,
+    Measurer2D,
     easeInOut,
     parallel,
     wait,
@@ -40,8 +40,8 @@ class FanNode extends Node2D<FanNodeProps> {
     // No `measure` override: the base Node2D already resolves this container's
     // width/height (here `'fill'`) against the box the card allots it. We only
     // override `layout` to fan the children inside that box.
-    override layout(rect: BoxBounds, scope: Measurer): void {
-        this.setLayoutRect(rect);
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
+        this.setLayoutBounds(rect);
 
         const kids = this.children;
         const count = kids.length;

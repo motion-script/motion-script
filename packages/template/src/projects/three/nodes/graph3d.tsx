@@ -246,14 +246,6 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
         if (props?.zoom === undefined) this.applyProp("zoom", () => seed().distance);
     }
 
-    // Re-derive the camera baseline after the base class re-creates its signals
-    // (root-node reuse only — see Node2D.reinit). Mirrors Rect's `group` handling.
-    protected override reinitProps(force = false): void {
-        if (this.__signals && !force) return;
-        super.reinitProps(force);
-        this.applyCameraDefaults();
-    }
-
     // ---- Drawing ----------------------------------------------------------
 
     protected override buildScene3D(): Scene3D {

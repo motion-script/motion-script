@@ -2,15 +2,15 @@ import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D, SizeInput } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { lerpNumber } from "@/tween/lerp";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexMeasureEntry, layoutFlex, measureFlex, FlexDirection, GapSize } from "@/layout/flex";
-import { Node } from "@/nodes/base/node";
-import { Node2D } from "@/nodes/base/node2d";
+import { Node } from "@/nodes/node/node";
+import { Node2D } from "@/nodes/2d/node2d";
 
 /**
  * How a container arranges the children that take part in its layout:
@@ -30,7 +30,7 @@ export function flowDirection(mode: FlowMode): FlexDirection {
 
 /**
  * The slice of a container node the {@link FlowLayout} engine reads to lay its
- * children out. Both {@link Rect} and {@link RootNode} implement it, so the
+ * children out. Both {@link Rect} and {@link Canvas2D} implement it, so the
  * flex/freeform measure+layout pass — including the cross-mode `flow` blend —
  * lives in one place rather than being duplicated per container.
  */
@@ -50,11 +50,16 @@ export interface FlowHost {
     effectivePadding(): InsetsResolved;
     /**
      * The subset of `children` this container actually positions — everything
-     * except the stage-pinned ones. See `Node2D.flowChildren`.
+     * except the canvas-pinned ones. See `Node2D.flowChildren`.
      */
     flowChildren(): Node2D[];
-    /** Measure + place the stage-pinned children this container holds. */
-    layoutAbsoluteChildren(scope: Measurer): void;
+    /** Measure + place the canvas-pinned children this container holds. */
+    layoutAbsoluteChildren(scope: Measurer2D): void;
+    /**
+     * Where the engine records the pass it just ran, so off-tree work can
+     * measure against the same constraints. See `Node2D.lastMeasure`.
+     */
+    lastMeasure?: { constraints: SizeConstraints; measurer: Measurer2D };
 }
 
 interface FlexNodeMeasure {
@@ -129,12 +134,12 @@ export class FlowLayout {
         this._cachedMeasureFrom = null;
     }
 
-    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         const host = this.host;
-        // Retain the scope on the host for off-tree measurement (the animated
-        // child-insert in node-lifecycle.ts): Rect/Root delegate here instead of
-        // Node2D.measure, so capture it on the host node the same way.
-        (host as unknown as { _lastScope?: Measurer })._lastScope = scope;
+        // Retain the pass on the host for off-tree measurement (the animated
+        // child-insert in node-lifecycle.ts): Rect/Canvas2D delegate here instead
+        // of Node2D.measure, so capture it on the host node the same way.
+        host.lastMeasure = { constraints, measurer: scope };
 
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
@@ -172,7 +177,7 @@ export class FlowLayout {
         };
     }
 
-    layout(rect: BoxBounds, scope: Measurer): void {
+    layout(rect: BoxBounds, scope: Measurer2D): void {
         const host = this.host;
         const padding = host.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
@@ -223,7 +228,7 @@ export class FlowLayout {
 
         // Stage-pinned children sit outside every one of the passes above — they
         // took no part in the hug measure and get no cell from the flow — so they
-        // are placed last, against the stage rather than this rect.
+        // are placed last, against the canvas rather than this rect.
         host.layoutAbsoluteChildren(scope);
     }
 
@@ -231,7 +236,7 @@ export class FlowLayout {
         mode: FlowMode,
         innerWidth: number,
         innerHeight: number,
-        scope: Measurer,
+        scope: Measurer2D,
     ): NodeMeasureResult {
         if (mode === "freeform") {
             return this.computeFreeformMeasure(innerWidth, innerHeight, scope);
@@ -267,7 +272,7 @@ export class FlowLayout {
         direction: FlexDirection,
         innerWidth: number,
         innerHeight: number,
-        scope: Measurer,
+        scope: Measurer2D,
     ): FlexNodeMeasure {
         const transformChildren = this.host.flowChildren();
         const adapters: FlexChild[] = transformChildren.map((child) => ({
@@ -299,7 +304,7 @@ export class FlowLayout {
     private computeFreeformMeasure(
         innerWidth: number,
         innerHeight: number,
-        scope: Measurer,
+        scope: Measurer2D,
     ): FreeformNodeMeasure {
         const transformChildren = this.host.flowChildren();
         const constraints: SizeConstraints = { maxWidth: innerWidth, maxHeight: innerHeight };

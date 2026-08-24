@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             sides={5}
             cornerRadius={0}
             fill={'accent'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

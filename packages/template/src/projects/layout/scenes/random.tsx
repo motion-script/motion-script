@@ -94,7 +94,10 @@ export default createScene(function* (stage) {
     // One bar's pulse: grow to `height`, then settle back to BASE — mirroring
     // MC's `rect.size.y(h, .5).to(10, .5)`.
     const pulse = (ref: Reference<Rect>, height: number) =>
-        ref().to({ height }, PULSE, easeInOut("quad")).to({ height: BASE_HEIGHT }, PULSE, easeInOut("quad"));
+        sequence(
+            ref().to({ height }, PULSE, easeInOut("quad")),
+            ref().to({ height: BASE_HEIGHT }, PULSE, easeInOut("quad")),
+        );
 
     // A staggered wave across one row: bar `i` kicks off `i * STAGGER` after the
     // first, so the pulse ripples left-to-right (MC's `sequence(0.04, …)`).

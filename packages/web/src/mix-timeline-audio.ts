@@ -1,5 +1,5 @@
 import {
-    AssetCatalog,
+    ManifestAssetCatalog,
     Precomp,
     ProjectGlobals,
     type AssetManifest,
@@ -82,13 +82,13 @@ export async function mixTimelineAudio(
     // CanvasKit only for its font manager — `WebMeasurer` shapes text through
     // it, and a scene's length depends on how that text laid out.
     const canvasKit = await getCanvasKit(wasmUrl);
-    const catalog = new AssetCatalog(manifest);
+    const catalog = new ManifestAssetCatalog(manifest);
     const storage = new WebStorageAdapter(canvasKit, catalog, viewport, fps);
-    const measureScope = new WebMeasurer(storage);
+    const measurer = new WebMeasurer(storage);
     const globals = new ProjectGlobals({ audioTracks, overlays, backgrounds }, viewport);
 
     try {
-        const precomp = new Precomp(scenes, viewport, fps, catalog, measureScope, {
+        const precomp = new Precomp(scenes, viewport, fps, catalog, measurer, {
             globals,
             cache: precompCache,
             // Same reasoning as the exporter's own pass: nothing here draws a

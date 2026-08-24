@@ -47,7 +47,7 @@ export default createScene(function* (stage) {
     const sweepTo = (x: number, ease = easeInOut('quad')) => {
         const duration = SWEEP * Math.abs(x - at) / (RIGHT - LEFT);
         at = x;
-        return parallel(...[...sharp, ...blurred].map(ref => ref().moveX(x, duration, ease)));
+        return parallel(...[...sharp, ...blurred].map(ref => ref().to({ x }, duration, ease)));
     };
 
     // Out from centre, two round trips, then accelerate away so the closing frame

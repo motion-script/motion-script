@@ -2,7 +2,7 @@ import { createScene, createRef, Rect, wait } from 'motion-script';
 import { Code, lines } from 'motion-script';
 import { holdTail } from './_lib';
 
-/** {@link Code.remove}: a debug line is deleted from the snippet, collapsing the surrounding lines. */
+/** {@link Code.erase}: a debug line is deleted from the snippet, collapsing the surrounding lines. */
 export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const code = createRef<Code>();
@@ -25,6 +25,6 @@ export default createScene(function* (stage) {
     );
 
     yield* wait(0.5);
-    yield* code().remove(lines(2), 0.7);
+    yield* code().erase(lines(2), 0.7);
     yield* holdTail(1.2);
 });

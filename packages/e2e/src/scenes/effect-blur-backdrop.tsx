@@ -19,7 +19,7 @@ export default createScene(function* (stage) {
             height={260}
             cornerRadius={130}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             effects={Effects.blur({ radius: 0, mode: 'backdrop' })}
         />,
     );

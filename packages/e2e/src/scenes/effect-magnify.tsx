@@ -28,7 +28,7 @@ export default createScene(function* (stage) {
             height={220}
             cornerRadius={110}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             effects={Effects.magnify(1)}
         />,
     );

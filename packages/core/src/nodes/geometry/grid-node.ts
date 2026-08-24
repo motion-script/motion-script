@@ -6,14 +6,14 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { resolveSize } from "@/layout/size-resolver";
 import { GridChild, GridMeasureResult, layoutGrid, measureGrid } from "@/layout/grid";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 
@@ -64,8 +64,8 @@ export class Grid extends ShapeNode<GridProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -75,8 +75,8 @@ export class Grid extends ShapeNode<GridProps> {
 
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
@@ -99,7 +99,7 @@ export class Grid extends ShapeNode<GridProps> {
 
     // ---- Measure -------------------------------------------------------------
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
 
@@ -123,8 +123,8 @@ export class Grid extends ShapeNode<GridProps> {
         };
     }
 
-    override layout(rect: BoxBounds, scope: Measurer): void {
-        this.setLayoutRect(rect);
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
+        this.setLayoutBounds(rect);
 
         const padding = this.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
@@ -153,7 +153,7 @@ export class Grid extends ShapeNode<GridProps> {
         this.layoutAbsoluteChildren(scope);
     }
 
-    private computeMeasure(innerWidth: number, innerHeight: number | undefined, scope: Measurer): GridMeasureResult {
+    private computeMeasure(innerWidth: number, innerHeight: number | undefined, scope: Measurer2D): GridMeasureResult {
         const childNodes = this.flowChildren();
         const adapters: GridChild[] = childNodes.map((child) => ({
             column: child.column,

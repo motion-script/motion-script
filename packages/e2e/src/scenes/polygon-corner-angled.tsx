@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             cornerRadius={60}
             cornerStyle={'rounded'}
             fill={'primary'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parallel } from '../parallel';
-import { Rect } from '../../nodes/geometry/rect-node';
+import { parallel } from '@/tween/parallel';
+import { sequence } from '@/tween/sequence';
+import { Rect } from '@/nodes/geometry/rect-node';
+import { attached } from '@/nodes/node/node.fixtures';
 
 // Drive a generator (or any Iterator<void,void,number>) to completion, sending
 // a fixed dt each frame and snapshotting a value after every frame (the first
@@ -20,14 +22,14 @@ function frames<T>(gen: Iterator<void, void, number>, dt: number, sample: () => 
 
 describe('parallel – batched stepper path (node.to)', () => {
     it('interpolates a single node tween linearly', () => {
-        const node = new Rect({ x: 0 });
+        const node = attached(new Rect({ x: 0 }));
         // 1s tween at 0.5s steps → t = 0, 0.5, 1
         const xs = frames(parallel(node.to({ x: 100 }, 1)), 0.5, () => node.x);
         expect(xs).toEqual([0, 50, 100]);
     });
 
     it('drives many node tweens in one parallel to their targets', () => {
-        const nodes = Array.from({ length: 50 }, (_, i) => new Rect({ x: i }));
+        const nodes = Array.from({ length: 50 }, (_, i) => attached(new Rect({ x: i })));
         const targets = nodes.map((_, i) => i * 10 + 5);
         const gen = parallel(...nodes.map((n, i) => n.to({ x: targets[i] }, 1)));
         // Run to completion at 1/60s steps.
@@ -38,7 +40,7 @@ describe('parallel – batched stepper path (node.to)', () => {
     });
 
     it('animates multiple props of one node together', () => {
-        const node = new Rect({ x: 0, y: 0, rotation: 0 });
+        const node = attached(new Rect({ x: 0, y: 0, rotation: 0 }));
         const gen = parallel(node.to({ x: 10, y: 20, rotation: 90 }, 1));
         gen.next();
         gen.next(0.5);
@@ -51,9 +53,9 @@ describe('parallel – batched stepper path (node.to)', () => {
         expect(node.rotation).toBeCloseTo(90, 6);
     });
 
-    it('chained .to() steps run sequentially within the batch', () => {
-        const node = new Rect({ x: 0 });
-        const gen = parallel(node.to({ x: 10 }, 1).to({ x: 20 }, 1));
+    it('runs two sequenced tweens on one node within the batch', () => {
+        const node = attached(new Rect({ x: 0 }));
+        const gen = parallel(sequence(node.to({ x: 10 }, 1), node.to({ x: 20 }, 1)));
         gen.next();                 // t=0 of step 1
         expect(node.x).toBeCloseTo(0, 6);
         gen.next(1);                // step 1 finishes (x=10), step 2 primed at t=0
@@ -66,8 +68,8 @@ describe('parallel – batched stepper path (node.to)', () => {
 
     it('matches the direct iterator path frame-for-frame', () => {
         const dt = 1 / 60;
-        const a = new Rect({ x: 0 });
-        const b = new Rect({ x: 0 });
+        const a = attached(new Rect({ x: 0 }));
+        const b = attached(new Rect({ x: 0 }));
         // Batched path via parallel(node.to(...)) — the Steppable fast path.
         const batched = frames(parallel(a.to({ x: 100 }, 0.37)), dt, () => a.x);
         // Iterator path: drive the Command's own [Symbol.iterator]() directly.

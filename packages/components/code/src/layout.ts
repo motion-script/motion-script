@@ -1,4 +1,4 @@
-import type { InsetsResolved, Measurer, RenderContext2D } from "@motion-script/core";
+import type { InsetsResolved, Measurer2D, RenderContext2D } from "@motion-script/core";
 import type { TokenAdvanceCache } from "./measure-cache";
 import type { IdLine } from "./tokens";
 
@@ -73,13 +73,13 @@ export function metricsSignature(m: CodeMetrics): string {
  * space-widths so it scales with the font, and measured with letterSpacing 0 —
  * line numbers and the gap don't carry the code's letter-spacing.
  */
-function gutterGapOf(scope: Measurer | RenderContext2D, m: CodeMetrics, cache: TokenAdvanceCache): number {
+function gutterGapOf(scope: Measurer2D | RenderContext2D, m: CodeMetrics, cache: TokenAdvanceCache): number {
     return cache.advance(scope, " ", m.fontSize, m.fontFamily, 0) * m.lineNumberGap;
 }
 
 /** Width of the line-number column for a structure of `lineCount` lines, gap included. */
 function gutterOf(
-    scope: Measurer | RenderContext2D,
+    scope: Measurer2D | RenderContext2D,
     m: CodeMetrics,
     cache: TokenAdvanceCache,
     lineCount: number,
@@ -101,7 +101,7 @@ export function layoutCode(
     lines: IdLine[],
     m: CodeMetrics,
     cache: TokenAdvanceCache,
-    scope: Measurer | RenderContext2D,
+    scope: Measurer2D | RenderContext2D,
 ): CodeLayout {
     const lineH = m.fontSize * m.lineHeight;
     const gutterGap = m.showLineNumbers ? gutterGapOf(scope, m, cache) : 0;

@@ -1,4 +1,4 @@
-import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
+import { Node2D, NodeConfig, Node2DProps } from "@/nodes/2d/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { ContextMap } from "@/util/context";
 import { TextStyleToken, TextStyle, TEXT_STYLE_KEYS } from "@/runtime/builtin-context";
@@ -7,7 +7,7 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { type Stroke } from "@/attributes/shape/stroke/mapper";
 import { type Shadow } from "@/attributes/shape/shadow/resolver";
-import { type RenderContext2D } from "@/render/render-context2d";
+import { type RenderPass2D } from "@/render/render-context2d";
 
 export interface DefaultTextStyleProps extends Node2DProps {
     fontFamily: string;
@@ -88,14 +88,14 @@ export class DefaultTextStyle extends Node2D<DefaultTextStyleProps> {
      * Open the render-context text-style scope around this node's children, so
      * the `Graphics2D` they draw inherit the same defaults their `Text` nodes do.
      *
-     * `super.onRender` is what renders those children, so the scope has to wrap
-     * it — and be closed in a `finally`, since the stack outlives this node and a
-     * leaked frame would restyle every sibling drawn after it.
+     * `super.renderContent` is what renders those children, so the scope has to
+     * wrap it — and be closed in a `finally`, since the stack outlives this node
+     * and a leaked frame would restyle every sibling drawn after it.
      */
-    override onRender(ctx: RenderContext2D): void {
+    protected override renderContent(ctx: RenderPass2D): void {
         ctx.pushTextStyle(this.currentStyle());
         try {
-            super.onRender(ctx);
+            super.renderContent(ctx);
         } finally {
             ctx.popTextStyle();
         }

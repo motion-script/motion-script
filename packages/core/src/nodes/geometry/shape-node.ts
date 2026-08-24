@@ -14,7 +14,7 @@ import { Graphics2D } from "@/render/graphics2d";
 import { containsClip } from "@/render/clip-contains";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { property } from "@/attributes/properties/decorator";
-import { Node2D, Node2DProps } from "../base/node2d";
+import { Node2D, Node2DProps } from "@/nodes/2d/node2d";
 import { TweenOptions } from "@/tween/lerp";
 import { commandSequence, type Command } from "@/tween/command";
 import { command } from "@/tween/command-decorator";
@@ -152,7 +152,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
      * context — so what they reference can be read off the node directly instead
      * of being discovered by drawing it.
      *
-     * Sized from `layoutRect`, which is live by the time this runs, so an image
+     * Sized from `layoutBounds`, which is live by the time this runs, so an image
      * decodes at the size it will actually be painted at.
      *
      * A subclass that paints something *outside* these four slots — `Image` and
@@ -161,7 +161,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
      */
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
 
@@ -204,7 +204,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
         const lerp = options?.lerp ?? lerpFillArray;
         return this.delayed(
             options?.delay,
-            this.animate<P>(t => ({ fill: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+            this.command<P>(t => ({ fill: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
         );
     }
 
@@ -215,7 +215,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
         const lerp = options?.lerp ?? lerpFillArray;
         return this.delayed(
             options?.delay,
-            this.animate<P>(t => ({ overlay: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+            this.command<P>(t => ({ overlay: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
         );
     }
 
@@ -226,7 +226,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
         const lerp = options?.lerp ?? lerpStrokeArray;
         return this.delayed(
             options?.delay,
-            this.animate<P>(t => ({ stroke: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+            this.command<P>(t => ({ stroke: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
         );
     }
 
@@ -237,19 +237,20 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
         const lerp = options?.lerp ?? lerpShadowArray;
         return this.delayed(
             options?.delay,
-            this.animate<P>(t => ({ shadow: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
+            this.command<P>(t => ({ shadow: lerp(from, target, t) }) as Partial<P>, duration, options?.ease),
         );
     }
 
     /**
-     * Prefix `command` with `delay` seconds of holding still.
+     * Prefix `animation` with `delay` seconds of holding still.
      *
      * The hold is a command of its own that writes nothing, so the pair composes
      * into one seekable value — where the generator version reached the delay by
      * `yield* wait(...)`, which is only expressible by running it.
      */
-    private delayed(delay: number | undefined, command: Command<P>): Command<P> {
-        if (!delay) return command;
-        return commandSequence<P>(this, this.animate<P>(() => ({}), delay), command);
+    private delayed(delay: number | undefined, animation: Command<P>): Command<P> {
+        if (!delay) return animation;
+        const hold = this.command<P>(() => ({}), delay);
+        return commandSequence<P>(this, hold, animation);
     }
 }

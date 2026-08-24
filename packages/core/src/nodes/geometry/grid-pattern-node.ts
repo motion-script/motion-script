@@ -1,6 +1,6 @@
 import { property } from "@/attributes/properties/decorator";
 import { strokeProperty } from "@/attributes/properties/typed";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { BoxBounds } from "@/attributes/layout/bounds";
@@ -61,14 +61,14 @@ export class GridPattern extends ViewportPattern<GridPatternProps> {
     // writes accept the loose `Stroke`. Runtime accessor installed by @property.
     @strokeProperty()
     get subStroke(): StrokeResolved[] { return undefined!; }
-    set subStroke(_value: Stroke) { /* installed by @property */ }
+    set subStroke(value: Stroke) { /* installed by @property */ }
     @property({ default: { x: 0, y: 0 }, tween: lerpVector2 })
     declare readonly offset: Vector2;
 
     /** The minor-line stroke, on top of the four slots `ShapeNode` declares. */
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
         for (const stroke of this.subStroke) {

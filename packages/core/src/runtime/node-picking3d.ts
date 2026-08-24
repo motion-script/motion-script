@@ -1,4 +1,4 @@
-import { Node } from "@/nodes/base/node";
+import { Node } from "@/nodes/node/node";
 import { Node3D } from "@/nodes/three/node3d";
 import { Canvas3D } from "@/nodes/three/canvas3d-node";
 import type { Vector2 } from "@/attributes/layout/vector2";

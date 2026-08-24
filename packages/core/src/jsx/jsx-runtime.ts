@@ -1,4 +1,4 @@
-import type { Node } from "../nodes/base/node";
+import type { Node } from "@/nodes/node/node";
 import type { Reference } from "../util/reference";
 
 export function jsx(type: any, props: any) {

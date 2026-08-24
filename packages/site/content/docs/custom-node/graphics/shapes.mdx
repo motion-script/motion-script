@@ -207,9 +207,9 @@ Only the shaping fields inherit: `fontFamily`, `fontSize`, `fontWeight`, `fontSt
 A node whose text is its own vocabulary rather than the document's opts out for everything it draws:
 
 ```tsx
-protected onRender(ctx: RenderContext2D): void {
+protected renderContent(ctx: RenderContext2D): void {
   ctx.pushTextStyle(null);
-  try { super.onRender(ctx); } finally { ctx.popTextStyle(); }
+  try { super.renderContent(ctx); } finally { ctx.popTextStyle(); }
 }
 ```
 

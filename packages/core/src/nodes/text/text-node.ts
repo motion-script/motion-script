@@ -3,13 +3,12 @@ import { TextAlign } from "@/attributes/text/align";
 import { FontStyle } from "@/attributes/text/span";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { ContextMap } from "@/util/context";
 import { SizeConstraints } from "@/attributes/layout/constraints";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
 import { EasingFunction } from "@/tween/ease/type";
-import { type ChainableCommand } from "@/tween/chain";
 import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { TextSegment, TextState } from "@/render/descriptors/text";
@@ -22,6 +21,8 @@ import { PathBuilder } from "@/render/descriptors/path-builder";
 import { measurePathData } from "@/attributes/shape/path/bounds";
 import { TextRange, TextSelection } from "./text-selection";
 import { applyTextDefaults } from "@/runtime/builtin-context";
+import { type Command } from "@/tween/command";
+import { command } from "@/tween/command-decorator";
 
 
 export interface TextProps extends ShapeProps {
@@ -97,7 +98,7 @@ export class Text extends ShapeNode<TextProps> {
     // (structure is fixed â€” Text has no children), so it belongs in resolveContext,
     // which runs once after the tree + context exist. Writing through _writeProp
     // applies each field's own mapper (e.g. `fill`'s color resolver) once.
-    protected override resolveContext(_ctx: ContextMap): void {
+    protected override resolveContext(ctx: ContextMap): void {
         applyTextDefaults(this, this._props as Record<string, unknown> | undefined);
     }
 
@@ -111,7 +112,7 @@ export class Text extends ShapeNode<TextProps> {
         this.applyProp("width", props?.width ?? (autofit || props?.wrap ? "fill" : "hug"));
     }
 
-    measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         // Text-on-path: the visual extent is the path's bounding box, not a text
         // line box. Size the node to the path (node-local coords, like Path).
         if (this.path != null) {
@@ -127,7 +128,7 @@ export class Text extends ShapeNode<TextProps> {
         const measureFontSize = this.fontSize === 'autofit' ? 16 : this.fontSize;
         const paragraphs = this.text.split("\n");
         const lineH = measureFontSize * this.lineHeight;
-        const intrinsicW = Math.max(...paragraphs.map(l => scope.measureText(l, measureFontSize, this.fontFamily, this.fontWeight, this.letterSpacing, this.fontStyle)));
+        const intrinsicW = Math.max(...paragraphs.map(l => scope.measureText(l, measureFontSize, this.fontFamily, this.fontWeight, this.letterSpacing, this.fontStyle).width));
 
         const wm = this.width;
         const hm = this.height;
@@ -156,11 +157,13 @@ export class Text extends ShapeNode<TextProps> {
         return { width: resolvedW, height: resolvedH };
     }
 
-    append(text: string, duration: number, easing?: EasingFunction): ChainableCommand<TextProps> {
+    @command()
+    append(text: string, duration: number, easing?: EasingFunction): Command<TextProps> {
         return this.to({ text: this.text + text }, duration, easing);
     }
 
-    prepend(text: string, duration: number, easing?: EasingFunction): ChainableCommand<TextProps> {
+    @command()
+    prepend(text: string, duration: number, easing?: EasingFunction): Command<TextProps> {
         return this.to({ text: text + this.text }, duration, easing);
     }
 
@@ -346,7 +349,7 @@ export class Text extends ShapeNode<TextProps> {
     override prepareRender(tracker: AssetTracker): void {
         super.prepareRender(tracker);
         if (this.path != null) return;
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         const width = rect?.width ?? 0;
         const height = rect?.height ?? 0;
         // Null when no selection is active â€” the node's own paint is all there is,
@@ -385,8 +388,8 @@ export class Text extends ShapeNode<TextProps> {
             textAlign: this.textAlign,
             wrap: this.wrap,
             minFontSize: this.minFontSize,
-            width: this.layoutRect?.width ?? 0,
-            height: this.layoutRect?.height ?? 0,
+            width: this.layoutBounds?.width ?? 0,
+            height: this.layoutBounds?.height ?? 0,
             segments: segments ?? undefined,
             path: this.path,
         };
@@ -440,18 +443,18 @@ function countWrappedLines(
     fontSize: number,
     fontFamily: string,
     fontWeight: number,
-    scope: Measurer,
+    scope: Measurer2D,
     letterSpacing: number = 0,
     fontStyle: FontStyle = 'normal',
 ): number {
     if (paragraph.length === 0) return 1;
-    if (scope.measureText(paragraph, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle) <= maxWidth) return 1;
+    if (scope.measureText(paragraph, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle).width <= maxWidth) return 1;
 
     const words = paragraph.split(/(\s+)/).filter(s => s.length > 0);
     let lines = 1;
     let lineW = 0;
     for (const word of words) {
-        const w = scope.measureText(word, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle);
+        const w = scope.measureText(word, fontSize, fontFamily, fontWeight, letterSpacing, fontStyle).width;
         if (lineW === 0) {
             lineW = w;
         } else if (lineW + w <= maxWidth) {

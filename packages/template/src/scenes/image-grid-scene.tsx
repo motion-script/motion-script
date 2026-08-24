@@ -1,4 +1,4 @@
-import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext2D, Graphics2D, Clip, Fills, BoxBounds, SizeConstraints, Size2D, Measurer, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
+import { createScene, createRef, ShapeProps, ShapeNode, property, NodeConfig, RenderContext2D, Graphics2D, Clip, Fills, BoxBounds, SizeConstraints, Size2D, Measurer2D, easeOut, FX, Rect, wait, StrokeResolved, ShadowResolved } from "motion-script";
 
 export interface ImageGridProps extends ShapeProps {
     src: string;
@@ -16,7 +16,7 @@ export interface ImageGridProps extends ShapeProps {
  * returns the node and `cell(r, c).moveTo(...)` animates it like any other.
  *
  * A cell holds no state of its own: its slot comes from the grid's layout pass
- * (its `layoutRect`) and its styling (stroke, shadow, src) is read live from the
+ * (its `layoutBounds`) and its styling (stroke, shadow, src) is read live from the
  * grid, so animating the grid reflows and restyles every cell. It shows the
  * slice of the image that falls within its slot — the whole image is drawn to
  * *cover* the grid (resolution-independent, computed by the renderer) and clipped
@@ -33,7 +33,7 @@ class GridCell extends ShapeNode<ShapeProps> {
     }
 
     protected renderSelf(ctx: RenderContext2D): void {
-        const r = this.layoutRect;
+        const r = this.layoutBounds;
         if (r.width <= 0 || r.height <= 0) return;
         const { width: W, height: H } = this.grid.gridSize();
         // A zero-weight stroke still rasterises a hairline, so drop those — at
@@ -108,7 +108,7 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         const signature = `${this.rows}x${this.columns}`;
         if (signature === this.cellSignature && this.allCells.length > 0) return;
         for (const cell of this.allCells) {
-            this.removeChild(cell);
+            this.remove(cell);
             cell.dispose();
         }
         this.cellSignature = signature;
@@ -118,7 +118,7 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
             const rowCells: GridCell[] = [];
             for (let c = 1; c <= this.columns; c++) {
                 const cell = new GridCell(this, r, c);
-                this.addChild(cell);
+                this.add(cell);
                 rowCells.push(cell);
                 this.allCells.push(cell);
             }
@@ -138,7 +138,7 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
 
     /** Grid size in scene pixels, from the last layout pass. */
     gridSize(): { width: number; height: number } {
-        return { width: this.layoutRect.width, height: this.layoutRect.height };
+        return { width: this.layoutBounds.width, height: this.layoutBounds.height };
     }
 
     /** A cell's slot size and home-centre offset (grid-local, y-down). Cells and
@@ -154,14 +154,14 @@ export class ImageGrid extends ShapeNode<ImageGridProps> {
         return { homeX, homeY, cellW, cellH };
     }
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         this.ensureCells();
         return super.measure(constraints, scope);
     }
 
     // The grid is the only node that lays out its cells: each is placed in its
     // slot (using the live gaps + grid size, so animating either reflows them).
-    override layout(rect: BoxBounds, scope: Measurer): void {
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
         super.layout(rect, scope);
         this.ensureCells();
         for (const cell of this.allCells) {

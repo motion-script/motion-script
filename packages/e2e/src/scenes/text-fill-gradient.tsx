@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             fontSize={72}
             fill={Fills.linearGradient(['#6990dd', '#e8617c'])}
             rotation={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

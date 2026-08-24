@@ -5,14 +5,14 @@ import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
 import { InsetsResolved } from "@/attributes/layout/insets";
 import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { Anchor } from "@/attributes/layout/anchor";
 import { GapSize } from "@/layout/flex";
 import { FlowLayout, FlowHost, FlowMode } from "@/layout/flow-engine";
 import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { Node2D, NodeConfig } from "../base/node2d";
+import { Node2D, NodeConfig } from "@/nodes/2d/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { anchorProperty, cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { lerpSizeInput } from "@/layout/tweens";
@@ -69,7 +69,7 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     declare flow: FlowMode;
 
     // Flex/freeform child layout (including the cross-mode `flow` blend) lives in
-    // a shared engine so Rect and RootNode don't each carry a copy.
+    // a shared engine so Rect and Canvas2D don't each carry a copy.
     private readonly _flowLayout = new FlowLayout(this);
 
     /**
@@ -104,8 +104,8 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
      * constructor above), so the raw `props.flow` is read here instead —
      * `"horizontal"`/`"vertical"` only promote their single main axis;
      * `"freeform"` (the default, and the mode with no distinct main axis) checks
-     * both axes independently. Only flow children count: a stage-pinned child
-     * fills the stage, not this box.
+     * both axes independently. Only flow children count: a canvas-pinned child
+     * fills the canvas, not this box.
      */
     protected override applyDefaultSize(props?: NodeConfig<any, P>): void {
         const children = Node2D.flowChildrenProp(props);
@@ -123,9 +123,8 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     }
 
     // flow has a closure-based tween (the engine captures the in-flight blend),
-    // so it can't be expressed as a static @property decorator. Shared by the
-    // constructor and reinitProps() so a disposed-then-reused Rect keeps the same
-    // flow binding. Defaults to "freeform" — overlapping children, not a row.
+    // so it can't be expressed as a static @property decorator. Defaults to
+    // "freeform" — overlapping children, not a row.
     private applyFlowProp(initial: FlowMode | (() => FlowMode)): void {
         this.applyProp<FlowMode>("flow", initial, { tween: this._flowLayout.flowTween });
     }
@@ -135,8 +134,8 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -146,8 +145,8 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
 
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
@@ -188,12 +187,12 @@ export class Rect<P extends RectProps = RectProps> extends ShapeNode<P> implemen
     // the FlowHost interface (children/width/height/flow/gap/align +
     // effectivePadding + flowChildren/layoutAbsoluteChildren).
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         return this._flowLayout.measure(constraints, scope);
     }
 
-    override layout(rect: BoxBounds, scope: Measurer): void {
-        this.setLayoutRect(rect);
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
+        this.setLayoutBounds(rect);
         this._flowLayout.layout(rect, scope);
     }
 }

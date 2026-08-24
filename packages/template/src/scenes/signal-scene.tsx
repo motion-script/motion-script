@@ -1,4 +1,4 @@
-import { createScene, createRef, Ellipse, FX, Text, Rect, wait } from "motion-script";
+import { createScene, createRef, Ellipse, FX, Text, Rect, sequence, wait } from "motion-script";
 
 export default createScene(function* (stage) {
         stage.set({ fill: "bg" })
@@ -32,6 +32,6 @@ export default createScene(function* (stage) {
             </>,
         );
 
-        yield* rect().to({ rotation: 10 }, 2).to({ rotation: -10 }, 2);
+        yield* sequence(rect().to({ rotation: 10 }, 2), rect().to({ rotation: -10 }, 2));
         yield* wait(0.5);
 });

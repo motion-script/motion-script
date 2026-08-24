@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { sequence } from '../sequence';
-import { parallel } from '../parallel';
+import { sequence } from '@/tween/sequence';
+import { parallel } from '@/tween/parallel';
 
 describe('realtime generators', () => {
 

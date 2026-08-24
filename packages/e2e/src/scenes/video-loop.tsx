@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             trimStart={0}
             trimEnd={0.6}
             loop={'forward'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

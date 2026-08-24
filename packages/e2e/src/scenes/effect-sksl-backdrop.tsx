@@ -47,7 +47,7 @@ export default createScene(function* (stage) {
             height={LENS_HEIGHT}
             cornerRadius={20}
             stroke={{ weight: 4, fill: '#f4f6ff' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
             effects={Effects.sksl({ shader: RIPPLE_SHADER, mode: 'backdrop', uniforms: [
                 { name: 'u_resolution', value: [LENS_WIDTH, LENS_HEIGHT] },
                 { name: 'u_amount', value: 0 },

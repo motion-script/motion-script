@@ -1,7 +1,7 @@
 import { Size2D } from "@/attributes/layout/size";
 import { Color } from "@/attributes/shape/fill/color/parser";
 import { Scene } from "@/nodes/scene/scene-node";
-import { Node } from "@/nodes/base/node";
+import { Node } from "@/nodes/node/node";
 import type { AudioFilter } from "@/attributes/audio/filters/chain";
 import type { TextStyle } from "@/runtime/builtin-context";
 
@@ -83,24 +83,27 @@ export type SceneSelector = string | number | ReadonlyArray<string | number>;
  */
 export interface GlobalLayer {
     /**
-     * The layer's content, laid out against the full viewport exactly as if it
-     * had been `stage.add(...)`ed to a scene.
+     * A **factory** for the layer's content, laid out against the full viewport
+     * exactly as if it had been `stage.add(...)`ed to a scene.
      *
-     * Prefer a **factory** (`() => <Watermark/>`): the project module is
-     * evaluated before the runtime registers `theme`, so a node constructed
-     * inline at module scope resolves theme tokens (`fill="brand-500"`,
-     * `variant="header"`) against an empty registry. The runtime calls a factory
-     * after registration, so tokens resolve.
+     * A factory and not a node, for the same reason {@link createStill} demands
+     * one. Two of them, in fact: the project module is evaluated before the
+     * runtime registers `theme`, so a node constructed inline at module scope
+     * resolves its tokens (`fill="brand-500"`, `variant="header"`) against an
+     * empty registry — and a layer outlives no runtime, so an instance shared
+     * between two of them (a StrictMode double-mount, a hot reload) is one the
+     * first tears down and the second finds hollow. The runtime calls the
+     * factory once per run, after registration, and owns what comes back.
      */
-    node: Node | (() => Node);
+    node: () => Node;
     /** Scenes this layer appears on. Omitted → every scene. */
     include?: SceneSelector;
     /** Scenes this layer is suppressed on. Applied after {@link include}. */
     exclude?: SceneSelector;
 }
 
-/** A {@link GlobalLayer}, or just its content when it applies to every scene. */
-export type GlobalLayerConfig = GlobalLayer | Node | (() => Node);
+/** A {@link GlobalLayer}, or just its factory when it applies to every scene. */
+export type GlobalLayerConfig = GlobalLayer | (() => Node);
 
 /** Project theme: the visual design tokens — color tokens and typography presets. */
 export interface Theme {

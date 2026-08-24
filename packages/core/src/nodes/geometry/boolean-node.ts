@@ -1,5 +1,5 @@
-import { RenderContext2D } from "@/render/render-context2d";
-import { Node2D, NodeConfig  } from "@/nodes/base/node2d";
+import { RenderContext2D, RenderPass2D } from "@/render/render-context2d";
+import { Node2D, NodeConfig  } from "@/nodes/2d/node2d";
 import { Graphics2D } from "@/render/graphics2d";
 
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
@@ -26,13 +26,13 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
         this.applyProp("op", props.op ?? "union");
     }
 
-    // Required by ShapeNode but unused here — onRender is fully overridden.
-    protected renderSelf(_ctx: RenderContext2D): void { }
+    // Required by ShapeNode but unused here — renderContent is fully overridden.
+    protected renderSelf(ctx: RenderContext2D): void { }
 
     // Children (whose geometry we combine) are stack-laid-out (centered) by
     // the base Node2D.layout default, so child x/y/width behave as authored.
 
-    onRender(ctx: RenderContext2D): void {
+    protected override renderContent(ctx: RenderPass2D): void {
         // Apply only this node's own transform. We deliberately bypass the
         // default body (which would draw the shape and then render children
         // directly) — we want children to feed into the boolean collection

@@ -181,8 +181,8 @@ Backend-agnostic: no DOM/canvas dependencies. Describes *what* to draw and
 *how it changes over time*; a render context does the actual drawing. Key
 areas under `packages/core/src`:
 
-- **`nodes/`** — the scene graph: the dimension-agnostic base `Node`, its two
-  halves `Node2D` and `Node3D` (see [Two trees](#two-trees-node2d-and-node3d)),
+- **`nodes/`** — the scene graph: the dimension-agnostic base `Node` (`nodes/node/`),
+  its two halves `Node2D` (`nodes/2d/`) and `Node3D` (`nodes/three/`) (see [Two trees](#two-trees-node2d-and-node3d)),
   geometry (`Rect`, `Ellipse`,
   `Line`, `Path`, `Polygon`, `Polygram`, `Grid`), text (`Text`, `RichText`),
   media (`Image`), structural nodes (`Scene`, `Camera`, `Boolean`, `Mask`).
@@ -201,7 +201,8 @@ areas under `packages/core/src`:
   renderer, which is what keeps `three` inside `skia-render`.
 - **`render/`** — render descriptors and the abstract `RenderContext2D` /
   `RenderContext3D` interfaces: the contract a backend implements and `core`
-  produces. Also `BuildStage` and `MeasureScope`.
+  produces, split as an interface (`RenderContext2D`, `Measurer2D`) plus the
+  base class every backend extends (`CanvasRenderContext2D`). Also `Stage`.
 - **`jsx/`** — the `jsx-runtime`/`jsx-dev-runtime` so scenes can use JSX to
   build the node tree.
 - **`project/`** — `createProject({ name, fps, scenes, theme })`, the entry
@@ -327,7 +328,7 @@ and one that hardcodes a family opts its labels *out* of the document.
 There are two channels, because a node and a drawing have nothing else in common:
 a `Text`/`RichText` **node** inherits through the context map, once, at bind
 (`applyTextDefaults`); a **`Graphics2D`** isn't in the tree and has no bind step, so
-it inherits from the *draw scope* instead — `DefaultTextStyle.onRender` brackets
+it inherits from the *draw scope* instead — `DefaultTextStyle.renderContent` brackets
 its children with `ctx.pushTextStyle(style)` / `popTextStyle()`, and
 `RenderContext2D.draw` folds the effective style into each under-specified `text`/
 `richText` op before handing the list to the backend's `drawGraphics`. Both read
@@ -375,17 +376,20 @@ createProject({
 
 Things to know when working on this:
 
-- **A layer is not in the scene tree.** `Scene.reset()` disposes and clears the
-  root's children on every pass, and there is no generator to re-add a config
-  node, so each layer gets its own viewport-sized `RootNode` frame owned by
+- **A layer is not in the scene tree.** `Scene.reset()` builds a fresh `Canvas2D`
+  on every pass, and there is no generator to re-add a config node, so each layer
+  gets its own viewport-sized `Canvas2D` frame owned by
   `ProjectGlobals` (`packages/core/src/runtime/globals.ts`) for the life of the
   runtime. That is also what gives layers their semantics: outside the scene
   camera (`zoom`/`origin`/`heading`), outside its `clip`, and over its `overlay`
   fill rather than under it.
-- **Declare layers as factories** (`() => <Watermark/>`). The project module is
-  evaluated before the runtime calls `setTheme`, so a node built inline at module
-  scope resolves theme tokens against an empty registry; the runtime invokes a
-  factory afterwards.
+- **A layer *is* a factory** (`() => <Watermark/>`) — handing one a node throws.
+  Two reasons, and both bite silently otherwise: the project module is evaluated
+  before the runtime calls `setTheme`, so a node built inline at module scope
+  resolves theme tokens against an empty registry; and a layer outlives no
+  runtime, so an instance shared between two of them (a StrictMode double-mount,
+  a hot reload) is one the first tears down and the second finds hollow. The
+  factory runs once per `LayerStack`, which then owns what came back.
 - **One `ProjectGlobals` instance is shared** by `Precomp` and `StateEvaluator`,
   exactly as the `Scene` instances are — read it off `precomp.globals`. The
   precomp pass lays out, renders and audio-prepares the active layers alongside
@@ -431,14 +435,14 @@ let a module-scope registration be tree-shaken — silently killing all 3D.
 ### Two trees: `Node2D` and `Node3D`
 
 The scene graph is one tree API over two spaces. `Node`
-(`packages/core/src/nodes/base/node.ts`) is dimension-agnostic and owns everything
+(`packages/core/src/nodes/node/node.ts`) is dimension-agnostic and owns everything
 true of a node wherever it lives: the tree itself, identity and refs, the reactive
-`@property` system, `set()`/`to()`/`save()`/`restore()`, inherited context, the
-per-node clock, asset declaration and teardown. It owns nothing about *where* a
-node is or *how* it draws, because those are the two things 2D and 3D genuinely
-disagree about.
+`@property` system, `set()`/`to()`/`save()`/`restore()`, inherited context,
+`attach()`/`mounted`, the per-node clock (`time`), asset declaration and teardown.
+It owns nothing about *where* a node is or *how* it draws, because those are the
+two things 2D and 3D genuinely disagree about.
 
-- **`Node2D`** (`nodes/base/node2d.ts`) — laid out in a flex/stack box, drawn
+- **`Node2D`** (`nodes/2d/node2d.ts`) — laid out in a flex/stack box, drawn
   through a `RenderContext2D`. Everything with a `width`, an anchor or a fill.
 - **`Node3D`** (`nodes/three/node3d.ts`) — placed by a `Transform3D`, drawn
   through a `RenderContext3D`. Meshes, lights, cameras, fog.
@@ -448,11 +452,11 @@ Things to know when working on this:
 - **A subclass calls `initProps()` itself.** The base constructor deliberately
   does *not* apply `@property` defaults, because a subclass's field initializers
   only run after `super()` returns — applying props from the base would write into
-  cells (`_layoutRect`, the transform scratch) that don't exist yet. `Node2D` and
+  cells (`_layoutBounds`, the transform scratch) that don't exist yet. `Node2D` and
   `Node3D` each call `initProps(props)` then `adoptChildrenProp(props)` at the end
   of their own constructor. A new dimension would do the same.
 - **The two trees don't mix, and saying so is a runtime check.** `Node.acceptsChild`
-  compares `dimension`, and `addChild`/`addChildren`/`addChildAt` throw on a
+  compares `dimension`, and `add`/`addChildAt` throw on a
   mismatch. Only `Canvas3D` overrides it to accept both. Rejecting loudly is
   deliberate: a `Box3D` parented to a `Rect` would be skipped by the layout walk
   *and* the 3D walk, and would simply never appear.
@@ -463,6 +467,20 @@ Things to know when working on this:
   (`Scene.add`, global layers, `Tex.surface`) are typed to `Node` for that reason
   and rely on the runtime guard; a helper that annotates its own JSX needs `Node`
   rather than `Node2D`.
+- **`mounted` gates everything, and nothing checks it per method.** `attach(scope)`
+  is one call — asset catalog, inherited context, clock — and it is what sets
+  `mounted`. The guards live at the handful of places the framework *dispatches*
+  from: the child accessors a container walks (`flowChildren`, `renderChildren`,
+  `layoutAbsoluteChildren`), the two declaration walks, `Node2D.render`, and
+  `Node._prepareStep`/`animate` — the two funnels every command is built through.
+  That is what makes the rule hold for a subclass override too. A command on an
+  unmounted node runs its duration and writes nothing (`tween/inert.ts`), so
+  `yield*` keeps the scene's timing rather than throwing or silently shortening it.
+- **A `Scene` rebuilds its `Canvas2D` on `reset()`** rather than rewinding it.
+  There is no `reinit`: restoring a reused node in place meant maintaining a list
+  of what "restore" covered, and anything the list missed leaked into the next pass
+  as a tween whose `from` already equalled its target. Same rule for a global
+  layer, which is why those must be factories.
 - **2D walks filter.** `Node2D.children`/`flowChildren`/`renderChildren`/
   `layoutAbsoluteChildren` all skip anything that isn't a `Node2D`, so a
   `Canvas3D`'s 3D children never enter layout. `children` returns the live array
@@ -561,7 +579,7 @@ Key things to know when working on this:
   change, and `clock.elapsed` is a plain field, not a signal — so a binding that
   reads it computes **once and freezes**, with no error and a plausible-looking
   still image. Drive procedural motion from a tweened signal (which also puts it on
-  the timeline, so it scrubs), or read `this.clock.elapsed` inside
+  the timeline, so it scrubs), or read `this.time.elapsed` inside
   `buildScene3D`/`renderSelf`, which do re-run every frame.
 - A signal holding a non-number **must** be given a lerp
   (`createSignal(v, lerpVector3)`) or it snaps at the end of the tween instead of
@@ -650,7 +668,7 @@ const stats = <Rect flow="vertical" padding={48}><Text text="CPU" fontSize={64} 
   What tree membership used to supply — the asset catalog (a webfont never shapes
   and an `<Image>` never loads without it), the resolved context map, and a
   ticking clock — is instead handed over by whatever paints the scene, via
-  `Node.adoptDetached`. Layout is done on demand against `width`×`height`.
+  `Node.attachDetached`. Layout is done on demand against `width`×`height`.
 - **Hoist the source; never build it inside a prop binding.** A fresh subtree
   each frame re-binds, re-lays-out, defeats the texture cache and leaks.
 - **A conditionally emitted surface needs an explicit `key`.** The texture cache
@@ -662,7 +680,7 @@ const stats = <Rect flow="vertical" padding={48}><Text text="CPU" fontSize={64} 
   `THREE.DataTexture` keyed by descriptor identity + the owning fill slot.
 - **`Canvas3D.prepareRender` declares a node source's assets.** A source is 2D
   content one level below the scene, and it is a value in a descriptor rather than
-  a child — so the ordinary `prepareLayoutAssets`/`prepareRenderAssets` walk never
+  a child — so the ordinary `declareLayoutAssets`/`declareRenderAssets` walk never
   reaches it. Without that call its webfont is never declared, never loads, and its
   glyphs never paint. `track3DResources` cannot cover it: a surface texture has no
   `src` to report.

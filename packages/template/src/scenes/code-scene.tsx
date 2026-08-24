@@ -48,6 +48,6 @@ export default createScene(function* (stage) {
         yield* wait(0.5);
 
         // Remove a line
-        yield* code().remove(lines(2), 0.4);
+        yield* code().erase(lines(2), 0.4);
         yield* wait(1);
 });

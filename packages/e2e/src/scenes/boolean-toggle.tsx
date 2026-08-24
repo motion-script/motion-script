@@ -6,7 +6,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const group = createRef<BooleanGroup>();
     stage.add(
-        <BooleanGroup ref={group} op={'union'} fill={'primary'} center={() => stage.root.center}>
+        <BooleanGroup ref={group} op={'union'} fill={'primary'} center={() => stage.canvas.center}>
             <Rect width={280} height={200} cornerRadius={20} center={{ x: -40, y: 0 }} />
             <Ellipse width={200} height={200} center={{ x: 80, y: 0 }} />
         </BooleanGroup>,

@@ -1,6 +1,6 @@
-import { RenderContext2D } from "@/render/render-context2d";
+import { RenderPass2D } from "@/render/render-context2d";
 import { MaskMode } from "@/attributes/mask/mask";
-import { Node2DProps, Node2D, NodeConfig } from "../base/node2d";
+import { Node2DProps, Node2D, NodeConfig } from "@/nodes/2d/node2d";
 
 export interface MaskGroupProps extends Node2DProps {
     // How the mask shape determines content visibility:
@@ -34,7 +34,7 @@ export class MaskGroup extends Node2D<MaskGroupProps> {
     // Mask + content children are stack-laid-out (centered) by the base
     // Node2D.layout default — no override needed here.
 
-    onRender(ctx: RenderContext2D): void {
+    protected override renderContent(ctx: RenderPass2D): void {
         // Apply own transform. Children's spaces are nested inside this.
         // Children are rendered through the mask scope below, not by the base.
         this.applyTransform(ctx);

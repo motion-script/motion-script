@@ -1,5 +1,5 @@
 import type { CanvasKit } from '@motion-script/canvaskit';
-import { AssetCatalog, type AssetManifest, type Size2D } from '@motion-script/core';
+import { AssetCatalog, ManifestAssetCatalog, type AssetManifest, type Size2D } from '@motion-script/core';
 import { NodeRenderContext } from './render-context.js';
 import { NodeStorageAdapter, type AssetLoader, type ImageDecoder } from './storage-adapter.js';
 import type { EngineLogger } from './types.js';
@@ -33,7 +33,7 @@ export class RenderWorker {
         viewport: Size2D,
     ) {
         this.viewport = viewport;
-        this.catalog = new AssetCatalog(deps.manifest);
+        this.catalog = new ManifestAssetCatalog(deps.manifest);
         this.adapter = new NodeStorageAdapter({
             canvasKit,
             catalog: this.catalog,
@@ -63,7 +63,7 @@ export class RenderWorker {
 
     /** Swap in a new asset manifest, keeping every decode already cached. */
     setManifest(manifest: AssetManifest): void {
-        this.catalog = new AssetCatalog(manifest);
+        this.catalog = new ManifestAssetCatalog(manifest);
         this.adapter.setCatalog(this.catalog);
     }
 

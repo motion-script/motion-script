@@ -1,3 +1,5 @@
+import type { TextState } from "./descriptors/text";
+
 /**
  * Where a laid-out run of text put its characters — the measurement an editor
  * needs in order to draw its own caret and selection over rendered glyphs.
@@ -57,4 +59,32 @@ export interface TextBlockLayout {
 export function caretCount(layout: TextBlockLayout): number {
     const last = layout.lines[layout.lines.length - 1];
     return last ? last.end + 1 : 1;
+}
+
+/**
+ * Something that can report where a shaped text block put its characters.
+ *
+ * Narrower than {@link RenderContext2D}, which is the only real implementation:
+ * `nodeTextLayout` needs exactly this one call, and typing it against the whole
+ * render context would make a caret measurement look like it required a
+ * renderer. It does not — it requires a shaper.
+ */
+export interface TextBlockSource {
+    layoutTextBlock(state: Partial<TextState>): TextBlockLayout | null;
+}
+
+/**
+ * Narrow `value` to a {@link TextBlockSource}, or `null` when it cannot report
+ * glyph positions.
+ *
+ * A capability check rather than a cast, because it really is one: a
+ * {@link Measurer2D} answers how *wide* text comes out, which every backend can
+ * do, while reporting where each character *landed* needs a shaper that keeps
+ * its line boxes. A host handed a measurer that has no such shaper should get
+ * "no caret model here", not a crash.
+ */
+export function asTextBlockSource(value: unknown): TextBlockSource | null {
+    return typeof (value as TextBlockSource | null)?.layoutTextBlock === "function"
+        ? value as TextBlockSource
+        : null;
 }

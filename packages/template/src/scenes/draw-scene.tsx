@@ -18,7 +18,7 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
     protected renderSelf(ctx: RenderContext2D): void {
         // draw.draw(new Graphics2D()
         //     .mask({ mode: 'alpha', apply: 'fill' })
-        //     .text({ text: "Mask", fontSize: 200, width: this.layoutRect.width })
+        //     .text({ text: "Mask", fontSize: 200, width: this.layoutBounds.width })
         //     .fill('white').stroke(this.stroke)
         //     .applyMask()
         //     .rect({ width: 500, height: 500 }).fill(['white'])
@@ -27,20 +27,20 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
         //     .rect({ x: 360, width: 280, height: 500 }).fill(['blue'])
         //     .endMask());
         const graphics = new Graphics2D().ellipse({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
 
         }).ellipse({
-            x: this.layoutRect.width / 2,
-            y: -this.layoutRect.height / 2,
-            width: this.layoutRect.width / 2,
-            height: this.layoutRect.height / 2,
+            x: this.layoutBounds.width / 2,
+            y: -this.layoutBounds.height / 2,
+            width: this.layoutBounds.width / 2,
+            height: this.layoutBounds.height / 2,
 
         }).ellipse({
-            x: this.layoutRect.width / 4,
-            y: this.layoutRect.height / 2,
-            width: this.layoutRect.width / 2,
-            height: this.layoutRect.height / 2,
+            x: this.layoutBounds.width / 4,
+            y: this.layoutBounds.height / 2,
+            width: this.layoutBounds.width / 2,
+            height: this.layoutBounds.height / 2,
 
         }).shadow(this.shadow).fill(this.fill).stroke(this.stroke)
             // effects() scopes to the current shape group (like fill): the single
@@ -56,23 +56,23 @@ export class CustomShape extends ShapeNode<CustomShapeProps> {
     protected override clipSelf(): Clip {
         return new Clip()
             .ellipse({
-                width: this.layoutRect.width,
-                height: this.layoutRect.height,
+                width: this.layoutBounds.width,
+                height: this.layoutBounds.height,
                 startAngle: this.startAngle,
                 sweep: this.sweep,
                 ratio: this.ratio,
             })
             .ellipse({
-                x: this.layoutRect.width / 2,
-                y: -this.layoutRect.height / 2,
-                width: this.layoutRect.width / 2,
-                height: this.layoutRect.height / 2,
+                x: this.layoutBounds.width / 2,
+                y: -this.layoutBounds.height / 2,
+                width: this.layoutBounds.width / 2,
+                height: this.layoutBounds.height / 2,
             })
             .ellipse({
-                x: this.layoutRect.width / 4,
-                y: this.layoutRect.height / 2,
-                width: this.layoutRect.width / 2,
-                height: this.layoutRect.height / 2,
+                x: this.layoutBounds.width / 4,
+                y: this.layoutBounds.height / 2,
+                width: this.layoutBounds.width / 2,
+                height: this.layoutBounds.height / 2,
             });
     }
 }

@@ -24,7 +24,7 @@ class VideoBlob extends Node2D<VideoBlobProps> {
     @fillProperty() declare fill: Fill;
 
     protected renderSelf(ctx: RenderContext2D): void {
-        const { width, height } = this.layoutRect;
+        const { width, height } = this.layoutBounds;
         ctx.draw(new Graphics2D().ellipse({ width, height }).fill(this.fill as FillResolved[]));
     }
 }

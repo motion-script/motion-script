@@ -12,7 +12,7 @@ export default createScene(function* (stage) {
             height={300}
             ratio={0.4}
             fill={'primary'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

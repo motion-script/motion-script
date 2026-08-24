@@ -33,7 +33,7 @@ export default createScene(function* (stage) {
   puck.set({ x: -400, effects: Effects.motionBlur({ length: 80, alignment: 'centered', samples: 16 }) });
   stage.add(puck);
 
-  yield* puck.moveX(400, 0.4);
+  yield* puck.to({ x: 400 }, 0.4);
 });
 ```
 

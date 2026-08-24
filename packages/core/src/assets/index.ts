@@ -1,6 +1,8 @@
-/** @internal */ export { AssetCatalog } from "./catalog";
+/** @internal */ export type { AssetCatalog } from "./catalog";
+/** @internal */ export { ManifestAssetCatalog } from "./catalog";
 /** @internal */ export type { ImageMeta, VideoMeta, AudioMeta, FontMeta, AssetMeta, AssetManifest } from "./manifest";
-/** @internal */ export { AssetTracker } from "./tracker";
+/** @internal */ export type { AssetTracker } from "./tracker";
+/** @internal */ export { CanvasAssetTracker } from "./tracker";
 /** @internal */ export type { AssetSize, VideoAssetOptions } from "./tracker";
 // `AssetRecord` joins these because `StorageAdapter.loadAsset` and
 // `cacheSatisfies` both take one, and both are reachable on an exported

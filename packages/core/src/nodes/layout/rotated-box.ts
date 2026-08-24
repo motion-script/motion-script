@@ -1,9 +1,9 @@
 import { property } from "@/attributes/properties/decorator";
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { Size2D } from "@/attributes/layout/size";
-import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
+import { Node2D, NodeConfig, Node2DProps } from "@/nodes/2d/node2d";
 
 // Adjust this import path if needed
 
@@ -28,9 +28,8 @@ export class RotatedBox extends Node2D<RotatedBoxProps> {
         this._writeProp('rotation', () => this.angle);
     }
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
-        this.constraints = constraints;
-        this._lastScope = scope;
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
+        this.lastMeasure = { constraints, measurer: scope };
 
         // Calculate the projection scalars for the current angle.
         // Works perfectly for 90/-90, but also scales bounds smoothly for arbitrary angles.
@@ -71,7 +70,7 @@ export class RotatedBox extends Node2D<RotatedBoxProps> {
         };
     }
 
-    protected override layoutChildren(rect: BoxBounds, scope: Measurer): void {
+    protected override layoutChildren(rect: BoxBounds, scope: Measurer2D): void {
         const rad = this.angle * (Math.PI / 180);
         const cos = Math.abs(Math.cos(rad));
         const sin = Math.abs(Math.sin(rad));

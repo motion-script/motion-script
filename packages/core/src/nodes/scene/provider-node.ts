@@ -1,4 +1,4 @@
-import { Node2D, NodeConfig, Node2DProps } from "../base/node2d";
+import { Node2D, NodeConfig, Node2DProps } from "@/nodes/2d/node2d";
 import { property } from "@/attributes/properties/decorator";
 import { Context, ContextMap } from "@/util/context";
 

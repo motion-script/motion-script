@@ -1,5 +1,5 @@
 import {
-    AssetCatalog,
+    AssetCatalog, ManifestAssetCatalog,
     audioTimelineDuration,
     resolveGlobalAudio,
     type AssetManifest,
@@ -90,7 +90,7 @@ export class AudioTimeline {
     /** @internal Use {@link createAudioTimeline}, which preloads the sources. */
     constructor(options: AudioTimelineOptions = {}) {
         this.manifest = options.manifest ?? EMPTY_MANIFEST;
-        this.catalog = new AssetCatalog(this.manifest);
+        this.catalog = new ManifestAssetCatalog(this.manifest);
         this.tracks = options.tracks ?? [];
         this.explicitDuration = options.duration;
 
@@ -185,7 +185,7 @@ export class AudioTimeline {
     async setManifest(manifest: AssetManifest): Promise<void> {
         this.assertLive();
         this.manifest = manifest;
-        this.catalog = new AssetCatalog(manifest);
+        this.catalog = new ManifestAssetCatalog(manifest);
         this.resolve();
         await this.load();
     }

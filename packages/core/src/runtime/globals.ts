@@ -4,18 +4,18 @@ import { AudioRequest } from "@/attributes/audio/request";
 import { Sound } from "@/attributes/audio/sound";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { Node } from "@/nodes/base/node";
-import { Node2D } from "@/nodes/base/node2d";
-import { RootNode } from "@/nodes/scene/root-node";
+import { Node, type AttachScope } from "@/nodes/node/node";
+import { Node2D } from "@/nodes/2d/node2d";
+import { Canvas2D } from "@/nodes/scene/canvas2d-node";
 import type {
     AudioTrack,
     GlobalLayer,
     GlobalLayerConfig,
     SceneSelector,
 } from "@/project/config";
-import { Measurer } from "@/render/measurer";
-import { RenderContext2D } from "@/render/render-context2d";
-import { ContextMap } from "@/util/context";
+import { Measurer2D } from "@/render/measurer";
+import { RenderPass2D } from "@/render/render-context2d";
+import { declareLayoutAssets, declareRenderAssets, sampleTree } from "@/nodes/node/node-walk";
 
 /**
  * Where a global layer sits relative to the scene. Only used to key the
@@ -30,18 +30,14 @@ interface LayerEntry {
     readonly index: number;
     /**
      * Viewport-sized frame the author's node is laid out inside — the same
-     * {@link RootNode} a {@link Scene} builds into, so a layer positions itself
+     * {@link Canvas2D} a {@link Scene} builds into, so a layer positions itself
      * exactly as it would if `stage.add(...)`ed to a scene. Minus the camera: a
      * layer lives outside the scene root, so `zoom`/`origin`/`heading` never
      * reach it.
      */
-    readonly frame: RootNode;
-    /** True when {@link LayerStack} built the node from a factory and therefore owns it. */
-    readonly owned: boolean;
+    readonly frame: Canvas2D;
     readonly include?: SceneSelector;
     readonly exclude?: SceneSelector;
-    /** Whether this entry's subtree has had its one-time context resolve run. */
-    initialized: boolean;
 }
 
 /**
@@ -73,7 +69,14 @@ function selectorMatches(selector: SceneSelector | undefined, index: number, nam
 /** Normalize the loose config form into `{ node, include, exclude }`. */
 function toLayer(config: GlobalLayerConfig): GlobalLayer {
     if (typeof config === "function") return { node: config };
-    if (config instanceof Node) return { node: config };
+    if (config instanceof Node) {
+        throw new TypeError(
+            "A global layer takes a factory, not a node — write `() => <Watermark/>`. " +
+            "The project module is evaluated before the theme is registered, so a node built " +
+            "at module scope resolves its tokens against an empty registry; and a layer built " +
+            "once outlives no runtime, so a second mount would find the first one's torn-down tree.",
+        );
+    }
     return config;
 }
 
@@ -136,20 +139,17 @@ export class LayerStack {
         this.kind = kind;
         this.entries = (config ?? []).map((item, index) => {
             const layer = toLayer(item);
-            const owned = typeof layer.node === "function";
-            const node = owned ? (layer.node as () => Node2D)() : (layer.node as Node2D);
-            // Recover a node the *previous* controller disposed: a config-provided
-            // instance outlives any single runtime (StrictMode double-mount, HMR)
-            // and would otherwise be left with freed signals. Mirrors what
-            // `Scene.reset` does for a reused scene root.
-            node.reinit();
-            const frame = new RootNode({
+            // Built here and owned here — the factory runs once per stack, after
+            // the theme registry is populated, so tokens resolve and nothing is
+            // shared with a previous runtime.
+            const node = layer.node() as Node2D;
+            const frame = new Canvas2D({
                 width: viewport.width,
                 height: viewport.height,
                 flow: "freeform",
             });
-            frame.addChild(node);
-            return { index, frame, owned, include: layer.include, exclude: layer.exclude, initialized: false };
+            frame.add(node);
+            return { index, frame, include: layer.include, exclude: layer.exclude };
         });
         // Every layer is active until the first `select`, so a caller that renders
         // without selecting (no scenes at all) still gets the unfiltered stack.
@@ -180,40 +180,26 @@ export class LayerStack {
         );
     }
 
-    /** Bind the asset catalog to every active layer's subtree. */
-    bindAssets(catalog: AssetCatalog): void {
-        for (const entry of this._active) entry.frame.bindAssets(catalog);
-    }
-
     /**
-     * Push inherited context down every active layer.
+     * Attach every active layer at `scope.time` — catalog, context and clock.
      *
      * `resolveContext` must fire exactly once per node instance, and a layer is
-     * never rebuilt, so the run-init flag is tracked per entry rather than taken
-     * from the caller: an entry first selected by scene 3 still gets its one
-     * init there, and one bound at scene 0 only gets the structural re-push
-     * afterwards.
+     * never rebuilt, so nothing here has to track that: `attach` fires it on the
+     * frame's *first* attach, which for an entry first selected by scene 3 is
+     * that scene, and for one selected from scene 0 was scene 0.
      */
-    bindContext(context: ContextMap): void {
-        for (const entry of this._active) {
-            entry.frame.bindContext(context, !entry.initialized);
-            entry.initialized = true;
-        }
+    attach(scope: AttachScope): void {
+        for (const entry of this._active) entry.frame.attach(scope);
     }
 
-    /** Advance every active layer's clock (and its per-frame sampling). */
-    ellapse(totalTime: number): void {
-        for (const entry of this._active) entry.frame.ellapse(totalTime);
-    }
-
-    /** Seed per-frame derived state without a full ellapse (see `Node2D.sample`). */
+    /** Seed per-frame derived state without advancing the clock (see `Node.sample`). */
     sample(): void {
-        for (const entry of this._active) entry.frame.sample();
+        for (const entry of this._active) sampleTree(entry.frame);
     }
 
     /** Collect every active layer's pre-layout declarations. */
     prepareLayoutAssets(tracker: AssetTracker): void {
-        for (const entry of this._active) entry.frame.prepareLayoutAssets(tracker);
+        for (const entry of this._active) declareLayoutAssets(entry.frame, tracker);
     }
 
     /**
@@ -229,35 +215,30 @@ export class LayerStack {
      */
     prepareRenderAssets(tracker: AssetTracker): void {
         for (const entry of this._active) {
-            entry.frame.prepareRenderAssets(tracker, `@${this.kind}:${entry.index}`);
+            declareRenderAssets(entry.frame, tracker, `@${this.kind}:${entry.index}`);
         }
     }
 
     /** Lay every active layer out against the full viewport. */
-    layout(bounds: BoxBounds, scope: Measurer): void {
+    layout(bounds: BoxBounds, scope: Measurer2D): void {
         for (const entry of this._active) entry.frame.layout(bounds, scope);
     }
 
     /** Draw every active layer, in config order. */
-    render(context: RenderContext2D): void {
+    render(context: RenderPass2D): void {
         for (const entry of this._active) entry.frame.render(context);
     }
 
     /**
-     * Release the frames this stack built.
+     * Release the frames this stack built, and the layer nodes inside them.
      *
-     * A node handed in as a live instance is owned by the project config and
-     * outlives the runtime (StrictMode double-mount, HMR), so it is detached
-     * before the frame is freed: disposing it would free signals that nothing
-     * rebuilds — unlike a scene root, whose children come back from the
-     * generator — leaving the next mount with a hollow layer. A factory-built
-     * node belongs to this stack and goes down with its frame.
+     * Unconditional, because every layer node is this stack's: it came from a
+     * factory this stack ran. The next runtime runs the factory again and gets a
+     * fresh tree, so there is nothing here another mount could still be holding.
      */
     dispose(): void {
         for (const entry of this.entries) {
-            if (!entry.owned) entry.frame.clearChildren();
             entry.frame.dispose();
-            entry.initialized = false;
         }
         this._active = this.entries.slice();
     }
@@ -306,19 +287,9 @@ export class ProjectGlobals {
         this.overlays.select(sceneIndex, sceneName);
     }
 
-    bindAssets(catalog: AssetCatalog): void {
-        this.backgrounds.bindAssets(catalog);
-        this.overlays.bindAssets(catalog);
-    }
-
-    bindContext(context: ContextMap): void {
-        this.backgrounds.bindContext(context);
-        this.overlays.bindContext(context);
-    }
-
-    ellapse(totalTime: number): void {
-        this.backgrounds.ellapse(totalTime);
-        this.overlays.ellapse(totalTime);
+    attach(scope: AttachScope): void {
+        this.backgrounds.attach(scope);
+        this.overlays.attach(scope);
     }
 
     sample(): void {
@@ -336,7 +307,7 @@ export class ProjectGlobals {
         this.overlays.prepareRenderAssets(tracker);
     }
 
-    layout(bounds: BoxBounds, scope: Measurer): void {
+    layout(bounds: BoxBounds, scope: Measurer2D): void {
         this.backgrounds.layout(bounds, scope);
         this.overlays.layout(bounds, scope);
     }

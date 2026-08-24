@@ -138,13 +138,13 @@ For motion that is not driven by a tween, read the node's clock inside `renderSe
 
 ```tsx
 protected renderSelf(ctx: RenderContext2D): void {
-  const t = this.clock.elapsed;
+  const t = this.time.elapsed;
   ctx.draw(new Graphics2D().rect({ rotation: t * 90, width: 100, height: 100 }).fill('white'));
 }
 ```
 
 :::caution
-`clock.elapsed` is a plain field, not a signal. Reading it inside `renderSelf` is fine, because that runs every frame. Reading it inside a reactive binding such as `someProp={() => f(this.clock.elapsed)}` is not: the binding only re-evaluates when the signals it reads change, so it computes once and freezes, with no error and a still image that looks plausible.
+`time.elapsed` is a plain field, not a signal. Reading it inside `renderSelf` is fine, because that runs every frame. Reading it inside a reactive binding such as `someProp={() => f(this.time.elapsed)}` is not: the binding only re-evaluates when the signals it reads change, so it computes once and freezes, with no error and a still image that looks plausible.
 
 A tweened signal is usually better anyway, since it puts the motion on the timeline and scrubs.
 :::

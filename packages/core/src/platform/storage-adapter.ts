@@ -54,7 +54,7 @@ export abstract class StorageAdapter {
      * Adapters that can improve on a cached asset override this; the default is
      * the old behaviour, so nothing else has to care.
      */
-    protected cacheSatisfies(_key: string, _value: AssetRecord): boolean {
+    protected cacheSatisfies(key: string, value: AssetRecord): boolean {
         return true;
     }
 
@@ -169,7 +169,7 @@ export abstract class StorageAdapter {
      * this to prefetch ahead only while playing and to quiesce on pause, so a
      * paused timeline doesn't drain a backlog of stale decodes. No-op by default.
      */
-    setPlaying(_playing: boolean): void {
+    setPlaying(playing: boolean): void {
         // no-op for adapters with no time-varying media
     }
 

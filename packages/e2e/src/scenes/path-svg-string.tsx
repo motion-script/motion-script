@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             data={'M 0 60 C -120 -20 -100 -120 -20 -120 C 0 -120 0 -90 0 -90 C 0 -90 0 -120 20 -120 C 100 -120 120 -20 0 60 Z'}
             fill={'accent'}
             scale={0}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

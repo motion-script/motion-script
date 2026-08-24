@@ -1,7 +1,7 @@
 import { SizeConstraints } from "@/attributes/layout/constraints";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { Size2D } from "@/attributes/layout/size";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { resolveSize } from "@/layout/size-resolver";
 import { applyPadding, expandByPadding } from "@/layout/padding";
 import { InsetsResolved } from "@/attributes/layout/insets";
@@ -10,7 +10,7 @@ import { lerpSizeInput } from "@/layout/tweens";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Anchor } from "@/attributes/layout/anchor";
 import { FlexChild, FlexDirection, FlexMeasureEntry, GapSize, layoutFlex, measureFlex } from "@/layout/flex";
-import { Node2D, NodeConfig } from "../base/node2d";
+import { Node2D, NodeConfig } from "@/nodes/2d/node2d";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
@@ -83,8 +83,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -94,8 +94,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
 
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
@@ -141,12 +141,11 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         return { left: p.left + extra, right: p.right + extra, top: p.top + extra, bottom: p.bottom + extra };
     }
 
-    override measure(constraints: SizeConstraints, scope: Measurer): Partial<Size2D> {
-        // Retain constraints + scope for off-tree work (see Node2D.measure / the
-        // animated child-insert in node-lifecycle.ts) — this override doesn't call
-        // super, so mirror the base capture here.
-        this.constraints = constraints;
-        this._lastScope = scope;
+    override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
+        // Retain the pass for off-tree work (see Node2D.measure / the animated
+        // child-insert in node-lifecycle.ts) — this override doesn't call super,
+        // so mirror the base capture here.
+        this.lastMeasure = { constraints, measurer: scope };
 
         const maxWidth = constraints.maxWidth ?? 0;
         const maxHeight = constraints.maxHeight ?? 0;
@@ -168,8 +167,8 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         };
     }
 
-    override layout(rect: BoxBounds, scope: Measurer): void {
-        this.setLayoutRect(rect);
+    override layout(rect: BoxBounds, scope: Measurer2D): void {
+        this.setLayoutBounds(rect);
 
         const padding = this.effectivePadding();
         const inner = applyPadding(rect.width, rect.height, padding);
@@ -197,7 +196,7 @@ export abstract class FlexNode<P extends FlexProps = FlexProps> extends ShapeNod
         this.layoutAbsoluteChildren(scope);
     }
 
-    private computeMeasure(innerWidth: number, innerHeight: number, scope: Measurer): FlexMeasureCache {
+    private computeMeasure(innerWidth: number, innerHeight: number, scope: Measurer2D): FlexMeasureCache {
         const children = this.flowChildren();
         const adapters: FlexChild[] = children.map((child) => ({
             widthMode: child.width,

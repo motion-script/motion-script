@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parallel } from '../parallel';
-import { tween } from '../tween';
-import { wait } from '../wait';
-import { sequence } from '../sequence';
+import { parallel } from '@/tween/parallel';
+import { tween } from '@/tween/tween';
+import { wait } from '@/tween/wait';
+import { sequence } from '@/tween/sequence';
 
 // Drive a generator to completion, sending dt each frame.
 function driveWithDt(gen: Generator<void, void, number>, dt: number): void {

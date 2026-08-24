@@ -87,7 +87,7 @@ function resolveTextShaping(
 
 /**
  * Where a text state's caret slots land, block-local — the backing for core's
- * {@link Measurer.layoutTextBlock}, and so for on-canvas text editing.
+ * {@link Measurer2D.layoutTextBlock}, and so for on-canvas text editing.
  *
  * Deliberately not cached: a host asks for this while a text edit is open, for
  * one node, not once per node per frame. Putting it in the paragraph cache would

@@ -1,7 +1,8 @@
 import { AssetCatalog } from "@/assets/catalog";
 import { Clip } from "@/render/clip";
 import { Graphics2D } from "@/render/graphics2d";
-import { RenderContext2D } from "@/render/render-context2d";
+import type { RenderContext2D } from "@/render/render-context2d";
+import { CanvasRenderContext2D } from "@/render/canvas-render-context2d";
 import type { BooleanOperation } from "@/attributes/mask/boolean";
 import type { MaskOptions } from "@/attributes/mask/mask";
 import type { Scene } from "@/nodes/scene/scene-node";
@@ -88,7 +89,7 @@ export interface PlaybackProfile {
  * whole point: a fake context that behaved like the tracker would report the walk
  * a *precomp* does, not the one a frame does.
  */
-export class CountingRenderContext extends RenderContext2D {
+export class CountingRenderContext extends CanvasRenderContext2D {
     nodesVisited = 0;
     graphicsDrawn = 0;
     opsDrawn = 0;
@@ -119,25 +120,25 @@ export class CountingRenderContext extends RenderContext2D {
         this.seen.add(graphics);
     }
 
-    measureText(text: string): number {
+    measureText(text: string, fontSize = 8): Size2D {
         this.textMeasures++;
         // Proportional to length so a layout that depends on text width still
         // varies, without pretending to shape anything.
-        return text.length * 8;
+        return { width: text.length * 8, height: fontSize };
     }
 
     execute(callback: () => void): void { callback(); }
     unmount(): void { }
     screenshot(): string | undefined { return undefined; }
 
-    transform(_state: Partial<TransformState>): RenderContext2D {
+    transform(state: Partial<TransformState>): RenderContext2D {
         this.transforms++;
         return this;
     }
 
-    beginClip(_clip: Clip): void { this.clips++; }
+    beginClip(clip: Clip): void { this.clips++; }
     endClip(): void { }
-    beginBoolean(_op: BooleanOperation): void { }
+    beginBoolean(op: BooleanOperation): void { }
     endBoolean(): void { }
     beginMask(_options?: MaskOptions): void { }
     applyMask(): void { }

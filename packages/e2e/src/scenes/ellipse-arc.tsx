@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             sweep={90}
             fill={'transparent'}
             stroke={{ weight: 16, fill: 'primary', cap: 'round' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

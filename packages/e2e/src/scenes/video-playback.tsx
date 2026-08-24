@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             trimStart={0.5}
             trimEnd={2.5}
             muted={true}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

@@ -101,15 +101,15 @@ Replace a range of code with new text:
 yield* ref().replace(word(1, 22, 6), 'string', 0.3);
 ```
 
-### `remove(range, duration, easing?)`
+### `erase(range, duration, easing?)`
 
 Remove a range of code with an animated transition. A range covering whole lines
 takes their line breaks with it, so the rows below close up; a range inside a
 line takes only the characters, and the rest of the line reflows around the hole:
 
 ```tsx
-yield* ref().remove(lines(2), 0.4);       // the row disappears
-yield* ref().remove(word(1, 14, 3), 0.4); // the line closes over the gap
+yield* ref().erase(lines(2), 0.4);       // the row disappears
+yield* ref().erase(word(1, 14, 3), 0.4); // the line closes over the gap
 ```
 
 ### `insert(position, text, duration, easing?)`
@@ -188,7 +188,7 @@ export default createScene(function* (stage) {
   yield* wait(0.5);
 
   // Remove a line
-  yield* ref().remove(lines(2), 0.4);
+  yield* ref().erase(lines(2), 0.4);
   yield* wait(1);
 });
 ```

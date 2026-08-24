@@ -21,7 +21,7 @@ export default createScene(function* (stage) {
                 ...Fills.linearGradient(['#e8617c', '#f2c94c'], { blend: 'multiply', opacity: 0 }),
                 ...Fills.noise({ color: '#ffffff', density: 0.4, blend: 'screen', opacity: 0 }),
             ]}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

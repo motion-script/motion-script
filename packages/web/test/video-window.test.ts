@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import type { CanvasKit } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
-import { AssetCatalog } from "@motion-script/core";
+import { ManifestAssetCatalog } from "@motion-script/core";
 import { getCanvasKit } from "../src/getter";
 import { WebStorageAdapter } from "../src/storage-adapter";
 
@@ -37,7 +37,7 @@ beforeAll(async () => {
 function makeAdapter(fps = 30): WebStorageAdapter {
     return new WebStorageAdapter(
         ck,
-        new AssetCatalog(EMPTY_MANIFEST as never),
+        new ManifestAssetCatalog(EMPTY_MANIFEST as never),
         { width: 1920, height: 1080 },
         fps,
     );

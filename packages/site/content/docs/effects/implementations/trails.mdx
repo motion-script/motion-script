@@ -63,7 +63,7 @@ export default createScene(function* (stage) {
 
   dot.set({ effects: Effects.trails({ echoes: 0 }) });
   yield* dot.to({ effects: Effects.trails({ echoes: 10, decay: 0.8 }) }, 0.5);
-  yield* dot.moveX(600, 1.2, easeInOut('quad'));
+  yield* dot.to({ x: 600 }, 1.2, easeInOut('quad'));
 });
 ```
 

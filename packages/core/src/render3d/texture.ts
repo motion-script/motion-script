@@ -2,8 +2,8 @@ import type { Vector2 } from "@/attributes/layout/vector2";
 // Type-only, like `Color` above: `render3d` is pure data and never reaches into
 // the render or node layers at runtime. See SurfaceSource3D.
 import type { Graphics2D } from "@/render/graphics2d";
-import type { Node } from "@/nodes/base/node";
-import type { Node2D } from "@/nodes/base/node2d";
+import type { Node } from "@/nodes/node/node";
+import type { Node2D } from "@/nodes/2d/node2d";
 
 /** How sampling behaves outside the 0–1 UV range. */
 export type TextureWrap3D = "clamp" | "repeat" | "mirror";

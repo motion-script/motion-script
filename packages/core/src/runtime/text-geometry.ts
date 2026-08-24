@@ -1,9 +1,8 @@
-import { Node2D } from "@/nodes/base/node2d";
+import { Node2D } from "@/nodes/2d/node2d";
 import { Text } from "@/nodes/text/text-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { applyToPoint } from "@/attributes/layout/matrix2d";
-import { Measurer } from "@/render/measurer";
-import { caretCount } from "@/render/text-layout";
+import { caretCount, type TextBlockSource } from "@/render/text-layout";
 import { renderMatrix } from "./node-picking";
 
 /**
@@ -62,7 +61,7 @@ export interface TextRangeQuad {
 /**
  * Measure `node`'s caret slots in viewport space, or `null` when it has none to
  * report — not a {@link Text}, nothing shaped yet, or a shape the caret model
- * doesn't cover (see {@link Measurer.layoutTextBlock}).
+ * doesn't cover (see {@link RenderContext2D.layoutTextBlock}).
  *
  * The block-local layout comes from the backend, because that is where glyphs
  * are actually positioned; everything below is the same mapping
@@ -71,10 +70,10 @@ export interface TextRangeQuad {
 export function nodeTextLayout(
     node: Node2D,
     path: string,
-    scope: Measurer,
+    source: TextBlockSource,
 ): NodeTextLayout | null {
     if (!(node instanceof Text)) return null;
-    const block = scope.layoutTextBlock(node._textState());
+    const block = source.layoutTextBlock(node._textState());
     if (!block) return null;
 
     const m = renderMatrix(node);

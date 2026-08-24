@@ -1,13 +1,13 @@
 import { AudioRequest } from "@/attributes/audio/request";
-import { BuildStage } from "@/render/build-stage";
-import { Measurer } from "../render/measurer";
+import { CanvasStage } from "@/nodes/scene/canvas-stage";
+import { Measurer2D } from "../render/measurer";
 import { AssetRecord } from "@/assets/record";
-import { Node } from "@/nodes/base/node";
+import { Node, type AttachScope } from "@/nodes/node/node";
 import { nodePath } from "@/project/tree";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
-import { AssetTracker } from "@/assets/tracker";
+import { CanvasAssetTracker } from "@/assets/tracker";
 import { Scene } from "@/nodes/scene/scene-node";
 import { ProjectGlobals, resolveGlobalAudio } from "./globals";
 import { now, yieldToScheduler } from "@/util/scheduler";
@@ -112,14 +112,12 @@ export type PrecompPhase =
     | "layout"
     | "prepareRender"
     | "lifespans"
-    | "bindAssets"
-    | "bindContext"
-    | "ellapse"
+    | "attach"
     | "generator";
 
 const PRECOMP_PHASES: readonly PrecompPhase[] = [
     "prepareLayout", "layout", "prepareRender",
-    "lifespans", "bindAssets", "bindContext", "ellapse", "generator",
+    "lifespans", "attach", "generator",
 ];
 
 /** Wall-clock breakdown of one scene's build pass, in milliseconds. */
@@ -365,7 +363,7 @@ export class Precomp {
     private readonly viewport: Size2D;
     private readonly fps: number;
     private readonly assets: AssetCatalog;
-    private readonly measureScope: Measurer;
+    private readonly measurer: Measurer2D;
     private readonly profile?: PrecompProfile;
     /** Host-provided store of previously-measured passes; see {@link PrecompCache}. */
     private readonly store?: PrecompCache;
@@ -383,14 +381,14 @@ export class Precomp {
         viewport: Size2D,
         fps: number,
         assets: AssetCatalog,
-        measureScope: Measurer,
+        measurer: Measurer2D,
         options: PrecompOptions = {},
     ) {
         this.scenes = scenes;
         this.viewport = viewport;
         this.fps = fps;
         this.assets = assets;
-        this.measureScope = measureScope;
+        this.measurer = measurer;
         this.profile = options.profile;
         this.store = options.cache;
         this._globals = options.globals;
@@ -663,8 +661,8 @@ export class Precomp {
         // A fresh, scene-local registry: frame ranges are relative to this scene's
         // own frame 0, so the pass is independent of where the scene sits on the
         // global timeline. assembleTimeline shifts these into absolute frames.
-        const registry = new AssetTracker(this.assets);
-        const stage = new BuildStage<Scene>(this.viewport, this.fps);
+        const registry = new CanvasAssetTracker(this.assets);
+        const stage = new CanvasStage(this.viewport, this.fps);
 
         // Global layers are not part of the scene tree (see `LayerStack`), so they
         // are driven alongside it: selected once here, then laid out and declared
@@ -675,15 +673,12 @@ export class Precomp {
         globals?.select(sceneIndex, scene.name ?? `Scene ${sceneIndex}`);
 
         scene.reset();
-        scene.set({ width: this.viewport.width, height: this.viewport.height });
         scene.setViewport(this.viewport);
-        scene.bindAssets(this.assets);
-        // Mark the root context-bound (after reset restored defaults) so nodes the
-        // generator adds below inherit context and run their init() on add. runInit
-        // here fires init() for any nodes already present (e.g. config children).
-        scene.bindContext(ContextMap.EMPTY, true);
-        globals?.bindAssets(this.assets);
-        globals?.bindContext(ContextMap.EMPTY);
+        // Attach the fresh canvas so nodes the generator adds below inherit
+        // context and are mounted on insertion.
+        const scope: AttachScope = { assets: this.assets, context: ContextMap.EMPTY, time: 0 };
+        scene.attach(scope);
+        globals?.attach(scope);
         stage.reset();
 
         let localFrame = 0;
@@ -692,7 +687,7 @@ export class Precomp {
 
         try {
             try {
-                const generator = scene.build(stage);
+                const generator = stage.build(scene);
 
                 // Prime: advance to first yield so frame-0 nodes are registered.
                 generator.next(dt);
@@ -730,10 +725,10 @@ export class Precomp {
                     scene.prepareLayoutAssets(registry);
                     globals?.prepareLayoutAssets(registry);
                     profile?.enter("layout");
-                    scene.layout(layoutBounds, this.measureScope);
-                    globals?.layout(layoutBounds, this.measureScope);
+                    scene.layout(layoutBounds, this.measurer);
+                    globals?.layout(layoutBounds, this.measurer);
                     // Everything drawable, plus the audio a playing clip schedules,
-                    // declared with `layoutRect` live so a decode can be sized to
+                    // declared with `layoutBounds` live so a decode can be sized to
                     // what will actually be painted.
                     //
                     // There is no render pass here any more. Discovery used to mean
@@ -749,28 +744,26 @@ export class Precomp {
 
                     // Record which nodes are alive this frame so the timeline can draw
                     // each node's bar over only its true lifespan. The scene's world
-                    // lives on `scene.root` (path "" = root). Skipped entirely for a
+                    // lives on `scene.canvas` (path "" = root). Skipped entirely for a
                     // caller with no timeline to draw — see PrecompOptions.lifespans.
                     profile?.enter("lifespans");
-                    if (this.trackLifespans) recordLifespans(scene.root, "", localFrame, lifespans);
+                    if (this.trackLifespans) recordLifespans(scene.canvas, "", localFrame, lifespans);
 
                     localFrame++;
-                    profile?.enter("bindAssets");
-                    scene.bindAssets(this.assets);
-                    // Structural re-push only (runInit=false): refresh context on any
-                    // subtree added this frame without re-firing init mid-tween.
-                    profile?.enter("bindContext");
-                    scene.bindContext(ContextMap.EMPTY, false);
-                    profile?.enter("ellapse");
-                    scene.ellapse(localFrame * dt);
-                    // Layers run on the same clock the scene does. Scene-local here,
-                    // global during playback — the same split `Scene` itself already
-                    // lives with (see `StateEvaluator.stepReplay`); it only affects
-                    // which frame of a dynamic fill is sampled while measuring, never
-                    // the frame ranges the asset windows are built from.
-                    globals?.bindAssets(this.assets);
-                    globals?.bindContext(ContextMap.EMPTY);
-                    globals?.ellapse(localFrame * dt);
+                    profile?.enter("attach");
+                    const frameScope: AttachScope = {
+                        assets: this.assets,
+                        context: ContextMap.EMPTY,
+                        // Layers run on the same clock the scene does. Scene-local
+                        // here, global during playback — the same split `Scene`
+                        // itself already lives with (see
+                        // `StateEvaluator.stepReplay`); it only affects which frame
+                        // of a dynamic fill is sampled while measuring, never the
+                        // frame ranges the asset windows are built from.
+                        time: localFrame * dt,
+                    };
+                    scene.attach(frameScope);
+                    globals?.attach(frameScope);
 
                     profile?.enter("generator");
                     if (drivenFrames !== null) {

@@ -215,3 +215,137 @@ turned "no colour set" into black — but if you were relying on the fallback, n
 ```ts
 @colorProperty({ default: "white" }) declare tint: Color;
 ```
+
+## The node API, tightened
+
+The same pass that split `Node` in two also drew a line between what a *scene
+author* calls and what the *runtime* calls. Most of it is renames; the rest
+removes a second way of spelling something that already had one.
+
+### Renames
+
+| before | after |
+|---|---|
+| `RootNode` / `RootProps` | `Canvas2D` / `Canvas2DProps` |
+| `BuildStage` | `CanvasStage` (and `Stage` is now a hand-written interface) |
+| `scene.root` / `stage.root` | `scene.canvas` / `stage.canvas` |
+| `Measurer` (and the deprecated `MeasureScope`) | `Measurer2D` |
+| `AssetCatalog` (class) | `AssetCatalog` (interface) + `ManifestAssetCatalog` |
+| `AssetTracker` (class) | `AssetTracker` (interface) + `CanvasAssetTracker` |
+| `RenderContext2D` (abstract class) | `RenderContext2D` (interface) + `CanvasRenderContext2D` |
+| `node.layoutRect` / `node.measuredRect` | `node.layoutBounds` (one member, now public) |
+| `node.clock` / `NodeClock` | `node.time` / `NodeTime` (`.time` → `.total`) |
+| `onRender(ctx)` | `renderContent(ctx)` — or just override `renderSelf` |
+| `ctx.beginEffectScope` / `endEffectScope` | `ctx.beginEffects` / `ctx.endEffects` |
+| `ctx.rasterizeOffscreen` | `ctx.rasterize` |
+| `ctx.defaultTextStyle()` | `ctx.defaultTextStyle` (a property) |
+| `this.animate(at, …)` (custom commands) | `this.command(at, …)` |
+
+`measureText` now returns a `Size2D` rather than a bare width — the shaper always
+knew both, and reconstructing a height from `fontSize × lineHeight` disagreed with
+it for any fallback face. Read `.width` where you read a number before.
+
+### One command per `to()`
+
+`node.to(...)` used to return a builder you could append to. It is now a single
+`Command`. Sequence with `sequence(...)`:
+
+```ts
+// before
+yield* node.to({ x: 100 }, 1).to({ x: 0 }, 1);
+
+// after
+yield* sequence(node.to({ x: 100 }, 1), node.to({ x: 0 }, 1));
+```
+
+Every command-shaped method now carries `@command()`, so `getCommandMeta(node)`
+lists them all — `to`, `restore`, `moveTo`, `fadeTo`, `rotateTo`, `scaleTo`,
+`addChildAt`, `removeChildAt`, `reparent`, plus each node's own.
+
+### `attach()` replaces three calls
+
+`bindAssets`, `bindContext` and `ellapse` were three walks a host had to make in
+the right order every frame. They are one:
+
+```ts
+// before
+scene.bindAssets(catalog);
+scene.bindContext(ContextMap.EMPTY, false);
+scene.ellapse(time);
+
+// after
+scene.attach({ assets: catalog, context: ContextMap.EMPTY, time });
+```
+
+`attach` is also what sets `node.mounted`, and **`mounted` gates everything**: a
+node outside the tree measures nothing, lays out nothing, renders nothing,
+declares no assets, and its commands run their duration while writing nothing. If
+a tween of yours stopped doing anything, the node is not in the tree yet.
+
+### `add` / `remove` / `clear`
+
+| before | after |
+|---|---|
+| `node.addChild(x)` / `node.addChildren([x, y])` | `node.add(x)` / `node.add([x, y])` |
+| `node.removeChild(x)` | `node.remove(x)` |
+| `node.clearChildren()` | `node.clear()` |
+| `code.remove(lines(2), 0.4)` | `code.erase(lines(2), 0.4)` |
+
+`add` and `remove` take the same shapes the `children` prop does — a node, an
+array, or a nested one, with `false`/`null` entries dropped. The three older
+methods are private now: `add` already did everything they did and more.
+
+`Code.remove` had to move because a `Code` is also a node, and one object cannot
+usefully have two `remove`s.
+
+### The per-frame walks left the node
+
+Four members were pure subtree traversals that happened to live on `Node`. They
+are free functions now, in `nodes/node/node-walk.ts`:
+
+| before | after |
+|---|---|
+| `node.prepareLayoutAssets(tracker)` | `declareLayoutAssets(node, tracker)` |
+| `node.prepareRenderAssets(tracker, path)` | `declareRenderAssets(node, tracker, path)` |
+| `node.sample()` | `sampleTree(node)` |
+| `node.primeMotion(at)` | `primeMotionTree(node, at)` |
+
+The hooks they call — `prepareLayout(tracker)` and `prepareRender(tracker)` —
+are unchanged, and are still what a custom node overrides. That pairing is why
+they moved: `prepareRenderAssets` sat one letter from `prepareRender` in every
+node's autocomplete, and the two are not interchangeable.
+
+`beforeRender`, `afterRender`, `renderChildren` and `resolveSizeInput` became
+`protected`. Overriding them is unchanged; calling them on another node was never
+supported.
+
+### Removed
+
+- **`node.wiggle(...)`**, and with it **`node.random`** and the **`seed` prop**.
+  Randomness lives on the stage: `stage.random(seed)` hands back a source that is
+  rewound before every replay, which is what makes a draw reproducible across a
+  scrub. A node with a private source was only reproducible for as long as
+  nothing above it changed how many times it was built.
+- **`node.moveX(x, …)` / `node.moveY(y, …)`** — write `node.to({ x }, …)`.
+- **`node.reinit()`** — a `Scene` now builds a *fresh* `Canvas2D` on every
+  `reset()` instead of rewinding the old one, so there is nothing to re-init.
+- **`ctx.begin` / `ctx.end`** are off `RenderContext2D`. They bracket a node's
+  draw scope and belong to `Node2D.render`; a `renderSelf` that opened one left
+  every later sibling inside it. A host driving a render pass holds a
+  `RenderPass2D`, which still has them.
+
+### Global layers must be factories
+
+```ts
+// before — a node built at module scope
+overlays: [<Watermark />]
+
+// after
+overlays: [() => <Watermark />]
+```
+
+The project module is evaluated before the theme is registered, so a node built
+inline resolves its tokens against an empty registry; and a layer built once is
+shared between runtimes, so the first to dispose leaves the next with a hollow
+tree. Passing a node now throws at construction instead of failing quietly on the
+second mount.

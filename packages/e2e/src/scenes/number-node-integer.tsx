@@ -16,7 +16,7 @@ export default createScene(function* (stage) {
             fontWeight={700}
             fontSize={72}
             fill={'accent'}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

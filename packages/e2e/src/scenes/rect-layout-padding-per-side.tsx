@@ -13,7 +13,7 @@ export default createScene(function* (stage) {
             fill={'card'}
             cornerRadius={16}
             padding={{ left: 20, right: 20, top: 20, bottom: 20 }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         >
             <Rect width={'fill'} height={'fill'} fill={'accent'} cornerRadius={8} />
         </Rect>,

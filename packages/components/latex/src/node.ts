@@ -1,66 +1,7 @@
-import { RenderContext2D, Graphics2D, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, commandSequence, type Command, type ChainableCommand, type TweenStepper } from "@motion-script/core";
+import { RenderContext2D, Graphics2D, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, type Command, type TweenStepper } from "@motion-script/core";
 import { buildLatexPath, LatexToken } from "./geometry";
 import { LatexProps } from "./props";
 import { AnimatedToken, prepareLatexTween } from "./tween";
-
-/** One `.to(...)` step in a chained Latex morph — see {@link LatexChain}. */
-interface MorphStep {
-    to: Partial<LatexProps>;
-    duration: number;
-    easing?: EasingFunction;
-}
-
-/**
- * Makes a chain of Latex morphs (`latexRef().to({...}, 1).to({...}, 1)`)
- * satisfy {@link ChainableCommand} the same way `Node.to()`'s chain does.
- *
- * Each step is built (via {@link Latex._buildMorph}) exactly once, lazily, the
- * first time the chain is evaluated — memoized on `built` rather than rebuilt
- * per step, because a step's own "from" snapshot is *itself* lazily captured
- * on its first evaluation (see `_buildMorph`): `commandSequence` settles every
- * prior step before evaluating the next on every call, so building all steps
- * once up front and letting that walk happen is what makes step 2's "from"
- * correctly land on step 1's end rather than the pre-animation state.
- */
-class LatexChain implements ChainableCommand<LatexProps> {
-    private steps: MorphStep[] = [];
-    private built: Command<LatexProps> | null = null;
-
-    constructor(private latex: Latex, first: MorphStep) {
-        this.steps.push(first);
-    }
-
-    to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): ChainableCommand<LatexProps> {
-        this.steps.push({ to, duration, easing });
-        this.built = null;
-        return this;
-    }
-
-    private command(): Command<LatexProps> {
-        if (!this.built) {
-            const commands = this.steps.map(s => this.latex._buildMorph(s.to, s.duration, s.easing));
-            this.built = commands.length === 1 ? commands[0] : commandSequence<LatexProps>(this.latex, ...commands);
-        }
-        return this.built;
-    }
-
-    get duration(): number {
-        return this.steps.reduce((sum, s) => sum + s.duration, 0);
-    }
-
-    at(t: number): Partial<LatexProps> {
-        return this.command().at(t);
-    }
-
-    _stepper(): TweenStepper {
-        return this.command()._stepper();
-    }
-
-    [Symbol.iterator](): Iterator<void, void, number> {
-        return this.command()[Symbol.iterator]();
-    }
-}
-
 
 export class Latex extends ShapeNode<LatexProps> {
     getType(): string { return "latex"; }
@@ -142,11 +83,15 @@ export class Latex extends ShapeNode<LatexProps> {
     }
 
     /**
-     * A LaTeX morph, chained the same way `Node.to()` is
-     * (`latexRef().to({...}, 1).to({...}, 1)`) — see {@link LatexChain}.
+     * A LaTeX morph — one {@link Command}, like every other `to()`.
+     *
+     * Sequence two of them with `sequence(...)` rather than chaining: the chain
+     * builder this used to return existed only so `latexRef().to(a, 1).to(b, 1)`
+     * would read as two steps, and it could not compose with anything that was
+     * not another Latex morph.
      */
-    override to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): ChainableCommand<LatexProps> {
-        return new LatexChain(this, { to, duration, easing });
+    override to(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): Command<LatexProps> {
+        return this._buildMorph(to, duration, easing);
     }
 
     /**
@@ -157,13 +102,11 @@ export class Latex extends ShapeNode<LatexProps> {
      * the concurrent `parallel` the generator version ran.
      *
      * The "from" snapshot (`fromTokens`, `fromLatex`, …) is captured
-     * **lazily, on the command's first evaluation**, not when this is called —
-     * the same laziness a `.to().to()` chain's own steps need: `LatexChain`
-     * builds every step once, up front, and relies on `commandSequence`
-     * settling each prior step before the next is first evaluated, so a
-     * second step's "from" lazily snapshotted here correctly reads the first
-     * step's end state rather than whatever the node held before any of the
-     * chain ran.
+     * **lazily, on the command's first evaluation**, not when this is called.
+     * That is what lets two morphs be sequenced: `commandSequence` settles each
+     * prior step before evaluating the next, so a second morph's "from" reads
+     * the first one's end state rather than whatever the node held before either
+     * of them ran.
      *
      * `_animating` suppresses the `latex`/`fontSize` signal subscribers
      * (`_updateTokens`) for the open interval, and both ends commit: `t === 1`
@@ -172,8 +115,7 @@ export class Latex extends ShapeNode<LatexProps> {
      * `packages/components/code`'s `runTransition` uses, so seeking into either
      * side of the morph (not just running it forward) shows the right thing.
      *
-     * `@internal` — the entry point for authors is {@link to}; this is the
-     * seam {@link LatexChain} builds each step through.
+     * `@internal` — the entry point for authors is {@link to}.
      */
     _buildMorph(to: Partial<LatexProps>, duration: number, easing?: EasingFunction): Command<LatexProps> {
         let setupDone = false;

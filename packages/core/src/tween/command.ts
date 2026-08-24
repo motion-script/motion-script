@@ -27,7 +27,7 @@ import { Steppable, TweenStepper } from "./stepper";
  *     @command()
  *     draw(duration = 1, easing?: EasingFunction): Command<ChartProps> {
  *         const from = this.progress;
- *         return this.animate((t) => ({ progress: lerpNumber(from, 1, t) }), duration, easing);
+ *         return this.command((t) => ({ progress: lerpNumber(from, 1, t) }), duration, easing);
  *     }
  * }
  *

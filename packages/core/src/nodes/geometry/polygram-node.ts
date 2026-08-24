@@ -1,6 +1,6 @@
 import { property } from "@/attributes/properties/decorator";
 import { ShapeNode, ShapeProps } from "./shape-node";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { CornerStyle } from "@/attributes/shape/corners/corner-style";
@@ -38,8 +38,8 @@ export class Polygram extends ShapeNode<PolygramProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().polygram({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             sides: this.sides,
             ratio: this.ratio,
             cornerRadius: this.cornerRadius,
@@ -51,8 +51,8 @@ export class Polygram extends ShapeNode<PolygramProps> {
 
     protected override clipSelf(): Clip {
         return new Clip().polygram({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             sides: this.sides,
             ratio: this.ratio,
             cornerRadius: this.cornerRadius,

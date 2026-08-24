@@ -1,10 +1,9 @@
-import { RenderContext2D } from "@/render/render-context2d";
-import { Node2D, CameraScope, NodeConfig  } from "@/nodes/base/node2d";
+import { RenderPass2D } from "@/render/render-context2d";
+import { Node2D, CameraScope, NodeConfig  } from "@/nodes/2d/node2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { Clip } from "@/render/clip";
 import { lerpNumber } from "@/tween/lerp";
 import { EasingFunction } from "@/tween/ease/type";
-import { type ChainableCommand } from "@/tween/chain";
 
 
 import { lerpVector2, Vector2 } from "@/attributes/layout/vector2";
@@ -12,6 +11,8 @@ import { RectCornerRadius } from "@/attributes/shape/corners/corner-radius";
 import { RectCornerStyle } from "@/attributes/shape/corners/corner-style";
 import { cornerRadiusProperty, cornerStyleProperty } from "@/attributes/properties/typed";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
+import { type Command } from "@/tween/command";
+import { command } from "@/tween/command-decorator";
 
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
@@ -72,7 +73,8 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.zoomTo(2, 0.5, ease.outCubic);
      */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
+    @command()
+    zoomTo(zoom: number, duration: number, ease?: EasingFunction): Command<CameraProps> {
         return this.to({ zoom } as Partial<CameraProps>, duration, ease);
     }
 
@@ -83,7 +85,8 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
+    @command()
+    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): Command<CameraProps> {
         return this.to({ lookAt } as Partial<CameraProps>, duration, ease);
     }
 
@@ -93,7 +96,8 @@ export class Camera extends ShapeNode<CameraProps> {
      * @example
      * yield* camera.headingTo(45, 0.4);
      */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): ChainableCommand<CameraProps> {
+    @command()
+    headingTo(heading: number, duration: number, ease?: EasingFunction): Command<CameraProps> {
         return this.to({ heading } as Partial<CameraProps>, duration, ease);
     }
 
@@ -101,8 +105,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -112,8 +116,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     protected override clipSelf(): Clip {
         return new Clip().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
@@ -131,7 +135,7 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // ---- Rendering --------------------------------------------------------
 
-    // Always non-null: unlike RootNode there is no at-rest fast path below, so
+    // Always non-null: unlike Canvas2D there is no at-rest fast path below, so
     // the camera scope (and its viewport clip) is pushed on every frame even when
     // the transform itself is the identity.
     override _cameraScope(): CameraScope {
@@ -140,8 +144,8 @@ export class Camera extends ShapeNode<CameraProps> {
 
     // Render the world through the camera viewport transform instead of the
     // straight `renderChildren` ShapeNode uses for its content.
-    override renderChildren(ctx: RenderContext2D): void {
-        const rect = this.layoutRect;
+    protected override renderChildren(ctx: RenderPass2D): void {
+        const rect = this.layoutBounds;
         const w = rect?.width ?? 0;
         const h = rect?.height ?? 0;
         const cx = rect?.x ?? 0;

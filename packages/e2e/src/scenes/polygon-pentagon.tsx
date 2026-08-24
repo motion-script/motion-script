@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             fill={'accent'}
             rotation={-90}
             scale={0.6}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

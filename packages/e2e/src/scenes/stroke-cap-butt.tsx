@@ -10,7 +10,7 @@ export default createScene(function* (stage) {
             ref={line}
             points={[{ x: -260, y: 0 }, { x: 260, y: 0 }]}
             stroke={{ weight: 8, fill: 'primary', cap: 'butt' }}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

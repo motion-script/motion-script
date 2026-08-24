@@ -50,8 +50,8 @@ export abstract class ViewportPattern<P extends ShapeProps = ShapeProps> extends
         const camera = this.findCamera();
         if (!camera) {
             // No camera — fill our own cell, centred on this node's origin.
-            const w = this.layoutRect?.width ?? 0;
-            const h = this.layoutRect?.height ?? 0;
+            const w = this.layoutBounds?.width ?? 0;
+            const h = this.layoutBounds?.height ?? 0;
             return { x: 0, y: 0, width: w, height: h };
         }
 

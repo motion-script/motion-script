@@ -55,7 +55,7 @@ export abstract class AudioDevice {
      * Mute or unmute all output. Default is a no-op for devices that produce no
      * sound (e.g. export/noop sinks).
      */
-    setMuted(_muted: boolean): void {}
+    setMuted(muted: boolean): void {}
 
     /**
      * Set the linear gain applied to all output, on top of each request's own
@@ -65,7 +65,7 @@ export abstract class AudioDevice {
      *
      * Default is a no-op, as for {@link setMuted}.
      */
-    setVolume(_volume: number): void {}
+    setVolume(volume: number): void {}
 
     dispose(): void {
         this.stop();

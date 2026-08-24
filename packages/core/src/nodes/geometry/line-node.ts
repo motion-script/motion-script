@@ -5,7 +5,7 @@ import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { ShapeNode, ShapeProps } from "./shape-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { BoxBounds } from "@/attributes/layout/bounds";
 export interface LineProps extends ShapeProps {
     points: Vector2[];

@@ -11,7 +11,7 @@ import { anchorProperty, insetsProperty } from "@/attributes/properties/typed";
 import { VideoFillProp, VideoFillResolved } from "@/attributes/shape/fill/implementations/video";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 import { AssetTracker } from "@/assets/tracker";
 import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
 import { FillProp } from "@/attributes/shape/fill/union";
@@ -197,11 +197,10 @@ export class Video extends Rect<VideoProps> {
     }
 
     // Only the sound is advanced here — the picture's timestamp is derived from
-    // this node's clock as the fill paints (see `resolveVideoTimestamp`).
-    override tick(time: number): void {
-        super.tick(time);
+    // this node's own time as the fill paints (see `resolveVideoTimestamp`).
+    override tick(): void {
         this.syncSound();
-        this._sound?.tick(time);
+        this._sound?.tick(this.time.total);
     }
 
     /**
@@ -219,7 +218,7 @@ export class Video extends Rect<VideoProps> {
         // The picture, through the same `syncVideo()` fill `renderSelf` paints.
         this.syncVideo();
         if (this._video) {
-            const rect = this.layoutRect;
+            const rect = this.layoutBounds;
             prepareFill(this._video, tracker, rect?.width ?? 0, rect?.height ?? 0);
         }
 
@@ -235,7 +234,7 @@ export class Video extends Rect<VideoProps> {
         if (sound.trimEnd === Infinity && !sound.loop) {
             sound.trimEnd = tracker.catalog.getMediaDuration(this.src);
         }
-        sound.tick(this.clock.time);
+        sound.tick(this.time.total);
         sound.start();
         sound.prepare(tracker);
     }
@@ -243,8 +242,8 @@ export class Video extends Rect<VideoProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,

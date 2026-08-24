@@ -11,7 +11,7 @@ import { Anchor } from "@/attributes/layout/anchor";
 import { Rect, RectProps } from "../geometry/rect-node";
 import { property } from "@/attributes/properties/decorator";
 import { anchorProperty, insetsProperty } from "@/attributes/properties/typed";
-import { NodeConfig } from "../base/node2d";
+import { NodeConfig } from "@/nodes/2d/node2d";
 
 export interface ImageProps extends RectProps {
     src?: string;
@@ -77,8 +77,8 @@ export class Image extends Rect<ImageProps> {
 
     protected override shapeGraphics(): Graphics2D {
         return new Graphics2D().rect({
-            width: this.layoutRect.width,
-            height: this.layoutRect.height,
+            width: this.layoutBounds.width,
+            height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
@@ -108,7 +108,7 @@ export class Image extends Rect<ImageProps> {
         super.prepareRender(tracker);
         const image = this.imageFill();
         if (!image) return;
-        const rect = this.layoutRect;
+        const rect = this.layoutBounds;
         prepareFill(image, tracker, rect?.width ?? 0, rect?.height ?? 0);
     }
 }

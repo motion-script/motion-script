@@ -1,53 +1,19 @@
-import { type ChainableCommand } from "@/tween/chain";
-import { type Command } from "@/tween/command";
 import { FrameGenerator } from "@/tween/generator";
-import { BuildStage } from "@/render/build-stage";
-import { Fill } from "@/attributes/shape/fill/chain";
-import { FillResolved } from "@/attributes/shape/fill/union";
-import { Vector2 } from "@/attributes/layout/vector2";
-import { FlowMode } from "@/layout/flow-engine";
-import { GapSize } from "@/layout/flex";
-import { Anchor } from "@/attributes/layout/anchor";
-import { Insets } from "@/attributes/layout/insets";
-import { EasingFunction } from "@/tween/ease/type";
-import { TweenOptions } from "@/tween/lerp";
 import { Sound, SoundProps } from "@/attributes/audio/sound";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
-import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
 import { BoxBounds } from "@/attributes/layout/bounds";
-import { Measurer } from "@/render/measurer";
-import { RenderContext2D } from "@/render/render-context2d";
-import { RootNode, RootProps } from "./root-node";
-import { NodeClock } from "../base/node-clock";
-import { Node2D } from "../base/node2d";
-import { Node } from "../base/node";
+import { Measurer2D } from "@/render/measurer";
+import { RenderPass2D } from "@/render/render-context2d";
+import { Canvas2D } from "./canvas2d-node";
+import { NodeTime } from "@/nodes/node/node-time";
+import { Node2D } from "@/nodes/2d/node2d";
+import { Node, type AttachScope } from "@/nodes/node/node";
+import type { Stage } from "./stage";
+import { declareLayoutAssets, declareRenderAssets, primeMotionTree, sampleTree } from "@/nodes/node/node-walk";
 
-/**
- * The object a scene generator is handed. It merges the build-time determinism
- * surface ({@link BuildStage}: `viewport`, `fps`, and `random(seed)` → a seeded
- * `Random` source) with the {@link Scene}'s own authoring surface (`add`, `set`, sounds,
- * and the root commands `to`/`fillTo`/`zoomTo`/… plus `root`):
- *
- *   export default createScene(function* (stage) {
- *     stage.set({ fill: 'bg' });
- *     stage.add(<Rect … />);
- *     yield* stage.zoomTo(2, 1);
- *   });
- *
- * No re-declaration: the authoring methods are the real {@link Scene} members
- * and the determinism methods are the real {@link BuildStage} members. At
- * runtime the generator is given one object that is both (see {@link Scene.build}).
- *
- * `Pick<T, keyof T>` strips each class down to its **public** surface — `keyof`
- * omits `private`/`protected` members, which TS treats nominally and which would
- * otherwise make `Stage` satisfiable only by a real subclass instance rather
- * than the merged view the generator actually receives.
- */
-export type Stage =
-    & Pick<BuildStage<Scene>, keyof BuildStage<Scene>>
-    & Pick<Scene, keyof Scene>;
+export type { Stage } from "./stage";
 
 /** A scene's body: a generator factory given the {@link Stage}. */
 export type SceneGenerator = (stage: Stage) => FrameGenerator;
@@ -55,11 +21,12 @@ export type SceneGenerator = (stage: Stage) => FrameGenerator;
 /**
  * A self-contained unit of a project's timeline.
  *
- * A scene is **not a node** and is **not composed**. It owns a root {@link Rect}
- * (a viewport-sized world container) and a generator that builds into it. This
- * is what makes scene-level hot reloading work: each scene file is its own HMR
- * boundary (`import scene from './scene?scene'`), and a scene can be swapped in
- * place without rebuilding the rest of the timeline.
+ * A scene is **not a node** and is **not composed**. It owns a {@link Canvas2D}
+ * — a viewport-sized world container that doubles as the scene's camera — and a
+ * generator that builds into it. This is what makes scene-level hot reloading
+ * work: each scene file is its own HMR boundary (`import scene from
+ * './scene?scene'`), and a scene can be swapped in place without rebuilding the
+ * rest of the timeline.
  *
  * Authored with {@link createScene} — you never construct one directly:
  *
@@ -70,22 +37,29 @@ export type SceneGenerator = (stage: Stage) => FrameGenerator;
  *     yield* …;
  *   });
  *
- * The runtime drives a scene through `reset → bindAssets → ellapse → build →
+ * The runtime drives a scene through `reset → attach → build →
  * prepareLayoutAssets → layout → prepareRenderAssets → render → dispose`, each
- * forwarding to the root. The two declaration phases are ordered around `layout`
- * because that is what separates them: fonts and anything else measurement
- * depends on have to be named before it, and anything sized against a
- * `layoutRect` after it. See {@link Node2D.prepareLayout}.
+ * forwarding to the canvas. The two declaration phases are ordered around
+ * `layout` because that is what separates them: fonts and anything else
+ * measurement depends on have to be named before it, and anything sized against
+ * a `layoutBounds` after it. See `Node.prepareLayout`.
  *
- * The scene's authoring methods (`add`/`set`/`to`/camera/paint/sounds) all act
- * on its {@link RootNode} `root`. They're merged with a {@link BuildStage} into
- * the {@link Stage} a generator receives — see {@link Scene.build}.
+ * **Authoring goes through the {@link Stage}, not through here.** `add`, `set`,
+ * the camera and paint commands and the sound helpers are the *stage's* surface;
+ * what remains on `Scene` is the runtime lifecycle and the scene's identity. A
+ * host holding a `Scene` is driving it, not writing it.
  */
 export class Scene {
 
-    /** The world container this scene builds into. Viewport-sized, top-level.
-     *  A {@link RootNode}: a layouting Rect that also acts as the scene camera. */
-    readonly root: RootNode;
+    /**
+     * The world container this scene builds into. Viewport-sized, top-level:
+     * a layouting frame that also acts as the scene camera.
+     *
+     * **Replaced, not reset, on every {@link reset}** — so read it through this
+     * getter rather than holding the instance across a pass boundary.
+     */
+    get canvas(): Canvas2D { return this._canvas; }
+    private _canvas: Canvas2D;
 
     /** The generator body supplied to {@link createScene}. */
     private readonly generator: SceneGenerator;
@@ -99,7 +73,7 @@ export class Scene {
     __sceneHotId?: string;
 
     /**
-     * Identity of this scene's *content*, for a {@link PrecompCache}.
+     * Identity of this scene's *content*, for a `PrecompCache`.
      *
      * Distinct from {@link __sceneHotId}, which identifies the timeline **slot**
      * a scene belongs to and therefore stays the same across an edit — that is
@@ -131,11 +105,24 @@ export class Scene {
 
     constructor(generator: SceneGenerator) {
         this.generator = generator;
-        // The root keeps the historical scene defaults: it fills the viewport and
-        // stacks its children. A scene generator overrides these with set(...).
-        // It's a RootNode, so the scene can also drive the camera (zoom/origin/
-        // heading) from the same root via set(...) or root.zoomTo(...).
-        this.root = new RootNode({ width: 'fill', height: 'fill', flow: 'freeform' });
+        this._canvas = this.buildCanvas();
+    }
+
+    /**
+     * A fresh world container at this scene's current viewport.
+     *
+     * The canvas keeps the historical scene defaults: it fills the viewport and
+     * stacks its children, and a generator overrides those through
+     * `stage.set(...)`. It is a {@link Canvas2D}, so the scene drives the camera
+     * (zoom/lookAt/heading) from the same node.
+     */
+    private buildCanvas(): Canvas2D {
+        const size = this._viewport;
+        return new Canvas2D({
+            width: size ? size.width : 'fill',
+            height: size ? size.height : 'fill',
+            flow: 'freeform',
+        });
     }
 
     // ─── Viewport ─────────────────────────────────────────────────────────────
@@ -145,124 +132,37 @@ export class Scene {
         return this._viewport;
     }
 
-    /** Record the full viewport (called by the playback engine). */
+    /**
+     * Record the full viewport and size the live canvas to it (called by the
+     * playback engine).
+     *
+     * Remembered rather than only applied, because {@link reset} builds a *new*
+     * canvas and it has to come back at the right size — a separate
+     * `canvas.set({ width, height })` at the call site would be silently dropped
+     * by the next reset.
+     */
     setViewport(size: Size2D): void {
         this._viewport = { width: size.width, height: size.height };
+        this._canvas.set({ width: size.width, height: size.height });
     }
 
-    // ─── Authoring surface (the methods merged onto the Stage) ──────────────────
-    // These all act on the scene's `root` ({@link RootNode}). They're exposed
-    // here so a generator can author the whole root through `stage` directly —
-    // `stage.add(...)`, `stage.set({ fill, zoom })`, `stage.zoomTo(...)` — without
-    // reaching for `stage.root`. For anything not forwarded, `stage.root` is the
-    // full node.
-
-    /**
-     * Add a node (or array of nodes) as a child of the scene's root.
-     *
-     * Typed to the shared base because that is what JSX produces; the root is 2D,
-     * so handing it a `Node3D` throws (see `Node.acceptsChild`) rather than
-     * silently drawing nothing.
-     */
-    add(node: Node | Node[]): void {
-        if (Array.isArray(node)) {
-            this.root.addChildren(node);
-        } else {
-            this.root.addChild(node);
-        }
-    }
-
-    /** Set one or more reactive props on the root container. */
-    set(props: { [K in keyof RootProps]?: RootProps[K] | (() => RootProps[K]) }): void {
-        this.root.set(props);
-    }
-
-    /** Animate any root props in one call — `yield* stage.to({ zoom: 2, fill: 'red' }, 1)`. */
-    to(props: Partial<RootProps>, duration: number, easing?: EasingFunction): ChainableCommand<RootProps> {
-        return this.root.to(props, duration, easing);
-    }
-
-    // ── Camera commands (forward to the root) ──
-
-    /** Animate the camera magnification (`zoom`). > 1 zooms in; < 1 zooms out. */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
-        return this.root.zoomTo(zoom, duration, ease);
-    }
-
-    /** Animate the camera focus point (`lookAt`) — the world point at viewport centre. */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
-        return this.root.panTo(lookAt, duration, ease);
-    }
-
-    /** Animate the camera view rotation (`heading`) in degrees. */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): ChainableCommand<RootProps> {
-        return this.root.headingTo(heading, duration, ease);
-    }
-
-    // ── Paint commands (forward to the root) ──
-
-    /** Animate the root `fill` (the scene-wide background). */
-    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
-        return this.root.fillTo(to, duration, options);
-    }
-
-    /** Animate the root `overlay` (painted over fill + children, viewport-wide). */
-    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<RootProps> {
-        return this.root.overlayTo(to, duration, options);
-    }
-
-    /** The root's background fill. */
-    get fill(): Fill { return this.root.fill; }
-    set fill(value: Fill) { this.root.fill = value; }
-
-    /** The root's overlay. */
-    get overlay(): Fill { return this.root.overlay; }
-    set overlay(value: Fill) { this.root.overlay = value; }
-
-    // ── Layout container (forward to the root) ──
-
-    /** The root's layout mode for children: `horizontal` / `vertical` / `freeform`. */
-    get flow(): FlowMode { return this.root.flow; }
-    set flow(value: FlowMode) { this.root.flow = value; }
-
-    /** Spacing between the root's children along the layout's main axis. Set via `stage.set({ gap })`. */
-    get gap(): GapSize { return this.root.gap; }
-
-    /** Alignment of the root's children within the viewport. */
-    get align(): Anchor { return this.root.align; }
-    set align(value: Anchor) { this.root.align = value; }
-
-    /** Inner spacing between the viewport edges and the root's children. */
-    get padding(): Insets { return this.root.padding; }
-    set padding(value: Insets) { this.root.padding = value; }
-
-    // ── Camera (forward to the root) ──
-
-    /** Camera magnification factor. > 1 zooms in; < 1 zooms out. */
-    get zoom(): number { return this.root.zoom; }
-    set zoom(value: number) { this.root.zoom = value; }
-
-    /** World-space point that maps to the centre of the viewport. */
-    get origin(): Vector2 { return this.root.lookAt; }
-    set origin(value: Vector2) { this.root.lookAt = value; }
-
-    /** Camera view rotation in degrees (clockwise). */
-    get heading(): number { return this.root.heading; }
-    set heading(value: number) { this.root.heading = value; }
-
-    /** Internal timing state of the root (scene-relative clock). */
-    get clock(): Readonly<NodeClock> {
-        return this.root.clock;
+    /** The scene-relative clock — the canvas's. */
+    get time(): NodeTime {
+        return this.canvas.time;
     }
 
     /** The asset catalog bound to the scene (via {@link bindAssets}). */
     get assets(): AssetCatalog {
-        return this.root.assets;
+        return this.canvas.assets;
     }
+
+    // ─── Audio (reached by scene authors through the Stage) ───────────────────
 
     /**
      * Start a sound on the scene's audio timeline without blocking, and return
      * the {@link Sound} handle. Pair with {@link stopSound} to end playback.
+     *
+     * @internal Authors call `stage.startSound`.
      */
     startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound {
         const s = src instanceof Sound ? src : new Sound({ src, ...opts } as SoundProps);
@@ -271,28 +171,28 @@ export class Scene {
         // scene boundaries: `Sound.prepare` emits it as an OPEN request whose end is
         // resolved against the project total in `assembleTimeline`. (An explicit
         // `stopSound`, a finite trim/duration, or `playSound` still bounds it.)
-        s.tick(this.clock.time);
+        s.tick(this.time.total);
         if (this._managedSounds.indexOf(s) < 0) this._managedSounds.push(s);
         s.start();
         return s;
     }
 
-    /** Stop a sound started via {@link startSound}. No-op if it isn't playing. */
+    /** Stop a sound started via {@link startSound}. No-op if it isn't playing. @internal */
     stopSound(sound: Sound): void {
-        sound.tick(this.clock.time);
+        sound.tick(this.time.total);
         sound.stop();
     }
 
     /**
      * Play a sound on the scene's audio timeline. Blocks for the clip's duration.
-     * Use as `yield* stage.playSound(...)` inside a scene generator.
+     * @internal Authors call `yield* stage.playSound(...)`.
      */
     *playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator {
         const s = src instanceof Sound ? src : new Sound({ src, ...opts } as SoundProps);
         if (s.trimEnd === Infinity && !s.loop) {
             s.trimEnd = this.assets.getMediaDuration(s.src);
         }
-        s.tick(this.clock.time);
+        s.tick(this.time.total);
         this._managedSounds.push(s);
         try {
             yield* s.play();
@@ -305,19 +205,16 @@ export class Scene {
     // ─── Build ────────────────────────────────────────────────────────────────
 
     /**
-     * Produce this scene's frame generator. The generator is handed a single
-     * {@link Stage} object that exposes both surfaces: this scene's authoring
-     * methods (`add`/`set`/`to`/`zoomTo`/sounds/…) and the build stage's
-     * determinism (`viewport`/`fps`/`random`/`noise`/`seed`).
+     * Produce this scene's frame generator against `stage`.
      *
-     * The merge is a view created with the scene as its prototype (so authoring
-     * resolves to real `Scene` members) overlaid with the stage's own properties
-     * and its methods bound to the stage (so determinism keeps the stage's
-     * `this`). One view is built per build pass.
+     * Called by `CanvasStage.build`, which binds itself to this scene first —
+     * binding and building are one call there so a stage can never be forwarding
+     * a generator's `add`/`set` to a different scene's canvas.
+     *
+     * @internal
      */
-    build(stage: BuildStage<Scene>): FrameGenerator {
-        stage.bindScene(this);
-        return this.generator(mergeStage(stage, this));
+    build(stage: Stage): FrameGenerator {
+        return this.generator(stage);
     }
 
     /** The host driver, when this scene is evaluated rather than replayed. */
@@ -348,89 +245,86 @@ export class Scene {
         return this._driver ? this._driver.duration : null;
     }
 
-    // ─── Runtime lifecycle (forwarders to the root) ───────────────────────────
+    // ─── Runtime lifecycle (forwarders to the canvas) ─────────────────────────
 
-    /** Clear all dynamically-added children and managed sounds, and reset the clock. */
+    /**
+     * Tear the scene down to the state a fresh build starts from: a brand-new
+     * canvas, no children, no sounds, a clock at zero.
+     *
+     * **The canvas is rebuilt, not rewound.** A scene instance is owned by the
+     * project config and reused across playback controllers (StrictMode
+     * double-mount, HMR) and across passes — precomp measures a scene's duration
+     * by running its generator to completion, which leaves every canvas prop at
+     * its tweened end value. Restoring those in place meant enumerating what
+     * "restore" covered (prop defaults, but not the save stack, not the clock,
+     * not a stale binding), and anything the list missed leaked into the next
+     * pass as a tween whose `from` already equalled its target — an animation
+     * that silently did nothing. Constructing a new node has no list to keep
+     * current.
+     */
     reset(): void {
-        // A scene instance is owned by the project config and reused across
-        // playback controllers (StrictMode double-mount, HMR) and across passes
-        // (precomp measures duration by running the generator to completion, which
-        // leaves the root at its end-state). Force a default restore — not just
-        // the disposed-signal recovery — so the root's own animatable props
-        // (padding/zoom/heading/fill/…) start each build from their defaults
-        // rather than a prior pass's end value, which would make the generator's
-        // tweens snapshot `from` === target and visibly do nothing.
-        this.root.reinit(true);
-        for (const child of this.root.children) child.dispose();
-        this.root.clearChildren();
+        for (const child of this._canvas.children) child.dispose();
+        this._canvas.dispose();
+        this._canvas = this.buildCanvas();
         for (const s of this._managedSounds) s.dispose();
         this._managedSounds.length = 0;
     }
 
-    /** Bind the asset catalog to the scene's whole node subtree. */
-    bindAssets(context: AssetCatalog): void {
-        this.root.bindAssets(context);
-    }
-
     /**
-     * Push inherited context (theme/data/seed/text-style and user tokens) down
-     * the scene's whole subtree. `runInit` true at start-of-pass (also fires each
-     * node's `init`); false for the per-frame structural re-push. Mirrors
-     * {@link bindAssets}. See `Node2D.bindContext`.
+     * Put the scene's whole subtree into the scene at `scope.time`: bind the
+     * asset catalog and the inherited context, advance the clock, sample.
+     *
+     * One call per frame. See `Node.attach` for why the three used to be three
+     * and are now one.
      */
-    bindContext(context: ContextMap, runInit: boolean): void {
-        this.root.bindContext(context, runInit);
-    }
-
-    /** Advance the scene's clock and per-frame sampling for the whole subtree. */
-    ellapse(totalTime: number): void {
-        this.root.ellapse(totalTime);
-        for (const s of this._managedSounds) s.tick(totalTime);
+    attach(scope: AttachScope): void {
+        this.canvas.attach(scope);
+        for (const s of this._managedSounds) s.tick(scope.time);
     }
 
     /** Seed per-frame derived state (motion) without a full ellapse. */
     sample(): void {
-        this.root.sample();
+        sampleTree(this.canvas);
     }
 
     /**
      * Record the scene's current positions as the motion history's previous
-     * frame, stamped `at`, deriving no velocity — see `Node2D.primeMotion`.
+     * frame, stamped `at`, deriving no velocity — see `primeMotionTree`.
      */
     primeMotion(at: number): void {
-        this.root.primeMotion(at);
+        primeMotionTree(this.canvas, at);
     }
 
     /** Lay the scene's world out against the given (full-viewport) bounds. */
-    layout(rect: BoxBounds, scope: Measurer): void {
-        this.root.layout(rect, scope);
+    layout(bounds: BoxBounds, measurer: Measurer2D): void {
+        this.canvas.layout(bounds, measurer);
     }
 
     /** Render the scene's world into `context`. */
-    render(context: RenderContext2D): void {
-        this.root.render(context);
+    render(context: RenderPass2D): void {
+        this.canvas.render(context);
     }
 
     /**
      * Collect what the tree needs to be **laid out** — fonts, and any async load
      * measurement depends on. Call before {@link layout}; see
-     * {@link Node2D.prepareLayout}.
+     * `Node.prepareLayout`.
      */
     prepareLayoutAssets(tracker: AssetTracker): void {
-        this.root.prepareLayoutAssets(tracker);
+        declareLayoutAssets(this.canvas, tracker);
     }
 
     /**
      * Collect what the tree needs to be **drawn** — images, video, 3D, effect
      * textures, and the audio its clips schedule. Call after {@link layout}, so
-     * every declaration can be sized against a real `layoutRect`.
+     * every declaration can be sized against a real `layoutBounds`.
      *
      * Managed sounds ({@link startSound}/{@link playSound}) are the scene's own
      * rather than any node's, so they are declared here rather than reached by
      * the tree walk.
      */
     prepareRenderAssets(tracker: AssetTracker): void {
-        this.root.prepareRenderAssets(tracker);
+        declareRenderAssets(this.canvas, tracker);
         for (const s of this._managedSounds) s.prepare(tracker);
     }
 
@@ -447,8 +341,8 @@ export class Scene {
      *
      * Note this runs layout's declarations *and* render's without a layout pass
      * between them, so a size-dependent declaration falls back to whatever
-     * `layoutRect` currently holds. Precomp keeps the two calls separate, either
-     * side of `layout`, precisely to avoid that.
+     * `layoutBounds` currently holds. Precomp keeps the two calls separate,
+     * either side of `layout`, precisely to avoid that.
      */
     prepareAssets(tracker: AssetTracker): void {
         this.prepareLayoutAssets(tracker);
@@ -456,44 +350,17 @@ export class Scene {
     }
 
     dispose(): void {
-        this.root.dispose();
+        this.canvas.dispose();
         for (const s of this._managedSounds) s.dispose();
         this._managedSounds.length = 0;
     }
 }
 
 /**
- * Build the single {@link Stage} object handed to a scene generator: a view
- * that exposes the {@link Scene}'s authoring surface and the {@link BuildStage}'s
- * determinism surface at once.
- *
- * A Proxy (rather than a copy) so each access routes to whichever object owns
- * the member and methods keep their own `this` — the scene's `add`/`set`/sounds
- * run with the scene as receiver (reaching `root`/`_managedSounds`), and the
- * stage's `random`/`noise`/`seed` run with the stage as receiver (reaching its
- * `seeder`). The scene wins on name clashes; nothing currently clashes.
- */
-function mergeStage(stage: BuildStage<Scene>, scene: Scene): Stage {
-    return new Proxy(scene, {
-        get(target, prop, receiver) {
-            if (prop in target) {
-                const value = Reflect.get(target, prop, receiver);
-                return typeof value === "function" ? value.bind(target) : value;
-            }
-            const value = Reflect.get(stage as object, prop, stage);
-            return typeof value === "function" ? value.bind(stage) : value;
-        },
-        has(target, prop) {
-            return prop in target || prop in (stage as object);
-        },
-    }) as unknown as Stage;
-}
-
-/**
  * Create a scene from a generator body. This is the only way to author a scene:
  *
  *   // scenes/intro.tsx
- *   import { createScene, Rect } from '@motion-script/core';
+ *   import { createScene, Rect } from 'motion-script';
  *
  *   export default createScene(function* (stage) {
  *     stage.set({ fill: 'bg' });
@@ -517,7 +384,7 @@ export function createScene(generator: SceneGenerator): Scene {
 }
 
 /**
- * A still's content: a factory that returns the tree to draw, authors the root
+ * A still's content: a factory that returns the tree to draw, authors the canvas
  * through the {@link Stage} it is given, or does both.
  *
  * A **factory**, never a node — see {@link createStill} for why that is a
@@ -541,14 +408,14 @@ export type StillContent = (stage: Stage) => Node | Node[] | void;
  *
  * A scene body runs **more than once per rendered frame**: the precomp measures
  * the scene, then the evaluator replays it, and {@link Scene.reset} disposes and
- * clears the root's children between passes. A node captured in a closure is
+ * clears the canvas's children between passes. A node captured in a closure is
  * therefore disposed before its second use, and re-adding it puts a torn-down
  * tree into layout — which surfaces as an undefined padding/size deep inside the
  * layout engine, not as anything that names the real cause.
  *
  * So the factory is what makes the still rebuildable, and it is enforced: passing
  * a node throws immediately rather than failing obscurely later. (It also fixes
- * the same theme-timing problem a project `GlobalLayer` has — a node built at
+ * the same theme-timing problem a project global layer has — a node built at
  * module scope resolves its tokens against whatever registry existed then.)
  *
  * Scene-level props go through the stage, and may be combined with a returned tree:
@@ -596,7 +463,7 @@ export interface SceneDriver {
      * Build the node tree, through the same {@link Stage} a generator gets.
      *
      * Runs on every build pass, and — like a generator body — must build fresh
-     * nodes each time: {@link Scene.reset} disposes and clears the root's
+     * nodes each time: {@link Scene.reset} disposes and clears the canvas's
      * children between passes, so a node captured outside this call is torn down
      * before its second use.
      */

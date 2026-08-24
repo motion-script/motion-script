@@ -42,7 +42,7 @@ export default createScene(function* (stage) {
     const sweepTo = (x: number, ease = easeInOut('quad')) => {
         const duration = SWEEP * Math.abs(x - at) / (RIGHT - LEFT);
         at = x;
-        return parallel(...[...plain, ...trailed].map(ref => ref().moveX(x, duration, ease)));
+        return parallel(...[...plain, ...trailed].map(ref => ref().to({ x }, duration, ease)));
     };
 
     yield* sweepTo(RIGHT);

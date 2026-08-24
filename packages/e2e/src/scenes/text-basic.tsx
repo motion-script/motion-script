@@ -14,7 +14,7 @@ export default createScene(function* (stage) {
             fill={'#f4f6ff'}
             opacity={0}
             y={30}
-            center={() => stage.root.center}
+            center={() => stage.canvas.center}
         />,
     );
 

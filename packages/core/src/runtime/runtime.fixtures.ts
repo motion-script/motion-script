@@ -10,7 +10,7 @@
  */
 import { AudioDevice } from "@/platform/audio-device";
 import { MasterClock } from "@/platform/master-clock";
-import { Measurer } from "@/render/measurer";
+import { Measurer2D } from "@/render/measurer";
 import { AssetTracker } from "@/assets/tracker";
 import { AssetCatalog } from "@/assets/catalog";
 import { StorageAdapter } from "@/platform/storage-adapter";
@@ -19,6 +19,7 @@ import { AudioRequest } from "@/attributes/audio/request";
 import { AssetRecord } from "@/assets/record";
 import { PrecompResult, AssetTrack, ScenePrecomp } from "@/runtime/precompisition";
 import { Scene } from "@/nodes/scene/scene-node";
+import type { Size2D } from "@/attributes/layout/size";
 
 // ─── Scene graph fakes ──────────────────────────────────────────────────────
 
@@ -39,6 +40,23 @@ export class FakeNode {
      */
     get _allChildren(): readonly FakeNode[] {
         return this.children;
+    }
+}
+
+/** {@link FakeNode} plus the `set` a real `Canvas2D` carries. See {@link FakeScene.canvas}. */
+export class FakeCanvas extends FakeNode {
+    constructor(
+        id: string,
+        name: string,
+        children: FakeNode[],
+        properties: Record<string, unknown>,
+        private readonly setCalls: unknown[],
+    ) {
+        super(id, name, children, properties);
+    }
+
+    set(props: unknown): void {
+        this.setCalls.push(props);
     }
 }
 
@@ -80,7 +98,7 @@ export class FakeScene {
     renderCount = 0;
     setCalls: unknown[] = [];
     setViewportCalls: unknown[] = [];
-    bindAssetsCalls: unknown[] = [];
+    attachCalls: unknown[] = [];
     ellapseCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
     prepareLayoutCount = 0;
@@ -98,34 +116,28 @@ export class FakeScene {
     }
 
     /**
-     * The scene's world container. A real {@link Scene} is no longer a node — it
-     * owns a root node that carries the children the runtime walks for
-     * tree-state / lifespans. This fake mirrors that: `root` presents the
-     * scene's own id/name/properties plus its children as a node, so
-     * `getTreeState`/`getNodeState` (which now walk `scene.root`) see them.
+     * The scene's world container. A real {@link Scene} is not a node — it owns a
+     * {@link Canvas2D} that carries the children the runtime walks for
+     * tree-state / lifespans, and that the runtime sizes to the viewport. This
+     * fake mirrors both halves: the canvas presents the scene's own
+     * id/name/properties plus its children as a node, and records `set` calls.
+     *
+     * Built once and cached, because the runtime writes to it (`canvas.set`) and
+     * a fresh object per read would drop those writes on the floor.
      */
-    get root(): FakeNode {
-        return new FakeNode(this.id, this.name, this.children, this.properties);
+    get canvas(): FakeCanvas {
+        return this._canvas ??= new FakeCanvas(this.id, this.name, this.children, this.properties, this.setCalls);
     }
-
-    set(props: unknown): void {
-        this.setCalls.push(props);
-    }
+    private _canvas?: FakeCanvas;
     setViewport(size: unknown): void {
         this.setViewportCalls.push(size);
     }
     reset(): void {
         this.resetCount++;
     }
-    bindAssets(catalog: unknown): void {
-        this.bindAssetsCalls.push(catalog);
-    }
-    bindContextCalls: unknown[] = [];
-    bindContext(context: unknown, runInit: boolean): void {
-        this.bindContextCalls.push({ context, runInit });
-    }
-    ellapse(time: number): void {
-        this.ellapseCalls.push(time);
+    attach(scope: { assets: unknown; context: unknown; time: number }): void {
+        this.attachCalls.push(scope);
+        this.ellapseCalls.push(scope.time);
     }
     layout(rect: unknown): void {
         this.layoutCalls.push({ rect });
@@ -170,9 +182,9 @@ export function asScenes(scenes: FakeScene[]): Scene[] {
 
 // ─── Platform / render fakes ────────────────────────────────────────────────
 
-export class FakeMeasurer extends Measurer {
-    measureText(text: string): number {
-        return text.length * 10;
+export class FakeMeasurer implements Measurer2D {
+    measureText(text: string, fontSize = 10): Size2D {
+        return { width: text.length * 10, height: fontSize };
     }
 }
 

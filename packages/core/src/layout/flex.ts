@@ -425,7 +425,7 @@ const warnedCollapsed = new Set<string>();
  * `entries` rather than on the children's `measuredWidth`. Both of those were the
  * first attempt and both were blind exactly where it matters: `Column`/`Row` are
  * `FlexNode`s that call this directly and never touch `FlowLayout`, and
- * `measuredWidth` reads a `layoutRect` that has not been assigned yet on the
+ * `measuredWidth` reads a `layoutBounds` that has not been assigned yet on the
  * first pass — which is the pass where this goes wrong. `entries` carry the sizes
  * the measure pass just computed, so they are true on the first frame.
  */

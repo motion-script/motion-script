@@ -11,7 +11,7 @@ export default createScene(function* (stage) {
     stage.set({ fill: 'bg' });
     const shape = createRef<Path>();
     stage.add(
-        <Path ref={shape} data={CIRCLE} fill={'primary'} center={() => stage.root.center} />,
+        <Path ref={shape} data={CIRCLE} fill={'primary'} center={() => stage.canvas.center} />,
     );
 
     yield* shape().to({ data: ROUNDED_RECT }, 1.4, easeInOut('quad'));

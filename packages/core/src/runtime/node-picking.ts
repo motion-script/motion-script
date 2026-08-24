@@ -1,9 +1,9 @@
-import { Node } from "@/nodes/base/node";
-import { Node2D } from "@/nodes/base/node2d";
+import { Node } from "@/nodes/node/node";
+import { Node2D } from "@/nodes/2d/node2d";
 import { Canvas3D } from "@/nodes/three/canvas3d-node";
 import { Vector2 } from "@/attributes/layout/vector2";
 import { Matrix2D, identity, multiply, invert, applyToPoint, cameraMatrix, translation } from "@/attributes/layout/matrix2d";
-import { worldAnchors } from "@/nodes/base/node-transform";
+import { worldAnchors } from "@/nodes/2d/node-transform";
 import { nodePath } from "@/project/tree";
 import { collectBoxes3D, pickNode3D, type Canvas3DFrame } from "./node-picking3d";
 
@@ -56,7 +56,7 @@ export interface NodeBox {
 /**
  * The renderer's CTM at `node` — every ancestor's local matrix from the scene
  * root down, with a camera scope inserted wherever an ancestor pushes one
- * ({@link Node2D._cameraScope}; `RootNode`/`Camera` call `beginCamera` between
+ * ({@link Node2D._cameraScope}; `Canvas2D`/`Camera` call `beginCamera` between
  * their own transform and their children's).
  *
  * Mirrors the render walk exactly, including the camera's `translate(rect.x,
@@ -80,7 +80,7 @@ export function renderMatrix(node: Node2D): Matrix2D {
         if (i < chain.length - 1) {
             const cam = n._cameraScope();
             if (cam) {
-                const r = n.measuredRect;
+                const r = n.layoutBounds;
                 m = multiply(m, cameraMatrix(r.x, -r.y, cam.lookAt, cam.zoom, cam.heading));
             }
         }
