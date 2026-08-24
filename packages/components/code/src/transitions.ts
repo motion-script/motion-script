@@ -70,6 +70,15 @@ export interface StructuralTransition {
 
 export type CodeTransition = DimTransition | StructuralTransition;
 
+/**
+ * Decides *when* (in normalized transition time) each part of a structural
+ * edit happens, given only whether the edit removes/adds anything.
+ * `phasesFor` below is the default implementation (exported as
+ * `defaultCodePhases`) — pass a `phaseStrategy` of this shape to `<Code>` to
+ * replace it with your own timing.
+ */
+export type CodePhaseStrategy = (hasRemoved: boolean, hasAdded: boolean) => Phases;
+
 export interface TokenState {
     opacity: number;
 }
@@ -130,6 +139,14 @@ export function phasesFor(hasRemoved: boolean, hasAdded: boolean): Phases {
     if (hasRemoved) return { out: [0, 0.45], move: [0.22, 1], in: null };
     if (hasAdded) return { out: null, move: [0, 0.55], in: [0.38, 1] };
     return { out: null, move: [0, 1], in: null };
+}
+
+/** {@link phasesFor} under the name a `phaseStrategy` default is looked up by. */
+export const defaultCodePhases: CodePhaseStrategy = phasesFor;
+
+/** How far through the "everything reflows" phase a frame is, eased. A settled frame (no edit) is always fully moved. */
+export function moveProgress(edit: { phases: Phases; progress: number } | null): number {
+    return edit ? smoothstep(windowProgress(edit.phases.move, edit.progress)) : 1;
 }
 
 /**

@@ -39,8 +39,17 @@ export interface WriteResult {
 }
 
 /**
- * Write every file in `item` under `<paths.components>/<item.name>/`,
- * prompting before overwriting an existing file unless `force` is set.
+ * Write every file in `item` under `<paths.components>/`, at whatever path
+ * each file itself declares — prompting before overwriting an existing file
+ * unless `force` is set.
+ *
+ * Deliberately does *not* nest every item under its own `<item.name>/`
+ * subfolder: a simple single-file component declares one file at
+ * `"code.ts"` and lands flat (`src/components/code.ts`), while a component
+ * that genuinely needs several files declares them nested
+ * (`"line-chart/chart.ts"`, `"line-chart/axis.ts"`) and lands in a real
+ * subfolder. The registry item's own file paths are the only thing that
+ * decides the shape — this function just joins them onto the components root.
  */
 export async function writeComponentFiles(
     item: RegistryItem,
@@ -48,7 +57,7 @@ export async function writeComponentFiles(
     projectRoot: string,
     options: { force?: boolean } = {},
 ): Promise<WriteResult> {
-    const targetDir = path.resolve(projectRoot, config.paths.components, item.name);
+    const targetDir = path.resolve(projectRoot, config.paths.components);
     const written: string[] = [];
     const skipped: string[] = [];
 

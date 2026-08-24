@@ -1,55 +1,83 @@
-import type { CodeProps } from "./props";
-import { CodeRange, rangeToCharOffsets, charOffsetsToRange } from "./code-range";
-import { TokenAdvanceCache } from "./measure-cache";
-import { IdLine, tokenizeCodeToIdLines } from "./tokens";
-import { diffCode } from "./diff";
-import { CodeLayout, CodeMetrics, layoutCode, metricsSignature } from "./layout";
 import {
+    RenderContext2D, RenderPass2D, Graphics2D, Clip, EasingFunction, NodeConfig, Size2D, SizeConstraints,
+    ShapeNode, Measurer2D, InsetsResolved, InsetsProps, RectCornerRadius, RectCornerStyle, ShapeProps,
+    property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber,
+    AssetTracker, command, driveCommand, type Command, type TweenStepper,
+} from "@motion-script/core";
+import {
+    CodeRange,
+    rangeToCharOffsets,
+    charOffsetsToRange,
+    TokenAdvanceCache,
+    IdLine,
+    tokenizeCodeToIdLines,
+    defaultCodeDiff,
+    type CodeDiffStrategy,
+    CodeLayout,
+    CodeMetrics,
+    layoutCode,
+    metricsSignature,
     AnimToken,
     CodeTransition,
-    DimTransition,
-    EntryDirection,
     StructuralTransition,
-    TokenState,
-    easeOutCubic,
+    type EntryDirection,
     makeAnim,
-    phasesFor,
+    defaultCodePhases,
+    type CodePhaseStrategy,
     resolveTokenStates,
-    smoothstep,
-    windowProgress,
-} from "./transitions";
-import { canHighlight, ensureHighlighter } from "./highlight";
-import { CodeTheme, DefaultHighlightStyle } from "./style";
-import { RenderContext2D, RenderPass2D, Graphics2D, Clip, EasingFunction, NodeConfig, parseColor, Size2D, SizeConstraints, ShapeNode, Measurer2D, InsetsResolved, property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber, NormalizedColor, AssetTracker, command, driveCommand, type RectCornerRadius, type RectCornerStyle, type Command, type TweenStepper } from "@motion-script/core";
+    moveProgress,
+    canHighlight,
+    ensureHighlighter,
+    CodeTheme,
+    DefaultHighlightStyle,
+    drawCode,
+} from "@motion-script/code";
 
-/** Colour of a token the grammar had no opinion about. */
-const DEFAULT_TOKEN_COLOR: NormalizedColor = [0.82, 0.84, 0.86, 1];
-/** Gutter line-number colour: a muted version of the standard text colour. */
-const LINE_NUMBER_COLOR: NormalizedColor = [0.45, 0.5, 0.55, 1];
-
-// `parseColor` walks a CSS string; a listing asks for the same handful of theme
-// colours on every token of every frame, so the parse is memoized. Module-level,
-// because the answer depends only on the string.
-const colorCache = new Map<string, NormalizedColor>();
-function tokenColor(css: string | undefined): NormalizedColor {
-    if (!css) return DEFAULT_TOKEN_COLOR;
-    let hit = colorCache.get(css);
-    if (!hit) {
-        hit = parseColor(css);
-        colorCache.set(css, hit);
-    }
-    return hit;
+/**
+ * Extends {@link ShapeProps} rather than the bare `Node2DProps` this used to, so a
+ * listing carries the four paint slots every other drawable has: a `fill` behind
+ * the tokens, an `overlay` washed over them, a `stroke` framing the block and a
+ * `shadow` under it.
+ *
+ * A code block is the one node that is nearly always set on a panel — an editor
+ * chrome, a card, a terminal — and until this it could only get one by being
+ * parented to a Rect sized to match, which stops matching the moment the listing
+ * hugs a line more or a line fewer. Painting its own box is the same reasoning
+ * `padding` is a prop here: the geometry is the node's, so the background that
+ * tracks it should be too.
+ */
+export interface CodeProps extends ShapeProps {
+    code: string;
+    language: string;
+    fontSize: number;
+    fontFamily: string;
+    /** A built-in/registered theme name (e.g. `'github-dark'`), or a {@link CodeHighlightStyle} object. */
+    theme: CodeTheme;
+    lineHeight: number;
+    letterSpacing: number;
+    showLineNumbers: boolean;
+    lineNumberGap: number;
+    padding: InsetsProps;
+    /** Corner radius of the background box — uniform, per-corner, or per-axis. */
+    cornerRadius: RectCornerRadius;
+    /** How each corner is shaped once it has a radius: `'rounded'` or `'angled'`. */
+    cornerStyle: RectCornerStyle;
 }
 
-function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number): NormalizedColor {
-    if (t <= 0) return from;
-    if (t >= 1) return to;
-    return [
-        from[0] + (to[0] - from[0]) * t,
-        from[1] + (to[1] - from[1]) * t,
-        from[2] + (to[2] - from[2]) * t,
-        from[3] + (to[3] - from[3]) * t,
-    ];
+/**
+ * Construction-time-only options: pluggable engine behavior, set once when
+ * the node is created. Deliberately *not* part of {@link CodeProps} — every
+ * `@property` field accepts either a value or a zero-arg reactive binding
+ * (`value | (() => value)`, see `PropInputs`), and the node's own reactive
+ * write path (`_writeProp`) treats any function value as the latter. A
+ * strategy *is* a function, so it can't be told apart from a binding that
+ * computes one — it has to stay outside the reactive prop system entirely.
+ */
+export interface CodeStrategies {
+    /** Decides which token became which across an edit. Defaults to `defaultCodeDiff`. */
+    diffStrategy?: CodeDiffStrategy;
+    /** Decides when (in normalized transition time) each part of an edit happens. Defaults to `defaultCodePhases`. */
+    phaseStrategy?: CodePhaseStrategy;
 }
 
 export class Code extends ShapeNode<CodeProps> {
@@ -103,8 +131,18 @@ export class Code extends ShapeNode<CodeProps> {
     private highlightDimOpacity: number | null = null;
     private highlightedIds: Set<number> = new Set();
 
-    constructor(props: NodeConfig<Code, CodeProps>) {
+    /**
+     * Which token became which across an edit, and when each part of that
+     * edit happens. Construction-time-only (see {@link CodeStrategies}) —
+     * resolved once here rather than left as `?? defaultX` at every call site.
+     */
+    private readonly diffStrategy: CodeDiffStrategy;
+    private readonly phaseStrategy: CodePhaseStrategy;
+
+    constructor(props: NodeConfig<Code, CodeProps> & CodeStrategies) {
         super(props);
+        this.diffStrategy = props.diffStrategy ?? defaultCodeDiff;
+        this.phaseStrategy = props.phaseStrategy ?? defaultCodePhases;
         this.applyProp("width", props.width ?? "hug");
         this.applyProp("height", props.height ?? "hug");
 
@@ -234,28 +272,13 @@ export class Code extends ShapeNode<CodeProps> {
         return { from: edit.fromLayout, to: edit.toLayout, edit };
     }
 
-    /** How far through the "everything reflows" phase this frame is, eased. */
-    private moveProgress(edit: StructuralTransition | null): number {
-        return edit ? smoothstep(windowProgress(edit.phases.move, edit.progress)) : 1;
-    }
-
-    /** How far a whole new row travels as it enters, and along which axis. */
-    private entryOffset(direction: EntryDirection): { x: number; y: number } {
-        const lineH = this.fontSize * this.lineHeight;
-        // y-up author space: a row arriving from *below* starts at a lower y and
-        // rises to zero, which is what "slide up" means on screen.
-        if (direction === "up") return { x: 0, y: -lineH * 0.85 };
-        if (direction === "down") return { x: 0, y: lineH * 0.85 };
-        return { x: -this.fontSize * 1.8, y: 0 };
-    }
-
     override measure(constraints: SizeConstraints, scope: Measurer2D): Partial<Size2D> {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
         const wm = this.width;
         const hm = this.height;
 
         const { from, to, edit } = this.frameLayout(scope);
-        const t = this.moveProgress(edit);
+        const t = moveProgress(edit);
         const innerW = edit ? lerpNumber(from.innerW, to.innerW, t) : to.innerW;
         const innerH = edit ? lerpNumber(from.innerH, to.innerH, t) : to.innerH;
 
@@ -437,18 +460,20 @@ export class Code extends ShapeNode<CodeProps> {
     }
 
     /**
-     * Highlight a range of code: tokens within the range stay at opacity 1,
-     * tokens outside dim to `opacity`. Persistent — call resetHighlight() to
-     * undo, or call highlight() again with a different range to cross-fade.
+     * Highlight a range of code — or several at once (e.g.
+     * `CodeRanges.lines(2).word(5, 1, 3)`) — highlighted as one set: tokens
+     * within any of the ranges stay at opacity 1, tokens outside dim to
+     * `opacity`. Persistent — call resetHighlight() to undo, or call
+     * highlight() again with a different range to cross-fade.
      */
     @command()
     highlight(
-        codeRange: CodeRange,
+        codeRange: CodeRange | Iterable<CodeRange>,
         duration: number = 0.4,
         easing?: EasingFunction,
         opacity: number = 0.4,
     ): Command<Record<string, never>> {
-        const matchIds = this.tokenIdsInRange(codeRange);
+        const matchIds = this.tokenIdsInRanges(normalizeCodeRanges(codeRange));
         if (matchIds.size === 0) return driveCommand(duration, () => { });
 
         const fromDim = this.highlightDimOpacity ?? 1;
@@ -512,7 +537,7 @@ export class Code extends ShapeNode<CodeProps> {
      * identity and simply travels to its new column, and only what genuinely
      * changed is faded.
      *
-     * The result runs in three phases (see {@link phasesFor}): what is leaving
+     * The result runs in three phases (see `phaseStrategy`): what is leaving
      * fades out, what stays reflows, and only then does what is new arrive.
      * Playing them together is what made a replacement read as a cross-dissolve
      * of two unrelated listings rather than as an edit being made.
@@ -522,7 +547,7 @@ export class Code extends ShapeNode<CodeProps> {
         const fromCode = this.joinedSource();
         if (next === fromCode) return driveCommand(duration, () => { });
 
-        const edit = diffCode(from, tokenizeCodeToIdLines(next, this.language, this.theme));
+        const edit = this.diffStrategy(from, tokenizeCodeToIdLines(next, this.language, this.theme));
 
         const transition: StructuralTransition = {
             kind: "structural",
@@ -532,7 +557,7 @@ export class Code extends ShapeNode<CodeProps> {
             addedIds: edit.addedIds,
             entryByLine: entryDirections(edit.lines, edit.newLineIds),
             fromColorById: edit.fromColorById,
-            phases: phasesFor(edit.removedIds.size > 0, edit.addedIds.size > 0),
+            phases: this.phaseStrategy(edit.removedIds.size > 0, edit.addedIds.size > 0),
             progress: 0,
             layoutKey: null,
             fromLayout: null,
@@ -582,7 +607,7 @@ export class Code extends ShapeNode<CodeProps> {
         easing?: EasingFunction,
         settle?: (done: boolean) => void,
     ): Command<Record<string, never>> {
-        const transition: DimTransition = { kind: "dim", tokens, progress: 0 };
+        const transition = { kind: "dim" as const, tokens, progress: 0 };
 
         return driveCommand(duration, (t) => {
             const running = t > 0 && t < 1;
@@ -691,24 +716,27 @@ export class Code extends ShapeNode<CodeProps> {
     }
 
     /**
-     * Resolve a CodeRange to the set of token ids whose content overlaps the
-     * range. Tokens that partially overlap are included.
+     * Resolve one or more CodeRanges to the set of token ids whose content
+     * overlaps any of them. Tokens that partially overlap are included.
      */
-    private tokenIdsInRange(codeRange: CodeRange): Set<number> {
+    private tokenIdsInRanges(codeRanges: CodeRange[]): Set<number> {
         const result = new Set<number>();
         const lineLens = this.lineLengths();
         if (lineLens.length === 0) return result;
-        const { start: rStart, end: rEnd } = rangeToCharOffsets(codeRange, lineLens);
-        if (rEnd <= rStart) return result;
+        const offsets = codeRanges
+            .map(r => rangeToCharOffsets(r, lineLens))
+            .filter(({ start, end }) => end > start);
+        if (offsets.length === 0) return result;
 
-        // Walk tokens with running offsets in the joined string.
+        // Walk tokens with running offsets in the joined string, testing each
+        // token against every requested range's offsets.
         let off = 0;
         for (let li = 0; li < this.tokenLines.length; li++) {
             const line = this.tokenLines[li];
             for (const tok of line.tokens) {
                 const tStart = off;
                 const tEnd = off + tok.content.length;
-                if (tEnd > rStart && tStart < rEnd) result.add(tok.id);
+                if (offsets.some(({ start, end }) => tEnd > start && tStart < end)) result.add(tok.id);
                 off = tEnd;
             }
             if (li < this.tokenLines.length - 1) off += 1; // newline
@@ -718,181 +746,39 @@ export class Code extends ShapeNode<CodeProps> {
 
     // ── Drawing ─────────────────────────────────────────────────────────────
 
+    /**
+     * Thin delegator: everything about *how* a frame is painted (settled or
+     * mid structural-edit, entry/exit motion, colour cross-fade) lives in
+     * `drawCode` (the engine's `render.ts`) as a pure function over plain
+     * state — this just gathers that state from the node's own instance
+     * fields and caches.
+     */
     protected drawSelf(draw: RenderContext2D): void {
         this.advanceCache.sync(this.advanceCache.signature(this.fontSize, this.fontFamily));
-
-        const dim = this.resolveTokenStates();
-        const { from, to, edit } = this.frameLayout(draw);
-
-        const progress = edit ? edit.progress : 1;
-        const pOut = edit ? windowProgress(edit.phases.out, progress) : 1;
-        const pMove = this.moveProgress(edit);
-        const pIn = edit ? windowProgress(edit.phases.in, progress) : 1;
-        // Distance an entering row still has to travel: the whole offset when its
-        // fade begins, none of it by the time the fade ends.
-        const entryTravel = 1 - easeOutCubic(pIn);
-
-        const blockW = edit ? lerpNumber(from.blockW, to.blockW, pMove) : to.blockW;
-        const gutter = edit ? lerpNumber(from.gutter, to.gutter, pMove) : to.gutter;
-        const gutterGap = to.gutterGap || from.gutterGap;
-        // Right edge of the line-number column: one gap to the left of where the
-        // code text begins.
-        const numberRight = -blockW / 2 + this.padding.left + gutter - gutterGap;
-
-        const drawNumber = (label: string, y: number, opacity: number): void => {
-            if (opacity <= 0) return;
-            const labelW = this.advanceCache.advance(draw, label, this.fontSize, this.fontFamily, 0);
-            draw.draw(new Graphics2D()
-                .text({
-                    text: label,
-                    fontSize: this.fontSize,
-                    fontFamily: this.fontFamily,
-                    lineHeight: this.lineHeight,
-                    x: numberRight - labelW / 2,
-                    y,
-                    textAlign: 'left',
-                })
-                .fill([{ type: "solid", color: LINE_NUMBER_COLOR, opacity }]));
-        };
-
-        const drawToken = (text: string, x: number, y: number, color: NormalizedColor, opacity: number): void => {
-            if (opacity <= 0 || text.length === 0) return;
-            const width = this.advanceCache.advance(draw, text, this.fontSize, this.fontFamily, this.letterSpacing);
-            draw.draw(new Graphics2D()
-                .text({
-                    text,
-                    fontSize: this.fontSize,
-                    fontFamily: this.fontFamily,
-                    lineHeight: this.lineHeight,
-                    letterSpacing: this.letterSpacing,
-                    // The renderer centres a single-token block on the (x, y) it
-                    // is given, so every token is anchored at the centre of its
-                    // cell rather than at its left edge. Passing lineHeight makes
-                    // the block's height deterministic (fontSize × lineHeight)
-                    // rather than the font's natural metrics, so the vertical
-                    // centre lands exactly on the slot centre.
-                    x: x + width / 2,
-                    y,
-                    textAlign: 'left',
-                })
-                .fill([{ type: "solid", color, opacity }]));
-        };
-
-        // What survived the edit, and what it brought with it — drawn from the
-        // structure the edit lands on.
-        for (let i = 0; i < this.tokenLines.length; i++) {
-            const line = this.tokenLines[i];
-            const toIndex = to.lineIndex.get(line.id);
-            if (toIndex === undefined) continue;
-            const toY = to.lineY[toIndex];
-
-            const direction = edit?.entryByLine.get(line.id);
-            let rowY = toY;
-            let rowDX = 0;
-            let rowAlpha = 1;
-            if (edit && direction) {
-                // A wholly new row travels as one piece — the line arrives, not a
-                // spray of glyphs each finding its own way in.
-                const offset = this.entryOffset(direction);
-                rowY = toY + offset.y * entryTravel;
-                rowDX = offset.x * entryTravel;
-                rowAlpha = pIn;
-            } else if (edit) {
-                const fromIndex = from.lineIndex.get(line.id);
-                if (fromIndex !== undefined) rowY = lerpNumber(from.lineY[fromIndex], toY, pMove);
-            }
-
-            if (this.showLineNumbers) {
-                drawNumber(String(i + 1), rowY, rowAlpha * this.lineHighlightOpacity(line, dim));
-            }
-
-            for (const token of line.tokens) {
-                const box = to.tokens.get(token.id);
-                if (!box) continue;
-
-                let x = box.x + rowDX;
-                let alpha = rowAlpha;
-                let color = tokenColor(token.color);
-
-                if (edit && !direction) {
-                    if (edit.addedIds.has(token.id)) {
-                        // Spliced into a row that already existed: the reflow
-                        // already opened the space, so this only has to appear.
-                        alpha = pIn;
-                    } else {
-                        const was = from.tokens.get(token.id);
-                        if (was) x = lerpNumber(was.x, box.x, pMove);
-                        if (edit.fromColorById.has(token.id)) {
-                            color = lerpColor(tokenColor(edit.fromColorById.get(token.id)), color, pMove);
-                        }
-                    }
-                }
-
-                drawToken(token.content, x, rowY, color, alpha * (dim.get(token.id)?.opacity ?? 1));
-            }
-        }
-
-        // What the edit takes away, drawn from the structure it is leaving — it
-        // has no place in the new one, which is the whole reason it is fading.
-        if (edit && pOut < 1) {
-            for (let i = 0; i < edit.from.length; i++) {
-                const line = edit.from[i];
-                const fromIndex = from.lineIndex.get(line.id);
-                if (fromIndex === undefined) continue;
-                const toIndex = to.lineIndex.get(line.id);
-                // A row that survived the edit is still moving, so its outgoing
-                // tokens travel with it; a deleted row stays where it was and
-                // dissolves while the rows below close over it.
-                const y = toIndex === undefined
-                    ? from.lineY[fromIndex]
-                    : lerpNumber(from.lineY[fromIndex], to.lineY[toIndex], pMove);
-
-                let drewAny = false;
-                for (const token of line.tokens) {
-                    if (!edit.removedIds.has(token.id)) continue;
-                    const box = from.tokens.get(token.id);
-                    if (!box) continue;
-                    drewAny = true;
-                    drawToken(token.content, box.x, y, tokenColor(token.color), 1 - pOut);
-                }
-                if (drewAny && toIndex === undefined && this.showLineNumbers) {
-                    drawNumber(String(i + 1), y, 1 - pOut);
-                }
-            }
-        }
+        drawCode(draw, {
+            tokenLines: this.tokenLines,
+            metrics: this.metrics(),
+            advanceCache: this.advanceCache,
+            ...this.frameLayout(draw),
+            tokenStates: resolveTokenStates(this.tokenLines, this.transitions, this.highlightDimOpacity, this.highlightedIds),
+            highlightActive: this.highlightDimOpacity !== null || this.transitions.some(tr => tr.kind === "dim"),
+        });
     }
+}
 
-    // Is a highlight currently engaged — either a persistent dim is set, or a
-    // highlight()/resetHighlight() cross-fade is mid-flight? A structural edit is
-    // NOT a highlight, so the line-number dimming below stays inert for one.
-    private isHighlightActive(): boolean {
-        if (this.highlightDimOpacity !== null) return true;
-        return this.transitions.some(tr => tr.kind === "dim");
+/**
+ * Normalize `highlight()`'s `codeRange` argument to a plain array: a single
+ * `CodeRange` (a plain object, not iterable) becomes a one-element array; a
+ * `CodeRangeChain`/plain array of ranges spreads as-is. `CodeRange` and
+ * `CodeRangeChain` are distinguished by iterability, not `instanceof` — a
+ * bare array of `CodeRange`s (no chain) works the same way.
+ */
+function normalizeCodeRanges(codeRange: CodeRange | Iterable<CodeRange>): CodeRange[] {
+    const maybeIterable = codeRange as Partial<Iterable<CodeRange>>;
+    if (typeof maybeIterable[Symbol.iterator] === "function") {
+        return [...(codeRange as Iterable<CodeRange>)];
     }
-
-    // Opacity multiplier for a line's number under the active highlight. The
-    // number stays bright only when the WHOLE line is highlighted, so we take
-    // the min token opacity on the line. Returns 1 (no dimming) when no
-    // highlight is active, so an edit's entries don't drag the number down.
-    private lineHighlightOpacity(line: IdLine, stateById: Map<number, TokenState>): number {
-        if (!this.isHighlightActive()) return 1;
-        let min = 1;
-        for (const tok of line.tokens) {
-            if (tok.content.length === 0) continue;
-            const op = stateById.get(tok.id)?.opacity ?? 1;
-            if (op < min) min = op;
-        }
-        return min;
-    }
-
-    private resolveTokenStates(): Map<number, TokenState> {
-        return resolveTokenStates(
-            this.tokenLines,
-            this.transitions,
-            this.highlightDimOpacity,
-            this.highlightedIds,
-        );
-    }
+    return [codeRange as CodeRange];
 }
 
 /**

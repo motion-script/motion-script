@@ -1,5 +1,6 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code, lines } from '@/components/code';
+import { Code } from '@/components/code';
+import { lines } from '@motion-script/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.erase}: a debug line is deleted from the snippet, collapsing the surrounding lines. */

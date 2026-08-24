@@ -48,6 +48,40 @@ export function lines(from: number, to?: number): CodeRange {
 
 
 /**
+ * Immutable, chainable, iterable builder over multiple ranges — mirrors
+ * {@link FillChain}/`Fills` in `@motion-script/core`. Every method returns a
+ * *new* chain with one more range appended, so the next range-kind method is
+ * called directly rather than through a separate combinator:
+ *
+ * @example
+ * CodeRanges.lines(2).word(5, 1, 3)   // a 2-range selection, one expression
+ */
+export class CodeRangeChain {
+    constructor(public readonly list: CodeRange[] = []) { }
+
+    lines(from: number, to?: number): CodeRangeChain {
+        return new CodeRangeChain([...this.list, lines(from, to)]);
+    }
+
+    word(line: number, col: number, length?: number): CodeRangeChain {
+        return new CodeRangeChain([...this.list, word(line, col, length)]);
+    }
+
+    *[Symbol.iterator](): Iterator<CodeRange> {
+        yield* this.list;
+    }
+}
+
+/**
+ * Entry point for building multi-range selections fluently — an empty
+ * {@link CodeRangeChain}, so `CodeRanges.lines(2)` *is* `new
+ * CodeRangeChain().lines(2)`. `word`/`lines` stay directly importable and
+ * usable standalone for a single range; reach for `CodeRanges` when a call
+ * needs more than one.
+ */
+export const CodeRanges = new CodeRangeChain();
+
+/**
  * Convert a CodeRange to absolute character offsets [start, end) in the joined
  * source text, given the per-line lengths of that source. Lines/columns are
  * clamped into the document so out-of-bounds inputs produce a valid range.

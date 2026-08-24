@@ -31,26 +31,40 @@ function assertExists(dir, label) {
 }
 
 /**
- * Every real source `.ts` file under a component's `src/`, as paths relative
- * to `src/` (posix separators). Recurses into nested folders (defensively —
- * both current components are flat) but never into a `tests`/`test`
- * directory, and never matches `*.test.ts`, mirroring what the CLI's own
- * registry item `files` are meant to contain.
+ * The one file a registry item copies as-is: the node declaration (props,
+ * command signatures, the node's own Motion Script plumbing — `props.ts` is
+ * merged into this file at the source, not a separate copy). Everything
+ * algorithmic (highlighting, diffing, layout, transitions, rendering, morph
+ * math, ...) lives in the sibling `engine.ts` barrel and stays a real npm
+ * dependency instead. Copied flat as `<name>.ts` (e.g. `code.ts`) — not
+ * nested under a folder — since a component this simple is one file; a
+ * future component genuinely needing several would declare its own nested
+ * file paths here instead (the CLI writes whatever paths an item declares,
+ * see `packages/cli/src/registry/install.ts`).
  */
-function listSourceFiles(dir, baseDir = dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true })
-  const files = []
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (entry.name === "tests" || entry.name === "test") continue
-      files.push(...listSourceFiles(fullPath, baseDir))
-      continue
-    }
-    if (!entry.name.endsWith(".ts") || entry.name.endsWith(".test.ts")) continue
-    files.push(path.relative(baseDir, fullPath).split(path.sep).join("/"))
+const NODE_DECLARATION_FILE = "node.ts"
+
+/**
+ * Read the node declaration's content, rewriting its one relative
+ * import — `"./engine"` — to the published package name. After the
+ * engine-hiding refactor (and merging `props.ts` into this file), `./engine`
+ * is its only relative import — any other surviving relative import means
+ * something didn't get routed through `engine.ts` and would fail to resolve
+ * once copied without its sibling files.
+ */
+function readCopiedFile(srcDir, packageName) {
+  const raw = fs.readFileSync(path.join(srcDir, NODE_DECLARATION_FILE), "utf8")
+  const rewritten = raw.replace(/(["'])\.\/engine\1/g, `$1${packageName}$1`)
+  const strayRelativeImport = /from\s+["']\.\/[^"']*["']/.exec(rewritten)
+  if (strayRelativeImport) {
+    console.error(
+      `[build:registry] ${NODE_DECLARATION_FILE} still has a relative import after rewriting "./engine" ` +
+      `(${strayRelativeImport[0]}) — it can't resolve once copied without its sibling files. ` +
+      `Route it through engine.ts instead.`,
+    )
+    process.exit(1)
   }
-  return files.sort((a, b) => a.localeCompare(b))
+  return rewritten
 }
 
 /**
@@ -77,17 +91,22 @@ function buildItem(name) {
   const srcDir = path.join(pkgDir, "src")
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, "package.json"), "utf8"))
 
-  // peerDependencies first: the framework dependency (@motion-script/core)
-  // the copied source needs to resolve at all, ahead of the feature-specific
-  // third-party packages (lezer grammars, MathJax, ...).
-  const allDependencies = { ...pkg.peerDependencies, ...pkg.dependencies }
-  const dependencies = Object.entries(allDependencies).map(
-    ([dep, range]) => `${dep}@${resolveDependencyRange(dep, range)}`,
-  )
-  const files = listSourceFiles(srcDir).map((relPath) => ({
-    path: relPath,
-    content: fs.readFileSync(path.join(srcDir, relPath), "utf8"),
-  }))
+  // The copied node.ts/props.ts import the engine from the published package
+  // itself now, not from copied sibling files — so a copying project needs
+  // exactly two dependencies: the framework (@motion-script/core, declared
+  // here as a peerDependency, translated from "workspace:" to a real range)
+  // and the component package itself, which in turn declares its own real
+  // engine dependencies (lezer grammars, MathJax, ...) — those never need to
+  // be listed here directly anymore.
+  const corePeerRange = pkg.peerDependencies?.["@motion-script/core"]
+  const dependencies = [
+    ...(corePeerRange ? [`@motion-script/core@${resolveDependencyRange("@motion-script/core", corePeerRange)}`] : []),
+    `${pkg.name}@^${pkg.version}`,
+  ]
+
+  const files = [
+    { path: `${name}.ts`, content: readCopiedFile(srcDir, pkg.name) },
+  ]
 
   return {
     name,
@@ -101,7 +120,9 @@ function buildItem(name) {
 // ── Generate ─────────────────────────────────────────────────────────────────
 
 for (const name of COMPONENTS) {
-  assertExists(path.join(repoRoot, "packages", "components", name, "src"), `${name} component source`)
+  const srcDir = path.join(repoRoot, "packages", "components", name, "src")
+  assertExists(srcDir, `${name} component source`)
+  assertExists(path.join(srcDir, NODE_DECLARATION_FILE), `${name}/${NODE_DECLARATION_FILE}`)
 }
 
 fs.mkdirSync(outDir, { recursive: true })

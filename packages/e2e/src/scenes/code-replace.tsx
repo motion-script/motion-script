@@ -1,5 +1,6 @@
 import { createScene, createRef, Rect, wait } from 'motion-script';
-import { Code, lines } from '@/components/code';
+import { Code } from '@/components/code';
+import { lines } from '@motion-script/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.replace}: an entire line swaps for a different implementation. */

@@ -1,15 +1,37 @@
-import { RenderContext2D, Graphics2D, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, type Command, type TweenStepper } from "@motion-script/core";
-import { buildLatexPath, LatexToken } from "./geometry";
-import { LatexProps } from "./props";
-import { AnimatedToken, prepareLatexTween } from "./tween";
+import { RenderContext2D, Graphics2D, EasingFunction, getSignal, lerpNumber, NodeConfig, ShapeNode, ShapeProps, InsetsProps, Size2D, SizeConstraints, toPathString, InsetsResolved, property, resolveInsets, lerpInsets, FillResolved, driveCommand, type Command, type TweenStepper } from "@motion-script/core";
+import { buildLatexPath, defaultLatexMorph, type AnimatedToken, type LatexMorphStrategy, type LatexToken } from "./engine";
+
+export interface LatexProps extends ShapeProps {
+    latex: string;
+    fontSize: number;
+    padding: InsetsProps;
+}
+
+/**
+ * Construction-time-only options: pluggable engine behavior, set once when
+ * the node is created. Deliberately *not* part of {@link LatexProps} — every
+ * `@property` field accepts either a value or a zero-arg reactive binding
+ * (`value | (() => value)`, see `PropInputs`), and the node's own reactive
+ * write path (`_writeProp`) treats any function value as the latter. A
+ * strategy *is* a function, so it can't be told apart from a binding that
+ * computes one — it has to stay outside the reactive prop system entirely.
+ */
+export interface LatexStrategies {
+    /** How the node morphs between two formulas. Defaults to `defaultLatexMorph`. */
+    morph?: LatexMorphStrategy;
+}
 
 export class Latex extends ShapeNode<LatexProps> {
-    getType(): string { return "latex"; }
-    getName(): string { return "Latex"; }
-
     @property({ default: "" }) declare readonly latex: string;
     @property({ default: 16 }) declare readonly fontSize: number;
     @property({ default: 0, mapper: resolveInsets, tween: lerpInsets }) declare readonly padding: InsetsResolved;
+
+    /**
+     * How this node morphs between two formulas. Construction-time-only (see
+     * {@link LatexStrategies}) — resolved once here rather than left as
+     * `?? defaultLatexMorph` at every call site.
+     */
+    private readonly morph: LatexMorphStrategy;
 
     private _intrinsicWidth: number = 0;
     private _intrinsicHeight: number = 0;
@@ -27,8 +49,9 @@ export class Latex extends ShapeNode<LatexProps> {
     /** Suppresses reactive retokenization while a custom to() is driving frames. */
     private _animating: boolean = false;
 
-    constructor(props: NodeConfig<Latex, LatexProps>) {
+    constructor(props: NodeConfig<Latex, LatexProps> & LatexStrategies) {
         super(props);
+        this.morph = props.morph ?? defaultLatexMorph;
         this.applyProp("width", props.width ?? "hug");
         this.applyProp("height", props.height ?? "hug");
 
@@ -146,7 +169,7 @@ export class Latex extends ShapeNode<LatexProps> {
             toResult = buildLatexPath(toLatex, toFontSize);
 
             propStep = this._prepareStep(to, duration);
-            latexFrame = prepareLatexTween(fromTokens, toResult.tokens);
+            latexFrame = this.morph(fromTokens, toResult.tokens);
         };
 
         return driveCommand(duration, (t) => {

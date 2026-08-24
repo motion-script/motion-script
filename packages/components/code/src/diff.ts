@@ -11,6 +11,16 @@ import type { IdLine, IdToken } from "./tokens";
  * rebuild them, and a token can only *move* if the frame after the edit still
  * knows it is the same token.
  */
+/**
+ * How a `Code` node decides which token became which across an edit. Given
+ * the old and new tokenized structures, return the carried-over structure
+ * plus the added/removed/renamed-line bookkeeping a transition needs.
+ * `diffCode` below is the default implementation (exported as
+ * `defaultCodeDiff`) — pass a `diffStrategy` of this shape to `<Code>` to
+ * replace it with your own.
+ */
+export type CodeDiffStrategy = (from: IdLine[], to: IdLine[]) => CodeEdit;
+
 export interface CodeEdit {
     /** The new structure. Ids are rewritten in place onto the tokens handed in. */
     lines: IdLine[];

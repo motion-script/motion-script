@@ -13,6 +13,15 @@ export interface AnimatedToken {
 }
 
 /**
+ * How a `Latex` node interpolates between two formulas: given the tokens it
+ * currently holds and the tokens the target formula resolves to, return a
+ * pure `t → AnimatedToken[]` frame function. `prepareLatexTween` below is the
+ * default implementation (exported as `defaultLatexMorph`) — pass a `morph`
+ * of this shape to `<Latex>` to replace it with your own.
+ */
+export type LatexMorphStrategy = (from: LatexToken[], to: LatexToken[]) => (t: number) => AnimatedToken[];
+
+/**
  * Compute the centroid of a token's path for position-based interpolation.
  */
 function centroid(path: LatexToken["path"]): { x: number; y: number } {

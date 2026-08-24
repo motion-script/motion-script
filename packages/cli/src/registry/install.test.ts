@@ -72,28 +72,46 @@ describe('install', () => {
             paths: { components: 'src/components' },
         };
 
-        it('writes files under paths.components/<item.name>/', async () => {
+        it('writes a single-file component flat, at paths.components/<file.path>', async () => {
             const item: RegistryItem = {
                 name: 'code',
                 type: 'registry:component',
-                files: [{ path: 'node.ts', content: 'export const x = 1;' }],
+                files: [{ path: 'code.ts', content: 'export const x = 1;' }],
             };
             const { written, skipped } = await writeComponentFiles(item, config, dir);
             expect(skipped).toEqual([]);
             expect(written).toHaveLength(1);
-            const dest = path.join(dir, 'src', 'components', 'code', 'node.ts');
+            const dest = path.join(dir, 'src', 'components', 'code.ts');
             expect(fs.readFileSync(dest, 'utf8')).toBe('export const x = 1;');
+            // No implicit <item.name>/ subfolder — the flat path is the whole story.
+            expect(fs.existsSync(path.join(dir, 'src', 'components', 'code', 'code.ts'))).toBe(false);
+        });
+
+        it('writes a multi-file component into whatever subfolder its own file paths declare', async () => {
+            const item: RegistryItem = {
+                name: 'line-chart',
+                type: 'registry:component',
+                files: [
+                    { path: 'line-chart/chart.ts', content: 'chart' },
+                    { path: 'line-chart/axis.ts', content: 'axis' },
+                ],
+            };
+            const { written, skipped } = await writeComponentFiles(item, config, dir);
+            expect(skipped).toEqual([]);
+            expect(written).toHaveLength(2);
+            expect(fs.readFileSync(path.join(dir, 'src', 'components', 'line-chart', 'chart.ts'), 'utf8')).toBe('chart');
+            expect(fs.readFileSync(path.join(dir, 'src', 'components', 'line-chart', 'axis.ts'), 'utf8')).toBe('axis');
         });
 
         it('skips an existing file when the user declines to overwrite', async () => {
-            const dest = path.join(dir, 'src', 'components', 'code', 'node.ts');
+            const dest = path.join(dir, 'src', 'components', 'code.ts');
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.writeFileSync(dest, 'original');
 
             const item: RegistryItem = {
                 name: 'code',
                 type: 'registry:component',
-                files: [{ path: 'node.ts', content: 'replacement' }],
+                files: [{ path: 'code.ts', content: 'replacement' }],
             };
 
             prompts.inject([false]);
@@ -104,14 +122,14 @@ describe('install', () => {
         });
 
         it('force-overwrites without prompting', async () => {
-            const dest = path.join(dir, 'src', 'components', 'code', 'node.ts');
+            const dest = path.join(dir, 'src', 'components', 'code.ts');
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.writeFileSync(dest, 'original');
 
             const item: RegistryItem = {
                 name: 'code',
                 type: 'registry:component',
-                files: [{ path: 'node.ts', content: 'replacement' }],
+                files: [{ path: 'code.ts', content: 'replacement' }],
             };
 
             const { written } = await writeComponentFiles(item, config, dir, { force: true });
