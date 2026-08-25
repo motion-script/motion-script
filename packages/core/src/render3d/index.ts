@@ -91,5 +91,6 @@ export type {
 /** @internal */ export { forEachTexture3D, isTextureLike, TEXTURE_KEYS } from "./walk";
 
 export { registerCanvas3DWarmup, registerCanvas3DResourceLoader } from "./resources";
+export { canvas3DResourceKey, parseCanvas3DResourceKey } from "./resources";
 export type { Canvas3DWarmup, Canvas3DResourceLoader, Canvas3DResourceKind } from "./resources";
 /** @internal */ export { warmCanvas3D, canvas3DResourceLoader, hasCanvas3DBackend } from "./resources";

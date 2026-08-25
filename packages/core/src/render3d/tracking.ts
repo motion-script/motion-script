@@ -17,7 +17,7 @@ import { Scene3D } from "./scene3d";
 import type { Geometry3D } from "./geometry";
 import type { EnvironmentData3D } from "./scene-settings";
 import { texture3DSource } from "./texture";
-import { canvas3DResourceLoader, type Canvas3DResourceKind } from "./resources";
+import { canvas3DResourceKey, canvas3DResourceLoader, type Canvas3DResourceKind } from "./resources";
 import { forEachTexture3D } from "./walk";
 
 /**
@@ -112,7 +112,7 @@ function loader(
     seen: Set<string>,
     tracker: AssetTracker,
 ): void {
-    const key = `three:${kind}:${src}`;
+    const key = canvas3DResourceKey(kind, src);
     if (seen.has(key)) return;
     seen.add(key);
 

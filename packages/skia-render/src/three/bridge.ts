@@ -24,7 +24,17 @@
  * Modelled on `getCanvasKit` (`../getter.ts`) — same memoised-promise shape.
  */
 
-import { registerCanvas3DWarmup, type Canvas3DResourceKind } from "@motion-script/core";
+import {
+    canvas3DResourceKey,
+    parseCanvas3DResourceKey,
+    registerCanvas3DResourceLoader,
+    registerCanvas3DWarmup,
+    type Canvas3DResourceKind,
+    type Disposer,
+} from "@motion-script/core";
+
+/** three.js instance types. Type-only: this import emits nothing. */
+import type * as THREE from "three";
 
 /** The three.js module namespace. Type-only: this import emits nothing. */
 export type ThreeModule = typeof import("three");
@@ -111,15 +121,110 @@ export function canvas3DResource(key: string): unknown {
 }
 
 /**
- * Placeholder for the loader-backed resource types (HDR/EXR environments,
- * glTF/OBJ models). Those arrive with the phases that introduce them; the queue
- * plumbing lives here now so the warm loop's shape doesn't change later.
+ * Load one queued resource, keyed as core keys it.
+ *
+ * Only glTF today. The other kinds ({@link Canvas3DResourceKind}: HDR/EXR
+ * environments, OBJ, cubemaps) arrive with the phases that introduce them; an
+ * unhandled kind leaves its key out of {@link resourceCache}, so a descriptor
+ * referencing it renders without that resource rather than stalling the warm
+ * loop forever.
  */
 async function loadResource(key: string): Promise<void> {
-    // Intentionally a no-op until the model/environment phases land. The key
-    // stays out of `resourceCache`, so a descriptor referencing it renders
-    // without that resource rather than stalling the warm loop forever.
-    void key;
+    const parsed = parseCanvas3DResourceKey(key);
+    if (parsed?.kind !== "gltf") return;
+
+    const model = await loadGltfModel(parsed.src);
+    if (model) resourceCache.set(key, model);
+}
+
+/**
+ * A glTF/GLB file, parsed once and kept as a master copy.
+ *
+ * The master is never added to a scene. Every drawn instance is a
+ * {@link clone}, which is what lets one file back several `Model3D` nodes
+ * without their animations, material overrides or transforms treading on each
+ * other — three’s scene graph gives an object exactly one parent, so sharing the
+ * loaded graph directly would make the second node steal it from the first.
+ */
+export interface LoadedModel3D {
+    /** The parsed graph. Treat as immutable — clone before touching it. */
+    scene: THREE.Object3D;
+    /** Baked clips, in file order. Named clips are matched against these. */
+    animations: THREE.AnimationClip[];
+    /** An independent copy, with skinned meshes rebound to their own skeleton. */
+    clone(): THREE.Object3D;
+}
+
+/**
+ * The parsed model for `src`, or `null` while it is still loading (or if it
+ * failed).
+ *
+ * Synchronous for the same reason {@link threeModule} is: the render pass ends
+ * in `surface.flush()` and cannot await. A `null` means “draw nothing here and
+ * ask to be re-rendered”, which is what {@link requestCanvas3DResource} is for.
+ */
+export function canvas3DModel(src: string): LoadedModel3D | null {
+    const found = resourceCache.get(canvas3DResourceKey("gltf", src));
+    return (found as LoadedModel3D | undefined) ?? null;
+}
+
+/**
+ * Parse a glTF/GLB file.
+ *
+ * The loader and the skeleton cloner are imported **here** rather than at module
+ * scope for the reason three itself is (see this file’s header): they pull three
+ * in behind them, and a 2D project must not pay for that. They are separate
+ * chunks a bundler fetches on first use.
+ *
+ * A failure resolves `null` rather than rejecting. Three things reach this that
+ * are outside our control — a URL that 404s, a file whose bytes are not glTF, and
+ * a mesh compressed with Draco or KTX2 (whose decoders are separate downloads
+ * this does not yet wire up) — and none of them is worth taking the frame down
+ * for. An empty slot is the same degradation as a model that has not finished
+ * loading, which every caller already handles.
+ */
+async function loadGltfModel(src: string): Promise<LoadedModel3D | null> {
+    try {
+        const [, loaders, skeletonUtils] = await Promise.all([
+            // Populates `mod`, which the render pass reads synchronously. The two
+            // addons below pull three in themselves, but only this sets it.
+            loadCanvas3D(),
+            import("three/addons/loaders/GLTFLoader.js"),
+            import("three/addons/utils/SkeletonUtils.js"),
+        ]);
+
+        const gltf = await new loaders.GLTFLoader().loadAsync(src);
+        return {
+            scene: gltf.scene,
+            animations: gltf.animations,
+            clone: () => skeletonUtils.clone(gltf.scene),
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Free a parsed model’s GPU resources.
+ *
+ * Textures **are** disposed here, unlike in the reconciler’s `disposeObject`:
+ * these were decoded by the glTF loader for this file alone and are not in the
+ * texture cache, so nothing else can be holding them.
+ */
+function disposeModel(model: LoadedModel3D): void {
+    model.scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose?.();
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) {
+            if (!material) continue;
+            for (const value of Object.values(material)) {
+                const texture = value as THREE.Texture | null;
+                if (texture?.isTexture) texture.dispose();
+            }
+            material.dispose();
+        }
+    });
 }
 
 /**
@@ -129,6 +234,21 @@ async function loadResource(key: string): Promise<void> {
  */
 export function registerCanvas3DBackend(): void {
     registerCanvas3DWarmup(loadCanvas3D);
+    registerCanvas3DResourceLoader(async (kind, src): Promise<Disposer> => {
+        const key = canvas3DResourceKey(kind, src);
+        await loadResource(key);
+
+        // Resolving a no-op disposer for a kind this backend does not load yet
+        // (or a file that failed) is the honest answer: nothing was cached, so
+        // there is nothing for the asset window to evict.
+        const model = resourceCache.get(key) as LoadedModel3D | undefined;
+        if (!model) return () => {};
+
+        return () => {
+            resourceCache.delete(key);
+            disposeModel(model);
+        };
+    });
 }
 
 /**

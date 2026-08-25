@@ -24,6 +24,45 @@ export type Canvas3DWarmup = () => Promise<void>;
 export type Canvas3DResourceKind = "hdr" | "exr" | "gltf" | "obj" | "cubemap";
 export type Canvas3DResourceLoader = (kind: Canvas3DResourceKind, src: string) => Promise<Disposer>;
 
+/**
+ * The cache key a loader-backed resource is tracked and stored under.
+ *
+ * Stated once here because **two packages have to agree on it and neither owns
+ * both ends**: core's `track3DResources` registers the key with the asset
+ * tracker, and the backend's loader is what later looks the parsed result up by
+ * it. A backend that built the string itself would be one refactor away from
+ * caching under a key nothing ever reads — a model that silently never appears,
+ * which is precisely the failure this seam exists to make impossible.
+ *
+ * `src` goes last and unescaped: it is a URL and may hold colons of its own, so
+ * a reader has to split on the first two separators and take the remainder
+ * whole rather than splitting on every one — see {@link parseCanvas3DResourceKey}.
+ */
+export function canvas3DResourceKey(kind: Canvas3DResourceKind, src: string): string {
+    return `three:${kind}:${src}`;
+}
+
+/**
+ * The `kind` and `src` a {@link canvas3DResourceKey} was built from, or `null`
+ * when the string is not one.
+ *
+ * The inverse exists because the backend's warm queue holds keys rather than
+ * pairs: `warmPendingCanvas3D` has to re-drive whatever is outstanding knowing
+ * only what it was handed.
+ */
+export function parseCanvas3DResourceKey(
+    key: string,
+): { kind: Canvas3DResourceKind; src: string } | null {
+    if (!key.startsWith("three:")) return null;
+    const rest = key.slice("three:".length);
+    const split = rest.indexOf(":");
+    if (split <= 0) return null;
+    return {
+        kind: rest.slice(0, split) as Canvas3DResourceKind,
+        src: rest.slice(split + 1),
+    };
+}
+
 let warmup: Canvas3DWarmup | null = null;
 let resourceLoader: Canvas3DResourceLoader | null = null;
 

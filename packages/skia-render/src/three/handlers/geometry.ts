@@ -18,6 +18,7 @@ import type {
 } from "@motion-script/core";
 import { evaluateParametric, resolveVector3, toPathString } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
+import { canvas3DModel } from "../bridge";
 import { deg } from "./constants";
 
 /** Build a three geometry for `descriptor`. */
@@ -133,14 +134,45 @@ export function createGeometry(three: ThreeModule, descriptor: Geometry3D): THRE
             return frame;
         }
 
-        case "modelGeometry":
-            // Model loading arrives with its own phase; until then an empty
-            // geometry renders nothing rather than throwing mid-frame.
-            return new three.BufferGeometry();
+        case "modelGeometry": {
+            // An empty geometry both while the file is loading and when the named
+            // node is not in it: a mesh that draws nothing is the right answer to
+            // "not yet" and to "not there", and neither is worth a throw
+            // mid-frame. The reconciler rebuilds once the file lands, because
+            // {@link geometrySignature} folds the loaded flag in.
+            const mesh = findModelMesh(canvas3DModel(descriptor.src)?.scene, descriptor.node);
+            // Cloned because the caller owns what it is handed and disposes it on
+            // any structural change — sharing the master graph's buffers would
+            // free them out from under every other user of the same file.
+            return mesh?.geometry.clone() ?? new three.BufferGeometry();
+        }
 
         default:
             return new three.BufferGeometry();
     }
+}
+
+/**
+ * The mesh a {@link ModelGeometry3D} names, or the first one in the file.
+ *
+ * "First mesh found" is depth-first in graph order, which is the order an
+ * exporter wrote the nodes — so for the overwhelmingly common single-mesh file
+ * it is simply "the mesh", and no author has to learn a name to use one.
+ */
+function findModelMesh(root: THREE.Object3D | undefined, name: string | undefined): THREE.Mesh | null {
+    if (!root) return null;
+
+    if (name !== undefined) {
+        const named = root.getObjectByName(name) as THREE.Mesh | undefined;
+        return named?.isMesh ? named : null;
+    }
+
+    let first: THREE.Mesh | null = null;
+    root.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (first === null && mesh.isMesh) first = mesh;
+    });
+    return first;
 }
 
 function createPolyhedron(
@@ -333,6 +365,14 @@ function writeAttribute(
  */
 export function geometrySignature(descriptor: Geometry3D): string {
     const parts: string[] = [descriptor.type];
+
+    // Whether the file has arrived is not in the descriptor, and it has to be:
+    // the descriptor is identical on the frame before and after a model loads, so
+    // without this the empty geometry built the first time would never be
+    // replaced by the real one.
+    if (descriptor.type === "modelGeometry") {
+        parts.push(`loaded=${canvas3DModel(descriptor.src) ? "1" : "0"}`);
+    }
     const bag = descriptor as unknown as Record<string, unknown>;
 
     for (const key of Object.keys(bag).sort()) {

@@ -31,6 +31,7 @@ import type * as THREE from "three";
 import type {
     CameraData3D, Color, Geometry3D, Material3D, Scene3D, Scene3DOp, Transform3D,
 } from "@motion-script/core";
+import { canvas3DResourceKey } from "@motion-script/core";
 import type { ThreeModule } from "./bridge";
 import { canvas3DRendererHost } from "./renderer-seam";
 import { shadowType, toneMapping, writeColor } from "./handlers/constants";
@@ -44,6 +45,11 @@ import { applyCamera, cameraMatches, createCamera } from "./handlers/camera";
 import { applyTransform } from "./handlers/transform";
 import { applyBackground, applyEnvironment, applyFog } from "./handlers/settings";
 import type { TextureResolver } from "./handlers/texture";
+import {
+    applyModelAnimation, applyModelOverrides, createModel, modelLoaded,
+    modelOverrideSignature, type ModelPlayback,
+} from "./handlers/model";
+import { requestCanvas3DResource } from "./bridge";
 
 /** The ops that put a live object in the scene — everything but the tree shaping. */
 type DrawableOp = Exclude<Scene3DOp, { kind: "push" } | { kind: "pop" } | { kind: "camera" }>;
@@ -67,6 +73,15 @@ interface CachedObject {
     parametricRevision?: number;
     /** Instance count, for an InstancedMesh (fixed at construction). */
     count?: number;
+    /**
+     * The animation mixer and actions driving one model instance.
+     *
+     * Per cached object rather than per file: a mixer binds to the nodes of one
+     * *clone*, so two nodes drawing the same glTF need one each or they would
+     * pose each other. It dies with the entry, which is all the cleanup there is
+     * — three has no disposer for a mixer beyond dropping the reference.
+     */
+    modelPlayback?: ModelPlayback;
     /** Frame counter, for the orphan sweep. */
     seen: number;
 }
@@ -291,10 +306,14 @@ export class Canvas3DGraph {
                 return new three.Sprite(material);
             }
 
-            case "model":
-                // Model loading arrives with its own phase. Returning null leaves the
-                // slot empty rather than throwing mid-frame.
-                return null;
+            case "model": {
+                const model = createModel(op.src);
+                // Not loaded yet. Queue the file and leave the slot empty: the
+                // caller's re-render loop drains the queue and comes back, which
+                // is the same path a cold three runtime takes.
+                if (!model) requestCanvas3DResource(canvas3DResourceKey("gltf", op.src), "gltf");
+                return model;
+            }
 
             default:
                 return null;
@@ -344,6 +363,17 @@ export class Canvas3DGraph {
 
             case "light":
                 applyLight(three, entry.object as THREE.Light, op.light);
+                break;
+
+            case "model":
+                // Both of these are cheap no-ops for the common case — a model
+                // with no clips and no overrides — so there is nothing to gate
+                // them on. The mixer is kept on the entry because it binds to
+                // this clone and has to outlive the frame.
+                entry.modelPlayback = applyModelAnimation(
+                    three, entry.object, op.src, op.animation, entry.modelPlayback,
+                );
+                applyModelOverrides(three, entry.object, op.override, textures);
                 break;
         }
     }
@@ -543,7 +573,13 @@ function signaturesFor(op: DrawableOp): Partial<CachedObject> {
         case "light":
             return { lightSig: lightSignature(op.light) };
         case "model":
-            return { geometrySig: op.src };
+            // The loaded flag is what makes the model appear at all: the op is
+            // identical on the frame before and after the file lands, so without
+            // it the empty slot built the first time would be kept forever.
+            return {
+                geometrySig: `${op.src}|${modelLoaded(op.src) ? "1" : "0"}`,
+                materialSig: modelOverrideSignature(op.override),
+            };
         default:
             return {};
     }
