@@ -42,6 +42,7 @@ import { Size2D, SizeInput, expandSize } from "@/attributes/layout/size";
 import { Effect } from "@/attributes/shape/effects/chain";
 import { Insets, InsetsResolved } from "@/attributes/layout/insets";
 import { lerpSizeInput } from "@/layout/tweens";
+import { lerpPerspective } from "@/tween/lerp";
 import { resolveSize } from "@/layout/size-resolver";
 import { Measurer2D } from "@/render/measurer";
 import { layoutFlowChildren } from "@/layout/flow-layout";
@@ -542,9 +543,10 @@ export interface Node2DProps extends NodeProps {
     declare readonly pivot: Anchor;
 
     // ---- Mirrors and the third dimension -----------------------------------
-    // See the matching entries on Node2DProps for what each one means. Plain
-    // numeric cells, so they tween like x/y/rotation do; the booleans snap at the
-    // end of a tween the way every other discrete cell does.
+    // See the matching entries on Node2DProps for what each one means. The
+    // angles and depth are plain numeric cells, so they tween like x/y/rotation
+    // do; the booleans snap at the end of a tween the way every other discrete
+    // cell does. `perspective` is the one exception — see {@link lerpPerspective}.
 
     /** Mirror across the vertical centre line. See {@link Node2DProps.flipHorizontal}. */
     @property({ default: false }) declare flipHorizontal: boolean;
@@ -558,8 +560,18 @@ export interface Node2DProps extends NodeProps {
     @property({ default: 0 }) declare rotationZ: number;
     /** Push along the view axis, px. See {@link Node2DProps.depth}. */
     @property({ default: 0 }) declare depth: number;
-    /** Viewer distance in px; `0` is a parallel projection. See {@link Node2DProps.perspective}. */
-    @property({ default: 0 }) declare perspective: number;
+    /**
+     * Viewer distance in px; `0` is a parallel projection. See
+     * {@link Node2DProps.perspective}.
+     *
+     * Tweened in reciprocal space ({@link lerpPerspective}), not linearly: the
+     * renderer's own projection math varies with `1/perspective`, so a plain
+     * lerp of the raw distance sweeps through the near-zero numbers next to
+     * "off" and flashes an exaggerated, near-degenerate projection right at the
+     * start of a `0 → n` tween (or the end of an `n → 0` one) before settling
+     * to the depth actually asked for.
+     */
+    @property({ default: 0, tween: lerpPerspective }) declare perspective: number;
     /** Whether the node paints while showing its back. See {@link Node2DProps.backfaceVisible}. */
     @property({ default: true }) declare backfaceVisible: boolean;
     /**

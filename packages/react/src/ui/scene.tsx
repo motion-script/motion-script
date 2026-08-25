@@ -11,12 +11,14 @@ import {
     type Variables,
     type Scene,
     type NodeBox,
+    type Node3DFrame,
     type NodeTextLayout,
     type NodeOverride,
     type NodeState,
     type Size2D,
     type TreeState,
     type Vector2,
+    type Vector3,
     type WaveformInfo,
     type AudioTrack,
     type GlobalLayerConfig,
@@ -137,6 +139,18 @@ type Props = {
      */
     view?: { zoom: number; x: number; y: number };
     /**
+     * Whether the frame's edge bounds what draws, rather than only where its
+     * own backdrop goes. Requires {@link surfaceSize} and {@link view} the same
+     * way `frame` itself does — with the surface as the frame there is nowhere
+     * outside it to draw into regardless. Defaults to `true`.
+     *
+     * Off lets a node parked past the frame's edge rasterize into the rest of
+     * the surface instead of being discarded, for a host that wants to show —
+     * faded, say — what a node placed there so it isn't drawn while animating
+     * in or out. See `SkiaRenderContext.clipToFrame`.
+     */
+    clipToFrame?: boolean;
+    /**
      * Builds the render surface and the four platform seams
      * `PlaybackController` runs on (measurer, storage adapter, audio device,
      * master clock) — see {@link PlayerBackend}. Defaults to
@@ -238,6 +252,18 @@ export interface FrameHandle {
     /** Every visible node's box, in draw order. */
     getNodeBoxes: () => NodeBox[];
     /**
+     * Where a handful of arbitrary points near the `Node3D` at `path` land on
+     * screen, or `null` when the path doesn't resolve to one — a box has no
+     * orientation to draw a move/rotate/scale gizmo from, so a mesh's handles
+     * come from projecting the points they'd occupy instead. See
+     * {@link Node3DFrame} for the two point sets and the space each is in.
+     */
+    projectNode3D: (
+        path: string,
+        parentPoints: readonly Vector3[],
+        localPoints: readonly Vector3[],
+    ) => Node3DFrame | null;
+    /**
      * Where a Text node's caret slots landed on screen â€” for drawing a text
      * cursor and selection over the rendered glyphs, rather than over a DOM
      * input laid on top of them, which cannot agree with the shaper. `null` for
@@ -276,6 +302,7 @@ export function MotionPlayer({
     renderScale = 1,
     surfaceSize,
     view,
+    clipToFrame,
     renderer,
     scenes,
     assets,
@@ -348,6 +375,8 @@ export function MotionPlayer({
      */
     const activeView = surfaceSize && view ? view : IDENTITY_VIEW;
     const activeFrame = surfaceSize && view ? viewport : null;
+    /** See {@link Props.clipToFrame}. Meaningless without `activeFrame`, same as `activeView`. */
+    const activeClipToFrame = surfaceSize && view ? (clipToFrame ?? true) : true;
 
     /**
      * What the current surface was actually built for.
@@ -362,6 +391,7 @@ export function MotionPlayer({
     /** Read by the mount effect, for the same reason as {@link renderScaleRef}. */
     const viewRef = useRef(activeView);
     const frameRectRef = useRef(activeFrame);
+    const clipToFrameRef = useRef(activeClipToFrame);
 
     // Keep callback/value refs current without touching them during render.
     useEffect(() => {
@@ -375,6 +405,7 @@ export function MotionPlayer({
         renderScaleRef.current = renderScale;
         viewRef.current = activeView;
         frameRectRef.current = activeFrame;
+        clipToFrameRef.current = activeClipToFrame;
     });
 
     useEffect(() => {
@@ -396,6 +427,7 @@ export function MotionPlayer({
         renderContext.pixelRatio = renderScaleRef.current;
         renderContext.view = viewRef.current;
         renderContext.frame = frameRectRef.current;
+        renderContext.clipToFrame = clipToFrameRef.current;
         appliedSurfaceRef.current = {
             scale: renderScaleRef.current,
             width: canvas.width,
@@ -534,9 +566,18 @@ export function MotionPlayer({
         if (!renderContext) return;
         renderContext.view = { zoom: activeView.zoom, x: activeView.x, y: activeView.y };
         renderContext.frame = activeFrame;
+        renderContext.clipToFrame = activeClipToFrame;
         controller.repaint();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [controller, activeView.zoom, activeView.x, activeView.y, activeFrame?.width, activeFrame?.height]);
+    }, [
+        controller,
+        activeView.zoom,
+        activeView.x,
+        activeView.y,
+        activeFrame?.width,
+        activeFrame?.height,
+        activeClipToFrame,
+    ]);
 
     // Apply initialFrame changes while paused (scrubbing). When playing, the
     // controller's own clock drives time, so we ignore prop-driven seeks.
@@ -614,6 +655,11 @@ export function MotionPlayer({
             },
             getNodeBox: (path: string) => controllerRef.current?.getNodeBox(path) ?? null,
             getNodeBoxes: () => controllerRef.current?.getNodeBoxes() ?? [],
+            projectNode3D: (
+                path: string,
+                parentPoints: readonly Vector3[],
+                localPoints: readonly Vector3[],
+            ) => controllerRef.current?.projectNode3D(path, parentPoints, localPoints) ?? null,
             getTextLayout: (path: string) => controllerRef.current?.getTextLayout(path) ?? null,
             pickNode: (point: Vector2, tolerance?: number) =>
                 controllerRef.current?.pickNode(point, tolerance) ?? null,

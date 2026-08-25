@@ -9,7 +9,7 @@ import { Node2D } from '@/nodes/2d/node2d';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { Vector2 } from '@/attributes/layout/vector2';
 import { FakeMeasurer } from '@/runtime/runtime.fixtures';
-import { collectBoxes, nodeBoxAt, pickNode, NodeBox } from '@/runtime/node-picking';
+import { collectBoxes, nodeBoxAt, pickNode, projectNode3DAt, NodeBox } from '@/runtime/node-picking';
 import { geometryBounds3D } from '@/render3d/bounds3d';
 
 const scope = new FakeMeasurer();
@@ -298,5 +298,90 @@ describe('pickNode – 3D', () => {
         // The label is laid out over the centre of the viewport, where the cube is.
         const picked = pickNode(canvas, { x: 0, y: 0 });
         expect(picked?.type).toBe('Text');
+    });
+});
+
+describe('projectNode3DAt', () => {
+    it('agrees with the box centre for a mesh with no rotation of its own', () => {
+        const canvas = viewport([
+            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Box3D({ width: 2 }),
+        ]);
+
+        const collected: NodeBox[] = [];
+        collectBoxes(canvas, '', collected, true);
+        const box = at(collected, '1');
+
+        const projected = projectNode3DAt(canvas, '1', [], []);
+        expect(projected?.origin?.x).toBeCloseTo(box.center.x, 6);
+        expect(projected?.origin?.y).toBeCloseTo(box.center.y, 6);
+    });
+
+    it("resolves parentPoints in the parent's frame and localPoints in the mesh's own", () => {
+        // The box sits inside a `Group3D` with no transform of its own — so its
+        // *parent* frame is world space — but is itself turned 90° about Y,
+        // which swings its own local +X into world +Z (straight at the camera).
+        // A `parentPoints` request one unit along the parent's +X should read as
+        // an ordinary sideways shift on screen; the identical offset asked as a
+        // `localPoints` request should barely move sideways at all, since the
+        // mesh's own +X no longer points sideways.
+        const canvas = viewport([
+            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Group3D({
+                children: [new Box3D({ width: 1, position: [2, 0, 0], rotation: [0, 90, 0] })],
+            } as any),
+        ]);
+
+        const projected = projectNode3DAt(
+            canvas,
+            '1.0',
+            [{ x: 3, y: 0, z: 0 }],
+            [{ x: 1, y: 0, z: 0 }],
+        );
+        expect(projected?.origin).not.toBeNull();
+        expect(projected?.parentPoints[0]).not.toBeNull();
+        expect(projected?.localPoints[0]).not.toBeNull();
+
+        const originX = projected!.origin!.x;
+        const parentShiftX = Math.abs(projected!.parentPoints[0]!.x - originX);
+        const localShiftX = Math.abs(projected!.localPoints[0]!.x - originX);
+        expect(parentShiftX).toBeGreaterThan(localShiftX * 3);
+    });
+
+    it('reports a point behind the camera as null without dropping the rest', () => {
+        const canvas = viewport([
+            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Box3D({ width: 1 }),
+        ]);
+
+        // The camera sits at z=10 looking at the origin — a point at z=30 is
+        // behind it, while one at z=0 (the mesh's own position) is in view.
+        const projected = projectNode3DAt(
+            canvas,
+            '1',
+            [{ x: 0, y: 0, z: 30 }, { x: 0, y: 0, z: 0 }],
+            [],
+        );
+        expect(projected?.parentPoints[0]).toBeNull();
+        expect(projected?.parentPoints[1]).not.toBeNull();
+    });
+
+    it('is null for a path that resolves to a 2D node', () => {
+        const canvas = viewport([
+            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Box3D({ width: 1 }),
+            new Text({ text: 'FPS', x: 0, y: 0 }),
+        ]);
+
+        expect(projectNode3DAt(canvas, '2', [], [])).toBeNull();
+    });
+
+    it('is null for a path that does not resolve', () => {
+        const canvas = viewport([
+            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Box3D({ width: 1 }),
+        ]);
+
+        expect(projectNode3DAt(canvas, '1.7', [], [])).toBeNull();
     });
 });

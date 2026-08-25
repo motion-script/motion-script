@@ -5,7 +5,8 @@ import { Vector2 } from "@/attributes/layout/vector2";
 import { Matrix2D, identity, multiply, invert, applyToPoint, cameraMatrix, translation } from "@/attributes/layout/matrix2d";
 import { worldAnchors } from "@/nodes/2d/node-transform";
 import { nodePath } from "@/project/tree";
-import { collectBoxes3D, pickNode3D, type Canvas3DFrame } from "./node-picking3d";
+import { collectBoxes3D, pickNode3D, projectNode3D, type Canvas3DFrame, type Node3DFrame } from "./node-picking3d";
+import type { Vector3 } from "@/render3d/vector3";
 
 /**
  * Pure geometry for editor-style direct manipulation: where a node's pixels
@@ -179,6 +180,40 @@ export function nodeBoxAt(root: Node2D, path: string): NodeBox | null {
 /** The first `count` segments of a split path, rejoined. */
 function prefixPath(segments: readonly string[], count: number): string {
     return segments.slice(0, count).join(".");
+}
+
+/**
+ * Project a handful of points around the `Node3D` at `path`, or `null` when
+ * the path doesn't resolve to a 3D node — a gizmo's counterpart to
+ * {@link nodeBoxAt}, for the one thing a box can't answer: where would an
+ * arbitrary point *near* the node, not just its extent, land on screen. See
+ * {@link Node3DFrame} for the two point sets and the space each is in.
+ *
+ * `null` for a 2D path too, unlike `nodeBoxAt` — a `Node2D` has no matrix a
+ * caller would ask this for; {@link nodeBox} already answers everything a 2D
+ * handle needs directly in viewport space.
+ */
+export function projectNode3DAt(
+    root: Node2D,
+    path: string,
+    parentPoints: readonly Vector3[],
+    localPoints: readonly Vector3[],
+): Node3DFrame | null {
+    if (path === "") return null;
+
+    let node: Node = root;
+    let canvas: { node: Canvas3D; path: string } | null = null;
+    const segments = path.split(".");
+    for (let i = 0; i < segments.length; i++) {
+        if (node instanceof Canvas3D) canvas = { node, path: prefixPath(segments, i) };
+        const next = node._allChildren[Number(segments[i])];
+        if (!next) return null;
+        node = next;
+    }
+
+    if (node instanceof Node2D || !canvas) return null;
+    const frame = canvas3DFrame(canvas.node, canvas.path);
+    return projectNode3D(canvas.node, frame, canvas.path, path, parentPoints, localPoints);
 }
 
 /**

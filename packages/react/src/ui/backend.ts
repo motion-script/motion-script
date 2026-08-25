@@ -35,6 +35,7 @@ export interface PlayerRenderContext extends CanvasRenderContext2D {
     pixelRatio: number;
     view: { zoom: number; x: number; y: number };
     frame: Size2D | null;
+    clipToFrame: boolean;
 }
 
 /**

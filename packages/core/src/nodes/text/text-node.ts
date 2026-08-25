@@ -270,20 +270,38 @@ export class Text extends ShapeNode<TextProps> {
      * Split the text into contiguous pieces at every selection boundary,
      * resolving each piece's effective overrides per the overlap rule:
      * later-created selections win for transform/paint/font; opacity multiplies
-     * across all selections covering the piece. Returns null when no active
-     * (non-identity) selection exists, so rendering keeps its single-op path.
+     * across all selections covering the piece. Also folds in the Write On
+     * reveal window (see below). Returns null when neither is active, so
+     * rendering keeps its single-op path.
      */
     private _buildSegments(): TextSegment[] | null {
         const active = this._selections.filter(s => s.ranges.length > 0 && !s.isIdentity);
-        if (active.length === 0) return null;
-
         const text = this.text;
         if (text.length === 0) return null;
+
+        // Write On: `start`/`end` are ShapeNode's outline-trim fractions
+        // everywhere else, but a glyph has no path to trim geometrically — this
+        // CanvasKit build can't get glyph outlines at all (see
+        // drawTextUnionStroke in the skia-render stroke handler). Text
+        // reinterprets the same pair as a character-reveal window instead:
+        // opacity over a character range rather than a geometric trim.
+        const hasReveal = this.start > 0 || this.end < 1;
+        if (active.length === 0 && !hasReveal) return null;
+
+        // Rounded to the nearest whole character — a hard cut, not a fade. Write
+        // On reveals one character at a time, the way DaVinci's does; a fractional
+        // in-between character read as an opinionated flourish nobody asked for.
+        const revealStart = Math.round(this.start * text.length);
+        const revealEnd = Math.round(this.end * text.length);
 
         // Boundaries at every range edge so each piece is covered uniformly.
         const cuts = new Set<number>([0, text.length]);
         for (const sel of active) {
             for (const r of sel.ranges) { cuts.add(r.start); cuts.add(r.end); }
+        }
+        if (hasReveal) {
+            cuts.add(revealStart);
+            cuts.add(revealEnd);
         }
         const points = [...cuts].filter(c => c >= 0 && c <= text.length).sort((a, b) => a - b);
 
@@ -322,6 +340,11 @@ export class Text extends ShapeNode<TextProps> {
                 if (o.fill !== null) seg.fill = o.fill;
                 if (o.stroke !== null) seg.stroke = o.stroke;
             }
+
+            if (hasReveal && !(start >= revealStart && end <= revealEnd)) {
+                seg.opacity = 0;
+            }
+
             segments.push(seg);
         }
         return segments;

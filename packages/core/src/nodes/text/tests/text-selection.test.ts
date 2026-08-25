@@ -145,3 +145,43 @@ describe('Text._buildSegments – overlap rule', () => {
         expect(overlap.y).toBe(-10);
     });
 });
+
+describe('Text._buildSegments – Write On reveal (start/end)', () => {
+    it('stays on the null fast path at the untouched defaults', () => {
+        const t = new Text({ text: 'abcdefghij' });
+        expect(buildSegments(t)).toBeNull();
+        const explicit = new Text({ text: 'abcdefghij', start: 0, end: 1 });
+        expect(buildSegments(explicit)).toBeNull();
+    });
+
+    it('reveals whole characters left-to-right as `end` sweeps up — no fade', () => {
+        const t = new Text({ text: 'abcdefghij', end: 0.5 }); // revealEnd = round(5) = 5
+        const segs = buildSegments(t)!;
+        const opacityOf = (s: string) => segs.find(seg => seg.text === s)!.opacity;
+
+        expect(opacityOf('abcde')).toBe(1);
+        expect(opacityOf('fghij')).toBe(0);
+    });
+
+    it('erases whole characters from the front as `begin` sweeps up — no fade', () => {
+        const t = new Text({ text: 'abcdefghij', start: 0.5 }); // revealStart = round(5) = 5
+        const segs = buildSegments(t)!;
+        const opacityOf = (s: string) => segs.find(seg => seg.text === s)!.opacity;
+
+        expect(opacityOf('abcde')).toBe(0);
+        expect(opacityOf('fghij')).toBe(1);
+    });
+
+    it('composes with an active selection by multiplying opacity, not overriding it', () => {
+        const t = new Text({ text: 'hello world', end: 0.5 }); // revealEnd = round(5.5) = 6
+        const sel = t.find('hello'); // [0,5)
+        sel.overrides.opacity = 0.5;
+
+        const segs = buildSegments(t)!;
+        const opacityOf = (s: string) => segs.find(seg => seg.text === s)!.opacity;
+
+        expect(opacityOf('hello')).toBeCloseTo(0.5); // selection only, fully inside reveal
+        expect(opacityOf(' ')).toBe(1); // no selection, fully inside reveal
+        expect(opacityOf('world')).toBe(0); // outside the reveal window
+    });
+});

@@ -516,6 +516,20 @@ export abstract class SkiaRenderContext extends CanvasRenderContext2D {
      */
     frame: { width: number; height: number } | null = null;
 
+    /**
+     * Whether {@link frame} actually clips the draws below it, rather than
+     * only bounding the backdrop.
+     *
+     * On by default — an off-frame node has always been invisible, and every
+     * caller but one still wants that. The exception is a host that wants to
+     * show what's parked off-frame itself, faded, over its own backdrop (see
+     * motion-studio's "show outside canvas"): with this off, the frame's
+     * backdrop is still painted, bounded to the frame, but the clip that used
+     * to bound every node's draw calls is lifted, so a node outside the frame
+     * rasterizes into the rest of the surface instead of being discarded.
+     */
+    clipToFrame: boolean = true;
+
     private executePass(callback: () => void): void {
         // The surface is freed on dispose()/unmount(). A late async render (e.g. a
         // seek resolving after a StrictMode/HMR remount disposed this context)
@@ -545,16 +559,24 @@ export abstract class SkiaRenderContext extends CanvasRenderContext2D {
             const ck = this.canvasKit;
             const halfW = this.frame.width / 2;
             const halfH = this.frame.height / 2;
-            this.currentCanvas.clipRect(
-                ck.LTRBRect(-halfW, -halfH, halfW, halfH),
-                ck.ClipOp.Intersect,
-                true,
-            );
-            // The frame's backdrop, in the space the full-surface clear used to
-            // cover. `Src` rather than the default source-over, so it *replaces*
-            // the transparent clear instead of compositing onto it — the frame is
-            // opaque black, exactly as it has always been.
-            this.currentCanvas.drawColor(ck.BLACK, ck.BlendMode.Src);
+            const rect = ck.LTRBRect(-halfW, -halfH, halfW, halfH);
+            if (this.clipToFrame) {
+                this.currentCanvas.clipRect(rect, ck.ClipOp.Intersect, true);
+                // The frame's backdrop, in the space the full-surface clear used
+                // to cover. `Src` rather than the default source-over, so it
+                // *replaces* the transparent clear instead of compositing onto
+                // it — the frame is opaque black, exactly as it has always been.
+                this.currentCanvas.drawColor(ck.BLACK, ck.BlendMode.Src);
+            } else {
+                // Same backdrop, but scoped to its own save/restore rather than
+                // the persistent clip above: {@link clipToFrame} asks for the
+                // frame's edge to stop bounding the *nodes*, and a clip left in
+                // force here would bound them anyway.
+                this.currentCanvas.save();
+                this.currentCanvas.clipRect(rect, ck.ClipOp.Intersect, true);
+                this.currentCanvas.drawColor(ck.BLACK, ck.BlendMode.Src);
+                this.currentCanvas.restore();
+            }
         }
 
         // Bracket the pass so the 3D backend can tell which nodes drew this frame

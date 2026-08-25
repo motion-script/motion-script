@@ -16,7 +16,9 @@ import { Node } from "@/nodes/node/node";
 import { Node2D } from "@/nodes/2d/node2d";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { NodeBox, collectBoxes, nodeBoxAt, pickNode } from "./node-picking";
+import { NodeBox, collectBoxes, nodeBoxAt, pickNode, projectNode3DAt } from "./node-picking";
+import type { Node3DFrame } from "./node-picking3d";
+import type { Vector3 } from "@/render3d/vector3";
 import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
 
 /**
@@ -700,6 +702,22 @@ export class PlaybackController {
         const out: NodeBox[] = [];
         collectBoxes(scene.canvas, "", out, true);
         return out;
+    }
+
+    /**
+     * Project a handful of points around the `Node3D` at `path`, or `null` when
+     * the path doesn't resolve to one (or no scene is active). See
+     * {@link Node3DFrame} — a gizmo's counterpart to {@link getNodeBox}, for
+     * drawing move/rotate/scale handles a box alone can't place.
+     */
+    projectNode3D(
+        path: string,
+        parentPoints: readonly Vector3[],
+        localPoints: readonly Vector3[],
+    ): Node3DFrame | null {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return null;
+        return projectNode3DAt(scene.canvas, path, parentPoints, localPoints);
     }
 
     /**

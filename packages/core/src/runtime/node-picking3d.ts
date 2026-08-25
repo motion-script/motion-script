@@ -114,6 +114,109 @@ export function collectBoxes3D(canvas: Canvas3D, frame: Canvas3DFrame, path: str
 }
 
 /**
+ * Where a handful of arbitrary points around one `Node3D` land on screen — the
+ * ingredient a box can't supply for a gizmo.
+ *
+ * `origin`, `parentPoints` and `localPoints` all come back in the **same
+ * viewport space** {@link NodeBox} does, so a caller drawing both together
+ * (a box for the outline, this for the handles) never has two coordinate
+ * systems to reconcile. A `null` entry means that point sits behind the
+ * camera — mirrors {@link projectBox3}'s own eye-plane guard, just per point
+ * instead of per clipped edge, since there's no box to keep in shape here.
+ *
+ * Not `@internal`, unlike {@link projectNode3D} itself: this is what a host
+ * gets back from `projectNode3DAt`/`PlaybackController.projectNode3D`, the
+ * same public tier as {@link NodeBox}.
+ */
+export interface Node3DFrame {
+    /** The node's own position, projected — a gizmo's pivot. */
+    origin: Vector2 | null;
+    /**
+     * `parentPoints` transformed by the node's **parent's** world matrix, then
+     * projected. The frame `Node3DProps.position` is itself expressed in, so
+     * this is the space a move or scale handle belongs in: a point named
+     * `{ ...position, x: position.x + 1 }` projects to where nudging `x` by
+     * one unit would actually land, with no need to know whether "one unit"
+     * means local or world space at the point of asking.
+     */
+    parentPoints: (Vector2 | null)[];
+    /**
+     * `localPoints` transformed by the node's **own** world matrix, then
+     * projected. For geometry that has to track the node's current
+     * orientation — a rotation ring wrapping the mesh as it's actually
+     * turned, not as it started.
+     */
+    localPoints: (Vector2 | null)[];
+}
+
+const ORIGIN_3D: Vector3 = { x: 0, y: 0, z: 0 };
+
+/**
+ * Project `parentPoints`/`localPoints` for the `Node3D` at `targetPath`
+ * inside `canvas`, or `null` when the canvas has no projection (see
+ * {@link canvas3DProjection}) or the path doesn't resolve to a node in it.
+ *
+ * `canvasPath` is the canvas's own structural path — the same root
+ * {@link collectBoxes3D} and {@link pickNode3D} are handed — and `targetPath`
+ * the node being projected, found the same way {@link nodeBoxAt} finds one
+ * (`node-picking.ts`, one level up).
+ */
+/** @internal */
+export function projectNode3D(
+    canvas: Canvas3D,
+    frame: Canvas3DFrame,
+    canvasPath: string,
+    targetPath: string,
+    parentPoints: readonly Vector3[],
+    localPoints: readonly Vector3[],
+): Node3DFrame | null {
+    const projection = canvas3DProjection(canvas);
+    if (!projection) return null;
+
+    const entry = nodes3DOf(canvas, canvasPath).find((e) => e.path === targetPath);
+    if (!entry) return null;
+
+    const own = projection.matrices.get(entry.node.id);
+    const parent = projection.parentMatrices.get(entry.node.id);
+    if (!own || !parent) return null;
+
+    const project = (matrix: Matrix4, points: readonly Vector3[]): (Vector2 | null)[] =>
+        points.map((point) => projectPoint3(matrix, point, projection, frame));
+
+    return {
+        origin: projectPoint3(own, ORIGIN_3D, projection, frame),
+        parentPoints: project(parent, parentPoints),
+        localPoints: project(own, localPoints),
+    };
+}
+
+/**
+ * `point` (in whatever space `matrix` maps to world space) projected into
+ * `frame`'s viewport space, or `null` when it lands behind the camera.
+ *
+ * The single-point sibling of {@link projectBox3}: no edges to clip, so a
+ * point either has a clip-space `w` in front of the eye or it doesn't.
+ */
+function projectPoint3(
+    matrix: Matrix4,
+    point: Vector3,
+    projection: Canvas3DProjection,
+    frame: Canvas3DFrame,
+): Vector2 | null {
+    const world = applyMatrix4(matrix, point);
+    const clip = applyMatrix4(projection.clip, { x: world.x, y: world.y, z: world.z });
+    if (clip.w <= MIN_CLIP_W) return null;
+
+    const ndcX = clip.x / clip.w;
+    const ndcY = clip.y / clip.w;
+    const rectX = projection.centerX + ndcX * (projection.width / 2);
+    const rectY = projection.centerY + ndcY * (projection.height / 2);
+
+    const p = applyToPoint(frame.matrix, { x: rectX, y: -rectY });
+    return { x: p.x, y: -p.y };
+}
+
+/**
  * The nearest 3D node in `canvas` whose box contains `point` (viewport space,
  * y-up), or `null`.
  *
@@ -191,6 +294,10 @@ function walk3D(children: readonly Node[], parentPath: string, out: Node3DEntry[
 interface Canvas3DProjection {
     /** World-space bounds per `Node3D.id`, each including its subtree. */
     boxes: Map<string, Box3>;
+    /** Each node's own world matrix, per `Node3D.id` — see {@link Node3DFrame}. */
+    matrices: Map<string, Matrix4>;
+    /** Each node's *parent's* world matrix, keyed by the node's own id. */
+    parentMatrices: Map<string, Matrix4>;
     /** `projection · view` — world space straight to clip space. */
     clip: Matrix4;
     /** The view matrix alone, for the depth sort. */
@@ -216,6 +323,8 @@ function canvas3DProjection(canvas: Canvas3D): Canvas3DProjection | null {
     const aspect = bounds.width / bounds.height;
     return {
         boxes: walked.boxes,
+        matrices: walked.matrices,
+        parentMatrices: walked.parentMatrices,
         clip: multiply4(projectionMatrix(walked.descriptor, aspect), view),
         view,
         width: bounds.width,
@@ -235,6 +344,11 @@ interface Scope3D {
 
 interface WalkedScene3D {
     boxes: Map<string, Box3>;
+    /** Each node's own world matrix, per `Node3D.id` — captured at `push`,
+     * unlike `boxes`, which needs children merged in first at `pop`. */
+    matrices: Map<string, Matrix4>;
+    /** Each node's *parent's* world matrix, keyed by the node's own id. */
+    parentMatrices: Map<string, Matrix4>;
     /** The camera's world matrix, or the renderer's own framing when none was set. */
     camera: Matrix4;
     descriptor: CameraData3D | null;
@@ -255,6 +369,8 @@ interface WalkedScene3D {
  */
 function walkScene3D(scene: Scene3D): WalkedScene3D {
     const boxes = new Map<string, Box3>();
+    const matrices = new Map<string, Matrix4>();
+    const parentMatrices = new Map<string, Matrix4>();
     const root: Scope3D = { key: undefined, matrix: identity4(), visible: true, box: null };
     const stack: Scope3D[] = [root];
     let camera: Matrix4 | null = null;
@@ -266,9 +382,14 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
         const scope = top();
         switch (op.kind) {
             case "push": {
+                const matrix = scopeMatrix(scope.matrix, op.transform);
+                if (op.transform?.key !== undefined) {
+                    matrices.set(op.transform.key, matrix);
+                    parentMatrices.set(op.transform.key, scope.matrix);
+                }
                 stack.push({
                     key: op.transform?.key,
-                    matrix: scopeMatrix(scope.matrix, op.transform),
+                    matrix,
                     visible: scope.visible && op.transform?.visible !== false,
                     box: null,
                 });
@@ -308,6 +429,8 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
 
     return {
         boxes,
+        matrices,
+        parentMatrices,
         camera: camera ?? DEFAULT_CAMERA_MATRIX,
         descriptor,
     };
