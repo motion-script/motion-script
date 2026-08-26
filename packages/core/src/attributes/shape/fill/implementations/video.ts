@@ -132,14 +132,52 @@ function rawTimestamp(
     // Paused with no authored time: hold the clip's first frame.
     if (!fill.playing) return start;
 
-    const hasDuration = sourceDuration !== undefined && Number.isFinite(sourceDuration) && sourceDuration > 0;
-    const end = fill.trimEnd ?? (hasDuration ? sourceDuration : Infinity);
     const played = Math.max(0, elapsed - (fill.playStart ?? 0)) * (fill.speed ?? 1);
+    return sourceTimeFor(played, start, trimEndFor(fill, sourceDuration), fill.loop, fill.duration);
+}
 
-    const loop = fill.loop ?? 'none';
-    const rawLoopDuration = fill.duration ?? (end !== Infinity ? end - start : undefined);
+/**
+ * The clip's out point: what the fill states, or the source's own length once
+ * the container has been opened, or unbounded while it has not.
+ *
+ * `Infinity` is the unbounded sentinel here, as it is throughout the audio side
+ * (`Sound.trimEnd`, `AudioRequest.endAt`) — a decoder that has not read the
+ * container cannot answer "how long", and running linearly and unlooped is what
+ * it can honour in the meantime.
+ */
+export function trimEndFor(
+    fill: Pick<VideoFillResolved, 'trimEnd'>,
+    sourceDuration: number | undefined,
+): number {
+    const hasDuration = sourceDuration !== undefined && Number.isFinite(sourceDuration) && sourceDuration > 0;
+    return fill.trimEnd ?? (hasDuration ? sourceDuration : Infinity);
+}
+
+/**
+ * Where `played` seconds of *consumed source* land inside the trimmed window,
+ * once looping and clamping are applied.
+ *
+ * Split out of {@link rawTimestamp} because two callers now need it and only one
+ * of them derives `played` the same way. The fill computes it linearly from the
+ * clock; a {@link Video} node driven by a `segments` schedule computes it by
+ * walking that schedule, since a paused stretch consumes no source at all. What
+ * "and then it wraps" or "and then it stops" means is the same for both, and
+ * this is the one place that says so.
+ */
+export function sourceTimeFor(
+    /** Seconds of source consumed so far — already scaled by playback rate. */
+    played: number,
+    /** The trim-in point, which every result is measured from. */
+    start: number,
+    /** The trim-out point, or `Infinity` while the source's length is unknown. */
+    end: number,
+    loop: 'forward' | 'reverse' | 'none' | undefined,
+    /** An explicit loop-cycle length; defaults to the trimmed clip's own. */
+    cycleLength?: number,
+): number {
+    const rawLoopDuration = cycleLength ?? (end !== Infinity ? end - start : undefined);
     const loopDuration = rawLoopDuration !== undefined && rawLoopDuration > 0 ? rawLoopDuration : undefined;
-    if (loop !== 'none' && loopDuration !== undefined) {
+    if ((loop ?? 'none') !== 'none' && loopDuration !== undefined) {
         const cycle = played % loopDuration;
         if (loop === 'reverse') {
             const ping = Math.floor(played / loopDuration) % 2 === 0;

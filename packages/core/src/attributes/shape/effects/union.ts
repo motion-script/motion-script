@@ -13,6 +13,7 @@ import type { PosterizeEffect } from "./implementations/posterize";
 import type { MotionBlurEffect } from "./implementations/motion-blur";
 import type { SkSLEffect } from "./implementations/sksl";
 import type { OutlineEffect } from "./implementations/outline";
+import type { DropShadowEffect } from "./implementations/drop-shadow";
 import type { VignetteEffect } from "./implementations/vignette";
 import type { GrainEffect } from "./implementations/grain";
 import type { SharpenEffect } from "./implementations/sharpen";
@@ -59,6 +60,7 @@ export type SceneEffect =
     | MotionBlurEffect
     | SkSLEffect
     | OutlineEffect
+    | DropShadowEffect
     | VignetteEffect
     | GrainEffect
     | SharpenEffect

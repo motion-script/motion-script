@@ -171,6 +171,23 @@ export interface OutlineOptions extends EffectOptions {
     position?: OutlinePosition;
 }
 
+/**
+ * A shadow cast from the node's silhouette. Scalar shorthand sets `blur`, since
+ * softness is the knob a shadow is usually reached for by.
+ */
+export interface DropShadowOptions extends EffectOptions {
+    /** Horizontal displacement in pixels (default 0). */
+    offsetX?: number;
+    /** Vertical displacement in pixels, positive being upward (default -8). */
+    offsetY?: number;
+    /** Softness in pixels, on a `blur` effect's scale (default 16). */
+    blur?: number;
+    /** Grows the silhouette before blurring, in pixels (default 0). */
+    spread?: number;
+    /** Shadow colour (default `'black'`). */
+    color?: Color;
+}
+
 /** Darkened edges / lens falloff. Scalar shorthand sets `amount`. */
 export interface VignetteOptions extends EffectOptions {
     /** 0–1 tint strength at the edge (default 0.5). */
@@ -763,6 +780,26 @@ export class EffectChain {
                 width: o.width ?? 4,
                 color: o.color ?? "black",
                 position: o.position ?? "outside",
+            },
+            o,
+        ));
+    }
+
+    /**
+     * Append a drop shadow cast from the node's **silhouette** — including alpha
+     * silhouettes (text, an image's cutout, a whole subtree) that a geometry
+     * `shadow` can't follow, since that one fills the node's path.
+     */
+    dropShadow(options?: number | DropShadowOptions) {
+        const o = scalarOptions(options, "blur");
+        return this.append(withEffectOptions(
+            {
+                type: "dropShadow" as const,
+                offsetX: o.offsetX ?? 0,
+                offsetY: o.offsetY ?? -8,
+                blur: o.blur ?? 16,
+                spread: o.spread ?? 0,
+                color: o.color ?? "black",
             },
             o,
         ));

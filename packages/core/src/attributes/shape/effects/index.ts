@@ -15,6 +15,7 @@ export type { MotionBlurEffect, MotionBlurAlignment } from "./implementations/mo
 export { resolveMotionBlurAlignment } from "./implementations/motion-blur";
 export type { SkSLEffect, SkSLUniform, SkSLUniformValue } from "./implementations/sksl";
 export type { OutlineEffect, OutlinePosition } from "./implementations/outline";
+export type { DropShadowEffect } from "./implementations/drop-shadow";
 export type { VignetteEffect } from "./implementations/vignette";
 export type { GrainEffect } from "./implementations/grain";
 export type { SharpenEffect } from "./implementations/sharpen";

@@ -8,7 +8,7 @@ import { effectTypes } from '@/attributes/shape/effects/registry';
  * `filters/union.ts` — that one is a type, so this is the runtime half of the
  * same statement and the sweep below is what keeps them honest.
  */
-const NOT_FILTERS = ['magnify', 'glass', 'motionBlur', 'trails', 'outline'];
+const NOT_FILTERS = ['magnify', 'glass', 'motionBlur', 'trails', 'outline', 'dropShadow'];
 
 describe('Adjustments builders', () => {
     it('blur stores its radius under the shared `radius` name', () => {

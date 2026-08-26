@@ -17,6 +17,7 @@ import type { MagnifyEffect } from "../effects/implementations/magnify";
 import type { MotionBlurEffect } from "../effects/implementations/motion-blur";
 import type { TrailsEffect } from "../effects/implementations/trails";
 import type { OutlineEffect } from "../effects/implementations/outline";
+import type { DropShadowEffect } from "@/attributes/shape/effects/implementations/drop-shadow";
 import type { GlassEffect } from "../effects/implementations/glass";
 
 /**
@@ -48,6 +49,7 @@ type NonFilterEffect =
     | MotionBlurEffect
     | TrailsEffect
     | OutlineEffect
+    | DropShadowEffect
     | BlurEffect
     | GrayscaleEffect
     | CurvesEffect

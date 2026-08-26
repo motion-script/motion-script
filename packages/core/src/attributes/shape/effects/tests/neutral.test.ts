@@ -34,6 +34,9 @@ const NEUTRAL: Record<string, () => EffectChain> = {
     posterize: () => Effects.posterize(255),
     motionBlur: () => Effects.motionBlur(0),
     outline: () => Effects.outline(0),
+    // Nowhere to fall, no softness and no growth: the silhouette sits exactly
+    // under the content it was cast from, so nothing of it is ever visible.
+    dropShadow: () => Effects.dropShadow({ offsetX: 0, offsetY: 0, blur: 0, spread: 0 }),
     vignette: () => Effects.vignette({ amount: 0 }),
     grain: () => Effects.grain({ amount: 0 }),
     sharpen: () => Effects.sharpen(0),

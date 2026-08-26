@@ -15,6 +15,7 @@ import { posterizeEffect } from "./implementations/posterize";
 import { motionBlurEffect } from "./implementations/motion-blur";
 import { skslEffect } from "./implementations/sksl";
 import { outlineEffect } from "./implementations/outline";
+import { dropShadowEffect } from "./implementations/drop-shadow";
 import { vignetteEffect } from "./implementations/vignette";
 import { grainEffect } from "./implementations/grain";
 import { sharpenEffect } from "./implementations/sharpen";
@@ -63,6 +64,7 @@ const EFFECTS = new Map<string, EffectData<SceneEffect>>([
     ["motionBlur", motionBlurEffect as EffectData<SceneEffect>],
     ["sksl", skslEffect as EffectData<SceneEffect>],
     ["outline", outlineEffect as EffectData<SceneEffect>],
+    ["dropShadow", dropShadowEffect as EffectData<SceneEffect>],
     ["vignette", vignetteEffect as EffectData<SceneEffect>],
     ["grain", grainEffect as EffectData<SceneEffect>],
     ["sharpen", sharpenEffect as EffectData<SceneEffect>],

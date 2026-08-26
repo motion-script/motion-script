@@ -21,6 +21,7 @@ export { bulgeEffectHandler } from "./bulge";
 export { magnifyEffectHandler } from "./magnify";
 export { posterizeEffectHandler } from "./posterize";
 export { outlineEffectHandler } from "./outline";
+export { dropShadowEffectHandler } from "./drop-shadow";
 export { vignetteEffectHandler } from "./vignette";
 export { grainEffectHandler } from "./grain";
 export { sharpenEffectHandler } from "./sharpen";

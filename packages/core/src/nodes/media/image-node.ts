@@ -5,7 +5,7 @@ import { lerpFilterArray } from "@/attributes/shape/filters/registry";
 import { MediaAdjustment } from "@/attributes/shape/filters/union";
 import { ImageCrop, ImageFit, ImageFillProp, ImageFillResolved, ImageMatrix } from "@/attributes/shape/fill/implementations/image";
 import { prepareFill, resolveFill } from "@/attributes/shape/fill/registry";
-import { FillProp } from "@/attributes/shape/fill/union";
+import { FillProp, FillResolved } from "@/attributes/shape/fill/union";
 import { AssetTracker } from "@/assets/tracker";
 import { Anchor } from "@/attributes/layout/anchor";
 import { Rect, RectProps } from "../geometry/rect-node";
@@ -75,15 +75,62 @@ export class Image extends Rect<ImageProps> {
         return resolveFill(prop as FillProp) as ImageFillResolved;
     }
 
-    protected override shapeGraphics(): Graphics2D {
-        return new Graphics2D().rect({
+    /**
+     * The node's box, as the rect state every pass declares.
+     *
+     * Split out of {@link shapeGraphics} because the overlay has to declare the
+     * same rectangle **twice** inside one mask scope — once as the mask, once as
+     * the content — and a `Graphics2D` is a list of ops rather than a shape that
+     * can be restated.
+     */
+    private rectState() {
+        return {
             width: this.layoutBounds.width,
             height: this.layoutBounds.height,
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
             start: this.start,
             end: this.end,
-        });
+        };
+    }
+
+    protected override shapeGraphics(): Graphics2D {
+        return new Graphics2D().rect(this.rectState());
+    }
+
+    /**
+     * The overlay, **clipped to the picture's own alpha** rather than to the
+     * node's box.
+     *
+     * {@link ShapeNode} fills the silhouette, which for a media node is its rect
+     * — and on a cut-out PNG that is the wrong shape by a wide margin: a wash
+     * meant to tint the subject floods the transparent surround, so the whole
+     * box turns colour. Not a subtle error.
+     *
+     * So the picture is declared as an **alpha mask** and the overlay as the
+     * content inside it. `MaskMode.alpha` is the mask machinery's default and is
+     * exactly this operation, so the renderer had nothing new to learn.
+     *
+     * A media node with no source paints no overlay at all: there is nothing
+     * drawn to lay anything over, and falling back to the box would reintroduce
+     * the bug precisely where it is most visible.
+     */
+    protected override renderOverlay(ctx: RenderContext2D): void {
+        const overlay = this.overlay as FillResolved[];
+        if (overlay.length === 0) return;
+        const picture = this.imageFill();
+        if (!picture) return;
+
+        ctx.draw(
+            new Graphics2D()
+                .mask()
+                .rect(this.rectState())
+                .fill([picture as unknown as FillProp])
+                .applyMask()
+                .rect(this.rectState())
+                .fill(overlay as unknown as FillProp[])
+                .endMask(),
+        );
     }
 
     protected override renderSelf(draw: RenderContext2D): void {
