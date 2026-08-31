@@ -3,6 +3,7 @@ import type { CanvasKit, Image as CKImage, Shader } from "@motion-script/canvask
 import { getOrCompileSkSL } from "../sksl-cache";
 import { type DitherEffect } from "@motion-script/core";
 import { BLUE_NOISE_SIZE, blueNoiseBytes } from "./blue-noise";
+import { patternOrigin } from "./pattern-origin";
 
 /**
  * Ordered dithering: quantize to `levels` tones per channel, but offset each
@@ -29,6 +30,12 @@ import { BLUE_NOISE_SIZE, blueNoiseBytes } from "./blue-noise";
  * The mode and matrix size are baked into the source (four variants, cached by
  * `getOrCompileSkSL`) so the shader isn't paying to evaluate all of them behind
  * a uniform branch.
+ *
+ * Cells are counted from the **node's own corner** rather than from the screen's
+ * — see {@link patternOrigin}. A lattice measured in device pixels is one the
+ * node slides through as it moves, so animating a dithered node's position made
+ * the pattern crawl across it; measured from the node, the screen is a print of
+ * the node and the dots stay put on it.
  */
 function skslFor(noise: DitherEffect["noise"], matrix: 2 | 4 | 8): string {
     const blue = noise === "blue";
@@ -45,7 +52,8 @@ function skslFor(noise: DitherEffect["noise"], matrix: 2 | 4 | 8): string {
 
     return `
 uniform shader u_content;     // snapshot of the source (premultiplied)
-${blue ? "uniform shader u_noise;       // 64x64 blue-noise thresholds, tiled\n" : ""}uniform float  u_levels;      // output tones per channel (>= 2)
+${blue ? "uniform shader u_noise;       // 64x64 blue-noise thresholds, tiled\n" : ""}uniform vec2   u_origin;      // node box top-left, device px (0,0 on a backdrop)
+uniform float  u_levels;      // output tones per channel (>= 2)
 uniform float  u_scale;       // pattern cell size, device px
 uniform float  u_monochrome;  // 1 = dither luminance, 0 = per channel
 
@@ -61,7 +69,7 @@ vec4 main(vec2 fragCoord) {
     vec4 c = u_content.eval(fragCoord);
     if (c.a <= 0.0) return c;
 
-    vec2 cell = floor(fragCoord / max(u_scale, 1.0));
+    vec2 cell = floor((fragCoord - u_origin) / max(u_scale, 1.0));
     float threshold = ${threshold};
 
     vec3 base = c.rgb / c.a;                       // un-premultiply
@@ -144,6 +152,7 @@ export function makeDitherShader(
     ck: CanvasKit,
     content: Shader,
     scale: number,
+    origin: readonly [number, number] = [0, 0],
 ): Shader | null {
     if (effect.levels >= 256) return null;
 
@@ -158,7 +167,10 @@ export function makeDitherShader(
 
     const children = noise === "blue" ? [content, noiseShader!] : [content];
     return runtimeEffect.makeShaderWithChildren(
-        [effect.levels, Math.max(effect.scale * scale, 1), effect.monochrome ? 1 : 0],
+        [
+            origin[0], origin[1],
+            effect.levels, Math.max(effect.scale * scale, 1), effect.monochrome ? 1 : 0,
+        ],
         children,
     );
 }
@@ -167,7 +179,8 @@ export function makeDitherShader(
 export const ditherEffectHandler: EffectHandler<DitherEffect> = {
     type: "dither",
     sampling: { tileMode: "decal", filterMode: "nearest" },
-    makeShader: (effect, ck, content, geom) => makeDitherShader(effect, ck, content, geom.scale),
+    makeShader: (effect, ck, content, geom) =>
+        makeDitherShader(effect, ck, content, geom.scale, patternOrigin(effect, geom)),
     dispose() {
         for (const { image, shader } of noiseTextures) {
             shader.delete();

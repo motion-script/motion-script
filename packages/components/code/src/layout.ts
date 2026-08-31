@@ -41,6 +41,16 @@ export interface CodeLayout {
     tokens: Map<number, TokenBox>;
     /** Vertical centre of each line's slot, by line index. */
     lineY: number[];
+    /**
+     * Width of each line's ink, by line index — the sum of its tokens' advances,
+     * so a blank line is `0` and a short line is short.
+     *
+     * Returned rather than kept local because it is the only thing that knows a
+     * listing is **ragged**: `innerW` is the longest line, and everything that
+     * asks where the text actually is (hit testing, for one) would otherwise have
+     * to treat the block as a rectangle the width of its longest row.
+     */
+    lineW: number[];
     /** Line id → its index in this structure (i.e. its line *number* minus one). */
     lineIndex: Map<number, number>;
     gutter: number;
@@ -143,5 +153,5 @@ export function layoutCode(
         }
     }
 
-    return { tokens, lineY, lineIndex, gutter, gutterGap, innerW, innerH, blockW, blockH, startX };
+    return { tokens, lineY, lineW: widths, lineIndex, gutter, gutterGap, innerW, innerH, blockW, blockH, startX };
 }

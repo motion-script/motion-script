@@ -22,4 +22,10 @@ export const scatterEffect: EffectData<ScatterEffect> = {
         mode: t < 0.5 ? from.mode : to.mode,
     }),
     equals: (a, b) => a.strength === b.strength && sameEffectAxis(a.axis, b.axis) && a.mode === b.mode,
+    // Displaces each pixel by a hash of its position, so it needs random access
+    // to its source. It was realised as a displacement-map ImageFilter until the
+    // filter path's layer snapping was found to re-roll the field whenever the
+    // node stood on a fractional pixel — see the renderer's `scatter` handler,
+    // which carries the full account.
+    surface: "shader",
 };

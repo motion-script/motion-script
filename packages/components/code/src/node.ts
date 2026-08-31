@@ -2,7 +2,7 @@ import {
     RenderContext2D, RenderPass2D, Graphics2D, Clip, EasingFunction, NodeConfig, Size2D, SizeConstraints,
     ShapeNode, Measurer2D, InsetsResolved, InsetsProps, RectCornerRadius, RectCornerStyle, ShapeProps,
     property, cornerRadiusProperty, cornerStyleProperty, resolveInsets, lerpInsets, lerpNumber,
-    AssetTracker, command, driveCommand, type Command, type TweenStepper,
+    AssetTracker, command, driveCommand, type Command, type TweenStepper, type Vector2,
 } from "@motion-script/core";
 import {
     CodeRange,
@@ -368,6 +368,81 @@ export class Code extends ShapeNode<CodeProps> {
             cornerRadius: this.cornerRadius,
             cornerStyle: this.cornerStyle,
         });
+    }
+
+    /**
+     * A listing with no background of its own is grabbed by its **text**, line by
+     * ragged line, rather than by the rectangle the lines were laid out in.
+     *
+     * {@link ShapeNode.hitTestSelf} narrows a shape's grab region to the outline
+     * it declares, and for this node that outline is the block — which is right
+     * whenever the block is painted and wrong the rest of the time. Code is
+     * mostly whitespace: a ten-line snippet with one long line is a rectangle
+     * that is largely empty, and in an editor every one of those empty pixels
+     * swallows a click meant for whatever sits behind or beneath it. Short of the
+     * text itself there is nothing there to have clicked.
+     *
+     * So the rule is the one this class already follows for paint: the region
+     * follows what was actually drawn. Painted (a fill, an overlay, a stroke, or
+     * a shadow the block casts) → the box, because the box is a thing you can
+     * see and point at. Unpainted → the union of the lines' own extents, each a
+     * line-height slot as wide as that line's ink, plus the gutter where line
+     * numbers are showing, since those are drawn glyphs too.
+     *
+     * Answered from the **cached** layout, which is what the last frame drew
+     * from, because a hit test arrives with no measurement scope and text cannot
+     * be measured without one. Where there is no usable cache — before the first
+     * frame, or mid-edit, when the geometry is an interpolation of two structures
+     * held on the transition — the box is the honest answer rather than a
+     * silhouette measured against stale metrics.
+     */
+    protected override hitTestSelf(local: Vector2, tolerance: number): boolean {
+        if (this.paintsBackground()) return super.hitTestSelf(local, tolerance);
+        const layout = this.hitLayout();
+        if (!layout) return super.hitTestSelf(local, tolerance);
+
+        // Never *wider* than the box: `hug` sizes to the ink, but a fixed width
+        // narrower than the longest line would otherwise be hit outside itself.
+        if (!super.hitTestSelf(local, tolerance)) return false;
+
+        const half = (this.fontSize * this.lineHeight) / 2;
+        // Line numbers sit in the gutter, to the left of every line's own start,
+        // so a numbered blank line is still grabbable — by its number.
+        const gutter = this.showLineNumbers ? layout.gutter : 0;
+        const left = layout.startX - gutter - tolerance;
+        for (let i = 0; i < layout.lineY.length; i++) {
+            const width = (layout.lineW[i] ?? 0) + gutter;
+            if (width <= 0) continue;
+            if (Math.abs(local.y - layout.lineY[i]) > half + tolerance) continue;
+            if (local.x >= left && local.x <= layout.startX + (layout.lineW[i] ?? 0) + tolerance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether the block draws anything behind the tokens for a click to land on. */
+    private paintsBackground(): boolean {
+        return (this.fill as unknown[]).length > 0
+            || (this.overlay as unknown[]).length > 0
+            || (this.stroke as unknown[]).length > 0
+            || (this.shadow as unknown[]).length > 0;
+    }
+
+    /**
+     * The layout a hit test may be answered from: the settled cache, and only
+     * while it still matches the node's current metrics.
+     *
+     * The key is the one {@link settledLayout} writes minus its scope-dependent
+     * half — every input to it (`metricsSignature`, the advance cache's own
+     * signature) is readable without a measurer, which is precisely what makes
+     * the check possible here.
+     */
+    private hitLayout(): CodeLayout | null {
+        if (!this.layoutCache || this.activeEdit()) return null;
+        const m = this.metrics();
+        const key = `${this.structureVersion}|${metricsSignature(m)}|${this.advanceCache.signature(m.fontSize, m.fontFamily)}`;
+        return this.layoutCacheKey === key ? this.layoutCache : null;
     }
 
     // ── Editing commands ────────────────────────────────────────────────────

@@ -108,10 +108,17 @@ type DeferredPaintCall =
 //
 // Negating a shape's *center* y (rect/ellipse/poly/text) moves the whole shape;
 // its geometry is rebuilt symmetrically about the new center, so symmetric shapes
-// are correct with nothing more. Vertically-asymmetric features must also be
-// reflected so the shape isn't mirrored: a rect's per-corner radii/styles swap
-// top↔bottom, and a partial ellipse's arc reverses (negate startAngle + sweep).
-// Line points and path commands carry their own per-point y, negated individually.
+// are correct with nothing more. What is NOT mirrored is the shape's own local
+// frame: `computeGeometry` lays every shape out from that centre in canvas terms
+// (`RectShape`'s `top = y - height/2` is the visually higher edge), so a feature
+// labelled "top" in the author's y-up vocabulary is already the visual top once
+// the centre has moved. Per-corner radii and styles therefore pass through
+// untouched — swapping them here put an authored `topLeft` on the visual bottom,
+// and disagreed with `containsClip`, which hit-tests the same corners in y-up.
+//
+// The genuinely direction-carrying features still need reflecting: a partial
+// ellipse's arc reverses (negate startAngle + sweep), and line points and path
+// commands carry their own per-point y, negated individually.
 
 /** Negate a scalar y, treating undefined as 0 (the descriptor default). */
 const negY = (y: number | undefined): number => -(y ?? 0);
@@ -132,11 +139,6 @@ function flipPositionY<T extends Partial<ShapeState> & ShapeAnchorInput>(
     return { ...stripShapeAnchorKeys(withPivotOffset), x, y: -y, pivot } as T;
 }
 
-/** Swap the top and bottom entries of a per-corner value (a vertical mirror). */
-function swapCornersTopBottom<T>(c: { topLeft: T; topRight: T; bottomRight: T; bottomLeft: T }) {
-    return { topLeft: c.bottomLeft, topRight: c.bottomRight, bottomRight: c.topRight, bottomLeft: c.topLeft };
-}
-
 type RectInput = Partial<RectState> & ShapeAnchorInput;
 type EllipseInput = Partial<EllipseState> & ShapeAnchorInput;
 type PolygonInput = Partial<PolygonState> & ShapeAnchorInput;
@@ -144,18 +146,10 @@ type PolygramInput = Partial<PolygramState> & ShapeAnchorInput;
 type TextInput = Partial<TextState> & ShapeAnchorInput;
 type RichTextInput = Partial<RichTextState> & ShapeAnchorInput;
 
+// Only the centre moves: a rect's per-corner radii and styles are already in the
+// frame `RectShape` builds from it. See the note above the flip helpers.
 function flipRectY(state: RectInput): RectInput {
-    const out: RectInput = flipPositionY(state, state.width ?? 0, state.height ?? 0);
-    // Per-corner radii/styles are labelled top/bottom; a vertical flip must swap
-    // them so the visual top keeps its authored top corners. A uniform radius (a
-    // plain number) is mirror-invariant and passes through untouched.
-    if (state.cornerRadius != null && typeof state.cornerRadius === "object") {
-        out.cornerRadius = swapCornersTopBottom(state.cornerRadius as any) as any;
-    }
-    if (state.cornerStyle != null && typeof state.cornerStyle === "object") {
-        out.cornerStyle = swapCornersTopBottom(state.cornerStyle as any) as any;
-    }
-    return out;
+    return flipPositionY(state, state.width ?? 0, state.height ?? 0);
 }
 
 function flipEllipseY(state: EllipseInput): EllipseInput {
