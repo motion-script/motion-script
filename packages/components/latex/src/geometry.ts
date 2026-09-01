@@ -17,6 +17,8 @@ import '@mathjax/src/js/input/tex/bbox/BboxConfiguration.js';
 import '@mathjax/src/js/input/tex/mathtools/MathtoolsConfiguration.js';
 import { PathCommand } from '@motion-script/core';
 
+import { createBoundedCache } from './cache';
+
 // --- MathJax Setup (synchronous, browser-only) ---
 
 const adaptor = browserAdaptor();
@@ -58,7 +60,77 @@ export interface LatexPathResult {
     bounds: [number, number, number, number];
 }
 
+/**
+ * A formula's glyph geometry, before a type size is applied to it.
+ *
+ * The dividing line this whole module's caching turns on. Getting here is the
+ * expensive part — MathJax lays the formula out, then the SVG it produces is
+ * parsed, its glyph dictionary resolved and every `<use>` walked through its
+ * transform stack — and **none of it depends on `fontSize`**: `mjDoc.convert`
+ * is called at a fixed em/ex, and the size arrives at the very end as one
+ * uniform scale (see {@link scaleLatexGeometry}).
+ *
+ * So this is what gets remembered per formula, and the size is applied to it
+ * afresh. A formula animating from 24pt to 120pt is one trip through MathJax
+ * and one DOM parse, not one per frame.
+ */
+interface LatexGeometry {
+    tokens: RawToken[];
+    /** Box over every command, in the SVG's own coordinates. */
+    box: { minX: number; minY: number; maxX: number; maxY: number };
+    /** The formula's height in `ex`, as MathJax reported it. */
+    heightEx: number;
+}
+
+/**
+ * Formulas already worked out, and formulas already sized.
+ *
+ * `buildLatexPath` is a pure function of `(text, fontSize)` and used to have no
+ * memory, which made every caller pay full price for a question it had already
+ * asked. The callers are not occasional about it either: constructing a `Latex`
+ * resolves its formula, and so does every `to({ latex })` the moment it starts,
+ * so a scene re-resolves every formula in it whenever it is rebuilt *and*
+ * whenever the playhead moves backwards, since a backward seek replays the
+ * scene's generator from its first frame. An editor that rebuilds on a keystroke
+ * and seeks on a click asks for the same handful of formulas hundreds of times.
+ *
+ * Two memos, each keyed by what its stage actually depends on, and deliberately
+ * different sizes:
+ *
+ * - {@link geometryCache} is everything up to the type size, keyed by the text
+ *   alone. This is the expensive one, and it is generously sized because
+ *   nothing a scene does can churn it: a deck holds as many distinct formulas
+ *   as it holds, and it holds them for as long as it is open.
+ * - {@link pathCache} is the finished result, keyed by text *and* size. Small
+ *   on purpose: an animated `fontSize` inserts a distinct key every frame, and
+ *   the right thing for a stream like that is to churn a little memo rather
+ *   than a big one. What a miss costs here is arithmetic over glyphs already
+ *   worked out — no MathJax, no parse.
+ */
+const geometryCache = createBoundedCache<LatexGeometry>(128);
+const pathCache = createBoundedCache<LatexPathResult>(64);
+
 export function buildLatexPath(text: string, fontSize: number): LatexPathResult {
+    // NUL rather than a punctuation separator, so no formula can spell a key
+    // belonging to another size.
+    const key = `${fontSize}\0${text}`;
+
+    const hit = pathCache.get(key);
+    if (hit) return lend(hit);
+
+    let geometry = geometryCache.get(text);
+    if (!geometry) {
+        geometry = buildLatexGeometry(text);
+        geometryCache.set(text, geometry);
+    }
+
+    const result = scaleLatexGeometry(geometry, fontSize);
+    pathCache.set(key, result);
+    return lend(result);
+}
+
+/** Typeset `text` and reduce the SVG MathJax returns to glyph geometry. */
+function buildLatexGeometry(text: string): LatexGeometry {
     const node = mjDoc.convert(text, {
         display: true,
         em: 16,
@@ -68,10 +140,28 @@ export function buildLatexPath(text: string, fontSize: number): LatexPathResult 
 
     const svgEl = adaptor.firstChild(node) as HTMLElement;
     const heightAttr = adaptor.getAttribute(svgEl, 'height') ?? '';
-    const heightEx = parseFloat(heightAttr) || 0;
-    const svgString = adaptor.innerHTML(node);
 
-    return fastBuildLatex(svgString, fontSize, heightEx);
+    return parseLatexSvg(adaptor.innerHTML(node), parseFloat(heightAttr) || 0);
+}
+
+/**
+ * A cached result, handed out safely.
+ *
+ * `tokens`, `commands` and the path arrays inside them are shared: they are read
+ * by everything downstream and written by none of it — `Latex` maps tokens into
+ * its own wrappers, and the morph builds new paths rather than editing the ones
+ * it is given — so copying them would be copying the whole formula for nothing.
+ *
+ * `bounds` is copied, because it is the one field a caller *stores*: `Latex`
+ * assigns `result.bounds` straight to `this._bounds` and hands it to the
+ * renderer as a shared centring frame. That was one node holding its own array
+ * before there was a memo, and would be two nodes drawing the same formula
+ * holding one array between them after — four numbers is not a price worth
+ * paying to find out whether anything downstream ever writes to it.
+ */
+function lend(result: LatexPathResult): LatexPathResult {
+    const [minX, minY, maxX, maxY] = result.bounds;
+    return { ...result, bounds: [minX, minY, maxX, maxY] };
 }
 
 // --- High-Speed Matrix Math ---
@@ -138,7 +228,8 @@ function glyphIdToChar(id: string): string {
 
 type RawToken = { token: string; cmds: Array<{ cmd: string; args: number[] }> };
 
-function fastBuildLatex(svgString: string, fontSize: number, heightEx: number): LatexPathResult {
+/** The size-independent half: an SVG string in, glyph geometry out. */
+function parseLatexSvg(svgString: string, heightEx: number): LatexGeometry {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgString, "image/svg+xml");
 
@@ -237,11 +328,23 @@ function fastBuildLatex(svgString: string, fontSize: number, heightEx: number): 
 
     const svg = doc.getElementsByTagName("svg")[0];
     if (svg) traverse(svg, identityMatrix);
+
+    // Bounding box across all raw commands, in the SVG's own coordinates.
+    const box = svgBBox(rawTokens.flatMap(t => t.cmds));
+    return { tokens: rawTokens, box, heightEx };
+}
+
+/**
+ * The size-dependent half: glyph geometry in, a laid-out formula out.
+ *
+ * Everything here is one uniform scale about the geometry's own centre, which
+ * is exactly why {@link LatexGeometry} is worth remembering on its own.
+ */
+function scaleLatexGeometry(geometry: LatexGeometry, fontSize: number): LatexPathResult {
+    const { tokens: rawTokens, box, heightEx } = geometry;
     if (rawTokens.length === 0) return { tokens: [], commands: [], width: 0, height: 0, bounds: [0, 0, 0, 0] };
 
-    // Compute bounding box across all raw commands
-    const allAbs = rawTokens.flatMap(t => t.cmds);
-    const { minX, minY, maxX, maxY } = svgBBox(allAbs);
+    const { minX, minY, maxX, maxY } = box;
     const svgW = maxX - minX;
     const svgH = maxY - minY;
 
