@@ -73,6 +73,7 @@ import { disposeCanvas3DBackend, canvas3DBackend } from "./three/backend";
 // platform owns the GL context.
 import { canvas3DRendererHost } from "./three/renderer-seam";
 import { disposeTextureCache } from "./three/handlers/texture";
+import { disposeStaticSurfaceCache } from "./fills/canvas3d";
 import { layoutRichText } from "./shapes/richtext";
 import { drawShapedRun } from "./shapes/paragraph-layout";
 import { textBlockLayout } from "./shapes/text";
@@ -663,6 +664,7 @@ export abstract class SkiaRenderContext extends CanvasRenderContext2D {
         // safe to drop — it is recreated on the next 3D frame.
         disposeCanvas3DBackend();
         disposeTextureCache();
+        disposeStaticSurfaceCache();
         canvas3DRendererHost()?.dispose();
         EffectRegistry.disposeAll();
         disposeSkSLCache();

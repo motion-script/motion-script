@@ -1,6 +1,8 @@
 import { RenderPass2D } from "@/render/render-context2d";
 import { MaskMode } from "@/attributes/mask/mask";
 import { Node2DProps, Node2D, NodeConfig } from "@/nodes/2d/node2d";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { childInkBounds } from "@/nodes/geometry/group-bounds";
 
 export interface MaskGroupProps extends Node2DProps {
     // How the mask shape determines content visibility:
@@ -29,6 +31,26 @@ export class MaskGroup extends Node2D<MaskGroupProps> {
         super(props);
         this.applyProp("mode", props.mode ?? "alpha");
         this.applyProp("inverted", props.inverted ?? false);
+    }
+
+    /**
+     * The **stencil's** extent, not the layout cell — the first child's ink, via
+     * {@link childInkBounds}.
+     *
+     * A mask shows some of what was already there, and the "some" is exactly the
+     * mask child: content reaching past it is cut off and content falling short
+     * of it simply isn't drawn there. So the mask's own outline is the honest
+     * answer to both "where are this node's pixels" (the selection box) and
+     * "where can it be grabbed" (`hitTestSelf` falls back to this box, since a
+     * MaskGroup declares no outline of its own) — where the cell it lays out in
+     * is the answer to neither.
+     *
+     * The stencil itself is invisible by construction, which is what makes this
+     * matter more here than on a boolean: without it the one child that decides
+     * what the node looks like is the one child nothing on the canvas points at.
+     */
+    override _localBounds(): BoxBounds {
+        return childInkBounds(this, "first") ?? super._localBounds();
     }
 
     // Mask + content children are stack-laid-out (centered) by the base

@@ -24,12 +24,47 @@ function rasterizeSurfaces(
     forEachTexture3D(g3, (texture) => {
         if (!isSurfaceTexture3D(texture)) return;
         if (rasters?.has(texture)) return;
+
+        // A surface declared `static` describes the same pixels every frame —
+        // which is what a *fill chain* bound to a mesh is. Redrawing a 512²
+        // offscreen and reading it back sixty times a second to produce an
+        // identical image is exactly the cost that makes "just render it to a
+        // texture" a bad idea, so it is drawn once and held against the identity
+        // the fill derived. An author's own source is live by default, which is
+        // what makes an animated `Graphics2D` or a signal-driven subtree work
+        // with no bookkeeping.
+        const identity = texture.static === true ? texture.identity : undefined;
+        if (identity !== undefined) {
+            const cached = staticRasters.get(identity);
+            if (cached) {
+                (rasters ??= new Map()).set(texture, cached);
+                return;
+            }
+        }
+
         const raster = ctx.rasterizeSurface(
             texture.source, texture.width, texture.height, texture.maxPixelRatio ?? 1,
         );
-        if (raster) (rasters ??= new Map()).set(texture, raster);
+        if (!raster) return;
+        (rasters ??= new Map()).set(texture, raster);
+        if (identity !== undefined) staticRasters.set(identity, raster);
     });
     return rasters;
+}
+
+/**
+ * Rasterized buffers for `static` surfaces, by derived identity.
+ *
+ * Bounded by how many *distinct* fill values a project uses, which is small and
+ * finite — a gradient written once is one entry however many meshes carry it, and
+ * a tweened fill snaps rather than interpolating (see `lerpFill3D`), so a tween
+ * adds two entries, not one per frame. Cleared with the texture cache on unmount.
+ */
+const staticRasters = new Map<string, RasterizedSurface>();
+
+/** Drop the cached static surface buffers. Called on render-context dispose. */
+export function disposeStaticSurfaceCache(): void {
+    staticRasters.clear();
 }
 
 /**

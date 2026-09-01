@@ -20,7 +20,6 @@ import {
     AnimToken,
     CodeTransition,
     StructuralTransition,
-    type EntryDirection,
     makeAnim,
     defaultCodePhases,
     type CodePhaseStrategy,
@@ -555,7 +554,7 @@ export class Code extends ShapeNode<CodeProps> {
             to: edit.lines,
             removedIds: edit.removedIds,
             addedIds: edit.addedIds,
-            entryByLine: entryDirections(edit.lines, edit.newLineIds),
+            enteringLineIds: edit.newLineIds,
             fromColorById: edit.fromColorById,
             phases: this.phaseStrategy(edit.removedIds.size > 0, edit.addedIds.size > 0),
             progress: 0,
@@ -781,31 +780,3 @@ function normalizeCodeRanges(codeRange: CodeRange | Iterable<CodeRange>): CodeRa
     return [codeRange as CodeRange];
 }
 
-/**
- * Where each wholly new row enters from, relative to the code that was already
- * there: rows added below it rise into place, rows added above it descend, and
- * rows spliced between existing ones slide in from the left.
- *
- * That distinction is the difference between an edit that reads as *content
- * arriving* and one that reads as a list redrawing itself — a row appended to the
- * end has to come from off the bottom, because that is where the block just grew.
- */
-function entryDirections(lines: IdLine[], newLineIds: Set<number>): Map<number, EntryDirection> {
-    const out = new Map<number, EntryDirection>();
-    let first = -1;
-    let last = -1;
-    for (let i = 0; i < lines.length; i++) {
-        if (newLineIds.has(lines[i].id)) continue;
-        if (first < 0) first = i;
-        last = i;
-    }
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (!newLineIds.has(line.id)) continue;
-        // Nothing survived, so there is no "within" to speak of: the whole
-        // listing is arriving, and it arrives from below like appended content.
-        if (first < 0) out.set(line.id, "up");
-        else out.set(line.id, i < first ? "down" : i > last ? "up" : "right");
-    }
-    return out;
-}

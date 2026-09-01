@@ -27,7 +27,7 @@ describe('Graphics3D', () => {
         const g3 = new Graphics3D() as unknown as Record<string, unknown>;
         for (const absent of [
             'push', 'pop', 'group', 'light', 'ambient', 'directional', 'point', 'spot',
-            'hemisphere', 'rectArea', 'camera', 'perspective', 'orthographic',
+            'hemisphere', 'area', 'camera', 'perspective', 'orthographic',
             'fog', 'background', 'environment', 'shadows', 'tone', 'post',
         ]) {
             expect(g3[absent], absent).toBeUndefined();
@@ -40,7 +40,7 @@ describe('Graphics3D', () => {
     it('desugars a flat shorthand bag into geometry / material / transform', () => {
         const g3 = new Graphics3D().box({
             width: 2, height: 3,
-            color: 'red', roughness: 0.4,
+            fill: 'red', roughness: 0.4,
             position: [1, 0, 0], rotation: [0, 90, 0],
         });
 
@@ -53,7 +53,7 @@ describe('Graphics3D', () => {
     });
 
     it('sugar and the explicit mesh() form record the same op', () => {
-        const sugared = new Graphics3D().box({ width: 2, color: 'red', position: [1, 0, 0] });
+        const sugared = new Graphics3D().box({ width: 2, fill: 'red', position: [1, 0, 0] });
         const explicit = new Graphics3D().mesh(
             Geo.box({ width: 2 }),
             Mat.standard({ color: 'red' }),
@@ -65,7 +65,7 @@ describe('Graphics3D', () => {
     it('an explicit material wins over the shorthand fields', () => {
         const g3 = new Graphics3D().box({
             width: 1,
-            color: 'red',                                  // ignored
+            fill: 'red',                                   // ignored
             material: Mat.phong({ color: 'blue', shininess: 40 }),
         });
         expect((g3.ops()[0] as { material: unknown }).material)
@@ -73,7 +73,7 @@ describe('Graphics3D', () => {
     });
 
     it('unlit selects a basic material instead of standard', () => {
-        const g3 = new Graphics3D().box({ unlit: true, color: 'white' });
+        const g3 = new Graphics3D().box({ unlit: true, fill: 'white' });
         expect((g3.ops()[0] as { material: unknown }).material)
             .toEqual({ type: 'basic', color: 'white' });
         // `unlit` is a shorthand directive, not a geometry param.
@@ -89,7 +89,7 @@ describe('Graphics3D', () => {
     });
 
     it('omits transform entirely when the bag carries no placement', () => {
-        const g3 = new Graphics3D().box({ width: 1, color: 'red' });
+        const g3 = new Graphics3D().box({ width: 1, fill: 'red' });
         expect((g3.ops()[0] as { transform: unknown }).transform).toBeUndefined();
     });
 
@@ -99,7 +99,10 @@ describe('Graphics3D', () => {
     });
 
     it('line() accepts explicit points and flattens them into a buffer geometry', () => {
-        const g3 = new Graphics3D().line({ points: [[0, 0, 0], { x: 1, y: 2, z: 3 }], color: 'white' });
+        const g3 = new Graphics3D().line({
+            points: [[0, 0, 0], { x: 1, y: 2, z: 3 }],
+            stroke: { fill: 'white' },
+        });
         expect(g3.ops()[0]).toEqual({
             kind: 'line',
             geometry: { type: 'buffer', position: [0, 0, 0, 1, 2, 3] },
@@ -109,21 +112,26 @@ describe('Graphics3D', () => {
         });
     });
 
-    it('line() accepts a geometry (e.g. edges) and a segments mode', () => {
+    // `closed` and `segments` are the 2D `Line` node's own vocabulary; the enum
+    // they replaced still exists one level down, where it picks a three class.
+    it('line() maps closed / segments onto the recorded mode', () => {
+        const closed = new Graphics3D().line({ points: [[0, 0, 0], [1, 0, 0]], closed: true });
+        expect((closed.ops()[0] as { mode: string }).mode).toBe('loop');
+
         const g3 = new Graphics3D().line({
             geometry: Geo.edges(Geo.box({ width: 2 })),
-            mode: 'segments',
+            segments: true,
             opacity: 0.4,
         });
         const op = g3.ops()[0] as { geometry: unknown; material: unknown; mode: string };
         expect(op.mode).toBe('segments');
         expect(op.geometry).toEqual({ type: 'edges', source: { type: 'box', width: 2 } });
-        // An opacity shorthand implies transparency, or it would have no effect.
-        expect(op.material).toEqual({ type: 'lineBasic', opacity: 0.4, transparent: true });
+        // No `transparent` here any more — the renderer derives it from opacity.
+        expect(op.material).toEqual({ type: 'lineBasic', opacity: 0.4 });
     });
 
     it('line() requires either points or geometry', () => {
-        expect(() => new Graphics3D().line({ color: 'red' })).toThrow(/points.*geometry/);
+        expect(() => new Graphics3D().line({ stroke: { fill: 'red' } })).toThrow(/points.*geometry/);
     });
 
     it('model() normalizes a single animation into an array', () => {
@@ -150,15 +158,17 @@ describe('Geo / Mat / Tex builders', () => {
     });
 
     it('polyhedron helpers select the right shape', () => {
-        expect(Geo.icosahedron({ detail: 2 }))
-            .toEqual({ type: 'polyhedron', shape: 'icosahedron', detail: 2 });
+        expect(Geo.icosahedron({ segments: 2 }))
+            .toEqual({ type: 'polyhedron', shape: 'icosahedron', segments: 2 });
     });
 
-    it('Tex.surface takes a 2D source value plus its buffer size', () => {
+    // No `key`: identity comes from the source object, which the contract already
+    // requires to be hoisted.
+    it('Tex.surface takes a 2D source value and defaults its buffer size', () => {
         const source = new Graphics2D();
-        expect(Tex.surface(source, 1024, 640)).toEqual({ source, width: 1024, height: 640 });
-        expect(Tex.surface(source, 1024, 640, { key: 'screen', flipY: false }))
-            .toEqual({ source, width: 1024, height: 640, key: 'screen', flipY: false });
+        expect(Tex.surface(source)).toEqual({ source, width: 512, height: 512 });
+        expect(Tex.surface(source, { width: 1024, height: 640, flipY: false }))
+            .toEqual({ source, width: 1024, height: 640, flipY: false });
     });
 });
 
@@ -166,7 +176,7 @@ describe('Texture3D discrimination', () => {
     it('separates the three texture forms', () => {
         const image = Tex.image('/wood.png');
         const data = Tex.data(new Uint8Array(4), 1, 1);
-        const surface = Tex.surface(new Graphics2D(), 8, 8);
+        const surface = Tex.surface(new Graphics2D(), { width: 8, height: 8 });
 
         expect(isDataTexture3D(data)).toBe(true);
         expect(isDataTexture3D(surface)).toBe(false);
@@ -182,7 +192,7 @@ describe('Texture3D discrimination', () => {
         expect(texture3DSource('/wood.png')).toBe('/wood.png');
         expect(texture3DSource(Tex.image('/wood.png'))).toBe('/wood.png');
         expect(texture3DSource(Tex.data(new Uint8Array(4), 1, 1))).toBeNull();
-        expect(texture3DSource(Tex.surface(new Graphics2D(), 8, 8))).toBeNull();
+        expect(texture3DSource(Tex.surface(new Graphics2D(), { width: 8, height: 8 }))).toBeNull();
     });
 
     // The two arms are drawn completely differently — a Graphics2D is replayed into
@@ -205,8 +215,8 @@ describe('Texture3D discrimination', () => {
         } as unknown as AssetTracker;
 
         const g3 = new Graphics3D()
-            .plane({ map: Tex.surface(new Graphics2D(), 8, 8) })
-            .plane({ map: '/wood.png' });
+            .plane({ fill: Tex.surface(new Graphics2D(), { width: 8, height: 8 }) })
+            .plane({ fill: '/wood.png' });
         track3DResources(g3, tracker, 100, 100);
 
         expect(requested).toEqual(['/wood.png']);

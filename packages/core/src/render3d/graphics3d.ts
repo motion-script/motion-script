@@ -5,15 +5,13 @@ import type {
     PlaneGeometry3D, PolyhedronGeometry3D, RingGeometry3D, SphereGeometry3D,
     TorusGeometry3D, TorusKnotGeometry3D, TubeGeometry3D,
 } from "./geometry";
-import type { Material3D } from "./material";
+import type { Material3D, Shading3D } from "./material";
 import type { Texture3D } from "./texture";
-import { type Transform3D, type Blending3D, type Side3D } from "./transform";
+import { resolveFill3D, type Fill3D } from "./fill3d";
+import { type Transform3D, type Blend3D, type Faces3D } from "./transform";
 import type { Vector3Input } from "./vector3";
 
 // ─── Ops ─────────────────────────────────────────────────────────────────────
-
-/** How a `line` op connects its points. */
-export type LineMode3D = "strip" | "segments" | "loop";
 
 /** One clip of a model's baked animation, sampled at an explicit time. */
 export interface ModelAnimation3D {
@@ -29,6 +27,12 @@ export interface ModelAnimation3D {
     /** Blend weight, for cross-fading clips. Default 1. */
     weight?: number;
 }
+
+/**
+ * How a `line` op connects its points: in order, or as disjoint start/end pairs,
+ * or in order and closed back to the start.
+ */
+export type LineMode3D = "strip" | "segments" | "loop";
 
 /**
  * One recorded operation in a {@link Graphics3D} command list.
@@ -86,23 +90,30 @@ export const DRAWABLE_KINDS: ReadonlySet<string> = new Set([
 
 /**
  * Material fields promoted onto the geometry sugar methods, so the common case is
- * one flat call: `.box({ width: 2, color: "red", roughness: 0.3 })`.
+ * one flat call: `.box({ width: 2, fill: "red", roughness: 0.3 })`.
+ *
+ * `fill` is the whole 2D fill vocabulary — see {@link Fill3D} — and is what a
+ * flat `color` plus a `map` slot used to be. The rest is surface *response*
+ * (how light behaves on it) rather than colour, which is the line Spline's
+ * material panel draws too and the reason those stay separate fields.
  *
  * These desugar at record time into a full {@link Material3D} — `standard` by
  * default, `basic` when {@link unlit} is set — so the recorded op list stays
- * canonical. Pass {@link material} to bypass the shorthand entirely.
+ * canonical. Pass {@link material} to bypass the shorthand entirely; every
+ * renderer-level knob that is not a design decision (`depthWrite`, `alphaTest`,
+ * `toneMapped`, `polygonOffset`, …) lives there and only there.
  */
 export interface MaterialShorthand3D {
     /** A full descriptor (or an array, for multi-material). Wins over the rest. */
     material?: Material3D | readonly Material3D[];
-    color?: Color;
+    /** What the surface is made of: a colour, a texture, a gradient, 2D content. */
+    fill?: Fill3D;
     opacity?: number;
-    transparent?: boolean;
     roughness?: number;
     metalness?: number;
-    emissive?: Color;
-    emissiveIntensity?: number;
-    map?: Texture3D;
+    /** Self-illumination. Bloom in the post chain is what makes it glow. */
+    emission?: Color;
+    emissionStrength?: number;
     normalMap?: Texture3D;
     roughnessMap?: Texture3D;
     metalnessMap?: Texture3D;
@@ -110,14 +121,12 @@ export interface MaterialShorthand3D {
     alphaMap?: Texture3D;
     envMapIntensity?: number;
     wireframe?: boolean;
-    flatShading?: boolean;
-    side?: Side3D;
+    /** Facet or smooth shading. Default `"smooth"`. */
+    shading?: Shading3D;
+    /** Which faces to rasterize. Default `"front"`. */
+    faces?: Faces3D;
     vertexColors?: boolean;
-    depthWrite?: boolean;
-    depthTest?: boolean;
-    blending?: Blending3D;
-    alphaTest?: number;
-    toneMapped?: boolean;
+    blend?: Blend3D;
     /** Shade with an unlit `basic` material instead of `standard`. */
     unlit?: boolean;
 }
@@ -127,16 +136,24 @@ export type MeshShorthand3D = Transform3D & MaterialShorthand3D;
 
 const TRANSFORM_KEYS = [
     "position", "rotation", "quaternion", "scale", "lookAt",
-    "visible", "castShadow", "receiveShadow", "renderOrder", "key",
+    "visible", "shadow", "renderOrder",
 ] as const;
 
+/**
+ * Shorthand keys copied straight onto the built descriptor.
+ *
+ * `fill` is deliberately absent: it resolves into `color` *and* `map` rather than
+ * being one field, so it is handled on its own in {@link resolveMaterialShorthand3D}.
+ */
 const MATERIAL_SHORTHAND_KEYS = [
-    "color", "opacity", "transparent", "roughness", "metalness",
-    "emissive", "emissiveIntensity", "map", "normalMap", "roughnessMap",
+    "opacity", "roughness", "metalness",
+    "emission", "emissionStrength", "normalMap", "roughnessMap",
     "metalnessMap", "aoMap", "alphaMap", "envMapIntensity", "wireframe",
-    "flatShading", "side", "vertexColors", "depthWrite", "depthTest",
-    "blending", "alphaTest", "toneMapped",
+    "shading", "faces", "vertexColors", "blend",
 ] as const;
+
+/** Every key the shorthand owns, for stripping a geometry bag. */
+const SHORTHAND_KEYS: readonly string[] = [...MATERIAL_SHORTHAND_KEYS, "fill", "material", "unlit"];
 
 /**
  * Pull the {@link Transform3D} fields out of a shorthand bag. Takes `object` so
@@ -156,11 +173,22 @@ function pickTransform(source: object): Transform3D | undefined {
 /**
  * Build the material a shorthand bag describes. Always returns one, so a recorded
  * drawable op never has to be interpreted with "…or the default" in mind.
+ *
+ * Exported because `Mesh3D` desugars the identical bag from its own props: this
+ * is where `fill` becomes `color`-or-`map`, and two copies of that decision is
+ * two chances for a node and a builder call to paint differently.
+ *
+ * @internal
  */
-function pickMaterial(source: MaterialShorthand3D): Material3D | readonly Material3D[] {
+export function resolveMaterialShorthand3D(source: MaterialShorthand3D): Material3D | readonly Material3D[] {
     if (source.material !== undefined) return source.material;
 
     const material: Record<string, unknown> = { type: source.unlit ? "basic" : "standard" };
+
+    const fill = resolveFill3D(source.fill);
+    if (fill.color !== undefined) material.color = fill.color;
+    if (fill.map !== undefined) material.map = fill.map;
+
     for (const key of MATERIAL_SHORTHAND_KEYS) {
         const value = (source as Record<string, unknown>)[key];
         if (value !== undefined) material[key] = value;
@@ -173,9 +201,8 @@ function pickGeometry<T>(source: object, type: string): T {
     const bag = source as Record<string, unknown>;
     const out: Record<string, unknown> = { type };
     for (const key in bag) {
-        if (key === "material" || key === "unlit") continue;
+        if (SHORTHAND_KEYS.includes(key)) continue;
         if ((TRANSFORM_KEYS as readonly string[]).includes(key)) continue;
-        if ((MATERIAL_SHORTHAND_KEYS as readonly string[]).includes(key)) continue;
         if (bag[key] !== undefined) out[key] = bag[key];
     }
     return out as T;
@@ -198,11 +225,19 @@ type ParamsOf<G> = Omit<G, "type">;
  *
  *   protected renderSelf(ctx: RenderContext3D): void {
  *       ctx.draw(new Graphics3D()
- *           .box({ width: 2, height: 2, depth: 2, color: "#e0533d", roughness: 0.3 }));
+ *           .box({ width: 2, cornerRadius: 0.15, fill: "#e0533d", roughness: 0.3 }));
  *   }
  *
  * Nothing here touches a renderer: a built `Graphics3D` is handed to a
  * {@link RenderContext3D}, which splices its ops into the scene being recorded.
+ *
+ * ── One flat bag, deliberately ────────────────────────────────────────────────
+ * `Graphics2D` paints with a *chained* `.rect(…).fill(…)`, and this does not,
+ * which is the one place the two recorders diverge on purpose. In 2D a `fill` is
+ * a **group-scoped op** covering the shapes recorded before it; in 3D a material
+ * belongs to exactly one object, because a mesh *is* geometry plus material.
+ * A chained `.box().fill()` would imply a group material that has nothing to
+ * scope over, so the shape and what it is made of are stated together instead.
  *
  * ── Angles are DEGREES ────────────────────────────────────────────────────────
  * Every angle here — Euler rotations, sweep arcs, UV rotation — is in degrees,
@@ -224,10 +259,10 @@ type ParamsOf<G> = Omit<G, "type">;
  *
  * ── Reconciliation identity ───────────────────────────────────────────────────
  * The renderer caches one live 3D object per op and mutates it between frames
- * rather than rebuilding. Identity comes from the owning `Node3D` — stable across
- * a conditional sibling appearing or disappearing, which a positional index is
- * not. Set `key` on the transform to distinguish two drawables recorded by the
- * *same* node.
+ * rather than rebuilding. Identity is **derived**: it comes from the owning
+ * `Node3D` plus a signature of what the op actually draws, so a builder that
+ * emits ops conditionally reuses the right cache entry with nothing written by
+ * hand. There is no `key` to set.
  *
  * ── What is cheap to animate ──────────────────────────────────────────────────
  * Transforms and most material values are in-place writes, so they cost nothing
@@ -265,7 +300,7 @@ export class Graphics3D {
         const source: MeshShorthand3D = options ?? {};
         return this.mesh(
             pickGeometry<Geometry3D>(source, type),
-            pickMaterial(source),
+            resolveMaterialShorthand3D(source),
             pickTransform(source),
         );
     }
@@ -319,8 +354,8 @@ export class Graphics3D {
      * Record many copies of one geometry in a single draw call. The way to put
      * thousands of objects on screen — a plain `mesh` per copy would not keep up.
      *
-     *   g.instances(Geo.box({ width: 0.2 }), Mat.standard({ color: "cyan" }),
-     *              positions.map(p => ({ position: p })))
+     *   g3.instances(Geo.box({ width: 0.2 }), Mat.standard({ color: "cyan" }),
+     *               positions.map(p => ({ position: p })))
      */
     instances(
         geometry: Geometry3D,
@@ -358,52 +393,59 @@ export class Graphics3D {
      * Record a line. Give it either explicit `points` or a `geometry` (typically
      * `Geo.edges(...)` for a wireframe outline).
      *
-     * `mode` — `"strip"` (default) connects the points in order, `"segments"`
-     * treats them as disjoint pairs, `"loop"` closes back to the start.
+     * `closed` joins the last point back to the first, matching the 2D `Line`
+     * node's own prop. `segments` treats the points as disjoint start/end pairs
+     * instead — the form `Geo.edges(...)` produces. (There is no subdivision to
+     * confuse it with: a line is drawn from the points it is given.)
      */
     line(options: {
         points?: readonly Vector3Input[];
         geometry?: Geometry3D;
         material?: Material3D;
-        mode?: LineMode3D;
-        /** Sugar for `material: Mat.lineBasic({ color })`. */
-        color?: Color;
-        width?: number;
+        /** Join the last point back to the first. */
+        closed?: boolean;
+        /** Treat the points as disjoint start/end pairs. */
+        segments?: boolean;
+        /** The line's paint. Cap and join have no meaning on a GL line. */
+        stroke?: LineStroke3D;
         opacity?: number;
-        dashed?: boolean;
         transform?: Transform3D;
     } & Transform3D): this {
-        const { points, geometry, material, mode, color, width, opacity, dashed } = options;
+        const { points, geometry, material, closed, segments, stroke, opacity } = options;
 
         if (!points && !geometry) {
             throw new Error("Graphics3D.line() needs either `points` or `geometry`.");
         }
 
         const resolved: Material3D = material ?? {
-            type: dashed ? "lineDashed" : "lineBasic",
-            ...(color !== undefined ? { color } : {}),
-            ...(width !== undefined ? { width } : {}),
-            ...(opacity !== undefined ? { opacity, transparent: true } : {}),
+            type: stroke?.dash !== undefined ? "lineDashed" : "lineBasic",
+            ...(stroke?.fill !== undefined ? { color: stroke.fill } : {}),
+            ...(stroke?.weight !== undefined ? { width: stroke.weight } : {}),
+            ...(stroke?.dash !== undefined
+                ? { dashSize: stroke.dash[0], gapSize: stroke.dash[1] ?? stroke.dash[0] }
+                : {}),
+            ...(opacity !== undefined ? { opacity } : {}),
         } as Material3D;
 
         this._ops.push({
             kind: "line",
             geometry: geometry ?? { type: "buffer", position: flattenPoints(points!) },
             material: resolved,
-            mode: mode ?? "strip",
+            mode: segments ? "segments" : closed ? "loop" : "strip",
             transform: pickTransform(options),
         });
         return this;
     }
 
     /** Record a camera-facing textured quad. */
-    sprite(options: { map?: Texture3D; material?: Material3D; color?: Color; opacity?: number } & Transform3D): this {
-        const { map, material, color, opacity } = options;
+    sprite(options: { fill?: Fill3D; material?: Material3D; opacity?: number } & Transform3D): this {
+        const { fill, material, opacity } = options;
+        const paint = resolveFill3D(fill);
         const resolved: Material3D = material ?? {
             type: "sprite",
-            ...(map !== undefined ? { map } : {}),
-            ...(color !== undefined ? { color } : {}),
-            ...(opacity !== undefined ? { opacity, transparent: true } : {}),
+            ...(paint.map !== undefined ? { map: paint.map } : {}),
+            ...(paint.color !== undefined ? { color: paint.color } : {}),
+            ...(opacity !== undefined ? { opacity } : {}),
         } as Material3D;
         this._ops.push({
             kind: "sprite",
@@ -448,6 +490,22 @@ export class Graphics3D {
     isEmpty(): boolean {
         return this._ops.length === 0;
     }
+}
+
+/**
+ * A 3D line's paint, named after the 2D `Stroke` it mirrors.
+ *
+ * `cap`, `join` and the rest of the 2D stroke vocabulary are deliberately absent:
+ * they describe a stroked *path*, and a GL line has no outline to cap. Note that
+ * `weight` above 1 is ignored by most WebGL implementations — for a genuinely
+ * thick line, draw a `tube`.
+ */
+export interface LineStroke3D {
+    /** The line's colour. Named `fill` to match the 2D `Stroke`. */
+    fill?: Color;
+    weight?: number;
+    /** Dash and gap lengths, in world units. */
+    dash?: readonly [number, number?];
 }
 
 /** Flatten `Vector3Input`s into the packed `[x, y, z, …]` a buffer wants. */

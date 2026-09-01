@@ -1,8 +1,8 @@
 import {
-    Geo, Graphics3D, Scene3D, Mat, property, Canvas3D,
+    Fills, Geo, Graphics3D, Scene3D, Mat, property, Canvas3D,
     type Color, type NodeConfig, type NormalizedColor, type Canvas3DProps,
 } from "motion-script";
-import { lerpColor, orbitOf, orbitPosition, resolveColor, snapFlag } from "./attributes";
+import { lerpColor, orbitOf, resolveColor, snapFlag } from "./attributes";
 
 export interface SombreroProps extends Canvas3DProps {
     /** Half-extent of the plate: x and z run `-range … +range`. Default 10. */
@@ -115,6 +115,10 @@ export class Sombrero extends Canvas3D<SombreroProps> {
 
     constructor(props?: NodeConfig<Sombrero, SombreroProps>) {
         super(props as NodeConfig<Canvas3D<SombreroProps>, SombreroProps>);
+        // The backdrop is the viewport's own 2D fill — a `Canvas3D` composites
+        // its 3D pass over its fill layers, and there is no 3D background pass to
+        // reach for. Bound rather than copied so a tweened `background` carries.
+        if (props?.fill === undefined) this.applyProp("fill", () => Fills.color(this.background));
     }
 
     protected override buildScene3D(): Scene3D {
@@ -134,16 +138,16 @@ export class Sombrero extends Canvas3D<SombreroProps> {
         // to normalise against, and would divide by zero.
         const inverse = amplitude !== 0 ? 1 / amplitude : 0;
 
+        // Polar placement is the camera's own vocabulary now, so this node's
+        // `orbit`/`elevation`/`zoom` pass straight through instead of being
+        // converted to a position by a local helper. The backdrop is the
+        // viewport's 2D fill, bound from `background` in the constructor.
         scene.perspective({
             fov: this.fov,
-            position: orbitPosition({
-                orbit: this.orbit,
-                elevation: this.elevation,
-                distance: this.zoom,
-            }),
-            lookAt: 0,
+            orbit: this.orbit,
+            elevation: this.elevation,
+            distance: this.zoom,
         })
-            .background(this.background)
             .light({ type: "ambient", intensity: 0.4 })
             .light({ type: "directional", intensity: 1.5 }, { position: [10, 20, 10] });
 
@@ -164,12 +168,11 @@ export class Sombrero extends Canvas3D<SombreroProps> {
                 computeNormals: true,
             }),
             Mat.phong({
-                side: "double",
+                faces: "both",
                 vertexColors: true,
                 shininess: 80,
                 specular: "#444444",
             }),
-            { key: "surface" },
         );
 
         if (this.shell) this.addShell(g3, range);
@@ -178,32 +181,33 @@ export class Sombrero extends Canvas3D<SombreroProps> {
     }
 
     /**
-     * The translucent shell and its wireframe edges. `side: "back"` and
+     * The translucent shell and its wireframe edges. `faces: "back"` and
      * `depthWrite: false` are what stop the shell from occluding the surface
-     * inside it.
+     * inside it — both renderer knobs rather than design decisions, so they live
+     * on a `Mat.*` descriptor. Blending is derived from the opacity.
      *
-     * Keyed, so toggling `shell` doesn't renumber anything — the surface above
-     * keeps its cached GPU geometry when the shell comes and goes.
+     * Nothing here is keyed. Toggling `shell` used to renumber every op after it,
+     * which is exactly what the old `key` field existed for; the reconciler now
+     * keys a drawable by its content, so the surface above keeps its cached GPU
+     * geometry whether the shell is there or not.
      */
     private addShell(g3: Graphics3D, range: number): void {
         const box = { width: range * 2, height: this.shellHeight, depth: range * 2 };
 
         g3.box({
             ...box,
-            unlit: true,
-            color: this.shellColor,
-            opacity: SHELL_OPACITY,
-            transparent: true,
-            side: "back",
-            depthWrite: false,
-            key: "shell",
+            material: Mat.basic({
+                color: this.shellColor,
+                opacity: SHELL_OPACITY,
+                faces: "back",
+                depthWrite: false,
+            }),
         })
             .line({
                 geometry: Geo.edges(Geo.box(box)),
-                mode: "segments",
-                color: this.edgeColor,
+                segments: true,
+                stroke: { fill: this.edgeColor },
                 opacity: EDGE_OPACITY,
-                key: "shell-edges",
             });
     }
 }

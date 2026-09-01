@@ -25,13 +25,17 @@ const spin = createSignal(0);
  */
 function scene(color: string): Scene3D {
     return new Scene3D()
-        .perspective({ position: [0, 1.6, 5], lookAt: 0, fov: 45 })
-        .background("#0b0d12")
+        // No `.background()`: a scene painted *through a shape* must stay
+        // transparent where nothing is drawn, or the shape would be filled with a
+        // rectangle of colour and the whole point of this scene would be lost. A
+        // colour behind it is a fill layer under this one — which is what the
+        // ellipse below does — and that is now the only way to say it.
+        .perspective({ position: [0, 1.6, 5], target: 0, fov: 45 })
         .light({ type: "ambient", intensity: 0.45 })
         .light({ type: "directional", intensity: 2.6 }, { position: [4, 6, 3] })
         .draw(new Graphics3D().torusKnot({
-            radius: 1.1, tube: 0.36,
-            color, roughness: 0.25, metalness: 0.4,
+            radius: 1.1, thickness: 0.36,
+            fill: color, roughness: 0.25, metalness: 0.4,
             rotation: [spin() * 0.6, spin(), 0],
         }));
 }
@@ -44,7 +48,7 @@ export default createScene(function* (stage) {
         <Rect flow={"vertical"} gap={48} align={"center"} width={"fill"} height={"fill"}>
             <Row gap={48} align={"center"}>
                 {/* No rectangular bleed: the ellipse's own path is the clip. */}
-                <Ellipse width={420} height={420} fill={() => scene("#e0533d")} />
+                <Ellipse width={420} height={420} fill={() => ["#0b0d12", ...Fills.canvas3D(scene("#e0533d"))]} />
 
                 {/* A heart, via an arbitrary path. */}
                 <Path

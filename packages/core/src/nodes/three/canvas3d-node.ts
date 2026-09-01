@@ -1,5 +1,11 @@
 import { RenderContext2D } from "@/render/render-context2d";
 import { Scene3D } from "@/render3d/scene3d";
+import {
+    resolveShadows3D,
+    type PostEffect3D, type Shadows3D, type ToneMapping3D,
+} from "@/render3d/scene-settings";
+import type { Color } from "@/attributes/shape/fill/color/parser";
+import type { FillResolved } from "@/attributes/shape/fill/union";
 import { warmCanvas3D } from "@/render3d/resources";
 import { forEachTexture3D } from "@/render3d/walk";
 import { isSurfaceTexture3D, resolveSurfaceSource } from "@/render3d/texture";
@@ -22,6 +28,27 @@ export interface Canvas3DProps extends RectProps {
     maxPixelRatio: number;
     /** Multisample the 3D pass. Default true. */
     antialias: boolean;
+    /**
+     * Turn shadow casting on for the scene. A switch, or `{ quality }`.
+     *
+     * A render setting rather than a scene object, which is why it is a prop here
+     * and not a `<Shadows3D>` node: it has no position, and two of them in a tree
+     * meant one silently doing nothing.
+     */
+    shadows: Shadows3D;
+    /** How HDR colour is compressed to what the screen can show. Default `"aces"`. */
+    tone: ToneMapping3D;
+    /** Stops of exposure applied before tone mapping. Default 1. */
+    exposure: number;
+    /**
+     * Post-processing inside the 3D composite: `bloom`, `ssao`, `dof`, `outline`.
+     *
+     * Short by design — a `Canvas3D` is a `Node2D`, so vignette, grain, grading,
+     * blur and the rest of the 2D `effects` chain already run over the composited
+     * result. What is here is what genuinely needs the depth buffer, object ids,
+     * or HDR radiance before tone mapping.
+     */
+    post: PostEffect3D | readonly PostEffect3D[];
 }
 
 /**
@@ -33,14 +60,14 @@ export interface Canvas3DProps extends RectProps {
  * path. `Node2D` children are ordinary children and draw *over* the 3D, which is
  * how a HUD is written.
  *
- *   <Canvas3D width="fill" height="fill" cornerRadius={24}>
- *       <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
+ *   <Canvas3D width="fill" height="fill" cornerRadius={24} fill="#0b0d12" shadows>
+ *       <Camera3D orbit={-18} elevation={12} distance={13} fov={45} />
  *       <AmbientLight3D intensity={0.4} />
- *       <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} />
- *       <Fog3D color="#0b0d12" near={5} far={30} />
+ *       <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} shadow />
+ *       <Fog3D near={5} far={30} />
  *
  *       <Group3D ref={rig}>
- *           <Box3D width={2} color="tomato" roughness={0.3} />
+ *           <Box3D width={2} cornerRadius={0.15} fill="tomato" roughness={0.3} />
  *       </Group3D>
  *
  *       <Text text="FPS 60" fontSize={32} />       // a 2D HUD, over the 3D
@@ -51,6 +78,14 @@ export interface Canvas3DProps extends RectProps {
  * fill layer, so the author's own `fill` paints *beneath* it and `stroke` and
  * `overlay` still paint over everything.
  *
+ * **That fill is also the background.** There is no `<Background3D>`: three's
+ * background pass is unaffected by every light and by fog, the renderer clears
+ * transparent, and this node already composites the 3D over its own fill layers —
+ * so a solid colour, a gradient, an image or a video behind a 3D scene is the
+ * ordinary 2D fill chain, which does strictly more. What genuinely needs the 3D
+ * pass is a sky that reprojects as the camera turns, and that is
+ * `<Environment3D background>`.
+ *
  * The scene is a value, not machinery: the same recorded {@link Scene3D} can be
  * built by hand and used as a fill on any shape, which is how 3D is painted
  * through glyphs or an arbitrary path (`<Text fill={scene} />`).
@@ -59,6 +94,10 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
 
     @property({ default: 2 }) declare maxPixelRatio: number;
     @property({ default: true }) declare antialias: boolean;
+    @property({ default: false }) declare shadows: Shadows3D;
+    @property({ default: undefined }) declare tone: ToneMapping3D | undefined;
+    @property({ default: undefined }) declare exposure: number | undefined;
+    @property({ default: undefined }) declare post: PostEffect3D | readonly PostEffect3D[] | undefined;
 
     constructor(props?: NodeConfig<Canvas3D<P>, P>) {
         super((props ?? {}) as NodeConfig<any, P>);
@@ -106,9 +145,31 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
      */
     protected buildScene3D(): Scene3D {
         const scene = new Scene3D();
+
+        // The viewport's own render settings go on first, so a node in the tree
+        // can still override one — the same last-writer-wins rule the scene
+        // settings have always had, with the viewport as the first writer.
+        const shadows = resolveShadows3D(this.shadows);
+        if (shadows) scene.shadows(shadows);
+        if (this.tone !== undefined || this.exposure !== undefined) {
+            scene.tone({ mapping: this.tone, exposure: this.exposure });
+        }
+        if (this.post !== undefined) scene.post(this.post);
+
         for (const child of this._children) {
             if (child instanceof Node3D) child.render(scene);
         }
+
+        // Fog with no colour of its own takes the viewport's. Fog that does not
+        // match what is behind it reads as a grey wall rather than as distance,
+        // and the two being typed separately is exactly how they drift — which
+        // is what the old `<Background3D>` + `<Fog3D>` pair made you do.
+        const fog = scene.fogDescriptor();
+        if (fog && fog.color === undefined) {
+            const base = baseFillColor(this.fill as FillResolved[]);
+            if (base !== undefined) scene.fog({ ...fog, color: base });
+        }
+
         return scene;
     }
 
@@ -230,4 +291,23 @@ export class Canvas3D<P extends Canvas3DProps = Canvas3DProps> extends Rect<P> {
         // Stroke is deferred to renderStroke (drawn after children + overlay).
         ctx.draw(this.shapeGraphics().shadow(this.shadow).fill(fill));
     }
+}
+
+/**
+ * The colour a fill chain reads as, for anything that has to match it.
+ *
+ * The first opaque solid layer, which is what a background stack is built on:
+ * everything above it is a gradient, an image or a texture painted *over* a base
+ * colour, and it is that base a receding surface fades into. Returns `undefined`
+ * for a chain with no solid layer at all, which leaves the renderer's own
+ * default in place rather than inventing black.
+ */
+function baseFillColor(fill: FillResolved[] | undefined): Color | undefined {
+    if (!fill) return undefined;
+    for (const layer of fill) {
+        if (layer && (layer as { type?: string }).type === "solid") {
+            return (layer as unknown as { color: Color }).color;
+        }
+    }
+    return undefined;
 }

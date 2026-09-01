@@ -2,12 +2,13 @@ import { property } from "@/attributes/properties/decorator";
 import { colorProperty } from "@/attributes/properties/typed";
 import type { Color } from "@/attributes/shape/fill/color/parser";
 import type {
-    AmbientLightData3D, DirectionalLightData3D, DirectionalLightShadowData3D,
-    HemisphereLightData3D, LightData3D, LightShadowData3D, PointLightData3D,
-    RectAreaLightData3D, SpotLightData3D,
+    AmbientLightData3D, AreaLightData3D, DirectionalLightData3D,
+    HemisphereLightData3D, LightData3D, PointLightData3D, SpotLightData3D,
 } from "@/render3d/light";
 import type { RenderContext3D } from "@/render3d/render-context3d";
+
 import { Node3D, type Node3DProps } from "./node3d";
+import type { NodeConfig } from "@/nodes/node/node";
 
 /**
  * The light nodes.
@@ -16,15 +17,23 @@ import { Node3D, type Node3DProps } from "./node3d";
  * other — it can sit inside a `Group3D` and be carried by it, be held by a ref,
  * and have its `intensity` or `color` tweened:
  *
- *   <DirectionalLight3D ref={key} intensity={2.4} position={[4, 6, 3]} castShadow />
+ *   <DirectionalLight3D ref={key} intensity={2.4} position={[4, 6, 3]} shadow />
  *   yield* key().to({ intensity: 0.2 }, 1);
  *
  * `AmbientLight3D` and `HemisphereLight3D` have no position — they light the
  * whole scene evenly — but are still nodes, so they read the same way in a tree.
+ *
+ * ── Intensity is one scale ────────────────────────────────────────────────────
+ * A point or spot light's `intensity` means the same thing a directional light's
+ * does: 1 is a normal light. three measures the first two in candela and the
+ * third in lux, which is physically correct and is why scenes ended up written
+ * with `intensity={2.4}` beside `intensity={40}`. The renderer converts.
  */
 
 /** Params of a light descriptor, minus its discriminant. */
-type ParamsOf<L extends { type: string }> = Omit<L, "type">;
+// `shadow` is dropped because `Node3DProps` already declares it, as the broader
+// `Shadow3D` a mesh also takes — one prop, one type, asked of both kinds of node.
+type ParamsOf<L extends { type: string }> = Omit<L, "type" | "shadow">;
 
 /**
  * A light's own parameters, gathered off the props that were actually set.
@@ -51,6 +60,26 @@ abstract class Light3DNode<P extends Node3DProps> extends Node3D<P> {
     }
 }
 
+/**
+ * A light that can cast a shadow map.
+ *
+ * `shadow` is the {@link Shadow3D} every node carries, and it defaults to `true`
+ * there because that is right for a *mesh* — turning shadows on should make
+ * meshes cast and receive without tagging each one. A light is the other half of
+ * that trade: every light casting is N shadow maps, and a point light's is six
+ * faces. So the default is flipped here, in the constructor rather than by
+ * redeclaring the prop, because the property registry keeps the base class's
+ * metadata for a key and a subclass decorator would be silently ignored.
+ */
+abstract class ShadowCastingLight3D<P extends Node3DProps> extends Light3DNode<P> {
+    constructor(props?: NodeConfig<any, P>) {
+        super(props);
+        // Only when the author said nothing: an explicit `shadow` — including
+        // `shadow={false}` — has already been written by `initProps`.
+        if (props?.shadow === undefined) this.applyProp("shadow", false);
+    }
+}
+
 // ─── ambient ─────────────────────────────────────────────────────────────────
 
 export interface AmbientLight3DProps extends Node3DProps, Partial<ParamsOf<AmbientLightData3D>> { }
@@ -71,12 +100,18 @@ export class AmbientLight3D<P extends AmbientLight3DProps = AmbientLight3DProps>
 
 export interface HemisphereLight3DProps extends Node3DProps, Partial<ParamsOf<HemisphereLightData3D>> { }
 
-const HEMISPHERE_KEYS = ["color", "groundColor", "intensity"] as const;
+const HEMISPHERE_KEYS = ["sky", "ground", "intensity"] as const;
 
-/** Sky-to-ground gradient fill — ambient light with a sense of up. */
+/**
+ * Sky-to-ground gradient fill — ambient light with a sense of up.
+ *
+ * The two colours are `sky` and `ground`. They were `color` and `groundColor`,
+ * and the node's `color` was silently dropped: the descriptor and the renderer
+ * both read `skyColor`, which nothing ever wrote.
+ */
 export class HemisphereLight3D<P extends HemisphereLight3DProps = HemisphereLight3DProps> extends Light3DNode<P> {
-    @colorProperty({ default: undefined }) declare color: Color | undefined;
-    @colorProperty({ default: undefined }) declare groundColor: Color | undefined;
+    @colorProperty({ default: undefined }) declare sky: Color | undefined;
+    @colorProperty({ default: undefined }) declare ground: Color | undefined;
     @property({ default: undefined }) declare intensity: number | undefined;
 
     protected override buildLight(): LightData3D {
@@ -94,11 +129,10 @@ const DIRECTIONAL_KEYS = ["color", "intensity", "target", "shadow"] as const;
  * Parallel rays from a direction — the sun. Its `position` sets the direction it
  * shines *from*, toward `target` (the origin by default).
  */
-export class DirectionalLight3D<P extends DirectionalLight3DProps = DirectionalLight3DProps> extends Light3DNode<P> {
+export class DirectionalLight3D<P extends DirectionalLight3DProps = DirectionalLight3DProps> extends ShadowCastingLight3D<P> {
     @colorProperty({ default: undefined }) declare color: Color | undefined;
     @property({ default: undefined }) declare intensity: number | undefined;
     @property({ default: undefined }) declare target: DirectionalLightData3D["target"];
-    @property({ default: undefined }) declare shadow: DirectionalLightShadowData3D | undefined;
 
     protected override buildLight(): LightData3D {
         return lightFrom("directional", this, DIRECTIONAL_KEYS);
@@ -112,12 +146,11 @@ export interface PointLight3DProps extends Node3DProps, Partial<ParamsOf<PointLi
 const POINT_KEYS = ["color", "intensity", "distance", "decay", "shadow"] as const;
 
 /** A bulb: light radiating from a point, falling off with distance. */
-export class PointLight3D<P extends PointLight3DProps = PointLight3DProps> extends Light3DNode<P> {
+export class PointLight3D<P extends PointLight3DProps = PointLight3DProps> extends ShadowCastingLight3D<P> {
     @colorProperty({ default: undefined }) declare color: Color | undefined;
     @property({ default: undefined }) declare intensity: number | undefined;
     @property({ default: undefined }) declare distance: number | undefined;
     @property({ default: undefined }) declare decay: number | undefined;
-    @property({ default: undefined }) declare shadow: LightShadowData3D | undefined;
 
     protected override buildLight(): LightData3D {
         return lightFrom("point", this, POINT_KEYS);
@@ -131,7 +164,7 @@ export interface SpotLight3DProps extends Node3DProps, Partial<ParamsOf<SpotLigh
 const SPOT_KEYS = ["color", "intensity", "distance", "angle", "penumbra", "decay", "target", "shadow"] as const;
 
 /** A cone of light. `angle` is the cone half-angle, in **degrees**. */
-export class SpotLight3D<P extends SpotLight3DProps = SpotLight3DProps> extends Light3DNode<P> {
+export class SpotLight3D<P extends SpotLight3DProps = SpotLight3DProps> extends ShadowCastingLight3D<P> {
     @colorProperty({ default: undefined }) declare color: Color | undefined;
     @property({ default: undefined }) declare intensity: number | undefined;
     @property({ default: undefined }) declare distance: number | undefined;
@@ -139,27 +172,27 @@ export class SpotLight3D<P extends SpotLight3DProps = SpotLight3DProps> extends 
     @property({ default: undefined }) declare penumbra: number | undefined;
     @property({ default: undefined }) declare decay: number | undefined;
     @property({ default: undefined }) declare target: SpotLightData3D["target"];
-    @property({ default: undefined }) declare shadow: LightShadowData3D | undefined;
 
     protected override buildLight(): LightData3D {
         return lightFrom("spot", this, SPOT_KEYS);
     }
 }
 
-// ─── rect area ───────────────────────────────────────────────────────────────
+// ─── area ────────────────────────────────────────────────────────────────────
 
-export interface RectAreaLight3DProps extends Node3DProps, Partial<ParamsOf<RectAreaLightData3D>> { }
+export interface AreaLight3DProps extends Node3DProps, Partial<ParamsOf<AreaLightData3D>> { }
 
-const RECT_AREA_KEYS = ["color", "intensity", "width", "height"] as const;
+const AREA_KEYS = ["color", "intensity", "width", "height"] as const;
 
 /** A glowing rectangle — a softbox. Lights `standard`/`physical` materials only. */
-export class RectAreaLight3D<P extends RectAreaLight3DProps = RectAreaLight3DProps> extends Light3DNode<P> {
+export class AreaLight3D<P extends AreaLight3DProps = AreaLight3DProps> extends Light3DNode<P> {
     @colorProperty({ default: undefined }) declare color: Color | undefined;
     @property({ default: undefined }) declare intensity: number | undefined;
     @property({ default: undefined }) declare width: number | undefined;
     @property({ default: undefined }) declare height: number | undefined;
 
     protected override buildLight(): LightData3D {
-        return lightFrom("rectArea", this, RECT_AREA_KEYS);
+        return lightFrom("area", this, AREA_KEYS);
     }
 }
+

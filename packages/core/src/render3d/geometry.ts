@@ -2,6 +2,7 @@ import type { PathData } from "@/render/descriptors/path";
 import type { PathBuilder } from "@/render/descriptors/path-builder";
 import { type Color, parseColor } from "@/attributes/shape/fill/color/parser";
 import type { Vector3, Vector3Input } from "./vector3";
+import type { Segments3D } from "./segments";
 
 /**
  * Anything not modelled by a named field, assigned straight onto the constructed
@@ -14,103 +15,127 @@ export interface Passthrough3D {
     params?: Record<string, unknown>;
 }
 
+/**
+ * A partial revolution, shared by every shape that has one.
+ *
+ * `Ellipse` has said `startAngle` / `sweep` in degrees since the beginning, so 3D
+ * says it too. It replaces three's five spellings of the same idea —
+ * `thetaStart`, `thetaLength`, `phiStart`, `phiLength` and `arc` — which differ
+ * per shape for reasons that are about three's own history rather than about
+ * anything an author is trying to draw.
+ */
+export interface Sweep3D {
+    /** Where the revolution begins, in **degrees**. Default 0. */
+    startAngle?: number;
+    /** How far it runs, in **degrees**. Default 360 (or 180 for a half sweep). */
+    sweep?: number;
+}
+
 // ─── Primitives ──────────────────────────────────────────────────────────────
 
+/**
+ * A box.
+ *
+ * `cornerRadius` is the same control `Rect` carries in 2D and rounds all twelve
+ * edges; it is most of the difference between a scene that reads as designed and
+ * one that reads as a renderer test. See `evaluateRoundedBox` for how the
+ * surface is built.
+ */
 export interface BoxGeometry3D extends Passthrough3D {
     type: "box";
     width?: number;
     height?: number;
     depth?: number;
-    widthSegments?: number;
-    heightSegments?: number;
-    depthSegments?: number;
+    /** Rounds every edge and corner. Clamped to the smallest half-extent. */
+    cornerRadius?: number;
+    /** Face subdivision, as `[x, y, z]`. Default 1. */
+    segments?: Segments3D;
 }
 
-export interface SphereGeometry3D extends Passthrough3D {
+/** A sphere, or a wedge/band of one via {@link Sweep3D} and the latitude pair. */
+export interface SphereGeometry3D extends Passthrough3D, Sweep3D {
     type: "sphere";
     radius?: number;
-    widthSegments?: number;
-    heightSegments?: number;
-    /** Sweep angles in **degrees**, for wedges and hemispheres. */
-    phiStart?: number;
-    phiLength?: number;
-    thetaStart?: number;
-    thetaLength?: number;
+    /** `[longitude, latitude]`. Default `[32, 16]`. */
+    segments?: Segments3D;
+    /** Vertical band start, in **degrees** from the north pole. Default 0. */
+    startLatitude?: number;
+    /** Vertical band extent, in **degrees**. Default 180 (pole to pole). */
+    latitudeSweep?: number;
 }
 
 export interface PlaneGeometry3D extends Passthrough3D {
     type: "plane";
     width?: number;
     height?: number;
-    /** Raise these to subdivide for per-vertex displacement. */
-    widthSegments?: number;
-    heightSegments?: number;
+    /** `[width, height]`. Raise to subdivide for per-vertex displacement. */
+    segments?: Segments3D;
 }
 
-export interface CylinderGeometry3D extends Passthrough3D {
+/**
+ * A cylinder, or any tapered tube.
+ *
+ * `radius` takes `[top, bottom]` for a taper, which is what `radiusTop` and
+ * `radiusBottom` were — one field, and the pair reads as the thing it describes.
+ */
+export interface CylinderGeometry3D extends Passthrough3D, Sweep3D {
     type: "cylinder";
-    radiusTop?: number;
-    radiusBottom?: number;
+    /** A scalar, or `[top, bottom]` to taper. Default 1. */
+    radius?: number | readonly [number, number];
     height?: number;
-    radialSegments?: number;
-    heightSegments?: number;
-    openEnded?: boolean;
-    /** Degrees. */
-    thetaStart?: number;
-    thetaLength?: number;
+    /** `[radial, height]`. Default `[32, 1]`. */
+    segments?: Segments3D;
+    /** Draw the end caps. Default true. */
+    capped?: boolean;
 }
 
-export interface ConeGeometry3D extends Passthrough3D {
+export interface ConeGeometry3D extends Passthrough3D, Sweep3D {
     type: "cone";
     radius?: number;
     height?: number;
-    radialSegments?: number;
-    heightSegments?: number;
-    openEnded?: boolean;
-    /** Degrees. */
-    thetaStart?: number;
-    thetaLength?: number;
+    /** `[radial, height]`. Default `[32, 1]`. */
+    segments?: Segments3D;
+    /** Draw the base cap. Default true. */
+    capped?: boolean;
 }
 
-export interface TorusGeometry3D extends Passthrough3D {
+export interface TorusGeometry3D extends Passthrough3D, Sweep3D {
     type: "torus";
+    /** Distance from the centre to the middle of the ring. */
     radius?: number;
-    tube?: number;
-    radialSegments?: number;
-    tubularSegments?: number;
-    /** Degrees. */
-    arc?: number;
+    /** Thickness of the ring itself. Default 0.4. */
+    thickness?: number;
+    /** `[radial, tubular]`. Default `[16, 48]`. */
+    segments?: Segments3D;
 }
 
 export interface TorusKnotGeometry3D extends Passthrough3D {
     type: "torusKnot";
     radius?: number;
-    tube?: number;
-    tubularSegments?: number;
-    radialSegments?: number;
-    /** Winding counts — `p` around the axis, `q` around the torus. */
-    p?: number;
-    q?: number;
+    /** Thickness of the strand. Default 0.4. */
+    thickness?: number;
+    /** `[tubular, radial]`. Default `[64, 8]`. */
+    segments?: Segments3D;
+    /** Winding counts as `[around the axis, around the torus]`. Default `[2, 3]`. */
+    windings?: readonly [number, number];
 }
 
-export interface CircleGeometry3D extends Passthrough3D {
+export interface CircleGeometry3D extends Passthrough3D, Sweep3D {
     type: "circle";
     radius?: number;
-    segments?: number;
-    /** Degrees. */
-    thetaStart?: number;
-    thetaLength?: number;
+    /** Default 32. */
+    segments?: Segments3D;
 }
 
-export interface RingGeometry3D extends Passthrough3D {
+/** A flat annulus — a disc with a hole. */
+export interface RingGeometry3D extends Passthrough3D, Sweep3D {
     type: "ring";
+    /** Outer radius. Default 1. */
+    radius?: number;
+    /** Inner radius — the size of the hole. Default 0.5. */
     innerRadius?: number;
-    outerRadius?: number;
-    thetaSegments?: number;
-    phiSegments?: number;
-    /** Degrees. */
-    thetaStart?: number;
-    thetaLength?: number;
+    /** `[around, radial]`. Default `[32, 1]`. */
+    segments?: Segments3D;
 }
 
 export interface CapsuleGeometry3D extends Passthrough3D {
@@ -118,55 +143,60 @@ export interface CapsuleGeometry3D extends Passthrough3D {
     radius?: number;
     /** Length of the straight mid-section, excluding the caps. */
     height?: number;
-    capSegments?: number;
-    radialSegments?: number;
+    /** `[radial, cap]`. Default `[16, 8]`. */
+    segments?: Segments3D;
 }
 
 export interface PolyhedronGeometry3D extends Passthrough3D {
     type: "polyhedron";
     shape: "tetrahedron" | "octahedron" | "icosahedron" | "dodecahedron";
     radius?: number;
-    /** Subdivision count. Raising this on an icosahedron approximates a sphere. */
-    detail?: number;
+    /** Subdivision. Raising this on an icosahedron approximates a sphere. */
+    segments?: Segments3D;
 }
 
 // ─── Path-derived (reuses core's own 2D path vocabulary) ─────────────────────
 
+/** How an extrusion's edge is chamfered. A bare number is the bevel's size. */
+export interface Bevel3D {
+    size?: number;
+    thickness?: number;
+    offset?: number;
+    segments?: number;
+}
+
 /**
- * A 2D outline swept into a solid. `shape` accepts the same `PathData` (SVG
- * string or command list) or {@link PathBuilder} the 2D `Path` node takes — so an
- * existing 2D outline becomes an extruded solid with no new vocabulary.
+ * A 2D outline swept into a solid. `path` accepts the same `PathData` (SVG
+ * string or command list) or {@link PathBuilder} the 2D `Path` node takes — same
+ * name, same value — so an existing 2D outline becomes an extruded solid with no
+ * new vocabulary.
  */
 export interface ExtrudeGeometry3D extends Passthrough3D {
     type: "extrude";
-    shape: PathData | PathBuilder;
+    path: PathData | PathBuilder;
     depth?: number;
-    curveSegments?: number;
-    bevel?: boolean;
-    bevelThickness?: number;
-    bevelSize?: number;
-    bevelOffset?: number;
-    bevelSegments?: number;
+    /** Curve flattening resolution. Default 12. */
+    segments?: Segments3D;
+    /** A number is the bevel size; an object tunes the rest. Omit for no bevel. */
+    bevel?: number | Bevel3D;
 }
 
 /** A profile revolved about the Y axis — vases, bowls, turned shapes. */
-export interface LatheGeometry3D extends Passthrough3D {
+export interface LatheGeometry3D extends Passthrough3D, Sweep3D {
     type: "lathe";
     /** Profile points in the XY plane; `x` is the radius, `y` the height. */
     points: readonly Vector3Input[];
-    segments?: number;
-    /** Degrees. */
-    phiStart?: number;
-    phiLength?: number;
+    /** Default 12. */
+    segments?: Segments3D;
 }
 
 /** A circular cross-section swept along a 3D curve. */
 export interface TubeGeometry3D extends Passthrough3D {
     type: "tube";
     points: readonly Vector3Input[];
-    tubularSegments?: number;
     radius?: number;
-    radialSegments?: number;
+    /** `[along the curve, around it]`. Default `[64, 8]`. */
+    segments?: Segments3D;
     closed?: boolean;
 }
 
@@ -233,8 +263,8 @@ export type ParametricVertex3D = Vector3 | readonly [number, number, number];
  */
 export interface ParametricGeometry3D extends Passthrough3D {
     type: "parametric";
-    /** Grid resolution as `[uSegments, vSegments]`, or one number for both. */
-    segments: number | readonly [number, number];
+    /** Grid resolution as `[u, v]`, or one number for both. */
+    segments: Segments3D;
     /** Position for grid coordinate `(u, v)`, both in `[0, 1]`. */
     vertex: (u: number, v: number) => ParametricVertex3D;
     /** Optional per-vertex colour. Needs `vertexColors: true` on the material. */
@@ -293,6 +323,30 @@ export interface ModelGeometry3D extends Passthrough3D {
     node?: string;
 }
 
+/** Normalize {@link CylinderGeometry3D.radius} to its `[top, bottom]` pair. */
+export function cylinderRadii(
+    radius: number | readonly [number, number] | undefined,
+): [number, number] {
+    if (radius === undefined) return [1, 1];
+    if (typeof radius === "number") return [radius, radius];
+    return [radius[0] ?? 1, radius[1] ?? radius[0] ?? 1];
+}
+
+/** Normalize {@link ExtrudeGeometry3D.bevel} to its full option set, or `null`. */
+export function resolveBevel3D(bevel: number | Bevel3D | undefined): Required<Bevel3D> | null {
+    if (bevel === undefined) return null;
+    const options = typeof bevel === "number" ? { size: bevel } : bevel;
+    const size = options.size ?? 0.1;
+    return {
+        size,
+        // Scaled off `size` rather than defaulted independently, so the one-number
+        // form produces a bevel with sane proportions instead of a sliver.
+        thickness: options.thickness ?? size * 2,
+        offset: options.offset ?? 0,
+        segments: options.segments ?? 3,
+    };
+}
+
 /**
  * Evaluate a {@link ParametricGeometry3D} into concrete vertex buffers.
  *
@@ -305,9 +359,10 @@ export interface ModelGeometry3D extends Passthrough3D {
  * point along +Y for a surface authored in the XZ plane.
  */
 export function evaluateParametric(geometry: ParametricGeometry3D): BufferGeometry3D {
-    const [uSegments, vSegments] = Array.isArray(geometry.segments)
-        ? geometry.segments
-        : [geometry.segments, geometry.segments];
+    const resolved = geometry.segments;
+    const [uSegments, vSegments] = typeof resolved === "number"
+        ? [resolved, resolved]
+        : [resolved[0] ?? 1, resolved[1] ?? resolved[0] ?? 1];
 
     const uCount = Math.max(1, Math.floor(uSegments)) + 1;
     const vCount = Math.max(1, Math.floor(vSegments)) + 1;
@@ -349,7 +404,7 @@ export function evaluateParametric(geometry: ParametricGeometry3D): BufferGeomet
     }
 
     // Two triangles per cell. Uint32 because a 256² grid already exceeds Uint16.
-    const index = new Uint32Array(uSegments * vSegments * 6);
+    const index = new Uint32Array((uCount - 1) * (vCount - 1) * 6);
     let cursor = 0;
     for (let vi = 0; vi < vCount - 1; vi++) {
         for (let ui = 0; ui < uCount - 1; ui++) {

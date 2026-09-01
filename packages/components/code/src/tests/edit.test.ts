@@ -167,3 +167,25 @@ describe('to({ code })', () => {
         expect(source(node)).toBe(third);
     });
 });
+
+describe('one edit carries every change in it', () => {
+    // A caller that splits a multi-part change across several commands and runs
+    // them together loses all but one: each command resolves and writes back the
+    // *whole* listing, so two built from the same starting point are rival copies
+    // of the document rather than patches, and the last one driven wins.
+    // Everything a step changes therefore has to travel as one edit, and this is
+    // the contract that makes that possible.
+    it('changes a line and splices another in the same step', () => {
+        const node = make();
+        const next = 'function add(a, b) {\n  // sum\n  return a + b + 1;\n}';
+        drive(node.to({ code: next }, 1), 120, 0.01);
+        expect(source(node)).toBe(next);
+    });
+
+    it('rewrites several separated lines at once', () => {
+        const node = make('let a = 1;\nlet b = 2;\nlet c = 3;\nlet d = 4;');
+        const next = 'let a = 9;\nlet b = 2;\nlet c = 8;\nlet d = 4;';
+        drive(node.to({ code: next }, 1), 120, 0.01);
+        expect(source(node)).toBe(next);
+    });
+});

@@ -1,4 +1,4 @@
-import type { Geometry3D } from "./geometry";
+import { cylinderRadii, type Geometry3D } from "./geometry";
 import { applyMatrix4, type Matrix4 } from "./matrix4";
 import { resolveVector3, type Vector3 } from "./vector3";
 
@@ -116,7 +116,8 @@ export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null 
         // A cone is a cylinder with one radius zeroed, and three models it as its
         // own type — so the two share nothing here but the shape of the answer.
         case "cylinder": {
-            const radius = Math.max(geometry.radiusTop ?? 1, geometry.radiusBottom ?? 1);
+            const [top, bottom] = cylinderRadii(geometry.radius);
+            const radius = Math.max(top, bottom);
             return centeredBox3(radius, (geometry.height ?? 1) / 2, radius);
         }
         case "cone": {
@@ -127,7 +128,7 @@ export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null 
         // The ring lies in XY and the tube swells it in Z by its own radius.
         case "torus": {
             const radius = geometry.radius ?? 1;
-            const tube = geometry.tube ?? 0.4;
+            const tube = geometry.thickness ?? 0.4;
             return centeredBox3(radius + tube, radius + tube, tube);
         }
 
@@ -136,7 +137,7 @@ export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null 
         // 0.5·radius deep before the tube is added.
         case "torusKnot": {
             const radius = geometry.radius ?? 1;
-            const tube = geometry.tube ?? 0.4;
+            const tube = geometry.thickness ?? 0.4;
             return centeredBox3(radius * 1.5 + tube, radius * 1.5 + tube, radius * 0.5 + tube);
         }
 
@@ -144,7 +145,7 @@ export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null 
             return centeredBox3(geometry.radius ?? 1, geometry.radius ?? 1, 0);
 
         case "ring": {
-            const outer = geometry.outerRadius ?? 1;
+            const outer = geometry.radius ?? 1;
             return centeredBox3(outer, outer, 0);
         }
 

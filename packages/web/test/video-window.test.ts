@@ -373,9 +373,11 @@ describe("claimVideoFrame — per-pass texture slots", () => {
     });
 
     it("uploads video frames UNPREMULTIPLIED, with no srcIsPremul flag", () => {
-        // The convention that differs from upload3DFrame (Premul + srcIsPremul:true).
-        // Collapsing the two into one signature is exactly the mistake the
-        // storage-adapter split could make, and it dark-fringes every edge.
+        // The video path omits the flag entirely, where the 3D path passes it as
+        // `false`; both describe unpremultiplied sources, and the difference is
+        // only that CanvasKit already defaults to that. Collapsing the two into
+        // one signature is still a mistake the storage-adapter split could make —
+        // a decoded frame and a 3D canvas do not arrive the same way.
         const { a, calls } = primed([0, step]);
         a.beginRenderPass();
         a.claimVideoFrame(SRC, 0);
@@ -443,9 +445,21 @@ describe("upload3DFrame", () => {
         return { a, counts, makeArgs, updateArgs, deleted };
     }
 
-    it("uploads PREMULTIPLIED with srcIsPremul=true — the opposite of the video path", () => {
-        // Documented at storage-adapter.ts: omitting the flag double-premultiplies
-        // and dark-fringes every antialiased 3D edge.
+    // This pairing used to be `Premul` + `srcIsPremul: true`, on the reasoning
+    // that three's canvas is premultiplied — which it is. What that missed is the
+    // *upload*: a canvas handed over as a texture source goes through the
+    // browser's unpack pipeline, where `UNPACK_PREMULTIPLY_ALPHA_WEBGL` is false
+    // by default, so the alpha is divided back out and what reaches Skia is
+    // straight colour. Declaring it premultiplied made Skia composite
+    // `src + (1-a)·dst`, i.e. additively: every translucent 3D surface rendered
+    // at full strength, invisibly, because the two formulas agree at `a = 1` and
+    // every opaque scene is exactly that.
+    //
+    // The dark fringes that motivated the old flag were real, but they came from
+    // the *mismatched* pairing (`Premul` with the flag omitted, which converts
+    // and premultiplies a second time). Declaring the source unpremultiplied —
+    // which it is — fixes both: `a·src + (1-a)·dst`, edges included.
+    it("uploads UNPREMULTIPLIED, because the texture upload unpremultiplies it", () => {
         const { a, makeArgs } = fake3DSurface();
 
         const image = a.upload3DFrame("node#0", { fake: "canvas" }, 320, 240);
@@ -453,8 +467,8 @@ describe("upload3DFrame", () => {
         expect(makeArgs).toHaveLength(1);
 
         const [, info, srcIsPremul] = makeArgs[0];
-        expect((info as Record<string, unknown>).alphaType).toBe(ck.AlphaType.Premul);
-        expect(srcIsPremul).toBe(true);
+        expect((info as Record<string, unknown>).alphaType).toBe(ck.AlphaType.Unpremul);
+        expect(srcIsPremul).toBe(false);
     });
 
     it("updates the existing texture on a second frame of the same size", () => {
@@ -467,13 +481,16 @@ describe("upload3DFrame", () => {
         expect(counts.updated).toBe(1);
     });
 
-    it("passes srcIsPremul=true on the in-place update path too, not just creation", () => {
+    // The two paths must agree, or a 3D node would composite one way on the frame
+    // it is created and another on every frame after it — which reads as a flicker
+    // on the second frame and nothing else.
+    it("says the same thing on the in-place update path, not just creation", () => {
         const { a, updateArgs } = fake3DSurface();
         a.upload3DFrame("node#0", { fake: "canvas" }, 320, 240);
         a.upload3DFrame("node#0", { fake: "canvas" }, 320, 240);
 
         expect(updateArgs).toHaveLength(1);
-        expect(updateArgs[0][2]).toBe(true);
+        expect(updateArgs[0][2]).toBe(false);
     });
 
     it("reallocates when the quantized buffer grows, since a texture is fixed-size", () => {

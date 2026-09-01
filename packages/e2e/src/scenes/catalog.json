@@ -1606,5 +1606,11 @@
     "name": "View3dTexSurface",
     "section": "3D",
     "description": "Tex.surface: 2D Graphics rasterized and bound to a material map"
+  },
+  {
+    "id": "view3d-translucent",
+    "name": "View3dTranslucent",
+    "section": "3D",
+    "description": "Translucent 3D composited over a 2D fill, in a colour that separates correct blending from additive"
   }
 ]

@@ -505,28 +505,70 @@ share no members, because a 3D scene is described with a camera, lights and mesh
 rather than with paths, paint and clips.
 
 ```tsx
-<Canvas3D width="fill" height="fill" cornerRadius={24}>
-    <PerspectiveCamera3D position={[0, 2, 6]} lookAt={0} fov={45} />
+<Canvas3D width="fill" height="fill" cornerRadius={24} fill="#0b0d12" shadows>
+    <Camera3D target={[0, 1, 0]} orbit={30} elevation={18} distance={6} fov={45} />
     <AmbientLight3D intensity={0.4} />
-    <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} castShadow />
-    <Fog3D color="#0b0d12" near={5} far={30} />
+    <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} shadow />
+    <Fog3D near={5} far={30} />
 
     <Group3D ref={rig}>
-        <Box3D width={2} color="tomato" roughness={0.3} />
-        <Sphere3D radius={0.8} position={[3, 0, 0]} />
+        <Box3D width={2} cornerRadius={0.15} fill="tomato" roughness={0.3} />
+        <Sphere3D radius={0.8} x={3} />
     </Group3D>
 
     <Text text="FPS 60" fontSize={32} />        {/* a 2D HUD, over the 3D */}
 </Canvas3D>
 
-yield* rig().to({ rotation: [0, 360, 0], position: [0, 1, 0] }, 2);
+yield* rig().to({ rotationY: 360, y: 1 }, 2);
 ```
+
+**Six rules hold this vocabulary together, and each replaced a pair of fields
+that could disagree:**
+
+- **`fill` is what a surface is made of**, and takes the whole 2D fill chain — a
+  colour, a gradient, an image, a `Node2D` subtree, a stack of blended layers.
+  It replaced a flat `color` plus five texture slots (`map`, `emissiveMap`,
+  `alphaMap`, `envMap`, `lightMap`), each of which was a fill under another name.
+- **Subdivision is always `segments`** (a number, or a per-axis tuple the shape
+  documents), and a partial revolution is always **`startAngle` + `sweep`** in
+  degrees — the pair `Ellipse` has always used. Between them they replaced ten
+  and five spellings of the same two ideas.
+- **Axes are the real props.** `x`/`y`/`z`, `rotationX/Y/Z` and `scaleX/Y/Z` are
+  the signals, named exactly what 2D names them; `position`/`rotation`/`scale`
+  distribute into them the way `Node2D`'s `size` distributes into width/height.
+  That is what makes `to({ y: 3 })` work without restating the other two axes.
+- **`transparent` and `depthWrite` are derived**, from opacity, fill alpha, an
+  `alphaMap` or transmission. Forgetting the first made `opacity` silently do
+  nothing; forgetting the second made a fading surface cut a near-invisible hole
+  through everything behind it.
+- **There is no `key`.** Reconciler identity is a node id plus a content
+  signature, so a builder that emits ops conditionally reuses the right cache
+  entry with nothing written by hand.
+- **The background is the viewport's own 2D `fill`.** See `Canvas3D` below.
 
 **`Canvas3D` is the one node that holds both dimensions.** It is a `Rect`, so it
 lays out in flex/stack groups, takes `cornerRadius`/`clip`, and can be masked,
 blended and filtered. Its `Node3D` children are walked through a `Scene3D` every
 frame; its `Node2D` children draw over the result as a HUD. For a reusable 3D
 component, subclass it and override `buildScene3D()`.
+
+**Its `fill` is also the 3D background, and there is no `<Background3D>`.**
+three's background pass is unaffected by every light in the scene *and by fog*
+(fog is applied in the material shader; the background box has none), the
+renderer clears transparent, and this node already composites the 3D pass over
+its own fill layers — so a colour, a gradient, an image or a video behind a 3D
+scene is the ordinary 2D fill chain, which does strictly more. What genuinely
+needs the 3D pass is a sky that *reprojects* as the camera turns, and that is
+`<Environment3D background>` — merged with the lighting because an HDRI that
+lights a scene is the same panorama you see behind it. `<Fog3D>` with no colour
+of its own takes the viewport's fill, so the haze and the backdrop cannot drift.
+
+**Its render settings are props, not nodes.** `shadows`, `tone`, `exposure` and
+`post` were `<Shadows3D>`, `<ToneMapping3D>` and `<PostEffects3D>`: nodes with no
+position whose duplicates silently did nothing. The post chain is short on
+purpose — a `Canvas3D` is a `Node2D`, so vignette, grain, grading and blur are
+the 2D `effects` chain over the composited result, and what stays is what needs
+the depth buffer, object ids, or HDR radiance before tone mapping.
 
 **3D is still a fill, so it paints through any shape path.** The renderer draws a
 scene to a texture and shades the shape's own path with it, which means 3D clips to
@@ -536,9 +578,9 @@ sugar over exactly that; the primitive is the recorded `Scene3D`:
 
 ```tsx
 const scene = new Scene3D()
-    .perspective({ position: [0, 0, 2.6], lookAt: 0 })
+    .perspective({ orbit: 20, elevation: 10, distance: 2.6 })
     .light({ type: "ambient", intensity: 0.4 })
-    .draw(new Graphics3D().box({ width: 2, color: "tomato" }));
+    .draw(new Graphics3D().box({ width: 2, fill: "tomato" }));
 
 <Ellipse fill={scene} />
 <Text text="DEPTH" fontSize={320} fill={Fills.canvas3D(scene)} />
@@ -562,14 +604,17 @@ Key things to know when working on this:
   arcs, UV rotation), matching 2D `rotation`. The backend converts.
 - **A camera places itself, not its group.** three aims a camera's **-Z** at
   `lookAt` but a plain group's **+Z**, so a camera whose enclosing group carried
-  its placement would face exactly backwards. `Camera3DNode` overrides
+  its placement would face exactly backwards. `Camera3D` overrides
   `groupTransform()` to identity and puts the placement on the descriptor, which
   the renderer applies to the camera object — still parent-relative, so a camera
   inside a moving rig is carried by it. Any other node type that three orients
   differently (lights, via `Object3D.lookAt`'s `isLight` branch) needs the same
   treatment.
-- **Fog / background / environment / shadows / tone / post are singletons.** They
-  have no position, so they are not hierarchical: the last node to set one wins.
+- **Fog and environment are singletons.** They have no position, so they are not
+  hierarchical: the last node to set one wins. Shadows, tone mapping and the post
+  chain are no longer scene nodes at all — they are `Canvas3D` props, because they
+  are settings of the thing doing the rendering rather than objects in the scene.
+  A background is a 2D fill; see `Canvas3D` above.
 - **An optional attribute prop must pass `default: undefined` explicitly.**
   `attributeProperty` tests for the key's *presence*, so `@colorProperty()` with no
   options falls back to its own default while `@colorProperty({ default: undefined })`
@@ -596,7 +641,7 @@ Key things to know when working on this:
 - **What is cheap to animate**: transforms, material/light values and shader
   uniform values are in-place writes. **Geometry parameters are not** — three
   geometries are immutable, so `<Box3D width={signal} />` reallocates every frame.
-  Scale the object instead: `<Box3D width={1} scale={() => [signal(), 1, 1]} />`.
+  Scale the object instead: `<Box3D width={1} scaleX={() => signal()} />`.
   The fields marked "structural" on `MaterialCommon3D` recompile the shader
   program; set them once rather than tweening them.
 - **`Canvas3D.prepareRender` is the one asset seam**, not each `Node3D`: sizing an
@@ -633,11 +678,14 @@ one frame hands the same fill to the shadow, fill and inner-shadow passes.
 
 The reconciler (`packages/skia-render/src/three/reconciler.ts`) keeps one live
 three object per op and mutates rather than rebuilds — a `Scene3D` is rebuilt from
-scratch every frame but the GPU resources are not. **Identity comes from the
-node**: `Scene3D.begin` stamps the recording node's id onto the group's
-`transform.key`, and a keyed group *restarts* the reconciler's structural path
-rather than extending it. That is what lets a conditional sibling appear or
-disappear without renumbering its neighbours' cache slots.
+scratch every frame but the GPU resources are not. **Identity is derived, and
+there is nothing to write.** A group is keyed by the node id `Scene3D.begin`
+stamps on it; a drawable is keyed by that scope plus its **structural signature**
+plus which nth op of that shape it is. Two ops with the same signature are
+interchangeable cache entries — everything that distinguishes them (position,
+colour, roughness) is an in-place write on whichever one they get — so a builder
+writing `if (t > 2) g3.sphere(...)` shifts nothing, which is exactly what the old
+positional path needed an author-supplied `key` to avoid.
 
 three is reached through a lazy `import("three")`, so 2D-only projects never load
 it. `Canvas3D.prepareRender()` warms it during precomp (before any frame draws) via
@@ -650,17 +698,20 @@ without that the dynamic import 504s under the headless CLI.
 #### 2D on 3D: `Tex.surface`
 
 The bridge the other way: 2D content rendered to an offscreen buffer and bound to
-any material map. `source` is a **value** — a built `Graphics2D`, or a `Node2D`
-subtree for anything wanting real layout, shaped `Text` or a loaded `Image` — and
-`width`/`height` *are* the texture's resolution.
+a surface. `source` is a **value** — a built `Graphics2D`, or a `Node2D` subtree
+for anything wanting real layout, shaped `Text` or a loaded `Image`.
+
+A source *is* a fill, so the common case needs no builder at all; `Tex.surface`
+is what you reach for to pin a resolution or a sampler option, and its
+`width`/`height` are the buffer's own (default 512).
 
 ```tsx
 const scope = new Graphics2D().line({ points: trace(phase()) }).stroke({ weight: 6 });
 const stats = <Rect flow="vertical" padding={48}><Text text="CPU" fontSize={64} /></Rect>;
 
 <Canvas3D>
-    <Plane3D map={Tex.surface(scope, 1024, 640)} />
-    <Plane3D map={Tex.surface(stats, 1024, 640)} position={[5, 0, 0]} />
+    <Plane3D fill={scope} />
+    <Plane3D fill={Tex.surface(stats, { width: 1024, height: 640 })} x={5} />
 </Canvas3D>
 ```
 
@@ -671,9 +722,14 @@ const stats = <Rect flow="vertical" padding={48}><Text text="CPU" fontSize={64} 
   `Node.attachDetached`. Layout is done on demand against `width`×`height`.
 - **Hoist the source; never build it inside a prop binding.** A fresh subtree
   each frame re-binds, re-lays-out, defeats the texture cache and leaks.
-- **A conditionally emitted surface needs an explicit `key`.** The texture cache
-  is global and un-refcounted, so a shifting walk ordinal orphans the old
-  `THREE.DataTexture` rather than reusing it.
+- **Texture identity is the source object**, held in a `WeakMap` — which is why
+  hoisting is the whole contract and why there is no `key`. A conditionally
+  emitted surface needs nothing written, and a source that goes out of scope
+  becomes collectable rather than orphaning its `THREE.DataTexture`, which the
+  old walk-ordinal scheme could not do. A source *synthesized* from a fill chain
+  has no such identity, so `resolveFill3D` derives one from the fill's own values
+  and marks the surface `static` — a gradient on a cube is rasterized once, not
+  sixty times a second to produce the same image.
 - Path: `Canvas3DFillRenderer.preflight` → `FillRendererContext.rasterizeSurface`
   → `SkiaRenderContext` swaps `currentCanvas` + `activeSurface` onto a sized
   offscreen, `readPixels` → `TextureResolver.setRasters` uploads into a

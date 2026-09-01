@@ -1,7 +1,7 @@
 import {
     createScene, createSignal, easeInOut, linear, parallel,
     Graphics2D, Rect, Tex, Text,
-    Canvas3D, PerspectiveCamera3D, Background3D, Fog3D,
+    Canvas3D, Camera3D, Fog3D,
     AmbientLight3D, DirectionalLight3D, PointLight3D,
     Group3D, Box3D, Plane3D,
     type SurfaceSource3D,
@@ -45,7 +45,7 @@ function monitor(key: string, source: SurfaceSource3D, x: number, yaw: number) {
         <Group3D position={[x, 0.35, 0]} rotation={[0, yaw, 0]}>
             <Box3D
                 width={PANEL_W + BEZEL * 2} height={PANEL_H + BEZEL * 2} depth={0.18}
-                color="#15181f" roughness={0.55} metalness={0.2}
+                fill="#15181f" roughness={0.55} metalness={0.2}
             />
             {/* `unlit` so the screen reads as its own light source; a lit material
                 would tint the texture with the scene's lighting and read muddy. */}
@@ -53,17 +53,17 @@ function monitor(key: string, source: SurfaceSource3D, x: number, yaw: number) {
                 width={PANEL_W} height={PANEL_H}
                 position={[0, 0, 0.095]}
                 unlit
-                map={Tex.surface(source, SCREEN_W, SCREEN_H, { key })}
+                fill={Tex.surface(source, { width: SCREEN_W, height: SCREEN_H })}
             />
             <Box3D
                 width={0.24} height={0.9} depth={0.24}
                 position={[0, -(PANEL_H / 2 + BEZEL) - 0.45, 0]}
-                color="#0f1218" roughness={0.6}
+                fill="#0f1218" roughness={0.6}
             />
             <Box3D
                 width={1.6} height={0.1} depth={0.7}
                 position={[0, -(PANEL_H / 2 + BEZEL) - 0.92, 0]}
-                color="#0f1218" roughness={0.6}
+                fill="#0f1218" roughness={0.6}
             />
         </Group3D>
     );
@@ -157,28 +157,36 @@ export default createScene(function* (stage) {
     );
 
     stage.add(
+        // The backdrop is the viewport's own 2D `fill`: the 3D pass clears
+        // transparent and composites over it, and nothing in the 3D scene could
+        // have tinted a `scene.background` anyway.
         <Canvas3D
             width={1760}
             height={960}
             cornerRadius={32}
+            fill="#080a10"
         >
-            <PerspectiveCamera3D
-                position={() => {
-                    const radians = (orbit() * Math.PI) / 180;
-                    return [Math.sin(radians) * 13, 2.4, Math.cos(radians) * 13];
-                }}
-                lookAt={[0, 0.2, 0]}
+            {/* Orbit, elevation and distance rather than a sin/cos pair
+                recomputed in a prop binding every frame. */}
+            <Camera3D
+                target={[0, 0.2, 0]}
+                orbit={() => orbit()}
+                elevation={11}
+                distance={13}
                 fov={42}
             />
-            <Background3D background="#080a10" />
-            <Fog3D color="#080a10" near={15} far={36} />
+            {/* Fog with no colour of its own takes the viewport's fill, so the
+                haze and the backdrop cannot drift apart. */}
+            <Fog3D near={15} far={36} />
             <AmbientLight3D intensity={0.5} />
             <DirectionalLight3D intensity={1.8} position={[5, 8, 6]} />
-            <PointLight3D intensity={40} position={[0, 1, 5]} color="#5f7fd0" />
+            {/* One intensity scale: this was 40 beside the directional light's
+                1.8, because three measures the two in different units. */}
+            <PointLight3D intensity={3.2} position={[0, 1, 5]} color="#5f7fd0" />
             <Plane3D
                 width={60} height={60}
                 rotation={[-90, 0, 0]} position={[0, -2.1, 0]}
-                color="#11141c" roughness={0.85}
+                fill="#11141c" roughness={0.85}
             />
 
             {monitor("scope", scope(), -3.1, 22)}

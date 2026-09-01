@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut, Graphics2D, Tex,
-    Canvas3D, PerspectiveCamera3D, AmbientLight3D, DirectionalLight3D, Plane3D,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Plane3D,
 } from 'motion-script';
 import { holdTail } from './_lib';
 
@@ -31,12 +31,12 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Canvas3D width={480} height={320}>
-            <PerspectiveCamera3D position={[0, 0, 4.2]} lookAt={0} fov={45} />
+            <Camera3D position={[0, 0, 4.2]} target={0} fov={45} />
             <AmbientLight3D intensity={0.8} />
             <DirectionalLight3D intensity={1.6} position={[2, 3, 4]} />
             <Plane3D
                 width={3} height={3}
-                map={Tex.surface(panel, 512, 512)}
+                fill={Tex.surface(panel, { width: 512, height: 512 })}
                 rotation={() => [0, spin(), 0]}
             />
         </Canvas3D>,

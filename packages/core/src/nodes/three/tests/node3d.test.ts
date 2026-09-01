@@ -4,7 +4,7 @@ import { Node3D } from '@/nodes/three/node3d';
 import { Group3D } from '@/nodes/three/group3d';
 import { Box3D, Sphere3D } from '@/nodes/three/geometry-nodes';
 import { AmbientLight3D, DirectionalLight3D } from '@/nodes/three/light-nodes';
-import { PerspectiveCamera3D } from '@/nodes/three/camera-nodes';
+import { Camera3D } from '@/nodes/three/camera-nodes';
 import { Fog3D } from '@/nodes/three/environment-nodes';
 import { Canvas3D } from '@/nodes/three/canvas3d-node';
 import { Rect } from '@/nodes/geometry/rect-node';
@@ -67,7 +67,7 @@ describe('Node3D → Scene3D', () => {
     it('a light, a camera and a fog each record their own kind of op', () => {
         const tree = new Group3D({
             children: [
-                new PerspectiveCamera3D({ fov: 45 }),
+                new Camera3D({ fov: 45 }),
                 new AmbientLight3D({ intensity: 0.4 }),
                 new Fog3D({ color: '#0b0d12', near: 5, far: 30 }),
                 new Box3D({ width: 2 }),
@@ -83,7 +83,7 @@ describe('Node3D → Scene3D', () => {
         // `color` is a resolved attribute, so it arrives normalized — the same form
         // `Mesh3D.color` takes, and what the backend's `writeColor` reads.
         expect(scene.fogDescriptor()).toEqual({
-            type: 'linear', color: parseColor('#0b0d12'), near: 5, far: 30,
+            color: parseColor('#0b0d12'), near: 5, far: 30,
         });
     });
 
@@ -101,7 +101,7 @@ describe('Node3D → Scene3D', () => {
     // the camera *inside* the group's push/pop and lets the renderer compose the
     // world matrix, rather than writing an absolute placement.
     it('records a nested camera inside its parent group\'s scope', () => {
-        const camera = new PerspectiveCamera3D({ position: [0, 0, 5] });
+        const camera = new Camera3D({ position: [0, 0, 5] });
         const rig = new Group3D({ position: [0, 10, 0], children: [camera] });
 
         const kinds = record(rig).map((o) => o.kind);
@@ -122,7 +122,7 @@ describe('Node3D → Scene3D', () => {
     });
 
     it('desugars material props onto the mesh the same way the builder does', () => {
-        const [, mesh] = record(new Box3D({ width: 2, color: 'red', roughness: 0.3 }));
+        const [, mesh] = record(new Box3D({ width: 2, fill: 'red', roughness: 0.3 }));
 
         expect(mesh).toMatchObject({
             kind: 'mesh',

@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut, easeOut, parallel, wait,
-    lerpVector3, Canvas3D, PerspectiveCamera3D, DirectionalLight3D, Box3D,
+    lerpVector3, Canvas3D, Camera3D, DirectionalLight3D, Box3D,
     type Vector3,
 } from "motion-script";
 
@@ -31,11 +31,12 @@ export default createScene(function* (stage) {
         >
             {/* Track the cube as it rises, rather than staring at the origin —
                 otherwise the lift carries it out of frame. */}
-            <PerspectiveCamera3D position={[0, 2.5, 6]} lookAt={() => lift()} fov={45} />
+            <Camera3D position={[0, 2.5, 6]} target={() => lift()} fov={45} />
             <DirectionalLight3D intensity={2.4} position={[4, 6, 3]} />
             <Box3D
                 width={2} height={2} depth={2}
-                color="#e0533d" roughness={() => rough()} metalness={0.1}
+                cornerRadius={0.12}
+                fill="#e0533d" roughness={() => rough()} metalness={0.1}
                 position={() => lift()}
                 rotation={() => [0, spin(), 0]}
             />

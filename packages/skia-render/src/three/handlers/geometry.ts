@@ -16,7 +16,10 @@ import type * as THREE from "three";
 import type {
     BufferGeometry3D, Geometry3D, ParametricGeometry3D, Vector3Input,
 } from "@motion-script/core";
-import { evaluateParametric, resolveVector3, toPathString } from "@motion-script/core";
+import {
+    cylinderRadii, evaluateParametric, evaluateRoundedBox, resolveBevel3D,
+    resolveVector3, segmentsOf, toPathString,
+} from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
 import { canvas3DModel } from "../bridge";
 import { deg } from "./constants";
@@ -24,94 +27,134 @@ import { deg } from "./constants";
 /** Build a three geometry for `descriptor`. */
 export function createGeometry(three: ThreeModule, descriptor: Geometry3D): THREE.BufferGeometry {
     switch (descriptor.type) {
-        case "box":
-            return new three.BoxGeometry(
-                descriptor.width ?? 1, descriptor.height ?? 1, descriptor.depth ?? 1,
-                descriptor.widthSegments ?? 1, descriptor.heightSegments ?? 1, descriptor.depthSegments ?? 1,
-            );
+        case "box": {
+            const [sx, sy, sz] = segmentsOf(descriptor.segments, [1, 1, 1]);
+            const width = descriptor.width ?? 1;
+            const height = descriptor.height ?? 1;
+            const depth = descriptor.depth ?? 1;
+            // A rounded box has no three primitive — its surface is built in core
+            // and arrives as ordinary vertex buffers. See `evaluateRoundedBox`.
+            if ((descriptor.cornerRadius ?? 0) > 0) {
+                return createBufferGeometry(three, evaluateRoundedBox({
+                    width, height, depth,
+                    radius: descriptor.cornerRadius!,
+                    segments: [sx, sy, sz],
+                }));
+            }
+            return new three.BoxGeometry(width, height, depth, sx, sy, sz);
+        }
 
-        case "sphere":
+        case "sphere": {
+            const [longitude, latitude] = segmentsOf(descriptor.segments, [32, 16]);
             return new three.SphereGeometry(
                 descriptor.radius ?? 1,
-                descriptor.widthSegments ?? 32, descriptor.heightSegments ?? 16,
-                deg(descriptor.phiStart ?? 0), deg(descriptor.phiLength ?? 360),
-                deg(descriptor.thetaStart ?? 0), deg(descriptor.thetaLength ?? 180),
+                longitude, latitude,
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
+                deg(descriptor.startLatitude ?? 0), deg(descriptor.latitudeSweep ?? 180),
             );
+        }
 
-        case "plane":
+        case "plane": {
+            const [sx, sy] = segmentsOf(descriptor.segments, [1, 1]);
             return new three.PlaneGeometry(
-                descriptor.width ?? 1, descriptor.height ?? 1,
-                descriptor.widthSegments ?? 1, descriptor.heightSegments ?? 1,
+                descriptor.width ?? 1, descriptor.height ?? 1, sx, sy,
             );
+        }
 
-        case "cylinder":
+        case "cylinder": {
+            const [top, bottom] = cylinderRadii(descriptor.radius);
+            const [radial, heightSegments] = segmentsOf(descriptor.segments, [32, 1]);
             return new three.CylinderGeometry(
-                descriptor.radiusTop ?? 1, descriptor.radiusBottom ?? 1, descriptor.height ?? 1,
-                descriptor.radialSegments ?? 32, descriptor.heightSegments ?? 1,
-                descriptor.openEnded ?? false,
-                deg(descriptor.thetaStart ?? 0), deg(descriptor.thetaLength ?? 360),
+                top, bottom, descriptor.height ?? 1,
+                radial, heightSegments,
+                // `capped` is the positive spelling of three's `openEnded`.
+                !(descriptor.capped ?? true),
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "cone":
+        case "cone": {
+            const [radial, heightSegments] = segmentsOf(descriptor.segments, [32, 1]);
             return new three.ConeGeometry(
                 descriptor.radius ?? 1, descriptor.height ?? 1,
-                descriptor.radialSegments ?? 32, descriptor.heightSegments ?? 1,
-                descriptor.openEnded ?? false,
-                deg(descriptor.thetaStart ?? 0), deg(descriptor.thetaLength ?? 360),
+                radial, heightSegments,
+                !(descriptor.capped ?? true),
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "torus":
+        case "torus": {
+            const [radial, tubular] = segmentsOf(descriptor.segments, [16, 48]);
             return new three.TorusGeometry(
-                descriptor.radius ?? 1, descriptor.tube ?? 0.4,
-                descriptor.radialSegments ?? 16, descriptor.tubularSegments ?? 48,
-                deg(descriptor.arc ?? 360),
+                descriptor.radius ?? 1, descriptor.thickness ?? 0.4,
+                radial, tubular,
+                deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "torusKnot":
+        case "torusKnot": {
+            const [tubular, radial] = segmentsOf(descriptor.segments, [64, 8]);
+            const [p, q] = descriptor.windings ?? [2, 3];
             return new three.TorusKnotGeometry(
-                descriptor.radius ?? 1, descriptor.tube ?? 0.4,
-                descriptor.tubularSegments ?? 64, descriptor.radialSegments ?? 8,
-                descriptor.p ?? 2, descriptor.q ?? 3,
+                descriptor.radius ?? 1, descriptor.thickness ?? 0.4,
+                tubular, radial, p, q,
             );
+        }
 
-        case "circle":
+        case "circle": {
+            const [segments] = segmentsOf(descriptor.segments, [32]);
             return new three.CircleGeometry(
-                descriptor.radius ?? 1, descriptor.segments ?? 32,
-                deg(descriptor.thetaStart ?? 0), deg(descriptor.thetaLength ?? 360),
+                descriptor.radius ?? 1, segments,
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "ring":
+        case "ring": {
+            const [around, radial] = segmentsOf(descriptor.segments, [32, 1]);
             return new three.RingGeometry(
-                descriptor.innerRadius ?? 0.5, descriptor.outerRadius ?? 1,
-                descriptor.thetaSegments ?? 32, descriptor.phiSegments ?? 1,
-                deg(descriptor.thetaStart ?? 0), deg(descriptor.thetaLength ?? 360),
+                descriptor.innerRadius ?? 0.5, descriptor.radius ?? 1,
+                around, radial,
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "capsule":
+        case "capsule": {
+            const [radial, cap] = segmentsOf(descriptor.segments, [16, 8]);
             return new three.CapsuleGeometry(
-                descriptor.radius ?? 0.5, descriptor.height ?? 1,
-                descriptor.capSegments ?? 8, descriptor.radialSegments ?? 16,
+                descriptor.radius ?? 0.5, descriptor.height ?? 1, cap, radial,
             );
+        }
 
-        case "polyhedron":
-            return createPolyhedron(three, descriptor.shape, descriptor.radius ?? 1, descriptor.detail ?? 0);
+        case "polyhedron": {
+            const [detail] = segmentsOf(descriptor.segments, [1]);
+            // `segmentsOf` floors at 1, but a polyhedron's subdivision is a
+            // *detail* count where 0 is the un-subdivided solid — and that is the
+            // default anyone writing `<Icosahedron3D/>` expects to see.
+            return createPolyhedron(
+                three, descriptor.shape, descriptor.radius ?? 1,
+                descriptor.segments === undefined ? 0 : detail,
+            );
+        }
 
         case "extrude":
             return createExtrude(three, descriptor);
 
-        case "lathe":
+        case "lathe": {
+            const [segments] = segmentsOf(descriptor.segments, [12]);
             return new three.LatheGeometry(
                 descriptor.points.map((p) => toVector2(three, p)),
-                descriptor.segments ?? 12,
-                deg(descriptor.phiStart ?? 0), deg(descriptor.phiLength ?? 360),
+                segments,
+                deg(descriptor.startAngle ?? 0), deg(descriptor.sweep ?? 360),
             );
+        }
 
-        case "tube":
+        case "tube": {
+            const [along, around] = segmentsOf(descriptor.segments, [64, 8]);
             return new three.TubeGeometry(
                 new three.CatmullRomCurve3(descriptor.points.map((p) => toVector3(three, p)), descriptor.closed ?? false),
-                descriptor.tubularSegments ?? 64, descriptor.radius ?? 1,
-                descriptor.radialSegments ?? 8, descriptor.closed ?? false,
+                along, descriptor.radius ?? 1, around, descriptor.closed ?? false,
             );
+        }
 
         case "buffer":
             return createBufferGeometry(three, descriptor);
@@ -177,7 +220,7 @@ function findModelMesh(root: THREE.Object3D | undefined, name: string | undefine
 
 function createPolyhedron(
     three: ThreeModule,
-    shape: "tetrahedron" | "octahedron" | "icosahedron" | "dodecahedron",
+    shape: "tetrahedron" | "octahedron" | "icosahedron" | "dodecahedron" | undefined,
     radius: number,
     detail: number,
 ): THREE.BufferGeometry {
@@ -191,14 +234,15 @@ function createPolyhedron(
 
 /**
  * Extrude a 2D outline. Reuses core's own path vocabulary: the descriptor takes
- * the same `PathData`/`PathBuilder` a 2D `Path` node does, converted here through
- * three's SVG-path reader so an existing outline becomes a solid unchanged.
+ * the same `PathData`/`PathBuilder` a 2D `Path` node does — under the same prop
+ * name — converted here through three's SVG-path reader so an existing outline
+ * becomes a solid unchanged.
  */
 function createExtrude(
     three: ThreeModule,
     descriptor: Extract<Geometry3D, { type: "extrude" }>,
 ): THREE.BufferGeometry {
-    const source = descriptor.shape;
+    const source = descriptor.path;
     const data = typeof source === "object" && "toPathState" in source
         ? (source as { toPathState(): { data: unknown } }).toPathState().data
         : source;
@@ -206,14 +250,17 @@ function createExtrude(
     const shapes = pathToShapes(three, toPathString(data as never));
     if (shapes.length === 0) return new three.BufferGeometry();
 
+    const [curveSegments] = segmentsOf(descriptor.segments, [12]);
+    const bevel = resolveBevel3D(descriptor.bevel);
+
     return new three.ExtrudeGeometry(shapes, {
         depth: descriptor.depth ?? 1,
-        curveSegments: descriptor.curveSegments ?? 12,
-        bevelEnabled: descriptor.bevel ?? false,
-        bevelThickness: descriptor.bevelThickness ?? 0.2,
-        bevelSize: descriptor.bevelSize ?? 0.1,
-        bevelOffset: descriptor.bevelOffset ?? 0,
-        bevelSegments: descriptor.bevelSegments ?? 3,
+        curveSegments,
+        bevelEnabled: bevel !== null,
+        bevelThickness: bevel?.thickness ?? 0.2,
+        bevelSize: bevel?.size ?? 0.1,
+        bevelOffset: bevel?.offset ?? 0,
+        bevelSegments: bevel?.segments ?? 3,
     });
 }
 
@@ -401,8 +448,15 @@ export function geometrySignature(descriptor: Geometry3D): string {
             // uploaded in place instead; a change in vertex count still forces a
             // rebuild via `segments`, which is a plain number and is included.
             continue;
-        } else if (isArrayLike(value)) {
+        } else if (isBulkArray(value)) {
+            // Vertex data: length only. Contents are handled by the in-place
+            // upload path, and folding them in here would rebuild every frame.
             parts.push(`${key}#${(value as ArrayLike<number>).length}`);
+        } else if (Array.isArray(value)) {
+            // A short tuple — `segments`, `windings`, a `[top, bottom]` radius.
+            // These *are* structural, and keying them by length alone would make
+            // `segments: [8, 8]` and `segments: [64, 64]` the same geometry.
+            parts.push(`${key}=${JSON.stringify(value)}`);
         } else if (typeof value === "object") {
             parts.push(`${key}=${JSON.stringify(value)}`);
         } else {
@@ -434,8 +488,16 @@ export function resolveDynamicBuffers(
     return descriptor.type === "parametric" ? evaluateParametric(descriptor) : descriptor;
 }
 
-function isArrayLike(value: unknown): boolean {
-    return Array.isArray(value) || ArrayBuffer.isView(value);
+/**
+ * True for an array big enough to be vertex data rather than a parameter tuple.
+ *
+ * A typed array always is. A plain array is judged by length: every tuple the
+ * descriptors take is at most three long (`segments`, `windings`, a tapered
+ * `radius`), and every plain-array *buffer* an author hands in is far longer.
+ */
+function isBulkArray(value: unknown): boolean {
+    if (ArrayBuffer.isView(value)) return true;
+    return Array.isArray(value) && value.length > 4;
 }
 
 function toFloat32(source: ArrayLike<number>): Float32Array {

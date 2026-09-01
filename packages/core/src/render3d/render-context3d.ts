@@ -2,8 +2,7 @@ import type { Graphics3D } from "./graphics3d";
 import type { CameraData3D } from "./camera";
 import type { LightData3D } from "./light";
 import type {
-    BackgroundData3D, EnvironmentData3D, FogData3D,
-    PostEffectData3D, ShadowSettingsData3D, ToneMappingData3D,
+    EnvironmentData3D, FogData3D, PostEffect3D, Shadows3D, ToneSettings3D,
 } from "./scene-settings";
 import type { Transform3D } from "./transform";
 import type { Color } from "@/attributes/shape/fill/color/parser";
@@ -50,6 +49,12 @@ export interface Node3DRenderState {
  *
  * `Scene3D` is the implementation core ships; it records the calls into a value a
  * backend replays.
+ *
+ * There is no `background`. What is drawn behind a 3D scene is either a **2D
+ * fill** on the viewport — which composites correctly already, is unaffected by
+ * anything in the 3D pass, and gets the whole fill chain — or a sky, which is
+ * part of {@link environment} because an HDRI that lights a scene and the
+ * panorama you see behind it are one thing.
  */
 export abstract class RenderContext3D {
     /**
@@ -81,19 +86,17 @@ export abstract class RenderContext3D {
     // ── Scene-wide settings ──────────────────────────────────────────────────
     //
     // Unlike a light or a camera these have no position, so they are not
-    // hierarchical: a scene has exactly one fog and one background, and the last
+    // hierarchical: a scene has exactly one fog and one environment, and the last
     // node to set one wins.
 
-    /** Set the scene fog. A bare colour is sugar for linear fog; `null` clears it. */
+    /** Set the scene fog. A bare colour is sugar for `{ color }`; `null` clears it. */
     abstract fog(fog: FogData3D | Color | null): void;
-    /** Set what is drawn behind the scene, or `null` for transparent. */
-    abstract background(background: BackgroundData3D | null): void;
-    /** Set the image-based lighting environment, or `null` for none. */
+    /** Set the image-based lighting environment and sky, or `null` for none. */
     abstract environment(environment: EnvironmentData3D | null): void;
     /** Enable/configure shadow casting for the whole scene. */
-    abstract shadows(settings?: ShadowSettingsData3D | boolean): void;
+    abstract shadows(settings?: Shadows3D): void;
     /** Set tone mapping and exposure. */
-    abstract tone(settings: ToneMappingData3D): void;
+    abstract tone(settings: ToneSettings3D): void;
     /** Append post-processing passes, applied in order after the scene renders. */
-    abstract post(effects: PostEffectData3D | readonly PostEffectData3D[]): void;
+    abstract post(effects: PostEffect3D | readonly PostEffect3D[]): void;
 }

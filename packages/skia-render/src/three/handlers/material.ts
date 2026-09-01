@@ -17,16 +17,29 @@ import type * as THREE from "three";
 import type { Material3D, Texture3D, Uniform3D } from "@motion-script/core";
 import { STRUCTURAL_MATERIAL_KEYS } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
-import { blending, colorAlpha, deg, makeColor, side, writeColor } from "./constants";
+import { blending, colorAlpha, deg, faces, makeColor, writeColor } from "./constants";
 import type { TextureResolver } from "./texture";
 
 /** Which material fields hold a texture, so they can be resolved generically. */
 const MAP_KEYS = [
     "map", "alphaMap", "aoMap", "normalMap", "displacementMap", "envMap",
-    "lightMap", "emissiveMap", "roughnessMap", "metalnessMap", "specularMap",
+    "lightMap", "emissionMap", "roughnessMap", "metalnessMap", "specularMap",
     "gradientMap", "matcap", "clearcoatMap", "clearcoatNormalMap",
     "clearcoatRoughnessMap", "transmissionMap", "thicknessMap",
 ] as const;
+
+/**
+ * Core's name for a field → three's, where the two differ.
+ *
+ * Core names these for what an author is describing; three names them after its
+ * own history. Kept as a table rather than a `case` per key so the translation is
+ * visible in one place — the same job the string-enum maps in `constants.ts` do.
+ */
+const FIELD_ALIASES: Readonly<Record<string, string>> = {
+    emission: "emissive",
+    emissionStrength: "emissiveIntensity",
+    emissionMap: "emissiveMap",
+};
 
 /** Map slots whose data is numeric, not colour — they must stay linear. */
 const LINEAR_MAP_KEYS: ReadonlySet<string> = new Set([
@@ -37,8 +50,31 @@ const LINEAR_MAP_KEYS: ReadonlySet<string> = new Set([
 
 /** Colour-valued fields, so they can be written through core's linear parser. */
 const COLOR_KEYS = [
-    "color", "emissive", "specular", "sheenColor", "specularColor", "attenuationColor",
+    "color", "emission", "specular", "sheenColor", "specularColor", "attenuationColor",
 ] as const;
+
+/**
+ * Whether a material needs alpha blending — derived, not asked for.
+ *
+ * `transparent` was a second flag an author had to remember to pair with a fade,
+ * and forgetting it made `opacity: 0.5` silently do nothing. Everything that
+ * genuinely needs blending is visible in the descriptor, so it is read off it:
+ * an `opacity` below 1, a colour carrying alpha, a per-pixel `alphaMap`, or
+ * transmission (real refraction, which is blending by definition).
+ *
+ * An explicit `transparent: true` still forces it on, for the occasional
+ * draw-order reason. An explicit `false` cannot turn off blending that a lower
+ * alpha requires — there was never a use for that beyond expressing a bug.
+ */
+function needsBlending(descriptor: Material3D): boolean {
+    const bag = descriptor as unknown as Record<string, unknown>;
+    if (bag.transparent === true) return true;
+    if (typeof bag.opacity === "number" && bag.opacity < 1) return true;
+    if (bag.alphaMap !== undefined) return true;
+    if (typeof bag.transmission === "number" && bag.transmission > 0) return true;
+    if (bag.color !== undefined && colorAlpha(bag.color as never) < 1) return true;
+    return false;
+}
 
 function createRaw(three: ThreeModule, descriptor: Material3D): THREE.Material {
     switch (descriptor.type) {
@@ -74,7 +110,17 @@ function createShader(
     });
 }
 
-/** Build a material and apply every field from `descriptor`. */
+/**
+ * Build a material and apply every field from `descriptor`.
+ *
+ * Note that `material.premultipliedAlpha` is deliberately left at three's
+ * default. Both settings are self-consistent — three picks the blend function to
+ * match the flag (`ONE` with it, `SRC_ALPHA` without) and defines
+ * `PREMULTIPLIED_ALPHA` for the shader in step — so either produces a correctly
+ * premultiplied drawing buffer. Setting it is a no-op, which is worth recording
+ * because it looks like the fix for a translucency bug and is not: see
+ * `WebStorageAdapter.upload3DFrame`, where that bug actually lived.
+ */
 export function createMaterial(
     three: ThreeModule,
     descriptor: Material3D,
@@ -110,11 +156,12 @@ export function applyMaterial(
     for (const key of COLOR_KEYS) {
         const value = bag[key];
         if (value === undefined) continue;
-        const existing = target[key];
+        const field = FIELD_ALIASES[key] ?? key;
+        const existing = target[field];
         if (existing && typeof existing === "object" && "setRGB" in existing) {
             writeColor(three, existing as THREE.Color, value as never);
         } else {
-            target[key] = makeColor(three, value as never);
+            target[field] = makeColor(three, value as never);
         }
         if (key === "color") {
             const alpha = colorAlpha(value as never);
@@ -124,20 +171,25 @@ export function applyMaterial(
 
     // ── Plain scalar/vector values ───────────────────────────────────────────
     for (const key of Object.keys(bag)) {
-        if (key === "type" || key === "key" || key === "params") continue;
+        if (key === "type" || key === "params") continue;
         if ((COLOR_KEYS as readonly string[]).includes(key)) continue;
         if ((MAP_KEYS as readonly string[]).includes(key)) continue;
         if (key === "uniforms" || key === "vertex" || key === "fragment" || key === "defines" || key === "raw" || key === "extends") continue;
         if (!structural && (STRUCTURAL_MATERIAL_KEYS as readonly string[]).includes(key)) continue;
+        // Derived below, from everything else in the descriptor.
+        if (key === "transparent") continue;
 
         const value = bag[key];
         if (value === undefined) continue;
 
         switch (key) {
-            case "side":
-                material.side = side(three, value as never);
+            case "faces":
+                material.side = faces(three, value as never);
                 break;
-            case "blending":
+            case "shading":
+                target.flatShading = value === "flat";
+                break;
+            case "blend":
                 material.blending = blending(three, value as never);
                 break;
             case "normalScale":
@@ -159,15 +211,37 @@ export function applyMaterial(
                 target.anisotropyRotation = deg(value as number);
                 break;
             default:
-                target[key] = value;
+                target[FIELD_ALIASES[key] ?? key] = value;
                 break;
         }
     }
 
     if (colorAlphaValue !== undefined && bag.opacity === undefined) {
         material.opacity = colorAlphaValue;
-        if (structural) material.transparent = true;
     }
+
+    // ── Blending, derived and latched ────────────────────────────────────────
+    // Deliberately outside the `structural` guard and outside the signature.
+    // Turning blending on recompiles, and deriving it from a *tweened* opacity
+    // would mean recompiling on the frame a fade starts and again on the frame it
+    // ends. Latching it — once on, never off — costs one recompile per material
+    // for the life of the timeline, and a material that has been transparent
+    // costs nothing by staying so.
+    const blends = needsBlending(descriptor);
+    if (!material.transparent && blends) {
+        material.transparent = true;
+        material.needsUpdate = true;
+    }
+
+    // A blended surface stops writing depth unless told otherwise — the other
+    // half of the same decision, and the other flag an author had to remember.
+    // three defaults `depthWrite` to true for every material, so a translucent
+    // mesh occludes everything drawn after it: a surface at 5% opacity renders
+    // as a near-invisible cut-out through whatever is behind it, and only
+    // resolves when the fade lands. Every scene that fades a mesh had to pair
+    // the two by hand. An explicit `depthWrite` still wins, which is what a
+    // deliberately depth-writing translucent surface sets.
+    if (bag.depthWrite === undefined) material.depthWrite = !blends;
 
     // ── Textures ─────────────────────────────────────────────────────────────
     // Adding or removing a map changes the compiled program, so a *presence*
@@ -175,7 +249,9 @@ export function applyMaterial(
     for (const key of MAP_KEYS) {
         const value = bag[key] as Texture3D | undefined;
         if (value === undefined) continue;
-        target[key] = textures.resolve(value, LINEAR_MAP_KEYS.has(key) ? "linear" : "srgb");
+        target[FIELD_ALIASES[key] ?? key] = textures.resolve(
+            value, LINEAR_MAP_KEYS.has(key) ? "linear" : "srgb",
+        );
     }
 
     // ── Shader uniforms ──────────────────────────────────────────────────────

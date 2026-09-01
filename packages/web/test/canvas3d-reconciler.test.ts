@@ -85,11 +85,11 @@ describe("Canvas3DGraph reconciliation", () => {
     it("reuses the same object, geometry and material across frames", () => {
         const graph = new Canvas3DGraph(three);
 
-        const first = sync(graph, (g3) => g3.box({ width: 2, color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ width: 2, fill: "red" }));
         const mesh1 = first.scene.children[0] as never as { uuid: string; geometry: { uuid: string }; material: { uuid: string } };
         const ids = { object: mesh1.uuid, geometry: mesh1.geometry.uuid, material: mesh1.material.uuid };
 
-        const second = sync(graph, (g3) => g3.box({ width: 2, color: "red" }));
+        const second = sync(graph, (g3) => g3.box({ width: 2, fill: "red" }));
         const mesh2 = second.scene.children[0] as never as typeof mesh1;
 
         expect(mesh2.uuid).toBe(ids.object);
@@ -113,11 +113,11 @@ describe("Canvas3DGraph reconciliation", () => {
     it("writes a changed material colour in place, without recompiling", () => {
         const graph = new Canvas3DGraph(three);
 
-        const first = sync(graph, (g3) => g3.box({ color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ fill: "red" }));
         const material1 = (first.scene.children[0] as never as { material: { uuid: string } }).material;
         const uuid = material1.uuid;
 
-        const second = sync(graph, (g3) => g3.box({ color: "blue" }));
+        const second = sync(graph, (g3) => g3.box({ fill: "blue" }));
         const material2 = (second.scene.children[0] as never as { material: { uuid: string; color: { b: number } } }).material;
 
         // Same material object — a colour tween must never recompile the program.
@@ -144,14 +144,73 @@ describe("Canvas3DGraph reconciliation", () => {
         graph.dispose();
     });
 
+    // `transparent` is derived, not asked for. It used to be a second flag an
+    // author had to remember to pair with a fade, and forgetting it made
+    // `opacity: 0.5` silently do nothing.
+    it("turns blending on for anything that needs it, with no flag written", () => {
+        const graph = new Canvas3DGraph(three);
+
+        const faded = sync(graph, (g3) => g3.box({ material: Mat.basic({ opacity: 0.05 }) }));
+        expect((faded.scene.children[0] as THREE.Mesh).material).toMatchObject({
+            transparent: true, opacity: 0.05,
+        });
+        graph.dispose();
+
+        // A colour carrying alpha counts too, and folds into the opacity.
+        const graph2 = new Canvas3DGraph(three);
+        const tinted = sync(graph2, (g3) => g3.box({ fill: "white/10" }));
+        expect((tinted.scene.children[0] as THREE.Mesh).material.transparent).toBe(true);
+        graph2.dispose();
+
+        // A fully opaque material is left alone — blending costs a depth sort.
+        const graph3 = new Canvas3DGraph(three);
+        const solid = sync(graph3, (g3) => g3.box({ fill: "white" }));
+        expect((solid.scene.children[0] as THREE.Mesh).material.transparent).toBe(false);
+        graph3.dispose();
+    });
+
+    // The other half of the same decision. three writes depth for every material,
+    // so a translucent mesh used to punch a near-invisible hole through whatever
+    // was drawn after it until an author paired the two flags by hand.
+    it("stops a blended surface writing depth, unless it says otherwise", () => {
+        const graph = new Canvas3DGraph(three);
+
+        const faded = sync(graph, (g3) => g3.box({ material: Mat.basic({ opacity: 0.4 }) }));
+        expect((faded.scene.children[0] as THREE.Mesh).material.depthWrite).toBe(false);
+        graph.dispose();
+
+        const graph2 = new Canvas3DGraph(three);
+        const solid = sync(graph2, (g3) => g3.box({ fill: "white" }));
+        expect((solid.scene.children[0] as THREE.Mesh).material.depthWrite).toBe(true);
+        graph2.dispose();
+
+        // An explicit value wins — a translucent surface that should occlude.
+        const graph3 = new Canvas3DGraph(three);
+        const forced = sync(graph3, (g3) =>
+            g3.box({ material: Mat.basic({ opacity: 0.4, depthWrite: true }) }));
+        expect((forced.scene.children[0] as THREE.Mesh).material.depthWrite).toBe(true);
+        graph3.dispose();
+    });
+
+    // Latched: a fade back to full opacity must not recompile a second time.
+    it("keeps blending on once a fade has started", () => {
+        const graph = new Canvas3DGraph(three);
+
+        sync(graph, (g3) => g3.box({ material: Mat.basic({ opacity: 0.5 }) }));
+        const back = sync(graph, (g3) => g3.box({ material: Mat.basic({ opacity: 1 }) }));
+
+        expect((back.scene.children[0] as THREE.Mesh).material.transparent).toBe(true);
+        graph.dispose();
+    });
+
     it("rebuilds when a structural material flag flips", () => {
         const graph = new Canvas3DGraph(three);
 
-        const first = sync(graph, (g3) => g3.box({ color: "red" }));
+        const first = sync(graph, (g3) => g3.box({ fill: "red" }));
         const before = (first.scene.children[0] as never as { material: { uuid: string } }).material.uuid;
 
         // `side` changes the compiled program, so it can't be mutated.
-        const second = sync(graph, (g3) => g3.box({ color: "red", side: "double" }));
+        const second = sync(graph, (g3) => g3.box({ fill: "red", faces: "both" }));
         const after = (second.scene.children[0] as never as { material: { uuid: string } }).material.uuid;
 
         expect(after).not.toBe(before);
@@ -185,19 +244,40 @@ describe("Canvas3DGraph reconciliation", () => {
         graph.dispose();
     });
 
-    // Without an explicit key, index-based identity means an op inserted ahead of
-    // others shifts their slots. `key` is the documented opt-out.
-    it("keeps identity across a conditional insert when given an explicit key", () => {
+    // The old positional identity meant an op inserted ahead of others shifted
+    // their cache slots and rebuilt them, and the opt-out was an author-written
+    // `key`. Identity is derived from content now, so there is nothing to write:
+    // the box finds its own entry whatever appears before it.
+    it("keeps identity across a conditional insert, with no key written", () => {
         const graph = new Canvas3DGraph(three);
 
-        const first = sync(graph, (g3) => g3.box({ key: "hero", width: 2 }));
+        const first = sync(graph, (g3) => g3.box({ width: 2 }));
         const uuid = first.scene.children[0].uuid;
 
         // A sphere now precedes the box, shifting its structural index from 0 to 1.
-        const second = sync(graph, (g3) => g3.sphere().box({ key: "hero", width: 2 }));
-        const hero = second.scene.children.find((c) => c.uuid === uuid);
+        const second = sync(graph, (g3) => g3.sphere().box({ width: 2 }));
 
-        expect(hero).toBeDefined();
+        expect(second.scene.children.find((c) => c.uuid === uuid)).toBeDefined();
+        graph.dispose();
+    });
+
+    // The other half of content keying: two *interchangeable* ops share a bucket
+    // and are told apart by their order within it, so a scene of identical boxes
+    // still gets one stable cache entry each.
+    it("gives identical siblings their own stable entries", () => {
+        const graph = new Canvas3DGraph(three);
+
+        const first = sync(graph, (g3) => g3
+            .box({ width: 1, position: [0, 0, 0] })
+            .box({ width: 1, position: [2, 0, 0] }));
+        const uuids = first.scene.children.map((c) => c.uuid);
+        expect(new Set(uuids).size).toBe(2);
+
+        const second = sync(graph, (g3) => g3
+            .box({ width: 1, position: [0, 1, 0] })
+            .box({ width: 1, position: [2, 1, 0] }));
+
+        expect(second.scene.children.map((c) => c.uuid)).toEqual(uuids);
         graph.dispose();
     });
 
@@ -268,18 +348,34 @@ describe("Canvas3DGraph reconciliation", () => {
         graph.dispose();
     });
 
-    it("applies fog and background as scene singletons, and clears them", () => {
+    // Fog is a scene singleton; the background is *not* one at all any more.
+    // What is drawn behind a 3D scene is the viewport's own 2D fill — nothing in
+    // the 3D pass could tint `scene.background`, and the renderer clears
+    // transparent — so the only thing that still writes it is a sky, which comes
+    // with the environment that lights the scene.
+    it("applies fog as a scene singleton, and clears it", () => {
         const graph = new Canvas3DGraph(three);
 
         const withSettings = syncScene(graph, (s) => s.draw(new Graphics3D().box())
-            .fog({ type: "linear", color: "#102030", near: 2, far: 20 })
-            .background("#010203"));
+            .fog({ color: "#102030", near: 2, far: 20 }));
         expect((withSettings.scene.fog as never as { near: number }).near).toBe(2);
-        expect(withSettings.scene.background).not.toBeNull();
+        // Transparent by construction: the 2D fill shows through.
+        expect(withSettings.scene.background).toBeNull();
 
-        const cleared = syncScene(graph, (s) => s.draw(new Graphics3D().box()).fog(null).background(null));
+        const cleared = syncScene(graph, (s) => s.draw(new Graphics3D().box()).fog(null));
         expect(cleared.scene.fog).toBeNull();
-        expect(cleared.scene.background).toBeNull();
+        graph.dispose();
+    });
+
+    // Exponential fog is chosen by setting `density`, not by a discriminant that
+    // could disagree with the fields beside it.
+    it("picks exponential fog from the presence of density", () => {
+        const graph = new Canvas3DGraph(three);
+        const { scene } = syncScene(graph, (s) => s.draw(new Graphics3D().box())
+            .fog({ color: "#102030", density: 0.08 }));
+
+        expect(scene.fog?.constructor.name).toBe("FogExp2");
+        expect((scene.fog as never as { density: number }).density).toBeCloseTo(0.08);
         graph.dispose();
     });
 
@@ -318,8 +414,8 @@ describe("Canvas3DGraph reconciliation", () => {
         const points = [[0, 0, 0], [1, 1, 1], [2, 0, 0]] as [number, number, number][];
 
         expect(sync(graph, (g3) => g3.line({ points })).scene.children[0].type).toBe("Line");
-        expect(sync(graph, (g3) => g3.line({ points, mode: "segments" })).scene.children[0].type).toBe("LineSegments");
-        expect(sync(graph, (g3) => g3.line({ points, mode: "loop" })).scene.children[0].type).toBe("LineLoop");
+        expect(sync(graph, (g3) => g3.line({ points, segments: true })).scene.children[0].type).toBe("LineSegments");
+        expect(sync(graph, (g3) => g3.line({ points, closed: true })).scene.children[0].type).toBe("LineLoop");
         graph.dispose();
     });
 
@@ -327,7 +423,7 @@ describe("Canvas3DGraph reconciliation", () => {
         const graph = new Canvas3DGraph(three);
         const { scene } = sync(graph, (g3) => g3.line({
             geometry: Geo.edges(Geo.box({ width: 2, height: 2, depth: 2 })),
-            mode: "segments",
+            segments: true,
         }));
 
         // A cube has 12 edges → 24 endpoints.
@@ -376,10 +472,10 @@ describe("surface textures", () => {
     it("resolves a surface map from the frame's buffers", () => {
         const graph = new Canvas3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        const tex = Tex.surface(source(), 2, 2);
+        const tex = Tex.surface(source(), { width: 2, height: 2 });
         resolver.setRasters("node-a#0", new Map([[tex, raster(2, 200)]]));
 
-        const g3 = new Graphics3D().plane({ unlit: true, map: tex });
+        const g3 = new Graphics3D().plane({ unlit: true, fill: tex });
         const { scene } = graph.sync(new Scene3D().draw(g3), 800, 600, resolver);
 
         const map = materialOf(scene).map!;
@@ -397,7 +493,7 @@ describe("surface textures", () => {
         const resolver = new TextureResolver(three, assets);
         resolver.setRasters("node-a#0", new Map());
 
-        const g3 = new Graphics3D().plane({ unlit: true, map: Tex.surface(source(), 2, 2) });
+        const g3 = new Graphics3D().plane({ unlit: true, fill: Tex.surface(source(), { width: 2, height: 2 }) });
         const { scene } = graph.sync(new Scene3D().draw(g3), 800, 600, resolver);
 
         expect(materialOf(scene).map).toBeNull();
@@ -409,8 +505,8 @@ describe("surface textures", () => {
     it("re-uploads into the same texture across frames", () => {
         const graph = new Canvas3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        const tex = Tex.surface(source(), 2, 2, { key: "screen" });
-        const build = () => new Graphics3D().plane({ unlit: true, map: tex });
+        const tex = Tex.surface(source(), { width: 2, height: 2 });
+        const build = () => new Graphics3D().plane({ unlit: true, fill: tex });
 
         resolver.setRasters("node-a#0", new Map([[tex, raster(2, 10)]]));
         const first = materialOf(graph.sync(new Scene3D().draw(build()), 800, 600, resolver).scene).map!;
@@ -428,8 +524,8 @@ describe("surface textures", () => {
     it("scopes a surface to its owning fill slot", () => {
         const graph = new Canvas3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        const tex = Tex.surface(source(), 2, 2, { key: "screen" });
-        const build = () => new Graphics3D().plane({ unlit: true, map: tex });
+        const tex = Tex.surface(source(), { width: 2, height: 2 });
+        const build = () => new Graphics3D().plane({ unlit: true, fill: tex });
 
         resolver.setRasters("node-a#0", new Map([[tex, raster(2, 10)]]));
         const a = materialOf(graph.sync(new Scene3D().draw(build()), 800, 600, resolver).scene).map!;
@@ -448,13 +544,13 @@ describe("surface textures", () => {
     it("keeps two distinct descriptors on separate textures", () => {
         const graph = new Canvas3DGraph(three);
         const resolver = new TextureResolver(three, assets);
-        const left = Tex.surface(source(), 2, 2, { key: "left" });
-        const right = Tex.surface(source(), 4, 4, { key: "right" });
+        const left = Tex.surface(source(), { width: 2, height: 2 });
+        const right = Tex.surface(source(), { width: 4, height: 4 });
 
         resolver.setRasters("node-a#0", new Map([[left, raster(2, 10)], [right, raster(4, 250)]]));
         const { scene } = graph.sync(
             new Scene3D().draw(
-                new Graphics3D().plane({ unlit: true, map: left }).plane({ unlit: true, map: right }),
+                new Graphics3D().plane({ unlit: true, fill: left }).plane({ unlit: true, fill: right }),
             ),
             800, 600, resolver,
         );

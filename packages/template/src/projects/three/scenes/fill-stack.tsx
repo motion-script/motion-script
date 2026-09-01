@@ -1,7 +1,7 @@
 import {
     createScene, createSignal, easeInOut, parallel, wait,
     Fills, Graphics3D, Scene3D, Rect, Row,
-    Canvas3D, PerspectiveCamera3D, AmbientLight3D, DirectionalLight3D, Box3D,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D,
 } from "motion-script";
 
 /**
@@ -23,12 +23,12 @@ const drift = createSignal(0);
 
 function knot(color: string, y: number): Scene3D {
     return new Scene3D()
-        .perspective({ position: [0, 1.4, 5], lookAt: 0, fov: 45 })
+        .perspective({ position: [0, 1.4, 5], target: 0, fov: 45 })
         .light({ type: "ambient", intensity: 0.45 })
         .light({ type: "directional", intensity: 2.6 }, { position: [4, 6, 3] })
         .draw(new Graphics3D().torusKnot({
-            radius: 1, tube: 0.3,
-            color, roughness: 0.25, metalness: 0.4,
+            radius: 1, thickness: 0.3,
+            fill: color, roughness: 0.25, metalness: 0.4,
             position: [0, y, 0],
             rotation: [spin() * 0.5, spin(), 0],
         }));
@@ -61,12 +61,12 @@ export default createScene(function* (stage) {
                 cornerRadius={72}
                 cornerStyle={"angled"}
             >
-                <PerspectiveCamera3D position={[0, 1.4, 5]} lookAt={0} fov={45} />
+                <Camera3D position={[0, 1.4, 5]} target={0} fov={45} />
                 <AmbientLight3D intensity={0.5} />
                 <DirectionalLight3D intensity={2.6} position={[4, 6, 3]} />
                 <Box3D
                     width={1.8} height={1.8} depth={1.8}
-                    color="#f5c26b" roughness={0.3}
+                    fill="#f5c26b" roughness={0.3}
                     position={() => [drift(), 0, 0]}
                     rotation={() => [spin() * 0.4, spin(), 0]}
                 />

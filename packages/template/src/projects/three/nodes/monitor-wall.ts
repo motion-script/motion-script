@@ -1,8 +1,8 @@
 import {
-    Graphics3D, Scene3D, Canvas3D, Tex, property,
+    Fills, Graphics3D, Scene3D, Canvas3D, Tex, property,
     type Color, type NodeConfig, type SurfaceSource3D, type Canvas3DProps,
 } from "motion-script";
-import { lerpColor, orbitOf, orbitPosition, resolveColor, snapFlag } from "./attributes";
+import { lerpColor, orbitOf, resolveColor, snapFlag } from "./attributes";
 
 /** One screen in the rig: a 2D source plus the buffer it rasterizes into. */
 export interface MonitorScreen {
@@ -123,6 +123,10 @@ export class MonitorWall extends Canvas3D<MonitorWallProps> {
 
     constructor(props?: NodeConfig<MonitorWall, MonitorWallProps>) {
         super(props as NodeConfig<Canvas3D<MonitorWallProps>, MonitorWallProps>);
+        // The backdrop is the viewport's own 2D fill — a `Canvas3D` composites
+        // its 3D pass over its fill layers, and there is no 3D background pass to
+        // reach for. Bound rather than copied so a tweened `background` carries.
+        if (props?.fill === undefined) this.applyProp("fill", () => Fills.color(this.background));
     }
 
     protected override buildScene3D(): Scene3D {
@@ -130,34 +134,37 @@ export class MonitorWall extends Canvas3D<MonitorWallProps> {
         const g3 = new Graphics3D();
         const background = this.background;
 
+        // Polar placement is a first-class camera form now, so the local
+        // `orbitPosition` helper is gone: `orbit` here means the same thing it
+        // means on a `Camera3D`, measured from head-on and around `target`.
         scene.perspective({
             fov: this.fov,
-            // `orbit` is measured from head-on (+Z) because that is the useful zero
-            // for a rig of screens facing the viewer; orbitPosition measures from
-            // +X, hence the quarter turn.
-            position: orbitPosition({
-                orbit: 90 - this.orbit,
-                elevation: this.elevation,
-                distance: this.zoom,
-            }),
-            lookAt: [0, this.focus, 0],
+            target: [0, this.focus, 0],
+            orbit: this.orbit,
+            elevation: this.elevation,
+            distance: this.zoom,
         })
-            .background(background)
             .light({ type: "ambient", intensity: 0.5 })
             .light({ type: "directional", intensity: 1.8 }, { position: [5, 8, 6] })
-            .light({ type: "point", intensity: 40, color: this.glow }, { position: [0, 1, 5] });
+            // One intensity scale: this used to be 40 beside the directional
+            // light's 1.8, because three measures the two in different units.
+            .light({ type: "point", intensity: 3.2, color: this.glow }, { position: [0, 1, 5] });
 
-        // Fog in the background colour, so the rig fades into the backdrop rather
-        // than into a seam. Cleared explicitly when off — the recorder holds the
-        // last value written, and it is rebuilt from scratch each frame anyway.
-        scene.fog(this.fog ? { type: "linear", color: background, near: 15, far: 36 } : null);
+        // Fog in the backdrop's colour, so the rig fades into it rather than into
+        // a seam. The backdrop itself is this node's own 2D `fill` — a `Canvas3D`
+        // composites the 3D over its fill layers — so it is set there and read
+        // back here. Cleared explicitly when off: the recorder holds the last
+        // value written, and it is rebuilt from scratch each frame anyway.
+        scene.fog(this.fog ? { color: background, near: 15, far: 36 } : null);
 
         if (this.floor) {
+            // No `key`: the floor is emitted conditionally, which used to shift
+            // every later op's cache slot, and the reconciler now keys a drawable
+            // by its content rather than by its position in the list.
             g3.plane({
                 width: 60, height: 60,
                 rotation: [-90, 0, 0], position: [0, -2.1, 0],
-                color: this.floorColor, roughness: 0.85,
-                key: "floor",
+                fill: this.floorColor, roughness: 0.85,
             });
         }
 
@@ -201,7 +208,7 @@ export class MonitorWall extends Canvas3D<MonitorWallProps> {
 
         g3.box({
                 width: width + bezel * 2, height: height + bezel * 2, depth: 0.18,
-                color: this.bezelColor, roughness: 0.55, metalness: 0.2,
+                fill: this.bezelColor, roughness: 0.55, metalness: 0.2,
             })
             // `unlit` so the screen reads as its own light source; a lit material
             // would tint the texture with the scene's lighting and read muddy.
@@ -209,17 +216,17 @@ export class MonitorWall extends Canvas3D<MonitorWallProps> {
                 width, height,
                 position: [0, 0, 0.095],
                 unlit: true,
-                map: Tex.surface(screen.source, screen.width, screen.height, { key: screen.key }),
+                fill: Tex.surface(screen.source, { width: screen.width, height: screen.height }),
             })
             .box({
                 ...STALK,
                 position: [0, bottom - STALK.height / 2, 0],
-                color: this.standColor, roughness: 0.6,
+                fill: this.standColor, roughness: 0.6,
             })
             .box({
                 ...FOOT,
                 position: [0, bottom - STALK.height - FOOT.height / 2, 0],
-                color: this.standColor, roughness: 0.6,
+                fill: this.standColor, roughness: 0.6,
             });
 
         scene.draw(g3).end();

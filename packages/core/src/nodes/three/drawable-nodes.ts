@@ -1,10 +1,13 @@
 import { property } from "@/attributes/properties/decorator";
 import type { Color } from "@/attributes/shape/fill/color/parser";
-import { Graphics3D, type LineMode3D, type ModelAnimation3D } from "@/render3d/graphics3d";
+import {
+    Graphics3D, resolveMaterialShorthand3D,
+    type LineStroke3D, type ModelAnimation3D,
+} from "@/render3d/graphics3d";
+import { lerpFill3D, type Fill3D } from "@/render3d/fill3d";
 import type { Geometry3D } from "@/render3d/geometry";
 import type { Material3D } from "@/render3d/material";
 import type { RenderContext3D } from "@/render3d/render-context3d";
-import type { Texture3D } from "@/render3d/texture";
 import type { Transform3D } from "@/render3d/transform";
 import type { Vector3Input } from "@/render3d/vector3";
 import { Mesh3D, type Mesh3DProps } from "./mesh3d";
@@ -49,12 +52,8 @@ export class Instances3D<P extends Instances3DProps = Instances3DProps> extends 
 
     /** The single material an instanced draw takes (never an array). */
     protected resolvedMaterial(): Material3D {
-        const material = this.material;
-        if (material !== undefined) {
-            return (Array.isArray(material) ? material[0] : material) as Material3D;
-        }
-        const { material: _m, unlit, ...rest } = this.materialShorthand();
-        return { type: unlit ? "basic" : "standard", ...rest } as Material3D;
+        const resolved = resolveMaterialShorthand3D(this.materialShorthand());
+        return (Array.isArray(resolved) ? resolved[0] : resolved) as Material3D;
     }
 }
 
@@ -82,17 +81,21 @@ export interface Line3DProps extends Node3DProps {
      * outline, say. Wins over {@link points}.
      */
     geometry: Geometry3D;
-    /** `"strip"` connects them in order, `"segments"` pairs them, `"loop"` closes. */
-    mode: LineMode3D;
-    color: Color | undefined;
-    width: number | undefined;
+    /** Join the last point back to the first — the same prop the 2D `Line` has. */
+    closed: boolean;
+    /** Treat the points as disjoint start/end pairs rather than one path. */
+    segments: boolean;
+    /** The line's paint. */
+    stroke: LineStroke3D | undefined;
     opacity: number | undefined;
-    dashed: boolean | undefined;
     material: Material3D | undefined;
 }
 
 /**
  * A polyline in space.
+ *
+ * `closed` and `stroke` are the 2D `Line` node's own props, one dimension over,
+ * in place of a `mode` enum and a flat `color`/`width`/`dashed` trio.
  *
  * Line width above 1 is not portable — most WebGL implementations ignore it — so
  * a thick line is better drawn as a {@link Tube3D}.
@@ -100,11 +103,10 @@ export interface Line3DProps extends Node3DProps {
 export class Line3D<P extends Line3DProps = Line3DProps> extends Node3D<P> {
     @property({ default: undefined }) declare points: readonly Vector3Input[];
     @property({ default: undefined }) declare geometry: Geometry3D | undefined;
-    @property({ default: "strip" }) declare mode: LineMode3D;
-    @property({ default: undefined }) declare color: Color | undefined;
-    @property({ default: undefined }) declare width: number | undefined;
+    @property({ default: false }) declare closed: boolean;
+    @property({ default: false }) declare segments: boolean;
+    @property({ default: undefined }) declare stroke: LineStroke3D | undefined;
     @property({ default: undefined }) declare opacity: number | undefined;
-    @property({ default: undefined }) declare dashed: boolean | undefined;
     @property({ default: undefined }) declare material: Material3D | undefined;
 
     protected buildGraphics3D(): Graphics3D {
@@ -115,11 +117,10 @@ export class Line3D<P extends Line3DProps = Line3DProps> extends Node3D<P> {
         g3.line({
             points: geometry ? undefined : points,
             geometry,
-            mode: this.mode,
-            color: this.color,
-            width: this.width,
+            closed: this.closed,
+            segments: this.segments,
+            stroke: this.stroke,
             opacity: this.opacity,
-            dashed: this.dashed,
             material: this.material,
         });
         return g3;
@@ -133,23 +134,21 @@ export class Line3D<P extends Line3DProps = Line3DProps> extends Node3D<P> {
 // ─── sprite ──────────────────────────────────────────────────────────────────
 
 export interface Sprite3DProps extends Node3DProps {
-    map: Texture3D | undefined;
-    color: Color | undefined;
+    /** What the billboard shows — the same value a 2D `fill` takes. */
+    fill: Fill3D;
     opacity: number | undefined;
     material: Material3D | undefined;
 }
 
 /** A camera-facing billboard. Always square-on to the view, whatever the angle. */
 export class Sprite3D<P extends Sprite3DProps = Sprite3DProps> extends Node3D<P> {
-    @property({ default: undefined }) declare map: Texture3D | undefined;
-    @property({ default: undefined }) declare color: Color | undefined;
+    @property({ default: undefined, tween: lerpFill3D }) declare fill: Fill3D;
     @property({ default: undefined }) declare opacity: number | undefined;
     @property({ default: undefined }) declare material: Material3D | undefined;
 
     protected buildGraphics3D(): Graphics3D {
         return new Graphics3D().sprite({
-            map: this.map,
-            color: this.color,
+            fill: this.fill,
             opacity: this.opacity,
             material: this.material,
         });

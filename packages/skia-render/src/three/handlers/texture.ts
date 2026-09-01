@@ -242,10 +242,10 @@ export class TextureResolver {
  * image at different `repeat`s each get their own texture rather than fighting
  * over one.
  *
- * A {@link SurfaceTexture3D} is keyed by its `key` (or its position in the scene
- * walk) plus the owning slot, because its `source` is a live object that
- * `JSON.stringify` cannot distinguish — every one of them would otherwise collapse
- * onto a single cache entry and stomp each other frame to frame.
+ * A {@link SurfaceTexture3D} is keyed by its **source object's identity** plus the
+ * owning slot, because its `source` is a live object that `JSON.stringify` cannot
+ * distinguish — every one of them would otherwise collapse onto a single cache
+ * entry and stomp each other frame to frame. See {@link surfaceIdentity}.
  */
 function textureKey(
     descriptor: Texture3D,
@@ -267,9 +267,41 @@ function textureKey(
     }
     // A data texture has no src to key on, so fall back to its dimensions.
     if (isDataTexture3D(descriptor)) parts.push(`data=${descriptor.width}x${descriptor.height}`);
-    if (isSurfaceTexture3D(descriptor)) parts.push(`owner=${surfaceOwner}`, `sfc=${descriptor.key ?? ""}`);
+    if (isSurfaceTexture3D(descriptor)) {
+        parts.push(`owner=${surfaceOwner}`, `sfc=${surfaceIdentity(descriptor)}`);
+    }
     parts.push(`cs=${defaultColorSpace}`);
     return parts.join("|");
+}
+
+/**
+ * Stable identity for a surface texture, without an author writing one.
+ *
+ * The `Tex.surface` contract already requires the source to be **hoisted** — a
+ * subtree rebuilt every frame re-binds, re-lays-out and defeats every cache — so
+ * a hoisted source *is* a stable identity, and this reads it off the object
+ * itself. That removed the old `key` field, whose absence used to orphan a GPU
+ * texture whenever a conditionally-emitted surface shifted its ordinal in the
+ * scene walk; a `WeakMap` also lets a dropped source become collectable, which an
+ * ordinal never could.
+ *
+ * A source synthesized from a fill chain has no such identity — it is a fresh
+ * `Graphics2D` each frame — so `resolveFill3D` derives one from the fill's own
+ * values and puts it on the descriptor.
+ */
+const sourceIdentities = new WeakMap<object, string>();
+let nextSourceIdentity = 0;
+
+function surfaceIdentity(descriptor: SurfaceTexture3D): string {
+    if (descriptor.identity !== undefined) return descriptor.identity;
+
+    const source = descriptor.source as unknown as object;
+    let identity = sourceIdentities.get(source);
+    if (identity === undefined) {
+        identity = `s${nextSourceIdentity++}`;
+        sourceIdentities.set(source, identity);
+    }
+    return identity;
 }
 
 function pair(value: { x: number; y: number } | readonly [number, number]): [number, number] {

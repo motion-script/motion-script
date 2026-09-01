@@ -88,6 +88,13 @@ export interface DataTexture3D extends TextureOptions3D {
  * **Hoist the source.** Building it fresh inside the scene builder allocates a new
  * subtree every frame — re-binding, re-laying-out, defeating the texture cache and
  * leaking. Declare it once and pass the same instance.
+ *
+ * That hoisting rule is also what removed this descriptor's old `key`: a hoisted
+ * source *is* a stable identity, so the renderer keys the GPU texture off the
+ * source object itself (in a `WeakMap`) rather than off its ordinal in the scene
+ * walk. A conditionally-emitted surface therefore needs nothing written by hand,
+ * and a source that goes out of scope becomes collectable instead of orphaning
+ * its texture — which the ordinal scheme could not do.
  */
 export interface SurfaceTexture3D extends TextureOptions3D {
     /** A built `Graphics2D`, or a `Node2D` subtree. Typed structurally — see below. */
@@ -97,13 +104,28 @@ export interface SurfaceTexture3D extends TextureOptions3D {
     /** Buffer height in pixels. */
     height: number;
     /**
-     * Identity for the texture cache. Defaults to the source's position in the
-     * scene walk, which is stable for a scene that emits the same textures every
-     * frame. A texture emitted **conditionally** must pass an explicit key —
-     * otherwise its ordinal shifts when something before it disappears and the old
-     * GPU texture is orphaned rather than reused.
+     * Declare the source's pixels unchanging, so the buffer is rasterized once
+     * and reused rather than redrawn every frame.
+     *
+     * Set by `resolveFill3D` for a fill chain, whose layers describe the same
+     * image on every frame; an author's own source is live by default, which is
+     * what makes an animated `Graphics2D` or a signal-driven subtree work with no
+     * bookkeeping. Needs {@link identity} to be cacheable.
+     *
+     * @internal
      */
-    key?: string;
+    static?: boolean;
+    /**
+     * Cache identity for a synthesized source.
+     *
+     * An author's source is identified by the source object itself (see the note
+     * above), which is exactly right for something hoisted. A source built *for*
+     * a fill is a fresh object every frame and has no such identity, so the value
+     * it was derived from supplies one.
+     *
+     * @internal
+     */
+    identity?: string;
     /**
      * Ceiling on the buffer's device-pixel ratio. Default 1, i.e. the buffer is
      * exactly `width` × `height`.

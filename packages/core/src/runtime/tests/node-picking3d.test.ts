@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Canvas3D } from '@/nodes/three/canvas3d-node';
 import { Group3D } from '@/nodes/three/group3d';
 import { Box3D, Sphere3D } from '@/nodes/three/geometry-nodes';
-import { PerspectiveCamera3D } from '@/nodes/three/camera-nodes';
+import { Camera3D } from '@/nodes/three/camera-nodes';
 import { Text } from '@/nodes/text/text-node';
 import { Canvas2D } from '@/nodes/scene/canvas2d-node';
 import { Node2D } from '@/nodes/2d/node2d';
@@ -54,7 +54,7 @@ describe('geometryBounds3D', () => {
     });
 
     it('takes the wider of a cylinder\'s two radii', () => {
-        const bounds = geometryBounds3D({ type: 'cylinder', radiusTop: 0.2, radiusBottom: 2, height: 4 });
+        const bounds = geometryBounds3D({ type: 'cylinder', radius: [0.2, 2], height: 4 });
         expect(bounds).toEqual({
             min: { x: -2, y: -2, z: -2 },
             max: { x: 2, y: 2, z: 2 },
@@ -82,7 +82,7 @@ describe('geometryBounds3D', () => {
 
     it('declines the three it cannot measure from the descriptor alone', () => {
         expect(geometryBounds3D({ type: 'modelGeometry', src: 'robot.glb' })).toBeNull();
-        expect(geometryBounds3D({ type: 'extrude', shape: 'M0 0 L1 1' })).toBeNull();
+        expect(geometryBounds3D({ type: 'extrude', path: 'M0 0 L1 1' })).toBeNull();
         expect(geometryBounds3D({ type: 'parametric', segments: 4, vertex: () => ({ x: 0, y: 0, z: 0 }) })).toBeNull();
     });
 });
@@ -90,7 +90,7 @@ describe('geometryBounds3D', () => {
 describe('collectBoxes – 3D', () => {
     it('projects a mesh into the viewport, centred where the camera looks', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0, fov: 45 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0, fov: 45 }),
             new Box3D({ width: 2, height: 2, depth: 2 }),
         ]);
 
@@ -115,11 +115,11 @@ describe('collectBoxes – 3D', () => {
 
     it('moves the box when the mesh moves', () => {
         const centred = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
         const shifted = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1, position: [2, 0, 0] }),
         ]);
 
@@ -139,7 +139,7 @@ describe('collectBoxes – 3D', () => {
 
     it('gives a group the union of what is inside it', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 20], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 20], lookAt: 0 }),
             new Group3D({
                 children: [
                     new Box3D({ width: 1, position: [-3, 0, 0] }),
@@ -162,7 +162,7 @@ describe('collectBoxes – 3D', () => {
 
     it('skips a hidden node and everything under it', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1, visible: false }),
             new Sphere3D({ radius: 0.5 }),
         ]);
@@ -192,7 +192,7 @@ describe('collectBoxes – 3D', () => {
     it('reports nothing for a scene whose meshes are all behind the camera', () => {
         const canvas = viewport([
             // Looking away from the cube: the camera sits at −Z aimed further −Z.
-            new PerspectiveCamera3D({ position: [0, 0, -10], lookAt: [0, 0, -20] }),
+            new Camera3D({ position: [0, 0, -10], lookAt: [0, 0, -20] }),
             new Box3D({ width: 1 }),
         ]);
 
@@ -208,7 +208,7 @@ describe('nodeBoxAt – 3D', () => {
         // mesh is not in the 2D child list at all, so this is the case a plain
         // `nodeBox` walk cannot answer.
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 2 }),
         ]);
 
@@ -224,7 +224,7 @@ describe('nodeBoxAt – 3D', () => {
 
     it('reaches a mesh nested inside a group', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({ children: [new Box3D({ width: 1 })] } as any),
         ]);
 
@@ -244,7 +244,7 @@ describe('pickNode – 3D', () => {
 
     it('picks the mesh under the pointer', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 2, position: [-3, 0, 0] }),
             new Box3D({ width: 2, position: [3, 0, 0] }),
         ]);
@@ -255,7 +255,7 @@ describe('pickNode – 3D', () => {
 
     it('picks the nearer of two overlapping meshes', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 2, position: [0, 0, -4] }),
             new Box3D({ width: 2, position: [0, 0, 4] }),
         ]);
@@ -273,7 +273,7 @@ describe('pickNode – 3D', () => {
             width: 400,
             height: 300,
             children: [
-                new PerspectiveCamera3D({ position: [0, 0, 12], lookAt: 0 }),
+                new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
                 new Box3D({ width: 1 }),
             ],
         } as any);
@@ -290,7 +290,7 @@ describe('pickNode – 3D', () => {
     it('lets a 2D HUD child win over the mesh behind it', () => {
         const label = new Text({ text: 'FPS', x: 0, y: 0 }) as unknown as Node2D;
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 4 }),
             label,
         ]);
@@ -304,7 +304,7 @@ describe('pickNode – 3D', () => {
 describe('projectNode3DAt', () => {
     it('agrees with the box centre for a mesh with no rotation of its own', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 2 }),
         ]);
 
@@ -326,7 +326,7 @@ describe('projectNode3DAt', () => {
         // `localPoints` request should barely move sideways at all, since the
         // mesh's own +X no longer points sideways.
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({
                 children: [new Box3D({ width: 1, position: [2, 0, 0], rotation: [0, 90, 0] })],
             } as any),
@@ -350,7 +350,7 @@ describe('projectNode3DAt', () => {
 
     it('reports a point behind the camera as null without dropping the rest', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
 
@@ -368,7 +368,7 @@ describe('projectNode3DAt', () => {
 
     it('is null for a path that resolves to a 2D node', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
             new Text({ text: 'FPS', x: 0, y: 0 }),
         ]);
@@ -378,7 +378,7 @@ describe('projectNode3DAt', () => {
 
     it('is null for a path that does not resolve', () => {
         const canvas = viewport([
-            new PerspectiveCamera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
 

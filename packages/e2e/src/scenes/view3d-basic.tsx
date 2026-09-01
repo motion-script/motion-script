@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut,
-    Canvas3D, PerspectiveCamera3D, AmbientLight3D, DirectionalLight3D, Box3D,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D,
 } from 'motion-script';
 import { holdTail } from './_lib';
 
@@ -24,12 +24,12 @@ export default createScene(function* (stage) {
 
     stage.add(
         <Canvas3D width={480} height={320} cornerRadius={16}>
-            <PerspectiveCamera3D position={[0, 1.6, 5]} lookAt={0} fov={45} />
+            <Camera3D position={[0, 1.6, 5]} target={0} fov={45} />
             <AmbientLight3D intensity={0.35} />
             <DirectionalLight3D intensity={2.2} position={[3, 5, 4]} />
             <Box3D
                 width={2} height={2} depth={2}
-                color="#e0533d" roughness={0.4} metalness={0.1}
+                fill="#e0533d" roughness={0.4} metalness={0.1}
                 rotation={() => [0, spin(), 0]}
             />
         </Canvas3D>,

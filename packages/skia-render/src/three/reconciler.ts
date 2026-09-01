@@ -7,19 +7,22 @@
  * programs continuously. So this keeps one live object per op and mutates it
  * between frames, rebuilding only when something structural actually changed.
  *
- * ── Identity ──────────────────────────────────────────────────────────────────
- * An op is keyed by its **structural path** plus its discriminant, e.g.
- * `"2.0|mesh"`. Including the discriminant means a slot that changes from `mesh`
- * to `light` misses the cache and rebuilds rather than trying to mutate the wrong
- * object type.
+ * ── Identity, derived ─────────────────────────────────────────────────────────
+ * Nothing here is keyed by hand. A `push` group is keyed by the **node id** the
+ * scene recorder stamped on it, and a drawable is keyed by
+ * `<enclosing node> | <kind> | <structural signature> | <nth of that shape>`.
  *
- * A `push` carrying an explicit `key` — which is every group a `Node3D` opens,
- * keyed by its node id — *restarts* the path rather than extending it. That is
- * what gives the cache real identity: a conditional sibling appearing or
- * disappearing renumbers nothing inside its neighbours, because their paths are
- * relative to their own node rather than to their index among siblings. Ops a
- * single node emits are still positional within that node, which is stable
- * because a node builds its `Graphics3D` the same way every frame.
+ * The signature is the same one that decides rebuild-vs-mutate, so two ops that
+ * share it are *interchangeable cache entries*: everything that distinguishes
+ * them — position, colour, roughness — is an in-place write on the object either
+ * one would get. That is what makes conditional emission free. A builder that
+ * writes `if (t > 2) g3.sphere(...)` used to shift every later op's positional
+ * slot, rebuilding the tail of the cache and forcing an author to write a `key`
+ * to avoid it; keyed by content, the box before it and the box after it both
+ * still find their own entry, and only the sphere is built.
+ *
+ * Groups keep the structural path as a fallback, for the hand-built `Scene3D`
+ * that opens a scope without going through a node.
  *
  * ── Sweeping ──────────────────────────────────────────────────────────────────
  * Every entry touched this frame is stamped with the frame counter. Anything not
@@ -29,21 +32,22 @@
 
 import type * as THREE from "three";
 import type {
-    CameraData3D, Color, Geometry3D, Material3D, Scene3D, Scene3DOp, Transform3D,
+    Box3, CameraData3D, Color, Geometry3D, LightData3D,
+    Material3D, Scene3D, Scene3DOp, Transform3D,
 } from "@motion-script/core";
 import { canvas3DResourceKey } from "@motion-script/core";
 import type { ThreeModule } from "./bridge";
 import { canvas3DRendererHost } from "./renderer-seam";
-import { shadowType, toneMapping, writeColor } from "./handlers/constants";
+import { shadowQuality, toneMapping, writeColor } from "./handlers/constants";
 import {
     createGeometry, geometrySignature, isDynamicGeometry,
     resolveDynamicBuffers, updateBufferGeometry,
 } from "./handlers/geometry";
 import { applyMaterial, createMaterial, materialSignature } from "./handlers/material";
-import { applyLight, createLight, lightSignature } from "./handlers/light";
+import { applyLight, applyLightShadow, createLight, lightSignature } from "./handlers/light";
 import { applyCamera, cameraMatches, createCamera } from "./handlers/camera";
 import { applyTransform } from "./handlers/transform";
-import { applyBackground, applyEnvironment, applyFog } from "./handlers/settings";
+import { applyEnvironment, applyFog } from "./handlers/settings";
 import type { TextureResolver } from "./handlers/texture";
 import {
     applyModelAnimation, applyModelOverrides, createModel, modelLoaded,
@@ -122,10 +126,17 @@ export class Canvas3DGraph {
         // joining it yields the structural path. `parents` tracks where to attach.
         const counters: number[] = [-1];
         const parents: THREE.Object3D[] = [this.scene];
-        // The path each level's indices are relative to. A keyed group resets it,
-        // so a node's contents are numbered within that node rather than within
-        // the whole scene.
+        // The path each level's *group* keys are relative to. A keyed group
+        // resets it, so a node's scopes are numbered within that node.
         const roots: string[] = [""];
+        // How many drawables of each `<scope|kind|signature>` have been seen this
+        // frame, which is the last component of a drawable's cache key.
+        const buckets = new Map<string, number>();
+        // Lights, held back until the scene's bounds are known — a directional
+        // light's shadow frustum is sized from them, and nothing knows the scene's
+        // extent until every object in it has been attached.
+        const lights: { light: THREE.Light; descriptor: LightData3D }[] = [];
+        let pendingCamera: { descriptor: CameraData3D; parent: THREE.Object3D } | null = null;
         let cameraSeen = false;
 
         for (const op of g3.ops()) {
@@ -138,10 +149,12 @@ export class Canvas3DGraph {
 
             counters[counters.length - 1]++;
             const root = roots[roots.length - 1];
-            const path = root ? `${root}.${counters[counters.length - 1]}` : String(counters[counters.length - 1]);
             const parent = parents[parents.length - 1];
 
             if (op.kind === "push") {
+                const path = root
+                    ? `${root}.${counters[counters.length - 1]}`
+                    : String(counters[counters.length - 1]);
                 const group = this.resolveGroup(path, op.transform, parent);
                 parents.push(group);
                 counters.push(-1);
@@ -150,39 +163,90 @@ export class Canvas3DGraph {
             }
 
             if (op.kind === "camera") {
-                // Parented rather than placed absolutely, so a camera inside a
-                // moving group is carried by it — three composes the world matrix.
-                this.resolveCamera(op.camera, width, height, parent);
+                // Held back with the lights: the clip planes are derived from the
+                // scene's own extent, which nothing knows until every object is
+                // attached. Parenting is recorded now, since it is positional.
+                pendingCamera = { descriptor: op.camera, parent };
                 cameraSeen = true;
                 continue;
             }
 
-            this.resolveDrawable(op, keyFor(path, op), parent, textures);
+            const signatures = signaturesFor(op);
+            const entry = this.resolveDrawable(op, keyFor(root, op, signatures, buckets), parent, textures, signatures);
+            if (entry && op.kind === "light") {
+                lights.push({ light: entry.object as THREE.Light, descriptor: op.light });
+            }
         }
 
         this.sweep();
 
+        // ── Everything sized from the scene's own extent ─────────────────────
+        // After the sweep, so the box covers exactly what is in the scene now.
+        // Two things read it — a directional light's shadow frustum and the
+        // camera's clip planes — and both were previously constants that were
+        // wrong at every scale but one.
+        const bounds = this.sceneBounds();
+        for (const { light, descriptor } of lights) {
+            applyLightShadow(light, descriptor, bounds);
+        }
+        if (pendingCamera) {
+            // Parented rather than placed absolutely, so a camera inside a moving
+            // group is carried by it — three composes the world matrix.
+            this.resolveCamera(pendingCamera.descriptor, width, height, pendingCamera.parent, bounds);
+        }
+
         // ── Scene settings ───────────────────────────────────────────────────
         applyFog(three, this.scene, g3.fogDescriptor());
-        applyBackground(three, this.scene, g3.backgroundDescriptor(), textures);
         // The renderer is the platform's (see ./renderer-seam). A host that has no
         // WebGL returns null here and environment maps are skipped, which is the
         // same degradation as three not having loaded yet.
         const host = canvas3DRendererHost();
+        // One call, because an environment *is* the sky: it lights the scene and,
+        // when asked, is what you see behind it. Anything flatter than a sky is a
+        // 2D fill on the viewport and never reaches here.
         applyEnvironment(three, this.scene, g3.environmentDescriptor(), host?.active() ?? null);
 
         const shadows = g3.shadowSettings();
         const tone = g3.toneSettings();
+        const quality = shadowQuality(three, shadows?.quality);
         host?.applySettings(three, {
             shadowsEnabled: shadows?.enabled === true,
-            shadowType: shadowType(three, shadows?.type),
+            shadowType: quality.type,
             toneMapping: toneMapping(three, tone?.mapping),
             toneMappingExposure: tone?.exposure ?? 1,
         });
+        // Map resolution is per light in three but is one scene-wide decision
+        // here, so it is pushed down rather than asked for twice.
+        for (const { light } of lights) {
+            const map = (light as { shadow?: THREE.LightShadow }).shadow;
+            if (map && map.mapSize.x !== quality.mapSize) {
+                map.mapSize.set(quality.mapSize, quality.mapSize);
+                map.map?.dispose();
+                map.map = null as never;
+            }
+        }
 
         // No camera op: fall back to the renderer's own framing, hung off the scene.
-        if (!cameraSeen) this.resolveCamera(null, width, height, this.scene);
+        if (!cameraSeen) this.resolveCamera(null, width, height, this.scene, bounds);
         return { scene: this.scene, camera: this.camera };
+    }
+
+    /**
+     * The scene's world-space extent, or `null` when it is empty.
+     *
+     * Reused between frames only in the sense that three recomputes it here each
+     * time: it is one traversal over objects whose matrices are already up to
+     * date, and it is what stops a shadow frustum from being a constant that is
+     * wrong at every scale but one.
+     */
+    private sceneBounds(): Box3 | null {
+        this.scene.updateMatrixWorld(true);
+        const box = new this.three.Box3().setFromObject(this.scene);
+        if (box.isEmpty()) return null;
+        return {
+            min: { x: box.min.x, y: box.min.y, z: box.min.z },
+            max: { x: box.max.x, y: box.max.y, z: box.max.z },
+        };
     }
 
     /** A `push` group: reused when present, created and attached otherwise. */
@@ -203,13 +267,14 @@ export class Canvas3DGraph {
         return entry.object;
     }
 
-    /** Create-or-mutate one drawable op. */
+    /** Create-or-mutate one drawable op. Returns the entry, or undefined. */
     private resolveDrawable(
         op: DrawableOp,
         key: string,
         parent: THREE.Object3D,
         textures: TextureResolver,
-    ): void {
+        signatures: Partial<CachedObject>,
+    ): CachedObject | undefined {
         let entry = this.cache.get(key);
 
         if (entry && entry.kind !== op.kind) {
@@ -217,13 +282,14 @@ export class Canvas3DGraph {
             entry = undefined;
         }
 
-        entry = this.ensure(entry, key, op, textures);
-        if (!entry) return;
+        entry = this.ensure(entry, key, op, textures, signatures);
+        if (!entry) return undefined;
 
         entry.seen = this.frame;
         this.mutate(entry, op, textures);
 
         if (entry.object.parent !== parent) parent.add(entry.object);
+        return entry;
     }
 
     /**
@@ -235,8 +301,11 @@ export class Canvas3DGraph {
         key: string,
         op: DrawableOp,
         textures: TextureResolver,
+        signatures: Partial<CachedObject>,
     ): CachedObject | undefined {
-        const signatures = signaturesFor(op);
+        // Belt and braces: the signature is *in* the key now, so a found entry
+        // always matches. Kept because it is the invariant this cache rests on,
+        // and a silent mismatch would mutate the wrong object type.
         if (entry && sameSignatures(entry, signatures)) return entry;
 
         this.discard(entry);
@@ -484,12 +553,13 @@ export class Canvas3DGraph {
         width: number,
         height: number,
         parent: THREE.Object3D,
+        bounds?: Box3 | null,
     ): void {
         const three = this.three;
         if (descriptor && !cameraMatches(three, this.camera, descriptor)) {
             this.camera = createCamera(three, descriptor);
         }
-        applyCamera(three, this.camera, descriptor, width, height);
+        applyCamera(three, this.camera, descriptor, width, height, bounds);
 
         // Attached only when a *group* declared it, which is what lets a camera
         // ride inside an animated rig. A camera at the scene root already places
@@ -537,11 +607,26 @@ export class Canvas3DGraph {
     }
 }
 
-/** The cache key for a drawable: an explicit key wins over the structural path. */
-function keyFor(path: string, op: Scene3DOp): string {
-    const explicit = (op as { transform?: Transform3D }).transform?.key
-        ?? (op as { material?: { key?: string } }).material?.key;
-    return explicit ? `@${explicit}|${op.kind}` : `${path}|${op.kind}`;
+/**
+ * The cache key for a drawable — derived, never written.
+ *
+ * `<enclosing scope> | <kind> | <structural signature> | <nth of that shape>`.
+ * Two ops with the same signature are interchangeable cache entries (everything
+ * that differs between them is an in-place write), so counting them within the
+ * scope gives every one a stable slot without anyone naming it — and inserting a
+ * *different* shape between them shifts nothing, which is the whole reason the
+ * old positional path needed an author-supplied `key`.
+ */
+function keyFor(
+    scope: string,
+    op: DrawableOp,
+    signatures: Partial<CachedObject>,
+    buckets: Map<string, number>,
+): string {
+    const shape = `${scope}|${op.kind}|${signatures.geometrySig ?? ""}|${signatures.materialSig ?? ""}|${signatures.lightSig ?? ""}|${signatures.count ?? ""}`;
+    const nth = buckets.get(shape) ?? 0;
+    buckets.set(shape, nth + 1);
+    return `${shape}#${nth}`;
 }
 
 /** The structural signatures for an op — any difference forces a rebuild. */

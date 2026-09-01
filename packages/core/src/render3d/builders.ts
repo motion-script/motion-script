@@ -123,18 +123,24 @@ export const Tex = {
      * has to be mounted anywhere in particular.
      *
      *   const scope = new Graphics2D().line({ points: trace(phase()) }).stroke(…);
-     *   g3.plane({ map: Tex.surface(scope, 1024, 640) });
+     *   g3.plane({ fill: scope });                        // sized for you
      *
      *   const stats = <Rect flow="vertical" padding={48}><Text text="CPU" /></Rect>;
-     *   g3.plane({ map: Tex.surface(stats, 1024, 640) });
+     *   g3.plane({ fill: Tex.surface(stats, { width: 1024, height: 640 }) });
      *
-     * `width`/`height` are the buffer's resolution. **Hoist the source** rather
-     * than rebuilding it each frame — see {@link SurfaceTexture3D}.
+     * `width`/`height` are the buffer's resolution and default to 512. A source
+     * handed straight to `fill` gets exactly this treatment with those defaults,
+     * so the builder is only needed to pin a resolution or a sampler option.
+     * **Hoist the source** rather than rebuilding it each frame — see
+     * {@link SurfaceTexture3D}.
      */
     surface: (
         source: SurfaceSource3D,
-        width: number,
-        height: number,
-        o?: TextureOptions3D & { key?: string; maxPixelRatio?: number },
-    ): SurfaceTexture3D => ({ source, width, height, ...o }),
+        o?: TextureOptions3D & { width?: number; height?: number; maxPixelRatio?: number },
+    ): SurfaceTexture3D => ({
+        width: 512,
+        height: 512,
+        ...o,
+        source,
+    }),
 } as const;

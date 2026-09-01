@@ -31,12 +31,12 @@ export default createScene(function* (stage) {
             // every side — otherwise the frame would look identical whether the
             // path clipped or not, and the scene would prove nothing.
             fill={() => new Scene3D()
-                .perspective({ position: [0, 0, 2.6], lookAt: 0, fov: 55 })
+                .perspective({ position: [0, 0, 2.6], target: 0, fov: 55 })
                 .light({ type: 'ambient', intensity: 0.4 })
                 .light({ type: 'directional', intensity: 2.4 }, { position: [2, 4, 3] })
                 .draw(new Graphics3D().box({
                     width: 2.4, height: 2.4, depth: 2.4,
-                    color: '#4f8ef7',
+                    fill: '#4f8ef7',
                     rotation: [spin() * 0.5, spin(), 0],
                 }))}
         />,

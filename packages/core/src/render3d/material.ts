@@ -2,8 +2,11 @@ import type { Color } from "@/attributes/shape/fill/color/parser";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import type { Vector3 } from "./vector3";
 import type { Passthrough3D } from "./geometry";
-import type { Blending3D, Side3D } from "./transform";
+import type { Blend3D, Faces3D } from "./transform";
 import type { Texture3D } from "./texture";
+
+/** Facet or smooth shading. `"flat"` gives one normal per triangle. */
+export type Shading3D = "smooth" | "flat";
 
 /**
  * State every material shares, regardless of shading model.
@@ -15,31 +18,49 @@ import type { Texture3D } from "./texture";
  * leave them alone rather than tweening them.
  */
 export interface MaterialCommon3D extends Passthrough3D {
-    /** 0–1. Needs {@link transparent} to actually show through. Free to animate. */
+    /** 0–1. Free to animate; blending is turned on for you below 1. */
     opacity?: number;
     /** Hide without removing. Free to animate. */
     visible?: boolean;
 
     /**
-     * **Structural.** Opt into alpha blending. Off by default because blended
-     * surfaces must be depth-sorted, which costs correctness at intersections —
-     * prefer {@link alphaTest} for cutouts like foliage.
+     * **Structural, and normally derived rather than written.**
+     *
+     * The renderer turns alpha blending on whenever anything about the material
+     * actually needs it — `opacity` below 1, a colour carrying alpha, an
+     * `alphaMap`, or transmission — so an author never has to pair a fade with a
+     * second flag, and `opacity: 0.5` can no longer silently do nothing (which is
+     * exactly what it did when this defaulted to `false`).
+     *
+     * Set it explicitly only to *force* blending on a fully opaque material, which
+     * is occasionally wanted for draw-order reasons. Setting it `false` does not
+     * turn off blending a lower alpha requires; there is no useful meaning for
+     * that, and it only ever expressed a bug.
      */
     transparent?: boolean;
     /** **Structural.** Discard fragments below this alpha. Cheap cutout transparency. */
     alphaTest?: number;
     /** **Structural.** Which faces to rasterize. Default `"front"`. */
-    side?: Side3D;
+    faces?: Faces3D;
     /** **Structural.** Draw edges only. */
     wireframe?: boolean;
     /** **Structural.** How the colour combines with the framebuffer. */
-    blending?: Blending3D;
+    blend?: Blend3D;
     /** **Structural.** Read per-vertex colours from the geometry's `color` buffer. */
     vertexColors?: boolean;
     /** **Structural.** Apply the scene's tone mapping. Default true. */
     toneMapped?: boolean;
 
-    /** Write to the depth buffer. Turn off for additive glows and inside-out shells. */
+    /**
+     * Write to the depth buffer.
+     *
+     * **Derived unless stated**: a blended surface stops writing depth, and an
+     * opaque one writes it. three defaults this to `true` for everything, so a
+     * translucent mesh occluded whatever was drawn after it — a surface at 5%
+     * opacity rendering as a near-invisible cut-out through the things behind
+     * it. Set it explicitly for a translucent surface that genuinely should
+     * occlude.
+     */
     depthWrite?: boolean;
     /** Test against the depth buffer. Turn off to force draw-on-top. */
     depthTest?: boolean;
@@ -49,9 +70,6 @@ export interface MaterialCommon3D extends Passthrough3D {
     polygonOffsetUnits?: number;
     /** Smooth gradient banding. */
     dithering?: boolean;
-
-    /** Explicit reconciler identity — see `Transform3D.key`. */
-    key?: string;
 }
 
 /** Maps shared by the lit shading models. */
@@ -83,9 +101,9 @@ interface CommonMaps3D {
 /** Emission shared by the lit shading models. */
 interface Emissive3D {
     /** Self-illumination colour. Does not light other objects (see `post` bloom). */
-    emissive?: Color;
-    emissiveIntensity?: number;
-    emissiveMap?: Texture3D;
+    emission?: Color;
+    emissionStrength?: number;
+    emissionMap?: Texture3D;
 }
 
 /** Unlit — a flat colour, ignoring every light. The cheapest material. */
@@ -108,8 +126,8 @@ export interface StandardMaterial3D extends MaterialCommon3D, CommonMaps3D, Emis
     metalness?: number;
     roughnessMap?: Texture3D;
     metalnessMap?: Texture3D;
-    /** **Structural.** Facet shading — one normal per triangle. */
-    flatShading?: boolean;
+    /** **Structural.** Facet or smooth shading. Default `"smooth"`. */
+    shading?: Shading3D;
 }
 
 /**
@@ -125,7 +143,7 @@ export interface PhysicalMaterial3D extends Omit<StandardMaterial3D, "type"> {
     clearcoatMap?: Texture3D;
     clearcoatNormalMap?: Texture3D;
     clearcoatRoughnessMap?: Texture3D;
-    /** Light transmitted *through* the surface — glass, water. Needs `transparent`. */
+    /** Light transmitted *through* the surface — glass, water. Blends for you. */
     transmission?: number;
     transmissionMap?: Texture3D;
     /** Wall thickness for transmission tinting. */
@@ -162,7 +180,7 @@ export interface PhongMaterial3D extends MaterialCommon3D, CommonMaps3D, Emissiv
     shininess?: number;
     specularMap?: Texture3D;
     /** **Structural.** */
-    flatShading?: boolean;
+    shading?: Shading3D;
 }
 
 /** Diffuse-only Lambertian shading. Cheap; good for matte and unlit-ish looks. */
@@ -170,7 +188,7 @@ export interface LambertMaterial3D extends MaterialCommon3D, CommonMaps3D, Emiss
     type: "lambert";
     color?: Color;
     /** **Structural.** */
-    flatShading?: boolean;
+    shading?: Shading3D;
 }
 
 /** Banded cel shading. `gradientMap` controls the steps. */
@@ -184,7 +202,7 @@ export interface ToonMaterial3D extends MaterialCommon3D, CommonMaps3D, Emissive
 export interface NormalMaterial3D extends MaterialCommon3D {
     type: "normal";
     /** **Structural.** */
-    flatShading?: boolean;
+    shading?: Shading3D;
 }
 
 /** Depth as greyscale. For debugging and custom depth passes. */
@@ -319,7 +337,7 @@ export type Material3D =
  * two can't disagree about what is cheap.
  */
 export const MUTABLE_MATERIAL_KEYS: readonly string[] = [
-    "color", "opacity", "visible", "emissive", "emissiveIntensity",
+    "color", "opacity", "visible", "emission", "emissionStrength",
     "roughness", "metalness", "shininess", "specular", "reflectivity",
     "clearcoat", "clearcoatRoughness", "transmission", "thickness", "ior",
     "sheen", "sheenColor", "sheenRoughness", "iridescence", "iridescenceIOR",
@@ -335,9 +353,14 @@ export const MUTABLE_MATERIAL_KEYS: readonly string[] = [
  * Material fields that change the compiled shader program. Changing one forces a
  * rebuild, so they must never be tweened — the renderer warns when it sees one
  * change repeatedly.
+ *
+ * `transparent` is here and is also *derived*, which is only a contradiction
+ * until you look at when it moves: it flips at most once per material, on the
+ * first frame a fade leaves full opacity, and the renderer latches it there. See
+ * `needsBlending` in the material handler.
  */
 export const STRUCTURAL_MATERIAL_KEYS: readonly string[] = [
-    "transparent", "alphaTest", "side", "wireframe", "blending",
-    "vertexColors", "toneMapped", "flatShading", "dithering",
+    "transparent", "alphaTest", "faces", "wireframe", "blend",
+    "vertexColors", "toneMapped", "shading", "dithering",
     "polygonOffset", "raw", "extends", "defines",
 ];

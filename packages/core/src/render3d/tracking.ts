@@ -81,17 +81,14 @@ export function trackEnvironment(
     tracker: AssetTracker,
 ): void {
     if (environment === null) return;
-    switch (environment.type) {
-        case "equirect":
-            // .hdr/.exr can't go through the browser's image decoder, so they need
-            // the backend's own loader; a plain image extension can use the normal
-            // image path.
-            loader(hdrKind(environment.src), environment.src, seen, tracker);
-            break;
-        case "cubemap":
-            for (const face of environment.faces) loader(hdrKind(face), face, seen, tracker);
-            break;
-        // "room" is generated, no asset.
+    // A `preset` is generated and has no asset. Everything else is a panorama:
+    // .hdr/.exr can't go through the browser's image decoder, so they need the
+    // backend's own loader.
+    if (environment.src !== undefined) {
+        loader(hdrKind(environment.src), environment.src, seen, tracker);
+    }
+    for (const face of environment.faces ?? []) {
+        loader(hdrKind(face), face, seen, tracker);
     }
 }
 

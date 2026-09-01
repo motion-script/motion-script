@@ -2,9 +2,10 @@ import { DRAWABLE_KINDS, Graphics3D, type Graphics3DOp } from "./graphics3d";
 import { RenderContext3D, type Node3DRenderState } from "./render-context3d";
 import type { CameraData3D, OrthographicCameraData3D, PerspectiveCameraData3D } from "./camera";
 import type { LightData3D } from "./light";
-import type {
-    BackgroundData3D, EnvironmentData3D, FogData3D,
-    PostEffectData3D, ShadowSettingsData3D, ToneMappingData3D,
+import {
+    resolveShadows3D,
+    type EnvironmentData3D, type FogData3D, type PostEffect3D,
+    type ShadowSettings3D, type Shadows3D, type ToneSettings3D,
 } from "./scene-settings";
 import type { Transform3D } from "./transform";
 import type { Color } from "@/attributes/shape/fill/color/parser";
@@ -39,9 +40,9 @@ export type Scene3DOp =
  * through *any* 2D shape rather than only a rect:
  *
  *   const scene = new Scene3D()
- *       .perspective({ position: [0, 2, 6], lookAt: 0 })
+ *       .perspective({ orbit: 30, elevation: 20, distance: 6 })
  *       .light({ type: "ambient", intensity: 0.4 })
- *       .draw(new Graphics3D().box({ width: 2, color: "tomato" }));
+ *       .draw(new Graphics3D().box({ width: 2, fill: "tomato" }));
  *
  *   <Text text="DEPTH" fontSize={320} fill={scene} />
  *
@@ -52,11 +53,10 @@ export class Scene3D extends RenderContext3D {
     private _ops: Scene3DOp[] = [];
     private _camera: CameraData3D | null = null;
     private _fog: FogData3D | null = null;
-    private _background: BackgroundData3D | null = null;
     private _environment: EnvironmentData3D | null = null;
-    private _shadows: ShadowSettingsData3D | null = null;
-    private _tone: ToneMappingData3D | null = null;
-    private _post: PostEffectData3D[] = [];
+    private _shadows: ShadowSettings3D | null = null;
+    private _tone: ToneSettings3D | null = null;
+    private _post: PostEffect3D[] = [];
     /** Open `push` count, so {@link assertBalanced} can report a leak. */
     private _depth = 0;
 
@@ -117,23 +117,18 @@ export class Scene3D extends RenderContext3D {
 
     // ─── Scene settings ──────────────────────────────────────────────────────
     //
-    // Fields rather than ops: a scene has exactly one fog, one background, one
-    // environment. Recording them positionally would imply an ordering that
-    // doesn't exist. Last writer wins.
+    // Fields rather than ops: a scene has exactly one fog and one environment.
+    // Recording them positionally would imply an ordering that doesn't exist.
+    // Last writer wins.
 
     override fog(fog: FogData3D | Color | null): this {
         if (fog === null) {
             this._fog = null;
-        } else if (typeof fog === "object" && "type" in (fog as object)) {
+        } else if (typeof fog === "object" && !Array.isArray(fog)) {
             this._fog = fog as FogData3D;
         } else {
-            this._fog = { type: "linear", color: fog as Color };
+            this._fog = { color: fog as Color };
         }
-        return this;
-    }
-
-    override background(background: BackgroundData3D | null): this {
-        this._background = background;
         return this;
     }
 
@@ -142,21 +137,19 @@ export class Scene3D extends RenderContext3D {
         return this;
     }
 
-    override shadows(settings?: ShadowSettingsData3D | boolean): this {
-        if (settings === undefined || settings === true) this._shadows = { enabled: true };
-        else if (settings === false) this._shadows = { enabled: false };
-        else this._shadows = settings;
+    override shadows(settings?: Shadows3D): this {
+        this._shadows = resolveShadows3D(settings ?? true);
         return this;
     }
 
-    override tone(settings: ToneMappingData3D): this {
+    override tone(settings: ToneSettings3D): this {
         this._tone = settings;
         return this;
     }
 
-    override post(effects: PostEffectData3D | readonly PostEffectData3D[]): this {
-        if (Array.isArray(effects)) this._post.push(...(effects as PostEffectData3D[]));
-        else this._post.push(effects as PostEffectData3D);
+    override post(effects: PostEffect3D | readonly PostEffect3D[]): this {
+        if (Array.isArray(effects)) this._post.push(...(effects as PostEffect3D[]));
+        else this._post.push(effects as PostEffect3D);
         return this;
     }
 
@@ -174,19 +167,16 @@ export class Scene3D extends RenderContext3D {
     fogDescriptor(): FogData3D | null {
         return this._fog;
     }
-    backgroundDescriptor(): BackgroundData3D | null {
-        return this._background;
-    }
     environmentDescriptor(): EnvironmentData3D | null {
         return this._environment;
     }
-    shadowSettings(): ShadowSettingsData3D | null {
+    shadowSettings(): ShadowSettings3D | null {
         return this._shadows;
     }
-    toneSettings(): ToneMappingData3D | null {
+    toneSettings(): ToneSettings3D | null {
         return this._tone;
     }
-    postEffects(): readonly PostEffectData3D[] {
+    postEffects(): readonly PostEffect3D[] {
         return this._post;
     }
 

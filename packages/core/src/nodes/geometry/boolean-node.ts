@@ -4,6 +4,8 @@ import { Graphics2D } from "@/render/graphics2d";
 
 import { ShapeNode, ShapeProps } from "@/nodes/geometry/shape-node";
 import { BooleanOperation } from "@/attributes/mask/boolean";
+import { BoxBounds } from "@/attributes/layout/bounds";
+import { childInkBounds, ChildBoundsMode } from "@/nodes/geometry/group-bounds";
 import { FillResolved } from "@/attributes/shape/fill/union";
 export interface BooleanGroupProps extends ShapeProps {
     op: BooleanOperation;
@@ -28,6 +30,21 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
 
     // Required by ShapeNode but unused here — renderContent is fully overridden.
     protected renderSelf(ctx: RenderContext2D): void { }
+
+    /**
+     * The combined silhouette's extent, not the layout cell — see
+     * {@link childInkBounds}, which also explains why the operation decides
+     * which children are measured.
+     *
+     * This node draws nothing of its own: its pixels are its children's,
+     * combined. A box round the cell would therefore be a box round nothing, and
+     * since `hitTestSelf` falls back to this box too (a boolean group declares
+     * no `shapeGraphics`, so there is no outline to hit), it would also be a
+     * grab region in the wrong place. One override fixes both.
+     */
+    override _localBounds(): BoxBounds {
+        return childInkBounds(this, boundsModeFor(this.op)) ?? super._localBounds();
+    }
 
     // Children (whose geometry we combine) are stack-laid-out (centered) by
     // the base Node2D.layout default, so child x/y/width behave as authored.
@@ -55,4 +72,19 @@ export class BooleanGroup extends ShapeNode<BooleanGroupProps> {
             ctx.draw(new Graphics2D().stroke(this.stroke));
         });
     }
+}
+
+/**
+ * Which of the children a given operation's result can reach.
+ *
+ * `union` and `exclude` both draw from every child, and the union of the parts
+ * bounds each exactly. `subtract` can only cut into its first child, and
+ * `intersect` lives inside all of them — so both shrink rather than grow. See
+ * {@link childInkBounds} for what that costs (a superset, never a box the ink
+ * escapes).
+ */
+function boundsModeFor(op: BooleanOperation): ChildBoundsMode {
+    if (op === "subtract") return "first";
+    if (op === "intersect") return "intersect";
+    return "union";
 }

@@ -1,8 +1,8 @@
 import { RenderContext2D, Graphics2D, NormalizedColor, parseColor, lerpNumber } from "@motion-script/core";
 import type { CodeLayout, CodeMetrics } from "./layout";
 import type { IdLine } from "./tokens";
-import { easeOutCubic, windowProgress, moveProgress } from "./transitions";
-import type { TokenState, EntryDirection, StructuralTransition } from "./transitions";
+import { windowProgress, moveProgress } from "./transitions";
+import type { TokenState, StructuralTransition } from "./transitions";
 import type { TokenAdvanceCache } from "./measure-cache";
 
 /** Colour of a token the grammar had no opinion about. */
@@ -33,16 +33,6 @@ function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number): Norma
         from[2] + (to[2] - from[2]) * t,
         from[3] + (to[3] - from[3]) * t,
     ];
-}
-
-/** How far a whole new row travels as it enters, and along which axis. */
-function entryOffset(direction: EntryDirection, metrics: CodeMetrics): { x: number; y: number } {
-    const lineH = metrics.fontSize * metrics.lineHeight;
-    // y-up author space: a row arriving from *below* starts at a lower y and
-    // rises to zero, which is what "slide up" means on screen.
-    if (direction === "up") return { x: 0, y: -lineH * 0.85 };
-    if (direction === "down") return { x: 0, y: lineH * 0.85 };
-    return { x: -metrics.fontSize * 1.8, y: 0 };
 }
 
 // Opacity multiplier for a line's number under the active highlight. The
@@ -89,9 +79,6 @@ export function drawCode(draw: RenderContext2D, state: DrawCodeState): void {
     const pOut = edit ? windowProgress(edit.phases.out, progress) : 1;
     const pMove = moveProgress(edit);
     const pIn = edit ? windowProgress(edit.phases.in, progress) : 1;
-    // Distance an entering row still has to travel: the whole offset when its
-    // fade begins, none of it by the time the fade ends.
-    const entryTravel = 1 - easeOutCubic(pIn);
 
     const blockW = edit ? lerpNumber(from.blockW, to.blockW, pMove) : to.blockW;
     const gutter = edit ? lerpNumber(from.gutter, to.gutter, pMove) : to.gutter;
@@ -147,35 +134,29 @@ export function drawCode(draw: RenderContext2D, state: DrawCodeState): void {
         if (toIndex === undefined) continue;
         const toY = to.lineY[toIndex];
 
-        const direction = edit?.entryByLine.get(line.id);
+        const entering = edit?.enteringLineIds.has(line.id) ?? false;
         let rowY = toY;
-        let rowDX = 0;
         let rowAlpha = 1;
-        if (edit && direction) {
-            // A wholly new row travels as one piece — the line arrives, not a
-            // spray of glyphs each finding its own way in.
-            const offset = entryOffset(direction, metrics);
-            rowY = toY + offset.y * entryTravel;
-            rowDX = offset.x * entryTravel;
+        if (edit && entering) {
+            // A wholly new row fades as one piece, in the place it lands — the
+            // line arrives, it does not travel to get there, and it is not a
+            // spray of glyphs each finding its own way in. See
+            // `StructuralTransition.enteringLineIds`.
             rowAlpha = pIn;
         } else if (edit) {
             const fromIndex = from.lineIndex.get(line.id);
             if (fromIndex !== undefined) rowY = lerpNumber(from.lineY[fromIndex], toY, pMove);
         }
 
-        if (metrics.showLineNumbers) {
-            drawNumber(String(i + 1), rowY, rowAlpha * lineHighlightOpacity(line, dim, highlightActive));
-        }
-
         for (const token of line.tokens) {
             const box = to.tokens.get(token.id);
             if (!box) continue;
 
-            let x = box.x + rowDX;
+            let x = box.x;
             let alpha = rowAlpha;
             let color = tokenColor(token.color);
 
-            if (edit && !direction) {
+            if (edit && !entering) {
                 if (edit.addedIds.has(token.id)) {
                     // Spliced into a row that already existed: the reflow
                     // already opened the space, so this only has to appear.
@@ -208,17 +189,59 @@ export function drawCode(draw: RenderContext2D, state: DrawCodeState): void {
                 ? from.lineY[fromIndex]
                 : lerpNumber(from.lineY[fromIndex], to.lineY[toIndex], pMove);
 
-            let drewAny = false;
             for (const token of line.tokens) {
                 if (!edit.removedIds.has(token.id)) continue;
                 const box = from.tokens.get(token.id);
                 if (!box) continue;
-                drewAny = true;
                 drawToken(token.content, box.x, y, tokenColor(token.color), 1 - pOut);
             }
-            if (drewAny && toIndex === undefined && metrics.showLineNumbers) {
-                drawNumber(String(i + 1), y, 1 - pOut);
-            }
         }
+    }
+
+    if (metrics.showLineNumbers) drawLineNumbers(state, drawNumber, pMove, pIn, pOut);
+}
+
+/**
+ * Draw the gutter — one number per *slot*, not one per row.
+ *
+ * That distinction is the whole of it. A line number is an ordinal of the
+ * block: "3" means the third line, and it is there for exactly as long as the
+ * listing has a third line. Drawing it alongside the row it labels — the
+ * obvious thing, since that is where it appears — tied it to the row's identity
+ * instead, so a line rewritten past the point the diff could pair it took its
+ * number down with it and brought an identical one back up. The number blinked
+ * although it had never gone away, and every substantially rewritten line did
+ * it at once.
+ *
+ * Numbering the slots means only the numbers at the end move at all: those the
+ * block grew to reach fade in, those it shrank past fade out, and every number
+ * both structures have simply travels to its new row height. Which is also the
+ * honest reading of the edit — inserting a line in the middle does not make a
+ * new number appear there, it makes the block one line longer.
+ */
+function drawLineNumbers(
+    state: DrawCodeState,
+    drawNumber: (label: string, y: number, opacity: number) => void,
+    pMove: number,
+    pIn: number,
+    pOut: number,
+): void {
+    const { tokenLines, from, to, edit, tokenStates: dim, highlightActive } = state;
+
+    const toCount = tokenLines.length;
+    const fromCount = edit ? edit.from.length : toCount;
+
+    for (let i = 0; i < Math.max(fromCount, toCount); i++) {
+        const inFrom = i < fromCount;
+        const inTo = i < toCount;
+        // Highlight dimming follows whatever content occupies the slot, which
+        // is the new listing wherever there is one.
+        const line = inTo ? tokenLines[i] : edit?.from[i];
+        const dimming = line ? lineHighlightOpacity(line, dim, highlightActive) : 1;
+
+        if (!edit) drawNumber(String(i + 1), to.lineY[i], dimming);
+        else if (inFrom && inTo) drawNumber(String(i + 1), lerpNumber(from.lineY[i], to.lineY[i], pMove), dimming);
+        else if (inTo) drawNumber(String(i + 1), to.lineY[i], pIn * dimming);
+        else drawNumber(String(i + 1), from.lineY[i], (1 - pOut) * dimming);
     }
 }

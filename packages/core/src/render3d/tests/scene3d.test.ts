@@ -48,23 +48,28 @@ describe('Scene3D', () => {
         const scene = new Scene3D().perspective({ fov: 30 }).orthographic({ frustumHeight: 4 });
         expect(scene.cameraDescriptor()).toEqual({ type: 'orthographic', frustumHeight: 4 });
 
-        scene.background('#111').background('#222');
-        expect(scene.backgroundDescriptor()).toBe('#222');
+        // There is no background here any more — what is drawn behind a 3D scene
+        // is the viewport's own 2D fill. The environment is the last-writer case.
+        scene.environment({ preset: 'studio' }).environment({ src: '/dusk.hdr' });
+        expect(scene.environmentDescriptor()).toEqual({ src: '/dusk.hdr' });
     });
 
-    it('fog() coerces a bare Color into linear fog', () => {
-        expect(new Scene3D().fog('#0b0d12').fogDescriptor()).toEqual({ type: 'linear', color: '#0b0d12' });
-        expect(new Scene3D().fog({ type: 'exp2', color: 'red', density: 0.1 }).fogDescriptor())
-            .toEqual({ type: 'exp2', color: 'red', density: 0.1 });
+    it('fog() coerces a bare Color, and its kind comes from which fields are set', () => {
+        expect(new Scene3D().fog('#0b0d12').fogDescriptor()).toEqual({ color: '#0b0d12' });
+        expect(new Scene3D().fog({ color: 'red', density: 0.1 }).fogDescriptor())
+            .toEqual({ color: 'red', density: 0.1 });
         expect(new Scene3D().fog('red').fog(null).fogDescriptor()).toBeNull();
     });
 
-    it('shadows() coerces booleans', () => {
+    // `false` resolves to *null* rather than `{ enabled: false }`: there is one
+    // question — are shadows on — and the renderer reads the absence, so an
+    // "enabled: false" settings object would be a second way to say off.
+    it('shadows() coerces booleans and settings alike', () => {
         expect(new Scene3D().shadows().shadowSettings()).toEqual({ enabled: true });
         expect(new Scene3D().shadows(true).shadowSettings()).toEqual({ enabled: true });
-        expect(new Scene3D().shadows(false).shadowSettings()).toEqual({ enabled: false });
-        expect(new Scene3D().shadows({ enabled: true, mapSize: 2048 }).shadowSettings())
-            .toEqual({ enabled: true, mapSize: 2048 });
+        expect(new Scene3D().shadows(false).shadowSettings()).toBeNull();
+        expect(new Scene3D().shadows({ quality: 'high' }).shadowSettings())
+            .toEqual({ enabled: true, quality: 'high' });
     });
 
     it('post() appends passes in order', () => {
@@ -78,7 +83,7 @@ describe('Scene3D', () => {
     it('isEmpty is true until something drawable is recorded', () => {
         expect(new Scene3D().isEmpty()).toBe(true);
         // Settings and bare scoping still draw nothing.
-        expect(new Scene3D().perspective().background('red').isEmpty()).toBe(true);
+        expect(new Scene3D().perspective().environment({ preset: 'studio' }).isEmpty()).toBe(true);
         const scoped = new Scene3D();
         scoped.begin({ id: 'a' });
         scoped.end();

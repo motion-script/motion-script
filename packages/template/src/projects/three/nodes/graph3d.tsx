@@ -1,9 +1,9 @@
 import {
-    Geo, Graphics3D, Scene3D, Mat, lerpNumber, property, Canvas3D,
+    Fills, Geo, Graphics3D, Scene3D, Mat, lerpNumber, property, Canvas3D,
     type Color, type NodeConfig, type NormalizedColor, type Canvas3DProps, type Vector3Input,
 } from "motion-script";
 import {
-    lerpColor, lerpCount, lerpFinite, orbitOf, orbitPosition, resolveColor, sanitizeHeight,
+    lerpColor, lerpCount, lerpFinite, orbitOf, resolveColor, sanitizeHeight,
     snapFlag,
 } from "./attributes";
 import { compileExpressionCached, type CompiledExpression } from "./expression";
@@ -225,6 +225,10 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
     constructor(props?: NodeConfig<Graph3D, Graph3DProps>) {
         super(props as NodeConfig<Canvas3D<Graph3DProps>, Graph3DProps>);
         this.applyCameraDefaults(props);
+        // The backdrop is the viewport's own 2D fill — a `Canvas3D` composites
+        // its 3D pass over its fill layers, and there is no 3D background pass to
+        // reach for. Bound rather than copied so a tweened `background` carries.
+        if (props?.fill === undefined) this.applyProp("fill", () => Fills.color(this.background));
     }
 
     /**
@@ -255,21 +259,18 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
         const grid = this.grid as unknown as GridResolved;
         const formulas = this.formulas as unknown as FormulaResolved[];
 
+        // Polar placement is the camera's own vocabulary now, so this node's
+        // orbit/elevation/zoom pass straight through instead of being converted
+        // by a local helper. `near`/`far` are derived from the scene's own
+        // bounds; the backdrop is the viewport's own 2D fill.
         scene.perspective({
             fov: 45,
-            near: 0.1,
-            far: 1000,
-            position: orbitPosition({
-                orbit: this.orbit,
-                elevation: this.elevation,
-                // Clamped here rather than in the mapper: `zoom` and the limits are
-                // separate props, so either can be tweened and the clamp still holds.
-                distance: Math.min(Math.max(this.zoom, camera.minZoom), camera.maxZoom),
-            }),
-            lookAt: 0,
+            orbit: this.orbit,
+            elevation: this.elevation,
+            // Clamped here rather than in the mapper: `zoom` and the limits are
+            // separate props, so either can be tweened and the clamp still holds.
+            distance: Math.min(Math.max(this.zoom, camera.minZoom), camera.maxZoom),
         });
-
-        scene.background(this.background);
 
         // Lighting mirrors the reference: a soft ambient fill plus a key light and
         // a weaker back light, so the underside of a surface stays readable when
@@ -326,10 +327,12 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
             }),
             Mat.standard({
                 color: formula.color,
-                side: "double",         // a surface is infinitely thin; show both faces
+                faces: "both",          // a surface is infinitely thin; show both faces
                 roughness: 0.4,
                 metalness: 0.1,
-                transparent: !solid,
+                // No `transparent` here: the renderer derives blending from the
+                // opacity, which is the whole reason the flag went away. Depth is
+                // still a decision, and it is the one below.
                 opacity,
                 // The fix for surfaces tearing holes in each other mid-fade. A
                 // translucent mesh that still writes depth occludes everything
@@ -341,7 +344,10 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
                 depthWrite: solid,
             }),
             {
-                key: `formula:${formula.id}`,
+                // No key: a surface appearing or disappearing used to renumber
+                // every one after it, and the reconciler now keys a drawable by
+                // its content rather than by its slot in the list.
+                //
                 // Three sorts the transparent pass back-to-front by centroid
                 // distance — and every surface here is centred on the origin, so
                 // their sort keys are identical and the order is arbitrary, which
@@ -375,10 +381,10 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
         }
 
         if (lines.length > 0) {
-            g3.line({ points: lines, mode: "segments", color: grid.colorGrid, key: "grid:lines" });
+            g3.line({ points: lines, segments: true, stroke: { fill: grid.colorGrid } });
         }
         if (centre.length > 0) {
-            g3.line({ points: centre, mode: "segments", color: grid.colorCenterLine, key: "grid:centre" });
+            g3.line({ points: centre, segments: true, stroke: { fill: grid.colorCenterLine } });
         }
     }
 
@@ -391,7 +397,7 @@ export class Graph3D extends Canvas3D<Graph3DProps> {
         ];
 
         for (const [end, color, name] of axes) {
-            g3.line({ points: [[0, 0, 0], end], color, key: `axis:${name}` });
+            g3.line({ points: [[0, 0, 0], end], stroke: { fill: color } });
         }
     }
 }

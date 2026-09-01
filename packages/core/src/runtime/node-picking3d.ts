@@ -3,7 +3,7 @@ import { Node3D } from "@/nodes/three/node3d";
 import { Canvas3D } from "@/nodes/three/canvas3d-node";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import { applyToPoint, invert, type Matrix2D } from "@/attributes/layout/matrix2d";
-import type { CameraData3D } from "@/render3d/camera";
+import { resolveCameraPlacement, type CameraData3D } from "@/render3d/camera";
 import type { Scene3D, Scene3DOp } from "@/render3d/scene3d";
 import type { Transform3D } from "@/render3d/transform";
 import {
@@ -13,7 +13,7 @@ import {
     applyMatrix4, identity4, invert4, lookAtRotation4, multiply4, orthographic4,
     perspective4, transformMatrix4, translation4, type Matrix4,
 } from "@/render3d/matrix4";
-import { resolveVector3, type Vector3 } from "@/render3d/vector3";
+import type { Vector3 } from "@/render3d/vector3";
 import { nodePath } from "@/project/tree";
 import type { NodeBox } from "./node-picking";
 
@@ -482,15 +482,22 @@ function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
  * camera's *world* position, so a camera riding inside an animated rig points
  * where the author said rather than where its group happens to face. See
  * {@link lookAtRotation4}, which the two branches share.
+ *
+ * The polar placement (`target`/`orbit`/`elevation`/`distance`) is resolved by
+ * core's own {@link resolveCameraPlacement} — the same call the renderer makes.
+ * Two places deriving "where is the camera" from one descriptor is two chances to
+ * disagree about what the author is looking at, and a gizmo drawn against a
+ * camera nobody renders is worse than no gizmo at all.
  */
 function cameraMatrix4(descriptor: CameraData3D, parent: Matrix4): Matrix4 {
-    if (descriptor.lookAt === undefined) {
-        return multiply4(parent, transformMatrix4(descriptor, parent));
+    const placement = resolveCameraPlacement(descriptor);
+
+    if (placement.lookAt === undefined) {
+        return multiply4(parent, transformMatrix4({ ...descriptor, position: placement.position }, parent));
     }
-    const placed = applyMatrix4(parent, resolveVector3(descriptor.position));
+    const placed = applyMatrix4(parent, placement.position);
     const origin: Vector3 = { x: placed.x, y: placed.y, z: placed.z };
-    const target = resolveVector3(descriptor.lookAt);
-    return multiply4(translation4(origin), lookAtRotation4(origin, target));
+    return multiply4(translation4(origin), lookAtRotation4(origin, placement.lookAt));
 }
 
 /**
@@ -517,23 +524,25 @@ function projectionMatrix(descriptor: CameraData3D | null, aspect: number): Matr
     if (descriptor.type === "perspective") {
         return perspective4(
             descriptor.fov ?? DEFAULT_FOV,
-            descriptor.aspect ?? aspect,
+            // Always the node's own aspect. There is no override any more: it was
+            // a field whose documentation said not to set it, and setting it
+            // stretched the render — so a gizmo can only ever have been wrong by
+            // agreeing with one.
+            aspect,
             descriptor.near ?? DEFAULT_NEAR,
             descriptor.far ?? DEFAULT_FAR,
             descriptor.zoom ?? 1,
         );
     }
-    // The same "explicit four edges win, otherwise `frustumHeight` and the node's
-    // aspect" rule `applyCamera` applies — restated rather than shared because
-    // that one lives in the renderer, which core cannot import.
-    const explicit = descriptor.left !== undefined && descriptor.right !== undefined
-        && descriptor.top !== undefined && descriptor.bottom !== undefined;
+    // `frustumHeight` sets the visible world height and the width follows the
+    // node's aspect — the same rule `applyCamera` applies, restated rather than
+    // shared because that one lives in the renderer, which core cannot import.
     const halfHeight = (descriptor.frustumHeight ?? 10) / 2;
     return orthographic4(
-        explicit ? descriptor.left as number : -halfHeight * aspect,
-        explicit ? descriptor.right as number : halfHeight * aspect,
-        explicit ? descriptor.top as number : halfHeight,
-        explicit ? descriptor.bottom as number : -halfHeight,
+        -halfHeight * aspect,
+        halfHeight * aspect,
+        halfHeight,
+        -halfHeight,
         descriptor.near ?? DEFAULT_NEAR,
         descriptor.far ?? DEFAULT_FAR,
         descriptor.zoom ?? 1,

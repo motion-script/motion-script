@@ -8,7 +8,7 @@
 
 import type * as THREE from "three";
 import type { Euler3, Transform3D, Vector3Input } from "@motion-script/core";
-import { resolveVector3 } from "@motion-script/core";
+import { resolveVector3, shadowCasts, shadowReceives } from "@motion-script/core";
 import { deg } from "./constants";
 
 /** three's Euler order strings, indexed by core's. */
@@ -58,8 +58,11 @@ export function applyTransform(object: THREE.Object3D, transform: Transform3D | 
     }
 
     object.visible = transform.visible !== false;
-    object.castShadow = transform.castShadow === true;
-    object.receiveShadow = transform.receiveShadow === true;
+    // Both default to *true*, unlike three's own defaults. A scene with shadows
+    // enabled and a light casting them rendered nothing at all until every mesh
+    // was tagged, which is the trap this inverts; `shadow={false}` opts out.
+    object.castShadow = shadowCasts(transform.shadow);
+    object.receiveShadow = shadowReceives(transform.shadow);
     if (transform.renderOrder !== undefined) object.renderOrder = transform.renderOrder;
 }
 

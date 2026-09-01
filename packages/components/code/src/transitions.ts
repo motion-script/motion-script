@@ -22,9 +22,6 @@ export interface DimTransition {
     progress: number;
 }
 
-/** Where a wholly new row comes in from. */
-export type EntryDirection = "up" | "down" | "right";
-
 /**
  * When each part of a structural edit happens, in normalized transition time.
  *
@@ -57,8 +54,20 @@ export interface StructuralTransition {
     to: IdLine[];
     removedIds: Set<number>;
     addedIds: Set<number>;
-    /** Line id (in `to`) → the direction that whole row enters from. */
-    entryByLine: Map<number, EntryDirection>;
+    /**
+     * Ids of rows in `to` that did not exist before, and so enter as a whole
+     * row rather than as tokens spliced into one.
+     *
+     * They enter by fading in place, and that is the *only* thing they do. An
+     * earlier version slid each one in from the edge the block had just grown
+     * along — appended rows rising from below, prepended ones descending, ones
+     * spliced into the middle arriving from the left. Every one of those is a
+     * claim about where the line came from, and a listing has no such story to
+     * tell: text is written where it belongs, it does not travel there. Sliding
+     * also puts the row under the neighbours it is meant to sit between for the
+     * length of its entrance, which reads as the listing redrawing itself.
+     */
+    enteringLineIds: Set<number>;
     fromColorById: Map<number, string | undefined>;
     phases: Phases;
     progress: number;
@@ -109,12 +118,6 @@ export function windowProgress(w: [number, number] | null, p: number): number {
 /** Smooth start and end, so a phase never begins or ends with a velocity step. */
 export function smoothstep(t: number): number {
     return t * t * (3 - 2 * t);
-}
-
-/** Decelerating — what a row entering the frame should do. */
-export function easeOutCubic(t: number): number {
-    const inv = 1 - t;
-    return 1 - inv * inv * inv;
 }
 
 export function makeAnim(id: number, curve: { keys: number[]; values: number[] }): AnimToken {

@@ -1,67 +1,98 @@
 import type { Color } from "@/attributes/shape/fill/color/parser";
 import type { Passthrough3D } from "./geometry";
 import type { Uniform3D } from "./material";
-import type { Texture3D } from "./texture";
 import type { Vector3Input } from "./vector3";
 
-/** Depth haze that fades distant geometry toward a colour. */
-export type FogData3D =
-    /** Fades linearly between `near` and `far`. Predictable and easy to tune. */
-    | { type: "linear"; color?: Color; near?: number; far?: number }
-    /** Exponential-squared falloff. More natural, controlled by one `density`. */
-    | { type: "exponential"; color?: Color; density?: number };
-
 /**
- * What fills the pixels no geometry covers.
+ * Depth haze that fades distant geometry toward a colour.
  *
- * Defaults to `"transparent"` — the whole point of compositing 3D into a 2D
- * scene is that the 2D content behind it shows through, so an opaque background
- * is opt-in. A bare {@link Color} is sugar for a solid clear colour.
+ * One shape rather than a discriminated pair: setting {@link density} is
+ * exponential fog and setting {@link near}/{@link far} is linear, which is what
+ * the old `type` field said twice. Writing `type: "exponential"` beside a `far`
+ * silently dropped the `far`; there is nothing to get wrong now.
+ *
+ * `color` is derived from the viewport's own fill when omitted. Fog that does not
+ * match what is behind it reads as a grey wall rather than as distance, and the
+ * two colours being separately typed by hand is exactly how they drift.
  */
-export type BackgroundData3D =
-    | Color
-    | { type: "color"; color: Color }
-    /** A flat image, stretched across the frame. */
-    | { type: "texture"; texture: Texture3D }
-    /** Six faces, in three's order: +X, -X, +Y, -Y, +Z, -Z. */
-    | { type: "cubemap"; faces: readonly [Texture3D, Texture3D, Texture3D, Texture3D, Texture3D, Texture3D] }
-    /** A 360° panorama. The usual form for a photographic sky. */
-    | { type: "equirect"; texture: Texture3D; blurriness?: number; intensity?: number }
-    /** Let the 2D scene behind show through. The default. */
-    | { type: "transparent" };
+export interface FogData3D {
+    color?: Color;
+    /** Linear fog: distance at which fog begins. */
+    near?: number;
+    /** Linear fog: distance at which fog is total. */
+    far?: number;
+    /** Exponential-squared falloff. Wins over {@link near}/{@link far}. */
+    density?: number;
+}
 
 /**
- * Image-based lighting — light the scene *with* an environment rather than with
- * discrete lights. This is what makes `standard`/`physical` metals read as metal;
- * without it a metallic surface has nothing to reflect and looks black.
+ * Image-based lighting, and the sky it comes from.
+ *
+ * Light and background are one control because they are one physical thing: an
+ * HDRI that lights a scene is the same panorama you see behind it, and having
+ * them as two nodes meant setting one, wondering why metal was black or why the
+ * sky was missing, and setting the other.
+ *
+ * This is also *all* that is left of the old `Background3D`. A solid colour, a
+ * gradient or a flat image behind the scene is a **2D fill** — `Canvas3D` is a
+ * `Rect` and already composites its 3D pass over its own fill layers, the
+ * renderer already clears transparent, and neither lighting nor fog touches a
+ * three background, so the 3D path was doing strictly less than the 2D one it sat
+ * in front of. What genuinely needs the 3D pass is a sky that *reprojects* as the
+ * camera turns, which is this.
  */
-export type EnvironmentData3D =
-    /** A 360° HDR panorama. Needs a loader for `.hdr`/`.exr`. */
-    | { type: "equirect"; src: string; intensity?: number; rotation?: Vector3Input }
-    | { type: "cubemap"; faces: readonly string[] }
+export interface EnvironmentData3D extends Passthrough3D {
+    /** A 360° panorama — `.hdr`/`.exr` for real IBL, or a plain image. */
+    src?: string;
+    /** Six faces, in three's order: +X, −X, +Y, −Y, +Z, −Z. */
+    faces?: readonly string[];
     /** A built-in studio interior. Needs no asset — the fastest way to good metal. */
-    | { type: "room"; intensity?: number };
-
-/** How shadow maps are filtered scene-wide. */
-export type ShadowType3D = "basic" | "pcf" | "pcfSoft" | "vsm";
+    preset?: "studio";
+    /** Multiplies the light received. Default 1. */
+    intensity?: number;
+    /** Rotate the panorama, in **degrees**. */
+    rotation?: Vector3Input;
+    /** Also draw it behind the scene, as an infinitely distant sky. */
+    background?: boolean;
+    /** Blur applied to the background only, 0–1. Leaves the lighting sharp. */
+    blur?: number;
+}
 
 /**
  * Scene-wide shadow settings.
  *
+ * `quality` stands in for the map resolution and the filter three exposes
+ * separately (`pcf`, `pcfSoft`, `vsm`, `mapSize`): those two are chosen together
+ * in practice, and neither is a design decision. Individual lights soften their
+ * own shadow; objects opt out with `shadow={false}`.
+ *
  * Enabling shadows recompiles every material that receives them, so treat this as
- * setup rather than something to animate. Individual lights opt in with their own
- * `shadow` field plus `castShadow`/`receiveShadow` on the objects.
+ * setup rather than something to animate.
  */
-export interface ShadowSettingsData3D {
+export interface ShadowSettings3D {
     enabled?: boolean;
-    /** Default `"pcfSoft"` — soft edges at a modest cost. */
-    type?: ShadowType3D;
-    /** Default shadow-map resolution for lights that don't set their own. */
-    mapSize?: number;
+    /** Default `"medium"`. */
+    quality?: "low" | "medium" | "high";
 }
 
-/** How high-dynamic-range colour is mapped into displayable range. */
-export type ToneMappingMode3D =
+/** Shadows as written on a viewport: a switch, or the settings. */
+export type Shadows3D = boolean | ShadowSettings3D;
+
+/** Normalize a viewport's `shadows` prop. */
+export function resolveShadows3D(value: Shadows3D | undefined): ShadowSettings3D | null {
+    if (value === undefined || value === false) return null;
+    if (value === true) return { enabled: true };
+    return { enabled: true, ...value };
+}
+
+/**
+ * How high-dynamic-range colour is mapped into displayable range.
+ *
+ * `"aces"` is the filmic default most renderers use and handles bright
+ * highlights gracefully; `"none"` clips them. Materials opt out individually with
+ * `toneMapped: false` — useful for UI-like overlays that must keep an exact colour.
+ */
+export type ToneMapping3D =
     | "none"
     | "linear"
     | "reinhard"
@@ -70,16 +101,9 @@ export type ToneMappingMode3D =
     | "agx"
     | "neutral";
 
-/**
- * Tone mapping and exposure.
- *
- * `"aces"` is the filmic default most renderers use and handles bright
- * highlights gracefully; `"none"` clips them. Materials can opt out per-material
- * with `toneMapped: false` — useful for UI-like overlays that must keep an exact
- * colour.
- */
-export interface ToneMappingData3D {
-    mapping?: ToneMappingMode3D;
+/** Tone mapping and exposure, as a viewport carries them. */
+export interface ToneSettings3D {
+    mapping?: ToneMapping3D;
     /** Stops of exposure applied before mapping. Default 1. */
     exposure?: number;
 }
@@ -87,20 +111,28 @@ export interface ToneMappingData3D {
 /**
  * A full-frame post-processing pass, applied after the scene renders.
  *
- * These run in the order given. Note that post-processing forces the render
- * through an offscreen target, which changes the compositing path — so a scene
- * with post effects costs more than one without, even for a cheap effect.
+ * Deliberately short, because most of what used to be here is a 2D effect. A
+ * `Canvas3D` is a `Node2D`, so it already carries the whole `effects` chain —
+ * vignette, grain, colour grading, blur, chromatic aberration and the rest run
+ * over the composited result with no 3D pass involved, and post-process
+ * antialiasing is what the viewport's own `antialias` already does with MSAA.
+ *
+ * What is left are the passes that genuinely need what only the 3D pass has:
+ * `ssao` and `dof` read the depth buffer, `outline` reads object ids, and `bloom`
+ * reads **HDR radiance before tone mapping** — which is why an emissive surface
+ * blooms here and merely brightens under the 2D chain. `shaderPass` stays as the
+ * escape hatch for a pass that needs to sit inside the 3D composite.
+ *
+ * Post-processing forces the render through an offscreen target, so a scene with
+ * any of these costs more than one without, even for a cheap effect.
  */
-export type PostEffectData3D =
-    /** Bleeds light from bright pixels. What makes `emissive` actually glow. */
+export type PostEffect3D =
+    /** Bleeds light from bright pixels, in HDR. What makes `emission` actually glow. */
     | ({ type: "bloom"; strength?: number; radius?: number; threshold?: number } & Passthrough3D)
-    /** Contact shadows in creases from screen-space geometry. */
+    /** Contact shadows in creases, from screen-space geometry. */
     | ({ type: "ssao"; radius?: number; intensity?: number } & Passthrough3D)
     | ({ type: "outline"; color?: Color; thickness?: number } & Passthrough3D)
     /** Depth of field. `focus` is the sharp distance, `aperture` the blur strength. */
     | ({ type: "dof"; focus?: number; aperture?: number; maxBlur?: number } & Passthrough3D)
-    /** Post-process antialiasing, for when MSAA isn't available or enough. */
-    | ({ type: "fxaa" } & Passthrough3D)
-    | ({ type: "smaa" } & Passthrough3D)
-    /** Vignette, grain, colour grading — anything expressible as one fragment pass. */
+    /** Anything expressible as one fragment pass inside the 3D composite. */
     | ({ type: "shaderPass"; fragment: string; uniforms?: Readonly<Record<string, Uniform3D>> } & Passthrough3D);

@@ -17,10 +17,10 @@
 
 export { Graphics3D } from "./graphics3d";
 export type {
-    Graphics3DOp, LineMode3D, ModelAnimation3D,
+    Graphics3DOp, LineMode3D, LineStroke3D, ModelAnimation3D,
     MaterialShorthand3D, MeshShorthand3D,
 } from "./graphics3d";
-/** @internal */ export { DRAWABLE_KINDS } from "./graphics3d";
+/** @internal */ export { DRAWABLE_KINDS, resolveMaterialShorthand3D } from "./graphics3d";
 
 export { Scene3D } from "./scene3d";
 export type { Scene3DOp } from "./scene3d";
@@ -30,13 +30,23 @@ export type { Node3DRenderState } from "./render-context3d";
 
 export { Geo, Mat, Tex } from "./builders";
 
+export { resolveFill3D, looksLikeAssetPath } from "./fill3d";
+export type { Fill3D, Fill3DOptions, ResolvedFill3D } from "./fill3d";
+
+export { segmentsOf } from "./segments";
+export type { Segments3D } from "./segments";
+
+export { evaluateRoundedBox } from "./rounded-box";
+export type { RoundedBoxOptions } from "./rounded-box";
+
 export {
     lerpVector3, lerpEuler3, slerpQuaternion, normalizeQuaternion,
     quaternionFromEuler, resolveVector3, IDENTITY_QUATERNION,
 } from "./vector3";
 export type { Vector3, Vector3Input, Euler3, EulerOrder, Quaternion } from "./vector3";
 
-export type { Transform3D, Side3D, Blending3D } from "./transform";
+export { shadowCasts, shadowReceives, resolveShadowOptions3D } from "./transform";
+export type { Transform3D, Shadow3D, ShadowOptions3D, Faces3D, Blend3D } from "./transform";
 
 export { geometryBounds3D } from "./bounds3d";
 export type { Box3 } from "./bounds3d";
@@ -48,9 +58,9 @@ export type { Box3 } from "./bounds3d";
 } from "./matrix4";
 /** @internal */ export type { Matrix4, Vector4 } from "./matrix4";
 
-export { evaluateParametric } from "./geometry";
+export { evaluateParametric, cylinderRadii, resolveBevel3D } from "./geometry";
 export type {
-    Geometry3D, Passthrough3D,
+    Geometry3D, Passthrough3D, Sweep3D, Bevel3D,
     BoxGeometry3D, SphereGeometry3D, PlaneGeometry3D, CylinderGeometry3D,
     ConeGeometry3D, TorusGeometry3D, TorusKnotGeometry3D, CircleGeometry3D,
     RingGeometry3D, CapsuleGeometry3D, PolyhedronGeometry3D, ExtrudeGeometry3D,
@@ -60,7 +70,7 @@ export type {
 
 export { MUTABLE_MATERIAL_KEYS, STRUCTURAL_MATERIAL_KEYS } from "./material";
 export type {
-    Material3D, MaterialCommon3D, Uniform3D,
+    Material3D, MaterialCommon3D, Uniform3D, Shading3D,
     BasicMaterial3D, StandardMaterial3D, PhysicalMaterial3D, PhongMaterial3D,
     LambertMaterial3D, ToonMaterial3D, NormalMaterial3D, DepthMaterial3D,
     MatcapMaterial3D, PointsMaterial3D, LineBasicMaterial3D, LineDashedMaterial3D,
@@ -75,19 +85,23 @@ export type {
 } from "./texture";
 
 export type {
-    LightData3D, LightShadowData3D, DirectionalLightShadowData3D,
+    LightData3D,
     AmbientLightData3D, HemisphereLightData3D, DirectionalLightData3D,
-    PointLightData3D, SpotLightData3D, RectAreaLightData3D,
+    PointLightData3D, SpotLightData3D, AreaLightData3D,
 } from "./light";
 
-export type { CameraData3D, PerspectiveCameraData3D, OrthographicCameraData3D } from "./camera";
-
+export { isOrbitCamera3D, resolveCameraPlacement } from "./camera";
 export type {
-    FogData3D, BackgroundData3D, EnvironmentData3D, ShadowSettingsData3D, ShadowType3D,
-    ToneMappingData3D, ToneMappingMode3D, PostEffectData3D,
+    CameraData3D, CameraCommon3D, PerspectiveCameraData3D, OrthographicCameraData3D,
+} from "./camera";
+
+export { resolveShadows3D } from "./scene-settings";
+export type {
+    FogData3D, EnvironmentData3D, ShadowSettings3D, Shadows3D,
+    ToneSettings3D, ToneMapping3D, PostEffect3D,
 } from "./scene-settings";
 
-/** @internal */ export { track3DResources } from "./tracking";
+/** @internal */ export { track3DResources, trackEnvironment } from "./tracking";
 /** @internal */ export { forEachTexture3D, isTextureLike, TEXTURE_KEYS } from "./walk";
 
 export { registerCanvas3DWarmup, registerCanvas3DResourceLoader } from "./resources";

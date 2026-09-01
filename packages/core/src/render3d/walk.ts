@@ -15,13 +15,12 @@
 import type { Graphics3D } from "./graphics3d";
 import { Scene3D } from "./scene3d";
 import type { Material3D } from "./material";
-import type { BackgroundData3D } from "./scene-settings";
 import type { Texture3D } from "./texture";
 
 /** Material fields that hold a {@link Texture3D}. */
 export const TEXTURE_KEYS: readonly string[] = [
     "map", "alphaMap", "aoMap", "normalMap", "displacementMap", "envMap",
-    "lightMap", "emissiveMap", "roughnessMap", "metalnessMap", "specularMap",
+    "lightMap", "emissionMap", "roughnessMap", "metalnessMap", "specularMap",
     "gradientMap", "matcap", "clearcoatMap", "clearcoatNormalMap",
     "clearcoatRoughnessMap", "transmissionMap", "thicknessMap",
 ];
@@ -38,8 +37,8 @@ export function isTextureLike(value: unknown): boolean {
 }
 
 /**
- * Visit every {@link Texture3D} a scene references — material map slots, shader
- * and post-effect uniforms, and the background.
+ * Visit every {@link Texture3D} a scene references — material map slots, and
+ * shader and post-effect uniforms.
  *
  * Visits duplicates; callers dedupe on whatever key they care about. Does **not**
  * cover model/environment resources, which are not textures and go through the
@@ -87,30 +86,13 @@ export function forEachTexture3D(g3: Graphics3D | Scene3D, visit: (texture: Text
         }
     }
 
-    // Only a whole scene has a background or a post chain; what a single node
-    // draws has neither.
+    // Only a whole scene has a post chain; what a single node draws has none.
+    // The environment's own panorama is not visited here: it is loaded through
+    // the backend's HDR/EXR loader rather than the image pipeline, and
+    // `trackEnvironment` is what declares it.
     if (!(g3 instanceof Scene3D)) return;
-
-    visitBackground(g3.backgroundDescriptor(), visit);
 
     for (const effect of g3.postEffects()) {
         uniforms((effect as { uniforms?: Record<string, unknown> }).uniforms);
-    }
-}
-
-function visitBackground(
-    background: BackgroundData3D | null,
-    visit: (texture: Texture3D) => void,
-): void {
-    if (background === null || typeof background === "string" || Array.isArray(background)) return;
-    const value = background as Exclude<BackgroundData3D, string | readonly number[]>;
-    switch (value.type) {
-        case "texture":
-        case "equirect":
-            visit(value.texture);
-            break;
-        case "cubemap":
-            for (const face of value.faces) visit(face);
-            break;
     }
 }

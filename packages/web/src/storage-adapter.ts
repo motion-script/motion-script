@@ -537,11 +537,22 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
      * the texture on first use and updating it in place afterwards — the same
      * pattern decoded video frames use ({@link uploadFrame}).
      *
-     * `srcIsPremul: true` is load-bearing. three's `WebGLRenderer` defaults to
-     * `premultipliedAlpha: true`, so its canvas holds premultiplied pixels; the
-     * third argument defaults to *unpremultiplied*, and omitting it makes Skia
-     * premultiply already-premultiplied data — which shows up as dark fringes on
-     * every antialiased 3D edge.
+     * **The source arrives unpremultiplied, even though the canvas is not.**
+     * three's `WebGLRenderer` is created with `premultipliedAlpha: true`, so its
+     * drawing buffer genuinely holds premultiplied pixels — but uploading a
+     * canvas *as a texture source* goes through the browser's unpack pipeline,
+     * where `UNPACK_PREMULTIPLY_ALPHA_WEBGL` is false by default. Honouring that
+     * means the browser divides the alpha back out, so what reaches Skia is
+     * straight colour. Declaring it `Premul` made Skia composite
+     * `src + (1-a)·dst` instead of `a·src + (1-a)·dst`, i.e. additively.
+     *
+     * That was invisible for years because it is a no-op at full alpha, and every
+     * opaque 3D scene is exactly that. The symptom only appears on a translucent
+     * surface, where it reads as `opacity` being ignored — a 5% shell rendering
+     * at full strength. It is also invisible to a careless test: the two formulas
+     * agree on any channel where the source is zero, so a probe drawn in pure
+     * blue over white matches to the byte either way. `packages/e2e` has one in a
+     * colour that separates them.
      *
      * The returned image is owned by this adapter (keyed by node), not the caller:
      * it must NOT be deleted after the draw, or the next frame loses its texture.
@@ -563,7 +574,7 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
         const info = {
             width,
             height,
-            alphaType: this.canvasKit.AlphaType.Premul,
+            alphaType: this.canvasKit.AlphaType.Unpremul,
             colorType: this.canvasKit.ColorType.RGBA_8888,
             colorSpace: this.canvasKit.ColorSpace.SRGB,
         };
@@ -582,13 +593,13 @@ export class WebStorageAdapter extends StorageAdapter implements SkiaAssets {
             // CanvasKit's TextureSource type omits canvas elements, though the
             // underlying texImage2D upload accepts them — same cast the video path
             // makes for ImageBitmap.
-            const made = surface.makeImageFromTextureSource(source as never, info, true);
+            const made = surface.makeImageFromTextureSource(source as never, info, false);
             if (!made) return null;
             this.canvas3DTextures.set(key, made);
             return made;
         }
 
-        surface.updateTextureFromSource(image, source as never, true);
+        surface.updateTextureFromSource(image, source as never, false);
         return image;
     }
 

@@ -13,8 +13,8 @@
 
 import type * as THREE from "three";
 import type {
-    Blending3D, Color, ShadowType3D, Side3D,
-    TextureColorSpace3D, TextureFilter3D, TextureWrap3D, ToneMappingMode3D,
+    Blend3D, Color, Faces3D, ShadowSettings3D,
+    TextureColorSpace3D, TextureFilter3D, TextureWrap3D, ToneMapping3D,
 } from "@motion-script/core";
 import { parseColor } from "@motion-script/core";
 import type { ThreeModule } from "../bridge";
@@ -24,15 +24,15 @@ export function deg(value: number): number {
     return value * (Math.PI / 180);
 }
 
-export function side(three: ThreeModule, value: Side3D | undefined): THREE.Side {
+export function faces(three: ThreeModule, value: Faces3D | undefined): THREE.Side {
     switch (value) {
         case "back": return three.BackSide;
-        case "double": return three.DoubleSide;
+        case "both": return three.DoubleSide;
         default: return three.FrontSide;
     }
 }
 
-export function blending(three: ThreeModule, value: Blending3D | undefined): THREE.Blending {
+export function blending(three: ThreeModule, value: Blend3D | undefined): THREE.Blending {
     switch (value) {
         case "additive": return three.AdditiveBlending;
         case "subtractive": return three.SubtractiveBlending;
@@ -64,16 +64,26 @@ export function colorSpace(three: ThreeModule, value: TextureColorSpace3D | unde
     return value === "linear" ? three.LinearSRGBColorSpace : three.SRGBColorSpace;
 }
 
-export function shadowType(three: ThreeModule, value: ShadowType3D | undefined): THREE.ShadowMapType {
+/**
+ * Shadow filter and map resolution, from one `quality`.
+ *
+ * three exposes these as two unrelated settings (`shadowMap.type` and a per-light
+ * `mapSize`), and they are chosen together in practice — a soft filter over a
+ * 512² map is mush, a hard filter over a 4096² one is still hard. Neither is a
+ * design decision, so both come off the one word.
+ */
+export function shadowQuality(
+    three: ThreeModule,
+    value: ShadowSettings3D["quality"],
+): { type: THREE.ShadowMapType; mapSize: number } {
     switch (value) {
-        case "basic": return three.BasicShadowMap;
-        case "pcf": return three.PCFShadowMap;
-        case "vsm": return three.VSMShadowMap;
-        default: return three.PCFSoftShadowMap;
+        case "low": return { type: three.PCFShadowMap, mapSize: 512 };
+        case "high": return { type: three.PCFSoftShadowMap, mapSize: 4096 };
+        default: return { type: three.PCFSoftShadowMap, mapSize: 2048 };
     }
 }
 
-export function toneMapping(three: ThreeModule, value: ToneMappingMode3D | undefined): THREE.ToneMapping {
+export function toneMapping(three: ThreeModule, value: ToneMapping3D | undefined): THREE.ToneMapping {
     switch (value) {
         case "none": return three.NoToneMapping;
         case "linear": return three.LinearToneMapping;

@@ -1,6 +1,6 @@
 import {
     createScene, createSignal, easeInOut, linear, parallel, Geo, Mat,
-    Canvas3D, PerspectiveCamera3D, Background3D, AmbientLight3D, DirectionalLight3D,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D,
     Group3D, Mesh3D, Box3D, Line3D,
     Rect,
 } from "motion-script";
@@ -45,17 +45,15 @@ export default createScene(function* (stage) {
     const angle = createSignal(0);            // camera orbit, degrees
     const phase = createSignal(0);            // travelling-wave phase, radians
 
-    /** Camera position on its orbit, at this frame's angle. */
-    const orbit = (): [number, number, number] => {
-        const radians = (angle() * Math.PI) / 180;
-        return [Math.cos(radians) * 35, 18, Math.sin(radians) * 35];
-    };
-
     stage.add(
         <Rect stroke={{ weight: 4, fill: 'red' }} clip={true} width={800} height={800}>
-            <Canvas3D width="fill" height="fill">
-                <PerspectiveCamera3D position={orbit} lookAt={0} fov={50} />
-                <Background3D background="#1a1a1a" />
+            {/* The background is the viewport's own 2D fill — there is no 3D
+                background pass to reach for, and this one composites under the
+                3D exactly as it would under any other content. */}
+            <Canvas3D width="fill" height="fill" fill="#1a1a1a">
+                {/* Orbit, elevation and distance rather than a sin/cos pair
+                    recomputed in a prop binding every frame. */}
+                <Camera3D orbit={() => angle()} elevation={27} distance={39} fov={50} />
                 <AmbientLight3D intensity={0.4} />
                 <DirectionalLight3D intensity={1.5} position={[10, 20, 10]} />
 
@@ -77,32 +75,35 @@ export default createScene(function* (stage) {
                         });
                     }}
                     material={Mat.phong({
-                        side: "double",
+                        faces: "both",
                         vertexColors: true,
                         shininess: 80,
                         specular: "#444444",
                     })}
                 />
 
-                {/* Translucent shell + its wireframe edges. `side: "back"` and
-                    `depthWrite: false` are what stop the shell from occluding
-                    the surface inside it. */}
+                {/* Translucent shell + its wireframe edges. `faces: "back"` and
+                    the material's `depthWrite: false` are what stop the shell
+                    from occluding the surface inside it — `depthWrite` is a
+                    renderer knob rather than a design decision, so it lives on a
+                    `Mat.*` descriptor now. Blending is derived from the opacity;
+                    there is no `transparent` to remember. */}
                 <Group3D position={[0, 0, 0]}>
                     <Box3D
                         width={RANGE * 2} height={10} depth={RANGE * 2}
-                        unlit
-                        color="#88ccff"
-                        opacity={0.05}
-                        transparent
-                        side="back"
-                        depthWrite={false}
+                        material={Mat.basic({
+                            color: "#88ccff",
+                            opacity: 0.05,
+                            faces: "back",
+                            depthWrite: false,
+                        })}
                     />
                     <Line3D
                         geometry={Geo.edges(
                             Geo.box({ width: RANGE * 2, height: 10, depth: RANGE * 2 }),
                         )}
-                        mode="segments"
-                        color="white"
+                        segments
+                        stroke={{ fill: "white" }}
                         opacity={0.4}
                     />
                 </Group3D>

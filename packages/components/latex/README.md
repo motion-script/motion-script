@@ -32,8 +32,11 @@ export default createScene(function* (stage) {
   `stroke`, `shadow`, and `padding` work like any other shape.
 - **Formula morphing**, `to({ latex, fontSize }, duration)` interpolates each
   glyph between the current and target formula, matching tokens that persist,
-  fading out tokens that leave, and fading in tokens that arrive. The hugging box
-  resizes smoothly across the transition.
+  fading out tokens that leave, and fading in tokens that arrive. A persisting
+  glyph is carried by its geometry, so one that changes size on the way — the
+  `2` of `b^2` becoming the `2` of `2a`, or a symbol dropping into a `\frac` —
+  grows or shrinks across the transition instead of snapping. The hugging box
+  resizes smoothly along with it.
 - **`buildLatexPath(latex, fontSize)`**, the underlying helper that turns TeX
   into positioned `LatexToken` glyph paths plus intrinsic size and bounds, for
   callers that want the geometry directly.

@@ -91,7 +91,7 @@ describe('canvas3D fill', () => {
     });
 
     it('requests the scene\'s textures during precomp, sized to the destination', () => {
-        const g3 = scene((s) => s.box({ map: '/wood.png' }).sphere({ map: '/metal.png' }));
+        const g3 = scene((s) => s.box({ fill: '/wood.png' }).sphere({ fill: '/metal.png' }));
         const addImage = vi.fn();
         const tracker = { addImage, addAsync: vi.fn() } as unknown as AssetTracker;
 

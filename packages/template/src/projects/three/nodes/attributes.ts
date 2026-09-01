@@ -9,7 +9,7 @@
  * way — see `resolveCornerRadius`/`lerpCornerRadius` behind `Rect.cornerRadius`.
  */
 
-import { clamp, parseColor, type Color, type NormalizedColor, type Vector3 } from "motion-script";
+import { clamp, parseColor, type Color, type NormalizedColor } from "motion-script";
 
 // ── Colour ───────────────────────────────────────────────────────────────────
 
@@ -82,29 +82,22 @@ export interface Orbit {
 }
 
 /**
- * Cartesian position for a spherical camera placement.
+ * Decompose a raw camera position into {@link Orbit} terms.
  *
- * Spherical is the useful parameterisation for a timeline: each of the three
- * numbers is independently tweenable and means something an author can reason
- * about, whereas tweening a raw `[x, y, z]` couples "spin" and "pull back"
- * together and cuts a chord through the sphere on the way.
+ * The forward direction — orbit/elevation/distance back to a position — used to
+ * live here too, as `orbitPosition`. It is now the camera's own vocabulary
+ * (`Camera3D`'s `orbit`/`elevation`/`distance`, and `resolveCameraPlacement`
+ * behind it), so what is left is only the inverse: seeding those three props from
+ * an authored `[x, y, z]`.
+ *
+ * Azimuth is measured from **+Z**, matching core, so 0 is head-on. Getting that
+ * wrong is a quarter-turn of silent disagreement between the seed and the
+ * placement it seeds.
  */
-export function orbitPosition({ orbit, elevation, distance }: Orbit): Vector3 {
-    const orbitRad = orbit * (Math.PI / 180);
-    const elevationRad = elevation * (Math.PI / 180);
-    const horizontal = Math.cos(elevationRad) * distance;
-    return {
-        x: Math.cos(orbitRad) * horizontal,
-        y: Math.sin(elevationRad) * distance,
-        z: Math.sin(orbitRad) * horizontal,
-    };
-}
-
-/** The inverse: decompose a raw camera position into {@link Orbit} terms. */
 export function orbitOf(position: { x: number; y: number; z: number }): Orbit {
     const distance = Math.hypot(position.x, position.y, position.z) || 1;
     return {
-        orbit: Math.atan2(position.z, position.x) * (180 / Math.PI),
+        orbit: Math.atan2(position.x, position.z) * (180 / Math.PI),
         elevation: Math.asin(clamp(position.y / distance, -1, 1)) * (180 / Math.PI),
         distance,
     };

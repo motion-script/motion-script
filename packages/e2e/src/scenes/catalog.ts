@@ -109,6 +109,7 @@ import s_fill_stripe from './fill-stripe?scene';
 import s_view3d_basic from './view3d-basic?scene';
 import s_view3d_fill_shape from './view3d-fill-shape?scene';
 import s_view3d_tex_surface from './view3d-tex-surface?scene';
+import s_view3d_translucent from './view3d-translucent?scene';
 import s_fill_space_local from './fill-space-local?scene';
 import s_fill_space_parent from './fill-space-parent?scene';
 import s_fill_space_global from './fill-space-global?scene';
@@ -382,6 +383,7 @@ export const scenes: Scene[] = [
     s_view3d_basic,
     s_view3d_fill_shape,
     s_view3d_tex_surface,
+    s_view3d_translucent,
     s_fill_space_local,
     s_fill_space_parent,
     s_fill_space_global,
@@ -831,4 +833,5 @@ export const catalog: SceneMeta[] = [
     { id: "view3d-basic", name: "View3dBasic", section: "3D", description: "Lit box rotating in a Canvas3D — the baseline 3D render path" },
     { id: "view3d-fill-shape", name: "View3dFillShape", section: "3D", description: "3D painted as a fill through an Ellipse path, not a rect" },
     { id: "view3d-tex-surface", name: "View3dTexSurface", section: "3D", description: "Tex.surface: 2D Graphics2D rasterized and bound to a material map" },
+    { id: "view3d-translucent", name: "View3dTranslucent", section: "3D", description: "Translucent 3D composited over a 2D fill, in a colour that separates correct blending from additive" },
 ];
