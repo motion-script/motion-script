@@ -6,7 +6,6 @@
 "@motion-script/code": major
 "@motion-script/latex": major
 "motion-script": major
-"@motion-script/cli": major
 ---
 
 **3D node trees.** A 3D scene is now written as a tree of nodes rather than as a

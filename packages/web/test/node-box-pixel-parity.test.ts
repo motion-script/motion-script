@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
+import { scene } from "./scene.fixtures";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import {
+    createRef,
     ManifestAssetCatalog,
     PlaybackController,
     Line,
     Precomp,
     Rect,
-    createScene,
     setTheme,
     type NodeBox,
     type Scene,
@@ -145,10 +146,9 @@ function boxExtent(box: NodeBox): { minX: number; maxX: number; minY: number; ma
  * extent, which is not the same assertion.
  */
 function cardScene(root: Record<string, unknown>): Scene {
-    return createScene(function* (stage) {
+    return scene((stage) => {
         stage.set({ fill: "#000000", ...root });
         stage.add(new Rect({ width: 40, height: 24, x: 30, y: 20, fill: "#ff0000" }));
-        yield;
     });
 }
 
@@ -217,10 +217,9 @@ describe("getNodeBox lands on the pixels Skia drew", () => {
 
     it("with the node itself rotated inside a rotated camera", async () => {
         const { controller, renderContext } = mount([
-            createScene(function* (stage) {
+            scene((stage) => {
                 stage.set({ fill: "#000000", zoom: 1.25, heading: -20 });
                 stage.add(new Rect({ width: 40, height: 24, x: 30, y: 20, rotation: 35, fill: "#ff0000" }));
-                yield;
             }),
         ]);
         await controller.seek(0);
@@ -234,13 +233,12 @@ describe("a Line's box sits on the line, not on its layout cell", () => {
         // box must come from the points instead. Asymmetric on purpose: the ink
         // is off-centre relative to the node.
         const { controller, renderContext } = mount([
-            createScene(function* (stage) {
+            scene((stage) => {
                 stage.set({ fill: "#000000" });
                 stage.add(new Line({
                     points: [{ x: 0, y: 0 }, { x: 60, y: 40 }],
                     stroke: { weight: 10, fill: "#ff0000" },
                 }));
-                yield;
             }),
         ]);
         await controller.seek(0);
@@ -277,13 +275,12 @@ describe("a Line's box sits on the line, not on its layout cell", () => {
         // A horizontal stroke extends exactly half its weight above and below, so
         // here the conservative bound and the drawn ink coincide on the y axis.
         const { controller, renderContext } = mount([
-            createScene(function* (stage) {
+            scene((stage) => {
                 stage.set({ fill: "#000000" });
                 stage.add(new Line({
                     points: [{ x: -40, y: 10 }, { x: 40, y: 10 }],
                     stroke: { weight: 12, fill: "#ff0000", cap: "square" },
                 }));
-                yield;
             }),
         ]);
         await controller.seek(0);
@@ -333,13 +330,23 @@ describe("the drag loop moves pixels without tearing down the surface", () => {
         // The card slides right over 10 frames; an override must beat the tween
         // at whatever frame the playhead lands on.
         const { controller, renderContext } = mount([
-            createScene(function* (stage) {
-                stage.set({ fill: "#000000" });
-                const card = new Rect({ width: 40, height: 24, x: 30, y: 20, fill: "#ff0000" });
-                stage.add(card);
-                yield* card.to({ x: 90 }, 1);
-                for (let i = 0; i < 5; i++) yield;
-            }),
+            (() => {
+                // A ref, not a captured node: a scene is built more than once per
+                // render and `Scene.reset()` disposes its children in between, so
+                // an instance held out here is torn down before its second use.
+                const card = createRef<Rect>();
+                return scene(
+                    (stage) => {
+                        stage.set({ fill: "#000000" });
+                        stage.add(new Rect({
+                            ref: card, width: 40, height: 24, x: 30, y: 20, fill: "#ff0000",
+                        }));
+                    },
+                    // The slide, then a tail so the playhead has somewhere to sit
+                    // past the end of it.
+                    [() => card().to({ x: 90 }, 1), 0.5],
+                );
+            })(),
         ]);
 
         await controller.seek(10);

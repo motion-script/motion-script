@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
+import { scene } from "./scene.fixtures";
+import { createDrivenScene, createRef } from "@motion-script/core";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
-import { createScene, createStill, Rect, setTheme, type Theme } from "@motion-script/core";
+import { Rect, setTheme, type Theme } from "@motion-script/core";
 import { createStillRenderer, type StillRenderer } from "../src/still";
 
 /**
@@ -50,24 +52,15 @@ function centerPixel(r: StillRenderer): [number, number, number, number] {
 }
 
 const fullBleed = (fill: string) =>
-    createStill(() => new Rect({ width: "fill", height: "fill", fill }));
+    scene((stage) => stage.add(new Rect({ width: "fill", height: "fill", fill })));
 
 describe("StillRenderer", () => {
     it("renders a node factory, with no scene and no generator", async () => {
         const r = await make();
-        const drawn = await r.render(() => new Rect({ width: "fill", height: "fill", fill: "#ff0000" }));
+        const drawn = await r.render(scene((stage) => stage.add(new Rect({ width: "fill", height: "fill", fill: "#ff0000" }))));
 
         expect(drawn).toEqual({ frame: 0, totalFrames: 1, measuredAll: true });
         expect(centerPixel(r)).toEqual([255, 0, 0, 255]);
-    });
-
-    it("rejects a bare node, which a rebuild would use after disposal", () => {
-        // A scene is built twice per rendered frame (precomp, then evaluator) and
-        // `Scene.reset` disposes its children in between, so a captured node is
-        // torn down before its second use. Failing here beats failing as an
-        // undefined padding deep in the layout engine.
-        expect(() => createStill(new Rect({ width: 10, height: 10 }) as never))
-            .toThrow(/takes a factory/);
     });
 
     it("reuses one Skia surface across renders", async () => {
@@ -139,41 +132,45 @@ describe("StillRenderer", () => {
 
     it("addresses a frame by index, time or first/last", async () => {
         const r = await make();
-        // Three yields at 10fps → three frames, red then green then blue.
-        const scene = createScene(function* (stage) {
-            const rect = new Rect({ width: "fill", height: "fill", fill: "#ff0000" });
-            stage.add(rect);
-            yield;
-            rect.fill = "#00ff00";
-            yield;
-            rect.fill = "#0000ff";
-            yield;
+        // Three frames at the renderer's default 60fps, red then green then blue.
+        // Written as a driver rather than a chain because what is under test is
+        // frame *addressing*, and a driver says "this frame is that colour"
+        // directly instead of leaving it to a tween to land on.
+        const fills = ["#ff0000", "#00ff00", "#0000ff"];
+        const rect = createRef<Rect>();
+        const threeFrames = createDrivenScene({
+            duration: 3 / 60,
+            build: (stage) => stage.add(
+                new Rect({ ref: rect, width: "fill", height: "fill", fill: fills[0] }),
+            ),
+            evaluateAt: (seconds) => {
+                rect().fill = fills[Math.min(2, Math.round(seconds * 60))];
+            },
         });
 
-        const last = await r.render(scene, { frame: "last" });
+        const last = await r.render(threeFrames, { frame: "last" });
         expect(last.totalFrames).toBe(3);
         expect(last.frame).toBe(2);
         expect(centerPixel(r)).toEqual([0, 0, 255, 255]);
 
-        await r.render(scene, { frame: "first" });
+        await r.render(threeFrames, { frame: "first" });
         expect(centerPixel(r)).toEqual([255, 0, 0, 255]);
 
-        await r.render(scene, { frame: 1 });
+        await r.render(threeFrames, { frame: 1 });
         expect(centerPixel(r)).toEqual([0, 255, 0, 255]);
 
         // fps defaults to 60, so 1/60s in is frame 1.
-        await r.render(scene, { time: 1 / 60 });
+        await r.render(threeFrames, { time: 1 / 60 });
         expect(centerPixel(r)).toEqual([0, 255, 0, 255]);
     });
 
     it("clamps a frame past the end to the last one", async () => {
         const r = await make();
-        const scene = createScene(function* (stage) {
+        const oneFrame = scene((stage) => {
             stage.add(new Rect({ width: "fill", height: "fill", fill: "#0000ff" }));
-            yield;
         });
 
-        const drawn = await r.render(scene, { frame: 9999 });
+        const drawn = await r.render(oneFrame, { frame: 9999 });
 
         expect(drawn).toEqual({ frame: 0, totalFrames: 1, measuredAll: true });
         expect(centerPixel(r)).toEqual([0, 0, 255, 255]);
@@ -181,11 +178,10 @@ describe("StillRenderer", () => {
 
     it("flags a partial measurement, so no caller reports it as the total", async () => {
         const r = await make();
-        const scene = (fill: string) => createScene(function* (stage) {
+        const solid = (fill: string) => scene((stage) => {
             stage.add(new Rect({ width: "fill", height: "fill", fill }));
-            yield;
         });
-        const scenes = [scene("#ff0000"), scene("#00ff00"), scene("#0000ff")];
+        const scenes = [solid("#ff0000"), solid("#00ff00"), solid("#0000ff")];
 
         // Frame 0 lives in the first scene, so the pass stops there and the
         // total covers that scene alone.

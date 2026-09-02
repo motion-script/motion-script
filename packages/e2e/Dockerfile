@@ -4,10 +4,11 @@
 # ("lib") and the packed stable build ("stable"), screenshots first/mid/last of
 # each, and pixel-diffs the two — producing out/report.html.
 #
-# The base image is Playwright's official image: it ships a pinned Chromium plus
-# all the OS libraries headless Chromium needs, and a fixed set of fonts — which
-# is what makes text rendering reproducible run-to-run (the whole point of
-# comparing in a container rather than on a dev's machine).
+# The base image is Playwright's, and it is kept for exactly one thing now: a
+# fixed set of fonts. Nothing here launches a browser any more — the harness
+# renders in process through @motion-script/engine on CanvasKit's CPU rasterizer
+# — but the font set is what makes text reproducible run-to-run, which is the
+# whole point of comparing in a container rather than on a dev's machine.
 #
 # Build context is the REPO ROOT (so the whole workspace is available to build
 # and pack), not packages/e2e:
@@ -20,11 +21,8 @@ FROM mcr.microsoft.com/playwright:v1.61.1-noble
 
 WORKDIR /repo
 
-# No usable GPU in a container → render through SwiftShader (software WebGL).
-# The render engine honours this flag (packages/engine/src/launch.ts).
-ENV MS_SOFTWARE_RENDER=1
-# Keep Playwright from trying to (re)download browsers — the base image has them.
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Nothing downloads or launches a browser; the rasterizer is CPU-only and needs
+# no GPU, no display and no driver.
 ENV CI=1
 
 # Corepack ships with Node; pin pnpm to the repo's packageManager field.

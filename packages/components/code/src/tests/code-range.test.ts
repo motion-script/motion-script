@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { Command } from '@motion-script/core';
 import { ContextMap, ManifestAssetCatalog, type Node } from '@motion-script/core';
 import { Code } from '../node';
 import { lines, word, CodeRanges, CodeRangeChain } from '../code-range';
@@ -18,10 +19,10 @@ function make(code = SOURCE): Code {
     return attach(new Code({ code, language: 'typescript' }));
 }
 
-function drive(command: Iterable<void>, steps: number, dt: number): void {
-    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-    gen.next();
-    for (let i = 0; i < steps; i++) gen.next(dt);
+function drive(command: Command<never>, steps: number, dt: number): void {
+    const step = command._stepper();
+    step.seek(0);
+    for (let i = 0; i < steps; i++) step.advance(dt);
 }
 
 /** Number of tokens `highlight()` currently considers "in range" (opacity 1). */

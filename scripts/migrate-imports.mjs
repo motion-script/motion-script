@@ -1,7 +1,7 @@
 /**
  * Replaces all @motion-script/core, @motion-script/code, and @motion-script/latex
  * import/export specifiers with `motion-script` in all .ts and .tsx source files
- * under packages/template/src and packages/e2e/src.
+ * under packages/e2e/src.
  *
  * Also rewrites the @jsxImportSource pragma comment.
  */
@@ -11,7 +11,6 @@ import { join, extname } from 'path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const SEARCH_DIRS = [
-    join(ROOT, 'packages', 'template', 'src'),
     join(ROOT, 'packages', 'e2e', 'src'),
 ];
 

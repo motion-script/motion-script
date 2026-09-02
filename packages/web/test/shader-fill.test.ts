@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
+import { scene } from "./scene.fixtures";
 import type { CanvasKit } from "@motion-script/canvaskit";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { Ellipse, Fills, Rect, type Fill } from "@motion-script/core";
@@ -70,7 +71,7 @@ afterEach(() => {
 /** Render a full-bleed rect with `fill` and return the frame's pixels. */
 async function paint(fill: Fill): Promise<{ pixels: Uint8Array; width: number; height: number }> {
     renderer = await createStillRenderer({ viewport: VIEWPORT, wasmUrl });
-    await renderer.render(() => new Rect({ width: "fill", height: "fill", fill }));
+    await renderer.render(scene((stage) => stage.add(new Rect({ width: "fill", height: "fill", fill }))));
     return (renderer as any).renderContext.snapshotPixels();
 }
 
@@ -229,9 +230,13 @@ describe("shader fill is a fill", () => {
     // ellipse is special-cased.
     it("clips to a non-rectangular shape's own path", async () => {
         renderer = await createStillRenderer({ viewport: VIEWPORT, wasmUrl });
-        await renderer.render(() => new Ellipse({
-            width: "fill", height: "fill", fill: Fills.shader(WHITE),
-        }));
+        await renderer.render(
+            scene((stage) =>
+                stage.add(new Ellipse({
+                    width: "fill", height: "fill", fill: Fills.shader(WHITE),
+                })),
+            ),
+        );
         const frame = (renderer as any).renderContext.snapshotPixels();
 
         expect(at(frame, 0.5, 0.5)[0]).toBeGreaterThan(250);
@@ -243,9 +248,13 @@ describe("shader fill is a fill", () => {
     // without ever running `preflight` — which is why this renderer has none.
     it("paints a stroke, not just a fill", async () => {
         renderer = await createStillRenderer({ viewport: VIEWPORT, wasmUrl });
-        await renderer.render(() => new Rect({
-            width: 40, height: 40, stroke: { weight: 10, fill: Fills.shader(WHITE) },
-        }));
+        await renderer.render(
+            scene((stage) =>
+                stage.add(new Rect({
+        width: 40, height: 40, stroke: { weight: 10, fill: Fills.shader(WHITE) },
+                })),
+            ),
+        );
         const frame = (renderer as any).renderContext.snapshotPixels();
 
         // On the ribbon (the 40x40 box's edge sits 12px from the frame edge).

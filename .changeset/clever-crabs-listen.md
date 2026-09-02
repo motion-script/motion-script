@@ -1,6 +1,5 @@
 ---
 "motion-script": major
-"@motion-script/cli": minor
 ---
 
 `Code` and `Latex` move to an opt-in registry instead of shipping as hard

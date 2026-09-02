@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import type { Command } from '@motion-script/core';
 import { Code } from '../node';
 
 /**
- * Run a command as a generator, which is still how a sequential scene drives
- * one — `Command` is iterable precisely so `yield*` keeps working.
+ * Play a command a frame at a time, which is what playback does with one.
  */
-function drive(command: Iterable<void>, steps: number, dt: number) {
-    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-    gen.next();
-    for (let i = 0; i < steps; i++) gen.next(dt);
+function drive(command: Command<never>, steps: number, dt: number) {
+    const step = command._stepper();
+    step.seek(0);
+    for (let i = 0; i < steps; i++) step.advance(dt);
 }
 
 describe('scratch insert investigation', () => {

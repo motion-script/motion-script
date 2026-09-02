@@ -29,7 +29,7 @@
  * The packed packages share the workspace version (e.g. 2.9.2). If we declared
  * them as `file:*.tgz` deps and ran `pnpm install`, pnpm would key them by
  * name@version and could reuse a cached/registry extraction of the SAME version
- * for the transitive @motion-script/* peer deps (vite-plugin → core, etc.) —
+ * for the transitive @motion-script/* peer deps (web → skia-render → core) —
  * silently mixing a stale copy in with the fresh tarballs. To guarantee the
  * snapshot is exactly the bytes we just packed, we extract every tarball
  * directly into stable/node_modules/@motion-script/<name>/ (flat, real dirs) and
@@ -53,7 +53,7 @@ const stableModules = path.join(stableRoot, 'node_modules');
  * The publishable packages, in dependency order. These are the @motion-script/*
  * packages that lack `"private": true` — i.e. the ones that get published and
  * that an end-user project installs. The e2e scenes import core / code / latex;
- * the vite-plugin pulls in web / player / react / canvaskit at render time.
+ * the engine pulls in skia-render / web / canvaskit at render time.
  *
  * Order matters: a package must appear after everything it depends on, so
  * skia-render sits between core and web (web is a thin binding layer over it).
@@ -66,11 +66,8 @@ const PACKAGES = [
     'packages/skia-render',
     'packages/web',
     'packages/react',
-    'packages/player',
     'packages/engine',
-    'packages/cli',
     'packages/motion-script',
-    'packages/vite-plugin',
     'packages/components/code',
     'packages/components/latex',
 ];
@@ -167,7 +164,6 @@ function main() {
     run(pnpm, ['install', '--ignore-workspace', '--no-frozen-lockfile'], stableRoot);
 
     extractTarballs(tarballByName);
-    wireBins(tarballByName);
 
     console.log(`\nStable snapshot ready at ${path.relative(repoRoot, stableRoot)}/`);
     console.log('Render it with:  pnpm --filter @motion-script/e2e run screenshot -- --variant stable');
@@ -283,18 +279,10 @@ function scaffoldStableProject(thirdPartyDeps) {
         // hoisted to the root so the (flat-extracted) packages resolve them.
         dependencies: { ...thirdPartyDeps },
         devDependencies: {
-            vite: workspaceCatalogVersion('vite'),
             typescript: workspaceCatalogVersion('typescript'),
         },
     };
     fs.writeFileSync(path.join(stableRoot, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
-
-    fs.writeFileSync(
-        path.join(stableRoot, 'vite.config.ts'),
-        `import { defineConfig } from 'vite';\n` +
-        `import motionScript from '@motion-script/vite-plugin';\n\n` +
-        `export default defineConfig({\n  plugins: [motionScript()],\n  server: { port: 5274 },\n});\n`,
-    );
 
     fs.writeFileSync(
         path.join(stableRoot, 'tsconfig.json'),
@@ -340,35 +328,6 @@ function extractTarballs(tarballByName) {
     }
 }
 
-/**
- * Recreate the `ms` / `motion-script` bin shims for the extracted CLI so
- * `ms list` works in the stable project (pnpm normally writes these on install,
- * but we extracted the CLI by hand). On Windows we just rely on the harness
- * importing HeadlessDriver directly, but wire a .cmd shim too for completeness.
- */
-function wireBins(tarballByName) {
-    const cliName = '@motion-script/cli';
-    if (!tarballByName[cliName]) return;
-    const cliPkg = readTarballPkg(tarballByName[cliName]);
-    const bins = cliPkg.bin ?? {};
-    const binDir = path.join(stableModules, '.bin');
-    fs.mkdirSync(binDir, { recursive: true });
-    for (const [binName, rel] of Object.entries(bins)) {
-        const target = path.join(stableModules, ...cliName.split('/'), rel);
-        // POSIX shim
-        fs.writeFileSync(
-            path.join(binDir, binName),
-            `#!/bin/sh\nexec node "${target.replace(/\\/g, '/')}" "$@"\n`,
-            { mode: 0o755 },
-        );
-        // Windows shim
-        fs.writeFileSync(
-            path.join(binDir, `${binName}.cmd`),
-            `@echo off\r\nnode "${target}" %*\r\n`,
-        );
-    }
-    console.log(`wired CLI bins: ${Object.keys(bins).join(', ') || '(none)'}`);
-}
 
 /** Look up a `catalog:` version from the root pnpm-workspace.yaml. */
 function workspaceCatalogVersion(name) {

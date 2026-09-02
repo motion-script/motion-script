@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
+import { scene } from "./scene.fixtures";
 import { Fills, Rect, type Fill } from "@motion-script/core";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
 import { createStillRenderer, type StillRenderer } from "../src/still";
@@ -53,7 +54,7 @@ afterEach(() => {
 /** Render a full-bleed rect with `fill` and return the frame's pixels. */
 async function paint(fill: Fill): Promise<Snapshot> {
     renderer = await createStillRenderer({ viewport: VIEWPORT, wasmUrl });
-    await renderer.render(() => new Rect({ width: "fill", height: "fill", fill }));
+    await renderer.render(scene((stage) => stage.add(new Rect({ width: "fill", height: "fill", fill }))));
     return (renderer as any).renderContext.snapshotPixels();
 }
 

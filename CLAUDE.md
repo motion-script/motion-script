@@ -4,10 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Motion Script is an open-source motion design tool (inspired by Manim) for
-authoring animations as TypeScript/JSX "scenes" and rendering them in the
-browser via Skia/CanvasKit. Scenes are generator functions: `yield*`-ing a
-tween hands control back to the engine to advance time.
+Motion Script is an open-source motion design engine: it renders "scenes"
+through Skia/CanvasKit, in a browser or in Node.
+
+**A scene is data, not code.** It is a `StillDocument` (nodes and props) or an
+`AnimationDocument` (a list of commands, each placed at a time) — plain JSON,
+described in `packages/core/src/document/`. **Node types are the code half**: a
+class registered under a string key, which is also where a custom node joins the
+system and where anything JSON cannot express belongs.
+
+The consequence worth knowing before reading anything else: a frame is a **pure
+function of its time**. A scene is built once and asked what it looks like at
+`t`, never advanced to it. Scenes used to be generator functions — `yield*`-ing a
+tween handed control back to the engine — which meant frame N was only reachable
+by running frames 0..N-1, a backward seek meant replaying from zero, and a
+scene's duration was unknowable without playing it to the end. All of that is
+gone: seeking costs the same in either direction and however far.
 
 ## Commands
 
@@ -33,7 +45,7 @@ pnpm --filter @motion-script/core typecheck
 ```
 
 To run a single test file, pass it through the filter to vitest, e.g.
-`pnpm --filter @motion-script/core test -- run src/tween/tween.test.ts`.
+`pnpm --filter @motion-script/core test -- run src/document/tests/timeline.test.ts`.
 
 `@motion-script/web`'s tests run in a real headless Chromium via
 `@vitest/browser-playwright` — install the browser once with
@@ -42,7 +54,7 @@ Its tests import `@motion-script/core`'s **built** `dist/` (package `exports`
 point there), so run `pnpm build:lib` (or at least build `core`) before
 `pnpm --filter @motion-script/web test` on a fresh checkout.
 
-E2E (visual regression, Playwright, in `packages/e2e`):
+E2E (visual regression, in `packages/e2e` — renders in process, no browser):
 
 ```bash
 pnpm test:e2e         # pnpm --filter @motion-script/e2e run test:e2e
@@ -57,32 +69,26 @@ CI (`.github/workflows/ci.yml`) runs two independent jobs: `pnpm test` after
 `packages/e2e` scene against the committed stable baseline vs. the branch's lib
 build (e2e-visual).
 
-### Visually verifying a change with `ms screenshot`
+### Visually verifying a change
 
-`@motion-script/cli` (`ms`) is a devDependency of every example/test project
-(`packages/template`, `packages/e2e`). It boots a real
-Vite dev server (via `@motion-script/vite-plugin`) headlessly with Playwright
-Chromium, so it needs the libraries built at least once first — run
-`pnpm build:lib` (or rebuild the specific package you touched) on a fresh
-checkout or after editing `core`/`web`/`player`.
+`packages/e2e` renders every scene in process through `@motion-script/engine`
+and pixel-diffs the result — no browser, no dev server. A full sweep is ~90s.
 
 ```bash
-pnpm --filter @motion-script/template exec ms list             # scene names in that project
-pnpm --filter @motion-script/template exec ms screenshot last   # last frame, combined timeline
-pnpm --filter @motion-script/template exec ms screenshot first --split   # frame 0 of every scene, one file each
-pnpm --filter @motion-script/template exec ms screenshot 2.5s --scenes intro
-pnpm --filter @motion-script/template exec ms clear             # delete everything under out/
+pnpm build:lib                                        # engine changes need a build first
+pnpm --filter @motion-script/e2e run screenshot -- --variant lib
+pnpm --filter @motion-script/e2e run screenshot -- --variant lib --scenes rect-basic
 ```
 
-`<when>` is a frame index (bare integer), a time (`2.5` or `2.5s`), or
-`first`/`last`; see `ms --help` for the rest of the flags (`--scale`,
-`--format`, `--out`). Files land under `<project>/out/screenshots/` (e.g.
-`packages/template/out/screenshots/intro_75.png`) — after capturing, use the
-Read tool on that PNG path to actually look at the frame rather than assuming
-the render is correct. This is the fast way to confirm a node/attribute/tween
-change renders as intended without opening the interactive player. `ms export`
-(same driver) renders a scene to MP4 instead, for checking motion over time
-rather than a single frame.
+Frames land in `packages/e2e/out/lib/<id>.<first|mid|last>.png` — read the PNG
+rather than assuming the render is right. `scripts/golden.ts` diffs a run against
+recorded frames (`--dir <path>`), which is how a refactor of the runtime is
+checked; `scripts/compare.ts` diffs the live build against the packed stable one.
+
+Some scenes cannot render headlessly: image-backed ones need `ffmpeg` on `PATH`,
+video is not supported by the engine at all yet
+(`packages/engine/src/storage-adapter.ts`), and LaTeX still parses its SVG with a
+browser `DOMParser`.
 
 ### Build orchestration — read before touching a package's build config
 
@@ -106,57 +112,44 @@ Conventions to preserve when adding/editing a package:
   so it's covered by Turbo's `dist/**` output cache; each package's `files`
   excludes `*.tsbuildinfo` from the published tarball.
 - `build` = `tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`
-  (bundled packages like `react`/`player` add `&& vite build`); `typecheck` =
+  (bundled packages like `react` add `&& vite build`); `typecheck` =
   `tsc -p tsconfig.json --noEmit` (Vite app/solution packages use
   `tsc -b --noEmit`, which is safe there since `typecheck` never emits and
   can't race on `dist`); `clean` = `rimraf --glob dist .turbo *.tsbuildinfo`.
 
-### The player ships prebuilt — rebuild it after touching its dependencies
-
-`@motion-script/vite-plugin` aliases `@motion-script/player` to its **prebuilt
-`dist/`**, not source. If you change `core` (or anything else the player
-depends on), the editor UI won't see it until you rebuild the player:
-
-```bash
-pnpm --filter @motion-script/player build
-```
-
 ### canvaskit.wasm
 
 The binary lives committed in `packages/canvaskit/` (custom Skia build with
-variable-font support + WebCodecs image I/O, BSD-3-Clause). Nothing copies it
-there at install time — `@motion-script/vite-plugin` (`src/plugin.ts`,
-`resolveCanvasKitWasm`) resolves it directly from the installed
-`@motion-script/canvaskit` package: it's served via dev middleware and copied
-into `dist/` on build (`closeBundle`). Those per-project copies land at
-`**/public/canvaskit.wasm`, which *is* gitignored — never commit one. A stray/
-mismatched custom `canvaskit.js` + `.wasm` in a working tree breaks the `web`
-browser tests with `_MakeSRGB undefined`; stash it first.
+variable-font support + WebCodecs image I/O, BSD-3-Clause). A browser host serves
+it however it serves any other asset and points `getCanvasKit` at the URL; the
+Node engine loads it from the installed package directly
+(`packages/engine/src/canvaskit.ts`). A stray/mismatched custom `canvaskit.js` +
+`.wasm` in a working tree breaks the `web` browser tests with
+`_MakeSRGB undefined`; stash it first.
 
 ## Architecture
 
 Cleanly separated layers: the **engine** (`core`) knows how a scene evolves over
 time but nothing about pixels; a **renderer** (`skia-render`) knows how to draw a
-frame but not what it is drawing onto; a **platform** (`web`) supplies the surface,
-media decode, encoding and audio; the **player/vite-plugin** wires a user's project
-into an interactive editor, and the **engine/cli** drive that same project
-headlessly — from a server and from a terminal respectively.
+frame but not what it is drawing onto; a **platform** (`web`) supplies the
+surface, media decode, encoding and audio; `react` mounts all of that into a
+host's UI, and `engine` drives the same render from Node with no browser at
+all.
 
 ```
-your project (scenes, project.ts)
+a scene document (JSON: nodes + commands)
         │
-        ▼
-@motion-script/vite-plugin   boots the player app, aliases your project,
-  (dev server + build)       serves canvaskit.wasm
+        ▼  createStillScene / createAnimationScene
+    a Scene, driven by a compiled timeline
         │
         ├───────────────────────────────────┐
         ▼                                   ▼
-@motion-script/player        @motion-script/engine   (+ cli, a front end over it)
-  (React editor UI)            Node-side: Vite + a pool of headless Chromium
-  timeline, scene panel,       pages driving the plugin's ?headless bridge —
-  scrubbing, export controls   the same render, without the UI
-        │ uses
-        ├──────────────────────────────┐
+@motion-script/react         @motion-script/engine
+  MotionPlayer: mounts a       Node-side, in process: CanvasKit's CPU
+  canvas and a PlaybackController   rasterizer, no browser and no bundler.
+  for a host's own editor UI        Same render, from a server or a script.
+        │ uses                             │ uses
+        ├──────────────────────────────┬────┘
         ▼                              ▼
 @motion-script/core          @motion-script/skia-render
   engine, no rendering   ◀──▶   the Skia renderer: shapes, fills, strokes,
@@ -173,9 +166,9 @@ your project (scenes, project.ts)
 
 ### `@motion-script/core` — the animation engine
 
-Not `@motion-script/engine`, which is the *render host* that drives a project
-headlessly from Node. This is the animation engine: what a scene is and how it
-evolves over time.
+Not `@motion-script/engine`, which is the *render host* that drives a document
+from Node. This is the animation engine: what a scene is and how it evolves over
+time.
 
 Backend-agnostic: no DOM/canvas dependencies. Describes *what* to draw and
 *how it changes over time*; a render context does the actual drawing. Key
@@ -192,8 +185,14 @@ areas under `packages/core/src`:
 - **`signals/`** — the reactive primitive underlying attributes: computed
   values recompute when dependencies change, which is what makes attributes
   declarative and tween-able.
-- **`tween/`** — time-based animation: tweens, easing, sequencing (`yield*`),
-  `wait`, the generator-driven timeline.
+- **`document/`** — **what a scene is**: `NodeSpec`/`CommandSpec`, the two
+  document kinds, the hand-rolled validator, the node/command registries, and
+  `SceneTimeline` — which compiles a document and evaluates it at a time. Start
+  here.
+- **`tween/`** — a `Command`: a declared `duration` plus a pure `at(t)`, and the
+  easing/lerp math behind it. There is no `sequence`/`parallel`/`wait`: a command
+  carries its own placement, so sequencing is `at + duration`, running together
+  is a shared `at`, and a wait is a gap.
 - **`layout/`** — flexbox layout and size resolution.
 - **`render3d/`** — the 3D counterpart: `Graphics3D` (drawables), `Scene3D` (a
   recorded scene) and the abstract `RenderContext3D` a `Node3D` draws into, plus
@@ -215,9 +214,20 @@ areas under `packages/core/src`:
 
 Two patterns, both extending `Node2D` (or a more specific base like
 `Rect`/`ShapeNode` when you want its layout/fill/stroke/clip for free). Full
-runnable versions of both live in `packages/template/src/projects/nodes/scenes/`
-(`custom-scene.tsx`, `composite-scene.tsx`) — run them with the screenshot
-workflow above to see the output.
+A custom node is the **code** half of the model: write the class, register it,
+and any document can name it.
+
+```ts
+class Blob extends Node2D<BlobProps> { … }
+registerNodeType("blob", Blob);
+// { "id": "b1", "type": "blob", "parent": null, "order": 0, "props": { "wobble": 0.4 } }
+```
+
+Its `@command()` methods reach a document the same way — `registerNodeCommand`
+maps a command key onto a method, and `getCommandMeta` already enumerates them,
+so the dispatch table is read off the class rather than restated beside it. This
+is also where anything JSON cannot express belongs: a computed lookup table, a
+generated point cloud, a `Float32Array`.
 
 **1. A node that draws its own graphics** — override `renderSelf` and hand a
 `Graphics2D` descriptor to the `RenderContext2D`:
@@ -362,7 +372,7 @@ project rather than one scene: `audioTracks` (beds laid straight on the project
 timeline), `backgrounds` (nodes drawn under every scene) and `overlays` (nodes
 drawn over every scene). Either layer list narrows to specific scenes with
 `include`/`exclude`, by scene name (matched case- and separator-insensitively,
-so `'cross-fade'` selects the scene the `?scene` transform named `CrossFade`) or
+so `'cross-fade'` selects a scene named `CrossFade`) or
 by index.
 
 ```ts
@@ -377,7 +387,7 @@ createProject({
 Things to know when working on this:
 
 - **A layer is not in the scene tree.** `Scene.reset()` builds a fresh `Canvas2D`
-  on every pass, and there is no generator to re-add a config node, so each layer
+  on every pass, and nothing re-adds a config node, so each layer
   gets its own viewport-sized `Canvas2D` frame owned by
   `ProjectGlobals` (`packages/core/src/runtime/globals.ts`) for the life of the
   runtime. That is also what gives layers their semantics: outside the scene
@@ -403,7 +413,7 @@ Things to know when working on this:
   offset, unlike `ScenePrecomp.audioRequests`. They are re-resolved on every
   timeline assembly, because the total duration grows as the background precomp
   measures more scenes.
-- **`layerAppliesTo` is the single selection rule.** The player's timeline draws
+- **`layerAppliesTo` is the single selection rule.** A host's timeline draws
   each layer's bar from it, so what is shown and what actually renders cannot
   disagree.
 
@@ -475,7 +485,7 @@ Things to know when working on this:
   `Node._prepareStep`/`animate` — the two funnels every command is built through.
   That is what makes the rule hold for a subclass override too. A command on an
   unmounted node runs its duration and writes nothing (`tween/inert.ts`), so
-  `yield*` keeps the scene's timing rather than throwing or silently shortening it.
+  the timeline keeps its shape rather than throwing or silently shortening.
 - **A `Scene` rebuilds its `Canvas2D` on `reset()`** rather than rewinding it.
   There is no `reinit`: restoring a reused node in place meant maintaining a list
   of what "restore" covered, and anything the list missed leaked into the next pass
@@ -519,7 +529,7 @@ rather than with paths, paint and clips.
     <Text text="FPS 60" fontSize={32} />        {/* a 2D HUD, over the 3D */}
 </Canvas3D>
 
-yield* rig().to({ rotationY: 360, y: 1 }, 2);
+rig().to({ rotationY: 360, y: 1 }, 2)   // placed on the timeline at some `at`
 ```
 
 **Six rules hold this vocabulary together, and each replaced a pair of fields
@@ -691,9 +701,10 @@ three is reached through a lazy `import("three")`, so 2D-only projects never loa
 it. `Canvas3D.prepareRender()` warms it during precomp (before any frame draws) via
 core's `registerCanvas3DWarmup` seam; if a frame still beats it, the existing
 `warmPendingVideo` re-render loop covers it, so exports stay frame-accurate.
-Because the dev server's root is the player app, `vite-plugin` resolves `three`
-from `@motion-script/web`'s location and declares it in `optimizeDeps.include` —
-without that the dynamic import 504s under the headless CLI.
+A browser host bundling this must be able to resolve `three` (and
+`three/addons/*`, which is a separate subpath) from wherever `@motion-script/web`
+is installed, or the dynamic import fails at the first 3D frame rather than at
+build time.
 
 #### 2D on 3D: `Tex.surface`
 
@@ -756,75 +767,52 @@ binary), BSD-3-Clause (rest of the repo is Apache-2.0). See
 
 ### `@motion-script/react`
 
-React bindings for embedding Motion Script; depends on `core` and `web`.
+The browser host surface: `MotionPlayer` mounts a canvas, owns the
+`PlaybackController`, and exposes a `FrameHandle` ref (screenshot, seek, tree
+state, node picking, `hotReplaceScene`, `setScenes`). An editor is built on this.
 
-### `@motion-script/player`
-
-The editor UI itself: timeline, scene panel, node-names column, playback/
-scrubbing, export controls. Tailwind + Base UI + Zustand + `wavesurfer.js`.
-`private`, consumed by the vite plugin rather than published standalone.
-
-### `@motion-script/vite-plugin`
-
-What a user project actually depends on. Makes Vite boot the **player app**
-as `root` (not the user's project directly): aliases `~user-project` /
-`~user-script` to the user's `project.ts` and entry file, serves
-`canvaskit.wasm` in dev (middleware) and emits it on build (`closeBundle`),
-builds a virtual asset manifest from the user's `public/` folder, and
-resolves React from its own `node_modules` so it works whether or not the
-user installed React.
+**What is in its mount effect's dependency array is load-bearing.** Anything
+listed there tears down and rebuilds the whole backend — the Skia surface, the
+audio device, the clock, the precomp — when it changes. `renderScale`, `view`,
+`precompCache`, `precompProfile` and `scenes` are all read through refs for
+exactly that reason: they describe the render, or are reconciled onto the live
+controller, rather than justifying a new one. Adding a prop to that array is
+almost always a mistake; add an effect that reconciles instead.
 
 ### `motion-script` (`packages/motion-script`)
 
-The flagship published package — bundles `core` + `@motion-script/code` +
-`@motion-script/latex` behind one import. The recommended way for end users to
-depend on the library.
+The flagship published package: a re-export barrel over `@motion-script/core`
+and nothing else — `code` and `latex` are separate dependencies. The recommended
+way for end users to depend on the library.
 
 ### `@motion-script/engine`
 
-The headless renderer as a library, for backend use. `createEngine({ projectRoot })`
-boots the project's own Vite dev server and a pool of Playwright Chromium pages
-and keeps them warm, then drives the same `?headless` bridge the vite-plugin
-installs — so a server-side render is the render the author previewed.
+The renderer as a Node library. `createEngine({ fonts, assets })` renders
+**in process** on CanvasKit's CPU rasterizer: no browser, no bundler, no dev
+server, no project directory, and no GPU, display or driver — so it produces
+identical pixels wherever it runs. You hand it the objects `createProject` and
+`createStillScene`/`createAnimationScene` return.
 
-It owns everything about *driving a project headlessly*: the Vite lifecycle
-(`server.ts`), the Chromium launch flags (`launch.ts` — including the
-`--headless=new` GPU path and the `MS_SOFTWARE_RENDER` SwiftShader fallback),
-the page pool and its concurrency (`pool.ts`, `semaphore.ts`), the bridge
-protocol (`session.ts`), and the option/frame-selector parsing a caller needs at
-its edge (`validate.ts`, `frame.ts`).
+```ts
+const engine = createEngine({ fonts: [{ family: 'Inter', path: './Inter.ttf' }] });
+const still = await engine.renderImage({ project, at: 'last' });
+const video = await engine.renderVideo({ project, sink: myFfmpegSink });
+```
 
 Things to know when working on this:
 
-- **`@motion-script/cli` is a front end over it**, not a parallel implementation.
-  `HeadlessDriver` is a single-worker adapter kept for the batch scripts in
-  `packages/e2e`; anything new belongs on the engine, and a fix to the launch
-  flags or the bridge handshake must land here so both get it.
-- **The plugin resolves the project from `process.cwd()`**, so an engine rendering
-  a project elsewhere `chdir`s for the duration of the config load and restores
-  it (`cwd.ts`). That window is serialized across engines, because two starts
-  interleaving would each load the other's project.
-- **A failed job retires its page.** Nothing can interrupt a render already
-  running inside one, so cancellation and timeouts work by destroying the page;
-  a render *error* recycles too, since a page that threw mid-export may hold a
-  half-torn-down surface.
+- **Renders are serialized.** Node is single-threaded and a CanvasKit render
+  blocks it, so overlapping renders would interleave rather than parallelize —
+  and the theme and variable registries are process-global, so two renders of
+  differently-themed projects would read each other's tokens. Scale out with more
+  processes, not more engines.
+- **`renderVideo` has no encoder.** The caller supplies a `VideoFrameSink`,
+  typically piping `snapshotPixels()` into an `ffmpeg` process.
+- **`ffmpeg` is needed to decode images**, which Node cannot do on its own.
+  **Video assets are not supported at all yet** (`src/storage-adapter.ts`).
 - **Errors are coded, not prose.** `EngineError.code` is what a service maps onto
   a response; a new failure mode needs a code rather than a distinguishable
   message.
-
-### `@motion-script/cli`
-
-Headless exporter: renders scenes to video/stills without the interactive
-player (`ms export`, `ms list` in a user project). Argument parsing, progress
-bars and file naming over `@motion-script/engine`.
-
-### `create-motion-script` (`packages/create`)
-
-Scaffolding CLI: prompts for name/path/language, copies `template-ts` or
-`template-js`, writes a `vite.config` registering the plugin, pins
-`@motion-script/*` versions. Both templates ship a `tsconfig.json` — the JS one
-too, because that is where the JSX transform is configured and Vite reads
-`jsx`/`jsxImportSource` from `tsconfig.json` only (a `jsconfig.json` is ignored).
 
 ### Components: `@motion-script/code`, `@motion-script/latex`
 
@@ -834,12 +822,13 @@ Standalone scene components (syntax-highlighted code blocks; LaTeX math) that
 ### Supporting workspaces (not published)
 
 - **`site`** — the Next.js docs site (motionscript.dev). `predev`/`prebuild`
-  first build the player app (embedded by `/editor`), the API reference and the
-  search index.
-- **`e2e`** — visual regression: renders every scene against a committed
-  "stable" tarball baseline and the branch's "lib" build, then pixel-diffs.
-- **`template`** — an example project (scene demos) used to exercise the
-  engine during development, not shipped.
+  first build the API reference and the search index.
+- **`e2e`** — visual regression: renders every scene in process through
+  `@motion-script/engine` and pixel-diffs a committed "stable" tarball baseline
+  against the branch's "lib" build. Its scenes are built through a local helper
+  (`src/scenes/_chain.ts`) over the public `createDrivenScene` seam rather than
+  through documents: they exist to prove the *renderer* does not regress, and the
+  document model is verified in core's own tests.
 
 ## Notes
 

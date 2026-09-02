@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
+import { scene } from "./scene.fixtures";
 import wasmUrl from "@motion-script/canvaskit/canvaskit.wasm?url";
-import { createStill, Rect } from "@motion-script/core";
+import { Rect } from "@motion-script/core";
 import { createStillRenderer, type StillRenderer } from "../src/still";
 
 /**
@@ -63,8 +64,8 @@ async function renderRounded(corner: string): Promise<StillRenderer> {
         wasmUrl,
     });
     await renderer.render(
-        createStill(
-            () =>
+        scene((stage) =>
+            stage.add(
                 new Rect({
                     width: "fill",
                     height: "fill",
@@ -77,6 +78,7 @@ async function renderRounded(corner: string): Promise<StillRenderer> {
                         [corner]: RADIUS,
                     } as never,
                 }),
+            ),
         ),
     );
     return renderer;

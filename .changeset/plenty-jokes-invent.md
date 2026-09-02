@@ -1,6 +1,5 @@
 ---
 "@motion-script/engine": minor
-"@motion-script/cli": minor
 ---
 
 New package: `@motion-script/engine`, for rendering projects to video and stills from a Node server

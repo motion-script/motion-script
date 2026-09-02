@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ContextMap, ManifestAssetCatalog, sequence, type Node } from '@motion-script/core';
+import type { Command } from '@motion-script/core';
+import { commandSequence, ContextMap, ManifestAssetCatalog, type Node } from '@motion-script/core';
 import { Code } from '../node';
 import { lines, word } from '../code-range';
 
@@ -40,10 +41,10 @@ function inFlight(node: Code): number {
  * Run a command as a generator, which is still how a sequential scene drives
  * one — `Command` is iterable precisely so `yield*` keeps working.
  */
-function drive(command: Iterable<void>, steps: number, dt: number): void {
-    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-    gen.next();
-    for (let i = 0; i < steps; i++) gen.next(dt);
+function drive(command: Command<never>, steps: number, dt: number): void {
+    const step = command._stepper();
+    step.seek(0);
+    for (let i = 0; i < steps; i++) step.advance(dt);
 }
 
 describe('editing commands', () => {
@@ -163,7 +164,16 @@ describe('to({ code })', () => {
     it('sequences, each step diffing against where the previous one left off', () => {
         const node = make();
         const third = 'function add(a, b) {\n  return a * b;\n}';
-        drive(sequence(node.to({ code: NEXT }, 1), node.to({ code: third }, 1)), 240, 0.01);
+        // `commandSequence` rather than the old `sequence`: a command is a value
+        // with a declared duration, so running one after another is composition
+        // rather than control flow. `to()` still prepares lazily, so the second
+        // step's `from` is read when it first runs — which is the whole point of
+        // this test.
+        drive(
+            commandSequence(node, node.to({ code: NEXT }, 1), node.to({ code: third }, 1)) as Command<never>,
+            240,
+            0.01,
+        );
         expect(source(node)).toBe(third);
     });
 });

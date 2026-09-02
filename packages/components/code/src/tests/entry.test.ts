@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import type { Command } from '@motion-script/core';
 import {
     CanvasRenderContext2D, ContextMap, Graphics2D, ManifestAssetCatalog,
     type Node, type RenderContext2D, type Size2D, type TextState,
@@ -115,13 +116,13 @@ function make(code = SOURCE): Code {
  * out once, before the edit, so the block growing under it cannot be mistaken
  * for the row moving.
  */
-function drawnPlaces(node: Code, command: Iterable<void>, text: string): Set<string> {
+function drawnPlaces(node: Code, command: Command<never>, text: string): Set<string> {
     const ctx = new DrawRecorder();
     node.layout({ x: 0, y: 0, width: 800, height: 600 }, ctx);
-    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-    gen.next();
+    const step = command._stepper();
+    step.seek(0);
     for (let i = 0; i < 40; i++) {
-        gen.next(0.025);
+        step.advance(0.025);
         ctx.execute(() => node.render(ctx));
     }
     return ctx.placesOf(text);
@@ -135,10 +136,10 @@ function enteringRows(node: Code): number {
     return transitions.find(t => t.kind === 'structural')?.enteringLineIds?.size ?? 0;
 }
 
-function drive(command: Iterable<void>, steps: number, dt: number): void {
-    const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-    gen.next();
-    for (let i = 0; i < steps; i++) gen.next(dt);
+function drive(command: Command<never>, steps: number, dt: number): void {
+    const step = command._stepper();
+    step.seek(0);
+    for (let i = 0; i < steps; i++) step.advance(dt);
 }
 
 describe('a wholly new row fades in where it lands', () => {
@@ -174,14 +175,14 @@ describe('what counts as a wholly new row', () => {
 
 describe('the gutter numbers slots, not rows', () => {
     /** Every opacity the number `label` was drawn at across the edit. */
-    function numberOpacities(node: Code, command: Iterable<void>, label: string): number[] {
+    function numberOpacities(node: Code, command: Command<never>, label: string): number[] {
         const ctx = new DrawRecorder();
         node.layout({ x: 0, y: 0, width: 800, height: 600 }, ctx);
-        const gen = command[Symbol.iterator]() as Generator<void, void, number>;
-        gen.next();
+        const step = command._stepper();
+        step.seek(0);
         const seen: number[] = [];
         for (let i = 0; i < 40; i++) {
-            gen.next(0.025);
+            step.advance(0.025);
             ctx.texts.length = 0;
             ctx.execute(() => node.render(ctx));
             for (const t of ctx.texts) if (t.gutter && t.text === label) seen.push(t.opacity);
