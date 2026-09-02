@@ -225,11 +225,17 @@ function resolveCanvasKitWasm(): string | null {
  */
 function resolveThree(): string | null {
     for (const owner of ['@motion-script/skia-render', '@motion-script/web']) {
-        try {
-            const ownerPkg = requireFromPlugin.resolve(`${owner}/package.json`);
-            return createRequire(ownerPkg).resolve('three');
-        } catch {
-            // Try the next owner.
+        // Both the package.json subpath and the bare entry, because a package
+        // with an `exports` map need not expose its own manifest — and
+        // `@motion-script/web` does not, so the manifest form alone silently
+        // failed for every owner and three was never aliased at all.
+        for (const spec of [`${owner}/package.json`, owner]) {
+            try {
+                const ownerEntry = requireFromPlugin.resolve(spec);
+                return createRequire(ownerEntry).resolve('three');
+            } catch {
+                // Try the next spec, then the next owner.
+            }
         }
     }
     // Fall back to the plugin's own resolution paths (flat node_modules, or a
@@ -239,6 +245,44 @@ function resolveThree(): string | null {
     } catch {
         return null;
     }
+}
+
+/**
+ * Directory `three/addons/*` specifiers resolve into (`<three>/examples/jsm`).
+ *
+ * three's own export map already maps `./addons/*` there, but the dev server
+ * never gets to consult it: the bare `three` alias claims every subpath first
+ * (see the alias block). So the subpath needs its own, earlier alias pointing at
+ * the real directory.
+ *
+ * Returns null when three isn't installed, matching {@link resolveThree}.
+ */
+function resolveThreeAddons(threeEntry: string | null): string | null {
+    const root = threePackageRoot(threeEntry);
+    if (!root) return null;
+    const addons = path.join(root, 'examples', 'jsm');
+    return fs.existsSync(addons) ? addons : null;
+}
+
+/** The `three` package root, given any file inside its `build/` directory. */
+function threePackageRoot(threeEntry: string | null): string | null {
+    if (!threeEntry) return null;
+    return path.dirname(path.dirname(threeEntry));
+}
+
+/**
+ * The ESM build of three, for the browser.
+ *
+ * `createRequire().resolve` answers with the `require` condition, so it hands
+ * back `three.cjs`. Aliasing the browser at a CommonJS bundle works only as long
+ * as the optimizer converts it, and silently changes what `import * as THREE`
+ * yields when it doesn't — so prefer the module build whenever it is there.
+ */
+function resolveThreeBrowserEntry(threeEntry: string | null): string | null {
+    const root = threePackageRoot(threeEntry);
+    if (!root) return threeEntry;
+    const esm = path.join(root, 'build', 'three.module.js');
+    return fs.existsSync(esm) ? esm : threeEntry;
 }
 
 /**
@@ -559,6 +603,8 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                 // when 3D isn't installed — so the alias and optimizeDeps entry
                 // below are both conditional.
                 const threeEntry = resolveThree();
+                const threeAddons = resolveThreeAddons(threeEntry);
+                const threeBrowser = resolveThreeBrowserEntry(threeEntry);
 
                 // Alias React so plugin-app source resolves it regardless of whether
                 // the user's project depends on React. We alias each package to its
@@ -629,7 +675,16 @@ export default function motionScript(options?: MotionScriptOptions): PluginOptio
                             ...pluginAppAliases,
                             // Only aliased when three is actually installed, so a
                             // 2D-only project is unaffected.
-                            ...(threeEntry ? { three: threeEntry } : {}),
+                            //
+                            // `three/addons/*` must come FIRST and be aliased
+                            // separately. A string alias matches the bare id *and*
+                            // every subpath under it, so `three → …/build/three.module.js`
+                            // alone rewrites `three/addons/loaders/GLTFLoader.js` to
+                            // `…/build/three.module.js/addons/loaders/GLTFLoader.js`,
+                            // which resolves to nothing — the model loader's lazy
+                            // import then 504s and the headless bridge never boots.
+                            ...(threeAddons ? { 'three/addons': threeAddons } : {}),
+                            ...(threeBrowser ? { three: threeBrowser } : {}),
                             '@motion-script/player/style.css': playerStyle,
                             '@motion-script/player': playerEntry,
                             '~user-script': userEntry

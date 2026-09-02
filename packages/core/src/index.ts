@@ -1,6 +1,7 @@
 export * from './attributes';
 export * from './nodes';
 export * from './project';
+export * from './document';
 export * from './render';
 export * from './render3d';
 export * from './runtime';
