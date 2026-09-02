@@ -2,17 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { Path } from '@/nodes/geometry/path-node';
 import { PathCommand } from '@/render/descriptors/path';
 import { attached } from '@/nodes/node/node.fixtures';
+import type { TweenStepper } from '@/tween/stepper';
 
 const square = 'M 0 0 L 10 0 L 10 10 L 0 10 Z';
 const triangle = 'M 0 0 L 10 0 L 5 10 Z';
 
-/** Drive a Command's iterator to completion, mirroring the playback advance loop. */
-function runTween(gen: Iterator<void, unknown, number>, duration: number, steps: number): void {
+/** Play a Command to completion, mirroring the playback advance loop. */
+function runTween(step: TweenStepper, duration: number, steps: number): void {
     const dt = duration / steps;
-    let res = gen.next(); // prime
-    // Feed frames until the generator finishes; the final advance crosses
-    // `duration` and the stepper snaps to t=1 exactly.
-    while (!res.done) res = gen.next(dt);
+    step.seek(0);
+    // Feed frames until it finishes; the final advance crosses `duration` and
+    // the stepper snaps to t=1 exactly.
+    let done = false;
+    while (!done) done = step.advance(dt);
 }
 
 describe('Path – data is a reactive property', () => {
@@ -48,8 +50,8 @@ describe('Path – animating data (morph)', () => {
 
     it('lands exactly on the target shape at the end of the tween', () => {
         const path = attached(new Path({ data: square }));
-        const gen = path.to({ data: triangle }, 1)[Symbol.iterator]();
-        runTween(gen, 1, 10);
+        const step = path.to({ data: triangle }, 1)._stepper();
+        runTween(step, 1, 10);
         // The string-snap path restores the exact target at t=1.
         expect(path.data).toBe(triangle);
     });

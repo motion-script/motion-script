@@ -124,9 +124,10 @@ describe('attribute-typed props on a real node', () => {
 
     it('tweens with the attribute lerp via to()', () => {
         const card = attached(new Card({ glow: '#000000' }));
-        const gen = card.to({ glow: '#ffffff' }, 1)[Symbol.iterator]();
-        let res = gen.next();              // prime to the first yield
-        while (!res.done) res = gen.next(0.5);
+        const step = card.to({ glow: '#ffffff' }, 1)._stepper();
+        step.seek(0);
+        let done = false;              // prime to the first yield
+        while (!done) done = step.advance(0.5);
         expect((card.glow as any)[0].color).toEqual([1, 1, 1, 1]);
     });
 

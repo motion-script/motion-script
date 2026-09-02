@@ -81,10 +81,11 @@ describe("transform3D — the shorthand", () => {
 
     it("tweens its fields individually through to()", () => {
         const n = attached(new Tile({ rotationY: 0 }));
-        const gen = n.to({ transform3D: { rotationY: 180 } } as never, 1)[Symbol.iterator]() as
-            Iterator<void, void, number>;
-        let res = gen.next();
-        while (!res.done) res = gen.next(0.5);
+        const step = n.to({ transform3D: { rotationY: 180 } } as never, 1)._stepper() as
+            TweenStepper;
+        step.seek(0);
+        let done = false;
+        while (!done) done = step.advance(0.5);
         expect(n.rotationY).toBe(180);
     });
 

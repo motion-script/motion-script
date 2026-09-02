@@ -70,21 +70,22 @@ describe('Node2D `size` prop', () => {
 
     it('is tweenable via to(), animating both axes together', () => {
         const n = attached(new Tile({ size: 0 }));
-        const gen = n.to({ size: 100 } as any, 1)[Symbol.iterator]();
-        let res = gen.next();
-        while (!res.done) res = gen.next(0.5);
+        const step = n.to({ size: 100 } as any, 1)._stepper();
+        step.seek(0);
+        let done = false;
+        while (!done) done = step.advance(0.5);
         expect(n.width).toBe(100);
         expect(n.height).toBe(100);
     });
 
     it('to() interpolates both axes over the duration', () => {
         const n = attached(new Tile({ size: 0 }));
-        const gen = n.to({ size: 100 } as any, 1)[Symbol.iterator]();
-        gen.next();          // prime, t=0
-        gen.next(0.5);        // t=0.5 → halfway
+        const step = n.to({ size: 100 } as any, 1)._stepper();
+        step.seek(0);          // prime, t=0
+        step.advance(0.5);        // t=0.5 → halfway
         expect(n.width).toBeCloseTo(50);
         expect(n.height).toBeCloseTo(50);
-        gen.next(0.5);        // t=1 → done
+        step.advance(0.5);        // t=1 → done
         expect(n.width).toBe(100);
         expect(n.height).toBe(100);
     });

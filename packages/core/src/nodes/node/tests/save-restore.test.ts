@@ -12,9 +12,10 @@ class Tile extends Node2D {
 
 /** Drive a Command (or any Iterable<void>) to completion with a fixed frame delta. */
 function drive(command: Iterable<void>, dt: number): void {
-    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
-    let res = gen.next();           // prime to first yield
-    while (!res.done) res = gen.next(dt);
+    const step = command._stepper();
+    step.seek(0);
+        let done = false;           // prime to first yield
+    while (!done) done = step.advance(dt);
 }
 
 describe('Node2D.save / restore', () => {
@@ -111,12 +112,12 @@ describe('Node2D.save / restore', () => {
         n.save();
         n.set({ x: 100 });
 
-        const gen = n.restore(1)[Symbol.iterator]();
-        gen.next();               // prime, t=0 → still at the current value (100)
+        const step = n.restore(1)._stepper();
+        step.seek(0);               // prime, t=0 → still at the current value (100)
         expect(n.x).toBeCloseTo(100);
-        gen.next(0.5);            // t=0.5 → halfway from 100 to 0
+        step.advance(0.5);            // t=0.5 → halfway from 100 to 0
         expect(n.x).toBeCloseTo(50);
-        gen.next(0.5);            // t=1 → fully restored
+        step.advance(0.5);            // t=1 → fully restored
         expect(n.x).toBeCloseTo(0);
     });
 

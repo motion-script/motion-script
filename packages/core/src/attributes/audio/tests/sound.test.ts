@@ -141,31 +141,33 @@ describe('Sound open/cross-scene marking', () => {
     });
 });
 
-/** Drive a play() generator at a fixed dt and return the total time it blocked. */
-function runPlay(sound: Sound, dt = 1 / 60): number {
-    const gen = sound.play();
-    let elapsed = 0;
-    let step = gen.next(); // prime: start() + first yield from wait()
-    while (!step.done) {
-        elapsed += dt;
-        step = gen.next(dt);
-    }
-    return elapsed;
-}
-
-describe('Sound.play duration', () => {
-    it('blocks for the trimmed length at speed 1', () => {
+/**
+ * How long a clip runs, in scene seconds.
+ *
+ * `play()` used to be a generator that blocked for exactly this long; a timeline
+ * places the clip at a time and gives it a duration instead, so what remains
+ * worth pinning is the length itself — and in particular that the speed profile
+ * scales it.
+ */
+describe('Sound.clipDuration', () => {
+    it('is the trimmed length at speed 1', () => {
         const sound = new Sound({ src: SRC, trimEnd: 4 });
-        expect(runPlay(sound)).toBeCloseTo(4, 1);
+        expect(sound.clipDuration).toBeCloseTo(4, 5);
     });
 
-    it('blocks for half as long at 2x speed', () => {
+    it('is half as long at 2x speed', () => {
         const sound = new Sound({ src: SRC, filters: AudioFilters.speed(2), trimEnd: 4 });
-        expect(runPlay(sound)).toBeCloseTo(2, 1);
+        expect(sound.clipDuration).toBeCloseTo(2, 5);
     });
 
-    it('blocks for twice as long at 0.5x speed', () => {
+    it('is twice as long at 0.5x speed', () => {
         const sound = new Sound({ src: SRC, filters: AudioFilters.speed(0.5), trimEnd: 4 });
-        expect(runPlay(sound)).toBeCloseTo(8, 1);
+        expect(sound.clipDuration).toBeCloseTo(8, 5);
+    });
+
+    it('is undefined when the clip is unbounded', () => {
+        // Nothing has resolved an out-point, so the clip runs until something
+        // else stops it — a length no scene can know on its own.
+        expect(new Sound({ src: SRC }).clipDuration).toBeUndefined();
     });
 });

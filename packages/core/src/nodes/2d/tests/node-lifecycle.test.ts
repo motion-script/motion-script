@@ -5,6 +5,7 @@ import { FakeMeasurer } from '@/runtime/runtime.fixtures';
 import { BoxBounds } from '@/attributes/layout/bounds';
 import { SizeInput } from '@/attributes/layout/size';
 import { attached } from '@/nodes/node/node.fixtures';
+import type { Command } from '@/tween/command';
 
 const scope = new FakeMeasurer();
 
@@ -33,21 +34,20 @@ class HugItem extends Node2D {
 }
 
 /**
- * Drive a child-management generator to completion, running a measure + layout
- * pass against `root` between every generator step. This mirrors the runtime's
- * per-frame order (advance generators → layout → render), which is what makes a
- * hug child's `measuredWidth` available to the animated add on the frame after
- * it is inserted. Returns the sequence of `sample()` snapshots taken *after*
- * each layout pass.
+ * Play a child-management command to completion, running a measure + layout pass
+ * against `root` between every step. This mirrors the runtime's per-frame order
+ * (advance → layout → render), which is what makes a hug child's `measuredWidth`
+ * available to the animated add on the frame after it is inserted. Returns the
+ * sequence of `sample()` snapshots taken *after* each layout pass.
  */
 function driveWithLayout<T>(
     root: Node2D & { rect: BoxBounds },
-    command: Iterable<void>,
+    command: Command<Record<string, never>>,
     dt: number,
     sample: () => T,
     rootBox: BoxBounds,
 ): T[] {
-    const gen = command[Symbol.iterator]() as Iterator<void, void, number>;
+    const step = command._stepper();
     const snaps: T[] = [];
     const layout = () => {
         // Measure against a generous space, then lay the root into a cell sized to
@@ -62,7 +62,7 @@ function driveWithLayout<T>(
     // Initial layout so on-screen children have a valid rect before we start.
     layout();
     for (;;) {
-        const { done } = gen.next(dt);
+        const done = step.advance(dt);
         layout();
         snaps.push(sample());
         if (done) break;

@@ -10,14 +10,14 @@ import type { EasingFunction } from "@/tween/ease/type";
 const FPS = 30;
 const DT = 1 / FPS;
 
-/** Drive `cmd` as a generator and record `read` after every frame. */
+/** Play `cmd` a frame at a time through its stepper, recording `read` each frame. */
 function run<T>(cmd: Command<never>, read: () => T): T[] {
     const frames: T[] = [];
-    const it = cmd[Symbol.iterator]();
-    it.next();
+    const step = cmd._stepper();
+    step.seek(0);
     frames.push(read());
     for (let guard = 0; guard < 1000; guard++) {
-        if (it.next(DT).done) break;
+        if (step.advance(DT)) break;
         frames.push(read());
     }
     return frames;
@@ -51,9 +51,9 @@ describe("Command", () => {
     });
 
     it("agrees frame-for-frame with running it", () => {
-        // The invariant the whole design rests on. `_stepper` and the iterator are
-        // *derived* from `at`, so a host that seeks and a scene that runs cannot
-        // drift — but only if the derivation is right, which is what this pins.
+        // The invariant the whole design rests on. `_stepper` is *derived* from
+        // `at`, so a host that seeks and a host that plays cannot drift — but only
+        // if the derivation is right, which is what this pins.
         const running = attached(new Widget({ width: 10, height: 10, x: 0 }));
         const frames = run(running.slide(90, 1) as Command<never>, () => running.x);
 
@@ -199,9 +199,9 @@ describe("Command on an unmounted node", () => {
 
     it("leaves to() inert too", () => {
         const node = new Widget({ width: 10, height: 10, x: 0 });
-        const it = node.to({ x: 500 }, 1)[Symbol.iterator]();
-        it.next();
-        for (let i = 0; i < 60 && !it.next(DT).done; i++) { /* drain */ }
+        const step = node.to({ x: 500 }, 1)._stepper();
+        step.seek(0);
+        for (let i = 0; i < 60 && !step.advance(DT); i++) { /* drain */ }
         expect(node.x).toBe(0);
     });
 });

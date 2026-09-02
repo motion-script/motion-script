@@ -61,30 +61,26 @@ describe('createSignal – passthrough', () => {
 });
 
 describe('createSignal – tween', () => {
-    /** Drive a frame generator to completion with a single dt covering the duration. */
-    function runToEnd(gen: Generator<void, void, number | undefined>, dt: number) {
-        let res = gen.next(); // prime
-        while (!res.done) res = gen.next(dt);
+    /** Evaluate a command at its end — what a timeline does for any frame past it. */
+    function runToEnd(command: { at(t: number): unknown }) {
+        command.at(1);
     }
 
     it('reaches the target value when driven to completion', () => {
         const s = createSignal(0);
-        runToEnd(s.tween(10, 1, linear()), 1);
+        runToEnd(s.tween(10, 1, linear()));
         expect(s.get()).toBe(10);
     });
 
     it('interpolates partway through the tween', () => {
         const s = createSignal(0);
-        const gen = s.tween(100, 1, linear());
-        gen.next();      // prime: applies t=0 → still 0
-        gen.next(0.5);   // advance halfway
+        s.tween(100, 1, linear()).at(0.5);
         expect(s.get()).toBeCloseTo(50, 5);
     });
 
     it('is callable in tween form: signal(value, duration)', () => {
         const s = createSignal(0);
-        const gen = s(10, 1, linear()) as Generator<void, void, number | undefined>;
-        runToEnd(gen, 1);
+        runToEnd(s(10, 1, linear()) as { at(t: number): unknown });
         expect(s.get()).toBe(10);
     });
 });

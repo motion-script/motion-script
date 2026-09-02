@@ -2,15 +2,22 @@ import { describe, it, expect, vi } from 'vitest';
 import { createSignal } from '@/signals/create';
 import { Signal } from '@/signals/signal';
 import { linear } from '@/tween/ease/constants';
+import type { Command } from '@/tween/command';
 
-function drive(gen: Generator<void, void, number>, dt = 1 / 60): number {
+/**
+ * Play a command through, a frame at a time, as the runtime would.
+ *
+ * `at(1)` would reach the same value in one call — the point of a command — but
+ * these tests are about what the signal reads *while* it runs, so they step.
+ */
+function drive(command: Command<Record<string, never>>, dt = 1 / 60): number {
+    const step = command._stepper();
     let frames = 0;
-    let result = gen.next();
-    while (!result.done) {
-        result = gen.next(dt);
-        if (++frames > 100_000) throw new Error('generator did not terminate');
+    step.seek(0);
+    while (!step.advance(dt)) {
+        if (++frames > 100_000) throw new Error('command did not terminate');
     }
-    return frames;
+    return frames + 1;
 }
 
 describe('createSignal – basic read/write', () => {
@@ -129,16 +136,17 @@ describe('createSignal – subscribe', () => {
 });
 
 describe('createSignal – tween', () => {
-    it('returns a FrameGenerator from tween()', () => {
+    it('returns a Command from tween()', () => {
         const s = createSignal(0);
-        const gen = s.tween(10, 0.1, linear());
-        expect(typeof gen.next).toBe('function');
+        const command = s.tween(10, 0.1, linear());
+        expect(typeof command.at).toBe('function');
+        expect(command.duration).toBe(0.1);
     });
 
     it('arity ≥ 2 with numeric duration via call form delegates to tween', () => {
         const s = createSignal(0);
-        const gen = s(10 as any, 0.1, linear());
-        expect(typeof (gen as any).next).toBe('function');
+        const command = s(10 as any, 0.1, linear());
+        expect(typeof (command as Command<never>).at).toBe('function');
     });
 
     it('tween advances numeric value to target by the end', () => {
@@ -149,9 +157,7 @@ describe('createSignal – tween', () => {
 
     it('intermediate value is between from and to', () => {
         const s = createSignal(0);
-        const gen = s.tween(100, 0.5, linear());
-        gen.next();
-        gen.next(0.1);
+        s.tween(100, 0.5, linear()).at(0.2);
         expect(s.get()).toBeGreaterThan(0);
         expect(s.get()).toBeLessThan(100);
     });
