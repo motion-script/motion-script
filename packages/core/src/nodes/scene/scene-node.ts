@@ -210,6 +210,16 @@ export class Scene {
     }
 
     /**
+     * The times a measuring pass should sample, or `null` when this scene cannot
+     * say and must be walked frame by frame. See {@link SceneDriver.keyTimes}.
+     *
+     * @internal
+     */
+    keyTimes(): number[] | null {
+        return this._driver.keyTimes?.() ?? null;
+    }
+
+    /**
      * Put the scene into the state for `seconds`.
      *
      * A pure function of `seconds`: called in any order, repeatedly, and with
@@ -372,6 +382,21 @@ export interface SceneDriver {
      * whose commands read nothing but props can do all its work in `build`.
      */
     compile?(): void;
+    /**
+     * Every time at which this scene can change, in ascending order.
+     *
+     * What a measuring pass samples instead of walking every frame. A driver that
+     * knows its own timeline knows these exactly — a command's start, its end, a
+     * node's arrival or departure — and between two of them nothing changes
+     * discontinuously: the same nodes, drawn from the same assets, with every prop
+     * a continuous interpolation of the same values.
+     *
+     * Optional, and its absence is meaningful rather than empty: a driver that
+     * cannot say gets the per-frame walk, which is always correct and merely
+     * slower. Must include `0` and `duration`, or the pass will not sample the
+     * ends of the scene.
+     */
+    keyTimes?(): number[];
     /**
      * Put every node into the state it holds at `seconds` from the scene's start.
      *

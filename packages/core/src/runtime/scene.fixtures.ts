@@ -153,6 +153,23 @@ export function chainScene(build: (stage: Stage) => void, steps: ChainStep[] = [
             restore();
         },
 
+        /**
+         * The chain's own boundaries: every step's start and end.
+         *
+         * A chain knows these for the same reason a document does — each step is
+         * placed, not advanced to — so a measuring pass can sample them instead
+         * of walking every frame. Read off `placed`, which `compile` has already
+         * filled in by the time anything asks.
+         */
+        keyTimes() {
+            const times = new Set<number>([0, total]);
+            for (const p of placed) {
+                times.add(p.start);
+                times.add(p.start + p.duration);
+            }
+            return [...times].filter((t) => t >= 0 && t <= total).sort((a, b) => a - b);
+        },
+
         evaluateAt(seconds: number) {
             restore();
             for (const p of placed) {

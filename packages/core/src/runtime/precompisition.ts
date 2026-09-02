@@ -7,6 +7,7 @@ import { nodePath } from "@/project/tree";
 import { AssetCatalog } from "@/assets/catalog";
 import { ContextMap } from "@/util/context";
 import { Size2D } from "@/attributes/layout/size";
+import { BoxBounds } from "@/attributes/layout/bounds";
 import { CanvasAssetTracker } from "@/assets/tracker";
 import { Scene } from "@/nodes/scene/scene-node";
 import { ProjectGlobals, resolveGlobalAudio } from "./globals";
@@ -102,10 +103,14 @@ export interface ScenePrecomp {
 // ─── Profiling ────────────────────────────────────────────────────────────────
 
 /**
- * The distinct pieces of work {@link Precomp.precompSceneSteps}'s per-frame loop
- * performs. Each is a full walk of the scene's node tree (except `evaluate`,
- * which is the author's own tween code), so attributing wall-clock to them is
+ * The distinct pieces of work {@link Precomp.precompSceneSteps} performs at each
+ * sample. Each is a full walk of the scene's node tree (except `evaluate`, which
+ * is the scene's own command evaluation), so attributing wall-clock to them is
  * what tells you which one to optimize.
+ *
+ * A *sample* is not a frame. A scene that can name its key times is measured at
+ * those and nowhere else, so these totals are per boundary rather than per
+ * frame; only a scene walked frame by frame makes the two the same thing.
  */
 export type PrecompPhase =
     | "prepareLayout"
@@ -127,7 +132,7 @@ export interface ScenePrecompTiming {
     frameCount: number;
     /** Total ms spent inside the pass, excluding time parked on a yield. */
     totalMs: number;
-    /** Ms attributed to each phase of the per-frame loop. */
+    /** Ms attributed to each phase, summed over every sample. */
     phases: Record<PrecompPhase, number>;
 }
 
@@ -699,17 +704,84 @@ export class Precomp {
     }
 
     /**
-     * Walk one scene across its declared span and collect its scene-local precomp
-     * (frame count, asset usage, audio, lifespans). `startFrame` is left 0 here
-     * and filled in by {@link assembleTimeline}.
+     * Put the tree into the state for `seconds` and declare everything it needs,
+     * once per entry in `frames`.
+     *
+     * The three calls are ordered, not grouped for tidiness. Fonts — and anything
+     * else measurement depends on — have to be named *before* the layout that
+     * asks for them; everything drawable is declared *after* it, with
+     * `layoutBounds` live, so a decode can be sized to what will actually be
+     * painted. (There is no render pass: a node knows what it paints without
+     * being asked to paint it.)
+     *
+     * `frames` repeats the declaration under a second open frame rather than
+     * re-laying out, because the tree has not moved between them — only the frame
+     * the tracker attributes it to. See the interval sampling in
+     * {@link precompSceneSteps} for why one state is attributed to two frames.
+     */
+    private sampleScene(
+        scene: Scene,
+        globals: ProjectGlobals | null | undefined,
+        registry: CanvasAssetTracker,
+        profile: ScenePrecompProfile | undefined,
+        layoutBounds: BoxBounds,
+        seconds: number,
+        frames: readonly number[],
+    ): void {
+        profile?.enter("attach");
+        // Layers run on the same clock the scene does. Scene-local here, global
+        // during playback — it only affects which frame of a dynamic fill is
+        // sampled while measuring, never the frame ranges the windows are built
+        // from.
+        const scope: AttachScope = { assets: this.assets, context: ContextMap.EMPTY, time: seconds };
+        scene.attach(scope);
+        globals?.attach(scope);
+
+        profile?.enter("evaluate");
+        scene.evaluateAt(seconds);
+
+        registry.start(frames[0]);
+        profile?.enter("prepareLayout");
+        scene.prepareLayoutAssets(registry);
+        globals?.prepareLayoutAssets(registry);
+        profile?.enter("layout");
+        scene.layout(layoutBounds, this.measurer);
+        globals?.layout(layoutBounds, this.measurer);
+        profile?.enter("prepareRender");
+        scene.prepareRenderAssets(registry);
+        globals?.prepareRenderAssets(registry);
+        registry.end();
+
+        for (let i = 1; i < frames.length; i++) {
+            if (frames[i] === frames[i - 1]) continue;
+            registry.start(frames[i]);
+            scene.prepareLayoutAssets(registry);
+            globals?.prepareLayoutAssets(registry);
+            scene.prepareRenderAssets(registry);
+            globals?.prepareRenderAssets(registry);
+            registry.end();
+        }
+    }
+
+    /**
+     * Sample one scene across its declared span and collect its scene-local
+     * precomp (frame count, asset usage, audio, lifespans). `startFrame` is left
+     * 0 here and filled in by {@link assembleTimeline}.
+     *
+     * **Where the samples fall is the scene's answer, not this pass's.** A scene
+     * that can name its key times — a command's start, its end, a node's arrival
+     * or departure — is measured at those and nowhere else, because between two
+     * of them nothing changes discontinuously and the frames in between have
+     * nothing new to say. A scene that cannot is walked frame by frame, which is
+     * always correct and merely slower. See {@link sampleIntervals}.
      *
      * Written as a generator so the same loop serves both the synchronous and the
-     * time-sliced driver — there is exactly one copy of the per-frame semantics,
-     * and they cannot drift apart. (That generator is an *iteration protocol* for
-     * time-slicing this pass, not an animation: the scene itself is asked for each
-     * frame, never advanced to it.) It yields at complete frame boundaries only.
-     * Abandoning it (`.return()`) runs the `finally` that disposes the tracker and
-     * resets the scene, so a cancelled pass leaves nothing torn.
+     * time-sliced driver — there is exactly one copy of the semantics, and they
+     * cannot drift apart. (That generator is an *iteration protocol* for
+     * time-slicing this pass, not an animation: the scene is asked for a time,
+     * never advanced to it.) It yields only where the tree is internally
+     * consistent. Abandoning it (`.return()`) runs the `finally` that disposes
+     * the tracker and resets the scene, so a cancelled pass leaves nothing torn.
      */
     private *precompSceneSteps(
         scene: Scene,
@@ -743,6 +815,8 @@ export class Precomp {
         stage.reset();
 
         let localFrame = 0;
+        /** The scene's declared length, filled in as soon as it is known. */
+        let frameCount = 0;
         const lifespans = new Map<string, NodeLifespan>();
         let error: BuildError | undefined;
 
@@ -761,80 +835,135 @@ export class Precomp {
                 // completion, so the cost of *knowing* a scene's length was the
                 // cost of playing it.
                 const totalFrames = sceneFrameCount(scene, this.fps);
+                // Declared, so it is known before a single frame is sampled — and
+                // it is the answer even if a sample below throws, because the
+                // scene's length was never a product of walking it.
+                frameCount = totalFrames;
 
+                // Every time this scene can *change*: a command's start or end, a
+                // node's arrival or departure. Between two of them nothing changes
+                // discontinuously, so the pair bounds the interval and the frames
+                // in between have nothing new to say. A driver that cannot name
+                // its boundaries returns null and gets the frame-by-frame walk,
+                // which is always correct and merely slower.
+                const intervals = sampleIntervals(scene, this.fps, totalFrames);
+
+                if (intervals) {
+                    for (let i = 0; i < intervals.length; i++) {
+                        const span = intervals[i];
+                        // Ascending in time, always. Anything stamped from the
+                        // scene clock as it is declared — an audio request's
+                        // `startAt` above all — is only right if the first sample
+                        // that discovers it is the earliest one that has it.
+                        this.sampleScene(scene, globals, registry, profile, layoutBounds,
+                            span.startSeconds, [span.startFrame]);
+                        if (this.trackLifespans) {
+                            recordLifespans(scene.canvas, "", span.startFrame,
+                                Math.max(span.startFrame, span.endFrame - 1), lifespans);
+                        }
+
+                        // The end state declared under the interval's *start* frame
+                        // first, and only then under its own. `upsertAsset` sets a
+                        // record's `startFrame` once and never moves it backwards,
+                        // so this is what attributes an asset discovered at `b` to
+                        // the whole of `[a, b]`.
+                        //
+                        // Not padding. `lerpFillArray` cross-fades a non-lerpable
+                        // pair, so a colour to image tween paints both fills
+                        // through the middle of the interval while `imageFill.lerp`
+                        // only switches `src` at t = 0.5. Endpoint-only attribution
+                        // would open that decode at `b`, after the frames that
+                        // already needed it. Early is free; late is a frame
+                        // reaching for a decode that is not there.
+                        this.sampleScene(scene, globals, registry, profile, layoutBounds,
+                            span.endSeconds, [span.startFrame, span.endFrame]);
+                        if (this.trackLifespans) {
+                            recordLifespans(scene.canvas, "", span.endFrame, span.endFrame, lifespans);
+                        }
+
+                        profile?.enter("evaluate");
+                        // The one suspension point, and only here: the interval
+                        // above is complete and the tree is internally consistent,
+                        // so a time-sliced driver can park without exposing a torn
+                        // state.
+                        if (i < intervals.length - 1) yield;
+                    }
+                    localFrame = totalFrames;
+                } else {
                 while (true) {
-                    // Put the tree into *this* frame's state before anything reads
-                    // it. It belongs here rather than at the bottom of the loop:
-                    // building compiles every node's command chain, and compiling
-                    // walks each step to its end, restoring only the node's own
-                    // props afterwards. Whatever a command wrote to some *other*
-                    // node — a chart arming its markers, a diagram its tiles — is
-                    // still sitting there. So the tree straight out of `build`
-                    // holds the last command's state, not the first's, and
-                    // declaring frame 0 against it collects the wrong frame's
-                    // assets. Playback then draws frame 0 and reaches for one
-                    // nothing ever declared.
-                    scene.evaluateAt(localFrame * dt);
+                        // Put the tree into *this* frame's state before anything reads
+                        // it. It belongs here rather than at the bottom of the loop:
+                        // building compiles every node's command chain, and compiling
+                        // walks each step to its end, restoring only the node's own
+                        // props afterwards. Whatever a command wrote to some *other*
+                        // node — a chart arming its markers, a diagram its tiles — is
+                        // still sitting there. So the tree straight out of `build`
+                        // holds the last command's state, not the first's, and
+                        // declaring frame 0 against it collects the wrong frame's
+                        // assets. Playback then draws frame 0 and reaches for one
+                        // nothing ever declared.
+                        scene.evaluateAt(localFrame * dt);
 
-                    registry.start(localFrame);
+                        registry.start(localFrame);
 
-                    // Fonts, and anything else measurement depends on, declared
-                    // before layout can ask for it — which is the whole reason this
-                    // phase exists separately. It used to be fire-and-forget async
-                    // setup, with fonts inferred *from* `measureText` a line later;
-                    // that ordering made it impossible to have a font loaded by the
-                    // time the layout that discovered it ran.
-                    profile?.enter("prepareLayout");
-                    scene.prepareLayoutAssets(registry);
-                    globals?.prepareLayoutAssets(registry);
-                    profile?.enter("layout");
-                    scene.layout(layoutBounds, this.measurer);
-                    globals?.layout(layoutBounds, this.measurer);
-                    // Everything drawable, plus the audio a playing clip schedules,
-                    // declared with `layoutBounds` live so a decode can be sized to
-                    // what will actually be painted.
-                    //
-                    // There is no render pass here any more. Discovery used to mean
-                    // replaying `scene.render()` against a context that walked every
-                    // op list instead of rasterizing — a full tree walk per frame
-                    // whose only product was this map. A node knows what it paints
-                    // without being asked to paint it.
-                    profile?.enter("prepareRender");
-                    scene.prepareRenderAssets(registry);
-                    globals?.prepareRenderAssets(registry);
+                        // Fonts, and anything else measurement depends on, declared
+                        // before layout can ask for it — which is the whole reason this
+                        // phase exists separately. It used to be fire-and-forget async
+                        // setup, with fonts inferred *from* `measureText` a line later;
+                        // that ordering made it impossible to have a font loaded by the
+                        // time the layout that discovered it ran.
+                        profile?.enter("prepareLayout");
+                        scene.prepareLayoutAssets(registry);
+                        globals?.prepareLayoutAssets(registry);
+                        profile?.enter("layout");
+                        scene.layout(layoutBounds, this.measurer);
+                        globals?.layout(layoutBounds, this.measurer);
+                        // Everything drawable, plus the audio a playing clip schedules,
+                        // declared with `layoutBounds` live so a decode can be sized to
+                        // what will actually be painted.
+                        //
+                        // There is no render pass here any more. Discovery used to mean
+                        // replaying `scene.render()` against a context that walked every
+                        // op list instead of rasterizing — a full tree walk per frame
+                        // whose only product was this map. A node knows what it paints
+                        // without being asked to paint it.
+                        profile?.enter("prepareRender");
+                        scene.prepareRenderAssets(registry);
+                        globals?.prepareRenderAssets(registry);
 
-                    registry.end();
+                        registry.end();
 
-                    // Record which nodes are alive this frame so the timeline can draw
-                    // each node's bar over only its true lifespan. The scene's world
-                    // lives on `scene.canvas` (path "" = root). Skipped entirely for a
-                    // caller with no timeline to draw — see PrecompOptions.lifespans.
-                    profile?.enter("lifespans");
-                    if (this.trackLifespans) recordLifespans(scene.canvas, "", localFrame, lifespans);
+                        // Record which nodes are alive this frame so the timeline can draw
+                        // each node's bar over only its true lifespan. The scene's world
+                        // lives on `scene.canvas` (path "" = root). Skipped entirely for a
+                        // caller with no timeline to draw — see PrecompOptions.lifespans.
+                        profile?.enter("lifespans");
+                        if (this.trackLifespans) recordLifespans(scene.canvas, "", localFrame, localFrame, lifespans);
 
-                    localFrame++;
-                    profile?.enter("attach");
-                    const frameScope: AttachScope = {
-                        assets: this.assets,
-                        context: ContextMap.EMPTY,
-                        // Layers run on the same clock the scene does. Scene-local
-                        // here, global during playback — the same split `Scene`
-                        // itself already lives with (see
-                        // `StateEvaluator.stepReplay`); it only affects which frame
-                        // of a dynamic fill is sampled while measuring, never the
-                        // frame ranges the asset windows are built from.
-                        time: localFrame * dt,
-                    };
-                    scene.attach(frameScope);
-                    globals?.attach(frameScope);
+                        localFrame++;
+                        profile?.enter("attach");
+                        const frameScope: AttachScope = {
+                            assets: this.assets,
+                            context: ContextMap.EMPTY,
+                            // Layers run on the same clock the scene does. Scene-local
+                            // here, global during playback — the same split `Scene`
+                            // itself already lives with (see
+                            // `StateEvaluator.stepReplay`); it only affects which frame
+                            // of a dynamic fill is sampled while measuring, never the
+                            // frame ranges the asset windows are built from.
+                            time: localFrame * dt,
+                        };
+                        scene.attach(frameScope);
+                        globals?.attach(frameScope);
 
-                    profile?.enter("evaluate");
-                    if (localFrame >= totalFrames) break;
+                        profile?.enter("evaluate");
+                        if (localFrame >= totalFrames) break;
 
-                    // The one suspension point, and only here: the frame above is
-                    // complete and the tree is internally consistent, so a
-                    // time-sliced driver can park without exposing a torn state.
-                    yield;
+                        // The one suspension point, and only here: the frame above is
+                        // complete and the tree is internally consistent, so a
+                        // time-sliced driver can park without exposing a torn state.
+                        yield;
+                    }
                 }
             } catch (err) {
                 const e = err instanceof Error ? err : new Error(String(err));
@@ -846,13 +975,13 @@ export class Precomp {
                 };
             }
 
-            profile?.done(localFrame);
+            profile?.done(frameCount);
 
             // Scene-boundary blockade: a clip whose source outlasts the scene (e.g. a
             // long video on a short scene, or a startSound left running) must not
             // bleed past the cut. Clamp every request to [0, sceneDuration); drop any
             // that begins at or after the scene ends.
-            const sceneDuration = localFrame / this.fps;
+            const sceneDuration = frameCount / this.fps;
             const audioRequests = clampAudioToScene(registry.audioRequests, sceneDuration);
 
             // Snapshot the scene-local asset records before the registry is dropped
@@ -862,7 +991,7 @@ export class Precomp {
             return {
                 precomp: {
                     measured: true,
-                    frameCount: localFrame,
+                    frameCount,
                     startFrame: 0, // assigned by assembleTimeline
                     audioRequests,
                     assetRecords,
@@ -878,6 +1007,63 @@ export class Precomp {
             scene.reset();
         }
     }
+}
+
+/** One span between two consecutive key times, in both seconds and frames. */
+interface SampleInterval {
+    startSeconds: number;
+    startFrame: number;
+    endSeconds: number;
+    endFrame: number;
+}
+
+/**
+ * The intervals a boundary-sampled pass walks, or `null` when this scene cannot
+ * name its boundaries and must be walked frame by frame.
+ *
+ * Consecutive key times bound an interval over which nothing changes
+ * discontinuously — the same nodes, drawn from the same assets, with every prop
+ * a continuous interpolation of the same values — so the two endpoints between
+ * them say everything the frames in between would. That collapses the pass from
+ * O(frames) to O(commands), which for a ten-second scene with three tweens is
+ * four samples instead of six hundred.
+ *
+ * Times are snapped to real frame indices and clamped into the scene, because
+ * the tracker's records and the timeline's bars are both in frames: a key time
+ * at the scene's exact end is the last frame, not one past it.
+ */
+function sampleIntervals(scene: Scene, fps: number, totalFrames: number): SampleInterval[] | null {
+    const times = scene.keyTimes();
+    if (!times) return null;
+
+    const last = totalFrames - 1;
+    const frameOf = (t: number) => Math.min(last, Math.max(0, Math.round(t * fps)));
+
+    // Sorted and deduplicated here rather than trusted from the driver: two
+    // commands sharing an `at` is how the model spells "in parallel", so
+    // duplicates are the normal case, and a host supplying its own boundaries has
+    // no reason to have ordered them.
+    const keys: number[] = [];
+    for (const t of [...times].sort((a, b) => a - b)) {
+        if (!Number.isFinite(t)) continue;
+        if (keys.length === 0 || t > keys[keys.length - 1]) keys.push(t);
+    }
+    if (keys.length === 0) keys.push(0);
+    // A still — one state, held for the scene's whole span.
+    if (keys.length === 1) {
+        return [{ startSeconds: keys[0], startFrame: frameOf(keys[0]), endSeconds: keys[0], endFrame: last }];
+    }
+
+    const out: SampleInterval[] = [];
+    for (let i = 0; i < keys.length - 1; i++) {
+        out.push({
+            startSeconds: keys[i],
+            startFrame: frameOf(keys[i]),
+            endSeconds: keys[i + 1],
+            endFrame: frameOf(keys[i + 1]),
+        });
+    }
+    return out;
 }
 
 /**
@@ -1108,26 +1294,32 @@ function sceneFrameCount(scene: Scene, fps: number): number {
 }
 
 /**
- * Walk the scene's live node tree and extend each node's lifespan to include
- * `frame`, keyed by structural path (see {@link nodePath}). A node's lifespan
- * starts the first frame its slot appears and ends the last frame it is still
- * present, so nodes added or removed mid-scene get a range narrower than the
- * scene itself. The scene root (path "") is included so its own bar spans the
- * whole scene.
+ * Walk the scene's live node tree and extend each node's lifespan to cover
+ * `[from, to]`, keyed by structural path (see {@link nodePath}). A node's
+ * lifespan starts the first frame its slot appears and ends the last frame it is
+ * still present, so nodes added or removed mid-scene get a range narrower than
+ * the scene itself. The scene root (path "") is included so its own bar spans
+ * the whole scene.
+ *
+ * A range rather than a single frame because a boundary-sampled pass observes
+ * the tree twice per interval and calls this out of frame order: `end` is taken
+ * as the later of what is already recorded and what is being claimed, so the two
+ * observations of one interval compose whichever arrives first. The frame-by-frame
+ * caller passes the same number twice and gets the old behaviour exactly.
  */
-function recordLifespans(node: Node, path: string, frame: number, out: Map<string, NodeLifespan>): void {
+function recordLifespans(node: Node, path: string, from: number, to: number, out: Map<string, NodeLifespan>): void {
     const existing = out.get(path);
     if (existing) {
-        existing.endFrame = frame;
+        existing.endFrame = Math.max(existing.endFrame, to);
     } else {
-        out.set(path, { startFrame: frame, endFrame: frame });
+        out.set(path, { startFrame: from, endFrame: to });
     }
     // The authored list, so a `Canvas3D`'s meshes get lifespans of their own and
     // its HUD children keep the indices every other path walk gives them — see
     // {@link Node._allChildren}.
     const children = node._allChildren;
     for (let i = 0; i < children.length; i++) {
-        recordLifespans(children[i], nodePath(path, i), frame, out);
+        recordLifespans(children[i], nodePath(path, i), from, to, out);
     }
 }
 

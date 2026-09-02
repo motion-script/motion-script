@@ -169,11 +169,58 @@ export class SceneTimeline {
         this.doc = doc;
         this.specs = nodeSpecsOf(doc);
         this.presence = presenceOf(doc);
+        // Declared, not measured, so it is known before anything is built — which
+        // is what lets {@link keyTimes} be asked of a document alone.
+        this._duration = this.computeDuration();
     }
 
     /** How long the scene runs. Read by the runtime after {@link build}. */
     get duration(): number {
         return this._duration;
+    }
+
+    /**
+     * Every time at which this scene can *change* — the only times worth
+     * sampling.
+     *
+     * A measuring pass wants to know what a scene draws and what it needs, and
+     * it used to find out by walking every frame. It does not have to: nothing
+     * about a scene changes discontinuously except at a command's start, its
+     * end, or a node's arrival or departure. Between two of those, every prop is
+     * a continuous interpolation of the same set of values, drawn by the same
+     * set of nodes, out of the same set of assets.
+     *
+     * So this is the sorted, de-duplicated union of every command's `at` and
+     * `at + duration`, every presence boundary, and the scene's own two ends.
+     * For a typical scene that is a couple of dozen times rather than the
+     * hundreds or thousands of frames it runs for.
+     *
+     * Sorted ascending, always includes `0`, and always ends at
+     * {@link duration}. Available before {@link compile}, since it needs only
+     * the document.
+     */
+    keyTimes(): number[] {
+        const times = new Set<number>([0, this._duration]);
+
+        if (!isStillDocument(this.doc)) {
+            for (const command of this.doc.commands) {
+                times.add(command.at);
+                times.add(command.at + (command.duration ?? 0));
+            }
+        }
+        for (const span of this.presence.values()) {
+            times.add(span.start);
+            // A node present to the end has `Infinity` here, which is not a time
+            // — the scene's own end already bounds it.
+            if (Number.isFinite(span.end)) times.add(span.end);
+        }
+
+        // Anything past the declared end cannot be drawn, and a negative time is
+        // not reachable; clamping rather than dropping keeps a command that
+        // overruns the scene contributing its start.
+        return [...times]
+            .filter(t => t >= 0 && t <= this._duration)
+            .sort((a, b) => a - b);
     }
 
     /**
@@ -213,9 +260,6 @@ export class SceneTimeline {
         this.root = { spec: rootSpec(), node: stage.canvas, baseline: new Map(), baseStackDepth: 0 };
         this.captureBaselines(stage);
 
-        // Duration is declared, so it is known before anything is compiled — a
-        // host can lay out a timeline without having built one command.
-        this._duration = this.computeDuration();
     }
 
     /**

@@ -80,6 +80,13 @@ export interface FakeSceneOptions {
      * receives a tracker per frame — see `Precomp.precompScene`.)
      */
     onPrepare?: (tracker: AssetTracker, frame: number) => void;
+    /**
+     * Times, in seconds, at which this scene can change — what a measuring pass
+     * samples instead of walking every frame. Absent by default, so a fake gets
+     * the frame-by-frame walk unless a test is specifically about the sampled
+     * path.
+     */
+    keyTimes?: number[];
 }
 
 /**
@@ -145,6 +152,7 @@ export class FakeScene {
         this.children = opts.children ?? [];
         this.properties = opts.properties ?? {};
         this.onPrepare = opts.onPrepare;
+        this._keyTimes = opts.keyTimes ?? null;
     }
 
     /**
@@ -157,6 +165,17 @@ export class FakeScene {
      * Built once and cached, because the runtime writes to it (`canvas.set`) and
      * a fresh object per read would drop those writes on the floor.
      */
+    /**
+     * Boundaries this fake can name — none, so a measuring pass walks it frame
+     * by frame. That is what almost every test here asserts against, and it is
+     * also the honest answer for a fake with no timeline of its own. Set
+     * {@link FakeSceneOptions.keyTimes} to exercise the boundary-sampled path.
+     */
+    keyTimes(): number[] | null {
+        return this._keyTimes;
+    }
+    private _keyTimes: number[] | null = null;
+
     get canvas(): FakeCanvas {
         return this._canvas ??= new FakeCanvas(this.id, this.name, this.children, this.properties, this.setCalls);
     }

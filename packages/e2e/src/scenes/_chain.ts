@@ -149,6 +149,22 @@ export function scene(build: (stage: Stage) => void, steps: Step[] = []): Scene 
             restore();
         },
 
+        /**
+         * The chain's own boundaries: every step's start and end.
+         *
+         * A chain knows these because each step is *placed*, not advanced to, so
+         * the measuring pass samples them instead of walking every frame. Read
+         * off `placed`, which `compile` has already filled in.
+         */
+        keyTimes() {
+            const times = new Set<number>([0, total]);
+            for (const p of placed) {
+                times.add(p.start);
+                times.add(p.start + p.duration);
+            }
+            return [...times].filter((t) => t >= 0 && t <= total).sort((a, b) => a - b);
+        },
+
         evaluateAt(seconds: number) {
             restore();
             for (const p of placed) {

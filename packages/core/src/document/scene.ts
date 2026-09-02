@@ -50,6 +50,9 @@ function sceneFrom(doc: SceneDocument, options?: SceneDocumentOptions): Scene {
         compile() {
             timeline.compile();
         },
+        keyTimes() {
+            return timeline.keyTimes();
+        },
         evaluateAt(seconds: number) {
             if (stage) timeline.syncPresence(stage, seconds);
             timeline.evaluateAt(seconds);

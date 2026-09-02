@@ -114,11 +114,59 @@ function report(label: string, t: ReturnType<typeof bestOf>) {
     );
 }
 
+/**
+ * Wall-clock for `RUNS` full passes over `make()`'s scene, best of them kept.
+ *
+ * `sampled: false` strips the scene's `keyTimes`, which is how a driver that
+ * cannot name its boundaries presents itself — so the two columns differ in the
+ * pass, not in the scene.
+ */
+function passMs(make: () => Scene, sampled: boolean): { ms: number; frames: number } {
+    let ms = Infinity;
+    let frames = 0;
+    for (let i = 0; i < RUNS; i++) {
+        const scene = make();
+        if (!sampled) Object.defineProperty(scene, "keyTimes", { value: () => null });
+        const started = performance.now();
+        const result = new Precomp(
+            [scene], VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), new FakeMeasurer(),
+        ).run();
+        const elapsed = performance.now() - started;
+        frames = result.scenes[0].frameCount;
+        if (elapsed < ms) ms = elapsed;
+    }
+    return { ms, frames };
+}
+
+function compare(label: string, make: () => Scene): void {
+    const walked = passMs(make, false);
+    const sampled = passMs(make, true);
+    console.log(
+        `
+${label} — ${walked.frames} frames @ ${FPS}fps  (best of ${RUNS})` +
+        `
+  frame walk   ${walked.ms.toFixed(0).padStart(6)} ms` +
+        `
+  key times    ${sampled.ms.toFixed(0).padStart(6)} ms   ` +
+        `(${(walked.ms / sampled.ms).toFixed(1)}x faster)
+`,
+    );
+}
+
 describe.runIf(process.env.MS_BENCH)("precomp cost breakdown", () => {
     it("reports where a heavy animating scene's pass spends its time", () => {
         const t = bestOf(heavyScene(1200, 4, "bench"));
         report("1200 animating rects", t);
         expect(t.frameCount).toBeGreaterThan(0);
+    });
+
+    it("reports what naming a scene's key times is worth", () => {
+        // The whole point of the boundary-sampled pass, as a number rather than
+        // an assertion. Both columns measure the *same* scene: the second is the
+        // same object with its `keyTimes` taken away, which is exactly what a
+        // driver that cannot name its boundaries looks like to `Precomp`.
+        compare("1200 animating rects, 4 legs", () => heavyScene(1200, 4, "bench"));
+        compare("1200 static rects, 5s hold", () => staticScene(1200, 300));
     });
 
     it("reports the cost of a scene that only holds still", () => {
