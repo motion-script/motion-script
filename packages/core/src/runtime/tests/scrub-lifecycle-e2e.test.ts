@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
@@ -48,7 +49,7 @@ class Probe extends Node2D {
  * laid-out width on any frame.
  */
 function scrubScene(victim: Reference<Probe>) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const row = createRef<Rect>();
         stage.add(
             new Rect({
@@ -65,12 +66,13 @@ function scrubScene(victim: Reference<Probe>) {
                 ],
             }),
         );
+    }, [
         // Hold a few frames so the row is fully laid out before the remove begins.
-        for (let i = 0; i < 5; i++) yield;
-        yield* row().removeChildAt(1, REMOVE_DURATION);
+        5 / FPS,
+        () => row().removeChildAt(1, REMOVE_DURATION),
         // Tail so the timeline extends past the remove.
-        for (let i = 0; i < 5; i++) yield;
-    });
+        5 / FPS,
+    ]);
 }
 
 function makeEvaluator(scene: ReturnType<typeof createScene>) {

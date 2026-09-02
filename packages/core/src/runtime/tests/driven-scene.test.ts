@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 
 import { createDrivenScene, createScene, type SceneDriver } from "@/nodes/scene/scene-node";
 import { Rect } from "@/nodes/geometry/rect-node";
@@ -88,11 +89,12 @@ describe("createDrivenScene", () => {
     });
 
     it("leaves a generator scene on the replay path", () => {
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             const box = new Rect({ width: 10, height: 10 });
             stage.add(box);
-            yield* box.to({ x: 90 }, 1);
-        });
+        }, [
+            () => box.to({ x: 90 }, 1),
+        ]);
 
         expect(scene.drivenDuration).toBeNull();
         expect(scene.evaluateAt(0.5)).toBe(false);

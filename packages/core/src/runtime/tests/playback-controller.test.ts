@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { chainScene } from "@/runtime/scene.fixtures";
 import { PlaybackController, ControllerParams } from '@/runtime/playback-controller';
 import { Precomp } from '@/runtime/precompisition';
 import { Rect } from '@/nodes/geometry/rect-node';
@@ -367,7 +368,7 @@ describe('PlaybackController – direct manipulation', () => {
 
     function makeRealController() {
         const card = createRef<Rect>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new Rect({
                     ref: card,
@@ -376,10 +377,11 @@ describe('PlaybackController – direct manipulation', () => {
                     children: [new Rect({ width: 20, height: 20 })],
                 }),
             );
+        }, [
             // 10 frames of motion, so a replay has something to overwrite.
-            yield* card().to({ x: 200 }, 1);
-            for (let i = 0; i < 5; i++) yield;
-        });
+            () => card().to({ x: 200 }, 1),
+            5 / FPS,
+        ]);
 
         const viewport = { width: 800, height: 600 };
         const scenes = [scene];

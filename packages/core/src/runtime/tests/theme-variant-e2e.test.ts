@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
@@ -27,9 +28,8 @@ describe("Text variant — typography preset precedence", () => {
     it("a variant supplies a style prop the author didn't set", () => {
         setTheme({ typography: { header: { fontSize: 96, fontWeight: 700 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi", variant: "header" }));
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -41,9 +41,8 @@ describe("Text variant — typography preset precedence", () => {
     it("an explicit author prop wins over the variant", () => {
         setTheme({ typography: { header: { fontSize: 96, fontWeight: 700 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi", variant: "header", fontSize: 40 }));
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -55,14 +54,13 @@ describe("Text variant — typography preset precedence", () => {
     it("a variant wins over an inherited <DefaultTextStyle>", () => {
         setTheme({ typography: { header: { fontSize: 96 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new DefaultTextStyle({
                     fontSize: 32,
                     children: [new Text({ ref: txt, text: "hi", variant: "header" })],
                 }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -73,14 +71,13 @@ describe("Text variant — typography preset precedence", () => {
     it("a key the variant doesn't set falls through to <DefaultTextStyle>", () => {
         setTheme({ typography: { header: { fontWeight: 700 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new DefaultTextStyle({
                     fontSize: 48,
                     children: [new Text({ ref: txt, text: "hi", variant: "header" })],
                 }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -92,9 +89,8 @@ describe("Text variant — typography preset precedence", () => {
     it("an unknown variant is a no-op (node keeps its own defaults)", () => {
         setTheme({ typography: { header: { fontSize: 96 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi", variant: "nope" }));
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -105,9 +101,8 @@ describe("Text variant — typography preset precedence", () => {
     it("a `default` typography preset applies with no variant or <DefaultTextStyle>", () => {
         setTheme({ typography: { default: { fontSize: 40, fontFamily: "Zilla Slab" } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi" }));
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -124,9 +119,8 @@ describe("Text variant — typography preset precedence", () => {
             },
         });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi", variant: "header" }));
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -137,14 +131,13 @@ describe("Text variant — typography preset precedence", () => {
     it("an inherited <DefaultTextStyle> wins over the `default` preset", () => {
         setTheme({ typography: { default: { fontSize: 40 } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new DefaultTextStyle({
                     fontSize: 32,
                     children: [new Text({ ref: txt, text: "hi" })],
                 }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -155,9 +148,8 @@ describe("Text variant — typography preset precedence", () => {
     it("a key the `default` preset doesn't set falls through to the node's own default", () => {
         setTheme({ typography: { default: { fontFamily: "Zilla Slab" } } });
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(new Text({ ref: txt, text: "hi" }));
-            yield;
         });
 
         const ev = evaluator(scene);

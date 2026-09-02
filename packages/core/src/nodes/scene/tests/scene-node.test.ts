@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { createScene, createStill } from "@/nodes/scene/scene-node";
 import { Canvas2D } from "@/nodes/scene/canvas2d-node";
 import { Rect } from "@/nodes/geometry/rect-node";
@@ -12,7 +13,8 @@ const FPS = 30;
 
 describe("Scene canvas", () => {
     it("builds into a Canvas2D that fills the viewport and stacks children", () => {
-        const scene = createScene(function* () { /* no-op */ });
+        const scene = chainScene(() => { /* no-op */
+        });
         expect(scene.canvas).toBeInstanceOf(Canvas2D);
         expect(scene.canvas.width).toBe("fill");
         expect(scene.canvas.height).toBe("fill");

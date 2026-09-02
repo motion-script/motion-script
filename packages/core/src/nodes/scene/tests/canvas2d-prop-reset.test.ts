@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { createScene, Scene } from "@/nodes/scene/scene-node";
 import { CanvasStage } from "@/nodes/scene/canvas-stage";
 import { attachScope } from "@/nodes/node/node.fixtures";
@@ -33,9 +34,10 @@ describe("canvas-prop animation across passes", () => {
     // tweens snapshot the right `from` — otherwise from === target and the
     // animation visibly does nothing.
     it("re-ramps a stage-animated canvas prop after a prior full run", () => {
-        const scene = createScene(function* (stage) {
-            yield* stage.to({ zoom: 3 }, 2);
-        });
+        const scene = chainScene((stage) => {
+        }, [
+            () => stage.to({ zoom: 3 }, 2),
+        ]);
 
         // Pass 1 (precomp-like): drive to completion → canvas.zoom ends at 3.
         drivePass(scene, 30, () => scene.canvas.zoom);
@@ -48,16 +50,18 @@ describe("canvas-prop animation across passes", () => {
     });
 
     it("re-ramps for padding and heading too (camera + layout props)", () => {
-        const padScene = createScene(function* (stage) {
-            yield* stage.to({ padding: 40 }, 2);
-        });
+        const padScene = chainScene((stage) => {
+        }, [
+            () => stage.to({ padding: 40 }, 2),
+        ]);
         drivePass(padScene, 30, () => (padScene.canvas.padding as { top: number }).top);
         const pad = drivePass(padScene, 5, () => (padScene.canvas.padding as { top: number }).top);
         expect(pad[0]).toBeLessThan(40);
 
-        const headScene = createScene(function* (stage) {
-            yield* stage.headingTo(90, 2);
-        });
+        const headScene = chainScene((stage) => {
+        }, [
+            () => stage.headingTo(90, 2),
+        ]);
         drivePass(headScene, 30, () => headScene.canvas.heading);
         const head = drivePass(headScene, 5, () => headScene.canvas.heading);
         expect(head[0]).toBeLessThan(90);

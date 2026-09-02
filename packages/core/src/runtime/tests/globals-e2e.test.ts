@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 
 import { AssetManager } from "@/assets/manager";
 import { Node2D } from "@/nodes/2d/node2d";
@@ -47,10 +48,11 @@ class Probe extends Node2D {
 
 /** A scene of `frames` frames whose single child logs when it draws. */
 function probeScene(log: string[], label: string, frames: number): Scene {
-    const s = createScene(function* (stage) {
+    const s = chainScene((stage) => {
         stage.add(new Probe(log, label));
-        for (let i = 0; i < frames; i++) yield;
-    });
+    }, [
+        frames / FPS,
+    ]);
     s.name = label;
     return s;
 }

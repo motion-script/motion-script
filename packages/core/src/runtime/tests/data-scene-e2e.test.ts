@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
@@ -62,7 +63,7 @@ describe("data-scene — context-driven children + inherited style over the pipe
         ];
         const boardRef = createRef<StatBoard>();
 
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new DefaultTextStyle({
                     fontSize: 44,
@@ -70,7 +71,6 @@ describe("data-scene — context-driven children + inherited style over the pipe
                     children: [new StatBoard({ ref: boardRef, stats })],
                 }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);
@@ -95,11 +95,10 @@ describe("data-scene — context-driven children + inherited style over the pipe
 
     it("re-seeking (a fresh pass) rebuilds the same children without accumulating", () => {
         const boardRef = createRef<StatBoard>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new StatBoard({ ref: boardRef, stats: [{ label: "A", value: "1" }, { label: "B", value: "2" }] }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);

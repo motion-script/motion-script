@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { StateEvaluator } from "@/runtime/state-evaluator";
 import { Precomp } from "@/runtime/precompisition";
 import { DefaultTextStyle } from "@/nodes/text/default-text-style-node";
@@ -28,16 +29,17 @@ function evaluator(scene: ReturnType<typeof createScene>) {
 describe("context — full precomp/evaluator pipeline", () => {
     it("a tween from an inherited default snapshots the inherited value, not the raw default", () => {
         const txt = createRef<Text>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((stage) => {
             stage.add(
                 new DefaultTextStyle({
                     fontSize: 32,
                     children: [new Text({ ref: txt, text: "hi" })],
                 }),
             );
+        }, [
             // Animate fontSize away from its inherited starting value.
-            yield* txt().to({ fontSize: 64 }, 0.5);
-        });
+            () => txt().to({ fontSize: 64 }, 0.5),
+        ]);
 
         const ev = evaluator(scene);
 
@@ -63,14 +65,13 @@ describe("context — full precomp/evaluator pipeline", () => {
 
     it("a provider added by the generator reaches its descendants", () => {
         const leaf = createRef<Rect>();
-        const scene = createScene(function* (stage) {
+        const scene = chainScene((* (stage) => {
             stage.add(
                 new ThemeProvider({
                     theme: { brand: "#abc" },
                     children: [new Rect({ ref: leaf, width: 10, height: 10 })],
                 }),
             );
-            yield;
         });
 
         const ev = evaluator(scene);

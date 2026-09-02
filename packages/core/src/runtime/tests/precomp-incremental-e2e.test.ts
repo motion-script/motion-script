@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { Precomp, PrecompResult } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { Text } from "@/nodes/text/text-node";
@@ -25,7 +26,7 @@ const catalog = () => asCatalog(new FakeAssetCatalog());
 
 /** Layout-heavy: a hug row whose middle child is removed mid-scene. */
 function removingRow(label: string) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const row = createRef<Rect>();
         stage.add(
             new Rect({
@@ -37,21 +38,23 @@ function removingRow(label: string) {
                 ],
             }),
         );
-        for (let i = 0; i < 4; i++) yield;
-        yield* row().removeChildAt(1, 0.6);
-        for (let i = 0; i < 3; i++) yield;
-    });
+    }, [
+        4 / FPS,
+        () => row().removeChildAt(1, 0.6),
+        3 / FPS,
+    ]);
 }
 
 /** Tween-heavy: a box that animates through several legs of differing length. */
 function movingBox(distance: number) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const box = createRef<Rect>();
         stage.add(new Rect({ ref: box, width: 80, height: 80, x: 0, y: 0 }));
-        yield* box().to({ x: distance }, 0.5);
-        yield* box().to({ y: distance, rotation: 45 }, 0.7);
-        yield* box().to({ x: 0, y: 0, rotation: 0 }, 0.4);
-    });
+    }, [
+        () => box().to({ x: distance }, 0.5),
+        () => box().to({ y: distance, rotation: 45 }, 0.7),
+        () => box().to({ x: 0, y: 0, rotation: 0 }, 0.4),
+    ]);
 }
 
 const buildScenes = (): Scene[] => [removingRow("A"), movingBox(200), removingRow("B")];
@@ -106,7 +109,8 @@ describe("Precomp – incremental measurement against real scenes", () => {
     it("a scene that throws is still recorded, and the pass carries on", async () => {
         const scenes: Scene[] = [
             movingBox(100),
-            createScene(function* () { yield; throw new Error("boom"); }),
+            chainScene((ction* () => { throw new Error("boom");
+            }),
             movingBox(150),
         ];
         const result = await precompOf(scenes).runAsync({ budgetMs: 0 });
