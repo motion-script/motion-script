@@ -380,6 +380,28 @@ export class Precomp {
     private readonly cache: (ScenePrecomp | undefined)[] = [];
     /** Build error from each scene's cached pass, parallel to {@link cache}. */
     private readonly cachedErrors: (BuildError | undefined)[] = [];
+    /**
+     * Bumped every time the scene list is changed under this instance —
+     * {@link setScenes} and {@link replaceScene}.
+     *
+     * {@link runAsync} is an **index-based scan over mutable shared state**: it
+     * walks `scenes`, parks on a yield, and commits into `cache[i]` when it
+     * resumes. Nothing stopped a host from replacing both arrays while it was
+     * parked, and the consequence was not merely wasted work — the pass it had
+     * measured was committed at an index that by then held a *different scene*,
+     * so that scene took on someone else's frame count and someone else's asset
+     * windows. A frame then draws a picture whose window was never opened, which
+     * is the `AssetNotLoadedError` an image fill throws; and a scene reports a
+     * length that belongs to its neighbour.
+     *
+     * A scan compares this against the value it started with after every yield
+     * and, when it differs, unwinds the scene it was on and starts again from
+     * the top of the new list. Restart rather than abandon: the host that
+     * changed the list is normally *adding* a scene, and a pass that gave up
+     * would leave the newcomer unmeasured — a zero-length hole in the timeline,
+     * which is the other half of the same bug.
+     */
+    private revision = 0;
 
     constructor(
         scenes: Scene[],
@@ -516,6 +538,10 @@ export class Precomp {
     async runAsync(options: RunAsyncOptions = {}): Promise<PrecompResult> {
         const { budgetMs = DEFAULT_PRECOMP_BUDGET_MS, isCancelled, onProgress } = options;
 
+        // The list this scan believes it is walking. See {@link revision} for why
+        // an index-based scan over a list the host may replace has to say so.
+        let revision = this.revision;
+
         for (let i = 0; i < this.scenes.length; i++) {
             if (isCancelled?.()) return this.assemble();
             if (this.cache[i]) continue;
@@ -535,6 +561,10 @@ export class Precomp {
             const steps = this.precompSceneSteps(scene, i, sceneProfile);
             let deadline = now() + budgetMs;
             let step = steps.next();
+            /** Set when this walk's own scene has left the list — see below. */
+            let superseded = false;
+            /** Set when the list moved at all, so the scan starts again after. */
+            let rescan = false;
 
             while (!step.done) {
                 if (now() >= deadline) {
@@ -550,15 +580,63 @@ export class Precomp {
                         steps.return({ precomp: pendingScenePrecomp() });
                         return this.assemble();
                     }
+                    if (this.revision !== revision) {
+                        revision = this.revision;
+                        // The scan has to start again whatever happened: a scene
+                        // may have been inserted *before* the point it had reached,
+                        // and `i` no longer names what it did.
+                        rescan = true;
+                        // Whether this particular walk survives is a different
+                        // question, and the answer is whether its scene is still in
+                        // the list. One that has been dropped is disposed by the
+                        // evaluator on the same tick, so resuming its walk would
+                        // drive a dead tree — unwind it, and let the `finally` put
+                        // it back rather than leave it torn at a partial frame.
+                        //
+                        // One that is *still* there keeps going. Abandoning it too
+                        // would have been simpler and is what this did first, and
+                        // it was quietly expensive: an editor hot-replaces on every
+                        // keystroke, so a project still measuring in the background
+                        // threw away its longest scene's partial walk over and over
+                        // and never converged.
+                        if (!this.scenes.includes(scene)) {
+                            steps.return({ precomp: pendingScenePrecomp() });
+                            superseded = true;
+                            break;
+                        }
+                    }
                     sceneProfile?.resume();
                     deadline = now() + budgetMs;
                 }
                 step = steps.next();
             }
 
-            this.remember(scene, step.value);
-            this.commit(i, step.value);
-            onProgress?.(this.assemble());
+            // `break` above leaves `step` un-`done`, so the outcome is only real
+            // on the path that ran the walk out.
+            const outcome = step.done ? step.value : null;
+
+            // A pass may only be committed at an index that still holds the scene
+            // it measured. This is the check that makes the whole arrangement
+            // safe: without it a walk that resumed after `setScenes` wrote its
+            // frame count and its asset windows onto whatever scene had taken the
+            // slot, which draws a picture whose window was never opened.
+            const stale = superseded || outcome === null || this.scenes[i] !== scene;
+            if (!stale) {
+                this.remember(scene, outcome);
+                this.commit(i, outcome);
+                onProgress?.(this.assemble());
+            }
+
+            if (stale || rescan) {
+                // Start the scan again over the list as it now stands. Everything
+                // already measured is in `cache` and costs one comparison to skip,
+                // so a restart is O(scenes) rather than O(work) — and it is what
+                // gets a scene the host just *added* measured, rather than left as
+                // a zero-length hole for the rest of the session.
+                revision = this.revision;
+                i = -1;
+                continue;
+            }
         }
 
         return this.assemble();
@@ -575,6 +653,9 @@ export class Precomp {
      * @param newScene  The edited scene instance to swap in at `index`.
      */
     replaceScene(prev: PrecompResult, index: number, newScene: Scene): PrecompResult {
+        // Announced before anything moves, so a background scan parked on a yield
+        // sees the change the instant it resumes. See {@link revision}.
+        this.revision++;
         this.scenes = this.scenes.slice();
         this.scenes[index] = newScene;
 
@@ -617,6 +698,9 @@ export class Precomp {
      * @param next The new scene list, in timeline order.
      */
     setScenes(prev: PrecompResult, next: Scene[]): PrecompResult {
+        // Announced first, for the reason {@link revision} gives: a background
+        // scan is parked somewhere in the arrays this method is about to rewrite.
+        this.revision++;
         // Everything measured so far, indexed both ways a survivor can be named.
         const byInstance = new Map<Scene, ScenePrecomp>();
         const byKey = new Map<string, ScenePrecomp>();
@@ -851,30 +935,48 @@ export class Precomp {
                 if (intervals) {
                     for (let i = 0; i < intervals.length; i++) {
                         const span = intervals[i];
+                        // **Both endpoints are attributed to the whole interval**,
+                        // and the symmetry is the correctness argument rather than
+                        // a convenience. What the sampling claim actually says is
+                        // that the frames inside `[a, b]` draw from the *union* of
+                        // what `a` and `b` draw from — nothing appears or vanishes
+                        // in between — so both states have to open a window over
+                        // the whole span, not over the frame they happened to be
+                        // evaluated at.
+                        //
+                        // Attributing only the end state to both frames (which is
+                        // what this used to do) covers exactly one direction: an
+                        // asset *arriving* at `b`. An asset **leaving** at `b` was
+                        // declared under `a` alone, so its window closed at `a`
+                        // while every frame of `(a, b)` still painted it — a rect
+                        // whose image fill tweens to a colour came out with the
+                        // window `[0, 10]` where the frame-by-frame walk gives
+                        // `[0, 19]`, and a node removed part-way through came out
+                        // with `[0, 0]` against `[0, 9]`. `AssetManager.loadAt`
+                        // then declines to load a picture the frame is about to
+                        // ask for, and the draw throws `AssetNotLoadedError`.
+                        //
+                        // Neither half is padding. `lerpFillArray` cross-fades a
+                        // non-lerpable pair, so a colour ↔ image tween paints both
+                        // fills through the middle of the interval while
+                        // `imageFill.lerp` only switches `src` at t = 0.5.
+                        // Endpoint-only attribution opens or closes the decode on
+                        // the wrong side of the frames that need it. Early is free;
+                        // late is a frame reaching for a decode that is not there.
+                        //
                         // Ascending in time, always. Anything stamped from the
                         // scene clock as it is declared — an audio request's
                         // `startAt` above all — is only right if the first sample
-                        // that discovers it is the earliest one that has it.
+                        // that discovers it is the earliest one that has it, and
+                        // the extra open frame changes which frame a window covers
+                        // rather than which *time* the tree was evaluated at.
                         this.sampleScene(scene, globals, registry, profile, layoutBounds,
-                            span.startSeconds, [span.startFrame]);
+                            span.startSeconds, [span.startFrame, span.endFrame]);
                         if (this.trackLifespans) {
                             recordLifespans(scene.canvas, "", span.startFrame,
                                 Math.max(span.startFrame, span.endFrame - 1), lifespans);
                         }
 
-                        // The end state declared under the interval's *start* frame
-                        // first, and only then under its own. `upsertAsset` sets a
-                        // record's `startFrame` once and never moves it backwards,
-                        // so this is what attributes an asset discovered at `b` to
-                        // the whole of `[a, b]`.
-                        //
-                        // Not padding. `lerpFillArray` cross-fades a non-lerpable
-                        // pair, so a colour to image tween paints both fills
-                        // through the middle of the interval while `imageFill.lerp`
-                        // only switches `src` at t = 0.5. Endpoint-only attribution
-                        // would open that decode at `b`, after the frames that
-                        // already needed it. Early is free; late is a frame
-                        // reaching for a decode that is not there.
                         this.sampleScene(scene, globals, registry, profile, layoutBounds,
                             span.endSeconds, [span.startFrame, span.endFrame]);
                         if (this.trackLifespans) {

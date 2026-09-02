@@ -263,13 +263,12 @@ export class CanvasAssetTracker implements AssetTracker {
         const frame = this.ensureFrame();
         const entry = this.requestedAssets.get(key);
         if (entry) {
-            if (entry.startFrame === frame) return;
             // Extended in place rather than replaced. These records are private to
             // the tracker until `Precomp` snapshots them at the end of the pass, so
             // nothing can observe the mutation — and copying instead meant one
             // throwaway object per asset per frame, which for a video on screen for
             // a whole scene is one allocation for every frame of it.
-            entry.endFrame = frame;
+            extendTo(entry, frame);
             return;
         }
         this.requestedAssets.set(key, makeEntry(frame));
@@ -285,11 +284,13 @@ export class CanvasAssetTracker implements AssetTracker {
         const frame = this.ensureFrame();
         const entry = this.requestedAssets.get(src);
         if (entry && entry.type === 'image') {
-            if (entry.startFrame === frame) return;
-            // In place — see the note in `upsertAsset`.
-            entry.endFrame = frame;
+            // In place — see the note in `upsertAsset`. The size is taken even
+            // when the frame is one this entry already covers: a second
+            // declaration at the same frame is a *different* node asking for the
+            // same picture, and the decode has to be sized for the larger of them.
             entry.width = Math.max(entry.width, width);
             entry.height = Math.max(entry.height, height);
+            extendTo(entry, frame);
             return;
         }
         this.requestedAssets.set(src, {
@@ -308,11 +309,11 @@ export class CanvasAssetTracker implements AssetTracker {
         const frame = this.ensureFrame();
         const entry = this.requestedAssets.get(src);
         if (entry && entry.type === 'video') {
-            if (entry.startFrame === frame) return;
-            // In place — see the note in `upsertAsset`.
-            entry.endFrame = frame;
+            // In place — see the note in `upsertAsset`, and in `addImage` for why
+            // the size is taken on a repeat declaration of the same frame.
             entry.width = Math.max(entry.width, width);
             entry.height = Math.max(entry.height, height);
+            extendTo(entry, frame);
             return;
         }
         this.requestedAssets.set(src, {
@@ -375,4 +376,24 @@ function normalizeWeight(weight: number | string | undefined): number {
     if (typeof weight === "number") return Number.isFinite(weight) ? weight : 400;
     if (typeof weight === "string") return parseInt(weight, 10) || 400;
     return 400;
+}
+
+/**
+ * Widen `entry`'s window to include `frame`.
+ *
+ * The window is a **range**, so a declaration widens it in whichever direction
+ * it falls and never narrows it. That is not defensive: a boundary-sampled pass
+ * declares one evaluated state under two frames and visits an interval's
+ * endpoints in an order the sampler chooses, so `endFrame = frame` — which is
+ * what this used to be — could shorten a window that a later declaration had
+ * already opened, and `AssetManager.loadAt` would then decline to load a picture
+ * for frames that draw it. `recordLifespans` in the precomp takes the same
+ * `Math.max` for the same reason.
+ *
+ * The frame-by-frame walk declares in ascending order and passes each frame
+ * once, so for it this is exactly the assignment it replaces.
+ */
+function extendTo(entry: AssetRecord, frame: number): void {
+    if (frame < entry.startFrame) entry.startFrame = frame;
+    if (frame > entry.endFrame) entry.endFrame = frame;
 }

@@ -11,12 +11,14 @@ import { yieldToScheduler } from "@/util/scheduler";
 import { MasterClock, TimeCallback } from "@/platform/master-clock";
 import { AudioDevice } from "@/platform/audio-device";
 import { AssetCatalog } from "@/assets/catalog";
+import { AssetNotLoadedError } from "@/assets/errors";
+import type { AssetRecord } from "@/assets/record";
 import { Size2D } from "@/attributes/layout/size";
 import { Node } from "@/nodes/node/node";
 import { Node2D } from "@/nodes/2d/node2d";
 import { Scene } from "@/nodes/scene/scene-node";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { NodeBox, collectBoxes, nodeBoxAt, pickNode, projectNode3DAt } from "./node-picking";
+import { NodeBox, collectBoxes, nodeAt, nodeBoxAt, pickNode, projectNode3DAt } from "./node-picking";
 import type { Node3DFrame } from "./node-picking3d";
 import type { Vector3 } from "@/render3d/vector3";
 import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
@@ -85,8 +87,53 @@ export class PlaybackController {
     private stateEvaluator: StateEvaluator;
     private assetManager: AssetManager;
     private audioDevice: AudioDevice;
+    /**
+     * The manifest every source in this project resolves through.
+     *
+     * Held rather than merely handed on to the precomp and the asset manager,
+     * because {@link recoverMissingAsset} has to build a record for a source the
+     * measured pass never named — and the only place its real dimensions are
+     * written down is here.
+     */
+    private readonly assetCatalog: AssetCatalog;
+    /**
+     * Called synchronously at the end of every frame this controller paints,
+     * with the frame it painted — **on the same task as the draw**.
+     *
+     * For a host that draws *over* the canvas: a selection box, a caret, a
+     * handle. Those are DOM, and DOM cannot be read from the render loop, so a
+     * host had no choice but to poll — measure the tree on an animation frame,
+     * put the answer through its own render, and hope the two clocks agreed.
+     * They do not. A seek is asynchronous, so the poll measures the frame *still
+     * on screen* while a newer one is in flight, and by the time the overlay is
+     * laid out the canvas has moved on again. On a fast scrub that reads as the
+     * box trailing the artwork by an amount that grows with the drag speed,
+     * which is exactly what it is.
+     *
+     * Firing here removes the poll's half of that: whatever the host measures in
+     * this callback is the tree for the frame that has just been drawn, not for
+     * whichever frame the last completed seek happened to leave behind.
+     *
+     * Synchronous and unguarded by design — a host that wants its write to land
+     * in the same browser frame as the paint must not be handed a promise. It is
+     * called after the draw rather than before it so a throwing listener cannot
+     * be mistaken for a render failure; see {@link onRenderError} for what does
+     * get caught.
+     */
+    onFramePainted?: (frame: number) => void;
+
     /** Set by dispose(); once true the controller must never touch its (now-freed) render context again. */
     private disposed = false;
+    /**
+     * Whether a background precomp pass is in flight.
+     *
+     * Two passes over one {@link Precomp} would interleave their commits into the
+     * same `cache`, so there is only ever one — and the flag is what lets
+     * {@link setScenes} say "measure the newcomers" without having to know
+     * whether it is starting a pass or joining one. See
+     * {@link startBackgroundPrecomp}.
+     */
+    private precompRunning = false;
     /**
      * Whether a frame has ever been drawn, which is what {@link repaint} waits
      * for before it will draw one of its own.
@@ -182,8 +229,27 @@ export class PlaybackController {
      * is that one bad frame takes down the clock loop, and a paused, blank editor
      * says even less than a stale frame with a banner over it.
      */
-    private captureRenderError(error: unknown): void {
+    private captureRenderError(error: unknown, frame?: number): void {
         const e = error instanceof Error ? error : new Error(String(error));
+        // The one draw-time failure that is *recoverable*, and the reason this
+        // takes a frame at all.
+        //
+        // A frame draws what the tree holds, and the tree is not only what the
+        // measured pass saw: {@link setNodeOverride} writes straight onto live
+        // signals, so a host previewing an edit can put a picture on a node no
+        // pass has ever declared. That is exactly what choosing an image fill in
+        // an inspector does — the rebuild that *would* declare it is deliberately
+        // held while the edit is open, precisely because it is expensive. The
+        // asset timeline never opens a window, nothing loads the picture, and the
+        // draw reaches for a decode that is not there.
+        //
+        // The error names the source, so the cure is available: load it and paint
+        // again. One frame is lost and the canvas keeps the last complete one,
+        // which is the same trade {@link replaceScene} makes for the same reason.
+        // Reported only if the load cannot fix it either — a banner about a
+        // picture that is on screen by the time anyone reads it is worse than no
+        // banner at all.
+        if (frame !== undefined && this.recoverMissingAsset(e, frame)) return;
         if (this.renderErrors.some((prior) => prior.message === e.message)) return;
         const scene = this.stateEvaluator.currentScene;
         this.renderErrors.push({
@@ -199,7 +265,110 @@ export class PlaybackController {
      * Forget the draw-time errors â€” called when the thing they were about is
      * replaced, so a fixed scene stops being accused of a fault it no longer has.
      */
+    /**
+     * Sources this controller has already tried to rescue, so a picture that
+     * genuinely cannot be fetched is reported rather than re-fetched on every
+     * frame of a drag.
+     *
+     * Cleared by {@link clearRenderErrors}, which a host calls when it replaces
+     * the thing the errors were about — so a second attempt after a real edit is
+     * allowed, and a loop over one broken URL is not.
+     */
+    private readonly rescuedAssets = new Set<string>();
+
+    /**
+     * Load an asset a frame reached for but nothing had declared, then paint that
+     * frame again.
+     *
+     * Returns whether the failure was one this can fix; the caller reports it
+     * only when it is not. See {@link captureRenderError} for how a frame comes
+     * to need an asset no pass declared, and why curing that beats announcing it.
+     *
+     * Deliberately narrow. It answers only for {@link AssetNotLoadedError}, only
+     * for a source the catalog can describe, and only once per source — anything
+     * else is a fault the host has to be told about, and retrying per frame would
+     * turn one broken picture into a fetch loop.
+     */
+    private recoverMissingAsset(error: Error, frame: number): boolean {
+        if (!(error instanceof AssetNotLoadedError)) return false;
+        // Audio alone is out: it is fetched on demand by the audio device rather
+        // than through the storage adapter, so `loadAsset` has nothing to do for
+        // it (see its own `case 'audio'`). Fonts are in, and their absence costs
+        // the most of the three — a paragraph that cannot shape throws while the
+        // frame is being *drawn*, so one unlisted family takes the whole scene
+        // down and the canvas shows nothing at all.
+        if (error.assetType === "audio") return false;
+        // Keyed by source and type together: a font's key is a family, and a
+        // family is a far likelier collision with a source path than two paths
+        // are with each other.
+        const token = `${error.assetType}:${error.src}`;
+        if (this.rescuedAssets.has(token)) return false;
+        this.rescuedAssets.add(token);
+
+        const record = this.recordFor(error.assetType, error.src, frame);
+        if (!record) return false;
+
+        void this.storageAdapter.loadAsset(error.src, record)
+            .then(() => {
+                if (this.disposed) return;
+                // Straight to `renderAt`: `repaint` would ask `hasPainted` a
+                // question our being here has already answered.
+                this.renderAt(this.stateEvaluator.currentFrame);
+            })
+            .catch((cause) => {
+                if (this.disposed) return;
+                // The rescue failed too, so the original complaint stands —
+                // reported now, with the reason underneath it. No `frame`, so it
+                // cannot come back through here a second time.
+                this.captureRenderError(
+                    new Error(`${error.message}\n\nLoading it directly also failed: ${String(cause)}`),
+                );
+            });
+        return true;
+    }
+
+    /**
+     * A record describing `src` well enough to load it, built from the catalog's
+     * own metadata — or `null` when the catalog has never heard of it, which is a
+     * different fault and not one this can cure.
+     *
+     * A one-frame window, because an override is a statement about *now*: the
+     * pass that would have given this source a real span is the one that has not
+     * run.
+     */
+    private recordFor(type: AssetNotLoadedError["assetType"], src: string, frame: number): AssetRecord | null {
+        try {
+            if (type === "font") {
+                // A font record is its family and a weight, and the error names
+                // only the family — so the weight is the one thing this has to
+                // assume. 400 is what `parseFontKey` assumes for an unsuffixed
+                // key, which is the same key `AssetTracker.addFont` writes, so
+                // the two agree by construction rather than by luck.
+                return {
+                    type: "font", src, startFrame: frame, endFrame: frame,
+                    fontFamily: src, fontWeight: 400,
+                };
+            }
+            if (type === "image") {
+                const meta = this.assetCatalog.getImageMeta(src);
+                return {
+                    type: "image", src, startFrame: frame, endFrame: frame,
+                    width: meta.width, height: meta.height,
+                };
+            }
+            const meta = this.assetCatalog.getVideoMeta(src);
+            return {
+                type: "video", src, startFrame: frame, endFrame: frame,
+                width: meta.width, height: meta.height,
+                trimStart: 0, trimEnd: this.assetCatalog.getVideoDuration(src),
+            };
+        } catch {
+            return null;
+        }
+    }
+
     clearRenderErrors(): void {
+        this.rescuedAssets.clear();
         if (this.renderErrors.length === 0) return;
         this.renderErrors.length = 0;
         this.onRenderError?.(this.buildErrors);
@@ -232,6 +401,7 @@ export class PlaybackController {
         this.onPrecompProgress = params.onPrecompProgress;
 
         const catalog = params.assets;
+        this.assetCatalog = catalog;
 
         this.precomper = params.precomposition;
         // Measure only the scene that owns frame 0 â€” that is everything the first
@@ -301,19 +471,37 @@ export class PlaybackController {
      * whole point of the split is that the user sees something immediately.
      */
     private startBackgroundPrecomp(): void {
-        if (this.precomp.complete) return;
+        if (this.precompRunning || this.disposed || this.precomp.complete) return;
+        this.precompRunning = true;
         void (async () => {
-            await yieldToScheduler();
-            if (this.disposed) return;
-            const final = await this.precomper.runAsync({
-                budgetMs: this.precompBudgetMs,
-                isCancelled: () => this.disposed,
-                onProgress: result => this.adoptPrecomp(result),
-            });
-            // `onProgress` already published every scene it measured; this only
-            // matters when there was nothing left to measure (every scene served
-            // from cache), where no progress callback fires at all.
-            if (!this.disposed && !this.precomp.complete) this.adoptPrecomp(final);
+            try {
+                await yieldToScheduler();
+                // A loop rather than a single run, and the loop is the fix for a
+                // scene added while a pass was already in flight.
+                //
+                // `Precomp.runAsync` re-scans when the list moves under it, which
+                // covers the common case — the pass is parked on a yield and sees
+                // the bump when it resumes. It cannot cover the case where the
+                // list moves during the pass's *last* step: there is no yield left
+                // to notice it, the pass returns, and `setScenes` has already
+                // declined to start another because `precompRunning` was still
+                // true. Re-checking the published result here closes that window.
+                while (!this.disposed) {
+                    const final = await this.precomper.runAsync({
+                        budgetMs: this.precompBudgetMs,
+                        isCancelled: () => this.disposed,
+                        onProgress: result => this.adoptPrecomp(result),
+                    });
+                    if (this.disposed) return;
+                    // `onProgress` already published every scene it measured; this
+                    // only matters when there was nothing left to measure (every
+                    // scene served from cache), where no callback fires at all.
+                    if (!this.precomp.complete) this.adoptPrecomp(final);
+                    if (this.precomp.complete) return;
+                }
+            } finally {
+                this.precompRunning = false;
+            }
         })();
     }
 
@@ -425,8 +613,9 @@ export class PlaybackController {
             // draw's throw left as a rejected promise no caller could see and
             // every draw-time failure reached the console as an unhandled
             // rejection instead of the errors panel. It is synchronous now.
-            this.captureRenderError(error);
+            this.captureRenderError(error, frame);
         }
+        this.announcePaint(frame);
     }
 
     /**
@@ -452,9 +641,28 @@ export class PlaybackController {
                 this.stateEvaluator.render(this.renderContext);
             });
         } catch (error) {
-            this.captureRenderError(error);
+            this.captureRenderError(error, frame);
         }
+        this.announcePaint(frame);
         return true;
+    }
+
+    /**
+     * Tell {@link onFramePainted} a frame has landed, without letting a listener
+     * take the render loop down with it.
+     *
+     * The listener is a host's, runs on the render loop, and is exactly the kind
+     * of code that reaches into a DOM node that has since been unmounted. A throw
+     * here would abandon the tick — no audio sync, no prefetch — for a failure
+     * that has nothing to do with the frame.
+     */
+    private announcePaint(frame: number): void {
+        if (!this.onFramePainted) return;
+        try {
+            this.onFramePainted(Math.floor(frame));
+        } catch (error) {
+            console.error("[PlaybackController] onFramePainted listener threw:", error);
+        }
     }
 
     /**
@@ -477,6 +685,13 @@ export class PlaybackController {
         // scene landing mid-scrub doesn't start playing under the user's cursor.
         this.pausedPendingPrecomp = false;
         this.masterClock.pause();
+        // Before the clock and before the load, because both are about a frame
+        // and this is what decides which *scene* that frame is in. A seek into a
+        // stretch of timeline nothing has measured draws whatever the fallback
+        // in `slotAt` reaches for, and loads whatever windows the partial precomp
+        // happens to hold — a scene the host did not ask for, missing the picture
+        // it did. See {@link measureThrough}.
+        this.measureThrough(clamped);
         this.masterClock.seek(clamped / this.fps);
         await this.assetManager.loadAt(clamped);
         // loadAt is async â€” this seek may have been superseded (or the controller
@@ -590,6 +805,9 @@ export class PlaybackController {
         const gen = ++this.seekGeneration;
 
         this.precomp = this.precomper.setScenes(this.precomp, next);
+        // Before the evaluator is told anything, because what it is told is
+        // `this.tracks` — and an unmeasured scene contributes zero to that.
+        this.measureThrough(this.currentFrame);
         this.stateEvaluator.setScenes(next, this.tracks);
         this.assetManager.setPrecomp(this.precomp);
         this.masterClock.setDuration(this.totalDuration);
@@ -597,6 +815,51 @@ export class PlaybackController {
         // Clamp the playhead: the timeline may now be shorter than where it sat.
         const frame = Math.min(this.currentFrame, Math.max(0, this.totalFrames - 1));
         this.lastReplacePaint = this.loadAndRepaint(frame, gen);
+
+        // Everything past the playhead streams in behind the paint, exactly as it
+        // does at mount. Without this a scene added to a running player was never
+        // measured at all: the background pass is started once, in the
+        // constructor, and a reconciled list is not a new controller.
+        this.startBackgroundPrecomp();
+    }
+
+    /**
+     * Measure pending scenes, in order, until `frame` lands inside one that has
+     * actually been measured — or nothing is left to measure.
+     *
+     * **An unmeasured scene does not fail to draw; it draws its neighbour.** It
+     * appears in the timeline as a zero-length placeholder, so its `startFrame`
+     * is also the *next* scene's, and every frame at or past it belongs to that
+     * next scene. Seeking to the scene just added therefore showed the one after
+     * it — and went on doing so until some unrelated edit happened to re-measure
+     * it, which is why adding a node to the new scene "fixed" it.
+     *
+     * Synchronous, and bounded in practice rather than in principle: every scene
+     * before the playhead is already in `Precomp`'s cache (carried across the
+     * reconcile by `precompKey`), so the only real work is the scene the caller
+     * just added. That is the same policy the constructor uses for frame 0 — pay
+     * for the scene about to be painted, stream the rest.
+     */
+    private measureThrough(frame: number): void {
+        if (this.precomp.complete) return;
+        const before = this.precomper.measuredCount;
+        let acc = 0;
+        const next = this.precomper.runUntil((_index, pass) => {
+            acc += pass.frameCount;
+            return acc > frame;
+        });
+        // Nothing was measured, so nothing downstream has moved. Worth the
+        // comparison because this now runs on the seek path: until the
+        // background pass finishes, every frame of a scrub comes through here,
+        // and republishing an unchanged timeline would put a store write and a
+        // render behind each one.
+        if (this.precomper.measuredCount === before) return;
+        // Through `adoptPrecomp` rather than assigned: a longer timeline has to
+        // reach the evaluator's slot ranges, the asset manager's windows and the
+        // clock's duration, and assigning the field alone reached none of them —
+        // so the frame drawn next was measured against boundaries this had just
+        // moved.
+        this.adoptPrecomp(next);
     }
 
     /**
@@ -726,6 +989,28 @@ export class PlaybackController {
         // inside a `Canvas3D` resolves too — it has no box of its own, only a
         // projection into the viewport holding it. See `node-picking3d.ts`.
         return nodeBoxAt(scene.canvas, path);
+    }
+
+    /**
+     * The node's **own** props at a structural path — what it holds right now,
+     * in its own coordinate space — or `null` when the path doesn't resolve.
+     *
+     * Not {@link getNodeBox}, and the difference is the whole point of having
+     * both. A box is folded: every ancestor's transform and the camera are in it,
+     * and it is stated in viewport space. These are the numbers the node itself
+     * carries — the same space {@link setNodeOverride} writes into — so a host
+     * that wants to nudge a node from where the render has it, rather than
+     * restate an absolute position it has to reconstruct, has something to add a
+     * delta to.
+     *
+     * {@link getNodeState} answers the same question by the *engine's* node id,
+     * which a host that keys on structural paths does not have.
+     */
+    getNodePropsAt(path: string): NodeState["properties"] | null {
+        const scene = this.stateEvaluator.currentScene;
+        if (!scene) return null;
+        const node = nodeAt(scene.canvas, path);
+        return node ? node.properties : null;
     }
 
     /**

@@ -79,6 +79,73 @@ function unsampled(scene: Scene): Scene {
     return scene;
 }
 
+/**
+ * The mirror of {@link crossFadeDoc}: the image is there from the start and is
+ * tweened **away** over `[1s, 2s]`.
+ *
+ * The direction endpoint attribution used to miss. Declaring the interval's end
+ * state under its start frame covers an asset that *arrives*; it says nothing
+ * about one that leaves, whose only declaration was at the interval's start —
+ * so its window closed at frame 10 while frames 11 through 19 still painted it.
+ */
+function fadeOutDoc(): AnimationDocument {
+    return {
+        kind: "animation",
+        duration: 3,
+        commands: [
+            {
+                id: "add-rect",
+                type: "add",
+                target: null,
+                at: 0,
+                params: {
+                    node: {
+                        id: "card",
+                        type: "rect",
+                        parent: null,
+                        order: 0,
+                        props: { width: 100, height: 100, fill: Fills.image("pic.png") },
+                    },
+                },
+            },
+            {
+                id: "swap-fill",
+                type: "to",
+                target: "card",
+                at: 1,
+                duration: 1,
+                params: { props: { fill: "#ff0000" } },
+            },
+        ],
+    };
+}
+
+/** A picture that is removed from the scene part-way through, rather than faded. */
+function removedDoc(): AnimationDocument {
+    return {
+        kind: "animation",
+        duration: 3,
+        commands: [
+            {
+                id: "add-rect",
+                type: "add",
+                target: null,
+                at: 0,
+                params: {
+                    node: {
+                        id: "card",
+                        type: "rect",
+                        parent: null,
+                        order: 0,
+                        props: { width: 100, height: 100, fill: Fills.image("pic.png") },
+                    },
+                },
+            },
+            { id: "drop", type: "remove", target: "card", at: 1, params: {} },
+        ],
+    };
+}
+
 describe("Precomp – boundary sampling", () => {
     it("walks a scene's key times rather than its frames", () => {
         const scene = createAnimationScene(crossFadeDoc());
@@ -127,6 +194,30 @@ describe("Precomp – boundary sampling", () => {
             expect(got.startFrame).toBeLessThanOrEqual(want.startFrame);
             expect(got.endFrame).toBeGreaterThanOrEqual(want.endFrame);
         }
+    });
+
+    it("keeps an asset's window open for every frame that still paints it", () => {
+        const sampled = measure(createAnimationScene(fadeOutDoc()));
+        const walked = measure(unsampled(createAnimationScene(fadeOutDoc())));
+        const image = sampled.assetRecords.get("pic.png")!;
+
+        // The walk gives [0, 19] — the last frame before the fill has finished
+        // becoming a colour. Attributing only the end state to both frames gave
+        // [0, 10], and `AssetManager.loadAt` then declined to load the picture
+        // for frames 11 through 19, which is the `AssetNotLoadedError` an image
+        // fill throws as it draws.
+        expect(image.endFrame).toBeGreaterThanOrEqual(walked.assetRecords.get("pic.png")!.endFrame);
+    });
+
+    it("keeps a removed node's asset window open until it actually goes", () => {
+        const sampled = measure(createAnimationScene(removedDoc()));
+        const walked = measure(unsampled(createAnimationScene(removedDoc())));
+        const image = sampled.assetRecords.get("pic.png")!;
+
+        // The starkest form of the same thing: the node exists only over [0, 1s)
+        // and is gone at the interval's end, so the end sample declares nothing
+        // at all and the window collapsed to the single frame [0, 0].
+        expect(image.endFrame).toBeGreaterThanOrEqual(walked.assetRecords.get("pic.png")!.endFrame);
     });
 
     it("narrows a lifespan to the span a node is actually present for", () => {

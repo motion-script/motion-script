@@ -177,6 +177,26 @@ export function nodeBoxAt(root: Node2D, path: string): NodeBox | null {
     return collectBoxes3D(canvas.node, frame, canvas.path).find((box) => box.path === path) ?? null;
 }
 
+/**
+ * The node at a structural path, in either dimension, or `null` when the path
+ * doesn't resolve.
+ *
+ * The resolution half of {@link nodeBoxAt}, split out for callers that want the
+ * node rather than its box — `PlaybackController.getNodePropsAt`, which reads a
+ * node's own props in its own space. Walks {@link Node._allChildren}, so it
+ * accepts the same paths every other structural walk in the engine produces.
+ */
+export function nodeAt(root: Node2D, path: string): Node | null {
+    if (path === "") return root;
+    let node: Node = root;
+    for (const segment of path.split(".")) {
+        const next = node._allChildren[Number(segment)];
+        if (!next) return null;
+        node = next;
+    }
+    return node;
+}
+
 /** The first `count` segments of a split path, rejoined. */
 function prefixPath(segments: readonly string[], count: number): string {
     return segments.slice(0, count).join(".");

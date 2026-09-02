@@ -199,6 +199,25 @@ type Props = {
      * scenes measured so far and will grow â€” re-pull them on every call.
      */
     onPrecompProgress?: (progress: PrecompProgress) => void;
+    /**
+     * Called **synchronously**, on the same task as the draw, each time a frame
+     * has been painted — whether by the clock, a seek, or a scene swap.
+     *
+     * Not {@link onFrameChange}, which reports where the *clock* is. A seek is
+     * asynchronous, so between the two there is a window in which the number has
+     * moved and the canvas has not; a host drawing DOM over the canvas that reads
+     * the tree on its own animation frame lands in that window and measures the
+     * frame still on screen. This fires when the artwork actually changed, and
+     * fires with the frame that is now on it.
+     *
+     * Reach for it to keep an overlay — a selection box, a caret, a handle — in
+     * step with the pixels. Keep the listener cheap and synchronous: it runs on
+     * the render loop, before the browser has had a chance to composite, which is
+     * the whole reason it is worth having.
+     *
+     * Read through a ref, so changing it costs nothing.
+     */
+    onFramePainted?: (frame: number) => void;
 };
 
 /** Imperative API exposed by {@link MotionPlayer} via its `ref`. */
@@ -260,6 +279,16 @@ export interface FrameHandle {
 
     /** On-screen box of one node at the current frame, keyed by {@link TreeState.path}. */
     getNodeBox: (path: string) => NodeBox | null;
+    /**
+     * The node's **own** props at a path — its own coordinate space, which is
+     * also the space {@link setNodeOverride} writes into.
+     *
+     * The counterpart to {@link getNodeBox} for a host that wants to *move* a
+     * node from where the render has it rather than restate an absolute position
+     * of its own: a box is folded through every ancestor and the camera, and is
+     * therefore the wrong thing to add a delta to.
+     */
+    getNodePropsAt: (path: string) => NodeState["properties"] | null;
     /** Every visible node's box, in draw order. */
     getNodeBoxes: () => NodeBox[];
     /**
@@ -328,6 +357,7 @@ export function MotionPlayer({
     onFrameChange,
     onBuildErrors,
     onPrecompProgress,
+    onFramePainted,
 }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { canvasKit, isInitialized, precompCache, precompProfile } = useMotionScript();
@@ -342,6 +372,7 @@ export function MotionPlayer({
     const onFrameChangeRef = useRef(onFrameChange);
     const onBuildErrorsRef = useRef(onBuildErrors);
     const onPrecompProgressRef = useRef(onPrecompProgress);
+    const onFramePaintedRef = useRef(onFramePainted);
     /**
      * The precomp cache is an injected dependency, not an input to the scene
      * graph, so it is read through a ref rather than listed in the mount effect's
@@ -423,6 +454,7 @@ export function MotionPlayer({
         onFrameChangeRef.current = onFrameChange;
         onBuildErrorsRef.current = onBuildErrors;
         onPrecompProgressRef.current = onPrecompProgress;
+        onFramePaintedRef.current = onFramePainted;
         precompCacheRef.current = precompCache;
         precompProfileRef.current = precompProfile;
         renderScaleRef.current = renderScale;
@@ -501,6 +533,13 @@ export function MotionPlayer({
             onBuildErrorsRef.current?.(errors);
         };
 
+        // Through the ref, so a host may hand over a fresh closure per render
+        // without any of this being rebuilt — the same treatment every other
+        // callback here gets.
+        pc.onFramePainted = (frame: number) => {
+            onFramePaintedRef.current?.(frame);
+        };
+
         // Report the frame and nothing else. There used to be a `setC(t)` here —
         // a state write whose value was never read, existing only to force this
         // component to re-render on every tick. Nothing in the render depends on
@@ -522,6 +561,15 @@ export function MotionPlayer({
         // make visible.
         onPrecompProgressRef.current?.(precompProgressOf(pc.precomp));
         onLoadingChangeRef.current?.(true);
+
+        // The list this controller was *constructed* with, so the reconcile effect
+        // below skips the pass that mounts it. It cannot be left to the initial
+        // `useRef(scenes)`: this effect re-runs whenever the manifest, viewport,
+        // fps or theme changes, and on such a commit the ref still names the
+        // previous array — so the reconcile fired `setScenes` on a controller
+        // that had been built from that very list a line earlier, re-measuring a
+        // timeline nothing had changed.
+        scenesRef.current = scenes;
 
         return () => {
             controllerRef.current = null;
@@ -706,6 +754,7 @@ export function MotionPlayer({
                 await controllerRef.current?.whenReplaced();
             },
             getNodeBox: (path: string) => controllerRef.current?.getNodeBox(path) ?? null,
+            getNodePropsAt: (path: string) => controllerRef.current?.getNodePropsAt(path) ?? null,
             getNodeBoxes: () => controllerRef.current?.getNodeBoxes() ?? [],
             projectNode3D: (
                 path: string,
