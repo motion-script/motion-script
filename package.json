@@ -17,7 +17,7 @@
     "e2e:shoot:stable": "pnpm --filter @motion-script/e2e run screenshot -- --variant stable",
     "e2e:compare": "pnpm --filter @motion-script/e2e run compare",
     "e2e:ci": "node scripts/pack-stable.js --no-build && pnpm --filter @motion-script/e2e run test:e2e",
-    "clean": "turbo run clean && rimraf .turbo && rimraf --glob \"packages/**/node_modules/.vite-motion-script\""
+    "clean": "turbo run clean && rimraf .turbo"
   },
   "author": "Motion Script",
   "license": "Apache-2.0",

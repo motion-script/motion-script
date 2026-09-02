@@ -63,7 +63,7 @@ export function cleanPageErrorMessage(err: unknown): string {
  * Translate an error thrown by a page call into an {@link EngineError}.
  *
  * The bridge validates scene names itself and throws `Unknown scene(s): …`
- * (see the vite-plugin's headless bridge). That is caller error, not engine
+ * (see the headless bridge). That is caller error, not engine
  * failure, so it gets its own code — the distinction is exactly what lets a
  * service answer 400 instead of 500.
  */

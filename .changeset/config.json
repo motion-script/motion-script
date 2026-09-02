@@ -13,12 +13,8 @@
       "@motion-script/skia-render",
       "@motion-script/web",
       "@motion-script/react",
-      "@motion-script/player",
-      "@motion-script/vite-plugin",
-      "@motion-script/create",
       "@motion-script/latex",
       "@motion-script/code",
-      "@motion-script/cli",
       "@motion-script/engine",
       "motion-script"
     ]
@@ -29,8 +25,7 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@motion-script/site",
-    "@motion-script/e2e",
-    "@motion-script/template"
+    "@motion-script/e2e"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

@@ -1,9 +1,0 @@
-import { Effects as FX } from "motion-script";
-import { createScene } from "motion-script";
-import { effectDemo } from "../../../shared/effect-demo";
-
-export default createScene(effectDemo({
-        label: 'Chromatic aberration',
-        from: FX.chromaticAberration(0),
-        to: FX.chromaticAberration(8),
-    }));
