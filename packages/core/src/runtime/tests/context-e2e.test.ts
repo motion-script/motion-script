@@ -65,7 +65,7 @@ describe("context — full precomp/evaluator pipeline", () => {
 
     it("a provider added by the generator reaches its descendants", () => {
         const leaf = createRef<Rect>();
-        const scene = chainScene((* (stage) => {
+        const scene = chainScene((stage) => {
             stage.add(
                 new ThemeProvider({
                     theme: { brand: "#abc" },

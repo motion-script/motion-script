@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { Rect } from "@/nodes/geometry/rect-node";
-import { createScene } from "@/nodes/scene/scene-node";
+import { chainScene } from "@/runtime/scene.fixtures";
 import { createRef } from "@/util/reference";
+import type { Random } from "@/util/random";
 import { easeInOut } from "@/tween/ease/constants";
-import { parallel } from "@/tween/parallel";
 import { profilePlayback } from "@/runtime/playback-profile.fixtures";
 
 /**
@@ -29,10 +29,12 @@ import { profilePlayback } from "@/runtime/playback-profile.fixtures";
  */
 
 const HOLD_FRAMES = 120;
+/** Matches `profilePlayback`'s own rate, so a hold in frames converts exactly. */
+const FPS = 60;
 
 /** A scene that builds a tree and then holds it, unchanged, for the duration. */
 function staticScene(count: number) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const random = stage.random("static");
         for (let i = 0; i < count; i++) {
             stage.add(new Rect({
@@ -40,27 +42,28 @@ function staticScene(count: number) {
                 x: random.nextFloat(-900, 900), y: random.nextFloat(-500, 500),
             }));
         }
-        for (let f = 0; f < HOLD_FRAMES; f++) yield;
-    });
+    }, [HOLD_FRAMES / FPS]);
 }
 
 /** The same tree, with every node under a tween. */
 function animatingScene(count: number) {
-    return createScene(function* (stage) {
-        const random = stage.random("moving");
-        const pose = () => ({
-            x: random.nextFloat(-900, 900),
-            y: random.nextFloat(-500, 500),
-            rotation: random.nextFloat(0, 360),
-        });
-        const refs = Array.from({ length: count }, () => createRef<Rect>());
+    const refs = Array.from({ length: count }, () => createRef<Rect>());
+    let random!: Random;
+    const pose = () => ({
+        x: random.nextFloat(-900, 900),
+        y: random.nextFloat(-500, 500),
+        rotation: random.nextFloat(0, 360),
+    });
+    return chainScene((stage) => {
+        random = stage.random("moving");
         for (const ref of refs) {
             stage.add(new Rect({ ref, width: 24, height: 24, cornerRadius: 4, ...pose() }));
         }
-        for (let leg = 0; leg < 4; leg++) {
-            yield* parallel(...refs.map(ref => ref().to(pose(), 0.5, easeInOut("quad"))));
-        }
-    });
+    }, Array.from({ length: 4 }, () =>
+        // One leg: every node tweens at once, so the group ends when the longest
+        // does. What `yield* parallel(...)` meant, and what two document commands
+        // sharing an `at` express.
+        refs.map(ref => () => ref().to(pose(), 0.5, easeInOut("quad")))));
 }
 
 /**
@@ -72,7 +75,7 @@ function animatingScene(count: number) {
  * show it at all: the tracking walk descends into invisible nodes on purpose.
  */
 function halfHiddenScene(count: number) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const random = stage.random("hidden");
         for (let i = 0; i < count; i++) {
             const holder = new Rect({
@@ -85,8 +88,7 @@ function halfHiddenScene(count: number) {
             holder.add(new Rect({ width: 8, height: 8 }));
             stage.add(holder);
         }
-        for (let f = 0; f < HOLD_FRAMES; f++) yield;
-    });
+    }, [HOLD_FRAMES / FPS]);
 }
 
 function report(label: string, profile: ReturnType<typeof profilePlayback>) {

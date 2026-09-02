@@ -109,8 +109,7 @@ describe("Precomp – incremental measurement against real scenes", () => {
     it("a scene that throws is still recorded, and the pass carries on", async () => {
         const scenes: Scene[] = [
             movingBox(100),
-            chainScene((ction* () => { throw new Error("boom");
-            }),
+            chainScene(() => { throw new Error("boom"); }),
             movingBox(150),
         ];
         const result = await precompOf(scenes).runAsync({ budgetMs: 0 });

@@ -24,12 +24,16 @@ import { clamp01 } from "@/util/clamp";
 /**
  * A step in a {@link chainScene}.
  *
- * Either a command to run after the previous one finishes, or a **number of
- * seconds to hold** — the replacement for `for (let i = 0; i < n; i++) yield;`,
- * which was how a generator body waited. A hold occupies its time and writes
- * nothing.
+ * One of three things:
+ *
+ * - a command to run after the previous step finishes;
+ * - a **number of seconds to hold** — the replacement for
+ *   `for (let i = 0; i < n; i++) yield;`, which was how a generator body waited;
+ * - an **array of commands that all start together**, ending when the longest
+ *   does. The replacement for `yield* parallel(...)`, and the same thing two
+ *   document commands sharing an `at` express.
  */
-export type ChainStep = (() => Command<never>) | number;
+export type ChainStep = (() => Command<never>) | number | Array<() => Command<never>>;
 
 /** Every node in `root`'s subtree, root included. */
 function walk(root: Node, out: Node[] = []): Node[] {
@@ -95,10 +99,19 @@ export function chainScene(build: (stage: Stage) => void, steps: ChainStep[] = [
                     total += step;
                     continue;
                 }
-                const command = step();
-                placed.push({ start: total, duration: command.duration, command });
-                total += command.duration;
-                command.at(1);
+                // A group starts every command at the group's own start and ends
+                // when the longest does — each is compiled against the tree as the
+                // *previous group* left it, which is what makes siblings that
+                // animate the same prop independent of each other.
+                const group = Array.isArray(step) ? step : [step];
+                let longest = 0;
+                for (const make of group) {
+                    const command = make();
+                    placed.push({ start: total, duration: command.duration, command });
+                    longest = Math.max(longest, command.duration);
+                    command.at(1);
+                }
+                total += longest;
             }
             restore();
         },

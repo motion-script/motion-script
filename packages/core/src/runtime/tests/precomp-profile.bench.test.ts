@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { Precomp, createPrecompProfile } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { createRef } from "@/util/reference";
-import { createScene } from "@/nodes/scene/scene-node";
-import { parallel } from "@/tween/parallel";
+import { chainScene } from "@/runtime/scene.fixtures";
+import type { Scene } from "@/nodes/scene/scene-node";
+import type { Random } from "@/util/random";
 import { easeInOut } from "@/tween/ease/constants";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "@/runtime/runtime.fixtures";
 
@@ -32,18 +33,19 @@ const VIEWPORT = { width: 1920, height: 1080 };
 const FPS = 60;
 
 function heavyScene(count: number, legs: number, seed: string) {
-    return createScene(function* (stage) {
-        const random = stage.random(seed);
-        const halfW = VIEWPORT.width / 2;
-        const halfH = VIEWPORT.height / 2;
-        const pose = () => ({
-            x: random.nextFloat(-halfW, halfW),
-            y: random.nextFloat(-halfH, halfH),
-            rotation: random.nextFloat(0, 360),
-            scale: random.nextFloat(0.4, 1.6),
-        });
+    const halfW = VIEWPORT.width / 2;
+    const halfH = VIEWPORT.height / 2;
+    const refs = Array.from({ length: count }, () => createRef<Rect>());
+    let random!: Random;
+    const pose = () => ({
+        x: random.nextFloat(-halfW, halfW),
+        y: random.nextFloat(-halfH, halfH),
+        rotation: random.nextFloat(0, 360),
+        scale: random.nextFloat(0.4, 1.6),
+    });
 
-        const refs = Array.from({ length: count }, () => createRef<Rect>());
+    return chainScene((stage) => {
+        random = stage.random(seed);
         for (const ref of refs) {
             const start = pose();
             stage.add(new Rect({
@@ -51,11 +53,9 @@ function heavyScene(count: number, legs: number, seed: string) {
                 x: start.x, y: start.y, rotation: start.rotation, scale: start.scale,
             }));
         }
-
-        for (let i = 0; i < legs; i++) {
-            yield* parallel(...refs.map(ref => ref().to(pose(), 0.5, easeInOut('quad'))));
-        }
-    });
+    }, Array.from({ length: legs }, () =>
+        // One leg: every node tweens at once, ending when the longest does.
+        refs.map(ref => () => ref().to(pose(), 0.5, easeInOut('quad')))));
 }
 
 /**
@@ -73,7 +73,7 @@ const RUNS = 5;
  * the shape where per-frame work is most obviously avoidable.
  */
 function staticScene(count: number, frames: number) {
-    return createScene(function* (stage) {
+    return chainScene((stage) => {
         const random = stage.random("static");
         for (let i = 0; i < count; i++) {
             stage.add(new Rect({
@@ -81,12 +81,11 @@ function staticScene(count: number, frames: number) {
                 x: random.nextFloat(-900, 900), y: random.nextFloat(-500, 500),
             }));
         }
-        for (let f = 0; f < frames; f++) yield;
-    });
+    }, [frames / FPS]);
 }
 
 /** Run one scene through the profiler `RUNS` times and keep the fastest pass. */
-function bestOf(scene: ReturnType<typeof createScene>) {
+function bestOf(scene: Scene) {
     let best: ReturnType<typeof createPrecompProfile>["timings"][number];
     for (let i = 0; i < RUNS; i++) {
         const profile = createPrecompProfile();
