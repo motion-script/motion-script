@@ -20,6 +20,7 @@ import {
     asStorage,
     asRenderContext,
 } from '@/runtime/runtime.fixtures';
+import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -349,6 +350,9 @@ describe('PlaybackController – screenshot & introspection', () => {
  */
 describe('PlaybackController – direct manipulation', () => {
     const FPS = 10;
+// Every FakeScene in this file states its length in frames; this is the rate
+// the runtime under test converts that back from.
+setFakeSceneFps(FPS);
 
     /**
      * `FakeRenderContext` implements only `execute`/`screenshot`, which is enough

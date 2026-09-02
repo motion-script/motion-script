@@ -87,6 +87,19 @@ export interface FakeSceneOptions {
  * records every call. The build() generator yields `yieldCount` times, which the
  * runtime translates into that many frames.
  */
+/**
+ * Rate {@link FakeScene} converts its frame count into a duration with.
+ *
+ * Module scope, and set once at the top of a test file: vitest gives each file
+ * its own module registry, so files cannot see each other's value.
+ */
+let fakeSceneFps = 4;
+
+/** Set the rate {@link FakeScene} instances built after this call will use. */
+export function setFakeSceneFps(fps: number): void {
+    fakeSceneFps = fps;
+}
+
 export class FakeScene {
     id: string;
     name: string;
@@ -114,13 +127,16 @@ export class FakeScene {
     sampleCount = 0;
 
     /**
-     * Frames per second the fake reports its duration against.
+     * Frames per second this fake converts its frame count into seconds with.
      *
      * A real scene declares a duration in *seconds* and the runtime converts;
-     * a fake is written in frames, so it needs the same fps the evaluator was
-     * constructed with to convert back. Tests that use a different rate set it.
+     * a fake is written in frames, so it needs the rate the runtime under test
+     * was constructed with to convert back. Set once per file with
+     * {@link setFakeSceneFps} rather than per instance — every scene in a given
+     * test shares one timeline, so a per-instance rate could only ever disagree
+     * with it.
      */
-    fps = 4;
+    fps = fakeSceneFps;
 
     constructor(opts: FakeSceneOptions = {}) {
         this.id = opts.id ?? "scene";

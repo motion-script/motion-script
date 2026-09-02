@@ -8,16 +8,19 @@ import {
     asScenes,
     asCatalog,
     asRenderContext,
+    setFakeSceneFps,
 } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 100, height: 50 };
 const FPS = 4; // dt = 0.25 → clean global-time arithmetic
+// Every FakeScene in this file states its length in frames; this is the rate
+// the runtime under test converts that back from.
+setFakeSceneFps(FPS);
 const catalog = asCatalog(new FakeAssetCatalog());
 const scope = new FakeMeasurer();
 
 function single(frames = 10) {
     const scene = new FakeScene({ id: 'a', yieldCount: frames });
-    scene.fps = FPS;
     const evaluator = new StateEvaluator(asScenes([scene]), VIEWPORT, FPS, catalog, [frames], scope);
     return { scene, evaluator };
 }
@@ -163,8 +166,6 @@ describe('StateEvaluator – multi-scene timeline', () => {
     function pair() {
         const a = new FakeScene({ id: 'a', yieldCount: 10 });
         const b = new FakeScene({ id: 'b', yieldCount: 5 });
-        a.fps = FPS;
-        b.fps = FPS;
         const evaluator = new StateEvaluator(asScenes([a, b]), VIEWPORT, FPS, catalog, [10, 5], scope);
         return { a, b, evaluator };
     }
@@ -241,7 +242,6 @@ describe('StateEvaluator – multi-scene timeline', () => {
         // it. Evaluate the same scene as the only scene, and as the second of
         // two, and the times it is asked for must match exactly.
         const alone = new FakeScene({ id: 'x', yieldCount: 5 });
-        alone.fps = FPS;
         const aloneEval = new StateEvaluator(
             asScenes([alone]), VIEWPORT, FPS, catalog, [5], scope,
         );
@@ -249,8 +249,6 @@ describe('StateEvaluator – multi-scene timeline', () => {
 
         const lead = new FakeScene({ id: 'lead', yieldCount: 10 });
         const grouped = new FakeScene({ id: 'x', yieldCount: 5 });
-        lead.fps = FPS;
-        grouped.fps = FPS;
         const groupedEval = new StateEvaluator(
             asScenes([lead, grouped]), VIEWPORT, FPS, catalog, [10, 5], scope,
         );

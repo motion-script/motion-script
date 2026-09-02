@@ -17,9 +17,13 @@ import {
     asRenderContext,
     makeAudioRequest,
 } from '@/runtime/runtime.fixtures';
+import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
+// Every FakeScene in this file states its length in frames; this is the rate
+// the runtime under test converts that back from.
+setFakeSceneFps(FPS);
 const scope = new FakeMeasurer();
 
 const flush = () => new Promise((r) => setTimeout(r, 0));

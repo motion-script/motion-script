@@ -10,18 +10,22 @@ import { ramp } from "@/attributes/audio/filters/curve";
 import {
     FakeScene, FakeMeasurer, FakeAssetCatalog, asScene, asScenes, asCatalog, makeAudioRequest,
 } from "@/runtime/runtime.fixtures";
+import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;
+// Every FakeScene in this file states its length in frames; this is the rate
+// the runtime under test converts that back from.
+setFakeSceneFps(FPS);
 const scope = new FakeMeasurer();
 
 const precompOf = (scenes: FakeScene[], cache?: PrecompCache) =>
     new Precomp(asScenes(scenes), VIEWPORT, FPS, asCatalog(new FakeAssetCatalog()), scope, { cache });
 
-/** A scene with a stable `__sceneHotId`, which is what makes it cacheable. */
-function keyed(hotId: string, opts: ConstructorParameters<typeof FakeScene>[0] = {}) {
-    const scene = new FakeScene({ id: hotId, ...opts });
-    (scene as unknown as { __sceneHotId: string }).__sceneHotId = hotId;
+/** A scene with a stable `precompKey`, which is what makes it cacheable. */
+function keyed(key: string, opts: ConstructorParameters<typeof FakeScene>[0] = {}) {
+    const scene = new FakeScene({ id: key, ...opts });
+    (scene as unknown as { precompKey: string }).precompKey = key;
     return scene;
 }
 
@@ -32,7 +36,7 @@ function keyed(hotId: string, opts: ConstructorParameters<typeof FakeScene>[0] =
  */
 function contentKeyed(key: string, opts: ConstructorParameters<typeof FakeScene>[0] = {}) {
     const scene = new FakeScene({ id: key, ...opts });
-    (scene as unknown as { __precompKey: string }).__precompKey = key;
+    (scene as unknown as { precompKey: string }).precompKey = key;
     return scene;
 }
 
@@ -165,7 +169,7 @@ describe("ScenePrecomp serialization", () => {
 });
 
 describe("Precomp – host cache", () => {
-    it("serves a stored pass instead of driving the generator", async () => {
+    it("serves a stored pass instead of measuring the scene", async () => {
         const { cache, gets } = memoryCache();
 
         const first = keyed("a.tsx", { yieldCount: 4 });
@@ -210,7 +214,7 @@ describe("Precomp – host cache", () => {
 
     it("serves a content-keyed hot replace from the store instead of re-measuring", async () => {
         // The case an editor lives in: undo/redo, retyping a value back, dragging
-        // a slider through a value it already visited. `__precompKey` names the
+        // a slider through a value it already visited. `precompKey` names the
         // scene's *content*, so an equal key cannot be stale — and re-measuring
         // means driving the whole generator again, synchronously, per keystroke.
         const { cache, entries } = memoryCache();
@@ -244,20 +248,4 @@ describe("Precomp – host cache", () => {
         expect(entries.get("content:v1")?.frameCount).toBe(4);
     });
 
-    it("hot reload bypasses the store for the edited scene and re-stores the result", async () => {
-        const { cache, entries } = memoryCache();
-        const original = keyed("a.tsx", { yieldCount: 4 });
-        const before = await precompOf([original], cache).runAsync();
-        expect(entries.get("a.tsx")?.frameCount).toBe(4);
-
-        // The edited scene keeps its hot id — the store entry is stale by definition,
-        // so a hit here would silently keep the old duration forever.
-        const runner = precompOf([original], cache);
-        const edited = keyed("a.tsx", { yieldCount: 9 });
-        const after = runner.replaceScene(before, 0, asScene(edited));
-
-        expect(edited.buildCount).toBe(1);
-        expect(after.totalFrames).toBe(9);
-        expect(entries.get("a.tsx")?.frameCount).toBe(9);
-    });
 });

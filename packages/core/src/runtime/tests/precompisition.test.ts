@@ -9,9 +9,14 @@ import {
     asCatalog,
     makeAudioRequest,
 } from '@/runtime/runtime.fixtures';
+import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
 const scope = new FakeMeasurer();
+
+// Every FakeScene here states its length in frames; this is the rate the precomp
+// under test converts that back from. `run` defaults to the same number.
+setFakeSceneFps(10);
 
 function run(scenes: FakeScene[], fps = 10, catalog = new FakeAssetCatalog()) {
     return new Precomp(asScenes(scenes), VIEWPORT, fps, asCatalog(catalog), scope).run();

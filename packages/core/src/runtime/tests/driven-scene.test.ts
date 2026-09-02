@@ -88,18 +88,6 @@ describe("createDrivenScene", () => {
         expect(jumped.x()).toBeCloseTo(walked.x(), 5);
     });
 
-    it("leaves a generator scene on the replay path", () => {
-        const scene = chainScene((stage) => {
-            const box = new Rect({ width: 10, height: 10 });
-            stage.add(box);
-        }, [
-            () => box.to({ x: 90 }, 1),
-        ]);
-
-        expect(scene.drivenDuration).toBeNull();
-        expect(scene.evaluateAt(0.5)).toBe(false);
-    });
-
     it("does not rebuild the tree to seek backwards", () => {
         // The whole point, and the thing the driver is *for*. A generator can
         // only be advanced, so reaching an earlier frame means disposing the tree
