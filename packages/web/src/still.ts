@@ -1,13 +1,13 @@
 import {
     AssetCatalog, ManifestAssetCatalog,
-    createStill,
+    createStillScene,
     Scene,
     setTheme,
     setVariables,
     type AssetManifest,
     type GlobalLayerConfig,
     type Size2D,
-    type StillContent,
+    type StillDocument,
     type Theme,
     type Variables,
 } from "@motion-script/core";
@@ -26,12 +26,9 @@ const DEFAULT_VIEWPORT: Size2D = { width: 1920, height: 1080 };
 
 /**
  * Anything a still can be rendered from: a scene (or several) to sample at a
- * frame, or a {@link StillContent} factory for content with no timeline.
- *
- * A factory rather than a node, because a scene is built more than once per
- * rendered frame and disposes its children between passes — see `createStill`.
+ * frame, or a {@link StillDocument} for content with no timeline.
  */
-export type StillSource = Scene | Scene[] | StillContent;
+export type StillSource = Scene | Scene[] | StillDocument;
 
 /**
  * Which frame to draw, in whatever form is most convenient — a global frame
@@ -98,10 +95,8 @@ export function toFrameSpec(options: RenderStillOptions | undefined, fps: number
 function toScenes(source: StillSource): Scene[] {
     if (source instanceof Scene) return [source];
     if (Array.isArray(source)) return source;
-    // Anything else is a still factory, which `createStill` wraps into a
-    // one-frame scene — and which rejects a bare node, since a scene is built
-    // more than once per frame and disposes its children between passes.
-    return [createStill(source)];
+    // Anything else is a still document, which compiles into a one-frame scene.
+    return [createStillScene(source)];
 }
 
 function mimeOf(format: ScreenshotFormat): string {
@@ -194,9 +189,8 @@ export class StillRenderer {
      * Draw one frame of `source`.
      *
      * `source` may be a `Scene`/`Scene[]` to sample an animation at a frame, or a
-     * `() => node` factory, in which case there is no generator to write and no
-     * frame to choose. It must be a factory and not a node — the scene is rebuilt
-     * on every render and disposes its children between passes.
+     * `StillDocument`, in which case there is no timeline and no frame to
+     * choose.
      */
     async render(source: StillSource, options?: RenderStillOptions): Promise<DrawnFrame> {
         this.assertLive();

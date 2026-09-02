@@ -15,9 +15,7 @@ import {
     asCatalog,
     asStorage,
     asRenderContext,
-    makeAudioRequest,
-} from '@/runtime/runtime.fixtures';
-import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
+    makeAudioRequest, setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;

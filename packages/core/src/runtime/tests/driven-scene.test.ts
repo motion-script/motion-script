@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { chainScene } from "@/runtime/scene.fixtures";
 
 import { createDrivenScene, type SceneDriver } from "@/nodes/scene/scene-node";
 import { Rect } from "@/nodes/geometry/rect-node";

@@ -3,7 +3,6 @@ import { chainScene } from "@/runtime/scene.fixtures";
 import { PlaybackController, ControllerParams } from '@/runtime/playback-controller';
 import { Precomp } from '@/runtime/precompisition';
 import { Rect } from '@/nodes/geometry/rect-node';
-import type { Scene } from '@/nodes/scene/scene-node';
 import { createRef } from '@/util/reference';
 import {
     FakeScene,
@@ -18,9 +17,7 @@ import {
     asScenes,
     asCatalog,
     asStorage,
-    asRenderContext,
-} from '@/runtime/runtime.fixtures';
-import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
+    asRenderContext, setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 

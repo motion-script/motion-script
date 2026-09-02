@@ -8,9 +8,7 @@ import { Precomp, PrecompCache, ScenePrecomp } from "@/runtime/precompisition";
 import { AudioFilters } from "@/attributes/audio/filters/chain";
 import { ramp } from "@/attributes/audio/filters/curve";
 import {
-    FakeScene, FakeMeasurer, FakeAssetCatalog, asScene, asScenes, asCatalog, makeAudioRequest,
-} from "@/runtime/runtime.fixtures";
-import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
+    FakeScene, FakeMeasurer, FakeAssetCatalog, asScene, asScenes, asCatalog, makeAudioRequest, setFakeSceneFps } from "@/runtime/runtime.fixtures";
 
 const VIEWPORT = { width: 200, height: 100 };
 const FPS = 10;

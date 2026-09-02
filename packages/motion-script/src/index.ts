@@ -1,9 +1,17 @@
 // =============================================================
 // Project & Scene
+//
+// A scene is **data**: a still is nodes and props, an animation is a list of
+// commands placed at times. `createStillScene` / `createAnimationScene` compile
+// a document into a `Scene` the runtime renders; `createDrivenScene` is the
+// lower-level seam for a host with a timeline model of its own.
 // =============================================================
 export {
     createProject,
-    createScene,
+    createStillScene,
+    createAnimationScene,
+    createSceneFromDocument,
+    createDrivenScene,
 } from '@motion-script/core';
 export type {
     ProjectConfig,
@@ -12,13 +20,52 @@ export type {
     Typography,
     TypographyPreset,
     Scene,
-    SceneGenerator,
-    // What a scene generator receives: the composition it draws into, the
-    // canvas it draws onto, and a seeded source for anything random.
+    SceneDriver,
+    SceneDocumentOptions,
+    // What a scene's build receives: the composition it draws into, the canvas
+    // it draws onto, and a seeded source for anything random.
     Stage,
     NodeTime,
     AttachScope,
     BoxBounds,
+} from '@motion-script/core';
+
+// =============================================================
+// The scene document
+//
+// The data half of the model. Nodes are code — a class registered under a key,
+// which is also where a custom node joins the system — and everything else is
+// plain JSON: which nodes exist, what props they carry, and what happens to them
+// over time.
+// =============================================================
+export {
+    validateDocument,
+    assertValidDocument,
+    registerNodeType,
+    registerCommandType,
+    registerNodeCommand,
+    resolveNodeType,
+    resolveCommandType,
+    nodeTypeKeys,
+    commandTypeKeys,
+    describeNodeType,
+    instantiate,
+    registerBuiltins,
+    SceneTimeline,
+} from '@motion-script/core';
+export type {
+    SceneDocument,
+    StillDocument,
+    AnimationDocument,
+    NodeSpec,
+    CommandSpec,
+    EaseSpec,
+    ValidationIssue,
+    ValidationResult,
+    NodeConstructor,
+    NodeTypeEntry,
+    CommandFactory,
+    CommandTypeEntry,
 } from '@motion-script/core';
 
 // =============================================================
@@ -515,21 +562,19 @@ export type {
 } from '@motion-script/core';
 
 // =============================================================
-// Animation — Tweening & Sequencing
+// Animation — interpolation
+//
+// There are no `sequence`/`parallel`/`wait` primitives: a command carries its
+// own placement, so sequencing is `at + duration`, running two together is a
+// shared `at`, and a wait is a gap between them.
 // =============================================================
 export {
-    tween,
-    wait,
-    sequence,
-    parallel,
-    fadeIn,
-    fadeOut,
     lerpNumber,
 } from '@motion-script/core';
 export type {
-    FrameGenerator,
     AnimationTarget,
     Steppable,
+    TweenStepper,
     LerpFunction,
     TweenOptions,
 } from '@motion-script/core';
@@ -537,13 +582,14 @@ export type {
 // An animation as a **value** rather than as control flow: a declared duration
 // plus `at(t)`, so a host can ask what it looks like at a time instead of
 // running it to one. Still `yield*`-able, so authoring reads the same — but a
-// scene built only from these can be scrubbed in constant time, which one built
-// from generators cannot. `@command` marks the methods on a node that return one,
-// and is what a host scans for to know a node's animations without running them.
+// scene is scrubbed in constant time rather than replayed. `@command` marks the
+// methods on a node that return one, and is what the command registry — and a
+// host listing what a node can do — reads.
 //
 // One command shape, always: `node.to(a, 1)` is a single command, not a builder
-// you can append to. Sequence two with `sequence(...)`, run them together with
-// `parallel(...)` — the same two combinators everything else composes through.
+// you can append to. Two of them are sequenced by where they sit on the
+// timeline, which is what makes a scene's shape editable rather than implied by
+// the order of calls in a function body.
 export {
     command,
     driveCommand,

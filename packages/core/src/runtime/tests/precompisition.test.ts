@@ -7,9 +7,7 @@ import {
     asScene,
     asScenes,
     asCatalog,
-    makeAudioRequest,
-} from '@/runtime/runtime.fixtures';
-import { setFakeSceneFps } from '@/runtime/runtime.fixtures';
+    makeAudioRequest, setFakeSceneFps } from '@/runtime/runtime.fixtures';
 
 const VIEWPORT = { width: 200, height: 100 };
 const scope = new FakeMeasurer();
