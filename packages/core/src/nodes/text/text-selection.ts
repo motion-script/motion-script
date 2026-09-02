@@ -61,7 +61,7 @@ export interface SelectionOverrides {
  * the node reads when splitting its text into rendered pieces.
  *
  * @example
- * yield* textRef().find("hello").to({ opacity: 0.5, y: -10 }, 1);
+ * textRef().find("hello").to({ opacity: 0.5, y: -10 }, 1);
  */
 export class TextSelection implements AnimationTarget<TextSelectionProps> {
     readonly node: Text;

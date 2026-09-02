@@ -184,6 +184,36 @@ describe('PlaybackController – render paths load before they paint', () => {
 });
 
 describe('PlaybackController – replaceScene (hot reload)', () => {
+    /**
+     * The slot is what a replace addresses, and the slot is not the content.
+     *
+     * A host that edits a scene in place gives it a new `precompKey` *because*
+     * it changed, so keying the match on content can never find the slot to
+     * swap. `Scene.id` is the axis that stays put across the edit.
+     */
+    it('matches the slot by id, not by the content key', () => {
+        const { controller, scene: live } = makeController(10, 10);
+        // The host names the slot from its own model (a row id) and the content
+        // from a hash of that row.
+        (live as unknown as { id: string }).id = 'scene-row-7';
+        (live as unknown as { precompKey: string }).precompKey = 'content:v1';
+
+        // Same slot, different content — the edit every keystroke makes.
+        const edited = new FakeScene({ id: 'root', name: 'renamed by the user', yieldCount: 4 });
+        (edited as unknown as { id: string }).id = 'scene-row-7';
+        (edited as unknown as { precompKey: string }).precompKey = 'content:v2';
+
+        expect(controller.replaceScene(asScene(edited))).toBe(0);
+        expect(controller.tracks).toEqual([4]);
+    });
+
+    it('refuses a scene whose slot is not on the timeline', () => {
+        const { controller } = makeController(10, 10);
+        const stranger = new FakeScene({ id: 'root', name: 'Scene', yieldCount: 4 });
+        (stranger as unknown as { id: string }).id = 'some-other-row';
+        expect(controller.replaceScene(asScene(stranger))).toBe(-1);
+    });
+
     it('loads an asset the edited scene added before it paints', async () => {
         // Initial scene tracks no assets. Hot-reload a scene that now declares a
         // new image; the controller must load it (not just swap the precomp)

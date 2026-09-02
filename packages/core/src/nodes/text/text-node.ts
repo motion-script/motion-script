@@ -181,7 +181,7 @@ export class Text extends ShapeNode<TextProps> {
      * Select an occurrence of `text`. By default the first occurrence; pass
      * `{ index }` to target the nth (0-based).
      *
-     * @example yield* title().find("hello").to({ opacity: 0.5 }, 1);
+     * @example title().find("hello").to({ opacity: 0.5 }, 1);
      */
     find(text: string, opts?: { index?: number }): TextSelection {
         const source = this.text;

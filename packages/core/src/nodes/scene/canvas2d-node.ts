@@ -134,7 +134,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> implements FlowHost {
      * Animate the magnification factor (`zoom`). Values > 1 zoom in; < 1 zoom out.
      *
      * @example
-     * yield* root.zoomTo(2, 0.5, ease.outCubic);
+     * root.zoomTo(2, 0.5, ease.outCubic);
      */
     @command()
     zoomTo(zoom: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {
@@ -146,7 +146,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> implements FlowHost {
      * the centre of the viewport.
      *
      * @example
-     * yield* root.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
+     * root.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
     @command()
     panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {
@@ -157,7 +157,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> implements FlowHost {
      * Animate the view rotation (`heading`) in degrees (clockwise).
      *
      * @example
-     * yield* root.headingTo(45, 0.4);
+     * root.headingTo(45, 0.4);
      */
     @command()
     headingTo(heading: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {

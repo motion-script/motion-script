@@ -59,7 +59,7 @@ export interface NumberProps extends Omit<TextProps, "text"> {
  * @example
  * const price = createRef<NumberNode>();
  * <NumberNode ref={price} value={0} format={'currency'} currencyCode={'USD'} />
- * yield* price().to({ value: 1299.99 }, 1.5);   // counts up to "$1,299.99"
+ * price().to({ value: 1299.99 }, 1.5);   // counts up to "$1,299.99"
  */
 export class NumberNode extends Text {
 

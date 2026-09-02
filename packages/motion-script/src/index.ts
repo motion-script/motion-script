@@ -581,8 +581,8 @@ export type {
 
 // An animation as a **value** rather than as control flow: a declared duration
 // plus `at(t)`, so a host can ask what it looks like at a time instead of
-// running it to one. Still `yield*`-able, so authoring reads the same — but a
-// scene is scrubbed in constant time rather than replayed. `@command` marks the
+// running it to one. That is what lets a host place one on a timeline, and what
+// makes a scene scrub in constant time rather than replay. `@command` marks the
 // methods on a node that return one, and is what the command registry — and a
 // host listing what a node can do — reads.
 //

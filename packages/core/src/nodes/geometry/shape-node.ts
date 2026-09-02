@@ -246,7 +246,7 @@ export abstract class ShapeNode<P extends ShapeProps = ShapeProps> extends Node2
      *
      * The hold is a command of its own that writes nothing, so the pair composes
      * into one seekable value — where the generator version reached the delay by
-     * `yield* wait(...)`, which is only expressible by running it.
+     * a hold, which used to be expressible only by running it.
      */
     private delayed(delay: number | undefined, animation: Command<P>): Command<P> {
         if (!delay) return animation;

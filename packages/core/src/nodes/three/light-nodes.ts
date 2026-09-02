@@ -18,7 +18,7 @@ import type { NodeConfig } from "@/nodes/node/node";
  * and have its `intensity` or `color` tweened:
  *
  *   <DirectionalLight3D ref={key} intensity={2.4} position={[4, 6, 3]} shadow />
- *   yield* key().to({ intensity: 0.2 }, 1);
+ *   key().to({ intensity: 0.2 }, 1);
  *
  * `AmbientLight3D` and `HemisphereLight3D` have no position — they light the
  * whole scene evenly — but are still nodes, so they read the same way in a tree.

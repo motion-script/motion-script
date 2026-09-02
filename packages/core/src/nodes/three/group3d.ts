@@ -15,7 +15,7 @@ export type Group3DProps = Node3DProps;
  *       <Sphere3D radius={0.8} position={[3, 0, 0]} />
  *   </Group3D>
  *
- *   yield* rig().to({ rotation: [0, 360, 0] }, 2);
+ *   rig().to({ rotation: [0, 360, 0] }, 2);
  *
  * `Node3D` already draws nothing by default, so this adds no behaviour — it
  * exists to be named for what it is at the call site.

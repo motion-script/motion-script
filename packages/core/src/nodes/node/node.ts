@@ -108,7 +108,7 @@ export interface NodeProps {
  * **Tweening** — `to(props, duration, ease?)` returns a {@link Command}
  * that animates one or more props to target values over the given duration (in
  * seconds). It is both a {@link Command} (evaluable at a time via `at(t)`) and
- * iterable, so `yield* node.to(...)` works.
+ * iterable, so `node.to(...)` works.
  *
  * Subclasses call {@link initProps} from their own constructor rather than
  * having the base do it: a subclass's field initializers only run *after*
@@ -500,8 +500,8 @@ export abstract class Node<P extends NodeProps = NodeProps> implements SignalHos
      *
      * @example
      * node.save();
-     * yield* node.moveTo(200, 0, 1);
-     * yield* node.restore(1);   // animate back to where it was saved
+     * node.moveTo(200, 0, 1);
+     * node.restore(1);   // animate back to where it was saved
      */
     save(): void {
         saveState(this);

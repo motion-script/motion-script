@@ -288,8 +288,7 @@ export interface Node2DProps extends NodeProps {
  *
  * **Tweening** — `to(props, duration, ease?)` returns a {@link Command}
  * that animates one or more props to target values over the given duration (in
- * seconds). It is both a {@link Command} (evaluable at a time via `at(t)`) and
- * iterable, so `yield* node.to(...)` still works. Numeric props are
+ * seconds). It is evaluable at a time via `at(t)`. Numeric props are
  * interpolated; props that register a custom `tween` fn (via
  * `@property({ tween })`) can animate any value type. The convenience helpers
  * `moveTo`, `moveX`, `moveY`, `fadeTo`, `rotateTo`, and `scaleTo` wrap `to`
@@ -731,10 +730,10 @@ export interface Node2DProps extends NodeProps {
 
     // ---- Motion helpers ---------------------------------------------------
     //
-    // Each returns the `Command` it delegates to rather than wrapping it in a
-    // generator. `yield*` still works — a `Command` is iterable — but a
-    // generator wrapper would discard the thing worth having: a `Command` can
-    // be *evaluated* at a time, and a generator around it can only be advanced.
+    // Each returns the `Command` it delegates to rather than wrapping it in
+    // anything, because the wrapper would discard the thing worth having: a
+    // `Command` can be *evaluated* at a time, and anything that merely advances
+    // can only be run to one.
 
     /**
      * Animate both `x` and `y` to the given position.
@@ -754,8 +753,8 @@ export interface Node2DProps extends NodeProps {
      * `transformOrigin` directly) on whichever step needs to stop overriding.
      *
      * @example
-     * yield* node.moveTo(200, 100, 0.5, ease.outCubic);
-     * yield* node.moveTo({ x: 200, y: 100, pivot: 'topRight' }, 0.5);
+     * node.moveTo(200, 100, 0.5, ease.outCubic);
+     * node.moveTo({ x: 200, y: 100, pivot: 'topRight' }, 0.5);
      */
     moveTo(x: number, y: number, duration: number, ease?: EasingFunction): Command<P>;
     moveTo(props: { x?: number; y?: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;
@@ -781,8 +780,8 @@ export interface Node2DProps extends NodeProps {
      *
      * @param opacity Target opacity in the range `[0, 1]`.
      * @example
-     * yield* node.fadeTo(0, 0.3);   // fade out
-     * yield* node.fadeTo(1, 0.3);   // fade in
+     * node.fadeTo(0, 0.3);   // fade out
+     * node.fadeTo(1, 0.3);   // fade in
      */
     @command()
     fadeTo(opacity: number, duration: number, ease?: EasingFunction): Command<P> {
@@ -803,8 +802,8 @@ export interface Node2DProps extends NodeProps {
      * directly) wherever it should stop applying.
      *
      * @example
-     * yield* node.rotateTo(180, 0.6, ease.inOutQuad);
-     * yield* node.rotateTo({ rotation: 180, pivot: 'topRight' }, 0.6);
+     * node.rotateTo(180, 0.6, ease.inOutQuad);
+     * node.rotateTo({ rotation: 180, pivot: 'topRight' }, 0.6);
      */
     rotateTo(rotation: number, duration: number, ease?: EasingFunction): Command<P>;
     rotateTo(props: { rotation: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;
@@ -834,9 +833,9 @@ export interface Node2DProps extends NodeProps {
      * unstated `rotation` or `scale` itself would be.
      *
      * @example
-     * yield* node.scaleTo(1.5, 0.4);   // grow
-     * yield* node.scaleTo(0,   0.3);   // shrink to nothing
-     * yield* node.scaleTo({ scale: 2, pivot: 'topRight' }, 0.4);
+     * node.scaleTo(1.5, 0.4);   // grow
+     * node.scaleTo(0,   0.3);   // shrink to nothing
+     * node.scaleTo({ scale: 2, pivot: 'topRight' }, 0.4);
      */
     scaleTo(scale: number, duration: number, ease?: EasingFunction): Command<P>;
     scaleTo(props: { scale: number; pivot?: Anchor }, duration: number, ease?: EasingFunction): Command<P>;

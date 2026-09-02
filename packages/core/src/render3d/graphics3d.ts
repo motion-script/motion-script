@@ -250,7 +250,7 @@ type ParamsOf<G> = Omit<G, "type">;
  *   const spin = createSignal(0);
  *   const pos  = createSignal({ x: 0, y: 0, z: 0 }, lerpVector3);
  *   // in the builder: .box({ rotation: [0, spin(), 0], position: pos() })
- *   yield* spin(360, 2, easeInOut());
+ *   spin(360, 2, easeInOut());
  *
  * Note the second argument to `createSignal`. A signal holding a non-number needs
  * an explicit lerp (`lerpVector3`, `lerpEuler3`, `slerpQuaternion`) or it will

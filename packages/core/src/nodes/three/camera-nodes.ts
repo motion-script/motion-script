@@ -15,7 +15,7 @@ import { Node3D, type Node3DProps } from "./node3d";
  *
  *   <Camera3D target={[0, 0.2, 0]} orbit={-18} elevation={12} distance={13} fov={42} />
  *
- *   yield* cam().to({ orbit: 160, elevation: 30 }, 4, easeInOut("quad"));
+ *   cam().to({ orbit: 160, elevation: 30 }, 4, easeInOut("quad"));
  *
  * ── Orbit, not trigonometry ───────────────────────────────────────────────────
  * `target`/`orbit`/`elevation`/`distance` place the camera in polar coordinates

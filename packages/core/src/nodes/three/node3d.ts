@@ -79,7 +79,7 @@ const VECTOR_SUGAR: Readonly<Record<string, readonly [string, string, string]>> 
  *       </Group3D>
  *   </Canvas3D>
  *
- *   yield* rig().to({ rotationY: 360, y: 1 }, 2);
+ *   rig().to({ rotationY: 360, y: 1 }, 2);
  *
  * ── Axes are scalars, and vectors are sugar over them ─────────────────────────
  * `x`, `y`, `z`, `rotationX/Y/Z` and `scaleX/Y/Z` are the real signals, and they

@@ -31,7 +31,7 @@ import { clamp01 } from "@/util/clamp";
  * - a **number of seconds to hold** — the replacement for
  *   `for (let i = 0; i < n; i++) yield;`, which was how a generator body waited;
  * - an **array of commands that all start together**, ending when the longest
- *   does. The replacement for `yield* parallel(...)`, and the same thing two
+ *   does. The replacement for `parallel(...)`, and the same thing two
  *   document commands sharing an `at` express.
  */
 type AnyCommand = Command<any>;
@@ -50,7 +50,7 @@ function walk(root: Node, out: Node[] = []): Node[] {
  * The direct replacement for the generator-era test shape:
  *
  * ```ts
- * // was: createScene(function* (stage) { stage.add(…); yield* ref().to({ x: 100 }, 1); })
+ * // was: createScene(function* (stage) { stage.add(…); ref().to({ x: 100 }, 1); })
  * chainScene(
  *     (stage) => stage.add(new Rect({ ref, width: 10, height: 10 })),
  *     [() => ref().to({ x: 100 }, 1)],

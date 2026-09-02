@@ -82,8 +82,9 @@ export interface EaseSpec {
  * One command, **placed on the timeline**.
  *
  * The placement is the whole idea. A generator expressed sequencing by
- * suspending — `yield* a; yield* b` — which is why order of evaluation was
- * order of execution, and why seeking backwards meant starting over. A command
+ * suspending — running `a` to completion before `b` began — which is why order
+ * of evaluation was order of execution, and why seeking backwards meant
+ * starting over. A command
  * carries its own `at`, so:
  *
  * - **sequence** is `b.at === a.at + a.duration`,

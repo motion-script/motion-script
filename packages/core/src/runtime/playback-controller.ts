@@ -542,9 +542,12 @@ export class PlaybackController {
         const gen = ++this.seekGeneration;
 
         const scenes = this.precomper.sceneList;
-        // Matched by name: a replaced scene is the same slot with new content, and
-        // its content key is by definition different.
-        const index = scenes.findIndex(s => s.name === newScene.name);
+        // Matched on the **slot** id, falling back to the name. A replaced scene
+        // is the same slot holding new content, so the one thing that must not be
+        // matched on is the content — `precompKey` is different by definition
+        // here, which is exactly what makes it useless for finding the slot.
+        const key = slotKeyOf(newScene);
+        const index = scenes.findIndex(s => slotKeyOf(s) === key);
         if (index < 0) return -1;
 
         this.precomp = this.precomper.replaceScene(this.precomp, index, newScene);
@@ -983,4 +986,14 @@ function findNode(root: Node, id: string): Node | null {
     }
 
     return null;
+}
+
+/**
+ * The key a scene's timeline **slot** is identified by.
+ *
+ * `Scene.id` when a host set one, the name otherwise — see `Scene.id` for why
+ * this must never be the content key.
+ */
+function slotKeyOf(scene: Scene): string {
+    return scene.id ?? scene.name;
 }

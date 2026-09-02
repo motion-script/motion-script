@@ -71,7 +71,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * Animate the magnification factor (`zoom`). Values > 1 zoom in; < 1 zoom out.
      *
      * @example
-     * yield* camera.zoomTo(2, 0.5, ease.outCubic);
+     * camera.zoomTo(2, 0.5, ease.outCubic);
      */
     @command()
     zoomTo(zoom: number, duration: number, ease?: EasingFunction): Command<CameraProps> {
@@ -83,7 +83,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * centre of the viewport.
      *
      * @example
-     * yield* camera.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
+     * camera.panTo({ x: 200, y: -100 }, 0.6, ease.inOutQuad);
      */
     @command()
     panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): Command<CameraProps> {
@@ -94,7 +94,7 @@ export class Camera extends ShapeNode<CameraProps> {
      * Animate the view rotation (`heading`) in degrees (clockwise).
      *
      * @example
-     * yield* camera.headingTo(45, 0.4);
+     * camera.headingTo(45, 0.4);
      */
     @command()
     headingTo(heading: number, duration: number, ease?: EasingFunction): Command<CameraProps> {

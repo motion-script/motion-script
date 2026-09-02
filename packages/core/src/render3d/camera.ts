@@ -12,7 +12,7 @@ import { resolveVector3, type Vector3, type Vector3Input } from "./vector3";
  * {@link distance} — is right when the shot is *about* the subject, which is
  * most of the time, and it is the only one of the two that animates cleanly:
  *
- *   yield* cam().to({ orbit: 160, elevation: 30 }, 4);
+ *   cam().to({ orbit: 160, elevation: 30 }, 4);
  *
  * Writing that same move through `position` means composing sines by hand every
  * frame, which is what every scene did before this existed.

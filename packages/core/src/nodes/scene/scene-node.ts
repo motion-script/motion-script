@@ -64,6 +64,25 @@ export class Scene {
     name: string = "Scene";
 
     /**
+     * Stable identity of the timeline **slot** this scene occupies.
+     *
+     * A host that edits a scene in place — an editor, where every keystroke
+     * changes the scene sitting in slot *n* — sets this to whatever names the
+     * slot in its own model (a row id). `PlaybackController.replaceScene` matches
+     * on it to find which slot to swap.
+     *
+     * Deliberately a different axis from {@link precompKey}, and the pair is only
+     * useful because they disagree: a slot id is stable **across** an edit, and a
+     * content key changes **because** of one. Collapsing them into one field
+     * makes hot replacement either never match (keyed on content) or serve the
+     * pre-edit measurement forever (keyed on the slot).
+     *
+     * Falls back to {@link name} when unset, which is what a host with no model
+     * of its own has.
+     */
+    id?: string;
+
+    /**
      * Identity of this scene's *content*, for a host's `PrecompCache`.
      *
      * A host that sets this should derive it from everything the pass depends on
