@@ -1,12 +1,13 @@
 /**
- * A non-generator animation driver. `advance(dt)` moves the animation forward
- * by `dt` seconds and returns `true` once it has completed (and applied its
- * final value). It must be primed at t=0 before the first `advance` so the
- * starting frame is correct — callers apply the initial value via `seek(0)`.
+ * A flat animation driver. `advance(dt)` moves the animation forward by `dt`
+ * seconds and returns `true` once it has completed (and applied its final
+ * value). It must be primed at t=0 before the first `advance` so the starting
+ * frame is correct — callers apply the initial value via `seek(0)`.
  *
- * This is the flat alternative to a {@link FrameGenerator}: {@link parallel}
- * can drive a batch of steppers in one tight loop with zero generator resumes
- * per item, which matters when hundreds of node tweens run simultaneously.
+ * `seek(elapsed)` is the absolute-time half, and is what a {@link Command}'s
+ * `at` is built on: a stepper can be asked for any time, in any order, which is
+ * what lets a timeline evaluate a frame without having played the ones before
+ * it.
  */
 /** @internal */
 export interface TweenStepper {
@@ -24,9 +25,8 @@ export interface TweenStepper {
 }
 
 /**
- * Implemented by objects that can produce a {@link TweenStepper} instead of
- * (or in addition to) a {@link FrameGenerator}. {@link parallel} checks for
- * this interface and prefers the stepper path when available.
+ * Implemented by anything that can produce a {@link TweenStepper} — a
+ * {@link Command}, and anything a host drives directly.
  */
 export interface Steppable {
     /** Return a fresh stepper for a single playthrough of this animation. */

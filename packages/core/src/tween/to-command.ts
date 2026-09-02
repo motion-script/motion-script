@@ -1,6 +1,5 @@
 import { clamp01 } from "@/util/clamp";
 import { EasingFunction } from "@/tween/ease/type";
-import { FrameGenerator } from "@/tween/generator";
 import { Steppable, TweenStepper } from "@/tween/stepper";
 import { Command } from "./command";
 
@@ -21,20 +20,16 @@ export interface AnimationTarget<P> {
  *
  * **Single, not chainable.** `to()` used to return a builder whose own `to()`
  * appended another step and returned `this`, so `node.to(a, 1).to(b, 1)` read as
- * a sequence. It was a second way to spell {@link sequence} that only worked for
- * one node and only for prop tweens — a named command could not join a chain,
- * and a chain could not be composed with anything else. One command shape means
- * `sequence` and `parallel` compose everything uniformly, and a host reading a
- * `Command` off a node knows what it holds.
+ * a sequence. Sequencing is now a property of the timeline — a command carries
+ * its own `at`, so "after this one" is `at + duration` — and one command shape
+ * means a host reading a `Command` off a node knows exactly what it holds.
  *
- * Implements {@link Command} (a host can ask what it looks like at a time),
- * {@link Steppable} (the flat driver `parallel` uses) and `Iterable<void>`
- * (`yield*`).
+ * Implements {@link Command} (a host can ask what it looks like at a time) and
+ * {@link Steppable} (the flat driver).
  *
- * `at` / `_stepper` / `[Symbol.iterator]` each keep their **own** prepared
- * stepper: preparing is what snapshots the tween's `from` (it reads the live
- * target), and a command handed to `parallel` while also being seeked by a
- * driven host must not have the two drivers fight over one mutable stepper.
+ * `at` and `_stepper` each keep their **own** prepared stepper: preparing is
+ * what snapshots the tween's `from` (it reads the live target), so two drivers
+ * must never fight over one mutable stepper.
  */
 class ToCommand<P> implements Command<P>, Steppable {
     private atPrepared: TweenStepper | null = null;
@@ -61,18 +56,6 @@ class ToCommand<P> implements Command<P>, Steppable {
 
     _stepper(): TweenStepper {
         return this.prepare();
-    }
-
-    [Symbol.iterator](): Iterator<void, void, number> {
-        const step = this.prepare();
-        return (function* (): FrameGenerator {
-            step.seek(0);
-            let done = false;
-            while (!done) {
-                const dt = yield;
-                done = step.advance(dt);
-            }
-        })();
     }
 
     private prepare(): TweenStepper {

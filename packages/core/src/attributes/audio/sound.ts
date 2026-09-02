@@ -1,5 +1,3 @@
-import { FrameGenerator } from "@/tween/generator";
-import { wait } from "@/tween/wait";
 import { AssetTracker } from "@/assets/tracker";
 import { AudioRequest } from "@/attributes/audio/request";
 import { AudioFilterItem } from "@/attributes/audio/filters/union";
@@ -44,7 +42,7 @@ export interface ResolvedSoundProps {
  *
  * Wire it up by calling {@link tick} from your node or scene's tick(), then call
  * {@link prepare} from prepare() to register requests with the asset tracker.
- * Use {@link start}/{@link stop} imperatively or {@link play} in a generator.
+ * Use {@link start}/{@link stop}; {@link clipDuration} reports how long it runs.
  */
 export class Sound {
     readonly src: string;
@@ -170,20 +168,20 @@ export class Sound {
     }
 
     /**
-     * Generator form: start, yield for the clip's duration, then stop.
-     * Pass `duration` to override — required for looping clips unless `trimEnd`
-     * is set (the catalog-resolved full length counts as set).
+     * The clip's own length in scene seconds, or `undefined` when it is
+     * unbounded (a loop, or a source whose length nothing has resolved).
+     *
+     * What `play()` used to block for. A timeline places a `play` command at a
+     * time and gives it a duration, so the blocking form has nothing left to do —
+     * but the length itself is still what a host wants when it drops a clip on
+     * the timeline and asks how wide the bar should be.
      */
-    *play(duration?: number): FrameGenerator {
-        this.start();
+    get clipDuration(): number | undefined {
         // The clip's scene-time length is its trimmed source length scaled by the
-        // speed profile (2× speed → blocks for half as long; a curve integrates).
-        const d = duration
-            ?? (this.trimEnd !== Infinity
-                ? this.sceneDurationFor(this.trimEnd - this.trimStart)
-                : undefined);
-        if (d !== undefined && d > 0) yield* wait(d);
-        this.stop();
+        // speed profile (2x speed -> half as long; a curve integrates).
+        return this.trimEnd !== Infinity
+            ? this.sceneDurationFor(this.trimEnd - this.trimStart)
+            : undefined;
     }
 
     /**

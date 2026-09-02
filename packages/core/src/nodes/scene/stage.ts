@@ -5,11 +5,6 @@ import type { Insets } from "@/attributes/layout/insets";
 import type { GapSize } from "@/layout/flex";
 import type { FlowMode } from "@/layout/flow-engine";
 import type { Fill } from "@/attributes/shape/fill/chain";
-import type { FillResolved } from "@/attributes/shape/fill/union";
-import type { EasingFunction } from "@/tween/ease/type";
-import type { TweenOptions } from "@/tween/lerp";
-import type { Command } from "@/tween/command";
-import type { FrameGenerator } from "@/tween/generator";
 import type { Sound, SoundProps } from "@/attributes/audio/sound";
 import type { AssetCatalog } from "@/assets/catalog";
 import type { Random } from "@/util/random";
@@ -18,31 +13,23 @@ import type { Node } from "@/nodes/node/node";
 import type { Canvas2D, Canvas2DProps } from "./canvas2d-node";
 
 /**
- * The object a scene generator is handed — **everything a scene may do, and
+ * The object a scene's driver is handed — **everything a build may do, and
  * nothing else**.
  *
- * ```ts
- * export default createScene(function* (stage) {
- *     stage.set({ fill: 'bg' });
- *     stage.add(<Rect width={200} height={200} fill="royalblue" />);
- *     yield* stage.zoomTo(2, 1);
- * });
- * ```
- *
- * It bundles three things a generator needs and keeps everything else out of
+ * It bundles three things a build needs and keeps everything else out of
  * reach:
  *
  * - **The composition** it is drawing into — `viewport`, `fps`, `variables`.
- * - **The canvas** — `add`/`set`/`to` plus the camera and paint commands, all
- *   acting on the scene's {@link Canvas2D}. `canvas` itself is there for
- *   anything not forwarded.
+ * - **The canvas** — `add`/`set`, acting on the scene's {@link Canvas2D}.
+ *   `canvas` itself is there for anything not forwarded; animating it is a
+ *   command targeting the scene root (`target: null`), not a method here.
  * - **Determinism** — `random(seed)`, a seeded source that is rewound before
- *   every replay, so a scene that scrubs, precomps or hot-reloads draws the
- *   identical sequence each pass.
+ *   every build, so a scene that scrubs or re-measures draws the identical
+ *   sequence each pass.
  *
- * Hand-written rather than derived from the implementing class, so what a scene
- * author can reach is a decision rather than a consequence: adding a public
- * method to {@link CanvasStage} does not silently widen the authoring surface.
+ * Hand-written rather than derived from the implementing class, so what a build
+ * can reach is a decision rather than a consequence: adding a public method to
+ * {@link CanvasStage} does not silently widen the surface.
  */
 export interface Stage {
     // ─── The composition ──────────────────────────────────────────────────────
@@ -125,24 +112,6 @@ export interface Stage {
     /** Set one or more reactive props on the canvas. */
     set(props: { [K in keyof Canvas2DProps]?: Canvas2DProps[K] | (() => Canvas2DProps[K]) }): void;
 
-    /** Animate any canvas props in one call — `yield* stage.to({ zoom: 2, fill: 'red' }, 1)`. */
-    to(props: Partial<Canvas2DProps>, duration: number, easing?: EasingFunction): Command<Canvas2DProps>;
-
-    /** Animate the camera magnification (`zoom`). > 1 zooms in; < 1 zooms out. */
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps>;
-
-    /** Animate the camera focus point (`lookAt`) — the world point at viewport centre. */
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): Command<Canvas2DProps>;
-
-    /** Animate the camera view rotation (`heading`) in degrees. */
-    headingTo(heading: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps>;
-
-    /** Animate the canvas `fill` (the scene-wide background). */
-    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<Canvas2DProps>;
-
-    /** Animate the canvas `overlay` (painted over fill + children, viewport-wide). */
-    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<Canvas2DProps>;
-
     /** The canvas background fill. */
     fill: Fill;
     /** The canvas overlay — painted over the fill *and* the children. */
@@ -165,17 +134,11 @@ export interface Stage {
     // ─── Audio ────────────────────────────────────────────────────────────────
 
     /**
-     * Start a sound on the scene's audio timeline without blocking, and return
-     * the {@link Sound} handle. Pair with {@link stopSound} to end playback.
+     * Start a sound on the scene's audio timeline and return the {@link Sound}
+     * handle. Pair with {@link stopSound} to end playback.
      */
     startSound(src: string | Sound, opts?: Omit<SoundProps, "src">): Sound;
 
     /** Stop a sound started via {@link startSound}. No-op if it isn't playing. */
     stopSound(sound: Sound): void;
-
-    /**
-     * Play a sound on the scene's audio timeline. Blocks for the clip's
-     * duration — `yield* stage.playSound(...)`.
-     */
-    playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator;
 }

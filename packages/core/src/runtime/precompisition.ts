@@ -54,7 +54,7 @@ export interface NodeLifespan {
 }
 
 /**
- * Everything learned from running one scene's generator to completion, in
+ * Everything learned from walking one scene across its declared span, in
  * **scene-local** terms (frame 0 = the scene's first frame).
  *
  * Scenes are independent units — they no longer compose — so each scene's pass
@@ -66,7 +66,7 @@ export interface NodeLifespan {
  */
 export interface ScenePrecomp {
     /**
-     * Whether this scene's generator has actually been driven yet.
+     * Whether this scene has actually been measured yet.
      *
      * `Precomp.runAsync` publishes intermediate results in which scenes it hasn't
      * reached appear as zero-length placeholders, so downstream frame arithmetic
@@ -103,7 +103,7 @@ export interface ScenePrecomp {
 
 /**
  * The distinct pieces of work {@link Precomp.precompSceneSteps}'s per-frame loop
- * performs. Each is a full walk of the scene's node tree (except `generator`,
+ * performs. Each is a full walk of the scene's node tree (except `evaluate`,
  * which is the author's own tween code), so attributing wall-clock to them is
  * what tells you which one to optimize.
  */
@@ -113,11 +113,11 @@ export type PrecompPhase =
     | "prepareRender"
     | "lifespans"
     | "attach"
-    | "generator";
+    | "evaluate";
 
 const PRECOMP_PHASES: readonly PrecompPhase[] = [
     "prepareLayout", "layout", "prepareRender",
-    "lifespans", "attach", "generator",
+    "lifespans", "attach", "evaluate",
 ];
 
 /** Wall-clock breakdown of one scene's build pass, in milliseconds. */
@@ -224,7 +224,7 @@ export interface PrecompResult {
      * (src for images/videos, "Family" for fonts).
      */
     assets: ReadonlyMap<string, AssetTrack>;
-    /** Errors thrown by scene generators during the build pass. */
+    /** Errors thrown while building a scene. */
     buildErrors: BuildError[];
     /**
      * True once every scene has been measured. False for the intermediate
@@ -329,7 +329,7 @@ export const DEFAULT_PRECOMP_BUDGET_MS = 8;
 /**
  * Runs offline build passes over a project's scenes before/while it plays.
  *
- * Each scene is driven through its generator (without rendering) to learn its
+ * Each scene is walked across its declared span (without rendering) to learn its
  * frame count, asset usage, audio, and per-node lifespans — all scene-local.
  * {@link ensureScene} is the unit of work and memoizes, so every entry point
  * below is a different scheduling policy over the same passes:
@@ -347,7 +347,7 @@ export const DEFAULT_PRECOMP_BUDGET_MS = 8;
  * ### The sequential invariant
  *
  * Scenes must be measured **in order, starting from 0**, and a scene must be
- * fully measured before anything else drives its generator. `Precomp` and
+ * fully measured before anything else walks it. `Precomp` and
  * `StateEvaluator` share the same `Scene` instances and {@link precompSceneSteps}
  * calls `scene.reset()`, which would tear down a tree the evaluator is live on.
  * Ordering is what keeps them apart: a frame inside scene *k* is not addressable
@@ -420,9 +420,9 @@ export class Precomp {
     /**
      * Measure scene `index` if it hasn't been already, and return its pass.
      *
-     * The one place a scene's generator is actually driven, and idempotent: a
-     * second call is a cache read. Every other entry point is a policy for
-     * choosing *when* to call this.
+     * The one place a scene is actually measured, and idempotent: a second call
+     * is a cache read. Every other entry point is a policy for choosing *when* to
+     * call this.
      */
     ensureScene(index: number): ScenePrecomp {
         return this.measureScene(index, "any");
@@ -536,12 +536,12 @@ export class Precomp {
                     sceneProfile?.suspend();
                     await yieldToScheduler();
                     // Arbitrary code ran while we were parked — re-validate before
-                    // resuming a generator that mutates a live scene tree.
+                    // resuming a pass that mutates a live scene tree.
                     if (isCancelled?.()) {
                         // Unwind the pass so its `finally` resets the scene rather
                         // than leaving it torn at a partial frame. The value handed
-                        // in becomes the abandoned generator's return value, which
-                        // we discard — this scene stays unmeasured.
+                        // in becomes the abandoned walk's return value, which we
+                        // discard — this scene stays unmeasured.
                         steps.return({ precomp: pendingScenePrecomp() });
                         return this.assemble();
                     }
@@ -640,13 +640,15 @@ export class Precomp {
     }
 
     /**
-     * Drive one scene's generator to completion and collect its scene-local
-     * precomp (frame count, asset usage, audio, lifespans). `startFrame` is left
-     * 0 here and filled in by {@link assembleTimeline}.
+     * Walk one scene across its declared span and collect its scene-local precomp
+     * (frame count, asset usage, audio, lifespans). `startFrame` is left 0 here
+     * and filled in by {@link assembleTimeline}.
      *
      * Written as a generator so the same loop serves both the synchronous and the
      * time-sliced driver — there is exactly one copy of the per-frame semantics,
-     * and they cannot drift apart. It yields at complete frame boundaries only.
+     * and they cannot drift apart. (That generator is an *iteration protocol* for
+     * time-slicing this pass, not an animation: the scene itself is asked for each
+     * frame, never advanced to it.) It yields at complete frame boundaries only.
      * Abandoning it (`.return()`) runs the `finally` that disposes the tracker and
      * resets the scene, so a cancelled pass leaves nothing torn.
      */
@@ -674,8 +676,8 @@ export class Precomp {
 
         scene.reset();
         scene.setViewport(this.viewport);
-        // Attach the fresh canvas so nodes the generator adds below inherit
-        // context and are mounted on insertion.
+        // Attach the fresh canvas so nodes the build adds below inherit context
+        // and are mounted on insertion.
         const scope: AttachScope = { assets: this.assets, context: ContextMap.EMPTY, time: 0 };
         scene.attach(scope);
         globals?.attach(scope);
@@ -687,31 +689,28 @@ export class Precomp {
 
         try {
             try {
-                const generator = stage.build(scene);
+                stage.build(scene);
 
-                // Prime: advance to first yield so frame-0 nodes are registered.
-                generator.next(dt);
-
-                // A driven scene declares how long it runs rather than being run
-                // to find out (see `createDrivenScene`). Its body never yields, so
-                // the loop below would otherwise measure it as a single frame —
-                // and its assets have to be collected across its real span, not
-                // just at frame 0.
-                const drivenFrames = drivenFrameCount(scene, this.fps);
+                // A scene declares how long it runs; nothing has to be run to
+                // find out. That declaration is the whole reason this pass is
+                // bounded — measuring a generator scene meant driving it to
+                // completion, so the cost of *knowing* a scene's length was the
+                // cost of playing it.
+                const totalFrames = sceneFrameCount(scene, this.fps);
 
                 while (true) {
                     // Put the tree into *this* frame's state before anything reads
                     // it. It belongs here rather than at the bottom of the loop:
-                    // building a driven scene compiles every node's chain, and
-                    // compiling walks each step to its end, restoring only the
-                    // node's own props afterwards. Whatever a command wrote to some
-                    // *other* node — a chart arming its markers, a diagram its
-                    // tiles — is still sitting there. So the tree straight out of
-                    // `build` holds the last command's state, not the first's, and
+                    // building compiles every node's command chain, and compiling
+                    // walks each step to its end, restoring only the node's own
+                    // props afterwards. Whatever a command wrote to some *other*
+                    // node — a chart arming its markers, a diagram its tiles — is
+                    // still sitting there. So the tree straight out of `build`
+                    // holds the last command's state, not the first's, and
                     // declaring frame 0 against it collects the wrong frame's
                     // assets. Playback then draws frame 0 and reaches for one
                     // nothing ever declared.
-                    if (drivenFrames !== null) scene.evaluateAt(localFrame * dt);
+                    scene.evaluateAt(localFrame * dt);
 
                     registry.start(localFrame);
 
@@ -765,18 +764,8 @@ export class Precomp {
                     scene.attach(frameScope);
                     globals?.attach(frameScope);
 
-                    profile?.enter("generator");
-                    if (drivenFrames !== null) {
-                        // Evaluating rather than stepping is the only difference;
-                        // everything around it — the two declaration phases,
-                        // layout, the lifespan record — is the same pass a
-                        // generator scene gets. The evaluation itself happens at
-                        // the top of the loop, against the frame being declared.
-                        if (localFrame >= drivenFrames) break;
-                    } else {
-                        const result = generator.next(dt);
-                        if (result.done) break;
-                    }
+                    profile?.enter("evaluate");
+                    if (localFrame >= totalFrames) break;
 
                     // The one suspension point, and only here: the frame above is
                     // complete and the tree is internally consistent, so a
@@ -831,25 +820,19 @@ export class Precomp {
  * The key a scene is stored under in a {@link PrecompCache}, or `undefined` when
  * it has no stable identity and therefore must not be cached.
  *
- * `__precompKey` wins when a host has set one: it identifies the scene's
- * *content*, so equal keys imply equal passes and the store needs no separate
- * validity check. Hosts whose scenes change without changing their slot — an
- * editor, where every keystroke edits the scene sitting in slot *n* — must set
- * it, because `__sceneHotId` below is deliberately stable across exactly those
- * edits and would serve the pre-edit measurement forever.
+ * `Scene.precompKey` identifies the scene's *content*, so equal keys imply
+ * equal passes and the store needs no separate validity check. A host whose
+ * scenes change without changing their slot — an editor, where every keystroke
+ * edits the scene sitting in slot *n* — must set it from a hash of the document
+ * it built the scene from.
  *
- * `__sceneHotId` is the fallback: the scene file's project-relative path,
- * stamped by the vite-plugin's `?scene` transform — the same identity hot
- * reloading matches on, and a sound key for that host because it validates its
- * entries by re-hashing each one's recorded source dependencies.
- *
- * A scene with neither has nothing stable to key on: class names collide and
+ * A scene without one has nothing stable to key on: class names collide and
  * array position changes when a scene is added. Those scenes simply measure
  * every time, which is correct rather than merely safe — a wrong key would serve
  * one scene's timings for another.
  */
 function storeKeyOf(scene: Scene): string | undefined {
-    return scene.__precompKey || scene.__sceneHotId || undefined;
+    return scene.precompKey || undefined;
 }
 
 /**
@@ -859,20 +842,17 @@ function storeKeyOf(scene: Scene): string | undefined {
  * a scene has just been edited, so a key that names the scene's *slot* rather
  * than its content now points at the pre-edit measurement and must be refused.
  *
- * The distinction falls straight out of {@link storeKeyOf}'s two key kinds.
- * `__sceneHotId` is a slot: the vite-plugin stamps the scene file's path, which
- * is deliberately stable across exactly the edits that bring us here, and that
- * host validates its entries separately by re-hashing recorded source deps — so
- * on this path it is refused. `__precompKey` is the content itself, so a changed
- * scene *is* a changed key and a hit can only be the right pass; refusing it
- * throws away the one mechanism built for this case, which for an editor is every
- * keystroke in the inspector.
+ * Both lookups now consult the same content key, because `Scene.precompKey` is
+ * the content itself: a changed scene *is* a changed key, so a hit can only be
+ * the right pass. The distinction is kept because it is a real one — a host that
+ * later adds a slot-shaped key must refuse it here — and because the replace path
+ * documents its own requirement rather than inheriting it silently.
  */
 type StoreLookup = "any" | "content-only";
 
 /** The key that names a scene's content, or nothing if the host didn't set one. */
 function contentKeyOf(scene: Scene): string | undefined {
-    return scene.__precompKey || undefined;
+    return scene.precompKey || undefined;
 }
 
 /** A placeholder for a scene that hasn't been measured yet. See {@link ScenePrecomp.measured}. */
@@ -1049,20 +1029,17 @@ function mergeRecord(out: Map<string, AssetRecord>, key: string, record: AssetRe
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Frames a driven scene runs for, or `null` when the scene is generator-driven
- * and has to be run to find out.
+ * Frames a scene runs for, from the duration it declares.
  *
  * Rounded up, so a duration that does not land on a frame boundary still gets
  * its last, partial frame drawn rather than being truncated away. Floored at one:
- * a zero-duration driven scene is still a scene, and measuring it as no frames
- * would drop it from the timeline entirely.
+ * a zero-duration scene — a still — is still a scene, and measuring it as no
+ * frames would drop it from the timeline entirely. A duration that is not a real
+ * number is treated as a still for the same reason: one frame beats none.
  */
-function drivenFrameCount(scene: Scene, fps: number): number | null {
-    const duration = scene.drivenDuration;
-    // Tested for being a real number rather than for `!== null`: a scene is only
-    // driven if it can say how long for, and anything else — a generator scene's
-    // `null`, a stand-in that never implemented this — belongs on the replay path.
-    if (typeof duration !== "number" || !Number.isFinite(duration)) return null;
+function sceneFrameCount(scene: Scene, fps: number): number {
+    const duration = scene.duration;
+    if (typeof duration !== "number" || !Number.isFinite(duration)) return 1;
     return Math.max(1, Math.ceil(duration * fps));
 }
 

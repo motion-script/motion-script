@@ -1,8 +1,7 @@
 import { Signal } from "@/signals/signal";
 import { EasingFunction } from "@/tween/ease/type";
 import { linear } from "@/tween/ease/constants";
-import { tween as tweenGenerator } from "@/tween/tween";
-import { FrameGenerator } from "@/tween/generator";
+import { driveCommand, type Command } from "@/tween/command";
 
 const DEFAULT_EASE = linear();
 
@@ -15,11 +14,11 @@ type LerpFn<T> = (from: T, to: T, t: number) => T;
 export interface ReactiveSignal<T> {
     (): T;
     (next: T | ((prev: T) => T) | (() => T)): void;
-    (next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): FrameGenerator;
+    (next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): Command<Record<string, never>>;
     get(): T;
     set(next: T | ((prev: T) => T) | (() => T)): void;
     subscribe: Signal<T>["subscribe"];
-    tween(next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): FrameGenerator;
+    tween(next: T, duration: number, easing?: EasingFunction, lerp?: LerpFn<T>): Command<Record<string, never>>;
 }
 
 export type SignalInput<T> = T | ReactiveSignal<T> | (() => T);
@@ -80,18 +79,33 @@ export function createSignal<T>(
 
     signal.subscribe = (fn) => cell.subscribe(fn);
 
-    function* tweenRunner(
+    /**
+     * A {@link Command} rather than a generator: the value at `t` is a function
+     * of `t` alone, so a host can ask what this signal holds at any time instead
+     * of having to run every step before it.
+     *
+     * `from` is snapshotted on first evaluation rather than when the command is
+     * built, so a tween placed later on a timeline still starts from whatever the
+     * signal actually holds by then.
+     */
+    function tweenCommand(
         next: T,
         duration: number,
         easing: (t: number) => number,
         lerpFn: LerpFn<T> | undefined
-    ): Generator<void, void, number | undefined> {
-        const from = signal.get();
-        const gen = tweenGenerator(duration, (t) => {
+    ): Command<Record<string, never>> {
+        let from: T | undefined;
+        let captured = false;
+
+        return driveCommand(duration, (t) => {
+            if (!captured) {
+                from = signal.get();
+                captured = true;
+            }
             const eased = easing(t);
             let v: any;
             if (lerpFn) {
-                v = lerpFn(from, next, eased);
+                v = lerpFn(from as T, next, eased);
             } else if (typeof from === "number" || typeof next === "number") {
                 v = lerpNullable(from as any, next as any, eased);
             } else {
@@ -99,13 +113,6 @@ export function createSignal<T>(
             }
             signal.set(v);
         });
-
-        let res = gen.next();
-        if (res.done) return;
-        while (!res.done) {
-            const dt = yield;
-            res = gen.next(dt as any);
-        }
     }
 
     signal.tween = (
@@ -113,7 +120,7 @@ export function createSignal<T>(
         duration: number,
         easing?: (t: number) => number,
         lerp?: LerpFn<T>
-    ) => tweenRunner(next, duration, easing ?? DEFAULT_EASE, lerp ?? defaultLerp);
+    ) => tweenCommand(next, duration, easing ?? DEFAULT_EASE, lerp ?? defaultLerp);
 
     return signal;
 }

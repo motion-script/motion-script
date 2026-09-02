@@ -7,11 +7,6 @@ import type { Insets } from "@/attributes/layout/insets";
 import type { GapSize } from "@/layout/flex";
 import type { FlowMode } from "@/layout/flow-engine";
 import type { Fill } from "@/attributes/shape/fill/chain";
-import type { FillResolved } from "@/attributes/shape/fill/union";
-import type { EasingFunction } from "@/tween/ease/type";
-import type { TweenOptions } from "@/tween/lerp";
-import type { Command } from "@/tween/command";
-import type { FrameGenerator } from "@/tween/generator";
 import type { Sound, SoundProps } from "@/attributes/audio/sound";
 import type { AssetCatalog } from "@/assets/catalog";
 import type { NodeTime } from "@/nodes/node/node-time";
@@ -21,18 +16,17 @@ import type { Scene } from "./scene-node";
 import type { Stage } from "./stage";
 
 /**
- * The one {@link Stage} implementation — what the runtime hands a scene
- * generator.
+ * The one {@link Stage} implementation — what the runtime hands a scene's
+ * driver.
  *
  * One instance is created per build pass and re-bound to each scene in turn
  * (see {@link build}), so the determinism cache is shared across a pass while
- * the authoring surface always points at whichever scene is currently running.
+ * the surface always points at whichever scene is currently building.
  *
- * The authoring members are thin forwarders onto the bound scene's
- * {@link Canvas2D}. That indirection is the point: the canvas is a node, with a
- * node's whole surface, and a scene author should reach it through a named,
- * deliberately small set of verbs rather than through everything a `Node2D`
- * happens to expose.
+ * The members are thin forwarders onto the bound scene's {@link Canvas2D}. That
+ * indirection is the point: the canvas is a node, with a node's whole surface,
+ * and a build should reach it through a named, deliberately small set of verbs
+ * rather than through everything a `Node2D` happens to expose.
  */
 export class CanvasStage implements Stage {
     /** Canvas dimensions in pixels. */
@@ -52,15 +46,15 @@ export class CanvasStage implements Stage {
     // ─── Scene binding ────────────────────────────────────────────────────────
 
     /**
-     * Bind `scene` and produce its frame generator.
+     * Bind `scene` and build its tree.
      *
      * Binding and building are one call so they cannot drift: a stage whose
-     * bound scene is not the one whose generator is running would forward every
-     * `add`/`set` to the wrong canvas, silently.
+     * bound scene is not the one being built would forward every `add`/`set` to
+     * the wrong canvas, silently.
      */
-    build(scene: Scene): FrameGenerator {
+    build(scene: Scene): void {
         this._scene = scene;
-        return scene.build(this);
+        scene.build(this);
     }
 
     /** Release the bound scene. The runtime does this between passes. @internal */
@@ -71,7 +65,7 @@ export class CanvasStage implements Stage {
     /** The bound scene. Throws outside a build, which is the only place a stage is live. */
     private get scene(): Scene {
         if (!this._scene) {
-            throw new Error("Stage has no bound scene — authoring methods are only available inside a scene generator.");
+            throw new Error("Stage has no bound scene — its members are only available during a build.");
         }
         return this._scene;
     }
@@ -127,30 +121,6 @@ export class CanvasStage implements Stage {
         this.canvas.set(props);
     }
 
-    to(props: Partial<Canvas2DProps>, duration: number, easing?: EasingFunction): Command<Canvas2DProps> {
-        return this.canvas.to(props, duration, easing);
-    }
-
-    zoomTo(zoom: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {
-        return this.canvas.zoomTo(zoom, duration, ease);
-    }
-
-    panTo(lookAt: Vector2, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {
-        return this.canvas.panTo(lookAt, duration, ease);
-    }
-
-    headingTo(heading: number, duration: number, ease?: EasingFunction): Command<Canvas2DProps> {
-        return this.canvas.headingTo(heading, duration, ease);
-    }
-
-    fillTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<Canvas2DProps> {
-        return this.canvas.fillTo(to, duration, options);
-    }
-
-    overlayTo(to: Fill, duration: number, options?: TweenOptions<FillResolved[]>): Command<Canvas2DProps> {
-        return this.canvas.overlayTo(to, duration, options);
-    }
-
     get fill(): Fill { return this.canvas.fill; }
     set fill(value: Fill) { this.canvas.fill = value; }
 
@@ -188,9 +158,5 @@ export class CanvasStage implements Stage {
 
     stopSound(sound: Sound): void {
         this.scene.stopSound(sound);
-    }
-
-    playSound(src: string | Sound, opts?: Omit<SoundProps, "src">): FrameGenerator {
-        return this.scene.playSound(src, opts);
     }
 }

@@ -2,7 +2,7 @@ import { AssetManager } from "../assets/manager";
 import { Measurer2D } from "../render/measurer";
 import { CanvasRenderContext2D } from "../render/canvas-render-context2d";
 import { asTextBlockSource } from "../render/text-layout";
-import { StateEvaluator, SeekCancel, DEFAULT_REPLAY_BUDGET_MS } from "./state-evaluator";
+import { StateEvaluator, SeekCancel } from "./state-evaluator";
 import { NodeState, TreeState, WaveformInfo, nodePath } from "@/project/tree";
 import { AudioRequest } from "@/attributes/audio/request";
 import { StorageAdapter } from "../platform/storage-adapter";
@@ -227,7 +227,7 @@ export class PlaybackController {
         this.audioDevice = params.audioDevice;
         this.fps = params.fps;
         this.viewport = params.viewport;
-        this.replayBudgetMs = params.replayBudgetMs ?? DEFAULT_REPLAY_BUDGET_MS;
+        this.replayBudgetMs = params.replayBudgetMs ?? 0;
         this.precompBudgetMs = params.precompBudgetMs ?? DEFAULT_PRECOMP_BUDGET_MS;
         this.onPrecompProgress = params.onPrecompProgress;
 
@@ -442,7 +442,7 @@ export class PlaybackController {
      */
     private async renderAtAsync(frame: number, isCancelled?: SeekCancel): Promise<boolean> {
         if (this.disposed) return false;
-        const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled, this.replayBudgetMs);
+        const reached = await this.stateEvaluator.stateAtAsync(frame, isCancelled);
         if (!reached || this.disposed || isCancelled?.()) return false;
         this.applyOverrides();
         this.hasPainted = true;
@@ -542,11 +542,9 @@ export class PlaybackController {
         const gen = ++this.seekGeneration;
 
         const scenes = this.precomper.sceneList;
-        // Match by stable hot id first; fall back to scene name (class name).
-        let index = newScene.__sceneHotId
-            ? scenes.findIndex(s => s.__sceneHotId === newScene.__sceneHotId)
-            : -1;
-        if (index < 0) index = scenes.findIndex(s => s.name === newScene.name);
+        // Matched by name: a replaced scene is the same slot with new content, and
+        // its content key is by definition different.
+        const index = scenes.findIndex(s => s.name === newScene.name);
         if (index < 0) return -1;
 
         this.precomp = this.precomper.replaceScene(this.precomp, index, newScene);

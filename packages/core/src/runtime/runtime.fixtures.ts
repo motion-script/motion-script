@@ -63,7 +63,11 @@ export class FakeCanvas extends FakeNode {
 export interface FakeSceneOptions {
     id?: string;
     name?: string;
-    /** Number of times the build generator yields ≈ this scene's frame count. */
+    /**
+     * This scene's frame count. Named for the generator era, when a scene's
+     * length was how many times its body yielded; it is now simply the number of
+     * frames the fake declares, and `duration` is derived from it.
+     */
     yieldCount?: number;
     children?: FakeNode[];
     properties?: Record<string, unknown>;
@@ -100,11 +104,23 @@ export class FakeScene {
     setViewportCalls: unknown[] = [];
     attachCalls: unknown[] = [];
     ellapseCalls: number[] = [];
+    /** Every time `evaluateAt` was asked for, in call order. */
+    evaluateCalls: number[] = [];
+    primeMotionCalls: number[] = [];
     layoutCalls: { rect: unknown }[] = [];
     prepareLayoutCount = 0;
     prepareRenderCount = 0;
     prepareCount = 0;
     sampleCount = 0;
+
+    /**
+     * Frames per second the fake reports its duration against.
+     *
+     * A real scene declares a duration in *seconds* and the runtime converts;
+     * a fake is written in frames, so it needs the same fps the evaluator was
+     * constructed with to convert back. Tests that use a different rate set it.
+     */
+    fps = 4;
 
     constructor(opts: FakeSceneOptions = {}) {
         this.id = opts.id ?? "scene";
@@ -163,12 +179,26 @@ export class FakeScene {
         this.disposeCount++;
     }
 
-    build(): Generator<void, void, number> {
+    build(): void {
         this.buildCount++;
-        const n = this.yieldCount;
-        return (function* () {
-            for (let i = 0; i < n; i++) yield;
-        })();
+    }
+
+    /**
+     * Seconds this scene runs for, derived from its declared frame count.
+     *
+     * `yieldCount` frames at `fps`. The runtime rounds back up with
+     * `ceil(duration * fps)`, so this round-trips exactly.
+     */
+    get duration(): number {
+        return this.yieldCount / this.fps;
+    }
+
+    evaluateAt(seconds: number): void {
+        this.evaluateCalls.push(seconds);
+    }
+
+    primeMotion(at: number): void {
+        this.primeMotionCalls.push(at);
     }
 }
 

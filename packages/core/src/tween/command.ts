@@ -1,24 +1,18 @@
 import { clamp01 } from "@/util/clamp";
 import { EasingFunction } from "./ease/type";
-import { FrameGenerator } from "./generator";
 import { Steppable, TweenStepper } from "./stepper";
 
 /**
- * A named animation that can be **evaluated** at a time as well as **run**.
+ * A named animation, as a **value**.
  *
- * The engine's animations have always been sequential: a `FrameGenerator`
- * receives `dt` and advances, so the only way to know what a scene looks like at
- * frame N is to run it to frame N. That is the right shape for authored code —
- * `yield*` is what makes a scene read like a script — but it makes a whole class
- * of host impossible. Anything driving a timeline from *data* wants to jump: a
- * backward scrub costs a replay from zero, and frames cannot be produced out of
- * order.
+ * {@link at} is a pure function from normalized time to the props the command
+ * writes, so a host can ask what frame N looks like without having run frames
+ * 0..N-1. That is the whole basis of the document model: a scene is a list of
+ * commands placed at times (`document/timeline.ts`), and a frame is those
+ * commands evaluated — in any order, as often as you like.
  *
- * A `Command` is the same animation as a value. {@link at} is a pure function
- * from normalized time to the props it writes, so a host can ask what frame N
- * looks like without having run frames 0..N-1. `_stepper()` and
- * `[Symbol.iterator]()` are derived from it, so the two existing consumers —
- * `parallel`'s flat fast path and plain `yield*` — keep working untouched.
+ * `_stepper()` is derived from `at`, so the flat driver cannot disagree with the
+ * evaluator.
  *
  * Authored as a method on a node, which is what makes it nameable:
  *
@@ -31,8 +25,8 @@ import { Steppable, TweenStepper } from "./stepper";
  *     }
  * }
  *
- * // in a scene, unchanged:
- * yield* chart().draw(2);
+ * // placed on a timeline:
+ * { type: "draw", target: "chart", at: 0, duration: 2, params: {} }
  * ```
  *
  * **`at` is only pure once constructed.** A factory reads the node's *current*
@@ -51,11 +45,9 @@ export interface Command<P = Record<string, unknown>> extends Steppable {
      * applied. Pure, and safe to call in any order.
      */
     at(t: number): Partial<P>;
-    /** Drive it as an ordinary generator, so `yield*` and `sequence` still work. */
-    [Symbol.iterator](): Iterator<void, void, number>;
 }
 
-/** True when `x` is a {@link Command} rather than a bare generator or builder. */
+/** True when `x` is a {@link Command} rather than a plain object. */
 export function isCommand(x: unknown): x is Command {
     return typeof (x as Command)?.at === "function"
         && typeof (x as Command)?.duration === "number";
@@ -181,11 +173,11 @@ export function commandParallel<P>(
 /**
  * Wrap a pure `t → props` function into the full {@link Command} surface.
  *
- * Every command — leaf or composite — is built here, so all of them evaluate,
- * step and iterate the same way, and a composite is driven by *its own* merged
- * value rather than by forwarding to its children's steppers. That matters for
- * seeking: forwarding would leave each child's `elapsed` wherever the last
- * `advance` left it, and a jump backwards would read stale state.
+ * Every command — leaf or composite — is built here, so all of them evaluate and
+ * step the same way, and a composite is driven by *its own* merged value rather
+ * than by forwarding to its children's steppers. That matters for seeking:
+ * forwarding would leave each child's `elapsed` wherever the last `advance` left
+ * it, and a jump backwards would read stale state.
  */
 function fromValue<P>(
     target: CommandTarget<P>,
@@ -214,18 +206,6 @@ function fromValue<P>(
                     return done;
                 },
             };
-        },
-
-        [Symbol.iterator](): Iterator<void, void, number> {
-            const step = this._stepper();
-            return (function* (): FrameGenerator {
-                step.seek(0);
-                let done = false;
-                while (!done) {
-                    const dt = yield;
-                    done = step.advance(dt);
-                }
-            })();
         },
     };
 }
