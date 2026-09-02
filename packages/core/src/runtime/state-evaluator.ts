@@ -449,6 +449,80 @@ export class StateEvaluator {
         }
     }
 
+    /**
+     * Replace the whole scene list, keeping every slot that survives.
+     *
+     * The set-level counterpart to {@link replaceScene}. A host that adds,
+     * removes or reorders a scene used to have only one way to say so: hand over
+     * a new array and let the controller be rebuilt, which threw away the Skia
+     * surface, the audio device and every tree that had not changed — for one
+     * inserted row.
+     *
+     * Survivors are matched by slot key, so a scene that merely moved keeps the
+     * tree it already built and is never re-measured. Only the scenes that are
+     * genuinely **leaving** are disposed, which is the whole reason this cannot
+     * be `dispose()` followed by a rebuild: `dispose()` disposes *every* scene,
+     * so a caller reusing instances across it would be handed dead ones.
+     *
+     * @param next   The new scene list, in timeline order.
+     * @param tracks Per-scene frame counts for `next`, in the same order.
+     */
+    setScenes(next: Scene[], tracks: number[]): void {
+        if (this.disposed) return;
+
+        const survivors = new Map<string, SceneSlot>();
+        for (const slot of this.slots) survivors.set(slotKey(slot.scene), slot);
+
+        const currentKey = this._currentScene ? slotKey(this._currentScene) : null;
+
+        const slots: SceneSlot[] = [];
+        const kept = new Set<SceneSlot>();
+        for (let i = 0; i < next.length; i++) {
+            const scene = next[i];
+            scene.setViewport(this.viewport);
+            const prior = survivors.get(slotKey(scene));
+
+            // The same slot holding the same instance keeps its built tree; a slot
+            // whose *instance* changed is the `replaceScene` case and rebuilds.
+            if (prior && prior.scene === scene) {
+                kept.add(prior);
+                prior.index = i;
+                slots.push(prior);
+                continue;
+            }
+            if (prior) kept.add(prior);
+            slots.push({
+                scene,
+                index: i,
+                startFrame: 0,
+                endFrame: -1,
+                built: false,
+                localFrame: -1,
+            });
+        }
+
+        // Anything the new list does not name is gone for good. Disposing here
+        // rather than in bulk is what lets a survivor keep its tree.
+        for (const slot of this.slots) {
+            if (kept.has(slot)) continue;
+            if (next.indexOf(slot.scene) >= 0) continue;
+            slot.scene.dispose();
+        }
+
+        this.scenes = next;
+        this.slots = slots;
+        this.setTracks(tracks);
+
+        // Keep the playhead on the scene it was on when that scene survived;
+        // otherwise fall back to the first, and force a re-evaluation either way
+        // since the frame the playhead names may now belong to a different slot.
+        const still = currentKey !== null
+            ? slots.find(slot => slotKey(slot.scene) === currentKey)
+            : undefined;
+        this._currentScene = (still ?? slots[0])?.scene;
+        this._currentFrame = -1;
+    }
+
     /** Dispose all scenes and global layer frames. */
     dispose(): void {
         this.disposed = true;
@@ -461,4 +535,16 @@ export class StateEvaluator {
         // controller (StrictMode double-mount, HMR) can adopt them intact.
         this.globals?.dispose();
     }
+}
+
+/**
+ * The key a scene's timeline **slot** is matched on across a set change.
+ *
+ * `Scene.id` when a host set one, the name otherwise — the same rule
+ * `PlaybackController.replaceScene` uses, and for the same reason: the content
+ * key changes *because* a scene was edited, so it can never identify the slot
+ * that holds it.
+ */
+function slotKey(scene: Scene): string {
+    return scene.id ?? scene.name;
 }

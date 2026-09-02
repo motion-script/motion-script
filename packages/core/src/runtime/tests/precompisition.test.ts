@@ -404,3 +404,65 @@ describe('Precomp – replaceScene (hot reload)', () => {
         expect(next.assets.get('b.png')!.record.startFrame).toBe(6);
     });
 });
+
+describe('Precomp – setScenes', () => {
+    function keyed(key: string, frames: number) {
+        const scene = new FakeScene({ id: key, name: key, yieldCount: frames });
+        (scene as unknown as { precompKey: string }).precompKey = key;
+        return scene;
+    }
+
+    /**
+     * The measurement is the expensive half, and a pass is position-independent:
+     * `assembleTimeline` assigns every `startFrame` from a running offset, so an
+     * insert shifts offsets and invalidates nothing.
+     */
+    it('carries a survivor’s pass across an insert without re-measuring', () => {
+        const a = keyed('a', 4);
+        const b = keyed('b', 6);
+        const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+        expect(a.buildCount).toBe(1);
+        expect(b.buildCount).toBe(1);
+
+        const inserted = keyed('mid', 3);
+        const next = precomp.setScenes(first, asScenes([a, inserted, b]));
+
+        // Neither survivor was measured again; only the newcomer is pending.
+        expect(a.buildCount).toBe(1);
+        expect(b.buildCount).toBe(1);
+        expect(next.scenes[0].frameCount).toBe(4);
+        expect(next.scenes[2].frameCount).toBe(6);
+        expect(next.scenes[1].measured).toBe(false);
+        expect(next.complete).toBe(false);
+    });
+
+    it('re-offsets the carried passes rather than re-running them', () => {
+        const a = keyed('a', 4);
+        const b = keyed('b', 6);
+        const precomp = new Precomp(asScenes([a, b]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+        expect(first.scenes.map(s => s.startFrame)).toEqual([0, 4]);
+
+        // Reordered, not edited — the same two passes at swapped offsets.
+        const next = precomp.setScenes(first, asScenes([b, a]));
+        expect(next.scenes.map(s => s.startFrame)).toEqual([0, 6]);
+        expect(next.complete).toBe(true);
+        expect(a.buildCount).toBe(1);
+        expect(b.buildCount).toBe(1);
+    });
+
+    it('measures a newcomer on the next run, in place', () => {
+        const a = keyed('a', 4);
+        const precomp = new Precomp(asScenes([a]), VIEWPORT, 10, asCatalog(new FakeAssetCatalog()), scope);
+        const first = precomp.run();
+
+        const added = keyed('b', 6);
+        precomp.setScenes(first, asScenes([a, added]));
+        const done = precomp.run();
+
+        expect(added.buildCount).toBe(1);
+        expect(done.complete).toBe(true);
+        expect(done.totalFrames).toBe(10);
+    });
+});

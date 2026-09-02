@@ -595,6 +595,65 @@ export class Precomp {
     }
 
     /**
+     * Replace the whole scene list, carrying every measurement that still applies.
+     *
+     * The set-level counterpart to {@link replaceScene}, and the reason adding a
+     * scene need not cost a full re-measure. A pass is carried over when the new
+     * scene is the **same instance** as one already measured, or when it declares
+     * the same `precompKey` — a content key, so equal keys really do imply equal
+     * passes.
+     *
+     * Carrying by content rather than by position is what makes an insert cheap,
+     * and it is sound because a per-scene pass is **position-independent**:
+     * `assembleTimeline` assigns every `startFrame` from a running offset, so
+     * inserting or reordering shifts offsets and invalidates no measurement.
+     *
+     * @param prev The current result, whose passes are reused where they apply.
+     * @param next The new scene list, in timeline order.
+     */
+    setScenes(prev: PrecompResult, next: Scene[]): PrecompResult {
+        // Everything measured so far, indexed both ways a survivor can be named.
+        const byInstance = new Map<Scene, ScenePrecomp>();
+        const byKey = new Map<string, ScenePrecomp>();
+        const errorByInstance = new Map<Scene, BuildError | undefined>();
+        const errorByKey = new Map<string, BuildError | undefined>();
+
+        for (let i = 0; i < this.scenes.length; i++) {
+            const pass = this.cache[i] ?? (prev.scenes[i]?.measured ? prev.scenes[i] : undefined);
+            if (!pass) continue;
+            const scene = this.scenes[i];
+            const error = this.cachedErrors[i] ?? prev.buildErrors.find(e => e.sceneIndex === i);
+            byInstance.set(scene, pass);
+            errorByInstance.set(scene, error);
+            const key = scene.precompKey;
+            if (key && !byKey.has(key)) {
+                byKey.set(key, pass);
+                errorByKey.set(key, error);
+            }
+        }
+
+        this.scenes = next.slice();
+        this.cache.length = 0;
+        this.cachedErrors.length = 0;
+
+        for (let i = 0; i < next.length; i++) {
+            const scene = next[i];
+            const key = scene.precompKey;
+            const carried = byInstance.get(scene) ?? (key ? byKey.get(key) : undefined);
+            this.cache[i] = carried;
+            // A carried error travels with the pass it belongs to, re-stamped for
+            // the slot the scene now sits in — the index is the one thing about a
+            // pass that is positional.
+            const error = byInstance.has(scene)
+                ? errorByInstance.get(scene)
+                : key ? errorByKey.get(key) : undefined;
+            this.cachedErrors[i] = error ? { ...error, sceneIndex: i } : undefined;
+        }
+
+        return this.assemble();
+    }
+
+    /**
      * Assemble the current cache into a result. Scenes not yet measured appear as
      * zero-length placeholders so frame arithmetic stays valid — `measured` is
      * what distinguishes them, and `complete` reports whether any remain.

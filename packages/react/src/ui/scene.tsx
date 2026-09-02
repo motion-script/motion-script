@@ -238,6 +238,17 @@ export interface FrameHandle {
      * {@link whenReplaced} first.
      */
     hotReplaceScene: (scene: Scene) => number;
+    /**
+     * Replace the whole scene list on the running controller.
+     *
+     * What a host calls when the *set* changed rather than one scene's content —
+     * an add, a remove, a reorder. Every scene that survives keeps its built tree
+     * and its measurement, so the cost is the newcomer's alone.
+     *
+     * The declarative `scenes` prop does this too; this is for a caller that has
+     * to know it has happened before it reads the result back.
+     */
+    setScenes: (scenes: Scene[]) => void;
     /** Resolves once the paint the last {@link hotReplaceScene} scheduled has landed. */
     whenReplaced: () => Promise<void>;
 
@@ -349,6 +360,18 @@ export function MotionPlayer({
      * one number. The surface alone is re-created, by the effect further down.
      */
     const renderScaleRef = useRef(renderScale);
+    /**
+     * The scene list, read through a ref for the same reason as the three above —
+     * and this is the one that mattered most.
+     *
+     * `scenes` was in the mount effect's deps, so a host that added, removed or
+     * reordered a single scene handed over a new array and got the whole backend
+     * rebuilt: the Skia surface, the audio device, the clock, the precomp and
+     * every measured scene, for one row. The effect below now reconciles the new
+     * list onto the live controller with `setScenes`, which keeps every scene
+     * that survives — both the tree it built and the pass that measured it.
+     */
+    const scenesRef = useRef(scenes);
     /** The live render context, so the resize effect can reach it after mount. */
     const renderContextRef = useRef<PlayerRenderContext | null>(null);
 
@@ -507,7 +530,28 @@ export function MotionPlayer({
             pc.dispose();
             renderContext.dispose();
         };
-    }, [canvasKit, assets, viewport, fps, scenes, theme, variables, audioTracks, overlays, backgrounds, renderer]);
+        // `scenes` is deliberately absent: it is reconciled onto the live
+        // controller by the effect below rather than rebuilt into a new one. See
+        // {@link scenesRef}.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canvasKit, assets, viewport, fps, theme, variables, audioTracks, overlays, backgrounds, renderer]);
+
+    /**
+     * Reconcile a changed scene list onto the controller already running.
+     *
+     * Skipped on the pass that mounts it, because the controller was constructed
+     * with this very list — calling `setScenes` there would re-measure a timeline
+     * that had just been measured.
+     */
+    useEffect(() => {
+        if (scenesRef.current === scenes) return;
+        scenesRef.current = scenes;
+        const pc = controllerRef.current;
+        if (!pc) return;
+        pc.setScenes(scenes);
+        onBuildErrorsRef.current?.(pc.buildErrors);
+        onPrecompProgressRef.current?.(precompProgressOf(pc.precomp));
+    }, [scenes]);
 
     /**
      * Rebuild the surface when the backing store changes â€” {@link Props.renderScale}
@@ -630,6 +674,14 @@ export function MotionPlayer({
             getSceneDurations: () => controllerRef.current?.tracks.slice() ?? [],
             getGlobalAudio: () => controllerRef.current?.globalAudio ?? [],
             getBuildErrors: () => controllerRef.current?.buildErrors ?? [],
+            setScenes: (next: Scene[]) => {
+                const pc = controllerRef.current;
+                if (!pc) return;
+                scenesRef.current = next;
+                pc.setScenes(next);
+                onBuildErrorsRef.current?.(pc.buildErrors);
+                onPrecompProgressRef.current?.(precompProgressOf(pc.precomp));
+            },
             hotReplaceScene: (scene: Scene) => {
                 const pc = controllerRef.current;
                 if (!pc) return -1;

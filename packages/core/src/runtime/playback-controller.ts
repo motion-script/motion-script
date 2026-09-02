@@ -564,6 +564,42 @@ export class PlaybackController {
     }
 
     /**
+     * Replace the whole scene list without rebuilding the backend.
+     *
+     * What a host reaches for when the *set* of scenes changes — one added,
+     * removed, or reordered. The alternative was handing a fresh array to a
+     * fresh controller, which tore down the Skia surface, the audio device and
+     * the clock, and re-measured every scene, for one inserted row.
+     *
+     * Every scene that survives keeps both halves of what it had: the tree it
+     * built (`StateEvaluator.setScenes`) and the pass that measured it
+     * (`Precomp.setScenes`, carried by `precompKey`). A scene that merely moved
+     * costs nothing at all.
+     *
+     * Scenes not yet measured come back as zero-length placeholders, so the
+     * timeline stays arithmetically valid while the background precomp catches
+     * up — the same shape a progressively-measured project already has.
+     */
+    setScenes(next: Scene[]): void {
+        if (this.disposed) return;
+
+        // Claimed before anything is touched, exactly as in `replaceScene`: an
+        // async seek re-checks its generation the instant it resumes, so bumping
+        // first is what guarantees it unwinds rather than painting into a
+        // timeline that has moved under it.
+        const gen = ++this.seekGeneration;
+
+        this.precomp = this.precomper.setScenes(this.precomp, next);
+        this.stateEvaluator.setScenes(next, this.tracks);
+        this.assetManager.setPrecomp(this.precomp);
+        this.masterClock.setDuration(this.totalDuration);
+
+        // Clamp the playhead: the timeline may now be shorter than where it sat.
+        const frame = Math.min(this.currentFrame, Math.max(0, this.totalFrames - 1));
+        this.lastReplacePaint = this.loadAndRepaint(frame, gen);
+    }
+
+    /**
      * Resolves when the paint {@link replaceScene} scheduled has landed.
      *
      * A caller that swaps a scene in order to *read* the result â€” screenshot it,

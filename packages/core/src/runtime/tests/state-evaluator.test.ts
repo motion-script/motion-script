@@ -339,3 +339,95 @@ describe('StateEvaluator – dispose', () => {
         expect(b.disposeCount).toBe(1);
     });
 });
+
+describe('StateEvaluator – setScenes', () => {
+    function named(id: string, frames: number) {
+        const scene = new FakeScene({ id, name: id, yieldCount: frames });
+        (scene as unknown as { id: string }).id = id;
+        return scene;
+    }
+
+    function evaluatorFor(scenes: FakeScene[]) {
+        return new StateEvaluator(
+            asScenes(scenes), VIEWPORT, FPS, catalog,
+            scenes.map(s => s.yieldCount), scope,
+        );
+    }
+
+    /**
+     * The whole point. Adding a scene used to mean a new controller, which meant
+     * every other scene's tree was thrown away and rebuilt for one inserted row.
+     */
+    it('keeps the tree of every scene that survives', () => {
+        const a = named('a', 10);
+        const b = named('b', 10);
+        const evaluator = evaluatorFor([a, b]);
+
+        evaluator.stateAt(0);
+        evaluator.stateAt(12);
+        expect(a.buildCount).toBe(1);
+        expect(b.buildCount).toBe(1);
+
+        const inserted = named('new', 5);
+        evaluator.setScenes(asScenes([a, inserted, b]), [10, 5, 10]);
+
+        // Neither survivor was rebuilt; only the newcomer builds, and only when
+        // the playhead actually reaches it.
+        evaluator.stateAt(0);
+        evaluator.stateAt(12);
+        expect(a.buildCount).toBe(1);
+        expect(b.buildCount).toBe(1);
+        expect(inserted.buildCount).toBe(1);
+    });
+
+    it('re-lays the timeline so a survivor answers at its new offset', () => {
+        const a = named('a', 10);
+        const b = named('b', 10);
+        const evaluator = evaluatorFor([a, b]);
+        evaluator.stateAt(10); // b's local frame 0
+
+        evaluator.setScenes(asScenes([a, named('mid', 5), b]), [10, 5, 10]);
+        evaluator.stateAt(15); // b has moved five frames later
+        expect(evaluator.currentScene as unknown).toBe(b);
+    });
+
+    /**
+     * The hazard that makes this a targeted update rather than a teardown:
+     * `dispose()` disposes *every* scene, so a caller reusing instances across a
+     * rebuild would be handed dead ones.
+     */
+    it('disposes only the scenes that are leaving', () => {
+        const a = named('a', 10);
+        const b = named('b', 10);
+        const evaluator = evaluatorFor([a, b]);
+        evaluator.stateAt(0);
+
+        evaluator.setScenes(asScenes([a]), [10]);
+        expect(b.disposeCount).toBe(1);
+        expect(a.disposeCount).toBe(0);
+    });
+
+    it('keeps the playhead on its scene when that scene survives', () => {
+        const a = named('a', 10);
+        const b = named('b', 10);
+        const evaluator = evaluatorFor([a, b]);
+        evaluator.stateAt(12);
+        expect(evaluator.currentScene as unknown).toBe(b);
+
+        evaluator.setScenes(asScenes([b, a]), [10, 10]);
+        expect(evaluator.currentScene as unknown).toBe(b);
+    });
+
+    it('survives every scene being replaced at once', () => {
+        const a = named('a', 10);
+        const evaluator = evaluatorFor([a]);
+        evaluator.stateAt(0);
+
+        const fresh = named('z', 4);
+        evaluator.setScenes(asScenes([fresh]), [4]);
+        evaluator.stateAt(0);
+        expect(a.disposeCount).toBe(1);
+        expect(fresh.buildCount).toBe(1);
+        expect(evaluator.currentScene as unknown).toBe(fresh);
+    });
+});
