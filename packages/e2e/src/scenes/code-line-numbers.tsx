@@ -1,9 +1,10 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.showLineNumbers}: a gutter of line numbers appears alongside the snippet. */
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     const code = createRef<Code>();
     stage.add(
@@ -25,8 +26,8 @@ function dist(a: Point, b: Point) {
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.5);
     code().set({ showLineNumbers: true });
-    yield* holdTail(0.5);
-});
+}, [
+    0.5,
+    holdTail(0.5),
+]);

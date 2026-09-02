@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
+import { createRef, Rect, Fills } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Stroke-level `blend`: a thick circle outline's stroke *fill* blends against the card beneath it via `'screen'`, lightening where the stroke overlaps the backdrop. */
-export default createScene(function* (stage) {
+const circle = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: '#0d0f15' });
-    const circle = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={360} height={360} fill={'#1f5f8b'} center={{ x: -60, y: 0 }} />
@@ -18,8 +19,8 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* wait(0.3);
-    yield* circle().strokeTo({ fill: Fills.color('#8b1f5f', { blend: 'screen' }) }, 0.9, {});
-    yield* holdTail(1.2);
-});
+}, [
+    0.3,
+    () => circle().strokeTo({ fill: Fills.color('#8b1f5f', { blend: 'screen' }) }, 0.9, {}),
+    holdTail(1.2),
+]);

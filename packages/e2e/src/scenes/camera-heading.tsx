@@ -1,4 +1,5 @@
-import { createScene, createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,9 @@ import { holdTail } from './_lib';
  * shapes — visibly tilts; the mid frame shows it caught at roughly half the
  * rotation.
  */
-export default createScene(function* (stage) {
+const camera = createRef<Camera>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const camera = createRef<Camera>();
-
     stage.add(
         <Camera
             ref={camera}
@@ -32,8 +32,8 @@ export default createScene(function* (stage) {
             <Rect width={130} height={130} cornerRadius={20} fill={'#F5C26B'} x={150} y={-150} />
         </Camera>,
     );
-
+}, [
     // Rotate the camera view only — zoom and lookAt stay put.
-    yield* camera().to({ heading: 60 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => camera().to({ heading: 60 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

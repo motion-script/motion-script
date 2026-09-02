@@ -1,10 +1,11 @@
-import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
+import { createRef, Ellipse, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Ellipse pie slice: a filled wedge with `sweep` opening from a sliver to a near-full circle. */
-export default createScene(function* (stage) {
+const pie = createRef<Ellipse>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const pie = createRef<Ellipse>();
     stage.add(
         <Ellipse
             ref={pie}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* pie().to({ sweep: 320 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => pie().to({ sweep: 320 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

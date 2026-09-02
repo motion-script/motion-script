@@ -1,10 +1,11 @@
-import { createScene, createRef, Text, easeInOut } from 'motion-script';
+import { createRef, Text, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Text.letterSpacing}: glyphs spread apart from tight (0) to loose (16). */
-export default createScene(function* (stage) {
+const label = createRef<Text>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const label = createRef<Text>();
     stage.add(
         <Text
             ref={label}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* label().to({ letterSpacing: 16 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => label().to({ letterSpacing: 16 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

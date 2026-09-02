@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Fills.conicGradient}: a color wheel sweeping its `startAngle` around the center. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to({ fill: Fills.conicGradient(['#6990dd', '#e8617c', '#f2c94c', '#6990dd'], { startAngle: 360 }) }, 1.6, easeInOut('quad'));
-    yield* holdTail(1.6);
-});
+}, [
+    () => rect().to({ fill: Fills.conicGradient(['#6990dd', '#e8617c', '#f2c94c', '#6990dd'], { startAngle: 360 }) }, 1.6, easeInOut('quad')),
+    holdTail(1.6),
+]);

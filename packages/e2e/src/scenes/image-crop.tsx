@@ -1,4 +1,5 @@
-import { createScene, createRef, Image, easeInOut } from 'motion-script';
+import { createRef, Image, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -8,10 +9,10 @@ import { holdTail } from './_lib';
  * cover scale is recomputed against the cropped window, the picture stays
  * edge-to-edge throughout — a crop composes with `fit` rather than fighting it.
  */
-export default createScene(function* (stage) {
+const photo = createRef<Image>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const photo = createRef<Image>();
     stage.add(
         <Image
             ref={photo}
@@ -23,7 +24,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 3, fill: 'primary' }}
         />,
     );
-
-    yield* photo().to({ crop: 0 }, 1.4, easeInOut('cubic'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => photo().to({ crop: 0 }, 1.4, easeInOut('cubic')),
+    holdTail(1.4),
+]);

@@ -1,4 +1,5 @@
-import { createScene, createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,9 @@ import { holdTail } from './_lib';
  * across the viewport. The mid frame catches the world part-way through the
  * pan, with different shapes framed than at the start.
  */
-export default createScene(function* (stage) {
+const camera = createRef<Camera>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const camera = createRef<Camera>();
-
     stage.add(
         <Camera
             ref={camera}
@@ -32,8 +32,8 @@ export default createScene(function* (stage) {
             <Rect width={150} height={150} cornerRadius={20} fill={'#F5C26B'} x={260} y={-30} />
         </Camera>,
     );
-
+}, [
     // Pan only the lookAt: from the left landmark across to the right one.
-    yield* camera().to({ lookAt: { x: 260, y: 0 } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => camera().to({ lookAt: { x: 260, y: 0 } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

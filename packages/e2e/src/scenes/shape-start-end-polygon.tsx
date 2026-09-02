@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
+import { createRef, Polygon, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Polygon}'s `start`/`end` trim props (0..1) sweeping a stroked hexagon's outline from a single point into a complete loop. */
-export default createScene(function* (stage) {
+const hex = createRef<Polygon>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const hex = createRef<Polygon>();
     stage.add(
         <Polygon
             ref={hex}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* hex().to({ end: 1 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => hex().to({ end: 1 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

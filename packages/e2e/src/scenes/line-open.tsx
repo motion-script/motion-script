@@ -1,10 +1,11 @@
-import { createScene, createRef, Line, easeInOut } from 'motion-script';
+import { createRef, Line, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Open {@link Line}: an unclosed zig-zag polyline, revealed end-to-end via `end`. */
-export default createScene(function* (stage) {
+const zigzag = createRef<Line>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const zigzag = createRef<Line>();
     stage.add(
         <Line
             ref={zigzag}
@@ -23,7 +24,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* zigzag().to({ end: 1 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => zigzag().to({ end: 1 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

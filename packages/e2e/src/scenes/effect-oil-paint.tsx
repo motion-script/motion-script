@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Image, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Image, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.oilPaint}: Kuwahara brushwork — flat strokes, edges intact. */
-export default createScene(function* (stage) {
+const photo = createRef<Image>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const photo = createRef<Image>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={480} height={320} cornerRadius={20} clip={true} flow={'freeform'}>
@@ -13,7 +14,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* photo().to({ effects: Effects.oilPaint(4) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => photo().to({ effects: Effects.oilPaint(4) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

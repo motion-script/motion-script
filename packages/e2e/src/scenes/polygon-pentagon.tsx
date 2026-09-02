@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
+import { createRef, Polygon, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** A regular pentagon (`sides={5}`, the default) spinning into view. */
-export default createScene(function* (stage) {
+const pentagon = createRef<Polygon>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const pentagon = createRef<Polygon>();
     stage.add(
         <Polygon
             ref={pentagon}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* pentagon().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back'));
-    yield* holdTail(1.3);
-});
+}, [
+    () => pentagon().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back')),
+    holdTail(1.3),
+]);

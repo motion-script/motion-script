@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, easeOut } from 'motion-script';
+import { createRef, Rect, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex node rendering a more complex multi-symbol formula (an integral), fading in. */
-export default createScene(function* (stage) {
+const formula = createRef<Latex>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const formula = createRef<Latex>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Latex
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* formula().to({ opacity: 1 }, 0.8, easeOut('quad'));
-    yield* holdTail(0.8);
-});
+}, [
+    () => formula().to({ opacity: 1 }, 0.8, easeOut('quad')),
+    holdTail(0.8),
+]);

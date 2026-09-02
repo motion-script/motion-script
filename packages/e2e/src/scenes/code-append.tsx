@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.append}: a new line is typed onto the end of an existing snippet. */
-export default createScene(function* (stage) {
+const code = createRef<Code>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const code = createRef<Code>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#0f121a'} height={'hug'} width={'hug'} clip={true}>
@@ -22,8 +23,8 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.5);
-    yield* code().append('\ngreet("world");', 0.8);
-    yield* holdTail(1.3);
-});
+}, [
+    0.5,
+    () => code().append('\ngreet("world");', 0.8),
+    holdTail(1.3),
+]);

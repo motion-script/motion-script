@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * its children, but still under the stroke — fading in to reveal the layering
  * order without touching `fill` or the child rects underneath.
  */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -29,7 +30,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().overlayTo(Fills.noise({ color: '#000000', density: 0.6, opacity: 0.5 }), 1.2, { ease: easeInOut('quad') });
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().overlayTo(Fills.noise({ color: '#000000', density: 0.6, opacity: 0.5 }), 1.2, { ease: easeInOut('quad') }),
+    holdTail(1.2),
+]);

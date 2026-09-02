@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * bottom-right corners round, while the other two stay sharp — exercising the
  * `{ topLeft, topRight, bottomLeft, bottomRight }` corner-radius input form.
  */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -20,11 +21,11 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to(
+}, [
+    () => rect().to(
         { cornerRadius: { topLeft: 120, topRight: 0, bottomLeft: 0, bottomRight: 120 } },
         1.3,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.3);
-});
+    ),
+    holdTail(1.3),
+]);

@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Image, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Image, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -9,9 +10,9 @@ import { holdTail } from './_lib';
  */
 const SRC = './kingfisher.jpg';
 
-export default createScene(function* (stage) {
+const photo = createRef<Image>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const photo = createRef<Image>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={480} height={320} cornerRadius={20} clip={true} flow={'freeform'}>
@@ -20,11 +21,11 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* photo().to(
+}, [
+    () => photo().to(
         { effects: Effects.texture({ src: SRC, amount: 0.8, scale: 3, blend: 'overlay' }) },
         1.2,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.2);
-});
+    ),
+    holdTail(1.2),
+]);

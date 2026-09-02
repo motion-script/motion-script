@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** `Effects.grayscale({ amount, mode: 'backdrop' })`: desaturates the content beneath the node, clipped to its silhouette, while the node's own fill/stroke stays untouched. */
-export default createScene(function* (stage) {
+const lens = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const lens = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={16} padding={40} align={{ x: 0, y: 0 }}>
             <Rect width={'fill'} height={'fill'} cornerRadius={12} fill={'#6990dd'} />
@@ -23,7 +24,7 @@ export default createScene(function* (stage) {
             effects={Effects.grayscale({ amount: 0, mode: 'backdrop' })}
         />,
     );
-
-    yield* lens().to({ effects: Effects.grayscale({ amount: 1, mode: 'backdrop' }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => lens().to({ effects: Effects.grayscale({ amount: 1, mode: 'backdrop' }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

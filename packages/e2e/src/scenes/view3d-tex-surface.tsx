@@ -1,7 +1,7 @@
 import {
-    createScene, createSignal, easeInOut, Graphics2D, Tex,
-    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Plane3D,
-} from 'motion-script';
+    createSignal, easeInOut, Graphics2D, Tex,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Plane3D } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -24,10 +24,14 @@ const panel = new Graphics2D()
     .rect({ x: 64, y: 288, width: 384, height: 160 })
     .fill('#e0533d');
 
-export default createScene(function* (stage) {
+const spin = createSignal(-25);
+export default scene((stage) => {
+    // Re-seeded here, not just at construction: these signals outlive a build,
+    // and a scene is built more than once per render. A tween snapshots its
+    // `from` the first time it is evaluated, so without this the second build
+    // would start from where the first one ended and animate nothing.
+    spin.set(-25);
     stage.set({ fill: 'bg' });
-
-    const spin = createSignal(-25);
 
     stage.add(
         <Canvas3D width={480} height={320}>
@@ -41,7 +45,7 @@ export default createScene(function* (stage) {
             />
         </Canvas3D>,
     );
-
-    yield* spin(25, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => spin(25, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

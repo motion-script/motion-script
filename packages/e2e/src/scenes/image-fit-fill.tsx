@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,10 @@ import { holdTail } from './_lib';
  * box from a tall portrait to a wide landscape so the crop visibly slides from
  * showing the bird's full height to cropping top/bottom — the cover behaviour.
  */
-export default createScene(function* (stage) {
+const box = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const box = createRef<Rect>();
     stage.add(
         <Rect
             ref={box}
@@ -21,7 +22,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 3, fill: 'primary' }}
         />,
     );
-
-    yield* box().to({ width: 620, height: 320 }, 1.4, easeInOut('cubic'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => box().to({ width: 620, height: 320 }, 1.4, easeInOut('cubic')),
+    holdTail(1.4),
+]);

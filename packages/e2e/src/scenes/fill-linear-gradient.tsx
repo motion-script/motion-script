@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** A rect with a linear gradient fill, rotating the whole shape to sweep the gradient angle. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to({ rotation: 90 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => rect().to({ rotation: 90 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

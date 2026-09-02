@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Rect.padding} per-side: independent left/right/top/bottom insets animating to very different values, skewing the content box off-center. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect
             ref={card}
@@ -18,7 +19,7 @@ export default createScene(function* (stage) {
             <Rect width={'fill'} height={'fill'} fill={'accent'} cornerRadius={8} />
         </Rect>,
     );
-
-    yield* card().to({ padding: { left: 16, right: 120, top: 100, bottom: 16 } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => card().to({ padding: { left: 16, right: 120, top: 100, bottom: 16 } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

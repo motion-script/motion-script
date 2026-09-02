@@ -1,4 +1,5 @@
-import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
+import { createRef, Polygram, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,9 +8,9 @@ import { holdTail } from './_lib';
  * ratio quickly, so dropping the limit visibly flattens its tips even though
  * `join` stays `'miter'` throughout.
  */
-export default createScene(function* (stage) {
+const star = createRef<Polygram>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const star = createRef<Polygram>();
     stage.add(
         <Polygram
             ref={star}
@@ -22,7 +23,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* star().strokeTo({ weight: 14, fill: 'primary', join: 'miter', miterLimit: 1 }, 1.4, { ease: easeInOut('quad') });
-    yield* holdTail(1.4);
-});
+}, [
+    () => star().strokeTo({ weight: 14, fill: 'primary', join: 'miter', miterLimit: 1 }, 1.4, { ease: easeInOut('quad') }),
+    holdTail(1.4),
+]);

@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -39,22 +40,20 @@ function buildCube(): Float32Array {
 const CUBE = buildCube();
 
 /** {@link Adjustments.lut}: a measured colour cube dialled in from 0 to full. */
-export default createScene(function* (stage) {
-    stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
-
-    const graded = (amount: number) =>
+const rect = createRef<Rect>();
+const graded = (amount: number) =>
         Fills.image('kingfisher.jpg', {
             fit: 'fill',
-            preset: { adjustments: Adjustments.lut({ table: CUBE, size: SIZE, amount }) },
-        });
+            preset: { adjustments: Adjustments.lut({ table: CUBE, size: SIZE, amount }) } });
+export default scene((stage) => {
+    stage.set({ fill: 'bg' });
 
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={rect} width={320} height={320} cornerRadius={24} fill={graded(0)} />
         </Rect>,
     );
-
-    yield* rect().to({ fill: graded(1) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => rect().to({ fill: graded(1) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

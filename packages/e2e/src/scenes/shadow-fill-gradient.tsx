@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** A shadow's `fill` is the same loose {@link Fill} type as a node's `fill` — here a colored gradient instead of a flat black. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -17,11 +18,11 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* card().to(
+}, [
+    () => card().to(
         { shadow: { blur: 30, offset: { x: 0, y: 20 }, fill: Fills.linearGradient(['#f2c94c', '#e8617c']) } },
         1.4,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.4);
-});
+    ),
+    holdTail(1.4),
+]);

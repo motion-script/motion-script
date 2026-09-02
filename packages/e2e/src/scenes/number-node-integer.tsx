@@ -1,10 +1,11 @@
-import { createScene, createRef, NumberNode, easeOut } from 'motion-script';
+import { createRef, NumberNode, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link NumberNode} `format={'number'}` with grouping: a counter ticking up to a large integer. */
-export default createScene(function* (stage) {
+const counter = createRef<NumberNode>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const counter = createRef<NumberNode>();
     stage.add(
         <NumberNode
             ref={counter}
@@ -19,7 +20,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* counter().countTo(48291, 1.5, easeOut('cubic'));
-    yield* holdTail(1.5);
-});
+}, [
+    () => counter().countTo(48291, 1.5, easeOut('cubic')),
+    holdTail(1.5),
+]);

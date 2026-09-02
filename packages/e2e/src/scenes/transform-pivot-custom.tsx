@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, linear } from 'motion-script';
+import { createRef, Rect, linear } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Rect.pivot} set to an arbitrary off-shape point, far outside the card's own bounds: rotation now orbits the card around that distant point instead of swinging in place. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect
             ref={card}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             rotation={0}
         />,
     );
-
-    yield* card().to({ rotation: 360 }, 1.8, linear());
-    yield* holdTail(1.8);
-});
+}, [
+    () => card().to({ rotation: 360 }, 1.8, linear()),
+    holdTail(1.8),
+]);

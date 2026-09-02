@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Adjustments.alpha}: an image fill's opacity filter fading the image out from fully opaque to nearly transparent. */
-export default createScene(function* (stage) {
+const image = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     const card = createRef<Rect>();
-    const image = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -25,7 +26,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* image().to({ fill: Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(0.1) }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => image().to({ fill: Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(0.1) }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

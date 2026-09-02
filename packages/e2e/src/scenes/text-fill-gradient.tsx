@@ -1,10 +1,11 @@
-import { createScene, createRef, Text, Fills, easeInOut } from 'motion-script';
+import { createRef, Text, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Text} `fill` as a linear gradient, sweeping its angle across the glyphs. */
-export default createScene(function* (stage) {
+const label = createRef<Text>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const label = createRef<Text>();
     stage.add(
         <Text
             ref={label}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* label().to({ rotation: 360 }, 1.6, easeInOut('quad'));
-    yield* holdTail(1.6);
-});
+}, [
+    () => label().to({ rotation: 360 }, 1.6, easeInOut('quad')),
+    holdTail(1.6),
+]);

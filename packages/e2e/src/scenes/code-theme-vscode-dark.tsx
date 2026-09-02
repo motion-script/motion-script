@@ -1,12 +1,13 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { lines } from '@motion-script/code';
 import { holdTail } from './_lib';
 
 /** Code node rendered with the vscode-dark theme; highlights a line mid-scene. */
-export default createScene(function* (stage) {
+const code = createRef<Code>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const code = createRef<Code>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#1e1e1e'} height={'hug'} width={'hug'} clip={true}>
@@ -23,8 +24,8 @@ return user?.name ?? "guest";`}
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.4);
-    yield* code().highlight(lines(2), 0.6);
-    yield* holdTail(1.0);
-});
+}, [
+    0.4,
+    () => code().highlight(lines(2), 0.6),
+    holdTail(1.0),
+]);

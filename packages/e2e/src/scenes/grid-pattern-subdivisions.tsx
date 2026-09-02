@@ -1,4 +1,5 @@
-import { createScene, createRef, Camera, GridPattern, Fills, easeInOut } from 'motion-script';
+import { createRef, Camera, GridPattern, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -8,10 +9,10 @@ import { holdTail } from './_lib';
  * catches the minor lines filling in between every major cell line across the
  * whole visible region.
  */
-export default createScene(function* (stage) {
+const grid = createRef<GridPattern>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const grid = createRef<GridPattern>();
     stage.add(
         <Camera width={720} height={460} fill={'card'} cornerRadius={12} stroke={{ weight: 3, fill: '#2c3344' }}>
             <GridPattern
@@ -24,8 +25,8 @@ export default createScene(function* (stage) {
             />
         </Camera>,
     );
-
+}, [
     // Densify the minor lines: each world cell splits into three.
-    yield* grid().to({ subdivisions: 3 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => grid().to({ subdivisions: 3 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

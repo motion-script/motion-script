@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Text, wait } from 'motion-script';
+import { createRef, driveCommand, Rect, Text } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,11 +8,24 @@ import { holdTail } from './_lib';
  * is an instant `set()`; the mid frame lands on one of the centered/justified
  * modes so the alignment difference is visible.
  */
-export default createScene(function* (stage) {
-    stage.set({ fill: 'bg' });
+const para = createRef<Text>();
+const label = createRef<Text>();
 
-    const para = createRef<Text>();
-    const label = createRef<Text>();
+/**
+ * Hold one alignment for `0.4s`.
+ *
+ * A command rather than a `set()` followed by a wait: it writes the same value
+ * for every `t`, so the frame it produces depends only on where the playhead is,
+ * not on having passed through the `set` on the way.
+ */
+const show = (align: 'start' | 'center' | 'end' | 'justify') => () =>
+    driveCommand(0.4, () => {
+        label().set({ text: align });
+        para().set({ textAlign: align });
+    });
+
+export default scene((stage) => {
+    stage.set({ fill: 'bg' });
 
     const text =
         'Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.';
@@ -49,17 +63,10 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    const show = function* (align: 'start' | 'center' | 'end' | 'justify') {
-        label().set({ text: align });
-        para().set({ textAlign: align });
-        yield* wait(0.4);
-    };
-
-    yield* show('start');
-    yield* show('center');
-    yield* show('end');
-    yield* show('justify');
-
-    yield* holdTail(1.6);
-});
+}, [
+    show('start'),
+    show('center'),
+    show('end'),
+    show('justify'),
+    holdTail(1.6),
+]);

@@ -5,25 +5,27 @@
  *   tsx scripts/shoot.ts --variant stable         # render against the packed stable build
  *   tsx scripts/shoot.ts --variant lib --scenes rect-basic,text-basic
  *
- * Drives the project headlessly through @motion-script/cli's HeadlessDriver
- * (one Vite server + one Chromium for the whole run), and for each scene:
+ * Renders **in process** through `@motion-script/engine`: CanvasKit's CPU
+ * rasterizer, no browser, no bundler, no dev server. It used to drive a headless
+ * Chromium through the vite-plugin's `?headless` bridge, which is what made a
+ * full run cost a Vite optimize pass and a page load before it drew anything.
+ *
+ * For each scene it:
  *   1. captures its last frame to learn the scene's total frame count,
  *   2. resolves first / mid / last to concrete frame indices (see lib/frames.ts),
  *   3. writes each as out/<variant>/<id>.<label>.png.
  *
- * The `--variant` selects the *project root* the driver runs against:
+ * The `--variant` selects which build the scenes are rendered against:
  *   - lib    → this package (the live workspace build of @motion-script/*)
  *   - stable → ./stable (a sibling project installed from packed tarballs; see
- *              scripts/pack-stable.ts), exercising the SAME scenes against the
+ *              scripts/pack-stable.js), exercising the SAME scenes against the
  *              snapshotted library so `compare.ts` can diff the two renders.
- *
- * In a headless CI / Docker environment without a usable GPU, set
- * MS_SOFTWARE_RENDER=1 so Chromium falls back to SwiftShader (see @motion-script/engine).
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { HeadlessDriver } from '@motion-script/cli';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { createEngine } from '@motion-script/engine';
+import type { ProjectConfig } from '@motion-script/core';
 import { FRAME_LABELS, resolveFrames } from './lib/frames.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -81,7 +83,7 @@ function readCatalog(): CatalogEntry[] {
     return JSON.parse(fs.readFileSync(file, 'utf8')) as CatalogEntry[];
 }
 
-/** Project root the driver renders against for the given variant. */
+/** Project root the scenes are imported from for the given variant. */
 function projectRootFor(variant: Variant): string {
     if (variant === 'lib') return pkgRoot;
     const stableRoot = path.join(pkgRoot, 'stable');
@@ -94,23 +96,24 @@ function projectRootFor(variant: Variant): string {
     return stableRoot;
 }
 
-/** Start a driver, retrying on a fresh instance if the cold-optimize 504 race trips the ready-wait. */
-async function startWithRetry(projectRoot: string, attempts = 3): Promise<HeadlessDriver> {
-    let lastErr: unknown;
-    for (let i = 1; i <= attempts; i++) {
-        const driver = new HeadlessDriver(projectRoot);
-        try {
-            await driver.start();
-            return driver;
-        } catch (err) {
-            lastErr = err;
-            await driver.close();
-            if (i < attempts) {
-                console.log(`  driver start failed (attempt ${i}/${attempts}), retrying with a warm cache…`);
-            }
-        }
-    }
-    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+/**
+ * Load the variant's project module.
+ *
+ * A dynamic import rather than a static one because the two variants are two
+ * different copies of the library, and only one of them is `this` package —
+ * which is also what lets a single script diff a snapshot against the working
+ * tree.
+ */
+async function loadProject(projectRoot: string): Promise<ProjectConfig> {
+    const entry = path.join(projectRoot, 'src', 'project.ts');
+    const module = await import(pathToFileURL(entry).href) as { default: ProjectConfig };
+    return module.default;
+}
+
+/** Every asset a scene may reference lives under the project's `public/`. */
+function assetsDirFor(projectRoot: string): string | undefined {
+    const dir = path.join(projectRoot, 'public');
+    return fs.existsSync(dir) ? dir : undefined;
 }
 
 async function main(): Promise<void> {
@@ -133,52 +136,64 @@ async function main(): Promise<void> {
         `  project: ${projectRoot}\n  output:  ${path.relative(pkgRoot, outDir)}/`,
     );
 
+    const project = await loadProject(projectRoot);
+    const engine = createEngine({
+        assets: assetsDirFor(projectRoot),
+        viewport: project.viewport,
+        fps: project.fps,
+    });
+
+    // Scenes are addressed by the name the catalog records, which the catalog
+    // module stamps on each instance.
+    const byName = new Map(project.scenes.map(s => [s.name, s]));
+
     const failures: { id: string; error: string }[] = [];
     const started = Date.now();
 
-    // On a cold Vite dep-optimize cache (fresh checkout / Docker), the very first
-    // headless load can race the optimizer and 504 ("Outdated Optimize Dep"),
-    // failing the driver's ready-wait. The optimize cache is warm by the next
-    // attempt, so retry start() on a fresh driver a couple of times before giving
-    // up. (We must use a new driver per attempt — start() isn't re-entrant.)
-    const driver = await startWithRetry(projectRoot);
-
     try {
-
-        // Sanity-check the project's scene list against the catalog so a stale
-        // stable snapshot (missing scenes) fails loudly rather than silently.
-        const available = new Set(await driver.listScenes());
-
         let done = 0;
         for (const entry of selected) {
             done++;
-            if (!available.has(entry.name)) {
+            const scene = byName.get(entry.name);
+            if (!scene) {
                 failures.push({ id: entry.id, error: `scene "${entry.name}" not in project` });
                 console.log(`  [${done}/${selected.length}] ${entry.id} — SKIP (not in project)`);
                 continue;
             }
             try {
-                // First capture (last frame) also tells us the scene's length.
-                const lastShot = await driver.screenshot({
-                    sceneNames: [entry.name],
-                    frame: { kind: 'last' },
+                // Rendering one scene at a time keeps every capture's frame
+                // indices scene-local, so a scene's own length is all that
+                // resolves first/mid/last — the same addressing the harness used
+                // when it drove one scene through the bridge.
+                const source = {
+                    scenes: scene,
+                    viewport: project.viewport,
+                    fps: project.fps,
+                    theme: project.theme,
+                    variables: project.variables,
+                    overlays: project.overlays,
+                    backgrounds: project.backgrounds,
+                };
+
+                // The first capture (last frame) also tells us the scene's length.
+                const lastShot = await engine.renderImage({
+                    ...source,
+                    at: 'last',
                     scale,
                     format: 'png',
                 });
                 const frames = resolveFrames(lastShot.totalFrames);
 
                 for (const label of FRAME_LABELS) {
-                    const shot =
-                        label === 'last'
-                            ? lastShot
-                            : await driver.screenshot({
-                                  sceneNames: [entry.name],
-                                  frame: { kind: 'frame', frame: frames[label] },
-                                  scale,
-                                  format: 'png',
-                              });
-                    const dest = path.join(outDir, `${entry.id}.${label}.png`);
-                    fs.writeFileSync(dest, shot.bytes);
+                    const shot = label === 'last'
+                        ? lastShot
+                        : await engine.renderImage({
+                            ...source,
+                            at: { frame: frames[label] },
+                            scale,
+                            format: 'png',
+                        });
+                    fs.writeFileSync(path.join(outDir, `${entry.id}.${label}.png`), shot.bytes);
                 }
                 console.log(
                     `  [${done}/${selected.length}] ${entry.id} ✓ ` +
@@ -191,33 +206,20 @@ async function main(): Promise<void> {
             }
         }
     } finally {
-        await driver.close();
+        await engine.close();
     }
 
     const elapsed = ((Date.now() - started) / 1000).toFixed(1);
     const ok = selected.length - failures.length;
     console.log(`\nDone: ${ok}/${selected.length} scenes captured in ${elapsed}s.`);
-
-    // Record the run so compare.ts knows which scenes/frames to expect and which
-    // failed to render (a render failure is itself a regression worth surfacing).
-    const manifest = {
-        variant,
-        scale,
-        capturedAt: new Date().toISOString(),
-        frames: FRAME_LABELS,
-        scenes: selected.map(s => ({ id: s.id, section: s.section })),
-        failures,
-    };
-    fs.writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-
     if (failures.length > 0) {
-        console.error(`\n${failures.length} scene(s) failed to render:`);
-        for (const f of failures) console.error(`  - ${f.id}: ${f.error}`);
+        console.log('\nFailures:');
+        for (const f of failures) console.log(`  ${f.id}: ${f.error}`);
         process.exitCode = 1;
     }
 }
 
-main().catch((err: unknown) => {
+main().catch(err => {
     console.error(`\nFatal: ${err instanceof Error ? err.message : String(err)}`);
-    process.exitCode = 1;
+    process.exit(1);
 });

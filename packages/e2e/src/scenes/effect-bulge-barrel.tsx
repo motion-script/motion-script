@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Grid, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Grid, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.bulge} with positive `strength`: a barrel-distortion lens magnifies the center and pins the edges. */
-export default createScene(function* (stage) {
+const card = createRef<Grid>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Grid>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Grid
@@ -36,7 +37,7 @@ export default createScene(function* (stage) {
             </Grid>
         </Rect>,
     );
-
-    yield* card().to({ effects: Effects.bulge(0.9) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: Effects.bulge(0.9) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

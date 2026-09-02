@@ -1,10 +1,11 @@
-import { createScene, createRef, NumberNode, easeOut } from 'motion-script';
+import { createRef, NumberNode, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link NumberNode} `format={'currency'}`: a dollar amount counting up from 0. */
-export default createScene(function* (stage) {
+const amount = createRef<NumberNode>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const amount = createRef<NumberNode>();
     stage.add(
         <NumberNode
             ref={amount}
@@ -19,7 +20,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* amount().countTo(1234.5, 1.5, easeOut('cubic'));
-    yield* holdTail(1.5);
-});
+}, [
+    () => amount().countTo(1234.5, 1.5, easeOut('cubic')),
+    holdTail(1.5),
+]);

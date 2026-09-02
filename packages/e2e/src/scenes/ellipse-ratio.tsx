@@ -1,10 +1,11 @@
-import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
+import { createRef, Ellipse, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Ellipse `ratio` (width-to-height) animating from a tall oval to a wide one. */
-export default createScene(function* (stage) {
+const ellipse = createRef<Ellipse>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const ellipse = createRef<Ellipse>();
     stage.add(
         <Ellipse
             ref={ellipse}
@@ -15,7 +16,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* ellipse().to({ ratio: 2.2 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => ellipse().to({ ratio: 2.2 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

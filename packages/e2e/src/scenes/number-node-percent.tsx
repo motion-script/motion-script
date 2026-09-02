@@ -1,10 +1,11 @@
-import { createScene, createRef, NumberNode, easeOut } from 'motion-script';
+import { createRef, NumberNode, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link NumberNode} `format={'percent'}`: a completion percentage counting up to 87%. */
-export default createScene(function* (stage) {
+const percent = createRef<NumberNode>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const percent = createRef<NumberNode>();
     stage.add(
         <NumberNode
             ref={percent}
@@ -18,7 +19,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* percent().countTo(0.87, 1.5, easeOut('cubic'));
-    yield* holdTail(1.5);
-});
+}, [
+    () => percent().countTo(0.87, 1.5, easeOut('cubic')),
+    holdTail(1.5),
+]);

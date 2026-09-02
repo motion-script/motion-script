@@ -1,4 +1,5 @@
-import { createScene, createRef, LineGrid, Fills, easeInOut } from 'motion-script';
+import { createRef, LineGrid, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,10 @@ import { holdTail } from './_lib';
  * subdivision count animates 1 → 4, so the mid frame catches the minor lines
  * densifying inside each major cell.
  */
-export default createScene(function* (stage) {
+const grid = createRef<LineGrid>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const grid = createRef<LineGrid>();
     stage.add(
         <LineGrid
             ref={grid}
@@ -24,8 +25,8 @@ export default createScene(function* (stage) {
             shadow={{ fill: Fills.color('black', { opacity: 0.5 }), offset: { x: 0, y: 12 }, blur: 28 }}
         />,
     );
-
+}, [
     // Densify the minor lines: each major cell splits into four.
-    yield* grid().to({ subdivisions: 4 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => grid().to({ subdivisions: 4 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

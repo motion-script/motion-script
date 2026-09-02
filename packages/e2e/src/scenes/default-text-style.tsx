@@ -1,8 +1,9 @@
-import { createScene, DefaultTextStyle, Rect, Text, wait } from 'motion-script';
+import { DefaultTextStyle, Rect, Text } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link DefaultTextStyle} setting `fontFamily`/`fill` for every {@link Text} beneath it — descendants that don't set their own font inherit it, while one that overrides `fontFamily` locally keeps its own. */
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     stage.add(
         <DefaultTextStyle fontFamily={'Inter'} fontWeight={700} fill={'#f4f6ff'}>
@@ -13,7 +14,7 @@ export default createScene(function* (stage) {
             </Rect>
         </DefaultTextStyle>,
     );
-
-    yield* wait(1.2);
-    yield* holdTail(1.2);
-});
+}, [
+    1.2,
+    holdTail(1.2),
+]);

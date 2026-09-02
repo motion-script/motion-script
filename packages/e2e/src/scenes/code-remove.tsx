@@ -1,12 +1,13 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { lines } from '@motion-script/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.erase}: a debug line is deleted from the snippet, collapsing the surrounding lines. */
-export default createScene(function* (stage) {
+const code = createRef<Code>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const code = createRef<Code>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#0f121a'} height={'hug'} width={'hug'} clip={true}>
@@ -24,8 +25,8 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.5);
-    yield* code().erase(lines(2), 0.7);
-    yield* holdTail(1.2);
-});
+}, [
+    0.5,
+    () => code().erase(lines(2), 0.7),
+    holdTail(1.2),
+]);

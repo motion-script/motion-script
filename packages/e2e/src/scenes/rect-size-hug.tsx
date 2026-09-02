@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * the card's own size tracks its content, so growing the inner child also
  * grows the surrounding card with no explicit size set on the card itself.
  */
-export default createScene(function* (stage) {
+const content = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const content = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect flow={'vertical'} fill={'card'} cornerRadius={16} padding={24}>
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* content().to({ width: 360, height: 280 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => content().to({ width: 360, height: 280 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

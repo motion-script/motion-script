@@ -1,10 +1,9 @@
 import {
-    SceneGenerator,
-    FrameGenerator,
     Rect,
+    Scene,
     Text,
-    wait,
 } from 'motion-script';
+import { scene } from './_chain';
 
 /**
  * Every e2e scene runs for the same fixed wall-clock duration so the screenshot
@@ -17,10 +16,14 @@ import {
  */
 export const SCENE_SECONDS = 2;
 
-/** Pad the tail of a scene so its total runtime is exactly {@link SCENE_SECONDS}. */
-export function* holdTail(usedSeconds: number): FrameGenerator {
-    const remaining = SCENE_SECONDS - usedSeconds;
-    if (remaining > 0) yield* wait(remaining);
+/**
+ * Pad the tail of a scene so its total runtime is exactly {@link SCENE_SECONDS}.
+ *
+ * A number, because a chain step that is a number is a hold — see `_chain.ts`.
+ * Clamped at zero so a scene that already fills the window adds nothing.
+ */
+export function holdTail(usedSeconds: number): number {
+    return Math.max(0, SCENE_SECONDS - usedSeconds);
 }
 
 /**
@@ -31,8 +34,8 @@ export function* holdTail(usedSeconds: number): FrameGenerator {
  * doesn't exercise the feature yet. Replace the file with a real scene to cover
  * the checkbox.
  */
-export const placeholder = (id: string): SceneGenerator =>
-    function* (stage) {
+export const placeholder = (id: string): Scene =>
+    scene((stage) => {
         stage.set({ fill: '#11141b' });
         stage.add(
             <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
@@ -56,5 +59,4 @@ export const placeholder = (id: string): SceneGenerator =>
                 </Rect>
             </Rect>,
         );
-        yield* holdTail(0);
-    };
+    }, [holdTail(0)]);

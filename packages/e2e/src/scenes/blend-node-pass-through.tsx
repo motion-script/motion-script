@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -8,9 +9,9 @@ import { holdTail } from './_lib';
  * one layer first, then that flat result blends against the backdrop), changing
  * how the two overlapping child circles interact with the background.
  */
-export default createScene(function* (stage) {
+const group = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const group = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={360} height={360} fill={'#28d6c8'} center={{ x: -100, y: 0 }} />
@@ -28,8 +29,8 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.3);
-    yield* group().to({ blend: 'difference' }, 0.9, undefined);
-    yield* holdTail(1.2);
-});
+}, [
+    0.3,
+    () => group().to({ blend: 'difference' }, 0.9, undefined),
+    holdTail(1.2),
+]);

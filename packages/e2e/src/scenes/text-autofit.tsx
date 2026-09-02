@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Text, easeInOut } from 'motion-script';
+import { createRef, Rect, Text, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * automatically. Shrinking the box forces the same text to shrink with it,
  * down to `minFontSize`.
  */
-export default createScene(function* (stage) {
+const box = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const box = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={box} width={700} height={260} cornerRadius={16} fill={'card'} padding={20} flow={'freeform'} align={{ x: 0, y: 0 }}>
@@ -25,7 +26,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* box().to({ width: 260, height: 120 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => box().to({ width: 260, height: 120 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

@@ -1,7 +1,7 @@
 import {
-    createScene, Mat,
-    Canvas3D, Camera3D, AmbientLight3D, Plane3D, Box3D,
-} from 'motion-script';
+    Mat,
+    Canvas3D, Camera3D, AmbientLight3D, Plane3D, Box3D } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -28,7 +28,7 @@ import { holdTail } from './_lib';
 const TINT = '#88ccff';
 const ALPHA = 0.3;
 
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
     stage.add(
@@ -48,10 +48,9 @@ export default createScene(function* (stage) {
                 enclosure takes, and where the additive composite was loudest. */}
             <Box3D width={1.6} height={2.4} depth={1.6} position={[2.2, 0, 0]}
                 material={Mat.basic({
-                    color: TINT, opacity: ALPHA, faces: 'back', depthWrite: false,
-                })} />
+                    color: TINT, opacity: ALPHA, faces: 'back', depthWrite: false })} />
         </Canvas3D>,
     );
-
-    yield* holdTail(1);
-});
+}, [
+    holdTail(1),
+]);

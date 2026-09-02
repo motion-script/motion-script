@@ -1,4 +1,5 @@
-import { createScene, createRef, Camera, GridPattern, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Camera, GridPattern, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -9,10 +10,10 @@ import { holdTail } from './_lib';
  * edge. A red marker rect sits at the world origin as a fixed reference the
  * grid slides relative to.
  */
-export default createScene(function* (stage) {
+const camera = createRef<Camera>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const camera = createRef<Camera>();
     stage.add(
         <Camera ref={camera} width={720} height={460} fill={'card'} cornerRadius={12} stroke={{ weight: 3, fill: '#2c3344' }}>
             <GridPattern
@@ -23,9 +24,9 @@ export default createScene(function* (stage) {
             <Rect width={56} height={56} cornerRadius={10} fill={'accent'} />
         </Camera>,
     );
-
+}, [
     // Pan the camera across the world; the world-anchored grid scrolls past and
     // stays full, regenerating only the lines currently on screen.
-    yield* camera().to({ lookAt: { x: 240, y: 120 } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => camera().to({ lookAt: { x: 240, y: 120 } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

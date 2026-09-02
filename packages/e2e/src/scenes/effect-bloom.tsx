@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.bloom}: bright areas bleed soft light outward as `intensity` ramps up. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: '#0d0f15' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -21,7 +22,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to({ effects: Effects.bloom({ threshold: 0.4, radius: 20, intensity: 2.5 }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: Effects.bloom({ threshold: 0.4, radius: 20, intensity: 2.5 }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

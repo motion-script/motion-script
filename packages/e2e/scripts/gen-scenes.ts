@@ -53,11 +53,10 @@ function parseTests(md: string): Entry[] {
 
 const stub = (id: string) => `/** @jsxImportSource @motion-script/core/jsx */
 
-import { createScene } from '@motion-script/core';
 import { placeholder } from './_lib';
 
 // TODO: replace this placeholder with a real scene exercising \`${id}\`.
-export default createScene(placeholder('${id}'));
+export default placeholder('${id}');
 `;
 
 function main(): void {
@@ -111,6 +110,10 @@ import type { Scene } from '@motion-script/core';
 
 ${imports}
 
+// Named here rather than by a build transform: the ?scene suffix that used to
+// stamp a name is gone, and the harness addresses scenes by it.
+${naming}
+
 /** Every e2e scene instance, in TESTS.md order. Feeds createProject({ scenes }). */
 export const scenes: Scene[] = [
 ${sceneList}
@@ -119,7 +122,7 @@ ${sceneList}
 export interface SceneMeta {
     /** The TESTS.md checkbox id, e.g. "rect-basic" — also the scene filename. */
     id: string;
-    /** PascalCase of the id — the name the headless bridge reports (see scene-name.ts). */
+    /** PascalCase of the id — the scene name the harness addresses (see scene-name.ts). */
     name: string;
     /** The TESTS.md section the checkbox lives under, e.g. "Geometry". */
     section: string;

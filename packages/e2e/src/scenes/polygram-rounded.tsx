@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
+import { createRef, Polygram, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Polygram.cornerRadius}: a sharp 5-point star rounding both its inner and outer vertices. */
-export default createScene(function* (stage) {
+const star = createRef<Polygram>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const star = createRef<Polygram>();
     stage.add(
         <Polygram
             ref={star}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* star().to({ cornerRadius: 24 }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => star().to({ cornerRadius: 24 }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

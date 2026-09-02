@@ -1,10 +1,11 @@
-import { createScene, createRef, Ellipse, easeInOut } from 'motion-script';
+import { createRef, Ellipse, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Ellipse}'s `start`/`end` trim props (0..1) sweeping a stroked ring open from a single point into a full circle. */
-export default createScene(function* (stage) {
+const ring = createRef<Ellipse>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const ring = createRef<Ellipse>();
     stage.add(
         <Ellipse
             ref={ring}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* ring().to({ end: 1 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => ring().to({ end: 1 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

@@ -1,12 +1,13 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { lines } from '@motion-script/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.resetHighlight}: a dimmed highlight restores to full opacity across every line. */
-export default createScene(function* (stage) {
+const code = createRef<Code>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const code = createRef<Code>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#0f121a'} height={'hug'} width={'hug'} clip={true}>
@@ -24,9 +25,9 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* code().highlight(lines(2), 0);
-    yield* wait(0.4);
-    yield* code().resetHighlight(0.6);
-    yield* holdTail(1.0);
-});
+}, [
+    () => code().highlight(lines(2), 0),
+    0.4,
+    () => code().resetHighlight(0.6),
+    holdTail(1.0),
+]);

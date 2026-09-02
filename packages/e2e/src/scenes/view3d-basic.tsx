@@ -1,7 +1,7 @@
 import {
-    createScene, createSignal, easeInOut,
-    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D,
-} from 'motion-script';
+    createSignal, easeInOut,
+    Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -17,10 +17,14 @@ import { holdTail } from './_lib';
  * at a given index is identical whether it was played or seeked to — which is
  * what makes it comparable at all.
  */
-export default createScene(function* (stage) {
+const spin = createSignal(0);
+export default scene((stage) => {
+    // Re-seeded here, not just at construction: these signals outlive a build,
+    // and a scene is built more than once per render. A tween snapshots its
+    // `from` the first time it is evaluated, so without this the second build
+    // would start from where the first one ended and animate nothing.
+    spin.set(0);
     stage.set({ fill: 'bg' });
-
-    const spin = createSignal(0);
 
     stage.add(
         <Canvas3D width={480} height={320} cornerRadius={16}>
@@ -34,7 +38,7 @@ export default createScene(function* (stage) {
             />
         </Canvas3D>,
     );
-
-    yield* spin(180, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => spin(180, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

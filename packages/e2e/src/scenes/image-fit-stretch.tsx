@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,10 @@ import { holdTail } from './_lib';
  * wide: the bird visibly squashes vertically then stretches horizontally,
  * making the per-axis distortion the obvious feature.
  */
-export default createScene(function* (stage) {
+const box = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const box = createRef<Rect>();
     stage.add(
         <Rect
             ref={box}
@@ -21,7 +22,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 3, fill: 'primary' }}
         />,
     );
-
-    yield* box().to({ width: 680, height: 280 }, 1.4, easeInOut('cubic'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => box().to({ width: 680, height: 280 }, 1.4, easeInOut('cubic')),
+    holdTail(1.4),
+]);

@@ -3,6 +3,7 @@ import { mathjax } from '@mathjax/src/js/mathjax.js';
 import { TeX } from '@mathjax/src/js/input/tex.js';
 import { SVG } from '@mathjax/src/js/output/svg.js';
 import { browserAdaptor } from '@mathjax/src/js/adaptors/browserAdaptor.js';
+import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js';
 import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
 
 import '@mathjax/src/js/input/tex/base/BaseConfiguration.js';
@@ -19,9 +20,25 @@ import { PathCommand } from '@motion-script/core';
 
 import { createBoundedCache } from './cache';
 
-// --- MathJax Setup (synchronous, browser-only) ---
+// --- MathJax Setup (synchronous) ---
 
-const adaptor = browserAdaptor();
+/**
+ * MathJax needs a DOM to build its output in, and there isn't always one.
+ *
+ * `browserAdaptor()` reads `window` **as it is constructed**, at module scope —
+ * so importing this file at all threw in Node, and a project with one LaTeX
+ * scene could not be rendered headlessly no matter which scene was asked for.
+ * `liteAdaptor` is MathJax's own DOM-free implementation and produces the same
+ * SVG; we only ever read paths back out of it, never attach it to a page.
+ */
+// The two adaptors are structurally different (a `LiteElement` tree vs. a real
+// one) and MathJax's generics track that, but nothing here touches an element
+// except through the adaptor's own accessors — so the element type is genuinely
+// opaque to us, and pinning it to either concrete one would be a lie.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const adaptor: any = typeof window === 'undefined' && typeof document === 'undefined'
+    ? liteAdaptor()
+    : browserAdaptor();
 RegisterHTMLHandler(adaptor);
 
 const texJax = new TeX({
@@ -138,7 +155,7 @@ function buildLatexGeometry(text: string): LatexGeometry {
         containerWidth: 80 * 16,
     });
 
-    const svgEl = adaptor.firstChild(node) as HTMLElement;
+    const svgEl = adaptor.firstChild(node);
     const heightAttr = adaptor.getAttribute(svgEl, 'height') ?? '';
 
     return parseLatexSvg(adaptor.innerHTML(node), parseFloat(heightAttr) || 0);

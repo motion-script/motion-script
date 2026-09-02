@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, VideoAdjustments, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, VideoAdjustments, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link VideoAdjustments.echo}: a motion-trail effect compositing the current video frame with several delayed, decaying past frames, growing from a single tap to a long trail. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -16,11 +17,11 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to(
+}, [
+    () => rect().to(
         { fill: Fills.video('video.mp4', { fit: 'fill', filters: VideoAdjustments.echo({ echoes: 8, delay: 0.05, decay: 0.7 }) }) },
         1.4,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.4);
-});
+    ),
+    holdTail(1.4),
+]);

@@ -1,4 +1,5 @@
-import { createScene, createRef, createSignal, easeInOut, Ellipse, Graphics3D, Scene3D } from 'motion-script';
+import { createRef, createSignal, easeInOut, Ellipse, Graphics3D, Scene3D } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -13,10 +14,14 @@ import { holdTail } from './_lib';
  * This is also the hand-built `Scene3D` escape hatch under test: the node tree is
  * the ordinary way to describe a scene, and this is what it records into.
  */
-export default createScene(function* (stage) {
+const spin = createSignal(0);
+export default scene((stage) => {
+    // Re-seeded here, not just at construction: these signals outlive a build,
+    // and a scene is built more than once per render. A tween snapshots its
+    // `from` the first time it is evaluated, so without this the second build
+    // would start from where the first one ended and animate nothing.
+    spin.set(0);
     stage.set({ fill: 'bg' });
-
-    const spin = createSignal(0);
     const shape = createRef<Ellipse>();
 
     // A bare `Scene3D` coerces to a canvas3D fill, the same way a CSS string
@@ -37,11 +42,10 @@ export default createScene(function* (stage) {
                 .draw(new Graphics3D().box({
                     width: 2.4, height: 2.4, depth: 2.4,
                     fill: '#4f8ef7',
-                    rotation: [spin() * 0.5, spin(), 0],
-                }))}
+                    rotation: [spin() * 0.5, spin(), 0] }))}
         />,
     );
-
-    yield* spin(160, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => spin(160, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

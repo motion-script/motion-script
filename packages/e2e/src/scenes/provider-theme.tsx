@@ -1,8 +1,9 @@
-import { createScene, ThemeProvider, Rect, Text, wait } from 'motion-script';
+import { ThemeProvider, Rect, Text } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link ThemeProvider} merging custom color tokens onto the ambient theme: descendants referencing `'brand'`/`'brandText'` by name resolve to the values supplied here rather than the project's default theme. */
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     stage.add(
         <ThemeProvider theme={{ brand: '#ff6a3d', brandText: '#1a0d08' }}>
@@ -11,7 +12,7 @@ export default createScene(function* (stage) {
             </Rect>
         </ThemeProvider>,
     );
-
-    yield* wait(1.2);
-    yield* holdTail(1.2);
-});
+}, [
+    1.2,
+    holdTail(1.2),
+]);

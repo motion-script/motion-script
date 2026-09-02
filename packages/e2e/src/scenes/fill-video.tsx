@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Fills.video}: a playing video clip used as a shape's fill, growing into frame. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to({ scale: 1 }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => rect().to({ scale: 1 }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

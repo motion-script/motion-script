@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Drop shadow `blur` alone sharpening from a soft, wide haze down to a crisp, tight edge. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* card().to({ shadow: { blur: 2, offset: { x: 0, y: 16 }, fill: '#000000' } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => card().to({ shadow: { blur: 2, offset: { x: 0, y: 16 }, fill: '#000000' } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

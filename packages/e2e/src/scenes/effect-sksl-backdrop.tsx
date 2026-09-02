@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Grid, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Grid, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -21,9 +22,9 @@ half4 main(float2 coord) {
 }
 `;
 
-export default createScene(function* (stage) {
+const lens = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const lens = createRef<Rect>();
     stage.add(
         <Grid width={'fill'} height={'fill'} columns={6} gap={2} padding={20}>
             <Rect width={'fill'} height={'fill'} fill={'#6990dd'} />
@@ -54,16 +55,15 @@ export default createScene(function* (stage) {
             ] })}
         />,
     );
-
-    yield* lens().to(
+}, [
+    () => lens().to(
         {
             effects: Effects.sksl({ shader: RIPPLE_SHADER, mode: 'backdrop', uniforms: [
                 { name: 'u_resolution', value: [LENS_WIDTH, LENS_HEIGHT] },
                 { name: 'u_amount', value: 18 },
-            ] }),
-        },
+            ] }) },
         1.4,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.4);
-});
+    ),
+    holdTail(1.4),
+]);

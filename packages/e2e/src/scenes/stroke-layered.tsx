@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** A node's `stroke` accepts an array: a thick outer band plus a thin inner accent line, stacked bottom-to-top, both thickening together. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -20,16 +21,15 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to(
+}, [
+    () => rect().to(
         {
             stroke: [
                 { weight: 36, fill: 'primary', align: 'inside' },
                 { weight: 2, fill: '#f4f6ff', align: 'inside' },
-            ],
-        },
+            ] },
         1.4,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.4);
-});
+    ),
+    holdTail(1.4),
+]);

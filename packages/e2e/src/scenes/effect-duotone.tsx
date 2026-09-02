@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.duotone}: three colour blocks lose their hue to a navy-to-amber luminance ramp. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+const ramp = { shadows: '#12184a', highlights: '#ffd166' };
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
-    const ramp = { shadows: '#12184a', highlights: '#ffd166' };
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -25,7 +26,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to({ effects: Effects.duotone({ amount: 1, ...ramp }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: Effects.duotone({ amount: 1, ...ramp }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

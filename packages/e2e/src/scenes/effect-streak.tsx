@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.streak}: a bright pass smeared along one axis, unlike bloom's even halo. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -22,11 +23,11 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to(
+}, [
+    () => card().to(
         { effects: Effects.streak({ intensity: 2.4, threshold: 0.4, length: 220 }) },
         1.2,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.2);
-});
+    ),
+    holdTail(1.2),
+]);

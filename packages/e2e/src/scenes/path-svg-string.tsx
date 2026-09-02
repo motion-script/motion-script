@@ -1,12 +1,13 @@
 
 
-import { createScene, createRef, Path, easeOut } from 'motion-script';
+import { createRef, Path, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Path.data} as a raw SVG path string: a heart shape popping into view. */
-export default createScene(function* (stage) {
+const heart = createRef<Path>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const heart = createRef<Path>();
     stage.add(
         <Path
             ref={heart}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* heart().to({ scale: 1 }, 1.1, easeOut('back'));
-    yield* holdTail(1.1);
-});
+}, [
+    () => heart().to({ scale: 1 }, 1.1, easeOut('back')),
+    holdTail(1.1),
+]);

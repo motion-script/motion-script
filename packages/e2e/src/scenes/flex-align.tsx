@@ -1,4 +1,5 @@
-import { createScene, createRef, Row, Rect, easeInOut } from 'motion-script';
+import { createRef, Row, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * tall container, then `align` animates to the bottom — repositioning every
  * child along the cross axis without changing the row's own gap or order.
  */
-export default createScene(function* (stage) {
+const row = createRef<Row>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const row = createRef<Row>();
     stage.add(
         <Row ref={row} width={700} height={420} fill={'card'} cornerRadius={16} gap={24} align={'topCenter'} center={() => stage.canvas.center}>
             <Rect width={100} height={100} fill={'primary'} cornerRadius={12} />
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             <Rect width={100} height={150} fill={'primary'} cornerRadius={12} />
         </Row>,
     );
-
-    yield* row().to({ align: 'bottomCenter' }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => row().to({ align: 'bottomCenter' }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

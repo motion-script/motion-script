@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Adjustments.colorAdjustment}: brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, and vignette all animating together for a full color-grade sweep. */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -23,14 +24,12 @@ export default createScene(function* (stage) {
                         highlights: 0,
                         temperature: 0,
                         tint: 0,
-                        vignette: 0,
-                    }),
-                })}
+                        vignette: 0 }) })}
             />
         </Rect>,
     );
-
-    yield* rect().to(
+}, [
+    () => rect().to(
         {
             fill: Fills.image('kingfisher.jpg', {
                 fit: 'fill',
@@ -43,12 +42,9 @@ export default createScene(function* (stage) {
                     highlights: -0.3,
                     temperature: 0.4,
                     tint: -0.2,
-                    vignette: 0.6,
-                }),
-            }),
-        },
+                    vignette: 0.6 }) }) },
         1.6,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.6);
-});
+    ),
+    holdTail(1.6),
+]);

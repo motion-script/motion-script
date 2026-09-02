@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Fill-level `opacity`: only the fill itself fades, leaving the stroke fully opaque throughout. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect
             ref={card}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* card().to({ fill: Fills.color('primary', { opacity: 0.1 }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ fill: Fills.color('primary', { opacity: 0.1 }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

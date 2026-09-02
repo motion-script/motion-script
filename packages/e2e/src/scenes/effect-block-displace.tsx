@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,10 @@ import { holdTail } from './_lib';
  * `seed` is held fixed so the displacement is a pure function of the band index —
  * the frame renders identically every time.
  */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+const shape = { size: 24, density: 0.6, seed: 3 };
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
-    const shape = { size: 24, density: 0.6, seed: 3 };
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -30,7 +31,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to({ effects: Effects.blockDisplace({ amount: 70, ...shape }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: Effects.blockDisplace({ amount: 70, ...shape }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
+import { createRef, Polygram, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** A 5-point star (polygram, default ratio) spinning into view. */
-export default createScene(function* (stage) {
+const star = createRef<Polygram>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const star = createRef<Polygram>();
     stage.add(
         <Polygram
             ref={star}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* star().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back'));
-    yield* holdTail(1.3);
-});
+}, [
+    () => star().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back')),
+    holdTail(1.3),
+]);

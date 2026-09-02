@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, Adjustments, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -11,20 +12,19 @@ import { holdTail } from './_lib';
  * separate, milder look, because the renderer mixes the graded pixels against
  * the ungraded ones instead of re-running a weaker chain.
  */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+const look = Adjustments.grayscale(1).colorAdjustment({ contrast: 1.8, brightness: -0.05 });
+const graded = (intensity: number) =>
+    Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: look, intensity } });
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
-
-    const look = Adjustments.grayscale(1).colorAdjustment({ contrast: 1.8, brightness: -0.05 });
-    const graded = (intensity: number) =>
-        Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: look, intensity } });
 
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={rect} width={320} height={320} cornerRadius={24} fill={graded(0)} />
         </Rect>,
     );
-
-    yield* rect().to({ fill: graded(1) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => rect().to({ fill: graded(1) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

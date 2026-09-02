@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { Code } from '@/components/code';
 import { holdTail } from './_lib';
 
 /** {@link Code.padding}: the inset between the code text and its frame growing from tight to spacious. */
-export default createScene(function* (stage) {
+const code = createRef<Code>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const code = createRef<Code>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect cornerRadius={16} fill={'#0f121a'} height={'hug'} width={'hug'} clip={true}>
@@ -20,7 +21,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* code().to({ padding: { horizontal: 80, vertical: 64 } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => code().to({ padding: { horizontal: 80, vertical: 64 } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

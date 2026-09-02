@@ -1,4 +1,5 @@
-import { createScene, createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { createRef, Camera, GridPattern, Rect, Ellipse, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -7,10 +8,9 @@ import { holdTail } from './_lib';
  * landmark, and rolls. The mid frame catches every channel part-way, a pose
  * distinct from both the wide start and the tight, tilted finish.
  */
-export default createScene(function* (stage) {
+const camera = createRef<Camera>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const camera = createRef<Camera>();
-
     stage.add(
         <Camera
             ref={camera}
@@ -32,9 +32,9 @@ export default createScene(function* (stage) {
             <Rect width={130} height={130} cornerRadius={20} fill={'#F5C26B'} x={150} y={-160} />
         </Camera>,
     );
-
+}, [
     // All three viewport channels move at once: dolly in, pan to the accent
     // ellipse, and roll the view.
-    yield* camera().to({ zoom: 2.2, lookAt: { x: 210, y: 140 }, heading: 30 }, 1.5, easeInOut('quad'));
-    yield* holdTail(1.5);
-});
+    () => camera().to({ zoom: 2.2, lookAt: { x: 210, y: 140 }, heading: 30 }, 1.5, easeInOut('quad')),
+    holdTail(1.5),
+]);

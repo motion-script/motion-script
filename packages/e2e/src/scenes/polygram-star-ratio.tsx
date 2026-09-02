@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygram, easeInOut } from 'motion-script';
+import { createRef, Polygram, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Polygram.ratio}: a sharp-pointed star blunting toward a near-regular polygon as ratio approaches 1. */
-export default createScene(function* (stage) {
+const star = createRef<Polygram>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const star = createRef<Polygram>();
     stage.add(
         <Polygram
             ref={star}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* star().to({ ratio: 0.9 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => star().to({ ratio: 0.9 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

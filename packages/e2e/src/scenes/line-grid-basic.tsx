@@ -1,4 +1,5 @@
-import { createScene, createRef, LineGrid, Fills, easeInOut } from 'motion-script';
+import { createRef, LineGrid, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,10 +7,10 @@ import { holdTail } from './_lib';
  * card fill behind them. Panning `origin` scrolls the grid — lines wrap and
  * tile so the rect always stays full — which gives a clearly moving mid frame.
  */
-export default createScene(function* (stage) {
+const grid = createRef<LineGrid>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const grid = createRef<LineGrid>();
     stage.add(
         <LineGrid
             ref={grid}
@@ -21,8 +22,8 @@ export default createScene(function* (stage) {
             shadow={{ fill: Fills.color('black', { opacity: 0.5 }), offset: { x: 0, y: 12 }, blur: 28 }}
         />,
     );
-
+}, [
     // Pan one full cell diagonally; the grid tiles to stay full as it scrolls.
-    yield* grid().to({ offset: { x: 80, y: 80 } }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+    () => grid().to({ offset: { x: 80, y: 80 } }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

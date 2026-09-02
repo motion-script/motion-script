@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.vignette}: the corners of a bright card darken as `amount` ramps from 0 to 1. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* card().to({ effects: Effects.vignette({ amount: 1, radius: 0.4, softness: 0.7 }) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: Effects.vignette({ amount: 1, radius: 0.4, softness: 0.7 }) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

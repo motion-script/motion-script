@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Image, Effects, EffectChain, easeInOut } from 'motion-script';
+import { createRef, Rect, Image, Effects, EffectChain, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -20,15 +21,14 @@ const vhs = (amount: number): EffectChain => Effects
     .blockDisplace({ amount: at(amount, 0, 40), size: 20, density: 0.4, seed: 7 })
     .rgbShift({
         red: { x: at(amount, 0, 7), y: 0 },
-        blue: { x: at(amount, 0, -5), y: at(amount, 0, 2) },
-    })
+        blue: { x: at(amount, 0, -5), y: at(amount, 0, 2) } })
     .scanlines({ darkness: at(amount, 0, 0.55), spacing: 5 })
     .grain({ amount: at(amount, 0, 0.22), animated: true })
     .vintage({ amount: at(amount, 0, 0.5), warmth: at(amount, 0, -0.2) });
 
-export default createScene(function* (stage) {
+const card = createRef<Image>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Image>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={480} height={320} cornerRadius={20} clip={true} flow={'freeform'}>
@@ -43,7 +43,7 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to({ effects: vhs(1) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => card().to({ effects: vhs(1) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

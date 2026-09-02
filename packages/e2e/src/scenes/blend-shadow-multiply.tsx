@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Fills, wait } from 'motion-script';
+import { createRef, Rect, Fills } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Shadow-level `blend`: a card's drop shadow *fill* blends against the backdrop beneath it via `'multiply'`, darkening the overlap into a more naturalistic shadow than plain alpha compositing. */
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: '#0d0f15' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect width={360} height={360} fill={'#1f5f8b'} center={{ x: 0, y: 0 }} />
@@ -19,8 +20,8 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* wait(0.3);
-    yield* card().to({ shadow: { offset: { x: 40, y: 40 }, blur: 30, fill: Fills.color('#8b1f5f', { blend: 'multiply' }) } }, 0.9, undefined);
-    yield* holdTail(1.2);
-});
+}, [
+    0.3,
+    () => card().to({ shadow: { offset: { x: 40, y: 40 }, blur: 30, fill: Fills.color('#8b1f5f', { blend: 'multiply' }) } }, 0.9, undefined),
+    holdTail(1.2),
+]);

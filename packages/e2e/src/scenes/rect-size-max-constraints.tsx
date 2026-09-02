@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -8,15 +9,15 @@ import { holdTail } from './_lib';
  * since `'fill'` can never exceed the max width/height the parent passes
  * down.
  */
-export default createScene(function* (stage) {
+const frame = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const frame = createRef<Rect>();
     stage.add(
         <Rect ref={frame} width={780} height={420} fill={'card'} cornerRadius={16} padding={16} center={() => stage.canvas.center}>
             <Rect width={'fill'} height={'fill'} fill={'primary'} cornerRadius={10} />
         </Rect>,
     );
-
-    yield* frame().to({ width: 260, height: 180 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => frame().to({ width: 260, height: 180 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

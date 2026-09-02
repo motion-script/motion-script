@@ -1,4 +1,5 @@
-import { createScene, createRef, Image, easeInOut } from 'motion-script';
+import { createRef, Image, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -9,10 +10,10 @@ import { holdTail } from './_lib';
  * above the middle), so the head holds its place in frame while everything
  * around it expands past the edges.
  */
-export default createScene(function* (stage) {
+const photo = createRef<Image>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
 
-    const photo = createRef<Image>();
     stage.add(
         <Image
             ref={photo}
@@ -24,7 +25,7 @@ export default createScene(function* (stage) {
             stroke={{ weight: 3, fill: 'primary' }}
         />,
     );
-
-    yield* photo().to({ zoom: 2.4 }, 1.4, easeInOut('cubic'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => photo().to({ zoom: 2.4 }, 1.4, easeInOut('cubic')),
+    holdTail(1.4),
+]);

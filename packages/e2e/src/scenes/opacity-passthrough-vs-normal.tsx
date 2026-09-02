@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, wait } from 'motion-script';
+import { createRef, Rect } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -9,10 +10,10 @@ import { holdTail } from './_lib';
  * flatten into one layer first, then *that* flat layer fades as a unit, so the
  * overlap seam stays put instead of blending through to the backdrop).
  */
-export default createScene(function* (stage) {
+const passThrough = createRef<Rect>();
+const normal = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const passThrough = createRef<Rect>();
-    const normal = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={60} align={{ x: 0, y: 0 }}>
             <Rect ref={passThrough} width={260} height={260} flow={'freeform'} align={{ x: 0, y: 0 }} blend={'pass-through'} opacity={1}>
@@ -25,9 +26,9 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* wait(0.3);
-    yield* passThrough().to({ opacity: 0.3 }, 1, undefined);
-    yield* normal().to({ opacity: 0.3 }, 1, undefined);
-    yield* holdTail(1.3);
-});
+}, [
+    0.3,
+    () => passThrough().to({ opacity: 0.3 }, 1, undefined),
+    () => normal().to({ opacity: 0.3 }, 1, undefined),
+    holdTail(1.3),
+]);

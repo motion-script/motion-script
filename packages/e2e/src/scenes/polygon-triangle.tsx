@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
+import { createRef, Polygon, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** An equilateral triangle (`sides={3}`) spinning into view. */
-export default createScene(function* (stage) {
+const triangle = createRef<Polygon>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const triangle = createRef<Polygon>();
     stage.add(
         <Polygon
             ref={triangle}
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* triangle().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back'));
-    yield* holdTail(1.3);
-});
+}, [
+    () => triangle().to({ rotation: 0, scale: 1 }, 1.3, easeInOut('back')),
+    holdTail(1.3),
+]);

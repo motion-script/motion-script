@@ -1,8 +1,9 @@
-import { createScene, Video, wait } from 'motion-script';
+import { Video } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Video} playing a trimmed window (`trimStart`/`trimEnd`) of the source clip at normal speed, muted so the e2e harness stays deterministic. */
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     stage.add(
         <Video
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* wait(1.8);
-    yield* holdTail(1.8);
-});
+}, [
+    1.8,
+    holdTail(1.8),
+]);

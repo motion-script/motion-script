@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, easeInOut } from 'motion-script';
+import { createRef, Rect, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Rect} `flow={'vertical'}`: three children laid top-to-bottom, with the gap animating wider. */
-export default createScene(function* (stage) {
+const column = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const column = createRef<Rect>();
     stage.add(
         <Rect ref={column} width={220} height={420} flow={'vertical'} gap={8} center={() => stage.canvas.center}>
             <Rect width={'fill'} height={100} fill={'primary'} cornerRadius={12} />
@@ -12,7 +13,7 @@ export default createScene(function* (stage) {
             <Rect width={'fill'} height={100} fill={'primary'} cornerRadius={12} />
         </Rect>,
     );
-
-    yield* column().to({ gap: 32 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => column().to({ gap: 32 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

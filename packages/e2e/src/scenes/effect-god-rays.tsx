@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Ellipse, Text, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Ellipse, Text, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -11,9 +12,9 @@ import { holdTail } from './_lib';
  */
 const LIGHT = { x: 0.5, y: 0.32 };
 
-export default createScene(function* (stage) {
+const card = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const card = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -33,11 +34,11 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* card().to(
+}, [
+    () => card().to(
         { effects: Effects.godRays({ intensity: 2.4, threshold: 0.5, length: 0.8, center: LIGHT }) },
         1.2,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.2);
-});
+    ),
+    holdTail(1.2),
+]);

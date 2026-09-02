@@ -1,10 +1,11 @@
-import { createScene, createRef, RichText, easeOut } from 'motion-script';
+import { createRef, RichText, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link RichText} `spans`: a sentence mixing default, bold/accent, and italic runs in one node, fading in. */
-export default createScene(function* (stage) {
+const para = createRef<RichText>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const para = createRef<RichText>();
     stage.add(
         <RichText
             ref={para}
@@ -22,7 +23,7 @@ export default createScene(function* (stage) {
             ]}
         />,
     );
-
-    yield* para().to({ opacity: 1 }, 0.8, easeOut('quad'));
-    yield* holdTail(0.8);
-});
+}, [
+    () => para().to({ opacity: 1 }, 0.8, easeOut('quad')),
+    holdTail(0.8),
+]);

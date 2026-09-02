@@ -1,10 +1,11 @@
-import { createScene, createRef, Ellipse, Rect, Effects, easeInOut } from 'motion-script';
+import { createRef, Ellipse, Rect, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.outline} with `position: 'inside'`: the band eats inward, leaving the footprint unchanged. */
-export default createScene(function* (stage) {
+const disc = createRef<Ellipse>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const disc = createRef<Ellipse>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Ellipse
@@ -16,11 +17,11 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* disc().to(
+}, [
+    () => disc().to(
         { effects: Effects.outline({ width: 26, color: '#f4f6ff', position: 'inside' }) },
         1.2,
         easeInOut('quad'),
-    );
-    yield* holdTail(1.2);
-});
+    ),
+    holdTail(1.2),
+]);

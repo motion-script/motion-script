@@ -1,10 +1,11 @@
-import { createScene, createRef, Polygon, easeInOut } from 'motion-script';
+import { createRef, Polygon, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Polygon.cornerRadius}: a sharp-cornered pentagon rounding its vertices into smooth arcs. */
-export default createScene(function* (stage) {
+const pentagon = createRef<Polygon>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const pentagon = createRef<Polygon>();
     stage.add(
         <Polygon
             ref={pentagon}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* pentagon().to({ cornerRadius: 50 }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => pentagon().to({ cornerRadius: 50 }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

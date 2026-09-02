@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * moving the node anywhere on screen changes which slice of the gradient it
  * shows through — the fill stays fixed to the frame, not the shape.
  */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -21,7 +22,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* rect().to({ x: 260 }, 1.4, easeInOut('quad'));
-    yield* holdTail(1.4);
-});
+}, [
+    () => rect().to({ x: 260 }, 1.4, easeInOut('quad')),
+    holdTail(1.4),
+]);

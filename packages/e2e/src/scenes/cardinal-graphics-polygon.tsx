@@ -1,7 +1,7 @@
 import {
-    createScene, createSignal, parallel, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
-    AnchorKey, Anchor, property, resolveAnchor, easeInOut,
-} from 'motion-script';
+    createSignal, Rect, ShapeNode, ShapeProps, NodeConfig, RenderContext2D, Graphics2D,
+    AnchorKey, Anchor, property, resolveAnchor, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** All nine named anchors, laid out to mirror their on-screen meaning. */
@@ -38,8 +38,7 @@ class PivotPolygon extends ShapeNode<PivotPolygonProps> {
         const tri = new Graphics2D()
             .polygon({
                 width: 70, height: 70, sides: 3, pivot: this.anchor, x: 0, y: 0,
-                rotation: this.shapeRotation, scale: this.shapeScale,
-            })
+                rotation: this.shapeRotation, scale: this.shapeScale })
             .fill('primary');
         draw.draw(tri);
 
@@ -58,11 +57,16 @@ class PivotPolygon extends ShapeNode<PivotPolygonProps> {
  * box on `(x, y)` and keep it pinned there under motion. One cell per anchor in
  * a 3x3 grid.
  */
-export default createScene(function* (stage) {
+const rotation = createSignal(0);
+const scale = createSignal(1);
+export default scene((stage) => {
+    // Re-seeded here, not just at construction: these signals outlive a build,
+    // and a scene is built more than once per render. A tween snapshots its
+    // `from` the first time it is evaluated, so without this the second build
+    // would start from where the first one ended and animate nothing.
+    rotation.set(0);
+    scale.set(1);
     stage.set({ fill: 'bg' });
-
-    const rotation = createSignal(0);
-    const scale = createSignal(1);
 
     const cells = ANCHORS.map((anchor) => (
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }} fill={'card'} cornerRadius={12}>
@@ -81,10 +85,10 @@ export default createScene(function* (stage) {
             {rows}
         </Rect>,
     );
-
-    yield* parallel(
-        rotation(360, 1.6, easeInOut('quad')),
-        scale(1.3, 1.6, easeInOut('quad')),
-    );
-    yield* holdTail(1.6);
-});
+}, [
+    [
+        () => rotation(360, 1.6, easeInOut('quad')),
+        () => scale(1.3, 1.6, easeInOut('quad')),
+    ],
+    holdTail(1.6),
+]);

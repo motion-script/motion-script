@@ -1,4 +1,5 @@
-import { createScene, Rect, Image, Text, Effects } from 'motion-script';
+import { Rect, Image, Text, Effects } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -17,7 +18,7 @@ import { holdTail } from './_lib';
  */
 const crush = { palette: 'gameboy' as const, amount: 1 };
 
-export default createScene(function* (stage) {
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'horizontal'} gap={40} padding={60} align={{ x: 0, y: 0 }}>
@@ -47,6 +48,6 @@ export default createScene(function* (stage) {
             </Rect>
         </Rect>,
     );
-
-    yield* holdTail(0);
-});
+}, [
+    holdTail(0),
+]);

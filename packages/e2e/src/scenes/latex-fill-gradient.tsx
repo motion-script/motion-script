@@ -1,11 +1,12 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { Latex } from '@/components/latex';
 import { holdTail } from './_lib';
 
 /** Latex `fill` as a linear gradient, sweeping its angle across the formula. */
-export default createScene(function* (stage) {
+const formula = createRef<Latex>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const formula = createRef<Latex>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Latex
@@ -17,7 +18,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* formula().to({ rotation: 360 }, 1.6, easeInOut('quad'));
-    yield* holdTail(1.6);
-});
+}, [
+    () => formula().to({ rotation: 360 }, 1.6, easeInOut('quad')),
+    holdTail(1.6),
+]);

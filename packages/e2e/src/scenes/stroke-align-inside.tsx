@@ -1,4 +1,5 @@
-import { createScene, createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { createRef, Rect, Fills, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /**
@@ -6,9 +7,9 @@ import { holdTail } from './_lib';
  * measured bounds, like a CSS border. We grow the weight so the band thickens
  * *inward* from the edge — the outer silhouette (350x350) never changes.
  */
-export default createScene(function* (stage) {
+const rect = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const rect = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect
@@ -20,8 +21,8 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
+}, [
     // Thicken the inside band: outer edge holds, fill area shrinks inward.
-    yield* rect().strokeTo({ weight: 48, fill: 'primary', align: 'inside' }, 1.4, { ease: easeInOut('quad') });
-    yield* holdTail(1.4);
-});
+    () => rect().strokeTo({ weight: 48, fill: 'primary', align: 'inside' }, 1.4, { ease: easeInOut('quad') }),
+    holdTail(1.4),
+]);

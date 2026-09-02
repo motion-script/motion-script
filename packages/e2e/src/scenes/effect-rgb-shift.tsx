@@ -1,10 +1,11 @@
-import { createScene, createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { createRef, Rect, Text, Effects, easeInOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Effects.rgbShift}: the red and blue planes pull apart horizontally, green stays put. */
-export default createScene(function* (stage) {
+const label = createRef<Text>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const label = createRef<Text>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Text
@@ -18,7 +19,7 @@ export default createScene(function* (stage) {
             />
         </Rect>,
     );
-
-    yield* label().to({ effects: Effects.rgbShift(20) }, 1.2, easeInOut('quad'));
-    yield* holdTail(1.2);
-});
+}, [
+    () => label().to({ effects: Effects.rgbShift(20) }, 1.2, easeInOut('quad')),
+    holdTail(1.2),
+]);

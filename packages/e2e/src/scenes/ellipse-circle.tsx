@@ -1,10 +1,11 @@
-import { createScene, createRef, Ellipse, easeOut } from 'motion-script';
+import { createRef, Ellipse, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** Ellipse at a 1:1 ratio (a circle), popping in with a scale. */
-export default createScene(function* (stage) {
+const circle = createRef<Ellipse>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const circle = createRef<Ellipse>();
     stage.add(
         <Ellipse
             ref={circle}
@@ -16,7 +17,7 @@ export default createScene(function* (stage) {
             center={() => stage.canvas.center}
         />,
     );
-
-    yield* circle().to({ scale: 1 }, 0.9, easeOut('back'));
-    yield* holdTail(0.9);
-});
+}, [
+    () => circle().to({ scale: 1 }, 0.9, easeOut('back')),
+    holdTail(0.9),
+]);

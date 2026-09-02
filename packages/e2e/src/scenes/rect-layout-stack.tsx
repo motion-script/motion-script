@@ -1,12 +1,13 @@
-import { createScene, createRef, Rect, easeOut } from 'motion-script';
+import { createRef, Rect, easeOut } from 'motion-script';
+import { scene } from './_chain';
 import { holdTail } from './_lib';
 
 /** {@link Rect} `flow={'freeform'}`: three children centered and overlapping, popping in from largest to smallest. */
-export default createScene(function* (stage) {
+const back = createRef<Rect>();
+const mid = createRef<Rect>();
+const front = createRef<Rect>();
+export default scene((stage) => {
     stage.set({ fill: 'bg' });
-    const back = createRef<Rect>();
-    const mid = createRef<Rect>();
-    const front = createRef<Rect>();
     stage.add(
         <Rect width={'fill'} height={'fill'} flow={'freeform'} align={{ x: 0, y: 0 }}>
             <Rect ref={back} width={360} height={360} fill={'primary'} cornerRadius={20} scale={0} />
@@ -14,9 +15,9 @@ export default createScene(function* (stage) {
             <Rect ref={front} width={120} height={120} fill={'accent'} cornerRadius={20} scale={0} />
         </Rect>,
     );
-
-    yield* back().to({ scale: 1 }, 0.5, easeOut('back'));
-    yield* mid().to({ scale: 1 }, 0.5, easeOut('back'));
-    yield* front().to({ scale: 1 }, 0.5, easeOut('back'));
-    yield* holdTail(1.5);
-});
+}, [
+    () => back().to({ scale: 1 }, 0.5, easeOut('back')),
+    () => mid().to({ scale: 1 }, 0.5, easeOut('back')),
+    () => front().to({ scale: 1 }, 0.5, easeOut('back')),
+    holdTail(1.5),
+]);
