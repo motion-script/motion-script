@@ -8,7 +8,7 @@ import { Node2D, Node2DProps, NodeConfig } from "@/nodes/2d/node2d";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "@/runtime/runtime.fixtures";
-import { createScene } from "@/nodes/scene/scene-node";
+import type { Scene } from "@/nodes/scene/scene-node";
 
 /**
  * Mirrors the `data-scene` template showcase under the composition model: a
@@ -25,7 +25,7 @@ const FPS = 10;
 const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
-function evaluator(scene: ReturnType<typeof createScene>) {
+function evaluator(scene: Scene) {
     const precomp = new Precomp([scene], VIEWPORT, FPS, catalog(), scope).run();
     const tracks = precomp.scenes.map((s) => s.frameCount);
     return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks, scope);

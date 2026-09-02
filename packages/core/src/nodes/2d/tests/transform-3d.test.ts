@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TweenStepper } from '@/tween/stepper';
 
 import { Node2D } from "@/nodes/2d/node2d";
 import { Rect } from "@/nodes/geometry/rect-node";

@@ -5,7 +5,7 @@ import { AssetManager } from "@/assets/manager";
 import { Node2D } from "@/nodes/2d/node2d";
 import { Image } from "@/nodes/media/image-node";
 import { Rect } from "@/nodes/geometry/rect-node";
-import { createScene, Scene } from "@/nodes/scene/scene-node";
+import type { Scene } from "@/nodes/scene/scene-node";
 import { RenderContext2D } from "@/render/render-context2d";
 import { NullRenderContext } from "@/render/null-render-context";
 import { Precomp } from "@/runtime/precompisition";

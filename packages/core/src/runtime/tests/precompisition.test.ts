@@ -19,6 +19,10 @@ const scope = new FakeMeasurer();
 setFakeSceneFps(10);
 
 function run(scenes: FakeScene[], fps = 10, catalog = new FakeAssetCatalog()) {
+    // A fake states its length in frames, so it has to convert against the rate
+    // this pass actually runs at — otherwise a test that overrides `fps` measures
+    // a scene of a different length than it wrote.
+    for (const scene of scenes) scene.fps = fps;
     return new Precomp(asScenes(scenes), VIEWPORT, fps, asCatalog(catalog), scope).run();
 }
 
@@ -56,7 +60,10 @@ describe('Precomp – timeline accounting', () => {
     it('lays out and prepares assets once per frame', () => {
         const a = new FakeScene({ yieldCount: 4 });
         run([a]);
-        expect(a.layoutCalls).toHaveLength(4);
+        // One layout per frame, plus the one before the loop that gives
+        // `SceneDriver.compile` real boxes to pin against.
+        expect(a.layoutCalls).toHaveLength(5);
+        expect(a.compileCount).toBe(1);
         expect(a.prepareCount).toBe(4);
     });
 });

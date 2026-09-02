@@ -199,6 +199,12 @@ export class FakeScene {
         this.buildCount++;
     }
 
+    /** Records the post-layout compile pass — see `SceneDriver.compile`. */
+    compileCount = 0;
+    compile(): void {
+        this.compileCount++;
+    }
+
     /**
      * Seconds this scene runs for, derived from its declared frame count.
      *

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Node2D } from '@/nodes/2d/node2d';
 import { Signal } from '@/signals/signal';
 import { attached } from '@/nodes/node/node.fixtures';
+import type { Command } from '@/tween/command';
 
 /** A bare leaf node usable directly (Node2D's constructor accepts Node2DProps). */
 class Tile extends Node2D {
@@ -11,7 +12,7 @@ class Tile extends Node2D {
 }
 
 /** Drive a Command (or any Iterable<void>) to completion with a fixed frame delta. */
-function drive(command: Iterable<void>, dt: number): void {
+function drive(command: Command<Record<string, never>>, dt: number): void {
     const step = command._stepper();
     step.seek(0);
         let done = false;           // prime to first yield

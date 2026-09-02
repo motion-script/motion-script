@@ -3,7 +3,7 @@ import { chainScene } from "@/runtime/scene.fixtures";
 import { PlaybackController, ControllerParams } from '@/runtime/playback-controller';
 import { Precomp } from '@/runtime/precompisition';
 import { Rect } from '@/nodes/geometry/rect-node';
-import { createScene } from '@/nodes/scene/scene-node';
+import type { Scene } from '@/nodes/scene/scene-node';
 import { createRef } from '@/util/reference';
 import {
     FakeScene,

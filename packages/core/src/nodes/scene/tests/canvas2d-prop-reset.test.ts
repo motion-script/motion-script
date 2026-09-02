@@ -20,6 +20,7 @@ function drivePass(scene: Scene, frames: number, read: () => number): number[] {
     scene.attach(attachScope(0));
     stage.reset();
     stage.build(scene);
+    scene.compile();
     scene.sample();
 
     const samples: number[] = [];
@@ -86,6 +87,7 @@ describe("canvas-prop animation across passes", () => {
         scene.attach(attachScope(0));
         stage.reset();
         stage.build(scene);
+        scene.compile();
 
         scene.evaluateAt(2);
         expect(scene.canvas.zoom).toBeCloseTo(3, 5);

@@ -47,6 +47,9 @@ function sceneFrom(doc: SceneDocument, options?: SceneDocumentOptions): Scene {
             stage = s;
             timeline.build(s);
         },
+        compile() {
+            timeline.compile();
+        },
         evaluateAt(seconds: number) {
             if (stage) timeline.syncPresence(stage, seconds);
             timeline.evaluateAt(seconds);

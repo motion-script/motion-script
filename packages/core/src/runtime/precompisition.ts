@@ -690,6 +690,11 @@ export class Precomp {
         try {
             try {
                 stage.build(scene);
+                // Lay out before compiling, for the reason `SceneDriver.compile`
+                // gives: a command pinning to a rendered box reads zero until a
+                // layout pass has run.
+                scene.layout(layoutBounds, this.measurer);
+                scene.compile();
 
                 // A scene declares how long it runs; nothing has to be run to
                 // find out. That declaration is the whole reason this pass is

@@ -4,7 +4,7 @@ import { Precomp, PrecompResult } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { Text } from "@/nodes/text/text-node";
 import { createRef } from "@/util/reference";
-import { createScene, Scene } from "@/nodes/scene/scene-node";
+import type { Scene } from "@/nodes/scene/scene-node";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "@/runtime/runtime.fixtures";
 
 /**
@@ -26,8 +26,8 @@ const catalog = () => asCatalog(new FakeAssetCatalog());
 
 /** Layout-heavy: a hug row whose middle child is removed mid-scene. */
 function removingRow(label: string) {
+    const row = createRef<Rect>();
     return chainScene((stage) => {
-        const row = createRef<Rect>();
         stage.add(
             new Rect({
                 ref: row, width: "hug", height: "fill", flow: "horizontal", gap: 24, align: "centerLeft",
@@ -47,8 +47,8 @@ function removingRow(label: string) {
 
 /** Tween-heavy: a box that animates through several legs of differing length. */
 function movingBox(distance: number) {
+    const box = createRef<Rect>();
     return chainScene((stage) => {
-        const box = createRef<Rect>();
         stage.add(new Rect({ ref: box, width: 80, height: 80, x: 0, y: 0 }));
     }, [
         () => box().to({ x: distance }, 0.5),

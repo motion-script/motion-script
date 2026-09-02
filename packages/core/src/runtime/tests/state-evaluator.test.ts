@@ -307,13 +307,14 @@ describe('StateEvaluator – layout & render delegation', () => {
     });
 
     it('lays out both evaluated frames so motion reads a fresh box', () => {
-        // The build lays out frame 0, then the evaluation lays out the previous
-        // frame and the target. A node's world position is `layoutBounds + x`, so
-        // reading the new `x` against the previous seek's rect would make motion
-        // depend on how the playhead arrived.
+        // The build lays out twice — once to give `compile` real boxes to pin
+        // against, once against what compiling wrote — then the evaluation lays
+        // out the previous frame and the target. A node's world position is
+        // `layoutBounds + x`, so reading the new `x` against the previous seek's
+        // rect would make motion depend on how the playhead arrived.
         const { scene, evaluator } = single();
         evaluator.stateAt(3);
-        expect(scene.layoutCalls).toHaveLength(3);
+        expect(scene.layoutCalls).toHaveLength(4);
         for (const call of scene.layoutCalls) {
             expect(call.rect).toEqual({ x: 0, y: 0, width: 100, height: 50 });
         }

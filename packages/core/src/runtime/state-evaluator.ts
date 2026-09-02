@@ -216,6 +216,11 @@ export class StateEvaluator {
         // attach(0) above ran before build() created the nodes, so seed their
         // sampling history now (zero velocity).
         slot.scene.sample();
+        // Lay out before compiling: a command that pins to a rendered box reads
+        // it as it is built, and every box is zero until this pass has run. See
+        // `SceneDriver.compile`.
+        this.layoutScene(slot.scene);
+        slot.scene.compile();
         this.layoutScene(slot.scene);
         // Layers run on the project clock, so a slot built at its scene's local
         // frame 0 still puts them at that scene's *global* start — a bed's fade or

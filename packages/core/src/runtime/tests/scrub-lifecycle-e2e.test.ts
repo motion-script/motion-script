@@ -5,7 +5,7 @@ import { Precomp } from "@/runtime/precompisition";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { Node2D } from "@/nodes/2d/node2d";
 import { createRef, Reference } from "@/util/reference";
-import { createScene } from "@/nodes/scene/scene-node";
+import type { Scene } from "@/nodes/scene/scene-node";
 import { BoxBounds } from "@/attributes/layout/bounds";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "@/runtime/runtime.fixtures";
 
@@ -49,8 +49,8 @@ class Probe extends Node2D {
  * laid-out width on any frame.
  */
 function scrubScene(victim: Reference<Probe>) {
+    const row = createRef<Rect>();
     return chainScene((stage) => {
-        const row = createRef<Rect>();
         stage.add(
             new Rect({
                 ref: row,
@@ -75,7 +75,7 @@ function scrubScene(victim: Reference<Probe>) {
     ]);
 }
 
-function makeEvaluator(scene: ReturnType<typeof createScene>) {
+function makeEvaluator(scene: Scene) {
     const precomp = new Precomp([scene], VIEWPORT, FPS, catalog(), scope).run();
     const tracks = precomp.scenes.map((s) => s.frameCount);
     return new StateEvaluator([scene], VIEWPORT, FPS, catalog(), tracks, scope);
@@ -120,21 +120,55 @@ describe("backward scrub — animated removeChildAt reproduces forward playback"
         expect(backwardWidth).toBeCloseTo(forwardWidth, 5);
     });
 
-    it("a full backward replay matches forward frame-for-frame across the whole shrink", () => {
+    /**
+     * The last frame the child is still in the tree. Past it the remove has
+     * completed and the node is detached, so its `rect` keeps whatever box the
+     * last layout that included it gave it — a stale artifact, not scene state.
+     * What actually holds there is membership, which the next test pins.
+     */
+    const LAST_PRESENT = 15;
+
+    it("a full backward scrub matches forward frame-for-frame across the whole shrink", () => {
         const fwdVictim = createRef<Probe>();
         const fwd = makeEvaluator(scrubScene(fwdVictim));
         const forward: number[] = [];
-        for (let f = 0; f <= 20; f++) forward.push(widthAt(fwd, f, fwdVictim));
+        for (let f = 0; f <= LAST_PRESENT; f++) forward.push(widthAt(fwd, f, fwdVictim));
 
         const bwdVictim = createRef<Probe>();
         const bwd = makeEvaluator(scrubScene(bwdVictim));
-        // Jump to the end, then scrub backward one frame at a time — every step
-        // that lands earlier than the generator's position triggers a fresh
-        // replay-from-zero.
+        // Jump past the end, then scrub backward one frame at a time. Every step
+        // lands earlier than the last — the direction a generator could only
+        // reach by throwing the tree away and replaying from zero.
         widthAt(bwd, 20, bwdVictim);
-        for (let f = 20; f >= 0; f--) {
+        for (let f = LAST_PRESENT; f >= 0; f--) {
             const w = widthAt(bwd, f, bwdVictim);
             expect(w).toBeCloseTo(forward[f], 5);
         }
+    });
+
+    it("agrees on whether the child is in the tree, in both directions", () => {
+        // Membership is the thing the frames past the remove are about, and it is
+        // a function of the time like everything else: an evaluation restores the
+        // built tree before applying whatever has started, so a node a command
+        // detached comes back when the playhead moves before it.
+        const fwdVictim = createRef<Probe>();
+        const fwd = makeEvaluator(scrubScene(fwdVictim));
+        const forward: boolean[] = [];
+        for (let f = 0; f <= 20; f++) {
+            widthAt(fwd, f, fwdVictim);
+            forward.push(fwdVictim().parent !== null);
+        }
+
+        const bwdVictim = createRef<Probe>();
+        const bwd = makeEvaluator(scrubScene(bwdVictim));
+        widthAt(bwd, 20, bwdVictim);
+        for (let f = 20; f >= 0; f--) {
+            widthAt(bwd, f, bwdVictim);
+            expect(bwdVictim().parent !== null).toBe(forward[f]);
+        }
+
+        // And it really does leave: present at the start, gone by the end.
+        expect(forward[0]).toBe(true);
+        expect(forward[20]).toBe(false);
     });
 });

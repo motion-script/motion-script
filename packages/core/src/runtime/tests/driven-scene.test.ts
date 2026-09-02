@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chainScene } from "@/runtime/scene.fixtures";
 
-import { createDrivenScene, createScene, type SceneDriver } from "@/nodes/scene/scene-node";
+import { createDrivenScene, type SceneDriver } from "@/nodes/scene/scene-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { Precomp } from "@/runtime/precompisition";
 import { StateEvaluator } from "@/runtime/state-evaluator";

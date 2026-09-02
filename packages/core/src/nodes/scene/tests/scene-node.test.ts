@@ -4,6 +4,7 @@ import { createDrivenScene, type Scene } from "@/nodes/scene/scene-node";
 import { Canvas2D } from "@/nodes/scene/canvas2d-node";
 import { Rect } from "@/nodes/geometry/rect-node";
 import { CanvasStage } from "@/nodes/scene/canvas-stage";
+import type { Stage } from "@/nodes/scene/stage";
 import { Precomp } from "@/runtime/precompisition";
 import { asCatalog, FakeAssetCatalog, FakeMeasurer } from "@/runtime/runtime.fixtures";
 import { attachScope } from "@/nodes/node/node.fixtures";
@@ -135,7 +136,7 @@ describe("CanvasStage authoring surface", () => {
      * receives — determinism plus the canvas forwarders — is the one under test.
      */
     function drive(body: (stage: CanvasStage) => void): Scene {
-        return build(chainScene(body as (stage: never) => void));
+        return build(chainScene(body as unknown as (stage: Stage) => void));
     }
 
     it("exposes the composition surface (viewport/fps/random)", () => {

@@ -179,6 +179,18 @@ export class Scene {
     }
 
     /**
+     * Fix the scene's commands against a laid-out tree.
+     *
+     * Called once per build pass, after {@link build} and the layout that
+     * follows it. See {@link SceneDriver.compile}.
+     *
+     * @internal
+     */
+    compile(): void {
+        this._driver.compile?.();
+    }
+
+    /**
      * Put the scene into the state for `seconds`.
      *
      * A pure function of `seconds`: called in any order, repeatedly, and with
@@ -326,6 +338,21 @@ export interface SceneDriver {
      * second use.
      */
     build(stage: Stage): void;
+    /**
+     * Fix each command's start value, with the tree **laid out**.
+     *
+     * Split from {@link build} because some commands read post-layout state to
+     * decide what they animate *from*: an animated `removeChildAt` pins the
+     * departing child to its rendered `measuredWidth`, and a hug/fill
+     * `addChildAt` measures against the parent's retained constraints. Those are
+     * zero until a layout pass has run, so compiling inside `build` would pin
+     * every one of them to nothing — a shrink from 0 to 0, which reads as the
+     * child vanishing instantly.
+     *
+     * The runtime therefore builds, lays out, then compiles. Optional: a driver
+     * whose commands read nothing but props can do all its work in `build`.
+     */
+    compile?(): void;
     /**
      * Put every node into the state it holds at `seconds` from the scene's start.
      *

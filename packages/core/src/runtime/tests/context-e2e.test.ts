@@ -9,7 +9,7 @@ import { Rect } from "@/nodes/geometry/rect-node";
 import { createRef } from "@/util/reference";
 import { ThemeToken } from "@/runtime/builtin-context";
 import { FakeMeasurer, FakeAssetCatalog, asCatalog } from "@/runtime/runtime.fixtures";
-import { createScene } from "@/nodes/scene/scene-node";
+import type { Scene } from "@/nodes/scene/scene-node";
 
 /** @jsxImportSource @motion-script/core/jsx */
 
@@ -18,7 +18,7 @@ const FPS = 10;
 const scope = new FakeMeasurer();
 const catalog = () => asCatalog(new FakeAssetCatalog());
 
-function evaluator(scene: ReturnType<typeof createScene>) {
+function evaluator(scene: Scene) {
     // Run a precomp first to derive frame counts, then build a StateEvaluator
     // over the same scene so we can seek and inspect the live tree.
     const precomp = new Precomp([scene], VIEWPORT, FPS, catalog(), scope).run();

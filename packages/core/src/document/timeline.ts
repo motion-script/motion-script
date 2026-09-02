@@ -213,10 +213,20 @@ export class SceneTimeline {
         this.root = { spec: rootSpec(), node: stage.canvas, baseline: new Map(), baseStackDepth: 0 };
         this.captureBaselines(stage);
 
-        this.compile();
-        this.restoreBaselines();
-
+        // Duration is declared, so it is known before anything is compiled — a
+        // host can lay out a timeline without having built one command.
         this._duration = this.computeDuration();
+    }
+
+    /**
+     * Build every command against the laid-out tree, then put the tree back.
+     *
+     * Separate from {@link build} because a command may read post-layout state to
+     * decide what it animates *from* — see `SceneDriver.compile`.
+     */
+    compile(): void {
+        this.compileCommands();
+        this.restoreBaselines();
     }
 
     /** Snapshot every reactive cell of every node, at its authored state. */
@@ -263,7 +273,7 @@ export class SceneTimeline {
      * *constructed*, so a chain built against the untouched tree would give every
      * step the same `from` and each would jump back to the start.
      */
-    private compile(): void {
+    private compileCommands(): void {
         if (isStillDocument(this.doc)) return;
 
         const touched = new Set<string>();

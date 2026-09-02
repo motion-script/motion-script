@@ -1,5 +1,6 @@
 import { applySnapshotLayer, captureLayer, type PropLayer, type ReactiveHost } from "@/nodes/node/node-reactive";
 import type { Node } from "@/nodes/node/node";
+import type { Node2D } from "@/nodes/2d/node2d";
 import { createDrivenScene, type Scene } from "@/nodes/scene/scene-node";
 import type { Stage } from "@/nodes/scene/stage";
 import type { Command } from "@/tween/command";
@@ -33,7 +34,8 @@ import { clamp01 } from "@/util/clamp";
  *   does. The replacement for `yield* parallel(...)`, and the same thing two
  *   document commands sharing an `at` express.
  */
-export type ChainStep = (() => Command<never>) | number | Array<() => Command<never>>;
+type AnyCommand = Command<any>;
+export type ChainStep = (() => AnyCommand) | number | Array<() => AnyCommand>;
 
 /** Every node in `root`'s subtree, root included. */
 function walk(root: Node, out: Node[] = []): Node[] {
@@ -63,19 +65,40 @@ export function chainScene(build: (stage: Stage) => void, steps: ChainStep[] = [
     interface Placed {
         start: number;
         duration: number;
-        command: Command<never>;
+        command: AnyCommand;
     }
 
     let placed: Placed[] = [];
     let baselines: Array<{ host: ReactiveHost; layer: PropLayer; stackDepth: number }> = [];
+    /** Where each node sat in the tree when it was built. */
+    let structure: Array<{ node: Node; parent: Node; index: number }> = [];
     let total = 0;
 
+    /**
+     * Put the tree back to its built state — props **and** membership.
+     *
+     * Membership matters because a structural command (`removeChildAt`,
+     * `reparent`) detaches a node when it reaches `at(1)`, and nothing in a prop
+     * snapshot undoes that. Without this, compiling — which runs every command to
+     * its end — would leave the tree missing exactly the nodes a structural
+     * command removes, and every frame *before* that command would then render
+     * without them: the node would pop into existence at the moment it was
+     * supposed to start leaving.
+     */
     const restore = (): void => {
         for (const b of baselines) {
             applySnapshotLayer(b.host, b.layer);
             if (b.host._stateStack.length > b.stackDepth) {
                 b.host._stateStack.length = b.stackDepth;
             }
+        }
+        for (const entry of structure) {
+            if (entry.node.parent === entry.parent) continue;
+            const parent = entry.parent as Node2D;
+            (parent as Node2D).addChildAt(
+                entry.node,
+                Math.min(entry.index, parent._allChildren.length),
+            );
         }
     };
 
@@ -87,11 +110,25 @@ export function chainScene(build: (stage: Stage) => void, steps: ChainStep[] = [
 
             // Baselines are captured with the tree mounted, before any command
             // has written to it — the state every evaluation resets to.
-            baselines = walk(stage.canvas).map((node) => {
+            const nodes = walk(stage.canvas);
+            baselines = nodes.map((node) => {
                 const host = node as unknown as ReactiveHost;
                 return { host, layer: captureLayer(host), stackDepth: host._stateStack.length };
             });
+            structure = [];
+            for (const node of nodes) {
+                const parent = node.parent;
+                if (!parent) continue;
+                structure.push({ node, parent, index: parent._allChildren.indexOf(node) });
+            }
 
+        },
+
+        // Split from `build` for the reason `SceneDriver.compile` gives: a command
+        // that pins to a rendered box reads zero until a layout pass has run.
+        compile() {
+            placed = [];
+            total = 0;
             // Compile in order, leaving each node where its command ends, so the
             // next command's `from` is what a sequential run would have given it.
             for (const step of steps) {
