@@ -7,16 +7,33 @@ import { ShapeAnchorInput, ShapeState, resolveShapeAnchor, resolveShapePivot, st
 
 /**
  * One contiguous piece of a Text node split at selection boundaries. Pieces
- * carry their effective shaping inputs (`text`/`fontWeight`/`letterSpacing`)
- * plus draw-time overrides applied per shaped run: `opacity` folded into the
- * paint alpha, an optional `fill`/`stroke` override (falls back to the node's
- * when omitted), and a transform applied about the run's centered position.
+ * carry their effective shaping inputs (`text` plus the five font fields) and
+ * draw-time overrides applied per shaped run: `opacity` folded into the paint
+ * alpha, an optional `fill`/`stroke` override (falls back to the node's when
+ * omitted), and a transform applied about the run's centered position.
  *
  * Present only when a Text node has active selections; otherwise the node
  * renders as a single string with no segments (unchanged behavior).
+ *
+ * **Every shaping field is stated, none inherited at draw time.** `fontFamily`,
+ * `fontSize` and `fontStyle` joined `fontWeight` and `letterSpacing` here so a
+ * selection can change the *face* of a run and not only its weight — which is
+ * what an editor built on this needs to offer per-character styling at all. The
+ * paragraph builder already takes all five per run (it is what `RichText` sets),
+ * so the cost of the three is a wider segment and nothing else.
+ *
+ * They are optional only so an older caller's segments still lay out: absent
+ * means "the node's own", resolved where the paragraph is built rather than
+ * left for the renderer to guess.
  */
 export interface TextSegment {
     text: string;
+    /** Override family for this piece; falls back to the node's when undefined. */
+    fontFamily?: string;
+    /** Override size for this piece; falls back to the node's when undefined. */
+    fontSize?: number;
+    /** Override slant for this piece; falls back to the node's when undefined. */
+    fontStyle?: FontStyle;
     fontWeight: number;
     letterSpacing: number;
     opacity: number;
@@ -28,6 +45,22 @@ export interface TextSegment {
     fill?: FillResolved[];
     /** Override stroke for this piece; falls back to the node's stroke when undefined. */
     stroke?: StrokeResolved[];
+}
+
+/**
+ * Whether `segment` only *styles* its characters — no transform of its own.
+ *
+ * The caret model can describe a segmented block exactly as long as this holds
+ * of every piece: differently-styled runs are still one paragraph, laid out and
+ * measured together, so Skia's own rects for each character are where the glyphs
+ * are. A piece that is *moved*, turned or scaled about its own centre is not in
+ * that paragraph's space any more, and a slot measured from it would point at
+ * where the character would have been. See `textBlockLayout`, which is the one
+ * caller and turns a false here into "no caret model for this shape".
+ */
+export function isStyleOnlySegment(segment: TextSegment): boolean {
+    return segment.x === 0 && segment.y === 0
+        && segment.scale === 1 && segment.rotation === 0;
 }
 
 export interface TextState extends ShapeState {

@@ -1,7 +1,8 @@
 import type { CanvasKit, Canvas, Paint, TypefaceFontProvider } from "@motion-script/canvaskit";
-import { TextState, withTextDescriptor, resolveShapePivot, type TextBlockLayout } from "@motion-script/core";
+import { TextState, withTextDescriptor, isStyleOnlySegment, resolveShapePivot, type TextBlockLayout } from "@motion-script/core";
 import type { CurrentShape } from "./shape-handler";
 import { layoutParagraph, layoutTextBlock, drawShapedRunAt, type ParagraphSegment } from "./paragraph-layout";
+import { segmentParagraphs } from "./text-segments";
 import { layoutTextOnPath, drawTextOnPath } from "./text-path";
 import { ParagraphShapeCache, shapeKey, shapeKeyInputsFor } from "./paragraph-cache";
 
@@ -94,9 +95,17 @@ function resolveTextShaping(
  * make every rendered string pay for caret extraction it never reads.
  *
  * `null` for the shapes the caret model doesn't describe — text laid along a
- * path (glyphs follow a curve, so there are no line boxes) and a block split into
- * selection segments (each piece carries its own transform, so a single run of
- * slots would not describe where the glyphs are).
+ * path (glyphs follow a curve, so there are no line boxes) and a block one of
+ * whose selection segments carries a *transform* (that piece is drawn about its
+ * own centre, outside the paragraph's space, so a slot measured from the
+ * paragraph would point at where the character would have been).
+ *
+ * Segments that only **style** their characters keep their carets, and that is
+ * the case worth having: per-character styling is what an editor built on this
+ * offers, and returning `null` for it would mean a text node loses its cursor
+ * the moment one word is set in bold. Those pieces are one paragraph, laid out
+ * together, so the slots are as true as an unsegmented block's. See
+ * {@link isStyleOnlySegment}.
  */
 export function textBlockLayout(
     canvasKit: CanvasKit,
@@ -105,7 +114,22 @@ export function textBlockLayout(
 ): TextBlockLayout | null {
     const fullState = withTextDescriptor(state);
     if (fullState.path != null) return null;
-    if (fullState.segments && fullState.segments.length > 0) return null;
+
+    const segments = fullState.segments ?? [];
+    if (segments.length > 0) {
+        if (!segments.every(isStyleOnlySegment)) return null;
+        // The same shaping the segmented draw builds, for the same reason the
+        // unsegmented branch shares `resolveTextShaping` with `buildText`.
+        const wrap = fullState.wrap && fullState.width > 0;
+        return layoutTextBlock(canvasKit, fontMgr, segmentParagraphs(fullState), {
+            textAlign: fullState.textAlign,
+            lineHeight: fullState.lineHeight,
+            maxWidth: wrap ? fullState.width : Infinity,
+            boxWidth: fullState.width,
+            originX: 0,
+            originY: 0,
+        });
+    }
 
     const { segment, maxWidth } = resolveTextShaping(canvasKit, fontMgr, fullState);
     return layoutTextBlock(canvasKit, fontMgr, segment, {

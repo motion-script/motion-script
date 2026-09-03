@@ -1,6 +1,6 @@
 import { lerpText } from "@/attributes/text/lerp";
 import { TextAlign } from "@/attributes/text/align";
-import { FontStyle } from "@/attributes/text/span";
+import { FontStyle, ResolvedTextRun, TextRun } from "@/attributes/text/span";
 import { ShapeNode, ShapeProps } from "../geometry/shape-node";
 import { property } from "@/attributes/properties/decorator";
 import { NodeConfig } from "@/nodes/2d/node2d";
@@ -13,13 +13,13 @@ import { RenderContext2D } from "@/render/render-context2d";
 import { Graphics2D } from "@/render/graphics2d";
 import { TextSegment, TextState } from "@/render/descriptors/text";
 import { FillResolved } from "@/attributes/shape/fill/union";
-import { prepareFill } from "@/attributes/shape/fill/registry";
+import { prepareFill, resolveFillArray } from "@/attributes/shape/fill/registry";
 import { AssetTracker } from "@/assets/tracker";
-import { StrokeResolved } from "@/attributes/shape/stroke/mapper";
+import { StrokeResolved, resolveStrokeArray } from "@/attributes/shape/stroke/mapper";
 import { PathData } from "@/render/descriptors/path";
 import { PathBuilder } from "@/render/descriptors/path-builder";
 import { measurePathData } from "@/attributes/shape/path/bounds";
-import { TextRange, TextSelection } from "./text-selection";
+import { AUTOFIT_PROBE_SIZE, TextRange, TextSelection } from "./text-selection";
 import { applyTextDefaults } from "@/runtime/builtin-context";
 import { type Command } from "@/tween/command";
 import { command } from "@/tween/command-decorator";
@@ -50,6 +50,27 @@ export interface TextProps extends ShapeProps {
      * (single line), and text selections are not applied.
      */
     path: PathData | PathBuilder;
+    /**
+     * Statically styled stretches of {@link text} — see {@link TextRun}.
+     *
+     * A property rather than a set of {@link TextSelection}s because that is
+     * what it is: styling part of a string is a fact about the node, and a host
+     * has to be able to restate it the way it restates a family or a size.
+     */
+    runs: TextRun[];
+}
+
+/** Resolve a run list's paints once, on the way into the node's props. */
+function resolveTextRuns(value: TextRun[] | undefined): ResolvedTextRun[] {
+    if (!Array.isArray(value)) return [];
+    return value.map(run => {
+        const out: ResolvedTextRun = { ...run, fill: undefined, stroke: undefined };
+        if (run.fill !== undefined) out.fill = resolveFillArray(run.fill);
+        if (run.stroke !== undefined) out.stroke = resolveStrokeArray(run.stroke);
+        if (out.fill === undefined) delete out.fill;
+        if (out.stroke === undefined) delete out.stroke;
+        return out;
+    });
 }
 
 /** Coerce the loosely-typed `path` input into stored {@link PathData} (or null). */
@@ -88,6 +109,8 @@ export class Text extends ShapeNode<TextProps> {
     @property({ default: undefined }) declare readonly variant?: string;
     @property({ default: null, mapper: resolveTextPath })
     declare readonly path: PathData | null;
+    @property({ default: [], mapper: resolveTextRuns })
+    declare readonly runs: ResolvedTextRun[];
 
     constructor(props: NodeConfig<Text, TextProps>) {
         super(props);
@@ -127,8 +150,31 @@ export class Text extends ShapeNode<TextProps> {
 
         const measureFontSize = this.fontSize === 'autofit' ? 16 : this.fontSize;
         const paragraphs = this.text.split("\n");
+
+        // A styled run changes the box, which is why measuring cannot read the
+        // node's five font fields and stop there: one word set two sizes up makes
+        // the line taller and the block wider, and a node that hugs its glyphs
+        // would hug a box measured for text nobody is looking at. So when
+        // selections are live the intrinsic size is summed across the *pieces*,
+        // each in its own style - see {@link measureStyledLines}.
+        const styled = this.path == null ? this._buildSegments() : null;
+        const lineStyles = styled === null
+            ? null
+            : measureStyledLines(styled, {
+                fontFamily: this.fontFamily,
+                fontSize: measureFontSize,
+                fontStyle: this.fontStyle,
+                fontWeight: this.fontWeight,
+                letterSpacing: this.letterSpacing,
+            });
+
         const lineH = measureFontSize * this.lineHeight;
-        const intrinsicW = Math.max(...paragraphs.map(l => scope.measureText(l, measureFontSize, this.fontFamily, this.fontWeight, this.letterSpacing, this.fontStyle).width));
+        const intrinsicW = lineStyles
+            ? Math.max(...lineStyles.map(line => line.runs.reduce(
+                (w, run) => w + scope.measureText(run.text, run.fontSize, run.fontFamily, run.fontWeight, run.letterSpacing, run.fontStyle).width,
+                0,
+            )))
+            : Math.max(...paragraphs.map(l => scope.measureText(l, measureFontSize, this.fontFamily, this.fontWeight, this.letterSpacing, this.fontStyle).width));
 
         const wm = this.width;
         const hm = this.height;
@@ -144,7 +190,16 @@ export class Text extends ShapeNode<TextProps> {
         const lineCount = this.wrap && resolvedW > 0
             ? paragraphs.reduce((n, p) => n + countWrappedLines(p, resolvedW, measureFontSize, this.fontFamily, this.fontWeight, scope, this.letterSpacing, this.fontStyle), 0)
             : paragraphs.length;
-        const intrinsicH = lineCount * lineH;
+        // Each line is as tall as its tallest run, so raising one word's size
+        // opens the leading around it rather than letting it overprint the line
+        // above. Only meaningful unwrapped: a wrapped line's pieces are decided
+        // by the shaper, which is downstream of this measurement.
+        const intrinsicH = lineStyles && lineCount === lineStyles.length
+            ? lineStyles.reduce(
+                (h, line) => h + Math.max(...line.runs.map(run => run.fontSize)) * this.lineHeight,
+                0,
+            )
+            : lineCount * lineH;
 
         // "fill" still reports the intrinsic wrapped height when measuring â€”
         // it's layout (not measure) that stretches a fill child to its final
@@ -279,6 +334,18 @@ export class Text extends ShapeNode<TextProps> {
         const text = this.text;
         if (text.length === 0) return null;
 
+        // The node's own styled stretches, clamped to the string it currently
+        // holds — a run is stored as two offsets and the text can change under
+        // it (an `append`, a `to` on `text`), so the clamp happens here rather
+        // than in the mapper, which never sees the string.
+        const runs = this.runs
+            .map(run => ({
+                ...run,
+                start: Math.max(0, Math.min(Math.floor(run.start), text.length)),
+                end: Math.max(0, Math.min(Math.floor(run.end), text.length)),
+            }))
+            .filter(run => run.end > run.start);
+
         // Write On: `start`/`end` are ShapeNode's outline-trim fractions
         // everywhere else, but a glyph has no path to trim geometrically — this
         // CanvasKit build can't get glyph outlines at all (see
@@ -286,7 +353,10 @@ export class Text extends ShapeNode<TextProps> {
         // reinterprets the same pair as a character-reveal window instead:
         // opacity over a character range rather than a geometric trim.
         const hasReveal = this.start > 0 || this.end < 1;
-        if (active.length === 0 && !hasReveal) return null;
+        // The fast path survives all three: a node with no runs, no live
+        // selection and no reveal window renders as one string, exactly as it
+        // did before any of this existed.
+        if (active.length === 0 && runs.length === 0 && !hasReveal) return null;
 
         // Rounded to the nearest whole character — a hard cut, not a fade. Write
         // On reveals one character at a time, the way DaVinci's does; a fractional
@@ -294,8 +364,17 @@ export class Text extends ShapeNode<TextProps> {
         const revealStart = Math.round(this.start * text.length);
         const revealEnd = Math.round(this.end * text.length);
 
+        // The size every piece starts from. `'autofit'` settles on a size the
+        // *block* is measured into, which no single piece can be asked for, so
+        // the segmented path shapes at the same probe size a selection's
+        // `fontSize` override starts from - one number, stated in one place.
+        const nodeFontSize = typeof this.fontSize === "number"
+            ? this.fontSize
+            : AUTOFIT_PROBE_SIZE;
+
         // Boundaries at every range edge so each piece is covered uniformly.
         const cuts = new Set<number>([0, text.length]);
+        for (const run of runs) { cuts.add(run.start); cuts.add(run.end); }
         for (const sel of active) {
             for (const r of sel.ranges) { cuts.add(r.start); cuts.add(r.end); }
         }
@@ -313,6 +392,15 @@ export class Text extends ShapeNode<TextProps> {
 
             const seg: TextSegment = {
                 text: text.slice(start, end),
+                // Every shaping field is stated, not left for the renderer to
+                // fill in: a piece whose family or size differs from the node's
+                // is the point of the model, and a segment that says nothing
+                // about one of them would be a piece the paragraph builder
+                // styles from the node while the caret measures from the
+                // segment. See {@link TextSegment}.
+                fontFamily: this.fontFamily,
+                fontSize: nodeFontSize,
+                fontStyle: this.fontStyle,
                 fontWeight: this.fontWeight,
                 letterSpacing: this.letterSpacing,
                 opacity: 1,
@@ -326,6 +414,19 @@ export class Text extends ShapeNode<TextProps> {
                 stroke: this.stroke as StrokeResolved[],
             };
 
+            // The node's own styling first, in order, last-wins on an overlap —
+            // so a selection below can animate a run that is already bold.
+            for (const run of runs) {
+                if (!(start >= run.start && end <= run.end)) continue;
+                if (run.fontFamily !== undefined) seg.fontFamily = run.fontFamily;
+                if (run.fontSize !== undefined) seg.fontSize = run.fontSize;
+                if (run.fontStyle !== undefined) seg.fontStyle = run.fontStyle;
+                if (run.fontWeight !== undefined) seg.fontWeight = run.fontWeight;
+                if (run.letterSpacing !== undefined) seg.letterSpacing = run.letterSpacing;
+                if (run.fill !== undefined) seg.fill = run.fill;
+                if (run.stroke !== undefined) seg.stroke = run.stroke;
+            }
+
             // Apply in creation order: opacity multiplies, others last-wins.
             for (const sel of active) {
                 if (!sel.ranges.some(r => start >= r.start && end <= r.end)) continue;
@@ -335,6 +436,9 @@ export class Text extends ShapeNode<TextProps> {
                 seg.y = o.y;
                 seg.scale = o.scale;
                 seg.rotation = o.rotation;
+                seg.fontFamily = o.fontFamily;
+                seg.fontSize = o.fontSize;
+                seg.fontStyle = o.fontStyle;
                 seg.fontWeight = o.fontWeight;
                 seg.letterSpacing = o.letterSpacing;
                 if (o.fill !== null) seg.fill = o.fill;
@@ -362,6 +466,16 @@ export class Text extends ShapeNode<TextProps> {
      */
     override prepareLayout(tracker: AssetTracker): void {
         tracker.addFont(this.fontFamily, this.fontWeight);
+        // ...and every face a *selection* puts on part of the string, which the
+        // node's own two fields do not name. A styled run whose family was never
+        // declared shapes against the fallback and is silently corrected at the
+        // first real render - the exact failure the declaration above exists to
+        // prevent, arriving one level down. Same reasoning as `RichText`, which
+        // declares its spans' families for this reason.
+        const segments = this.path == null ? this._buildSegments() : null;
+        for (const segment of segments ?? []) {
+            tracker.addFont(segment.fontFamily ?? this.fontFamily, segment.fontWeight);
+        }
     }
 
     /**
@@ -458,6 +572,56 @@ export class Text extends ShapeNode<TextProps> {
         if (segments) return;
         ctx.draw(g.stroke(stroke));
     }
+}
+
+/**
+ * One shaped piece of a line, as {@link Text.measure} needs it: its text and the
+ * five fields a measurement is taken against.
+ */
+interface StyledRun {
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    fontStyle: FontStyle;
+    fontWeight: number;
+    letterSpacing: number;
+}
+
+/**
+ * Split `segments` into lines at every `\n`, resolving each piece against
+ * `fallback` for the fields it leaves unstated.
+ *
+ * A segment can span a line break - the cuts are made at *selection* edges, and
+ * a selection over two lines is one range - so the break has to be found inside
+ * the piece rather than between pieces. The newline itself joins neither line,
+ * which is what makes an empty line come back as a run of `""` (in the node's
+ * own style) rather than disappearing from the count.
+ */
+function measureStyledLines(
+    segments: TextSegment[],
+    fallback: Omit<StyledRun, "text">,
+): { runs: StyledRun[] }[] {
+    const lines: { runs: StyledRun[] }[] = [{ runs: [] }];
+    for (const segment of segments) {
+        const style: Omit<StyledRun, "text"> = {
+            fontFamily: segment.fontFamily ?? fallback.fontFamily,
+            fontSize: segment.fontSize ?? fallback.fontSize,
+            fontStyle: segment.fontStyle ?? fallback.fontStyle,
+            fontWeight: segment.fontWeight,
+            letterSpacing: segment.letterSpacing,
+        };
+        const parts = segment.text.split("\n");
+        for (let i = 0; i < parts.length; i++) {
+            if (i > 0) lines.push({ runs: [] });
+            lines[lines.length - 1].runs.push({ text: parts[i], ...style });
+        }
+    }
+    // A line the loop above never wrote a run onto still has to be measured
+    // against something, and the node's own style is the only honest answer.
+    for (const line of lines) {
+        if (line.runs.length === 0) line.runs.push({ ...fallback, text: "" });
+    }
+    return lines;
 }
 
 function countWrappedLines(

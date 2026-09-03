@@ -1,5 +1,5 @@
 import type { CanvasKit, Font, TypefaceFontProvider } from "@motion-script/canvaskit";
-import { TextState, TextSegment, withTextDescriptor } from "@motion-script/core";
+import { AUTOFIT_PROBE_SIZE, TextState, TextSegment, withTextDescriptor } from "@motion-script/core";
 import { layoutParagraph, type ParagraphSegment, type ShapedRun } from "./paragraph-layout";
 
 /**
@@ -19,15 +19,38 @@ export interface SegmentedTextLayout {
 }
 
 /**
+ * The {@link ParagraphSegment}s a segmented Text node shapes as, each resolved
+ * against the node's own style for the fields it leaves unstated.
+ *
+ * Shared by {@link layoutTextSegments} and `textBlockLayout` so the glyphs and
+ * the caret slots are built from *one* reading of the segments — the same reason
+ * `resolveTextShaping` is shared on the unsegmented path. Two derivations of
+ * this is how a cursor ends up a face wider than the character it sits after.
+ */
+export function segmentParagraphs(full: TextState): ParagraphSegment[] {
+    const fontSize = full.fontSize === 'autofit' ? AUTOFIT_PROBE_SIZE : full.fontSize;
+    return (full.segments ?? []).map(seg => ({
+        text: seg.text,
+        fontFamily: seg.fontFamily ?? full.fontFamily,
+        fontSize: seg.fontSize ?? fontSize,
+        fontWeight: seg.fontWeight,
+        fontStyle: seg.fontStyle ?? full.fontStyle,
+        letterSpacing: seg.letterSpacing,
+    }));
+}
+
+/**
  * Lay out a selection-segmented Text node. Each {@link TextSegment} carries its
- * effective shaping inputs (text/fontWeight/letterSpacing), so weight/spacing
- * overrides reshape correctly while kerning/wrap/textAlign stay consistent across
- * the whole paragraph (one `layoutParagraph` call). Runs are mapped back to
- * their segment via `segmentIndex` for per-run override application.
+ * own five shaping fields, so a run styled in another face, size, slant, weight
+ * or spacing reshapes correctly while kerning, wrapping and textAlign stay
+ * consistent across the whole paragraph (one `layoutParagraph` call). Runs are
+ * mapped back to their segment via `segmentIndex` for per-run override
+ * application.
  *
  * Autofit is not segment-aware (selections target explicit-size text); when
- * `fontSize` is "autofit" we fall back to a fixed 100 probe-free size so the
- * pieces still shape — autofit + selections is an uncommon combination.
+ * `fontSize` is "autofit" the pieces shape at a fixed probe size instead — the
+ * same one a selection's `fontSize` override starts from, so the node and its
+ * selections agree about what they are sized against.
  */
 export function layoutTextSegments(
     canvasKit: CanvasKit,
@@ -36,16 +59,8 @@ export function layoutTextSegments(
 ): SegmentedTextLayout {
     const full = withTextDescriptor(state);
     const segments = full.segments ?? [];
-    const fontSize = full.fontSize === 'autofit' ? 100 : full.fontSize;
 
-    const paragraphSegments: ParagraphSegment[] = segments.map(seg => ({
-        text: seg.text,
-        fontFamily: full.fontFamily,
-        fontSize,
-        fontWeight: seg.fontWeight,
-        fontStyle: full.fontStyle,
-        letterSpacing: seg.letterSpacing,
-    }));
+    const paragraphSegments = segmentParagraphs(full);
 
     const wrap = full.wrap && full.width > 0;
     const layout = layoutParagraph(canvasKit, fontMgr, paragraphSegments, {

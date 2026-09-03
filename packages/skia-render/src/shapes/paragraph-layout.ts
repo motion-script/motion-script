@@ -296,22 +296,37 @@ export function layoutParagraph(
  *
  * Line boxes come from `getLineMetrics`, so the caret is as tall as the line the
  * renderer actually laid out — including the `lineHeight` multiplier, which is a
- * different quantity from the font size and cannot be recovered from it.
+ * different quantity from the font size and cannot be recovered from it, and
+ * including the tallest run on a line of mixed sizes.
+ *
+ * Takes one segment or a list of them, because a block whose runs are styled
+ * differently is still one paragraph — see the note at the top of the body.
  *
  * Returns `null` for text this model doesn't describe: nothing to lay out.
  */
 export function layoutTextBlock(
     canvasKit: CanvasKit,
     fontMgr: TypefaceFontProvider,
-    segment: ParagraphSegment,
+    segments: ParagraphSegment | ParagraphSegment[],
     opts: ParagraphLayoutOptions,
 ): TextBlockLayout | null {
-    if (segment.text.length === 0) {
+    // One segment or many, and the many is not a special case: a paragraph of
+    // differently-styled runs is laid out by the same builder as a paragraph of
+    // one, and Skia reports its character rects against the whole string either
+    // way. So the slots below are read off the paragraph, not off any segment,
+    // and a block whose second word is set in another face measures its cursor
+    // through that face without this function knowing which run it landed in.
+    const runs = Array.isArray(segments) ? segments : [segments];
+    const text = runs.map(run => run.text).join("");
+
+    if (runs.length === 0 || text.length === 0) {
         // An empty run still has one slot to put a cursor in, and it needs a line
         // box with the right height — so measure a stand-in glyph and keep only
         // its vertical extent. Without this, clicking into emptied text would
         // give a zero-height caret.
-        const probe = layoutTextBlock(canvasKit, fontMgr, { ...segment, text: "M" }, opts);
+        const style = runs[0];
+        if (!style) return null;
+        const probe = layoutTextBlock(canvasKit, fontMgr, { ...style, text: "M" }, opts);
         if (!probe) return null;
         const line = probe.lines[0];
         return {
@@ -321,10 +336,8 @@ export function layoutTextBlock(
         };
     }
 
-    const laid = layOutParagraph(canvasKit, fontMgr, [segment], opts);
+    const laid = layOutParagraph(canvasKit, fontMgr, runs, opts);
     const { paragraph, builder, fontCollection, blockWidth, blockHeight, shiftX, shiftY } = laid;
-
-    const text = segment.text;
     const lineMetrics = paragraph.getLineMetrics();
     const lines: TextBlockLine[] = [];
     // Where the line being read begins. Tracked rather than taken from each

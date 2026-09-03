@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Text } from '@/nodes/text/text-node';
 import { normalizeRanges, TextSelection } from '@/nodes/text/text-selection';
-import { TextSegment } from '@/render/descriptors/text';
+import { isStyleOnlySegment, TextSegment } from '@/render/descriptors/text';
 
 const ranges = (sel: TextSelection) => sel.ranges.map(r => [r.start, r.end]);
 
@@ -183,5 +183,130 @@ describe('Text._buildSegments – Write On reveal (start/end)', () => {
         expect(opacityOf('hello')).toBeCloseTo(0.5); // selection only, fully inside reveal
         expect(opacityOf(' ')).toBe(1); // no selection, fully inside reveal
         expect(opacityOf('world')).toBe(0); // outside the reveal window
+    });
+});
+
+
+describe('TextSelection.set - per-run style, no tween', () => {
+    it('overrides the face, size and slant a run is shaped in', () => {
+        const t = new Text({
+            text: 'hello world',
+            fontFamily: 'Inter',
+            fontSize: 24,
+            fontStyle: 'normal',
+        });
+        t.find('world').set({ fontFamily: 'Georgia', fontSize: 48, fontStyle: 'italic' });
+
+        const segs = buildSegments(t)!;
+        const world = segs.find(s => s.text === 'world')!;
+        const hello = segs.find(s => s.text === 'hello ')!;
+
+        expect(world.fontFamily).toBe('Georgia');
+        expect(world.fontSize).toBe(48);
+        expect(world.fontStyle).toBe('italic');
+        // The neighbours state the node's own style rather than leaving it
+        // unset - see the note on TextSegment.
+        expect(hello.fontFamily).toBe('Inter');
+        expect(hello.fontSize).toBe(24);
+        expect(hello.fontStyle).toBe('normal');
+    });
+
+    it('resolves a fill the way a tween to the same value would', () => {
+        const t = new Text({ text: 'hello', fill: '#000000' });
+        const sel = t.find('hello').set({ fill: '#ff0000' });
+        expect(sel.overrides.fill).not.toBeNull();
+        expect(sel.overrides.fill!.length).toBeGreaterThan(0);
+    });
+
+    it('leaves an untouched selection identity, so the fast path survives it', () => {
+        const t = new Text({ text: 'hello', fontFamily: 'Inter', fontSize: 24 });
+        const sel = t.find('hello');
+        expect(sel.isIdentity).toBe(true);
+        // Re-stating the node's own values is still identity: what makes a
+        // selection active is differing from the node, not having been written.
+        sel.set({ fontFamily: 'Inter', fontSize: 24 });
+        expect(sel.isIdentity).toBe(true);
+        expect(buildSegments(t)).toBeNull();
+
+        sel.set({ fontFamily: 'Georgia' });
+        expect(sel.isIdentity).toBe(false);
+    });
+
+    it('switches a face at the end of a tween rather than part-way through it', () => {
+        const t = new Text({ text: 'hello', fontFamily: 'Inter' });
+        const sel = t.find('hello');
+        const step = sel._prepareStep({ fontFamily: 'Georgia' }, 1);
+        step.seek(0.5);
+        expect(sel.overrides.fontFamily).toBe('Inter');
+        step.seek(1);
+        expect(sel.overrides.fontFamily).toBe('Georgia');
+    });
+});
+
+describe('isStyleOnlySegment', () => {
+    it('is true for a run that is only styled, and false once it is moved', () => {
+        const t = new Text({ text: 'hello world', fontFamily: 'Inter' });
+        t.find('world').set({ fontWeight: 700 });
+        expect(buildSegments(t)!.every(isStyleOnlySegment)).toBe(true);
+
+        const moved = new Text({ text: 'hello world', fontFamily: 'Inter' });
+        moved.find('world').set({ y: -10 });
+        expect(moved.find('world') && buildSegments(moved)!.every(isStyleOnlySegment)).toBe(false);
+    });
+});
+
+describe('Text.runs — styling as a property', () => {
+    it('styles a stretch with no selection in sight', () => {
+        const t = new Text({
+            text: 'hello world',
+            fontFamily: 'Inter',
+            fontWeight: 400,
+            runs: [{ start: 6, end: 11, fontWeight: 700, fontFamily: 'Georgia' }],
+        });
+        const segs = buildSegments(t)!;
+        expect(segs.map(s => [s.text, s.fontWeight, s.fontFamily])).toEqual([
+            ['hello ', 400, 'Inter'],
+            ['world', 700, 'Georgia'],
+        ]);
+    });
+
+    it('keeps the single-run fast path when there are none', () => {
+        expect(buildSegments(new Text({ text: 'hello', runs: [] }))).toBeNull();
+    });
+
+    it('clamps a run to the string the node currently holds', () => {
+        const t = new Text({
+            text: 'hi',
+            fontWeight: 400,
+            runs: [{ start: 1, end: 99, fontWeight: 700 }],
+        });
+        expect(buildSegments(t)!.map(s => [s.text, s.fontWeight])).toEqual([
+            ['h', 400],
+            ['i', 700],
+        ]);
+    });
+
+    it('lets a selection animate a run rather than being overruled by it', () => {
+        // The precedence that matters: fading a word that happens to be bold has
+        // to leave it bold *and* faded, with the selection deciding.
+        const t = new Text({
+            text: 'hello world',
+            fontWeight: 400,
+            runs: [{ start: 6, end: 11, fontWeight: 700 }],
+        });
+        t.find('world').set({ fontWeight: 900, opacity: 0.5 });
+        const world = buildSegments(t)!.find(s => s.text === 'world')!;
+        expect(world.fontWeight).toBe(900);
+        expect(world.opacity).toBe(0.5);
+    });
+
+    it("resolves a run's paint the way the node's own is resolved", () => {
+        const t = new Text({
+            text: 'hello',
+            fill: '#000000',
+            runs: [{ start: 0, end: 5, fill: '#ff0000' }],
+        });
+        const seg = buildSegments(t)![0];
+        expect(seg.fill?.length).toBeGreaterThan(0);
     });
 });
